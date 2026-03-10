@@ -100,7 +100,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "D:\\AI_Projects\\HRMS_Demo_WithCodex\\HRMS_2",
+    "outputFileTracingRoot": "D:\\Project\\HRMS\\Frontend",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -293,11 +293,11 @@ self.__SERVER_FILES_MANIFEST={
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.js",
     "turbopack": {
-      "root": "D:\\AI_Projects\\HRMS_Demo_WithCodex\\HRMS_2"
+      "root": "D:\\Project\\HRMS\\Frontend"
     },
     "distDirRoot": ".next"
   },
-  "appDir": "D:\\AI_Projects\\HRMS_Demo_WithCodex\\HRMS_2",
+  "appDir": "D:\\Project\\HRMS\\Frontend",
   "relativeAppDir": "",
   "files": [
     ".next\\routes-manifest.json",
@@ -307,6 +307,8 @@ self.__SERVER_FILES_MANIFEST={
     ".next\\server\\functions-config-manifest.json",
     ".next\\server\\middleware-manifest.json",
     ".next\\server\\middleware-build-manifest.js",
+    ".next\\server\\middleware-react-loadable-manifest.js",
+    ".next\\react-loadable-manifest.json",
     ".next\\server\\app-paths-manifest.json",
     ".next\\app-path-routes-manifest.json",
     ".next\\server\\server-reference-manifest.js",

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import ThemeRegistry from "@/components/ThemeRegistry";
 import ThemeModeProvider from "@/components/ThemeModeProvider";
-
-const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "HRMS Template",
@@ -14,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         {/* Emotion cache + MUI theme providers for all routes */}
         <ThemeRegistry>
           <ThemeModeProvider>{children}</ThemeModeProvider>
