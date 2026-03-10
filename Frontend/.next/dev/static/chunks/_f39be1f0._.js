@@ -1,0 +1,1416 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push([typeof document === "object" ? document.currentScript : undefined,
+"[project]/src/components/UserMaster/UserMaster.module.css [app-client] (css module)", ((__turbopack_context__) => {
+
+__turbopack_context__.v({
+  "actions": "UserMaster-module__F2U6hW__actions",
+  "button": "UserMaster-module__F2U6hW__button",
+  "card": "UserMaster-module__F2U6hW__card",
+  "content": "UserMaster-module__F2U6hW__content",
+  "empty": "UserMaster-module__F2U6hW__empty",
+  "error": "UserMaster-module__F2U6hW__error",
+  "field": "UserMaster-module__F2U6hW__field",
+  "form": "UserMaster-module__F2U6hW__form",
+  "ghost": "UserMaster-module__F2U6hW__ghost",
+  "grid": "UserMaster-module__F2U6hW__grid",
+  "header": "UserMaster-module__F2U6hW__header",
+  "input": "UserMaster-module__F2U6hW__input",
+  "label": "UserMaster-module__F2U6hW__label",
+  "primary": "UserMaster-module__F2U6hW__primary",
+  "subtitle": "UserMaster-module__F2U6hW__subtitle",
+  "title": "UserMaster-module__F2U6hW__title",
+  "wrapper": "UserMaster-module__F2U6hW__wrapper",
+});
+}),
+"[project]/src/components/UserMaster/useUserMaster.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "useUserMaster",
+    ()=>useUserMaster
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var _s = __turbopack_context__.k.signature();
+"use client";
+;
+const dicEmptyObject = Object.freeze({});
+function useUserMaster(dicOptions = {}) {
+    _s();
+    const { apiEndpoint = "/api/users", fetchOptions, transformResponse, onSuccess, onError, onUsersChange, onCreate, onUpdate, onDelete } = dicOptions;
+    const dicFetchOptions = fetchOptions ?? dicEmptyObject;
+    const [lstUsers, setLstUsers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [intIsLoading, setIntIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [intIsSubmitting, setIntIsSubmitting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [strError, setStrError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const requestJson = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useUserMaster.useCallback[requestJson]": async (strUrl, dicInit = {})=>{
+            const dicMergedInit = {
+                ...dicFetchOptions,
+                ...dicInit,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...dicFetchOptions.headers || {},
+                    ...dicInit.headers || {}
+                }
+            };
+            const dicResponse = await fetch(strUrl, dicMergedInit);
+            const strRawBody = await dicResponse.text();
+            const dicBody = strRawBody ? JSON.parse(strRawBody) : null;
+            if (!dicResponse.ok) {
+                const strMessage = dicBody?.message || `Request failed (${dicResponse.status})`;
+                throw new Error(strMessage);
+            }
+            return dicBody;
+        }
+    }["useUserMaster.useCallback[requestJson]"], [
+        dicFetchOptions
+    ]);
+    const normalizeUsers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useUserMaster.useCallback[normalizeUsers]": (dicPayload)=>{
+            if (typeof transformResponse === "function") {
+                return transformResponse(dicPayload);
+            }
+            if (Array.isArray(dicPayload)) {
+                return dicPayload;
+            }
+            if (Array.isArray(dicPayload?.data)) {
+                return dicPayload.data;
+            }
+            if (Array.isArray(dicPayload?.users)) {
+                return dicPayload.users;
+            }
+            return [];
+        }
+    }["useUserMaster.useCallback[normalizeUsers]"], [
+        transformResponse
+    ]);
+    const loadUsers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useUserMaster.useCallback[loadUsers]": async ()=>{
+            setIntIsLoading(1);
+            setStrError("");
+            try {
+                const dicPayload = await requestJson(apiEndpoint, {
+                    method: "GET"
+                });
+                const lstNormalizedUsers = normalizeUsers(dicPayload);
+                setLstUsers(lstNormalizedUsers);
+                if (typeof onUsersChange === "function") {
+                    onUsersChange(lstNormalizedUsers);
+                }
+                if (typeof onSuccess === "function") {
+                    onSuccess({
+                        type: "load",
+                        data: lstNormalizedUsers
+                    });
+                }
+            } catch (dicError) {
+                const strMessage = dicError instanceof Error ? dicError.message : "Failed to load users";
+                setStrError(strMessage);
+                if (typeof onError === "function") {
+                    onError({
+                        type: "load",
+                        error: dicError
+                    });
+                }
+            } finally{
+                setIntIsLoading(0);
+            }
+        }
+    }["useUserMaster.useCallback[loadUsers]"], [
+        apiEndpoint,
+        normalizeUsers,
+        onError,
+        onSuccess,
+        onUsersChange,
+        requestJson
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "useUserMaster.useEffect": ()=>{
+            loadUsers();
+        }
+    }["useUserMaster.useEffect"], [
+        loadUsers
+    ]);
+    const upsertUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useUserMaster.useCallback[upsertUser]": async (dicUserPayload, strMode = "create")=>{
+            setIntIsSubmitting(1);
+            setStrError("");
+            try {
+                const intIsUpdateMode = strMode === "update" ? 1 : 0;
+                const strId = dicUserPayload?.id ?? "";
+                const strUrl = intIsUpdateMode === 1 ? `${apiEndpoint}/${strId}` : apiEndpoint;
+                const dicSavedUser = await requestJson(strUrl, {
+                    method: intIsUpdateMode === 1 ? "PUT" : "POST",
+                    body: JSON.stringify(dicUserPayload)
+                });
+                if (intIsUpdateMode === 1) {
+                    if (typeof onUpdate === "function") {
+                        onUpdate(dicSavedUser);
+                    }
+                } else if (typeof onCreate === "function") {
+                    onCreate(dicSavedUser);
+                }
+                if (typeof onSuccess === "function") {
+                    onSuccess({
+                        type: strMode,
+                        data: dicSavedUser
+                    });
+                }
+                await loadUsers();
+                return {
+                    intIsSuccess: 1,
+                    data: dicSavedUser
+                };
+            } catch (dicError) {
+                const strMessage = dicError instanceof Error ? dicError.message : "Failed to save user";
+                setStrError(strMessage);
+                if (typeof onError === "function") {
+                    onError({
+                        type: strMode,
+                        error: dicError
+                    });
+                }
+                return {
+                    intIsSuccess: 0,
+                    error: dicError
+                };
+            } finally{
+                setIntIsSubmitting(0);
+            }
+        }
+    }["useUserMaster.useCallback[upsertUser]"], [
+        apiEndpoint,
+        loadUsers,
+        onCreate,
+        onError,
+        onSuccess,
+        onUpdate,
+        requestJson
+    ]);
+    const deleteUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "useUserMaster.useCallback[deleteUser]": async (strUserId)=>{
+            setIntIsSubmitting(1);
+            setStrError("");
+            try {
+                await requestJson(`${apiEndpoint}/${strUserId}`, {
+                    method: "DELETE"
+                });
+                if (typeof onDelete === "function") {
+                    onDelete(strUserId);
+                }
+                if (typeof onSuccess === "function") {
+                    onSuccess({
+                        type: "delete",
+                        data: {
+                            id: strUserId
+                        }
+                    });
+                }
+                await loadUsers();
+                return {
+                    intIsSuccess: 1
+                };
+            } catch (dicError) {
+                const strMessage = dicError instanceof Error ? dicError.message : "Failed to delete user";
+                setStrError(strMessage);
+                if (typeof onError === "function") {
+                    onError({
+                        type: "delete",
+                        error: dicError
+                    });
+                }
+                return {
+                    intIsSuccess: 0,
+                    error: dicError
+                };
+            } finally{
+                setIntIsSubmitting(0);
+            }
+        }
+    }["useUserMaster.useCallback[deleteUser]"], [
+        apiEndpoint,
+        loadUsers,
+        onDelete,
+        onError,
+        onSuccess,
+        requestJson
+    ]);
+    const dicState = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "useUserMaster.useMemo[dicState]": ()=>({
+                lstUsers,
+                intIsLoading,
+                intIsSubmitting,
+                strError
+            })
+    }["useUserMaster.useMemo[dicState]"], [
+        intIsLoading,
+        intIsSubmitting,
+        lstUsers,
+        strError
+    ]);
+    return {
+        ...dicState,
+        loadUsers,
+        createUser: (dicUserPayload)=>upsertUser(dicUserPayload, "create"),
+        updateUser: (dicUserPayload)=>upsertUser(dicUserPayload, "update"),
+        deleteUser
+    };
+}
+_s(useUserMaster, "lQvY7ER+TOzUaYKVP+h20JXEVpU=");
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
+"[project]/src/components/UserMaster/UserMaster.jsx [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>UserMaster
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__ = __turbopack_context__.i("[project]/src/components/UserMaster/UserMaster.module.css [app-client] (css module)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$useUserMaster$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/UserMaster/useUserMaster.js [app-client] (ecmascript)");
+;
+var _s = __turbopack_context__.k.signature();
+"use client";
+;
+;
+;
+function UserMaster({ apiEndpoint = "/api/users", title = "User Master", subtitle = "Manage user records from a reusable module", fieldMap, onSuccess, onError, onUsersChange, onCreate, onUpdate, onDelete, fetchOptions, transformResponse, className = "" }) {
+    _s();
+    const dicFieldMap = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "UserMaster.useMemo[dicFieldMap]": ()=>({
+                id: fieldMap?.id || "id",
+                name: fieldMap?.name || "name",
+                email: fieldMap?.email || "email",
+                role: fieldMap?.role || "role"
+            })
+    }["UserMaster.useMemo[dicFieldMap]"], [
+        fieldMap
+    ]);
+    const { lstUsers, intIsLoading, intIsSubmitting, strError, createUser, updateUser, deleteUser, loadUsers } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$useUserMaster$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useUserMaster"])({
+        apiEndpoint,
+        fetchOptions,
+        transformResponse,
+        onSuccess,
+        onError,
+        onUsersChange,
+        onCreate,
+        onUpdate,
+        onDelete
+    });
+    const [strEditingId, setStrEditingId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [intIsManualRefreshing, setIntIsManualRefreshing] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [dicForm, setDicForm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        name: "",
+        email: "",
+        role: ""
+    });
+    const resetForm = ()=>{
+        setStrEditingId("");
+        setDicForm({
+            name: "",
+            email: "",
+            role: ""
+        });
+    };
+    const handleChange = (strField, strValue)=>{
+        setDicForm((dicPrev)=>({
+                ...dicPrev,
+                [strField]: strValue
+            }));
+    };
+    const handleEdit = (dicUser)=>{
+        setStrEditingId(String(dicUser[dicFieldMap.id] ?? ""));
+        setDicForm({
+            name: String(dicUser[dicFieldMap.name] ?? ""),
+            email: String(dicUser[dicFieldMap.email] ?? ""),
+            role: String(dicUser[dicFieldMap.role] ?? "")
+        });
+    };
+    const handleSubmit = async (event)=>{
+        event.preventDefault();
+        const dicPayload = {
+            [dicFieldMap.name]: dicForm.name,
+            [dicFieldMap.email]: dicForm.email,
+            [dicFieldMap.role]: dicForm.role
+        };
+        if (strEditingId) {
+            dicPayload[dicFieldMap.id] = strEditingId;
+            await updateUser(dicPayload);
+            resetForm();
+            return;
+        }
+        await createUser(dicPayload);
+        resetForm();
+    };
+    const handleDelete = async (strUserId)=>{
+        await deleteUser(strUserId);
+        if (strEditingId === strUserId) {
+            resetForm();
+        }
+    };
+    const handleRefresh = async ()=>{
+        setIntIsManualRefreshing(1);
+        try {
+            await loadUsers();
+        } finally{
+            setIntIsManualRefreshing(0);
+        }
+    };
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+        className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].wrapper} ${className}`.trim(),
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].card,
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].content,
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
+                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].form,
+                            onSubmit: handleSubmit,
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].field,
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].label,
+                                            children: "Name"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 134,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].input,
+                                            value: dicForm.name,
+                                            onChange: (event)=>handleChange("name", event.target.value),
+                                            required: true
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 135,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                    lineNumber: 133,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].field,
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].label,
+                                            children: "Email"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 143,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].input,
+                                            type: "email",
+                                            value: dicForm.email,
+                                            onChange: (event)=>handleChange("email", event.target.value),
+                                            required: true
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 144,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                    lineNumber: 142,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].field,
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].label,
+                                            children: "Role"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 153,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].input,
+                                            value: dicForm.role,
+                                            onChange: (event)=>handleChange("role", event.target.value),
+                                            required: true
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 154,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                    lineNumber: 152,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].actions,
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "submit",
+                                            className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].button} ${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].primary}`,
+                                            disabled: intIsSubmitting === 1,
+                                            children: intIsSubmitting === 1 ? "Saving..." : strEditingId ? "Update User" : "Create User"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 162,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].button} ${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].ghost}`,
+                                            onClick: handleRefresh,
+                                            disabled: intIsManualRefreshing === 1,
+                                            "aria-busy": intIsManualRefreshing === 1,
+                                            children: intIsManualRefreshing === 1 ? "Refreshing..." : "Refresh"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 165,
+                                            columnNumber: 15
+                                        }, this),
+                                        strEditingId ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].button} ${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].ghost}`,
+                                            onClick: resetForm,
+                                            children: "Cancel Edit"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 175,
+                                            columnNumber: 17
+                                        }, this) : null
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                    lineNumber: 161,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                            lineNumber: 132,
+                            columnNumber: 11
+                        }, this),
+                        strError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].error,
+                            children: strError
+                        }, void 0, false, {
+                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                            lineNumber: 182,
+                            columnNumber: 23
+                        }, this) : null
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                    lineNumber: 131,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                lineNumber: 130,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].card,
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].content,
+                    children: lstUsers.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].empty,
+                        children: intIsLoading === 1 ? "Loading users..." : "No users found."
+                    }, void 0, false, {
+                        fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                        lineNumber: 189,
+                        columnNumber: 13
+                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
+                        className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].grid,
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                            children: "Name"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 194,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                            children: "Email"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 195,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                            children: "Role"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 196,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                            children: "Actions"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                            lineNumber: 197,
+                                            columnNumber: 19
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                    lineNumber: 193,
+                                    columnNumber: 17
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                lineNumber: 192,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
+                                children: lstUsers.map((dicUser)=>{
+                                    const strUserId = String(dicUser[dicFieldMap.id]);
+                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                children: String(dicUser[dicFieldMap.name] ?? "-")
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                lineNumber: 205,
+                                                columnNumber: 23
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                children: String(dicUser[dicFieldMap.email] ?? "-")
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                lineNumber: 206,
+                                                columnNumber: 23
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                children: String(dicUser[dicFieldMap.role] ?? "-")
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                lineNumber: 207,
+                                                columnNumber: 23
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].actions,
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                            type: "button",
+                                                            className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].button} ${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].ghost}`,
+                                                            onClick: ()=>handleEdit(dicUser),
+                                                            children: "Edit"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                            lineNumber: 210,
+                                                            columnNumber: 27
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                            type: "button",
+                                                            className: `${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].button} ${__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$UserMaster$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].ghost}`,
+                                                            onClick: ()=>handleDelete(strUserId),
+                                                            children: "Delete"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                            lineNumber: 217,
+                                                            columnNumber: 27
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                    lineNumber: 209,
+                                                    columnNumber: 25
+                                                }, this)
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                                lineNumber: 208,
+                                                columnNumber: 23
+                                            }, this)
+                                        ]
+                                    }, strUserId, true, {
+                                        fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                        lineNumber: 204,
+                                        columnNumber: 21
+                                    }, this);
+                                })
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                                lineNumber: 200,
+                                columnNumber: 15
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                        lineNumber: 191,
+                        columnNumber: 13
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                    lineNumber: 187,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+                lineNumber: 186,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/components/UserMaster/UserMaster.jsx",
+        lineNumber: 129,
+        columnNumber: 5
+    }, this);
+}
+_s(UserMaster, "O4GazW+lgjmCFjP9p7WAdUlbB5I=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserMaster$2f$useUserMaster$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useUserMaster"]
+    ];
+});
+_c = UserMaster;
+var _c;
+__turbopack_context__.k.register(_c, "UserMaster");
+if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
+    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
+}
+}),
+"[project]/node_modules/@mui/material/Box/index.js [app-client] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([]);
+'use client';
+;
+;
+;
+}),
+"[project]/node_modules/@mui/material/Box/index.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "boxClasses",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$boxClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    "default",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$Box$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Box/index.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$Box$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Box/Box.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$boxClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Box/boxClasses.js [app-client] (ecmascript)");
+}),
+"[project]/node_modules/@mui/material/Stack/index.js [app-client] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([]);
+'use client';
+;
+;
+}),
+"[project]/node_modules/@mui/system/esm/createStyled.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>createStyled,
+    "shouldForwardProp",
+    ()=>shouldForwardProp,
+    "systemDefaultTheme",
+    ()=>systemDefaultTheme
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@babel/runtime/helpers/esm/extends.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@babel/runtime/helpers/esm/objectWithoutPropertiesLoose.js [app-client] (ecmascript)");
+/* eslint-disable no-underscore-dangle */ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$styled$2d$engine$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/styled-engine/index.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$deepmerge$2f$deepmerge$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/deepmerge/deepmerge.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$capitalize$2f$capitalize$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/capitalize/capitalize.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$getDisplayName$2f$getDisplayName$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/getDisplayName/getDisplayName.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createTheme$2f$createTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/createTheme/createTheme.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styleFunctionSx$2f$styleFunctionSx$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/styleFunctionSx/styleFunctionSx.js [app-client] (ecmascript)");
+;
+;
+const _excluded = [
+    "ownerState"
+], _excluded2 = [
+    "variants"
+], _excluded3 = [
+    "name",
+    "slot",
+    "skipVariantsResolver",
+    "skipSx",
+    "overridesResolver"
+];
+;
+;
+;
+;
+;
+;
+function isEmpty(obj) {
+    return Object.keys(obj).length === 0;
+}
+// https://github.com/emotion-js/emotion/blob/26ded6109fcd8ca9875cc2ce4564fee678a3f3c5/packages/styled/src/utils.js#L40
+function isStringTag(tag) {
+    return typeof tag === 'string' && // 96 is one less than the char code
+    // for "a" so this is checking that
+    // it's a lowercase character
+    tag.charCodeAt(0) > 96;
+}
+function shouldForwardProp(prop) {
+    return prop !== 'ownerState' && prop !== 'theme' && prop !== 'sx' && prop !== 'as';
+}
+function shallowLayer(serialized, layerName) {
+    if (layerName && serialized && typeof serialized === 'object' && serialized.styles && !serialized.styles.startsWith('@layer') // only add the layer if it is not already there.
+    ) {
+        serialized.styles = `@layer ${layerName}{${String(serialized.styles)}}`;
+    }
+    return serialized;
+}
+const systemDefaultTheme = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createTheme$2f$createTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])();
+const lowercaseFirstLetter = (string)=>{
+    if (!string) {
+        return string;
+    }
+    return string.charAt(0).toLowerCase() + string.slice(1);
+};
+function resolveTheme({ defaultTheme, theme, themeId }) {
+    return isEmpty(theme) ? defaultTheme : theme[themeId] || theme;
+}
+function defaultOverridesResolver(slot) {
+    if (!slot) {
+        return null;
+    }
+    return (props, styles)=>styles[slot];
+}
+function processStyleArg(callableStyle, _ref, layerName) {
+    let { ownerState } = _ref, props = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(_ref, _excluded);
+    const resolvedStylesArg = typeof callableStyle === 'function' ? callableStyle((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+        ownerState
+    }, props)) : callableStyle;
+    if (Array.isArray(resolvedStylesArg)) {
+        return resolvedStylesArg.flatMap((resolvedStyle)=>processStyleArg(resolvedStyle, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+                ownerState
+            }, props), layerName));
+    }
+    if (!!resolvedStylesArg && typeof resolvedStylesArg === 'object' && Array.isArray(resolvedStylesArg.variants)) {
+        const { variants = [] } = resolvedStylesArg, otherStyles = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(resolvedStylesArg, _excluded2);
+        let result = otherStyles;
+        variants.forEach((variant)=>{
+            let isMatch = true;
+            if (typeof variant.props === 'function') {
+                isMatch = variant.props((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+                    ownerState
+                }, props, ownerState));
+            } else {
+                Object.keys(variant.props).forEach((key)=>{
+                    if ((ownerState == null ? void 0 : ownerState[key]) !== variant.props[key] && props[key] !== variant.props[key]) {
+                        isMatch = false;
+                    }
+                });
+            }
+            if (isMatch) {
+                if (!Array.isArray(result)) {
+                    result = [
+                        result
+                    ];
+                }
+                const variantStyle = typeof variant.style === 'function' ? variant.style((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+                    ownerState
+                }, props, ownerState)) : variant.style;
+                result.push(layerName ? shallowLayer((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$styled$2d$engine$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["internal_serializeStyles"])(variantStyle), layerName) : variantStyle);
+            }
+        });
+        return result;
+    }
+    return layerName ? shallowLayer((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$styled$2d$engine$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["internal_serializeStyles"])(resolvedStylesArg), layerName) : resolvedStylesArg;
+}
+function createStyled(input = {}) {
+    const { themeId, defaultTheme = systemDefaultTheme, rootShouldForwardProp = shouldForwardProp, slotShouldForwardProp = shouldForwardProp } = input;
+    const systemSx = (props)=>{
+        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styleFunctionSx$2f$styleFunctionSx$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+            theme: resolveTheme((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                defaultTheme,
+                themeId
+            }))
+        }));
+    };
+    systemSx.__mui_systemSx = true;
+    return (tag, inputOptions = {})=>{
+        // Filter out the `sx` style function from the previous styled component to prevent unnecessary styles generated by the composite components.
+        (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$styled$2d$engine$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["internal_processStyles"])(tag, (styles)=>styles.filter((style)=>!(style != null && style.__mui_systemSx)));
+        const { name: componentName, slot: componentSlot, skipVariantsResolver: inputSkipVariantsResolver, skipSx: inputSkipSx, // TODO v6: remove `lowercaseFirstLetter()` in the next major release
+        // For more details: https://github.com/mui/material-ui/pull/37908
+        overridesResolver = defaultOverridesResolver(lowercaseFirstLetter(componentSlot)) } = inputOptions, options = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(inputOptions, _excluded3);
+        const layerName = componentName && componentName.startsWith('Mui') || !!componentSlot ? 'components' : 'custom';
+        // if skipVariantsResolver option is defined, take the value, otherwise, true for root and false for other slots.
+        const skipVariantsResolver = inputSkipVariantsResolver !== undefined ? inputSkipVariantsResolver : // TODO v6: remove `Root` in the next major release
+        // For more details: https://github.com/mui/material-ui/pull/37908
+        componentSlot && componentSlot !== 'Root' && componentSlot !== 'root' || false;
+        const skipSx = inputSkipSx || false;
+        let label;
+        if ("TURBOPACK compile-time truthy", 1) {
+            if (componentName) {
+                // TODO v6: remove `lowercaseFirstLetter()` in the next major release
+                // For more details: https://github.com/mui/material-ui/pull/37908
+                label = `${componentName}-${lowercaseFirstLetter(componentSlot || 'Root')}`;
+            }
+        }
+        let shouldForwardPropOption = shouldForwardProp;
+        // TODO v6: remove `Root` in the next major release
+        // For more details: https://github.com/mui/material-ui/pull/37908
+        if (componentSlot === 'Root' || componentSlot === 'root') {
+            shouldForwardPropOption = rootShouldForwardProp;
+        } else if (componentSlot) {
+            // any other slot specified
+            shouldForwardPropOption = slotShouldForwardProp;
+        } else if (isStringTag(tag)) {
+            // for string (html) tag, preserve the behavior in emotion & styled-components.
+            shouldForwardPropOption = undefined;
+        }
+        const defaultStyledResolver = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$styled$2d$engine$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["default"])(tag, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+            shouldForwardProp: shouldForwardPropOption,
+            label
+        }, options));
+        const transformStyleArg = (stylesArg)=>{
+            // On the server Emotion doesn't use React.forwardRef for creating components, so the created
+            // component stays as a function. This condition makes sure that we do not interpolate functions
+            // which are basically components used as a selectors.
+            if (typeof stylesArg === 'function' && stylesArg.__emotion_real !== stylesArg || (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$deepmerge$2f$deepmerge$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isPlainObject"])(stylesArg)) {
+                return (props)=>{
+                    const theme = resolveTheme({
+                        theme: props.theme,
+                        defaultTheme,
+                        themeId
+                    });
+                    return processStyleArg(stylesArg, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                        theme
+                    }), theme.modularCssLayers ? layerName : undefined);
+                };
+            }
+            return stylesArg;
+        };
+        const muiStyledResolver = (styleArg, ...expressions)=>{
+            let transformedStyleArg = transformStyleArg(styleArg);
+            const expressionsWithDefaultTheme = expressions ? expressions.map(transformStyleArg) : [];
+            if (componentName && overridesResolver) {
+                expressionsWithDefaultTheme.push((props)=>{
+                    const theme = resolveTheme((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                        defaultTheme,
+                        themeId
+                    }));
+                    if (!theme.components || !theme.components[componentName] || !theme.components[componentName].styleOverrides) {
+                        return null;
+                    }
+                    const styleOverrides = theme.components[componentName].styleOverrides;
+                    const resolvedStyleOverrides = {};
+                    // TODO: v7 remove iteration and use `resolveStyleArg(styleOverrides[slot])` directly
+                    Object.entries(styleOverrides).forEach(([slotKey, slotStyle])=>{
+                        resolvedStyleOverrides[slotKey] = processStyleArg(slotStyle, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                            theme
+                        }), theme.modularCssLayers ? 'theme' : undefined);
+                    });
+                    return overridesResolver(props, resolvedStyleOverrides);
+                });
+            }
+            if (componentName && !skipVariantsResolver) {
+                expressionsWithDefaultTheme.push((props)=>{
+                    var _theme$components;
+                    const theme = resolveTheme((0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                        defaultTheme,
+                        themeId
+                    }));
+                    const themeVariants = theme == null || (_theme$components = theme.components) == null || (_theme$components = _theme$components[componentName]) == null ? void 0 : _theme$components.variants;
+                    return processStyleArg({
+                        variants: themeVariants
+                    }, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({}, props, {
+                        theme
+                    }), theme.modularCssLayers ? 'theme' : undefined);
+                });
+            }
+            if (!skipSx) {
+                expressionsWithDefaultTheme.push(systemSx);
+            }
+            const numOfCustomFnsApplied = expressionsWithDefaultTheme.length - expressions.length;
+            if (Array.isArray(styleArg) && numOfCustomFnsApplied > 0) {
+                const placeholders = new Array(numOfCustomFnsApplied).fill('');
+                // If the type is array, than we need to add placeholders in the template for the overrides, variants and the sx styles.
+                transformedStyleArg = [
+                    ...styleArg,
+                    ...placeholders
+                ];
+                transformedStyleArg.raw = [
+                    ...styleArg.raw,
+                    ...placeholders
+                ];
+            }
+            const Component = defaultStyledResolver(transformedStyleArg, ...expressionsWithDefaultTheme);
+            if ("TURBOPACK compile-time truthy", 1) {
+                let displayName;
+                if (componentName) {
+                    displayName = `${componentName}${(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$capitalize$2f$capitalize$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(componentSlot || '')}`;
+                }
+                if (displayName === undefined) {
+                    displayName = `Styled(${(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$getDisplayName$2f$getDisplayName$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(tag)})`;
+                }
+                Component.displayName = displayName;
+            }
+            if (tag.muiName) {
+                Component.muiName = tag.muiName;
+            }
+            return Component;
+        };
+        if (defaultStyledResolver.withConfig) {
+            muiStyledResolver.withConfig = defaultStyledResolver.withConfig;
+        }
+        return muiStyledResolver;
+    };
+}
+}),
+"[project]/node_modules/@mui/system/esm/styled.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__default__export__
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createStyled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/createStyled.js [app-client] (ecmascript)");
+;
+const styled = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createStyled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])();
+const __TURBOPACK__default__export__ = styled;
+}),
+"[project]/node_modules/@mui/system/esm/useThemeProps/getThemeProps.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>getThemeProps
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$resolveProps$2f$resolveProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/resolveProps/resolveProps.js [app-client] (ecmascript)");
+;
+function getThemeProps(params) {
+    const { theme, name, props } = params;
+    if (!theme || !theme.components || !theme.components[name] || !theme.components[name].defaultProps) {
+        return props;
+    }
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$resolveProps$2f$resolveProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(theme.components[name].defaultProps, props);
+}
+}),
+"[project]/node_modules/@mui/system/esm/useThemeProps/useThemeProps.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>useThemeProps
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useThemeProps$2f$getThemeProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/useThemeProps/getThemeProps.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/useTheme.js [app-client] (ecmascript)");
+'use client';
+;
+;
+function useThemeProps({ props, name, defaultTheme, themeId }) {
+    let theme = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(defaultTheme);
+    if (themeId) {
+        theme = theme[themeId] || theme;
+    }
+    const mergedProps = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useThemeProps$2f$getThemeProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+        theme,
+        name,
+        props
+    });
+    return mergedProps;
+}
+}),
+"[project]/node_modules/@mui/system/esm/Stack/createStack.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>createStack,
+    "style",
+    ()=>style
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@babel/runtime/helpers/esm/objectWithoutPropertiesLoose.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@babel/runtime/helpers/esm/extends.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/prop-types/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$clsx$2f$dist$2f$clsx$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/clsx/dist/clsx.mjs [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$deepmerge$2f$deepmerge$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/deepmerge/deepmerge.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClass$2f$generateUtilityClass$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/generateUtilityClass/generateUtilityClass.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$composeClasses$2f$composeClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/composeClasses/composeClasses.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/styled.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useThemeProps$2f$useThemeProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/useThemeProps/useThemeProps.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styleFunctionSx$2f$extendSxProp$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__extendSxProp$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/styleFunctionSx/extendSxProp.js [app-client] (ecmascript) <export default as extendSxProp>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createTheme$2f$createTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/createTheme/createTheme.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/breakpoints.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$spacing$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/spacing.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-runtime.js [app-client] (ecmascript)");
+;
+;
+const _excluded = [
+    "component",
+    "direction",
+    "spacing",
+    "divider",
+    "children",
+    "className",
+    "useFlexGap"
+];
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+const defaultTheme = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$createTheme$2f$createTheme$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])();
+// widening Theme to any so that the consumer can own the theme structure.
+const defaultCreateStyledComponent = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])('div', {
+    name: 'MuiStack',
+    slot: 'Root',
+    overridesResolver: (props, styles)=>styles.root
+});
+function useThemePropsDefault(props) {
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$useThemeProps$2f$useThemeProps$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+        props,
+        name: 'MuiStack',
+        defaultTheme
+    });
+}
+/**
+ * Return an array with the separator React element interspersed between
+ * each React node of the input children.
+ *
+ * > joinChildren([1,2,3], 0)
+ * [1,0,2,0,3]
+ */ function joinChildren(children, separator) {
+    const childrenArray = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Children"].toArray(children).filter(Boolean);
+    return childrenArray.reduce((output, child, index)=>{
+        output.push(child);
+        if (index < childrenArray.length - 1) {
+            output.push(/*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["cloneElement"](separator, {
+                key: `separator-${index}`
+            }));
+        }
+        return output;
+    }, []);
+}
+const getSideFromDirection = (direction)=>{
+    return ({
+        row: 'Left',
+        'row-reverse': 'Right',
+        column: 'Top',
+        'column-reverse': 'Bottom'
+    })[direction];
+};
+const style = ({ ownerState, theme })=>{
+    let styles = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+        display: 'flex',
+        flexDirection: 'column'
+    }, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["handleBreakpoints"])({
+        theme
+    }, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["resolveBreakpointValues"])({
+        values: ownerState.direction,
+        breakpoints: theme.breakpoints.values
+    }), (propValue)=>({
+            flexDirection: propValue
+        })));
+    if (ownerState.spacing) {
+        const transformer = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$spacing$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createUnarySpacing"])(theme);
+        const base = Object.keys(theme.breakpoints.values).reduce((acc, breakpoint)=>{
+            if (typeof ownerState.spacing === 'object' && ownerState.spacing[breakpoint] != null || typeof ownerState.direction === 'object' && ownerState.direction[breakpoint] != null) {
+                acc[breakpoint] = true;
+            }
+            return acc;
+        }, {});
+        const directionValues = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["resolveBreakpointValues"])({
+            values: ownerState.direction,
+            base
+        });
+        const spacingValues = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["resolveBreakpointValues"])({
+            values: ownerState.spacing,
+            base
+        });
+        if (typeof directionValues === 'object') {
+            Object.keys(directionValues).forEach((breakpoint, index, breakpoints)=>{
+                const directionValue = directionValues[breakpoint];
+                if (!directionValue) {
+                    const previousDirectionValue = index > 0 ? directionValues[breakpoints[index - 1]] : 'column';
+                    directionValues[breakpoint] = previousDirectionValue;
+                }
+            });
+        }
+        const styleFromPropValue = (propValue, breakpoint)=>{
+            if (ownerState.useFlexGap) {
+                return {
+                    gap: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$spacing$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getValue"])(transformer, propValue)
+                };
+            }
+            return {
+                // The useFlexGap={false} implement relies on each child to give up control of the margin.
+                // We need to reset the margin to avoid double spacing.
+                '& > :not(style):not(style)': {
+                    margin: 0
+                },
+                '& > :not(style) ~ :not(style)': {
+                    [`margin${getSideFromDirection(breakpoint ? directionValues[breakpoint] : ownerState.direction)}`]: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$spacing$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getValue"])(transformer, propValue)
+                }
+            };
+        };
+        styles = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$deepmerge$2f$deepmerge$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(styles, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["handleBreakpoints"])({
+            theme
+        }, spacingValues, styleFromPropValue));
+    }
+    styles = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$breakpoints$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["mergeBreakpointsInOrder"])(theme.breakpoints, styles);
+    return styles;
+};
+function createStack(options = {}) {
+    const { // This will allow adding custom styled fn (for example for custom sx style function)
+    createStyledComponent = defaultCreateStyledComponent, useThemeProps = useThemePropsDefault, componentName = 'MuiStack' } = options;
+    const useUtilityClasses = ()=>{
+        const slots = {
+            root: [
+                'root'
+            ]
+        };
+        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$composeClasses$2f$composeClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(slots, (slot)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClass$2f$generateUtilityClass$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(componentName, slot), {});
+    };
+    const StackRoot = createStyledComponent(style);
+    const Stack = /*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["forwardRef"](function Grid(inProps, ref) {
+        const themeProps = useThemeProps(inProps);
+        const props = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$styleFunctionSx$2f$extendSxProp$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__extendSxProp$3e$__["extendSxProp"])(themeProps); // `color` type conflicts with html color attribute.
+        const { component = 'div', direction = 'column', spacing = 0, divider, children, className, useFlexGap = false } = props, other = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$objectWithoutPropertiesLoose$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(props, _excluded);
+        const ownerState = {
+            direction,
+            spacing,
+            useFlexGap
+        };
+        const classes = useUtilityClasses();
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsx"])(StackRoot, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$babel$2f$runtime$2f$helpers$2f$esm$2f$extends$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])({
+            as: component,
+            ownerState: ownerState,
+            ref: ref,
+            className: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$clsx$2f$dist$2f$clsx$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(classes.root, className)
+        }, other, {
+            children: divider ? joinChildren(children, divider) : children
+        }));
+    });
+    ("TURBOPACK compile-time truthy", 1) ? Stack.propTypes = {
+        children: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].node,
+        direction: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOf([
+                'column-reverse',
+                'column',
+                'row-reverse',
+                'row'
+            ]),
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOf([
+                'column-reverse',
+                'column',
+                'row-reverse',
+                'row'
+            ])),
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object
+        ]),
+        divider: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].node,
+        spacing: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].number,
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].string
+            ])),
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].number,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].string
+        ]),
+        sx: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].func,
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object,
+                __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].bool
+            ])),
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].func,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object
+        ])
+    } : "TURBOPACK unreachable";
+    return Stack;
+}
+}),
+"[project]/node_modules/@mui/system/esm/Stack/createStack.js [app-client] (ecmascript) <export default as createStack>", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "createStack",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$Stack$2f$createStack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$Stack$2f$createStack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/Stack/createStack.js [app-client] (ecmascript)");
+}),
+"[project]/node_modules/@mui/material/Stack/Stack.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__default__export__
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/prop-types/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$Stack$2f$createStack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__createStack$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/system/esm/Stack/createStack.js [app-client] (ecmascript) <export default as createStack>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$styles$2f$styled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/styles/styled.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$DefaultPropsProvider$2f$DefaultPropsProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/DefaultPropsProvider/DefaultPropsProvider.js [app-client] (ecmascript)");
+'use client';
+;
+;
+;
+;
+const Stack = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$system$2f$esm$2f$Stack$2f$createStack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__createStack$3e$__["createStack"])({
+    createStyledComponent: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$styles$2f$styled$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["default"])('div', {
+        name: 'MuiStack',
+        slot: 'Root',
+        overridesResolver: (props, styles)=>styles.root
+    }),
+    useThemeProps: (inProps)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$DefaultPropsProvider$2f$DefaultPropsProvider$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useDefaultProps"])({
+            props: inProps,
+            name: 'MuiStack'
+        })
+});
+("TURBOPACK compile-time truthy", 1) ? Stack.propTypes = {
+    // ┌────────────────────────────── Warning ──────────────────────────────┐
+    // │ These PropTypes are generated from the TypeScript type definitions. │
+    // │    To update them, edit the d.ts file and run `pnpm proptypes`.     │
+    // └─────────────────────────────────────────────────────────────────────┘
+    /**
+   * The content of the component.
+   */ children: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].node,
+    /**
+   * The component used for the root node.
+   * Either a string to use a HTML element or a component.
+   */ component: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].elementType,
+    /**
+   * Defines the `flex-direction` style property.
+   * It is applied for all screen sizes.
+   * @default 'column'
+   */ direction: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOf([
+            'column-reverse',
+            'column',
+            'row-reverse',
+            'row'
+        ]),
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOf([
+            'column-reverse',
+            'column',
+            'row-reverse',
+            'row'
+        ])),
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object
+    ]),
+    /**
+   * Add an element between each child.
+   */ divider: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].node,
+    /**
+   * Defines the space between immediate children.
+   * @default 0
+   */ spacing: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].number,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].string
+        ])),
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].number,
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object,
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].string
+    ]),
+    /**
+   * The system prop, which allows defining system overrides as well as additional CSS styles.
+   */ sx: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].arrayOf(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].oneOfType([
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].func,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object,
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].bool
+        ])),
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].func,
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].object
+    ]),
+    /**
+   * If `true`, the CSS flexbox `gap` is used instead of applying `margin` to children.
+   *
+   * While CSS `gap` removes the [known limitations](https://mui.com/joy-ui/react-stack/#limitations),
+   * it is not fully supported in some browsers. We recommend checking https://caniuse.com/?search=flex%20gap before using this flag.
+   *
+   * To enable this flag globally, follow the [theme's default props](https://mui.com/material-ui/customization/theme-components/#default-props) configuration.
+   * @default false
+   */ useFlexGap: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$prop$2d$types$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].bool
+} : "TURBOPACK unreachable";
+const __TURBOPACK__default__export__ = Stack;
+}),
+"[project]/node_modules/@mui/material/Stack/stackClasses.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__default__export__,
+    "getStackUtilityClass",
+    ()=>getStackUtilityClass
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClasses$2f$generateUtilityClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/generateUtilityClasses/generateUtilityClasses.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClass$2f$generateUtilityClass$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/utils/esm/generateUtilityClass/generateUtilityClass.js [app-client] (ecmascript)");
+;
+;
+function getStackUtilityClass(slot) {
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClass$2f$generateUtilityClass$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])('MuiStack', slot);
+}
+const stackClasses = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$utils$2f$esm$2f$generateUtilityClasses$2f$generateUtilityClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])('MuiStack', [
+    'root'
+]);
+const __TURBOPACK__default__export__ = stackClasses;
+}),
+"[project]/node_modules/@mui/material/Stack/index.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$Stack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    "stackClasses",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$stackClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Stack/index.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$Stack$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Stack/Stack.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$stackClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Stack/stackClasses.js [app-client] (ecmascript)");
+}),
+"[project]/node_modules/@mui/material/Typography/index.js [app-client] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([]);
+'use client';
+;
+;
+;
+}),
+"[project]/node_modules/@mui/material/Typography/index.js [app-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$Typography$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    "getTypographyUtilityClass",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$typographyClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getTypographyUtilityClass"],
+    "typographyClasses",
+    ()=>__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$typographyClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Typography/index.js [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$Typography$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Typography/Typography.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$typographyClasses$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Typography/typographyClasses.js [app-client] (ecmascript)");
+}),
+]);
+
+//# sourceMappingURL=_f39be1f0._.js.map

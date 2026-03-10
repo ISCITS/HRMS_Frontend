@@ -1,0 +1,73 @@
+:root {
+  --app-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --app-header-color: #1c2536;
+  --app-text-color: #334155;
+  --app-muted-color: #64748b;
+  --app-btn-radius: 10px;
+}
+
+.app-header {
+  margin: 0;
+  font-family: var(--app-font-family);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--app-header-color);
+  letter-spacing: 0.2px;
+}
+
+.app-header-lg {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+}
+
+.app-header-md {
+  font-size: clamp(1.25rem, 1.05rem + 0.5vw, 1.5rem);
+}
+
+.app-text {
+  margin: 0;
+  font-family: var(--app-font-family);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--app-text-color);
+}
+
+.app-text-muted {
+  color: var(--app-muted-color);
+}
+
+.app-btn {
+  border: none;
+  border-radius: var(--app-btn-radius);
+  padding: 0.65rem 1.1rem;
+  font-family: var(--app-font-family);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.app-btn:hover {
+  transform: translateY(-1px);
+}
+
+.app-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.app-btn-primary {
+  background: #0d47a1;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(13, 71, 161, 0.24);
+}
+
+.app-btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.app-btn-outline {
+  background: transparent;
+  color: #0d47a1;
+  border: 1px solid #0d47a1;
+}

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///D:/AI_Projects/HRMS_Demo_WithCodex/HRMS_2/app/%28dashboard%29/user-master/page.jsx"],"sourcesContent":["import { Box, Stack, Typography } from \"@mui/material\";\nimport { UserMaster } from \"@/src/components/UserMaster\";\n\nexport default function UserMasterPage() {\n  return (\n    <Stack spacing={3}>\n      <Box>\n        <Typography variant=\"h4\" fontWeight={700}>\n          User Master\n        </Typography>\n        <Typography color=\"text.secondary\">Manage application user records.</Typography>\n      </Box>\n\n      <UserMaster apiEndpoint=\"/api/users\" />\n    </Stack>\n  );\n}\n"],"names":[],"mappings":";;;;;AAAA;AAAA;AAAA;;;;;;;;;AAGe,SAAS;IACtB,qBACE,8OAAC,gMAAK;QAAC,SAAS;;0BACd,8OAAC,0LAAG;;kCACF,8OAAC,+MAAU;wBAAC,SAAQ;wBAAK,YAAY;kCAAK;;;;;;kCAG1C,8OAAC,+MAAU;wBAAC,OAAM;kCAAiB;;;;;;;;;;;;0BAGrC,8OAAC;gBAAW,aAAY;;;;;;;;;;;;AAG9B"}}]
+}

@@ -1,0 +1,336 @@
+module.exports = [
+"[externals]/next/dist/shared/lib/no-fallback-error.external.js [external] (next/dist/shared/lib/no-fallback-error.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/shared/lib/no-fallback-error.external.js", () => require("next/dist/shared/lib/no-fallback-error.external.js"));
+
+module.exports = mod;
+}),
+"[project]/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", ((__turbopack_context__) => {
+
+__turbopack_context__.n(__turbopack_context__.i("[project]/app/layout.tsx [app-rsc] (ecmascript)"));
+}),
+"[project]/app/(dashboard)/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", ((__turbopack_context__) => {
+
+__turbopack_context__.n(__turbopack_context__.i("[project]/app/(dashboard)/layout.tsx [app-rsc] (ecmascript)"));
+}),
+"[project]/constants/Constant.json (json)", ((__turbopack_context__) => {
+
+__turbopack_context__.v({"common":{"cancel":"Cancel","save":"Save","update":"Update","statusActive":"Active","statusInactive":"Inactive"},"appShell":{"brand":"HRMS","title":"Human Resource Management System","logout":"Logout","logoutDialogTitle":"Confirm Logout","logoutDialogMessage":"Are you sure you want to logout from the application?","logoutConfirmButton":"Confirm Logout","nav":{"dashboard":"Dashboard","employees":"Employees","employeeList":"Employee List","addEmployee":"Add Employee","departmentMaster":"Department Master","departmentMasterInline":"Department Master Inline","leave":"Leave","leaveRequests":"Leave Requests","applyLeave":"Apply Leave","payroll":"Payroll","payrollOverview":"Payroll Overview","runPayroll":"Run Payroll","payslips":"Payslips","attendance":"Attendance","theme":"Theme","profile":"Profile","settings":"Settings"}},"commonDataGrid":{"filterPlaceholder":"Filter records...","emptyMessage":"No records found.","exportExcel":"Excel","exportPdf":"PDF","defaultExportFileName":"grid-data"},"login":{"title":"Sign In","subtitle":"Welcome back. Please login to continue.","userIdLabel":"User ID","passwordLabel":"Password","loginButton":"Login","userIdRequired":"User ID is required.","userIdMin":"User ID must be at least 4 characters.","passwordRequired":"Password is required.","passwordMin":"Password must be at least 6 characters.","imageAlt":"HRMS illustration for login screen","rememberMe":"Remember me","forgotPassword":"Forgot Password?"},"employees":{"pageTitle":"Employees","addButton":"Add Employee","actionView":"View","grid":{"id":"ID","name":"Name","department":"Department","role":"Role","action":"Action"},"form":{"fullName":"Full Name","email":"Email","role":"Role","department":"Department","status":"Status","fullNameRequired":"Full Name is required.","emailRequired":"Email is required.","emailInvalid":"Enter a valid email address.","roleRequired":"Role is required.","departmentRequired":"Department is required.","statusRequired":"Status is required."}},"leave":{"pageTitle":"Leave Management","applyButton":"Apply Leave","actionApprove":"Approve","grid":{"id":"ID","employee":"Employee","type":"Type","status":"Status","action":"Action"},"form":{"type":"Leave Type","startDate":"Start Date","endDate":"End Date","reason":"Reason","submit":"Submit Request","typeCasual":"Casual Leave","typeSick":"Sick Leave","typeEarned":"Earned Leave"}},"attendance":{"pageTitle":"Attendance Tracker","grid":{"date":"Date","status":"Status","checkIn":"Check In","checkOut":"Check Out"}},"payroll":{"runForm":{"month":"Payroll Month","department":"Department","cycle":"Pay Cycle","note":"Processing Note","notePlaceholder":"Optional note for payroll approvers","generateButton":"Generate Payroll","previewButton":"Preview Summary","monthMarch":"March 2026","monthFebruary":"February 2026","monthJanuary":"January 2026","departmentAll":"All Departments","departmentEngineering":"Engineering","departmentHr":"HR","departmentFinance":"Finance","cycleMonthly":"Monthly","cycleBiWeekly":"Bi-Weekly"},"payslips":{"title":"Payslips","download":"Download","grid":{"id":"Payslip ID","employee":"Employee","month":"Month","amount":"Net Amount","status":"Status","action":"Action"}}},"profile":{"fullName":"Full Name","email":"Email","phone":"Phone","designation":"Designation","updateButton":"Update Profile"},"settings":{"description":"Settings in this template are UI-only placeholders.","darkMode":"Enable dark mode","emailNotifications":"Email notifications","attendanceSummary":"Weekly attendance summary","saveButton":"Save Settings"},"theme":{"description":"Select a color theme for the entire website.","applyButton":"Apply Theme","appliedButton":"Applied","presets":{"ocean":"Ocean Blue","emerald":"Emerald Green","sunset":"Sunset Orange","violet":"Violet Purple","rose":"Rose Red","cyan":"Cyan Teal","amber":"Amber Gold","slate":"Slate Gray","indigo":"Indigo Deep","lime":"Lime Green","vibgyorLight":"Light VIBGYOR","softLight":"Soft Light"}},"departments":{"pageTitle":"Department Master","inlinePageTitle":"Department Master (Inline)","addButton":"Add Department","inlineAddButton":"Add Department In Grid","editButton":"Edit","saveDepartment":"Save Department","updateDepartment":"Update Department","dialogAddTitle":"Add Department","dialogEditTitle":"Edit Department","fields":{"code":"Department Code","name":"Department Name","manager":"Manager Name","status":"Status"},"grid":{"id":"ID","code":"Code","name":"Department Name","manager":"Manager","status":"Status","employees":"Employees","action":"Action"},"validation":{"codeRequired":"Department Code is required.","codeFormat":"Code must be 2-20 chars, uppercase letters, numbers, or hyphen.","codeDuplicate":"Department Code already exists.","nameRequired":"Department Name is required.","nameMin":"Department Name must be at least 3 characters.","nameDuplicate":"Department Name already exists.","managerRequired":"Manager Name is required.","managerMin":"Manager Name must be at least 3 characters.","statusRequired":"Status is required."}}});}),
+"[project]/app/(dashboard)/employees/page.tsx [app-rsc] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>EmployeesPage
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/rsc/react-jsx-dev-runtime.js [app-rsc] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$icons$2d$material$2f$VisibilityOutlined$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@mui/icons-material/VisibilityOutlined.js [app-rsc] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Box$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Box/index.js [app-rsc] (ecmascript) <export default as Box>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Button$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Button$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Button/index.js [app-rsc] (ecmascript) <export default as Button>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$IconButton$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__IconButton$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/IconButton/index.js [app-rsc] (ecmascript) <export default as IconButton>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Stack$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Stack/index.js [app-rsc] (ecmascript) <export default as Stack>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Tooltip$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Tooltip$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Tooltip/index.js [app-rsc] (ecmascript) <export default as Tooltip>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__ = __turbopack_context__.i("[project]/node_modules/@mui/material/Typography/index.js [app-rsc] (ecmascript) <export default as Typography>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/client/app-dir/link.react-server.js [app-rsc] (ecmascript)");
+(()=>{
+    const e = new Error("Cannot find module '@/components/common/PremiumDataTable'");
+    e.code = 'MODULE_NOT_FOUND';
+    throw e;
+})();
+var __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__ = __turbopack_context__.i("[project]/constants/Constant.json (json)");
+;
+;
+;
+;
+;
+;
+const employees = [
+    {
+        id: "E001",
+        name: "Ava Johnson",
+        department: "Engineering",
+        role: "Frontend Developer"
+    },
+    {
+        id: "E002",
+        name: "Liam Smith",
+        department: "HR",
+        role: "HR Executive"
+    },
+    {
+        id: "E003",
+        name: "Noah Davis",
+        department: "Finance",
+        role: "Accountant"
+    }
+];
+function EmployeesPage() {
+    const columns = [
+        {
+            field: "id",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.id,
+            sortable: true
+        },
+        {
+            field: "name",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.name,
+            sortable: true
+        },
+        {
+            field: "department",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.department,
+            sortable: true
+        },
+        {
+            field: "role",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.role,
+            sortable: true
+        },
+        {
+            field: "action",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.action,
+            sortable: false,
+            filterable: false,
+            exportable: false,
+            align: "center"
+        }
+    ];
+    const rows = employees.map((dicEmployee)=>({
+            id: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                sx: {
+                    color: "#94a3b8",
+                    fontWeight: 500
+                },
+                children: dicEmployee.id
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 36,
+                columnNumber: 9
+            }, this),
+            name: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                sx: {
+                    color: "#0f172a",
+                    fontWeight: 600
+                },
+                children: dicEmployee.name
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 37,
+                columnNumber: 11
+            }, this),
+            department: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                sx: {
+                    color: "#64748b"
+                },
+                children: dicEmployee.department
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 38,
+                columnNumber: 17
+            }, this),
+            role: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                sx: {
+                    color: "#64748b"
+                },
+                children: dicEmployee.role
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 39,
+                columnNumber: 11
+            }, this),
+            action: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Tooltip$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Tooltip$3e$__["Tooltip"], {
+                title: "View details",
+                arrow: true,
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$IconButton$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__IconButton$3e$__["IconButton"], {
+                    component: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"],
+                    href: `/employees/${dicEmployee.id}`,
+                    "aria-label": "View details",
+                    size: "small",
+                    sx: {
+                        width: 34,
+                        height: 34,
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                            backgroundColor: "rgba(37,99,235,0.08)"
+                        }
+                    },
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$icons$2d$material$2f$VisibilityOutlined$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"], {
+                        sx: {
+                            fontSize: 20,
+                            color: "#475569"
+                        }
+                    }, void 0, false, {
+                        fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                        lineNumber: 54,
+                        columnNumber: 11
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                    lineNumber: 42,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 41,
+                columnNumber: 7
+            }, this),
+            sortId: dicEmployee.id,
+            sortName: dicEmployee.name,
+            sortDepartment: dicEmployee.department,
+            sortRole: dicEmployee.role
+        }));
+    const sortableRows = rows.map((dicRow)=>({
+            ...dicRow,
+            id: dicRow.id,
+            name: dicRow.name,
+            department: dicRow.department,
+            role: dicRow.role,
+            // Hidden sort keys for stable primitive sorting in reusable table.
+            idValue: dicRow.sortId,
+            nameValue: dicRow.sortName,
+            departmentValue: dicRow.sortDepartment,
+            roleValue: dicRow.sortRole
+        }));
+    const sortableColumns = [
+        {
+            field: "idValue",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.id,
+            sortable: true,
+            exportable: false,
+            filterable: true
+        },
+        {
+            field: "nameValue",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.name,
+            sortable: true,
+            exportable: false,
+            filterable: true
+        },
+        {
+            field: "departmentValue",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.department,
+            sortable: true,
+            exportable: false,
+            filterable: true
+        },
+        {
+            field: "roleValue",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.role,
+            sortable: true,
+            exportable: false,
+            filterable: true
+        },
+        {
+            field: "action",
+            headerName: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.grid.action,
+            sortable: false,
+            filterable: false,
+            exportable: false,
+            align: "center"
+        }
+    ];
+    const lstRenderRows = sortableRows.map((dicRow)=>({
+            ...dicRow,
+            idValue: dicRow.id,
+            nameValue: dicRow.name,
+            departmentValue: dicRow.department,
+            roleValue: dicRow.role
+        }));
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Stack$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Stack$3e$__["Stack"], {
+        spacing: 4,
+        sx: {
+            animation: "employeesFadeIn 200ms ease-out",
+            "@keyframes employeesFadeIn": {
+                from: {
+                    opacity: 0,
+                    transform: "translateY(8px)"
+                },
+                to: {
+                    opacity: 1,
+                    transform: "translateY(0)"
+                }
+            }
+        },
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Box$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Box$3e$__["Box"], {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                        sx: {
+                            fontSize: {
+                                xs: 30,
+                                md: 34
+                            },
+                            fontWeight: 700,
+                            lineHeight: 1.15
+                        },
+                        children: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.pageTitle
+                    }, void 0, false, {
+                        fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                        lineNumber: 105,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Typography$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Typography$3e$__["Typography"], {
+                        sx: {
+                            color: "#64748b",
+                            mt: 1
+                        },
+                        children: "Manage and monitor your workforce."
+                    }, void 0, false, {
+                        fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                        lineNumber: 108,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 104,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$mui$2f$material$2f$Button$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$export__default__as__Button$3e$__["Button"], {
+                variant: "contained",
+                href: "/employees/new",
+                sx: {
+                    alignSelf: "flex-start",
+                    height: 48,
+                    px: 2.5,
+                    borderRadius: "14px",
+                    backgroundColor: "#2563eb",
+                    boxShadow: "0 6px 16px rgba(37,99,235,0.35)",
+                    transition: "all 0.15s ease",
+                    "&:hover": {
+                        transform: "translateY(-1px)",
+                        backgroundColor: "#1d4ed8"
+                    }
+                },
+                children: __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$Constant$2e$json__$28$json$29$__["default"].employees.addButton
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 111,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(PremiumDataTable, {
+                columns: sortableColumns,
+                rows: lstRenderRows,
+                rowIdField: "idValue",
+                showExportOptions: true,
+                exportFileName: "employees-list"
+            }, void 0, false, {
+                fileName: "[project]/app/(dashboard)/employees/page.tsx",
+                lineNumber: 131,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/app/(dashboard)/employees/page.tsx",
+        lineNumber: 94,
+        columnNumber: 5
+    }, this);
+}
+}),
+"[project]/app/(dashboard)/employees/page.tsx [app-rsc] (ecmascript, Next.js Server Component)", ((__turbopack_context__) => {
+
+__turbopack_context__.n(__turbopack_context__.i("[project]/app/(dashboard)/employees/page.tsx [app-rsc] (ecmascript)"));
+}),
+];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__e42e6144._.js.map

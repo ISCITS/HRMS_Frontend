@@ -1,0 +1,17 @@
+[00:00:14.313] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:18.230] Server  LOG     ✓ Ready in 13s
+[00:00:21.637] Server  LOG     ○ Compiling /login ...
+[00:00:24.565] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:15:57.351] Browser LOG     Login Form Data: {"password":"123123","userId":"test"}
+[01:20:55.826] Server  WARN    ⚠ Fast Refresh had to perform a full reload when ./lib/theme.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[01:20:55.835] Server  LOG     ✓ Compiled in 193ms
+[01:20:57.401] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:21:10.079] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:23:36.466] Server  LOG     ✓ Compiled in 150ms
+[01:23:41.848] Server  LOG     ✓ Compiled in 147ms
+[01:26:16.414] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:26:42.562] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:35:17.015] Browser LOG     Login Form Data: {"password":"1234556","userId":"test"}
+[44:41:57.817] Server  LOG     ✓ Compiled in 868ms
+[44:44:53.811] Browser LOG     Login Form Data: {"password":"123123","userId":"test"}
+[44:45:08.344] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
