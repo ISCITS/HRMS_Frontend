@@ -1,0 +1,6 @@
+# Local runtime artifacts generated while the backend handles requests and tests are excluded from version control.
+.env
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
