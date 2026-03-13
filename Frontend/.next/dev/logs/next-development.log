@@ -1,16 +1,38 @@
-[00:00:10.245] Server  LOG     
-[00:00:10.246] Server  LOG       We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
-[00:00:10.247] Server  LOG       The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
-
-[00:00:10.247] Server  LOG       	- include was updated to add '.next/types/**/*.ts'
-[00:00:10.247] Server  LOG       	- include was updated to add '.next/dev/types/**/*.ts'
-[00:00:10.248] Server  LOG     
-[00:00:12.013] Server  LOG     ✓ Ready in 9.4s
-[00:00:15.134] Server  LOG     ○ Compiling /login ...
-[00:00:45.074] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:06:17.296] Server  LOG     ○ Compiling /employees ...
-[00:07:27.544] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:07:42.257] Server  LOG     ○ Compiling /payroll ...
-[00:08:20.218] Server  LOG     ○ Compiling /logout ...
-[00:12:34.872] Server  WARN    ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[00:12:49.151] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:07.234] Server  LOG     ✓ Ready in 5.7s
+[00:00:11.440] Server  LOG     ○ Compiling /profile ...
+[00:00:30.196] Server  LOG     ○ Compiling /login ...
+[00:00:33.486] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:01:16.719] Server  LOG     ○ Compiling / ...
+[02:38:40.193] Server  LOG       Reload env: .env.local
+[02:40:37.027] Server  LOG     ○ Compiling /logout ...
+[02:41:05.624] Browser ERROR   unhandledRejection: Error: User ID and password are required.
+[03:00:55.506] Server  LOG       Reload env: .env.local
+[03:01:14.779] Server  LOG     ○ Compiling /logout ...
+[03:01:36.452] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:01:51.244] Browser ERROR   unhandledRejection: Error: Network Error
+[03:05:38.246] Browser ERROR   unhandledRejection: Error: Network Error
+[03:06:36.416] Browser ERROR   unhandledRejection: Error: Network Error
+[03:07:06.997] Browser ERROR   unhandledRejection: Error: Network Error
+[03:08:17.301] Browser ERROR   unhandledRejection: Error: Network Error
+[03:10:24.280] Browser ERROR   unhandledRejection: Error: Network Error
+[03:11:22.140] Browser ERROR   unhandledRejection: Error: Network Error
+[03:11:55.967] Browser ERROR   unhandledRejection: Error: Network Error
+[03:14:16.782] Browser ERROR   unhandledRejection: Error: Network Error
+[03:24:34.825] Browser ERROR   unhandledRejection: Error: Network Error
+[03:25:49.495] Browser ERROR   unhandledRejection: Error: Network Error
+[03:31:46.421] Browser ERROR   unhandledRejection: Error: Network Error
+[03:36:48.708] Browser ERROR   unhandledRejection: Error: Network Error
+[03:37:58.166] Browser ERROR   unhandledRejection: Error: Network Error
+[03:50:57.443] Browser ERROR   unhandledRejection: Error: Network Error
+[03:51:22.561] Browser ERROR   unhandledRejection: Error: Network Error
+[03:52:19.411] Browser ERROR   unhandledRejection: Error: Network Error
+[03:52:59.174] Server  LOG       Reload env: .env.local
+[03:53:07.022] Server  LOG       Reload env: .env.local
+[03:53:13.404] Browser ERROR   unhandledRejection: Error: Network Error
+[03:55:14.125] Browser ERROR   unhandledRejection: Error: Network Error
+[03:58:42.043] Server  LOG       Reload env: .env.local
+[03:59:14.500] Browser ERROR   unhandledRejection: Error: Network Error
+[03:59:25.404] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:59:31.589] Browser ERROR   unhandledRejection: Error: Network Error
+[04:12:34.901] Server  LOG       Reload env: .env.local
+[04:13:08.954] Browser ERROR   unhandledRejection: Error: Network Error

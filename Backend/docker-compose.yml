@@ -1,19 +1,20 @@
 services:
   backend:
-    # The backend service handles HTTP requests and talks to PostgreSQL and Redis over the internal network.
-    build:
-      context: .
+    # The backend service runs from the prebuilt Python 3.12 dependency image.
+    image: iscuser1/rps-api-python312-deps:latest
     container_name: hrms-backend
+    working_dir: /workspace
     env_file:
       - .env
     ports:
       - "8000:8000"
       - "5678:5678"
     volumes:
-      # Source is mounted into the container so uvicorn reload can see local code changes during debugging.
-      - .:/app
+      # Source is mounted so code runs directly from the local checkout without local dependency installs.
+      - .:/workspace
     environment:
       - PYTHONUNBUFFERED=1
+    command: ["python", "-m", "app.StartServer"]
     depends_on:
       - postgres
       - redis

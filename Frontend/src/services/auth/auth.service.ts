@@ -1,5 +1,6 @@
 import { appConfig } from "@/config";
 import { callAPI } from "@/services/apiService";
+import { encryptPassBase64 } from "@/lib/passwordEncryption";
 
 export type LoginPayload = {
   userId: string;
@@ -26,7 +27,17 @@ Failure behavior:
 */
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResult> {
-    const response = await callAPI<LoginResult>(payload, "auth/login", "AUTH_LOGIN");
+    debugger
+    const strEncryptedPassword = encryptPassBase64(payload.password);
+    const response = await callAPI<LoginResult>(
+      {
+        ...payload,
+        password: strEncryptedPassword
+      },
+      "users/validateUser",
+      "AUTH_LOGIN"
+    );
+
     return response.Response;
   },
 

@@ -1,0 +1,217 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs24
+\b HRMS Backend Docker Setup Steps\b0\par
+\par
+This document explains how to run the HRMS backend entirely from a prebuilt Docker image, without installing Python packages on the local system.\par
+\par
+\b Goal\b0\par
+Run the backend code from Docker image \i iscuser1/rps-api-python312-deps:latest\i0  and keep all Python dependencies inside the container.\par
+\par
+\b Prerequisites\b0\par
+1. Docker Desktop is installed and running.\par
+2. The backend source code exists in \i D:\\Project\\HRMS\\Backend\i0 .\par
+3. The Docker image \i iscuser1/rps-api-python312-deps:latest\i0  is already available locally or can be pulled.\par
+4. Ports 8000, 5432, and 6379 are free on the machine.\par
+\par
+\b Why this approach is used\b0\par
+Normally, a backend project installs Python and all packages on the system or inside a virtual environment. In this setup, that is avoided. Instead:\par
+1. The backend source code stays on the local machine.\par
+2. The code is mounted into a Docker container.\par
+3. Python 3.12 and all required packages come from the Docker image.\par
+4. The app runs inside the container, not from the host system.\par
+\par
+\b Step 1: Open the backend folder\b0\par
+Project path:\par
+\i D:\\Project\\HRMS\\Backend\i0\par
+\par
+\b Step 2: Create a Docker Compose file\b0\par
+Create a file named \b docker-compose.yml\b0  in the backend root.\par
+\par
+Put this content in it:\par
+\par
+\f0\fs20
+services:\par
+  backend:\par
+    image: iscuser1/rps-api-python312-deps:latest\par
+    container_name: hrms-backend\par
+    working_dir: /workspace\par
+    env_file:\par
+      - .env\par
+    ports:\par
+      - "8000:8000"\par
+      - "5678:5678"\par
+    volumes:\par
+      - .:/workspace\par
+    environment:\par
+      - PYTHONUNBUFFERED=1\par
+    command: ["python", "-m", "app.StartServer"]\par
+    depends_on:\par
+      - postgres\par
+      - redis\par
+\par
+  postgres:\par
+    image: postgres:16\par
+    container_name: hrms-postgres\par
+    environment:\par
+      POSTGRES_DB: hrms\par
+      POSTGRES_USER: postgres\par
+      POSTGRES_PASSWORD: postgres\par
+    ports:\par
+      - "5432:5432"\par
+    volumes:\par
+      - postgres_data:/var/lib/postgresql/data\par
+\par
+  redis:\par
+    image: redis:7\par
+    container_name: hrms-redis\par
+    ports:\par
+      - "6379:6379"\par
+    volumes:\par
+      - redis_data:/data\par
+\par
+volumes:\par
+  postgres_data:\par
+  redis_data:\par
+\fs24
+\par
+\b Explanation of this file\b0\par
+1. \b backend\b0  uses the prebuilt dependency image.\par
+2. \b working_dir: /workspace\b0  sets the folder inside the container.\par
+3. \b .:/workspace\b0  mounts the backend source code into the container.\par
+4. \b command\b0  starts the backend using the project startup module.\par
+5. \b postgres\b0  and \b redis\b0  are helper containers used by the backend.\par
+\par
+\b Step 3: Create the environment file\b0\par
+Create a file named \b .env\b0  in the same folder.\par
+\par
+Put this content in it:\par
+\par
+\f0\fs20
+APP_NAME=HRMS Backend\par
+APP_VERSION=1.0.0\par
+DEBUG=false\par
+DEBUG_MODE=false\par
+LOG_LEVEL=INFO\par
+API_V1_PREFIX=/api/v1\par
+\par
+ENABLE_SSO=false\par
+ENABLE_REDIS=false\par
+ENABLE_RATE_LIMIT=false\par
+ENABLE_AUTH_MIDDLEWARE=false\par
+ENABLE_REQUEST_LOGGING=true\par
+ENABLE_CORS=true\par
+ENABLE_SWAGGER=true\par
+ENABLE_CSRF_PROTECTION=true\par
+ENABLE_PAYLOAD_ENCRYPTION=true\par
+\par
+DATABASE_HOST=postgres\par
+DATABASE_PORT=5432\par
+DATABASE_USER=postgres\par
+DATABASE_PASSWORD=postgres\par
+DATABASE_NAME=hrms\par
+\par
+REDIS_HOST=redis\par
+REDIS_PORT=6379\par
+REDIS_DB=0\par
+REDIS_MAX_CONNECTIONS=20\par
+\par
+ALLOWED_ORIGINS=http://localhost:3000\par
+HRMS_CSRF_SECRET_KEY=zE8nLiA0tePsr686Jp6idRKhjpOfH0rPuYcVoJyPUUn=\par
+SESSION_TIMEOUT_MINUTES=60\par
+\par
+CORS_ALLOW_ORIGINS=*\par
+CORS_ALLOW_CREDENTIALS=true\par
+CORS_ALLOW_METHODS=GET,POST,PUT,PATCH,DELETE,OPTIONS\par
+CORS_ALLOW_HEADERS=*\par
+\fs24
+\par
+\b Why these values are important\b0\par
+1. \b DATABASE_HOST=postgres\b0  points the backend to the PostgreSQL container, not the host system.\par
+2. \b REDIS_HOST=redis\b0  points the backend to the Redis container.\par
+3. \b ENABLE_SSO=false\b0  and \b ENABLE_AUTH_MIDDLEWARE=false\b0  make local startup easier when Azure settings are not configured yet.\par
+4. Swagger is enabled so API testing can be done from the browser.\par
+\par
+\b Step 4: Make sure the backend startup command exists\b0\par
+The compose file starts the backend with:\par
+\b python -m app.StartServer\b0\par
+\par
+That means the project should contain a Python module at:\par
+\i app\\StartServer.py\i0\par
+\par
+This startup module should launch Uvicorn for the FastAPI app, usually something like:\par
+\b app.main:app\b0\par
+\par
+If the project does not use \b app.StartServer\b0 , then update the compose \b command\b0  to match the correct startup command for the project.\par
+\par
+\b Step 5: Start the containers\b0\par
+Open a terminal in:\par
+\i D:\\Project\\HRMS\\Backend\i0\par
+\par
+Run:\par
+\b docker compose up -d\b0\par
+\par
+What happens here:\par
+1. PostgreSQL container starts.\par
+2. Redis container starts.\par
+3. Backend container starts from the dependency image.\par
+4. The backend code is read from the mounted local project folder.\par
+5. No Python packages are installed on the host machine.\par
+\par
+\b Step 6: Check running containers\b0\par
+Run:\par
+\b docker compose ps\b0\par
+\par
+Expected result:\par
+1. \b hrms-backend\b0  should be Up.\par
+2. \b hrms-postgres\b0  should be Up.\par
+3. \b hrms-redis\b0  should be Up.\par
+\par
+\b Step 7: Check backend logs\b0\par
+Run:\par
+\b docker compose logs -f backend\b0\par
+\par
+Expected log lines should include messages similar to:\par
+1. Application startup complete.\par
+2. Uvicorn running on http://0.0.0.0:8000\par
+\par
+\b Step 8: Check from browser\b0\par
+Open a browser and use these URLs:\par
+1. \b http://localhost:8000/health\b0\par
+2. \b http://localhost:8000/docs\b0\par
+3. \b http://localhost:8000/redoc\b0\par
+\par
+Expected health response:\par
+\b {"status":"healthy","database":"connected","redis":"disabled"}\b0\par
+\par
+\b Step 9: Stop the containers\b0\par
+Run:\par
+\b docker compose down\b0\par
+\par
+If database and Redis data should also be removed, run:\par
+\b docker compose down -v\b0\par
+\par
+\b Step 10: Common troubleshooting\b0\par
+1. If \b .env not found\b0  appears, create the \b .env\b0  file in the backend root.\par
+2. If port 8000 is busy, change the mapping in \b docker-compose.yml\b0  from \b 8000:8000\b0  to another host port such as \b 8001:8000\b0 .\par
+3. If the backend container exits immediately, check backend logs with \b docker compose logs backend\b0 .\par
+4. If database connection fails, confirm \b DATABASE_HOST=postgres\b0  and the Postgres container is running.\par
+5. If Swagger does not open, confirm \b ENABLE_SWAGGER=true\b0 .\par
+\par
+\b Final summary\b0\par
+This setup works by separating code and dependencies:\par
+1. Source code stays local.\par
+2. Dependencies stay inside Docker image \i iscuser1/rps-api-python312-deps:latest\i0 .\par
+3. Docker Compose connects backend, database, and Redis together.\par
+4. The host system does not need Python package installation for this backend.\par
+\par
+\b Files created for this setup\b0\par
+1. \b docker-compose.yml\b0\par
+2. \b .env\b0\par
+\par
+\b Useful commands\b0\par
+1. \b docker compose up -d\b0\par
+2. \b docker compose ps\b0\par
+3. \b docker compose logs -f backend\b0\par
+4. \b docker compose down\b0\par
+}

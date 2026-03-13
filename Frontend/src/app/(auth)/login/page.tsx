@@ -46,19 +46,6 @@ const clsLoginSchema: yup.ObjectSchema<LoginFormValues> = yup.object({
 
 // Renders the premium SaaS login page with schema-based validation and submit feedback.
 export default function LoginPage() {
-  /*
-  Functional responsibility:
-  - Render login UI and validate credentials using React Hook Form + Yup.
-  
-  Inputs:
-  - User-provided userId and password values.
-  
-  Output:
-  - Validated submit flow with loading state and redirect to dashboard.
-  
-  Failure behavior:
-  - Invalid form blocks submission and displays field-level errors.
-  */
   const passwordVisibility = useBoolean(true);
   const router = useRouter();
 
