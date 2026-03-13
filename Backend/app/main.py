@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.cache.RedisClient import clsRedisClient
 
 from app.api.Router import getApiRouter
 from app.core.Config import getSettings
@@ -13,6 +14,7 @@ from app.health.HealthRoutes import objRouter as objHealthRouter
 from app.middleware.AuthMiddleware import clsAuthMiddleware
 from app.middleware.RequestLoggerMiddleware import clsRequestLoggerMiddleware
 from app.security.SecurityMiddleware import clsSecurityMiddleware
+from app.security.SessionMiddleware import clsSessionMiddleware
 from app.services.AuthService import clsAuthService
 from app.utilities.ExceptionHelper import registerExceptionHandlers
 
@@ -30,6 +32,9 @@ async def lifespan(objApp: FastAPI):
         objLogger.exception("Database connectivity verification failed during startup: %s", str(objException))
     objLogger.info("Application startup completed.")
     yield
+    
+
+    await clsRedisClient.closeRedis()
     objLogger.info("Application shutdown completed.")
 
 
@@ -59,6 +64,9 @@ if objSettings.ENABLE_REQUEST_LOGGING:
     # Request logging wraps the request/response cycle for observability.
     objApp.add_middleware(clsRequestLoggerMiddleware)
 
+# Middleware execution is reverse-ordered, so session middleware is added first
+# to let security validation and decryption run before protected-route session checks.
+objApp.add_middleware(clsSessionMiddleware, objSettings=objSettings)
 objApp.add_middleware(clsSecurityMiddleware, objSettings=objSettings)
 
 if objSettings.boolAuthenticationEnabled:

@@ -24,3 +24,4 @@ class UserResponseSchema(BaseModel):
 class ValidateUserResponseSchema(BaseModel):
     # Successful authentication responses return the internal numeric user key.
     intUserID: int
+    strSessionToken: str
