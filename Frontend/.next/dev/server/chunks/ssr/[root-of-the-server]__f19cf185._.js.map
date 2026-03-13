@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///D:/AI_Projects/HRMS_Demo_WithCodex/HRMS_2/app/%28dashboard%29/profile/page.tsx"],"sourcesContent":["import { Paper, Typography } from \"@mui/material\";\nimport ProfileForm from \"@/components/profile/ProfileForm\";\n\nexport default function ProfilePage() {\n  return (\n    <Paper sx={{ p: 3 }}>\n      <Typography variant=\"h5\" fontWeight={700} sx={{ mb: 3 }}>\n        Profile\n      </Typography>\n      <ProfileForm />\n    </Paper>\n  );\n}\r\n"],"names":[],"mappings":";;;;;AAAA;AAAA;;;;;;;;;AAGe,SAAS;IACtB,qBACE,8OAAC,gMAAK;QAAC,IAAI;YAAE,GAAG;QAAE;;0BAChB,8OAAC,+MAAU;gBAAC,SAAQ;gBAAK,YAAY;gBAAK,IAAI;oBAAE,IAAI;gBAAE;0BAAG;;;;;;0BAGzD,8OAAC;;;;;;;;;;;AAGP"}}]
-}

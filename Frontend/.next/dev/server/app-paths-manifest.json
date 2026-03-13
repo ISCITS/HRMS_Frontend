@@ -1,15 +1,7 @@
 {
-  "/(dashboard)/attendance/page": "app/(dashboard)/attendance/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/departments-inline/page": "app/(dashboard)/departments-inline/page.js",
-  "/(dashboard)/departments/page": "app/(dashboard)/departments/page.js",
-  "/(dashboard)/employees/new/page": "app/(dashboard)/employees/new/page.js",
-  "/(dashboard)/employees/page": "app/(dashboard)/employees/page.js",
-  "/(dashboard)/payroll/page": "app/(dashboard)/payroll/page.js",
-  "/(dashboard)/payroll/payslips/page": "app/(dashboard)/payroll/payslips/page.js",
-  "/(dashboard)/payroll/run/page": "app/(dashboard)/payroll/run/page.js",
-  "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/logout/route": "app/logout/route.js"
+  "/leave/apply/page": "app/leave/apply/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/payroll/page": "app/payroll/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(auth)/forgot-password/page": "app/(auth)/forgot-password/page.js"
 }

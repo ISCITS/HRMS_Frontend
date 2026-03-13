@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///D:/AI_Projects/HRMS_Demo_WithCodex/HRMS_2/app/logout/page.tsx"],"sourcesContent":["import { cookies } from \"next/headers\";\nimport { redirect } from \"next/navigation\";\n\n// Clears auth cookie and redirects user to login page.\nexport default async function LogoutPage() {\n  // Functional responsibility:\n  // - Terminate current session by deleting auth cookie.\n  // Inputs:\n  // - Reads cookie store from request headers.\n  // Output:\n  // - Redirects to /login after cookie removal.\n  // Failure behavior:\n  // - If cookie is missing, flow still redirects safely to /login.\n  const dicCookieStore = await cookies();\n  dicCookieStore.delete(\"hrms_auth\");\n  redirect(\"/login\");\n}\n"],"names":[],"mappings":";;;;AAAA;AACA;AAAA;;;AAGe,eAAe;IAC5B,6BAA6B;IAC7B,uDAAuD;IACvD,UAAU;IACV,6CAA6C;IAC7C,UAAU;IACV,8CAA8C;IAC9C,oBAAoB;IACpB,iEAAiE;IACjE,MAAM,iBAAiB,MAAM,IAAA,0IAAO;IACpC,eAAe,MAAM,CAAC;IACtB,IAAA,iMAAQ,EAAC;AACX"}}]
-}

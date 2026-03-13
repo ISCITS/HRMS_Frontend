@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///D:/AI_Projects/HRMS_Demo_WithCodex/HRMS_2/app/globals.css"],"sourcesContent":["@import \"./common.css\";\n\n* {\n  box-sizing: border-box;\n}\n\nhtml,\nbody {\n  margin: 0;\n  padding: 0;\n}\n\na {\n  color: inherit;\n  text-decoration: none;\n}\n"],"names":[],"mappings":"AAEA;;;;AAIA;;;;;AAMA"}}]
-}
