@@ -6,6 +6,7 @@ from app.core.Config import clsSettings, getSettings
 from app.core.Security import clsTokenValidator
 from app.database.SessionManager import getDbSession
 from app.repositories.UserRepository import clsUserRepository
+from app.security.SessionService import clsSessionService
 from app.services.AuthService import clsAuthService
 from app.services.UserService import clsUserService
 
@@ -20,6 +21,11 @@ def getRedisClient(objSettings: clsSettings = Depends(getSettings)) -> clsRedisC
     return clsRedisClient(objSettings)
 
 
+def getSessionService(objSettings: clsSettings = Depends(getSettings)) -> clsSessionService:
+    # Login flows and middleware share the same session service contract.
+    return clsSessionService(objSettings)
+
+
 def getUserRepository(objSession: Session = Depends(getDbSession)) -> clsUserRepository:
     # A request-scoped database session flows into the repository through dependency injection.
     return clsUserRepository(objSession)
@@ -28,9 +34,10 @@ def getUserRepository(objSession: Session = Depends(getDbSession)) -> clsUserRep
 def getUserService(
     objRepository: clsUserRepository = Depends(getUserRepository),
     objRedisClient: clsRedisClient = Depends(getRedisClient),
+    objSessionService: clsSessionService = Depends(getSessionService),
 ) -> clsUserService:
     # Routers depend on services, and services compose repository and cache dependencies here.
-    return clsUserService(objRepository, objRedisClient)
+    return clsUserService(objRepository, objRedisClient, objSessionService)
 
 
 def getAuthService(objTokenValidator: clsTokenValidator = Depends(getTokenValidator)) -> clsAuthService:

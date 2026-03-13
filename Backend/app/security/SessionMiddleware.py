@@ -9,11 +9,17 @@ from app.utilities.ResponseHelper import buildResponse
 
 class clsSessionMiddleware(BaseHTTPMiddleware):
     def __init__(self, objApp, objSettings: clsSettings) -> None:
-        # Session middleware centralizes Redis-backed session validation before route logic executes.
+        # Session middleware enforces Redis-backed session validation for protected APIs only.
         super().__init__(objApp)
         self.objSettings = objSettings
         self.objSessionService = clsSessionService(objSettings)
-        self.setBypassPaths = {"/health", "/docs", "/openapi.json", "/redoc"}
+        self.setBypassPaths = {
+            "/health",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            f"{objSettings.API_V1_PREFIX}/users/validateUser",
+        }
 
     def shouldBypass(self, objRequest: Request) -> bool:
         return objRequest.url.path in self.setBypassPaths
@@ -24,8 +30,9 @@ class clsSessionMiddleware(BaseHTTPMiddleware):
 
         try:
             strAuthorization = objRequest.headers.get("Authorization")
-            dicSessionData = await self.objSessionService.validateSession(strAuthorization)
-            objRequest.state.dicSession = dicSessionData
+            dicSessionContext = await self.objSessionService.validateSession(strAuthorization)
+            objRequest.state.dicSession = dicSessionContext["dicSessionData"]
+            objRequest.state.strSessionToken = dicSessionContext["strSessionToken"]
             return await call_next(objRequest)
         except Exception as objException:
             intStatusCode = getattr(objException, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
