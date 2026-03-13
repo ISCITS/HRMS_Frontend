@@ -1,5 +1,5 @@
 import { appConfig } from "@/config";
-import { requestJson } from "@/services/apiClient";
+import { callAPI } from "@/services/apiService";
 
 export type LoginPayload = {
   userId: string;
@@ -26,10 +26,8 @@ Failure behavior:
 */
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResult> {
-    return requestJson<LoginResult>("/api/auth/login", {
-      method: "POST",
-      data: payload
-    });
+    const response = await callAPI<LoginResult>(payload, "auth/login", "AUTH_LOGIN");
+    return response.Response;
   },
 
   clearSession() {

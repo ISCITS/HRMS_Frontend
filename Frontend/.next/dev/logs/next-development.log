@@ -1,8 +1,16 @@
-[00:00:35.505] Server  LOG     
-[00:00:35.507] Server  LOG       We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
-[00:00:35.507] Server  LOG       The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+[00:00:10.245] Server  LOG     
+[00:00:10.246] Server  LOG       We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+[00:00:10.247] Server  LOG       The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
 
-[00:00:35.508] Server  LOG       	- include was updated to add '.next/types/**/*.ts'
-[00:00:35.508] Server  LOG       	- include was updated to add '.next/dev/types/**/*.ts'
-[00:00:35.509] Server  LOG     
-[00:00:39.707] Server  LOG     ✓ Ready in 32.2s
+[00:00:10.247] Server  LOG       	- include was updated to add '.next/types/**/*.ts'
+[00:00:10.247] Server  LOG       	- include was updated to add '.next/dev/types/**/*.ts'
+[00:00:10.248] Server  LOG     
+[00:00:12.013] Server  LOG     ✓ Ready in 9.4s
+[00:00:15.134] Server  LOG     ○ Compiling /login ...
+[00:00:45.074] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:06:17.296] Server  LOG     ○ Compiling /employees ...
+[00:07:27.544] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:07:42.257] Server  LOG     ○ Compiling /payroll ...
+[00:08:20.218] Server  LOG     ○ Compiling /logout ...
+[00:12:34.872] Server  WARN    ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[00:12:49.151] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
