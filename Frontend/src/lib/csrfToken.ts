@@ -40,6 +40,7 @@ Failure behavior:
 - Throws if crypto.randomUUID is unavailable in the current runtime.
 */
 export function generateCSRFToken(secretKey: string, menuAction: string) {
+  debugger
   if (!globalThis.crypto?.randomUUID) {
     throw new Error("crypto.randomUUID is not available in the current runtime.");
   }
@@ -63,4 +64,32 @@ export function generateCSRFToken(secretKey: string, menuAction: string) {
   const signature = createSignature(unsignedToken, secretKey);
 
   return `${unsignedToken}.${signature}`;
+}
+
+
+
+
+
+export function encryptPayload(data: unknown, secretKey: string) {
+
+  const json = JSON.stringify(data);
+
+  // decode base64 key
+  const key = CryptoJS.enc.Base64.parse(secretKey);
+
+  // IV = first 16 bytes of key
+  const iv = CryptoJS.lib.WordArray.create(key.words.slice(0, 4));
+
+  const encrypted = CryptoJS.AES.encrypt(
+    CryptoJS.enc.Utf8.parse(json),
+    key,
+    {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    }
+  );
+
+  // return raw ciphertext base64
+  return CryptoJS.enc.Base64.stringify(encrypted.ciphertext);
 }

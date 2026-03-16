@@ -30,32 +30,40 @@ Output:
 Failure behavior:
 - Throws a normalized Error when the API request fails.
 */
+
 export async function callAPI<TResponse = unknown>(
   data: unknown,
   methodName: string,
   menuAction = methodName
 ): Promise<ApiClientResponse<TResponse>> {
-  debugger
+
   const csrfToken = generateCSRFToken(apiConstants.csrfSecretKey, menuAction);
+
   const requestConfig: ApiRequestConfig = {
     method: "POST",
+
+    // use dynamic endpoint
     url: toEndpoint(methodName),
+
     data,
+
     csrfMenuAction: menuAction,
     csrfToken
   };
 
   try {
-    debugger
+
     const response = await axiosInstance.request<TResponse>(requestConfig);
 
     return {
       Response: response.data,
       MethodName: methodName
     };
+
   } catch (error) {
+
     if (axios.isAxiosError(error)) {
-      debugger
+
       const responseMessage =
         (error.response?.data as { message?: string } | undefined)?.message ??
         error.message ??
@@ -67,4 +75,3 @@ export async function callAPI<TResponse = unknown>(
     throw new Error("Unexpected API client error.");
   }
 }
-

@@ -6,8 +6,8 @@ Designed as an async boundary so this implementation can be swapped to Web Crypt
 later without changing the server-side payload handling contract.
 */
 export async function decryptPayload<TPayload = unknown>(encryptedPayload: string): Promise<TPayload> {
-  const objKey = CryptoJS.enc.Utf8.parse(apiConstants.payloadEncryptionKey);
-  const objIv = CryptoJS.enc.Utf8.parse(apiConstants.payloadEncryptionIv);
+  const objKey = CryptoJS.enc.Base64.parse(apiConstants.csrfSecretKey);
+  const objIv = CryptoJS.lib.WordArray.create(objKey.words.slice(0, 4), 16);
 
   const objDecrypted = CryptoJS.AES.decrypt(encryptedPayload, objKey, {
     iv: objIv,

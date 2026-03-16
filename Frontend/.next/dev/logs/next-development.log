@@ -1,38 +1,12 @@
-[00:00:07.234] Server  LOG     ✓ Ready in 5.7s
-[00:00:11.440] Server  LOG     ○ Compiling /profile ...
-[00:00:30.196] Server  LOG     ○ Compiling /login ...
-[00:00:33.486] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[02:01:16.719] Server  LOG     ○ Compiling / ...
-[02:38:40.193] Server  LOG       Reload env: .env.local
-[02:40:37.027] Server  LOG     ○ Compiling /logout ...
-[02:41:05.624] Browser ERROR   unhandledRejection: Error: User ID and password are required.
-[03:00:55.506] Server  LOG       Reload env: .env.local
-[03:01:14.779] Server  LOG     ○ Compiling /logout ...
-[03:01:36.452] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[03:01:51.244] Browser ERROR   unhandledRejection: Error: Network Error
-[03:05:38.246] Browser ERROR   unhandledRejection: Error: Network Error
-[03:06:36.416] Browser ERROR   unhandledRejection: Error: Network Error
-[03:07:06.997] Browser ERROR   unhandledRejection: Error: Network Error
-[03:08:17.301] Browser ERROR   unhandledRejection: Error: Network Error
-[03:10:24.280] Browser ERROR   unhandledRejection: Error: Network Error
-[03:11:22.140] Browser ERROR   unhandledRejection: Error: Network Error
-[03:11:55.967] Browser ERROR   unhandledRejection: Error: Network Error
-[03:14:16.782] Browser ERROR   unhandledRejection: Error: Network Error
-[03:24:34.825] Browser ERROR   unhandledRejection: Error: Network Error
-[03:25:49.495] Browser ERROR   unhandledRejection: Error: Network Error
-[03:31:46.421] Browser ERROR   unhandledRejection: Error: Network Error
-[03:36:48.708] Browser ERROR   unhandledRejection: Error: Network Error
-[03:37:58.166] Browser ERROR   unhandledRejection: Error: Network Error
-[03:50:57.443] Browser ERROR   unhandledRejection: Error: Network Error
-[03:51:22.561] Browser ERROR   unhandledRejection: Error: Network Error
-[03:52:19.411] Browser ERROR   unhandledRejection: Error: Network Error
-[03:52:59.174] Server  LOG       Reload env: .env.local
-[03:53:07.022] Server  LOG       Reload env: .env.local
-[03:53:13.404] Browser ERROR   unhandledRejection: Error: Network Error
-[03:55:14.125] Browser ERROR   unhandledRejection: Error: Network Error
-[03:58:42.043] Server  LOG       Reload env: .env.local
-[03:59:14.500] Browser ERROR   unhandledRejection: Error: Network Error
-[03:59:25.404] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[03:59:31.589] Browser ERROR   unhandledRejection: Error: Network Error
-[04:12:34.901] Server  LOG       Reload env: .env.local
-[04:13:08.954] Browser ERROR   unhandledRejection: Error: Network Error
+[00:00:08.792] Server  LOG     ✓ Ready in 6.8s
+[00:00:12.398] Server  LOG     ○ Compiling /login ...
+[00:00:56.844] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:06.453] Browser ERROR   unhandledRejection: Error: Request failed with status code 404
+[00:05:07.695] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
+[00:06:28.452] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
+[00:11:15.126] Browser ERROR   unhandledRejection: Error: Request failed with status code 400
+[00:19:29.384] Server  LOG     ○ Compiling /dashboard ...
+[00:20:02.555] Browser ERROR   Failed to fetch RSC payload for http://localhost:3000/logout. Falling back to browser navigation. {}
+[00:20:31.100] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:24:54.300] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:38:02.797] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

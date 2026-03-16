@@ -39,8 +39,8 @@ later without changing the shared Axios interceptor contract.
 */
 export async function encryptPayload(payload: unknown) {
   const strSerializedPayload = serializePayload(payload);
-  const objKey = CryptoJS.enc.Utf8.parse(apiConstants.payloadEncryptionKey);
-  const objIv = CryptoJS.enc.Utf8.parse(apiConstants.payloadEncryptionIv);
+  const objKey = CryptoJS.enc.Base64.parse(apiConstants.csrfSecretKey);
+  const objIv = CryptoJS.lib.WordArray.create(objKey.words.slice(0, 4), 16);
 
   const objEncrypted = CryptoJS.AES.encrypt(strSerializedPayload, objKey, {
     iv: objIv,

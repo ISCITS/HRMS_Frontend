@@ -10,5 +10,8 @@ class clsUserRepository:
 
     def getUserByUserID(self, strUserID: str) -> clsUserModel | None:
         # Authentication first loads the user row by login id before password verification happens in the service.
-        objStatement = select(clsUserModel).where(clsUserModel.UserID == strUserID)
+        objStatement = select(clsUserModel).where(
+            clsUserModel.UserID == strUserID,
+            clsUserModel.IsActive.is_(True),
+        )
         return self.objSession.scalar(objStatement)

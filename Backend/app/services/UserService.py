@@ -1,5 +1,3 @@
-import bcrypt
-
 from app.cache.RedisClient import clsRedisClient
 from app.exceptions.CustomExceptions import ResourceNotFoundException
 from app.repositories.UserRepository import clsUserRepository
@@ -28,10 +26,7 @@ class clsUserService:
         if not objUser:
             raise ResourceNotFoundException("Invalid UserID or Password.")
 
-        strDecryptedPassword = self.objEncryptionService.decryptPassword(objValidateUser.Password)
-        bytPassword = strDecryptedPassword.encode("utf-8")
-        bytStoredHash = objUser.PasswordHash.encode("utf-8")
-        if not bcrypt.checkpw(bytPassword, bytStoredHash):
+        if objValidateUser.Password != objUser.PasswordHash:
             raise ResourceNotFoundException("Invalid UserID or Password.")
 
         dicSessionContext = await self.objSessionService.createSession(objUser.intID, objUser.UserID)
