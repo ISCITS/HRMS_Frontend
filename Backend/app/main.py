@@ -50,16 +50,6 @@ objApp = FastAPI(
 
 registerExceptionHandlers(objApp)
 
-if objSettings.ENABLE_CORS:
-    # CORS is added at the HTTP boundary so browser clients can call this API safely.
-    objApp.add_middleware(
-        CORSMiddleware,
-        allow_origins=objSettings.lstCorsAllowOrigins or ["*"],
-        allow_credentials=objSettings.CORS_ALLOW_CREDENTIALS,
-        allow_methods=objSettings.lstCorsAllowMethods or ["*"],
-        allow_headers=objSettings.lstCorsAllowHeaders or ["*"],
-    )
-
 if objSettings.ENABLE_REQUEST_LOGGING:
     # Request logging wraps the request/response cycle for observability.
     objApp.add_middleware(clsRequestLoggerMiddleware)
@@ -72,6 +62,16 @@ objApp.add_middleware(clsSecurityMiddleware, objSettings=objSettings)
 if objSettings.boolAuthenticationEnabled:
     # Authentication middleware is conditionally inserted based on feature flags.
     objApp.add_middleware(clsAuthMiddleware, objAuthService=clsAuthService(clsTokenValidator(objSettings)))
+
+if objSettings.ENABLE_CORS:
+    # CORS is added last so it becomes the outermost middleware and attaches headers even to error responses.
+    objApp.add_middleware(
+        CORSMiddleware,
+        allow_origins=objSettings.lstCorsAllowOrigins or ["*"],
+        allow_credentials=objSettings.CORS_ALLOW_CREDENTIALS,
+        allow_methods=objSettings.lstCorsAllowMethods or ["*"],
+        allow_headers=objSettings.lstCorsAllowHeaders or ["*"],
+    )
 
 # Final assembly flow: middleware -> versioned API routers -> health router.
 objApp.include_router(getApiRouter(objSettings))

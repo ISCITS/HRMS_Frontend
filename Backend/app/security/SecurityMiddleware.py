@@ -20,7 +20,7 @@ class clsSecurityMiddleware(BaseHTTPMiddleware):
         self.setBypassPaths = {"/health", "/docs", "/openapi.json", "/redoc"}
 
     def shouldBypass(self, objRequest: Request) -> bool:
-        return objRequest.url.path in self.setBypassPaths
+        return objRequest.method == "OPTIONS" or objRequest.url.path in self.setBypassPaths
 
     async def replaceRequestBody(self, objRequest: Request, bytBody: bytes) -> None:
         async def receive() -> dict:

@@ -1,9 +1,10 @@
 services:
   backend:
-    # The backend service runs from the prebuilt Python 3.12 dependency image.
-    image: iscuser1/rps-api-python312-deps:latest
+    # The backend service is built locally so dependency updates in requirements.txt are applied.
+    build:
+      context: .
     container_name: hrms-backend
-    working_dir: /workspace
+    working_dir: /app
     env_file:
       - .env
     ports:
@@ -11,7 +12,7 @@ services:
       - "5678:5678"
     volumes:
       # Source is mounted so code runs directly from the local checkout without local dependency installs.
-      - .:/workspace
+      - .:/app
     environment:
       - PYTHONUNBUFFERED=1
     command: ["python", "-m", "app.StartServer"]

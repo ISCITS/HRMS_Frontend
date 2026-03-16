@@ -60,6 +60,10 @@ class clsSettings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     HRMS_CSRF_SECRET_KEY: str = "zE8nLiA0tePsr686Jp6idRKhjpOfH0rPuYcVoJyPUUn="
     SESSION_TIMEOUT_MINUTES: int = 60
+    PAYLOAD_ENCRYPTION_KEY: str = "payload-key-1234"
+    PAYLOAD_ENCRYPTION_IV: str = "payload-iv--1234"
+    PASSWORD_SECRET_KEY: str = "hrms-pass-key-16"
+    PASSWORD_SECRET_IV: str = "hrms-pass-iv-123"
 
     @property
     def strDatabaseUrl(self) -> str:

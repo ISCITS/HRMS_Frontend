@@ -6,6 +6,7 @@ from app.core.Config import clsSettings, getSettings
 from app.core.Security import clsTokenValidator
 from app.database.SessionManager import getDbSession
 from app.repositories.UserRepository import clsUserRepository
+from app.security.EncryptionService import clsEncryptionService
 from app.security.SessionService import clsSessionService
 from app.services.AuthService import clsAuthService
 from app.services.UserService import clsUserService
@@ -26,6 +27,11 @@ def getSessionService(objSettings: clsSettings = Depends(getSettings)) -> clsSes
     return clsSessionService(objSettings)
 
 
+def getEncryptionService(objSettings: clsSettings = Depends(getSettings)) -> clsEncryptionService:
+    # Encryption settings flow into a single reusable service for request and password decryption.
+    return clsEncryptionService(objSettings)
+
+
 def getUserRepository(objSession: Session = Depends(getDbSession)) -> clsUserRepository:
     # A request-scoped database session flows into the repository through dependency injection.
     return clsUserRepository(objSession)
@@ -35,9 +41,10 @@ def getUserService(
     objRepository: clsUserRepository = Depends(getUserRepository),
     objRedisClient: clsRedisClient = Depends(getRedisClient),
     objSessionService: clsSessionService = Depends(getSessionService),
+    objEncryptionService: clsEncryptionService = Depends(getEncryptionService),
 ) -> clsUserService:
     # Routers depend on services, and services compose repository and cache dependencies here.
-    return clsUserService(objRepository, objRedisClient, objSessionService)
+    return clsUserService(objRepository, objRedisClient, objSessionService, objEncryptionService)
 
 
 def getAuthService(objTokenValidator: clsTokenValidator = Depends(getTokenValidator)) -> clsAuthService:

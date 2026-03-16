@@ -1,7 +1,10 @@
+import bcrypt
+
 from app.cache.RedisClient import clsRedisClient
 from app.exceptions.CustomExceptions import ResourceNotFoundException
 from app.repositories.UserRepository import clsUserRepository
 from app.schemas.UserSchema import ValidateUserRequestSchema
+from app.security.EncryptionService import clsEncryptionService
 from app.security.SessionService import clsSessionService
 
 
@@ -11,17 +14,26 @@ class clsUserService:
         objRepository: clsUserRepository,
         objRedisClient: clsRedisClient,
         objSessionService: clsSessionService,
+        objEncryptionService: clsEncryptionService,
     ) -> None:
         # The service coordinates cache access, credential validation, and session creation.
         self.objRepository = objRepository
         self.objRedisClient = objRedisClient
         self.objSessionService = objSessionService
+        self.objEncryptionService = objEncryptionService
 
     async def validateUser(self, objValidateUser: ValidateUserRequestSchema) -> dict:
-        # Login validation flows from the router into the repository and creates a Redis session on success.
-        objUser = self.objRepository.validateUser(objValidateUser.UserID, objValidateUser.Password)
+        # Login validation aligns the frontend contract with backend persistence and creates a session on success.
+        objUser = self.objRepository.getUserByUserID(objValidateUser.UserID)
         if not objUser:
             raise ResourceNotFoundException("Invalid UserID or Password.")
+
+        strDecryptedPassword = self.objEncryptionService.decryptPassword(objValidateUser.Password)
+        bytPassword = strDecryptedPassword.encode("utf-8")
+        bytStoredHash = objUser.PasswordHash.encode("utf-8")
+        if not bcrypt.checkpw(bytPassword, bytStoredHash):
+            raise ResourceNotFoundException("Invalid UserID or Password.")
+
         dicSessionContext = await self.objSessionService.createSession(objUser.intID, objUser.UserID)
         return {
             "intUserID": objUser.intID,

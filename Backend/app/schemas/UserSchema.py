@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class UserCreateSchema(BaseModel):
@@ -9,8 +9,8 @@ class UserCreateSchema(BaseModel):
 
 class ValidateUserRequestSchema(BaseModel):
     # The validateUser API accepts a login identifier and password hash payload.
-    UserID: str = Field(min_length=1, max_length=255)
-    Password: str = Field(min_length=1, max_length=255)
+    UserID: str = Field(min_length=1, max_length=255, validation_alias=AliasChoices("UserID", "userId"))
+    Password: str = Field(min_length=1, max_length=255, validation_alias=AliasChoices("Password", "password"))
 
 
 class UserResponseSchema(BaseModel):
