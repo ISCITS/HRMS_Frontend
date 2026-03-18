@@ -1,0 +1,35 @@
+# .github/workflows/block-debug.yml
+name: Block debug statements
+
+on:
+  pull_request:
+  push:
+    branches:
+      - development
+
+jobs:
+  block-debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan for debugger / print statements
+        run: |
+          echo "Scanning for forbidden debug statements..."
+
+          MATCHES=$(grep -RInE '\bdebugger\b|console\.log\s*\(|\bprint\s*\(' . \
+            --exclude-dir=.git \
+            --exclude-dir=node_modules \
+            --exclude-dir=dist \
+            --exclude-dir=build \
+            --exclude='*.md' || true)
+
+          if [ -n "$MATCHES" ]; then
+            echo "Forbidden debug statements found:"
+            echo "$MATCHES"
+            exit 1
+          fi
+
+          echo "No forbidden debug statements found."
