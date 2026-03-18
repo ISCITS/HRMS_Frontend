@@ -9,7 +9,7 @@ export type ApiClientResponse<TResponse> = {
 };
 
 function toEndpoint(methodName: string) {
-  debugger
+  debugger 
   if (methodName.startsWith("/")) {
     return methodName;
   }
