@@ -46,7 +46,6 @@ Failure behavior:
 - Throws if crypto.randomUUID is unavailable in the current runtime.
 */
 export function generateCSRFToken(secretKey: string, menuAction: string) {
-  debugger
   if (!globalThis.crypto?.randomUUID) {
     throw new Error("crypto.randomUUID is not available in the current runtime.");
   }
