@@ -20,11 +20,17 @@ function toBase64Url(value: string) {
   return base64Value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+// function createSignature(unsignedToken: string, secretKey: string) {
+//   const signedValue = CryptoJS.HmacSHA256(unsignedToken, secretKey);
+//   const base64Signature = CryptoJS.enc.Base64.stringify(signedValue);
+//   return base64Signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+// }
 function createSignature(unsignedToken: string, secretKey: string) {
-  const signedValue = CryptoJS.HmacSHA256(unsignedToken, secretKey);
+  const signedValue = CryptoJS.HmacSHA256(unsignedToken, CryptoJS.enc.Utf8.parse(secretKey));
   const base64Signature = CryptoJS.enc.Base64.stringify(signedValue);
   return base64Signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
+
 
 /*
 Functional responsibility:
