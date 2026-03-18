@@ -34,8 +34,8 @@ class clsSettings(BaseSettings):
     DATABASE_HOST: str = "localhost"
     DATABASE_PORT: int = 5432
     DATABASE_USER: str = "postgres"
-    DATABASE_PASSWORD: str = "postgres"
-    DATABASE_NAME: str = "postgres"
+    DATABASE_PASSWORD: str = "P@ssw0rd"
+    DATABASE_NAME: str = "hrms"
     DATABASE_URL: Optional[str] = None
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20

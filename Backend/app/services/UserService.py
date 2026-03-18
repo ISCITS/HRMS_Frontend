@@ -22,7 +22,7 @@ class clsUserService:
 
     async def validateUser(self, objValidateUser: ValidateUserRequestSchema) -> dict:
         # Login validation aligns the frontend contract with backend persistence and creates a session on success.
-        objUser = self.objRepository.getUserByUserID(objValidateUser.UserID)
+        objUser = self.objRepository.getUserByUserID(objValidateUser.UserID, objValidateUser.Password)
         if not objUser:
             raise ResourceNotFoundException("Invalid UserID or Password.")
 

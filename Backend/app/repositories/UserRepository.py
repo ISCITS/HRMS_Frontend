@@ -8,10 +8,11 @@ class clsUserRepository:
         self.objSession = objSession
 
 
-    def getUserByUserID(self, strUserID: str) -> clsUserModel | None:
+    def getUserByUserID(self, strUserID: str, strPassword: str) -> clsUserModel | None:
         # Authentication first loads the user row by login id before password verification happens in the service.
         objStatement = select(clsUserModel).where(
             clsUserModel.UserID == strUserID,
+            clsUserModel.PasswordHash == strPassword,
             clsUserModel.IsActive.is_(True),
         )
         return self.objSession.scalar(objStatement)

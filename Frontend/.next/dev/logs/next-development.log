@@ -1,12 +1,9 @@
-[00:00:08.792] Server  LOG     ✓ Ready in 6.8s
-[00:00:12.398] Server  LOG     ○ Compiling /login ...
-[00:00:56.844] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:01:06.453] Browser ERROR   unhandledRejection: Error: Request failed with status code 404
-[00:05:07.695] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
-[00:06:28.452] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
-[00:11:15.126] Browser ERROR   unhandledRejection: Error: Request failed with status code 400
-[00:19:29.384] Server  LOG     ○ Compiling /dashboard ...
-[00:20:02.555] Browser ERROR   Failed to fetch RSC payload for http://localhost:3000/logout. Falling back to browser navigation. {}
-[00:20:31.100] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:24:54.300] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:38:02.797] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:23.058] Server  LOG     ✓ Ready in 20.2s
+[00:00:26.336] Server  LOG     ○ Compiling / ...
+[00:00:49.469] Server  LOG     ○ Compiling /login ...
+[00:00:54.616] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:58.283] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
+[00:05:19.065] Browser ERROR   unhandledRejection: Error: Request failed with status code 500
+[00:06:22.008] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:06:24.602] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:14:05.646] Server  LOG     ○ Compiling /dashboard ...
