@@ -27,7 +27,6 @@ Failure behavior:
 */
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResult> {
-    debugger
     const strEncryptedPassword = encryptPassBase64(payload.password);
     const response = await callAPI<LoginResult>(
       {

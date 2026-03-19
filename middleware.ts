@@ -28,12 +28,26 @@ export function middleware(req: NextRequest) {
   }
 
   const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup"];
-  const intIsPublicRoute = lstPublicRoutes.includes(strPathname) ? 1 : 0;
+  const intIsPublicRoute =
+    lstPublicRoutes.includes(strPathname) ||
+    strPathname.startsWith("/t/") ||
+    strPathname.startsWith("/sso/callback")
+      ? 1
+      : 0;
 
   if (intIsAuthenticated === 0 && intIsPublicRoute === 0) {
     const dicLoginUrl = req.nextUrl.clone();
     dicLoginUrl.pathname = appRoutes.login;
+    if (strPathname !== appRoutes.home) {
+      dicLoginUrl.searchParams.set("redirect", strPathname);
+    }
     return NextResponse.redirect(dicLoginUrl);
+  }
+
+  if (intIsAuthenticated === 1 && intIsPublicRoute === 1 && (strPathname === appRoutes.login || strPathname.startsWith("/t/"))) {
+    const dicDashboardUrl = req.nextUrl.clone();
+    dicDashboardUrl.pathname = appRoutes.dashboard;
+    return NextResponse.redirect(dicDashboardUrl);
   }
 
   return NextResponse.next();

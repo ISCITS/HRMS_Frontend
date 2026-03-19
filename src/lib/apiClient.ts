@@ -10,7 +10,6 @@ export type ApiClientResponse<TResponse> = {
 
 // test by aditya debugger restriction
 function toEndpoint(methodName: string) {
-  debugger
   if (methodName.startsWith("/")) {
     return methodName;
   }

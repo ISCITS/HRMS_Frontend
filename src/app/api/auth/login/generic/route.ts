@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { proxyTenantLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
+import { proxyGenericLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
 
 export async function POST(request: Request) {
   try {
     const objBody = (await request.json()) as unknown;
-    const objResult = await proxyTenantLogin(objBody);
+    const objResult = await proxyGenericLogin(objBody);
     const objResponse = NextResponse.json(objResult, { status: 200 });
     await setAuthCookies(objResponse, objResult.Data);
     return objResponse;
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ResultCode: 0,
-        Msg: objError instanceof Error ? objError.message : "Unable to complete login.",
+        Msg: objError instanceof Error ? objError.message : "Unable to complete generic login.",
         Data: {}
       },
       { status: 400 }
