@@ -220,7 +220,36 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
       .map((row) => `<tr>${exportColumns.map((column) => `<td>${toText(row[column.field])}</td>`).join("")}</tr>`)
       .join("");
 
-    
+    const dicPrintWindow = window.open("", "_blank", "width=1000,height=700");
+    if (!dicPrintWindow) {
+      return;
+    }
+
+    dicPrintWindow.document.write(`
+      <html>
+        <head>
+          <title>${exportFileName}</title>
+          <style>
+            body { font-family: Inter, Arial, sans-serif; padding: 24px; color: #0f172a; }
+            h2 { margin: 0 0 16px 0; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; font-size: 12px; }
+            th { background: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <h2>${exportFileName}</h2>
+          <table>
+            <thead><tr>${strHeaderHtml}</tr></thead>
+            <tbody>${strRowHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    dicPrintWindow.document.close();
+    dicPrintWindow.focus();
+    dicPrintWindow.print();
+  };
 
   const table = (
     <Stack spacing={2.5}>
