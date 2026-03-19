@@ -246,9 +246,6 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
         </body>
       </html>
     `);
-    dicPrintWindow.document.close();
-    dicPrintWindow.focus();
-    dicPrintWindow.print();
   };
 
   const table = (
