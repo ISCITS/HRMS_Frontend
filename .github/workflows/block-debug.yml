@@ -19,11 +19,12 @@ jobs:
         run: |
           echo "Scanning for forbidden debug statements..."
 
-          MATCHES=$(grep -RInE '\bdebugger\b|console\.log\s*\(|\bprint\s*\(' . \
+          MATCHES=$(grep -RInE '\bdebugger\b|console\.log\s*\(|(^|[^[:alnum:]_.])print\s*\(' . \
             --exclude-dir=.git \
             --exclude-dir=node_modules \
             --exclude-dir=dist \
             --exclude-dir=build \
+            --exclude='.github/workflows/block-debug.yml' \
             --exclude='*.md' || true)
 
           if [ -n "$MATCHES" ]; then

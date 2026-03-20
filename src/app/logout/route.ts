@@ -19,5 +19,6 @@ export async function GET(req: Request) {
   const strLoginUrl = new URL(appRoutes.login, req.url);
   const dicResponse = NextResponse.redirect(strLoginUrl);
   dicResponse.cookies.set(appConfig.authCookieName, "", { path: "/", maxAge: 0 });
+  dicResponse.cookies.set(appConfig.tenantCookieName, "", { path: "/", maxAge: 0 });
   return dicResponse;
 }
