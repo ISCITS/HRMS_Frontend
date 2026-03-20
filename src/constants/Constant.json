@@ -1,10 +1,19 @@
 {
     "common": {
         "cancel": "Cancel",
+        "clear": "Clear",
+        "close": "Close",
+        "delete": "Delete",
+        "exportExcel": "Export Excel",
+        "exportPdf": "Export PDF",
+        "reset": "Reset",
         "save": "Save",
+        "search": "Search",
         "update": "Update",
         "statusActive": "Active",
-        "statusInactive": "Inactive"
+        "statusInactive": "Inactive",
+        "rowsPerPage": "Rows per page",
+        "paginationSeparator": "of"
     },
     "appShell": {
         "brand": "HRMS",
@@ -187,6 +196,7 @@
         "pageTitle": "Department Master",
         "inlinePageTitle": "Department Master (Inline)",
         "addButton": "Add Department",
+        "backButton": "Back",
         "inlineAddButton": "Add Department In Grid",
         "editButton": "Edit",
         "saveDepartment": "Save",
@@ -196,14 +206,11 @@
         "fields": {
             "code": "Department Code",
             "name": "Department Name",
-            "manager": "Manager Name",
             "status": "Status"
         },
         "grid": {
-            "id": "ID",
             "code": "Code",
             "name": "Department Name",
-            "manager": "Manager",
             "status": "Status",
             "employees": "Employees",
             "action": "Action"
@@ -215,8 +222,37 @@
             "nameRequired": "Department Name is required.",
             "nameMin": "Department Name must be at least 3 characters.",
             "nameDuplicate": "Department Name already exists.",
-            "managerRequired": "Manager Name is required.",
-            "managerMin": "Manager Name must be at least 3 characters.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "designations": {
+        "pageTitle": "Designation Master",
+        "addButton": "Add Designation",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveDesignation": "Save",
+        "updateDesignation": "Update Designation",
+        "dialogAddTitle": "Add Designation",
+        "dialogEditTitle": "Edit Designation",
+        "helperText": "Based on `tbldesignation`, this master exposes designation code, designation name, and active status.",
+        "fields": {
+            "code": "Designation Code",
+            "name": "Designation Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Designation Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Designation Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, or underscore.",
+            "codeDuplicate": "Designation Code already exists.",
+            "nameRequired": "Designation Name is required.",
+            "nameMin": "Designation Name must be at least 3 characters.",
+            "nameDuplicate": "Designation Name already exists.",
             "statusRequired": "Status is required."
         }
     }

@@ -1,367 +1,439 @@
-"use client";
+﻿"use client";
 
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
+  Box,
   Button,
+  Checkbox,
+  CircularProgress,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
   MenuItem,
-  Paper,
-  Stack,
+  Pagination,
+  Switch,
   TextField,
   Typography
 } from "@mui/material";
-import { yupResolver } from "@hookform/resolvers/yup";
-import { Controller, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
-import { ReactNode, useMemo, useState } from "react";
-import * as yup from "yup";
-import CommonDataGrid, { DataGridColumn } from "@/components/ui/CommonDataGrid";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
+import { DepartmentApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type DepartmentStatus = "Active" | "Inactive";
-
-type DepartmentFormValues = {
-  code: string;
-  name: string;
-  manager: string;
-  status: DepartmentStatus;
-};
+type DepartmentMode = "add" | "edit" | "view";
 
 type DepartmentRecord = {
   id: string;
   code: string;
   name: string;
-  manager: string;
   status: DepartmentStatus;
   employeeCount: number;
 };
 
-type DepartmentGridRow = DepartmentRecord & {
-  action: ReactNode;
+type DepartmentForm = {
+  code: string;
+  name: string;
+  status: DepartmentStatus;
 };
 
-const clsDepartmentSchema: yup.ObjectSchema<DepartmentFormValues> = yup.object({
-  code: yup
-    .string()
-    .required(dicConstant.departments.validation.codeRequired)
-    .matches(/^[A-Z0-9-]{2,20}$/, dicConstant.departments.validation.codeFormat),
-  name: yup
-    .string()
-    .required(dicConstant.departments.validation.nameRequired)
-    .min(3, dicConstant.departments.validation.nameMin),
-  manager: yup
-    .string()
-    .required(dicConstant.departments.validation.managerRequired)
-    .min(3, dicConstant.departments.validation.managerMin),
-  status: yup
-    .mixed<DepartmentStatus>()
-    .oneOf([
-      dicConstant.common.statusActive as DepartmentStatus,
-      dicConstant.common.statusInactive as DepartmentStatus
-    ])
-    .required(dicConstant.departments.validation.statusRequired)
-});
+type SearchForm = {
+  code: string;
+  name: string;
+  status: "All" | DepartmentStatus;
+};
 
-// Manages department master listing with add/edit dialog and validation.
-export default function DepartmentMasterPanel() {
-  /*
-  Functional responsibility:
-  - Provide department master CRUD-like UX for add/edit on a grid-backed list.
-  
-  Inputs:
-  - Uses in-memory department list state and dialog form values.
-  
-  Output:
-  - Renders searchable/sortable/paginated department grid + add/edit dialog.
-  
-  Failure behavior:
-  - Invalid/duplicate form data blocks save and shows field-level errors with focus priority.
-  */
-  const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>([
-    { id: "D001", code: "ENG", name: "Engineering", manager: "Ava Johnson", status: "Active", employeeCount: 42 },
-    { id: "D002", code: "HRA", name: "Human Resources", manager: "Liam Smith", status: "Active", employeeCount: 11 },
-    { id: "D003", code: "FIN", name: "Finance", manager: "Noah Davis", status: "Active", employeeCount: 9 }
-  ]);
-  const [intNextDepartmentId, setIntNextDepartmentId] = useState(4);
-  const [intIsDialogOpen, setIntIsDialogOpen] = useState(0);
-  const [strDialogMode, setStrDialogMode] = useState<"add" | "edit">("add");
-  const [strEditingDepartmentId, setStrEditingDepartmentId] = useState("");
+const dicEmptyForm: DepartmentForm = { code: "", name: "", status: "Active" };
+const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const lstDefaultDepartments: DepartmentRecord[] = [];
+const lstRowsPerPageOptions = [5, 10, 20];
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    setError,
-    clearErrors,
-    setFocus,
-    formState: { errors, isSubmitting }
-  } = useForm<DepartmentFormValues>({
-    resolver: yupResolver(clsDepartmentSchema),
-    defaultValues: {
-      code: "",
-      name: "",
-      manager: "",
-      status: "Active"
-    }
-  });
-
-  const openAddDialog = () => {
-    setStrDialogMode("add");
-    setStrEditingDepartmentId("");
-    reset({
-      code: "",
-      name: "",
-      manager: "",
-      status: "Active"
-    });
-    setIntIsDialogOpen(1);
+function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
+  return {
+    id: String(dicRecord.intID),
+    code: dicRecord.strDepartmentCode,
+    name: dicRecord.strDepartmentName,
+    status: dicRecord.blnIsActive ? "Active" : "Inactive",
+    employeeCount: 0
   };
-
-  const openEditDialog = (dicDepartment: DepartmentRecord) => {
-    setStrDialogMode("edit");
-    setStrEditingDepartmentId(dicDepartment.id);
-    reset({
-      code: dicDepartment.code,
-      name: dicDepartment.name,
-      manager: dicDepartment.manager,
-      status: dicDepartment.status
-    });
-    setIntIsDialogOpen(1);
-  };
-
-  const closeDialog = () => {
-    setIntIsDialogOpen(0);
-  };
-
-  const onValidSubmit: SubmitHandler<DepartmentFormValues> = async (dicFormData) => {
-    const strCodeUpper = dicFormData.code.trim().toUpperCase();
-    const strNameTrimmed = dicFormData.name.trim();
-    const strManagerTrimmed = dicFormData.manager.trim();
-
-    const intHasCodeDuplicate = lstDepartments.some(
-      (dicDepartment) =>
-        dicDepartment.code.toUpperCase() === strCodeUpper &&
-        dicDepartment.id !== strEditingDepartmentId
-    )
-      ? 1
-      : 0;
-    if (intHasCodeDuplicate === 1) {
-      setError("code", { message: dicConstant.departments.validation.codeDuplicate });
-      setFocus("code");
-      return;
-    }
-
-    const intHasNameDuplicate = lstDepartments.some(
-      (dicDepartment) =>
-        dicDepartment.name.trim().toLowerCase() === strNameTrimmed.toLowerCase() &&
-        dicDepartment.id !== strEditingDepartmentId
-    )
-      ? 1
-      : 0;
-    if (intHasNameDuplicate === 1) {
-      setError("name", { message: dicConstant.departments.validation.nameDuplicate });
-      setFocus("name");
-      return;
-    }
-
-    if (strDialogMode === "add") {
-      const strNewDepartmentId = `D${String(intNextDepartmentId).padStart(3, "0")}`;
-      const dicNewDepartment: DepartmentRecord = {
-        id: strNewDepartmentId,
-        code: strCodeUpper,
-        name: strNameTrimmed,
-        manager: strManagerTrimmed,
-        status: dicFormData.status,
-        employeeCount: 0
-      };
-      setLstDepartments((lstPrev) => [dicNewDepartment, ...lstPrev]);
-      setIntNextDepartmentId((intPrev) => intPrev + 1);
-      closeDialog();
-      return;
-    }
-
-    setLstDepartments((lstPrev) =>
-      lstPrev.map((dicDepartment) => {
-        if (dicDepartment.id !== strEditingDepartmentId) {
-          return dicDepartment;
-        }
-        return {
-          ...dicDepartment,
-          code: strCodeUpper,
-          name: strNameTrimmed,
-          manager: strManagerTrimmed,
-          status: dicFormData.status
-        };
-      })
-    );
-    closeDialog();
-  };
-
-  const onInvalidSubmit: SubmitErrorHandler<DepartmentFormValues> = (dicErrors) => {
-    const lstErrorPriority: Array<keyof DepartmentFormValues> = ["code", "name", "manager", "status"];
-    const strFirstErrorField = lstErrorPriority.find((strField) => Boolean(dicErrors[strField]));
-    if (strFirstErrorField) {
-      setFocus(strFirstErrorField);
-    }
-  };
-
-  const lstGridRows: DepartmentGridRow[] = useMemo(
-    () =>
-      lstDepartments.map((dicDepartment) => ({
-        ...dicDepartment,
-        action: (
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<EditOutlinedIcon />}
-            onClick={() => openEditDialog(dicDepartment)}
-          >
-            {dicConstant.departments.editButton}
-          </Button>
-        )
-      })),
-    [lstDepartments]
-  );
-
-  const lstGridColumns: DataGridColumn<DepartmentGridRow>[] = [
-    { field: "id", headerName: dicConstant.departments.grid.id },
-    { field: "code", headerName: dicConstant.departments.grid.code },
-    { field: "name", headerName: dicConstant.departments.grid.name },
-    { field: "manager", headerName: dicConstant.departments.grid.manager },
-    { field: "status", headerName: dicConstant.departments.grid.status },
-    { field: "employeeCount", headerName: dicConstant.departments.grid.employees },
-    { field: "action", headerName: dicConstant.departments.grid.action, sortable: false, filterable: false, exportable: false }
-  ];
-
-  return (
-    <>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 3 }}>
-        {dicConstant.departments.pageTitle}
-      </Typography>
-      <Paper sx={{ p: 3 }}>
-        <CommonDataGrid
-          columns={lstGridColumns}
-          rows={lstGridRows}
-          rowIdField="id"
-          withPaper={false}
-          showExportOptions
-          exportFileName="department-master"
-          toolbarLeft={
-            <Button variant="contained" onClick={openAddDialog}>
-              {dicConstant.departments.addButton}
-            </Button>
-          }
-        />
-      </Paper>
-
-      <Dialog
-        open={Boolean(intIsDialogOpen)}
-        onClose={closeDialog}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby="department-dialog-title"
-      >
-        <DialogTitle id="department-dialog-title">
-          {strDialogMode === "add" ? dicConstant.departments.dialogAddTitle : dicConstant.departments.dialogEditTitle}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Controller
-              name="code"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  id="department-code"
-                  label={dicConstant.departments.fields.code}
-                  required
-                  fullWidth
-                  onChange={(event) => {
-                    clearErrors("code");
-                    field.onChange(event.target.value.toUpperCase());
-                  }}
-                  error={Boolean(errors.code)}
-                  helperText={errors.code?.message}
-                />
-              )}
-            />
-            <Controller
-              name="name"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  id="department-name"
-                  label={dicConstant.departments.fields.name}
-                  required
-                  fullWidth
-                  onChange={(event) => {
-                    clearErrors("name");
-                    field.onChange(event);
-                  }}
-                  error={Boolean(errors.name)}
-                  helperText={errors.name?.message}
-                />
-              )}
-            />
-            <Controller
-              name="manager"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  id="department-manager"
-                  label={dicConstant.departments.fields.manager}
-                  required
-                  fullWidth
-                  onChange={(event) => {
-                    clearErrors("manager");
-                    field.onChange(event);
-                  }}
-                  error={Boolean(errors.manager)}
-                  helperText={errors.manager?.message}
-                />
-              )}
-            />
-            <Controller
-              name="status"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  id="department-status"
-                  label={dicConstant.departments.fields.status}
-                  select
-                  required
-                  fullWidth
-                  onChange={(event) => {
-                    clearErrors("status");
-                    field.onChange(event);
-                  }}
-                  error={Boolean(errors.status)}
-                  helperText={errors.status?.message}
-                >
-                  <MenuItem value={dicConstant.common.statusActive}>{dicConstant.common.statusActive}</MenuItem>
-                  <MenuItem value={dicConstant.common.statusInactive}>{dicConstant.common.statusInactive}</MenuItem>
-                </TextField>
-              )}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDialog}>{dicConstant.common.cancel}</Button>
-          <Button
-            onClick={handleSubmit(onValidSubmit, onInvalidSubmit)}
-            variant="contained"
-            disabled={isSubmitting}
-          >
-            {strDialogMode === "add" ? dicConstant.departments.saveDepartment : dicConstant.departments.updateDepartment}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  );
 }
 
+function downloadCsv(strFileName: string, lstRows: DepartmentRecord[]) {
+  const lstHeaders = ["Department Name", "Department Code", "Status", "Employees"];
+  const lstLines = [
+    lstHeaders.join(","),
+    ...lstRows.map((dicRow) =>
+      [dicRow.name, dicRow.code, dicRow.status, dicRow.employeeCount]
+        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
+        .join(",")
+    )
+  ];
+  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const strUrl = URL.createObjectURL(objBlob);
+  const objLink = document.createElement("a");
+  objLink.href = strUrl;
+  objLink.download = strFileName;
+  objLink.click();
+  URL.revokeObjectURL(strUrl);
+}
+
+function exportPdf(strTitle: string, lstRows: DepartmentRecord[]) {
+  const objWindow = window.open("", "_blank", "width=1200,height=800");
+  if (!objWindow) {
+    return;
+  }
+
+  const strRows = lstRows.map((dicRow) => `
+    <tr>
+      <td>${dicRow.name}</td>
+      <td>${dicRow.code}</td>
+      <td>${dicRow.status}</td>
+      <td>${dicRow.employeeCount}</td>
+    </tr>
+  `).join("");
+
+  objWindow.document.write(`
+    <html>
+      <head>
+        <title>${strTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          h1 { margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+          th { background: #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <h1>${strTitle}</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Department Name</th>
+              <th>Department Code</th>
+              <th>Status</th>
+              <th>Employees</th>
+            </tr>
+          </thead>
+          <tbody>${strRows}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  objWindow.document.close();
+  objWindow.focus();
+  objWindow.print();
+}
+
+export default function DepartmentMasterPanel() {
+  const objRouter = useRouter();
+  const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>(lstDefaultDepartments);
+  const [strMode, setStrMode] = useState<DepartmentMode>("add");
+  const [blnDialogOpen, setBlnDialogOpen] = useState(false);
+  const [strEditingDepartmentId, setStrEditingDepartmentId] = useState("");
+  const [dicForm, setDicForm] = useState<DepartmentForm>(dicEmptyForm);
+  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof DepartmentForm, string>>>({});
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
+  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
+  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnSubmitting, setBlnSubmitting] = useState(false);
+  const [intPage, setIntPage] = useState(1);
+  const [intRowsPerPage, setIntRowsPerPage] = useState(5);
+
+  async function loadDepartments() {
+    setBlnLoading(true);
+    try {
+      const objResult = await masterApiService.getDepartments();
+      setLstDepartments(objResult.Data.map(mapDepartmentRecord));
+      setLstSelectedIds([]);
+      setIntPage(1);
+    } finally {
+      setBlnLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDepartments().catch(() => undefined);
+  }, []);
+
+  const lstFilteredDepartments = useMemo(() => lstDepartments.filter((dicDepartment) => {
+    const blnCodeMatch = !dicSearchApplied.code || dicDepartment.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
+    const blnNameMatch = !dicSearchApplied.name || dicDepartment.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const blnStatusMatch = dicSearchApplied.status === "All" || dicDepartment.status === dicSearchApplied.status;
+    return blnCodeMatch && blnNameMatch && blnStatusMatch;
+  }), [dicSearchApplied, lstDepartments]);
+
+  const intPageCount = Math.max(1, Math.ceil(lstFilteredDepartments.length / intRowsPerPage));
+  const intCurrentPage = Math.min(intPage, intPageCount);
+  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
+  const lstVisibleDepartments = lstFilteredDepartments.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const blnAllVisibleSelected = lstVisibleDepartments.length > 0 && lstVisibleDepartments.every((dicDepartment) => lstSelectedIds.includes(dicDepartment.id));
+  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleDepartments.some((dicDepartment) => dicDepartment.id === strId));
+
+  function openDialog(strNextMode: DepartmentMode, dicDepartment?: DepartmentRecord) {
+    setStrMode(strNextMode);
+    setStrEditingDepartmentId(dicDepartment?.id ?? "");
+    setDicErrors({});
+    setDicForm(dicDepartment ? {
+      code: dicDepartment.code,
+      name: dicDepartment.name,
+      status: dicDepartment.status
+    } : dicEmptyForm);
+    setBlnDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setBlnDialogOpen(false);
+  }
+
+  function validateForm() {
+    const dicNextErrors: Partial<Record<keyof DepartmentForm, string>> = {};
+    const strCode = dicForm.code.trim().toUpperCase();
+    const strName = dicForm.name.trim();
+
+    if (!strName) {
+      dicNextErrors.name = dicConstant.departments.validation.nameRequired;
+    } else if (strName.length < 3) {
+      dicNextErrors.name = dicConstant.departments.validation.nameMin;
+    }
+
+    if (!strCode) {
+      dicNextErrors.code = dicConstant.departments.validation.codeRequired;
+    } else if (!/^[A-Z0-9-]{2,20}$/.test(strCode)) {
+      dicNextErrors.code = dicConstant.departments.validation.codeFormat;
+    }
+
+    if (lstDepartments.some((dicDepartment) => dicDepartment.code.toUpperCase() === strCode && dicDepartment.id !== strEditingDepartmentId)) {
+      dicNextErrors.code = dicConstant.departments.validation.codeDuplicate;
+    }
+
+    if (lstDepartments.some((dicDepartment) => dicDepartment.name.trim().toLowerCase() === strName.toLowerCase() && dicDepartment.id !== strEditingDepartmentId)) {
+      dicNextErrors.name = dicConstant.departments.validation.nameDuplicate;
+    }
+
+    setDicErrors(dicNextErrors);
+    return Object.keys(dicNextErrors).length === 0;
+  }
+
+  function saveDepartment() {
+    if (!validateForm()) {
+      return;
+    }
+    const objBody = {
+      strDepartmentCode: dicForm.code.trim().toUpperCase(),
+      strDepartmentName: dicForm.name.trim(),
+      strManagerName: "",
+      blnIsActive: dicForm.status === "Active"
+    };
+
+    const objRequest = strMode === "add"
+      ? masterApiService.createDepartment(objBody)
+      : masterApiService.updateDepartment(Number(strEditingDepartmentId), objBody);
+
+    setBlnSubmitting(true);
+    objRequest
+      .then(() => loadDepartments())
+      .then(() => closeDialog())
+      .catch(() => undefined);
+    objRequest.finally(() => setBlnSubmitting(false));
+  }
+
+  function toggleSelection(strDepartmentId: string) {
+    setLstSelectedIds((lstPrevious) => lstPrevious.includes(strDepartmentId)
+      ? lstPrevious.filter((strId) => strId !== strDepartmentId)
+      : [...lstPrevious, strDepartmentId]);
+  }
+
+  function toggleSelectAll() {
+    if (blnAllVisibleSelected) {
+      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleDepartments.some((dicDepartment) => dicDepartment.id === strId)));
+      return;
+    }
+    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleDepartments.map((dicDepartment) => dicDepartment.id)])]);
+  }
+
+  function bulkUpdateStatus(strStatus: DepartmentStatus) {
+    setBlnSubmitting(true);
+    masterApiService.bulkDepartmentStatus(lstSelectedIds.map(Number), strStatus === "Active").then(() => loadDepartments()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+  }
+
+  function bulkDelete() {
+    setBlnSubmitting(true);
+    masterApiService.bulkDepartmentDelete(lstSelectedIds.map(Number)).then(() => loadDepartments()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+  }
+
+  function deleteDepartment(strDepartmentId: string) {
+    setBlnSubmitting(true);
+    masterApiService.bulkDepartmentDelete([Number(strDepartmentId)]).then(() => loadDepartments()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+  }
+
+  function toggleDepartmentStatus(strDepartmentId: string) {
+    const objDepartment = lstDepartments.find((dicItem) => dicItem.id === strDepartmentId);
+    if (!objDepartment) {
+      return;
+    }
+    setBlnSubmitting(true);
+    masterApiService.bulkDepartmentStatus([Number(strDepartmentId)], objDepartment.status !== "Active").then(() => loadDepartments()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+  }
+
+  return (
+    <Box className={styles.page}>
+      <Box className={styles.topBar}>
+        <Typography className={styles.breadcrumbs}>Admin / Master / Departments</Typography>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.departments.backButton}</Button>
+      </Box>
+
+      <Box className={styles.controlsCard}>
+        <Box className={styles.controlsHeader}>
+          <Typography component="h1" className={styles.title}>{dicConstant.departments.pageTitle}</Typography>
+          <Box className={styles.headerActions}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicConstant.departments.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Department Master", lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportPdf}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("department-master.xls", lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportExcel}</Button>
+          </Box>
+        </Box>
+
+        <Box className={styles.searchRow}>
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder="Search Department Name" fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder="Search Department Code" fullWidth />
+          <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem value="All">Status</MenuItem>
+            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+          </TextField>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.clear}</Button></Box>
+        </Box>
+
+        {blnSubmitting ? (
+          <Box className={styles.bulkBar}>
+            <CircularProgress size={20} />
+            <Typography className={styles.bulkCount}>Applying changes...</Typography>
+          </Box>
+        ) : lstSelectedIds.length > 0 ? (
+          <Box className={styles.bulkBar}>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} row(s) selected</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>Bulk Activate</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>Bulk Deactivate</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>Bulk Delete</Button>
+          </Box>
+        ) : null}
+      </Box>
+
+      <Box className={styles.tableCard}>
+        {!blnLoading && lstFilteredDepartments.length > 0 ? (
+          <Box className={styles.paginationBar}>
+            <Box className={styles.paginationInfo}>
+              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+              <TextField
+                select
+                size="small"
+                value={String(intRowsPerPage)}
+                onChange={(objEvent) => {
+                  setIntRowsPerPage(Number(objEvent.target.value));
+                  setIntPage(1);
+                }}
+                className={styles.rowsPerPageSelect}
+              >
+                {lstRowsPerPageOptions.map((intOption) => (
+                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
+                ))}
+              </TextField>
+              <Typography className={styles.paginationRange}>
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDepartments.length)} {dicConstant.common.paginationSeparator} {lstFilteredDepartments.length}
+              </Typography>
+            </Box>
+            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
+          </Box>
+        ) : null}
+        {blnLoading ? (
+          <Box className={styles.emptyState}>
+            <CircularProgress size={24} />
+            <Typography sx={{ mt: 1 }}>Loading departments...</Typography>
+          </Box>
+        ) : (
+        <Box className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                <th>Department Name</th>
+                <th>Department Code</th>
+                <th>Status</th>
+                <th>Employees</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lstFilteredDepartments.length === 0 ? (
+                <tr><td className={styles.emptyState} colSpan={6}>No department records found.</td></tr>
+              ) : lstVisibleDepartments.map((dicDepartment) => {
+                const blnSelected = lstSelectedIds.includes(dicDepartment.id);
+                return (
+                  <tr key={dicDepartment.id} className={blnSelected ? styles.selectedRow : undefined}>
+                    <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} /></td>
+                    <td>{dicDepartment.name}</td>
+                    <td>{dicDepartment.code}</td>
+                    <td><span className={`${styles.statusPill} ${dicDepartment.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDepartment.status}</span></td>
+                    <td>{dicDepartment.employeeCount}</td>
+                    <td>
+                      <Box className={styles.actionCell}>
+                        <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicDepartment)}><VisibilityOutlinedIcon fontSize="small" /></button>
+                        <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicDepartment)}><EditOutlinedIcon fontSize="small" /></button>
+                        <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteDepartment(dicDepartment.id)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
+                        <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleDepartmentStatus(dicDepartment.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
+                      </Box>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Box>
+        )}
+      </Box>
+
+      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
+        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicConstant.departments.dialogAddTitle : strMode === "edit" ? dicConstant.departments.dialogEditTitle : "View Department"}</DialogTitle>
+        <DialogContent className={styles.dialogContent}>
+          <Typography className={styles.sectionBar}>Basic Information</Typography>
+          <Box className={styles.dialogGrid}>
+            <TextField label={`${dicConstant.departments.fields.name} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
+            <TextField label={`${dicConstant.departments.fields.code} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
+            <TextField label="Employees" value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0} disabled fullWidth />
+          </Box>
+
+          <Typography className={styles.sectionBar}>Record Status</Typography>
+          <Box className={styles.switchRow}>
+            <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            <Typography className={styles.switchLabel}>{dicForm.status}</Typography>
+          </Box>
+        </DialogContent>
+        <Box className={styles.dialogFooter}>
+          {strMode === "view" ? (
+            <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
+          ) : (
+            <>
+              <Button className={styles.textAction} onClick={() => { setDicErrors({}); setDicForm(dicEmptyForm); }}>{dicConstant.common.reset}</Button>
+              <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
+              <Button className={styles.primaryButton} onClick={saveDepartment} disabled={blnSubmitting}>
+                {blnSubmitting ? "Saving..." : dicConstant.common.save}
+              </Button>
+            </>
+          )}
+        </Box>
+      </Dialog>
+    </Box>
+  );
+}
