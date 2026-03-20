@@ -76,8 +76,8 @@ const lstManagementItems: MenuItem[] = [
     submenuKey: "employees",
     icon: <GroupOutlinedIcon />,
     children: [
-      { label: dicConstant.appShell.nav.employeeList, href: "/employees", icon: <BadgeOutlinedIcon fontSize="small" /> },
-      { label: dicConstant.appShell.nav.addEmployee, href: "/employees/new", icon: <PersonAddAltOutlinedIcon fontSize="small" /> },
+      { label: dicConstant.appShell.nav.employeeList, href: "/masters/employee", icon: <BadgeOutlinedIcon fontSize="small" /> },
+      { label: dicConstant.appShell.nav.addEmployee, href: "/masters/employee/new", icon: <PersonAddAltOutlinedIcon fontSize="small" /> },
       { label: dicConstant.appShell.nav.departmentMaster, href: "/departments", icon: <BusinessOutlinedIcon fontSize="small" /> },
       { label: dicConstant.appShell.nav.departmentMasterInline, href: "/departments-inline", icon: <ViewListOutlinedIcon fontSize="small" /> }
     ]
@@ -196,6 +196,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [openSubmenus, setOpenSubmenus] = useState({
     employees:
       pathname.startsWith("/employees") ||
+      pathname.startsWith("/masters/employee") ||
       pathname.startsWith("/departments") ||
       pathname.startsWith("/departments-inline"),
     leave: pathname.startsWith("/leave"),
@@ -204,6 +205,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (
       pathname.startsWith("/employees") ||
+      pathname.startsWith("/masters/employee") ||
       pathname.startsWith("/departments") ||
       pathname.startsWith("/departments-inline")
     ) {

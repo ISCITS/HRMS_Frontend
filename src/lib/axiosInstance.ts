@@ -1,6 +1,7 @@
 import axios, { AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { apiConstants } from "@/config/constants";
 import { generateCSRFToken } from "@/lib/csrfToken";
+import { decryptPayload } from "@/lib/security/decryptPayload";
 import { encryptPayload } from "@/lib/security/encryptPayload";
 import { isEncryptablePayload, isPayloadEncryptionMethod } from "@/lib/security/isEncryptablePayload";
 
@@ -37,6 +38,16 @@ axiosInstance.interceptors.request.use(async (config) => {
   const blnSkipPayloadEncryption = headers.get("x-skip-payload-encryption") === "true";
 
   headers.set(apiConstants.csrfHeaderName, csrfToken);
+  if (typeof window !== "undefined") {
+    const strSessionToken = window.localStorage.getItem("hrms_session_token");
+    const strTenantID = window.localStorage.getItem("hrms_tenant_id") ?? "1";
+    const strCompanyID = window.localStorage.getItem("hrms_company_id") ?? "1";
+    if (strSessionToken) {
+      headers.set("Authorization", `Bearer ${strSessionToken}`);
+    }
+    headers.set("X-Tenant-Id", strTenantID);
+    headers.set("X-Company-Id", strCompanyID);
+  }
 
   if (typeof FormData !== "undefined" && dicConfig.data instanceof FormData) {
     // Multipart/form-data must remain unwrapped because the browser owns the boundary
@@ -58,4 +69,12 @@ axiosInstance.interceptors.request.use(async (config) => {
 
   dicConfig.headers = headers;
   return dicConfig;
+});
+
+axiosInstance.interceptors.response.use(async (response) => {
+  const dicResponseData = response.data as { payload?: string } | undefined;
+  if (dicResponseData?.payload && typeof dicResponseData.payload === "string") {
+    response.data = await decryptPayload(dicResponseData.payload);
+  }
+  return response;
 });
