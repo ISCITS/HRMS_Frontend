@@ -10,15 +10,18 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   MenuItem,
   Pagination,
+  Snackbar,
   Switch,
   TextField,
   Typography
@@ -50,6 +53,19 @@ type SearchForm = {
   code: string;
   name: string;
   status: "All" | DesignationStatus;
+};
+
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
+  fnOnConfirm: () => Promise<void>;
+};
+
+type ToastState = {
+  blnOpen: boolean;
+  strMessage: string;
+  strSeverity: "success" | "error";
 };
 
 const dicEmptyForm: DesignationForm = { code: "", name: "", status: "Active" };
@@ -146,6 +162,8 @@ export default function DesignationMasterPanel() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadDesignations() {
     setBlnLoading(true);
@@ -191,6 +209,37 @@ export default function DesignationMasterPanel() {
 
   function closeDialog() {
     setBlnDialogOpen(false);
+  }
+
+  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function closeToast() {
+    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    if (!objConfirmDialog) {
+      return;
+    }
+    setBlnSubmitting(true);
+    try {
+      await objConfirmDialog.fnOnConfirm();
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+    } finally {
+      setBlnSubmitting(false);
+      closeConfirmDialog();
+    }
   }
 
   function validateForm() {
@@ -239,8 +288,11 @@ export default function DesignationMasterPanel() {
     setBlnSubmitting(true);
     objRequest
       .then(() => loadDesignations())
-      .then(() => closeDialog())
-      .catch(() => undefined);
+      .then(() => {
+        closeDialog();
+        showToast(strMode === "add" ? "Designation saved successfully." : "Designation updated successfully.");
+      })
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
     objRequest.finally(() => setBlnSubmitting(false));
   }
 
@@ -259,18 +311,42 @@ export default function DesignationMasterPanel() {
   }
 
   function bulkUpdateStatus(strStatus: DesignationStatus) {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active").then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    openConfirmDialog({
+      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Designations`,
+      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected designation record(s) as ${strStatus.toLowerCase()}?`,
+      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active");
+        await loadDesignations();
+        showToast(strStatus === "Active" ? "Selected designation records activated successfully." : "Selected designation records deactivated successfully.");
+      }
+    });
   }
 
   function bulkDelete() {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number)).then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    openConfirmDialog({
+      strTitle: "Bulk Delete Designations",
+      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected designation record(s)?`,
+      strConfirmLabel: "Bulk Delete",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number));
+        await loadDesignations();
+        showToast("Selected designation records deleted successfully.");
+      }
+    });
   }
 
   function deleteDesignation(strDesignationId: string) {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationDelete([Number(strDesignationId)]).then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    openConfirmDialog({
+      strTitle: "Delete Designation",
+      strMessage: "Are you sure you want to delete this designation record?",
+      strConfirmLabel: "Delete",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationDelete([Number(strDesignationId)]);
+        await loadDesignations();
+        showToast("Designation deleted successfully.");
+      }
+    });
   }
 
   function toggleDesignationStatus(strDesignationId: string) {
@@ -278,8 +354,17 @@ export default function DesignationMasterPanel() {
     if (!objDesignation) {
       return;
     }
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationStatus([Number(strDesignationId)], objDesignation.status !== "Active").then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    const strNextStatus = objDesignation.status === "Active" ? "Inactive" : "Active";
+    openConfirmDialog({
+      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} Designation`,
+      strMessage: `Are you sure you want to mark this designation as ${strNextStatus.toLowerCase()}?`,
+      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationStatus([Number(strDesignationId)], strNextStatus === "Active");
+        await loadDesignations();
+        showToast(strNextStatus === "Active" ? "Designation activated successfully." : "Designation deactivated successfully.");
+      }
+    });
   }
 
   return (
@@ -417,7 +502,21 @@ export default function DesignationMasterPanel() {
             <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
           ) : (
             <>
-              <Button className={styles.textAction} onClick={() => { setDicErrors({}); setDicForm(dicEmptyForm); }}>{dicConstant.common.reset}</Button>
+              <Button
+                className={styles.textAction}
+                onClick={() => openConfirmDialog({
+                  strTitle: "Reset Form",
+                  strMessage: "Are you sure you want to reset this form?",
+                  strConfirmLabel: "Reset",
+                  fnOnConfirm: async () => {
+                    setDicErrors({});
+                    setDicForm(dicEmptyForm);
+                    showToast("Designation form reset successfully.");
+                  }
+                })}
+              >
+                {dicConstant.common.reset}
+              </Button>
               <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
               <Button className={styles.primaryButton} onClick={saveDesignation} disabled={blnSubmitting}>
                 {blnSubmitting ? "Saving..." : dicConstant.common.save}
@@ -426,6 +525,25 @@ export default function DesignationMasterPanel() {
           )}
         </Box>
       </Dialog>
+
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
+        </DialogContent>
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>Cancel</Button>
+          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+            {objConfirmDialog?.strConfirmLabel ?? "Confirm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+          {objToast.strMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
