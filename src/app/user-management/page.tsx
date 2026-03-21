@@ -119,7 +119,7 @@ export default function UserManagementPage() {
             </Button>
             <Button
               component={Link}
-              href="/employee"
+              href="/masters/employee"
               variant="outlined"
               sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
             >
