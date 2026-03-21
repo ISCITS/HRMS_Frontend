@@ -64,7 +64,8 @@ export async function callAPI<TResponse = unknown>(
     if (axios.isAxiosError(error)) {
 
       const responseMessage =
-        (error.response?.data as { message?: string } | undefined)?.message ??
+        (error.response?.data as { message?: string; Msg?: string } | undefined)?.Msg ??
+        (error.response?.data as { message?: string; Msg?: string } | undefined)?.message ??
         error.message ??
         "API request failed.";
 

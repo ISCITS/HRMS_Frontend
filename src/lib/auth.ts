@@ -31,6 +31,13 @@ export const authHelpers = {
     return strMatch ? decodeURIComponent(strMatch.split("=", 2)[1] ?? "") : "";
   },
   getAccessToken() {
+    if (typeof window !== "undefined") {
+      const strSessionToken = window.localStorage.getItem("hrms_session_token");
+      if (strSessionToken?.trim()) {
+        return strSessionToken;
+      }
+    }
+
     return this.getCookieValue(this.cookieName);
   },
   setAuthenticatedSession(strAccessToken: string, strTenantUUID?: string) {
@@ -38,6 +45,9 @@ export const authHelpers = {
       return;
     }
 
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("hrms_session_token", strAccessToken);
+    }
     document.cookie = `${this.cookieName}=${encodeURIComponent(strAccessToken)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
     if (strTenantUUID) {
       document.cookie = `${this.tenantCookieName}=${encodeURIComponent(strTenantUUID)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
@@ -48,6 +58,9 @@ export const authHelpers = {
       return;
     }
 
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("hrms_session_token");
+    }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
   }
