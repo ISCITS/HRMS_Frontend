@@ -56,6 +56,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
                   </Box>
                 }
                 primaryTypographyProps={{ fontWeight: 700, color: "#0f172a" }}
+                secondaryTypographyProps={{ component: "div" }}
               />
             </ListItemButton>
           );

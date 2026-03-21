@@ -117,6 +117,30 @@ export default function UserManagementPage() {
             <Button component={Link} href="/dashboard" variant="contained" sx={{ borderRadius: "16px", px: 2.5 }}>
               Open dashboard
             </Button>
+            <Button
+              component={Link}
+              href="/employees"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Employees
+            </Button>
+            <Button
+              component={Link}
+              href="/departments"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Department
+            </Button>
+            <Button
+              component={Link}
+              href="/designations"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Designation
+            </Button>
           </Stack>
         </Stack>
       </Paper>

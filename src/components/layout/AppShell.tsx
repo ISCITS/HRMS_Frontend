@@ -28,7 +28,7 @@ const intDrawerWidth = 318;
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
-  const [blnMobileOpen, setBlnMobileOpen] = useState(false);
+  const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
@@ -90,7 +90,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </Paper>
 
       <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1 }}>
-        <DynamicMenu lstMenuItems={objMenu.lstMenuItems} onNavigate={() => setBlnMobileOpen(false)} />
+        <DynamicMenu lstMenuItems={objMenu.lstMenuItems} onNavigate={() => setBlnDrawerOpen(false)} />
       </Paper>
     </Box>
   );
@@ -110,30 +110,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f5f8fa" }}>
       <Drawer
         variant="temporary"
-        open={blnMobileOpen}
-        onClose={() => setBlnMobileOpen(false)}
+        open={blnDrawerOpen}
+        onClose={() => setBlnDrawerOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          display: { xs: "block", lg: "none" },
+          display: "block",
           "& .MuiDrawer-paper": { width: intDrawerWidth, border: "none", backgroundColor: "transparent", boxShadow: "none" }
-        }}
-      >
-        {objDrawer}
-      </Drawer>
-
-      <Drawer
-        variant="permanent"
-        open
-        sx={{
-          display: { xs: "none", lg: "block" },
-          width: intDrawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: intDrawerWidth,
-            border: "none",
-            backgroundColor: "transparent",
-            boxShadow: "none"
-          }
         }}
       >
         {objDrawer}
@@ -152,7 +134,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           }}
         >
           <Toolbar sx={{ gap: 1.5 }}>
-            <IconButton sx={{ display: { lg: "none" } }} onClick={() => setBlnMobileOpen(true)}>
+            <IconButton onClick={() => setBlnDrawerOpen(true)}>
               <MenuRoundedIcon />
             </IconButton>
 

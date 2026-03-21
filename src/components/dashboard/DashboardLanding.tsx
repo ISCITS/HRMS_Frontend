@@ -4,6 +4,7 @@ import AutoGraphRoundedIcon from "@mui/icons-material/AutoGraphRounded";
 import Groups2RoundedIcon from "@mui/icons-material/Groups2Rounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import TipsAndUpdatesRoundedIcon from "@mui/icons-material/TipsAndUpdatesRounded";
+import Link from "next/link";
 import { Box, Button, Grid, Paper, Stack, Typography } from "@mui/material";
 
 import { enMessages } from "@/i18n/messages/en";
@@ -56,9 +57,23 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
             <Typography sx={{ mt: 1, color: "#64748b" }}>
               {enMessages.dashboard.homeCardSubtitle}
             </Typography>
-            <Button href={objMenu.strHomeRoute} variant="contained" sx={{ mt: 2 }}>
+            <Button component={Link} href={objMenu.strHomeRoute} variant="contained" sx={{ mt: 2 }}>
               Open landing module
             </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1.5 }}>
+              <Button component={Link} href="/dashboard" variant="outlined">
+                Open dashboard
+              </Button>
+              <Button component={Link} href="/employees" variant="outlined">
+                Employees
+              </Button>
+              <Button component={Link} href="/departments" variant="outlined">
+                Department
+              </Button>
+              <Button component={Link} href="/designations" variant="outlined">
+                Designation
+              </Button>
+            </Stack>
           </Paper>
         </Stack>
       </Paper>
