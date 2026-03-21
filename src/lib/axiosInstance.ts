@@ -1,5 +1,6 @@
 import axios, { AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { apiConstants } from "@/config/constants";
+import { authHelpers } from "@/lib/auth";
 import { generateCSRFToken } from "@/lib/csrfToken";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { encryptPayload } from "@/lib/security/encryptPayload";
@@ -39,7 +40,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 
   headers.set(apiConstants.csrfHeaderName, csrfToken);
   if (typeof window !== "undefined") {
-    const strSessionToken = window.localStorage.getItem("hrms_session_token");
+    const strSessionToken = authHelpers.getAccessToken();
     const strTenantID = window.localStorage.getItem("hrms_tenant_id") ?? "1";
     const strCompanyID = window.localStorage.getItem("hrms_company_id") ?? "1";
     if (strSessionToken) {

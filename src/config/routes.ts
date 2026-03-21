@@ -8,7 +8,6 @@ export const appRoutes = {
   forgotPassword: "/forgot-password",
   logout: "/logout",
   dashboard: "/dashboard",
-  employees: "/employees",
   attendance: "/attendance",
   leave: "/leave",
   payroll: "/payroll",
