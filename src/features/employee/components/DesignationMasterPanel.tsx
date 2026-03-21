@@ -10,15 +10,18 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   MenuItem,
   Pagination,
+  Snackbar,
   Switch,
   TextField,
   Typography
@@ -52,11 +55,25 @@ type SearchForm = {
   status: "All" | DesignationStatus;
 };
 
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
+  fnOnConfirm: () => Promise<void>;
+};
+
+type ToastState = {
+  blnOpen: boolean;
+  strMessage: string;
+  strSeverity: "success" | "error";
+};
+
 const dicEmptyForm: DesignationForm = { code: "", name: "", status: "Active" };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDesignations: DesignationRecord[] = [];
 const lstRowsPerPageOptions = [5, 10, 20];
 
+// The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecord {
   return {
     id: String(dicRecord.intID),
@@ -66,6 +83,7 @@ function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecor
   };
 }
 
+// Exports the current filtered grid as an Excel-friendly CSV file.
 function downloadCsv(strFileName: string, lstRows: DesignationRecord[]) {
   const lstHeaders = ["Designation Name", "Designation Code", "Status"];
   const lstLines = [
@@ -85,6 +103,7 @@ function downloadCsv(strFileName: string, lstRows: DesignationRecord[]) {
   URL.revokeObjectURL(strUrl);
 }
 
+// Opens a print-friendly browser window so the visible dataset can be printed or saved as PDF.
 function exportPdf(strTitle: string, lstRows: DesignationRecord[]) {
   const objWindow = window.open("", "_blank", "width=1200,height=800");
   if (!objWindow) {
@@ -131,6 +150,7 @@ function exportPdf(strTitle: string, lstRows: DesignationRecord[]) {
   objWindow.print();
 }
 
+// Designation master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function DesignationMasterPanel() {
   const objRouter = useRouter();
   const [lstDesignations, setLstDesignations] = useState<DesignationRecord[]>(lstDefaultDesignations);
@@ -146,8 +166,11 @@ export default function DesignationMasterPanel() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadDesignations() {
+    // Reload from the backend after every mutation so pagination, selection, and DB state stay in sync.
     setBlnLoading(true);
     try {
       const objResult = await masterApiService.getDesignations();
@@ -163,6 +186,7 @@ export default function DesignationMasterPanel() {
     loadDesignations().catch(() => undefined);
   }, []);
 
+  // Filter draft values are only committed on Search/Clear to keep the grid interactions predictable.
   const lstFilteredDesignations = useMemo(() => lstDesignations.filter((dicDesignation) => {
     const blnCodeMatch = !dicSearchApplied.code || dicDesignation.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnNameMatch = !dicSearchApplied.name || dicDesignation.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
@@ -178,6 +202,7 @@ export default function DesignationMasterPanel() {
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleDesignations.some((dicDesignation) => dicDesignation.id === strId));
 
   function openDialog(strNextMode: DesignationMode, dicDesignation?: DesignationRecord) {
+    // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
     setStrEditingDesignationId(dicDesignation?.id ?? "");
     setDicErrors({});
@@ -190,10 +215,48 @@ export default function DesignationMasterPanel() {
   }
 
   function closeDialog() {
+    // Closes the form dialog without changing persisted designation data.
     setBlnDialogOpen(false);
   }
 
+  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    // Central success/error feedback for user actions on the master screen.
+    setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function closeToast() {
+    // Hides the current snackbar notification.
+    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    // Stores a deferred callback so one confirmation dialog can handle multiple action types.
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    // Clears the confirmation state after cancel or completion.
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    // Row toggles, bulk actions, deletes, and form reset all share one confirmation path.
+    if (!objConfirmDialog) {
+      return;
+    }
+    setBlnSubmitting(true);
+    try {
+      await objConfirmDialog.fnOnConfirm();
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+    } finally {
+      setBlnSubmitting(false);
+      closeConfirmDialog();
+    }
+  }
+
   function validateForm() {
+    // Client-side checks mirror the backend rules so duplicate code/name errors surface before submit.
     const dicNextErrors: Partial<Record<keyof DesignationForm, string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
     const strName = dicForm.name.trim();
@@ -223,9 +286,11 @@ export default function DesignationMasterPanel() {
   }
 
   function saveDesignation() {
+    // Decides between create and update based on the current dialog mode.
     if (!validateForm()) {
       return;
     }
+    // Tenant scoping is resolved on the backend; the screen only posts designation fields the user can edit.
     const objBody = {
       strDesignationCode: dicForm.code.trim().toUpperCase(),
       strDesignationName: dicForm.name.trim(),
@@ -239,18 +304,23 @@ export default function DesignationMasterPanel() {
     setBlnSubmitting(true);
     objRequest
       .then(() => loadDesignations())
-      .then(() => closeDialog())
-      .catch(() => undefined);
+      .then(() => {
+        closeDialog();
+        showToast(strMode === "add" ? "Designation saved successfully." : "Designation updated successfully.");
+      })
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
     objRequest.finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strDesignationId: string) {
+    // Adds or removes one row from the selected designation set.
     setLstSelectedIds((lstPrevious) => lstPrevious.includes(strDesignationId)
       ? lstPrevious.filter((strId) => strId !== strDesignationId)
       : [...lstPrevious, strDesignationId]);
   }
 
   function toggleSelectAll() {
+    // Selects only the visible page rows so bulk actions stay aligned with the current page.
     if (blnAllVisibleSelected) {
       setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleDesignations.some((dicDesignation) => dicDesignation.id === strId)));
       return;
@@ -259,27 +329,64 @@ export default function DesignationMasterPanel() {
   }
 
   function bulkUpdateStatus(strStatus: DesignationStatus) {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active").then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    // Confirms and applies a shared status to all selected designation rows.
+    openConfirmDialog({
+      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Designations`,
+      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected designation record(s) as ${strStatus.toLowerCase()}?`,
+      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active");
+        await loadDesignations();
+        showToast(strStatus === "Active" ? "Selected designation records activated successfully." : "Selected designation records deactivated successfully.");
+      }
+    });
   }
 
   function bulkDelete() {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number)).then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    // Confirms and deletes the currently selected designation rows.
+    openConfirmDialog({
+      strTitle: "Bulk Delete Designations",
+      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected designation record(s)?`,
+      strConfirmLabel: "Bulk Delete",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number));
+        await loadDesignations();
+        showToast("Selected designation records deleted successfully.");
+      }
+    });
   }
 
   function deleteDesignation(strDesignationId: string) {
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationDelete([Number(strDesignationId)]).then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    // Deletes a single row by reusing the same backend bulk-delete endpoint.
+    openConfirmDialog({
+      strTitle: "Delete Designation",
+      strMessage: "Are you sure you want to delete this designation record?",
+      strConfirmLabel: "Delete",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationDelete([Number(strDesignationId)]);
+        await loadDesignations();
+        showToast("Designation deleted successfully.");
+      }
+    });
   }
 
   function toggleDesignationStatus(strDesignationId: string) {
+    // Flips one designation between Active and Inactive through the shared status endpoint.
     const objDesignation = lstDesignations.find((dicItem) => dicItem.id === strDesignationId);
     if (!objDesignation) {
       return;
     }
-    setBlnSubmitting(true);
-    masterApiService.bulkDesignationStatus([Number(strDesignationId)], objDesignation.status !== "Active").then(() => loadDesignations()).catch(() => undefined).finally(() => setBlnSubmitting(false));
+    const strNextStatus = objDesignation.status === "Active" ? "Inactive" : "Active";
+    openConfirmDialog({
+      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} Designation`,
+      strMessage: `Are you sure you want to mark this designation as ${strNextStatus.toLowerCase()}?`,
+      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      fnOnConfirm: async () => {
+        await masterApiService.bulkDesignationStatus([Number(strDesignationId)], strNextStatus === "Active");
+        await loadDesignations();
+        showToast(strNextStatus === "Active" ? "Designation activated successfully." : "Designation deactivated successfully.");
+      }
+    });
   }
 
   return (
@@ -358,6 +465,7 @@ export default function DesignationMasterPanel() {
             <Typography sx={{ mt: 1 }}>Loading designations...</Typography>
           </Box>
         ) : (
+        // The table wrapper is the only scrolling region so the master header stays stable on screen.
         <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -417,7 +525,21 @@ export default function DesignationMasterPanel() {
             <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
           ) : (
             <>
-              <Button className={styles.textAction} onClick={() => { setDicErrors({}); setDicForm(dicEmptyForm); }}>{dicConstant.common.reset}</Button>
+              <Button
+                className={styles.textAction}
+                onClick={() => openConfirmDialog({
+                  strTitle: "Reset Form",
+                  strMessage: "Are you sure you want to reset this form?",
+                  strConfirmLabel: "Reset",
+                  fnOnConfirm: async () => {
+                    setDicErrors({});
+                    setDicForm(dicEmptyForm);
+                    showToast("Designation form reset successfully.");
+                  }
+                })}
+              >
+                {dicConstant.common.reset}
+              </Button>
               <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
               <Button className={styles.primaryButton} onClick={saveDesignation} disabled={blnSubmitting}>
                 {blnSubmitting ? "Saving..." : dicConstant.common.save}
@@ -426,6 +548,25 @@ export default function DesignationMasterPanel() {
           )}
         </Box>
       </Dialog>
+
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
+        </DialogContent>
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>Cancel</Button>
+          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+            {objConfirmDialog?.strConfirmLabel ?? "Confirm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+          {objToast.strMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

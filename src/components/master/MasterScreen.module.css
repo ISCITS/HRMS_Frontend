@@ -327,6 +327,41 @@
   width: min(92vw, 1350px);
 }
 
+.confirmDialogPaper {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-radius: 22px !important;
+  max-width: 520px;
+  width: min(92vw, 520px);
+}
+
+.confirmDialogTitle {
+  border-bottom: 1px solid #d9e6ef;
+  color: #173b63;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 18px 22px !important;
+}
+
+.confirmDialogContent {
+  padding: 18px 22px 14px !important;
+}
+
+.confirmDialogMessage {
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirmDialogActions {
+  align-items: center;
+  border-top: 1px solid #d9e6ef;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 14px 22px 18px !important;
+}
+
 .dialogTitle {
   border-bottom: 1px solid #d9e6ef;
   color: #173b63;
