@@ -30,6 +30,109 @@ export type DesignationApiRecord = {
   intTenantID: number;
 };
 
+export type EmployeeApiRecord = {
+  intID: number;
+  strEmployeeCode: string;
+  strFullName: string;
+  strWorkEmail: string | null;
+  strMobileNumber: string | null;
+  strDepartmentName: string | null;
+  strDesignationName: string | null;
+  strEmploymentTypeName: string | null;
+  dtDateOfJoining: string;
+  strEmploymentStatus: "Active" | "Inactive";
+  blnIsEssEnabled: boolean;
+  strLocationName: string | null;
+  strManagerName: string | null;
+};
+
+export type EmployeeDetailApiRecord = {
+  intID: number;
+  strEmployeeCode: string;
+  strTitle: string | null;
+  strFirstName: string;
+  strMiddleName: string | null;
+  strLastName: string | null;
+  strFullName: string;
+  dtDateOfBirth: string | null;
+  dtDateOfJoining: string;
+  intEmploymentTypeID: number;
+  intDepartmentID: number | null;
+  intDesignationID: number | null;
+  intGradeID: number | null;
+  intCostCenterID: number | null;
+  intLocationID: number;
+  intPayrollGroupID: number | null;
+  intManagerEmployeeID: number | null;
+  strWorkEmail: string | null;
+  strPersonalEmail: string | null;
+  strMobileNumber: string | null;
+  strGender: string | null;
+  intPreferredLanguageID: number | null;
+  strEmploymentStatus: "Active" | "Inactive";
+  dtDateOfExit: string | null;
+  blnIsEssEnabled: boolean;
+};
+
+export type EmployeeLookupOptionApiRecord = {
+  intID: number;
+  strLabel: string;
+  strCode?: string;
+};
+
+export type EmployeeFormOptionsApiRecord = {
+  lstEmploymentTypes: EmployeeLookupOptionApiRecord[];
+  lstDepartments: EmployeeLookupOptionApiRecord[];
+  lstDesignations: EmployeeLookupOptionApiRecord[];
+  lstGrades: EmployeeLookupOptionApiRecord[];
+  lstCostCenters: EmployeeLookupOptionApiRecord[];
+  lstLocations: EmployeeLookupOptionApiRecord[];
+  lstPayrollGroups: EmployeeLookupOptionApiRecord[];
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstCountries: EmployeeLookupOptionApiRecord[];
+  lstStates: EmployeeLookupOptionApiRecord[];
+  lstBanks: EmployeeLookupOptionApiRecord[];
+  lstManagers: EmployeeLookupOptionApiRecord[];
+  lstTitles: string[];
+  lstGenders: Array<"Male" | "Female" | "Other">;
+  lstEmploymentStatuses: Array<"Active" | "Inactive">;
+  lstAddressTypes: string[];
+  lstTaxRegimeCodes: string[];
+};
+
+export type EmployeeAddressApiRecord = {
+  intID: number | null;
+  strAddressType: string;
+  strAddressLine1: string;
+  strAddressLine2: string | null;
+  strCityName: string | null;
+  intStateID: number | null;
+  strPostalCode: string | null;
+  intCountryID: number | null;
+};
+
+export type EmployeeBankApiRecord = {
+  intID: number | null;
+  intBankID: number | null;
+  strAccountHolderName: string;
+  strAccountNumber: string | null;
+  strAccountNumberMasked?: string | null;
+  strIfscCode: string | null;
+  blnIsPrimary: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeStatutoryApiRecord = {
+  intID: number | null;
+  strPanNumber: string | null;
+  strUanNumber: string | null;
+  strEsiNumber: string | null;
+  strTaxRegimeCode: string | null;
+  blnPfApplicable: boolean;
+  blnEsiApplicable: boolean;
+  blnPtApplicable: boolean;
+};
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: "GET" | "POST" | "PUT";
@@ -162,6 +265,117 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_DESIGNATION_BULK_DELETE"
+    });
+  },
+
+  getEmployees() {
+    return requestApi<EmployeeApiRecord[]>({
+      strPath: "/masters/employee",
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_LIST"
+    });
+  },
+
+  getEmployeeFormOptions() {
+    return requestApi<EmployeeFormOptionsApiRecord>({
+      strPath: "/masters/employee/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_FORM_OPTIONS"
+    });
+  },
+
+  getEmployeeById(intID: number) {
+    return requestApi<EmployeeDetailApiRecord>({
+      strPath: `/masters/employee/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_VIEW"
+    });
+  },
+
+  createEmployee(objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
+    return requestApi<EmployeeDetailApiRecord>({
+      strPath: "/masters/employee",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_CREATE"
+    });
+  },
+
+  updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
+    return requestApi<EmployeeDetailApiRecord>({
+      strPath: `/masters/employee/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_UPDATE"
+    });
+  },
+
+  bulkEmployeeStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/employee/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_EMPLOYEE_BULK_STATUS"
+    });
+  },
+
+  bulkEmployeeDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/employee/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_EMPLOYEE_BULK_DELETE"
+    });
+  },
+
+  getEmployeeAddress(intID: number) {
+    return requestApi<EmployeeAddressApiRecord>({
+      strPath: `/masters/employee/${intID}/address`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_ADDRESS_VIEW"
+    });
+  },
+
+  saveEmployeeAddress(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeAddressApiRecord>({
+      strPath: `/masters/employee/${intID}/address`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_ADDRESS_SAVE"
+    });
+  },
+
+  getEmployeeBankAccount(intID: number) {
+    return requestApi<EmployeeBankApiRecord>({
+      strPath: `/masters/employee/${intID}/bank`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_BANK_VIEW"
+    });
+  },
+
+  saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeBankApiRecord>({
+      strPath: `/masters/employee/${intID}/bank`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_BANK_SAVE"
+    });
+  },
+
+  getEmployeeStatutory(intID: number) {
+    return requestApi<EmployeeStatutoryApiRecord>({
+      strPath: `/masters/employee/${intID}/statutory`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_STATUTORY_VIEW"
+    });
+  },
+
+  saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeStatutoryApiRecord>({
+      strPath: `/masters/employee/${intID}/statutory`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_STATUTORY_SAVE"
     });
   }
 };
