@@ -36,6 +36,8 @@ async function requestApi<TData>(objOptions: {
   objBody?: unknown;
   strMenuAction: string;
 }): Promise<ApiEnvelope<TData>> {
+  // Master screens share the same encrypted API contract as the rest of the app,
+  // so this helper centralizes auth headers, CSRF menu action wiring, and response decryption.
   const strAccessToken = authHelpers.getAccessToken();
   const objHeaders: Record<string, string> = {};
 
@@ -77,6 +79,7 @@ async function requestApi<TData>(objOptions: {
 }
 
 export const masterApiService = {
+  // Department CRUD and bulk actions.
   getDepartments() {
     return requestApi<DepartmentApiRecord[]>({
       strPath: "/masters/departments",
@@ -86,6 +89,7 @@ export const masterApiService = {
   },
 
   createDepartment(objBody: { strDepartmentCode: string; strDepartmentName: string; strManagerName: string; blnIsActive: boolean }) {
+    // Creates a new department record inside the current tenant/company scope on the backend.
     return requestApi<DepartmentApiRecord>({
       strPath: "/masters/departments",
       strMethod: "POST",
@@ -95,6 +99,7 @@ export const masterApiService = {
   },
 
   updateDepartment(intID: number, objBody: { strDepartmentCode: string; strDepartmentName: string; strManagerName: string; blnIsActive: boolean }) {
+    // Updates an existing department by primary key.
     return requestApi<DepartmentApiRecord>({
       strPath: `/masters/departments/${intID}`,
       strMethod: "PUT",
@@ -104,6 +109,7 @@ export const masterApiService = {
   },
 
   bulkDepartmentStatus(lstIDs: number[], blnIsActive: boolean) {
+    // Applies the same active/inactive flag to multiple selected departments.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/departments/bulk-status",
       strMethod: "POST",
@@ -113,6 +119,7 @@ export const masterApiService = {
   },
 
   bulkDepartmentDelete(lstIDs: number[]) {
+    // Deletes multiple department records in one backend call.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/departments/bulk-delete",
       strMethod: "POST",
@@ -121,7 +128,9 @@ export const masterApiService = {
     });
   },
 
+  // Designation CRUD and bulk actions.
   getDesignations() {
+    // Fetches the designation list scoped by the logged-in tenant.
     return requestApi<DesignationApiRecord[]>({
       strPath: "/masters/designations",
       strMethod: "GET",
@@ -130,6 +139,7 @@ export const masterApiService = {
   },
 
   createDesignation(objBody: { strDesignationCode: string; strDesignationName: string; blnIsActive: boolean }) {
+    // Creates a new designation record.
     return requestApi<DesignationApiRecord>({
       strPath: "/masters/designations",
       strMethod: "POST",
@@ -139,6 +149,7 @@ export const masterApiService = {
   },
 
   updateDesignation(intID: number, objBody: { strDesignationCode: string; strDesignationName: string; blnIsActive: boolean }) {
+    // Updates an existing designation by primary key.
     return requestApi<DesignationApiRecord>({
       strPath: `/masters/designations/${intID}`,
       strMethod: "PUT",
@@ -148,6 +159,7 @@ export const masterApiService = {
   },
 
   bulkDesignationStatus(lstIDs: number[], blnIsActive: boolean) {
+    // Applies one status change to all selected designations.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/designations/bulk-status",
       strMethod: "POST",
@@ -157,6 +169,7 @@ export const masterApiService = {
   },
 
   bulkDesignationDelete(lstIDs: number[]) {
+    // Deletes multiple designation records in one backend request.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/designations/bulk-delete",
       strMethod: "POST",

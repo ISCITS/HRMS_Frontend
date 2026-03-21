@@ -74,6 +74,7 @@ const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDepartments: DepartmentRecord[] = [];
 const lstRowsPerPageOptions = [5, 10, 20];
 
+// The API returns backend field names; the UI keeps a smaller view model for rendering and form state.
 function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
   return {
     id: String(dicRecord.intID),
@@ -84,6 +85,7 @@ function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
   };
 }
 
+// Exports the current filtered grid as an Excel-friendly CSV file.
 function downloadCsv(strFileName: string, lstRows: DepartmentRecord[]) {
   const lstHeaders = ["Department Name", "Department Code", "Status", "Employees"];
   const lstLines = [
@@ -103,6 +105,7 @@ function downloadCsv(strFileName: string, lstRows: DepartmentRecord[]) {
   URL.revokeObjectURL(strUrl);
 }
 
+// Opens a print-friendly browser window so the visible dataset can be saved as PDF.
 function exportPdf(strTitle: string, lstRows: DepartmentRecord[]) {
   const objWindow = window.open("", "_blank", "width=1200,height=800");
   if (!objWindow) {
@@ -151,6 +154,7 @@ function exportPdf(strTitle: string, lstRows: DepartmentRecord[]) {
   objWindow.print();
 }
 
+// Department master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function DepartmentMasterPanel() {
   const objRouter = useRouter();
   const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>(lstDefaultDepartments);
@@ -170,6 +174,7 @@ export default function DepartmentMasterPanel() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadDepartments() {
+    // Every mutation reloads from the backend so the grid stays aligned with the persisted DB state.
     setBlnLoading(true);
     try {
       const objResult = await masterApiService.getDepartments();
@@ -185,6 +190,7 @@ export default function DepartmentMasterPanel() {
     loadDepartments().catch(() => undefined);
   }, []);
 
+  // Search is applied explicitly so typing in the filters does not re-query/re-page the grid on every keypress.
   const lstFilteredDepartments = useMemo(() => lstDepartments.filter((dicDepartment) => {
     const blnCodeMatch = !dicSearchApplied.code || dicDepartment.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnNameMatch = !dicSearchApplied.name || dicDepartment.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
@@ -200,6 +206,7 @@ export default function DepartmentMasterPanel() {
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleDepartments.some((dicDepartment) => dicDepartment.id === strId));
 
   function openDialog(strNextMode: DepartmentMode, dicDepartment?: DepartmentRecord) {
+    // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
     setStrEditingDepartmentId(dicDepartment?.id ?? "");
     setDicErrors({});
@@ -212,26 +219,32 @@ export default function DepartmentMasterPanel() {
   }
 
   function closeDialog() {
+    // Closes the form dialog without mutating persisted data.
     setBlnDialogOpen(false);
   }
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    // Central success/error feedback for save, delete, bulk actions, and failures.
     setObjToast({ blnOpen: true, strMessage, strSeverity });
   }
 
   function closeToast() {
+    // Hides the current toast while preserving the previous message for the next open cycle.
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
   }
 
   function openConfirmDialog(objDialog: ConfirmDialogState) {
+    // Stores the action callback so the same compact dialog can confirm different operations.
     setObjConfirmDialog(objDialog);
   }
 
   function closeConfirmDialog() {
+    // Clears the pending confirmation action.
     setObjConfirmDialog(null);
   }
 
   async function executeConfirmedAction() {
+    // Bulk actions, row toggles, deletes, and resets all flow through one compact confirmation dialog.
     if (!objConfirmDialog) {
       return;
     }
@@ -247,6 +260,7 @@ export default function DepartmentMasterPanel() {
   }
 
   function validateForm() {
+    // Frontend validation mirrors the backend uniqueness/shape rules to fail fast before submit.
     const dicNextErrors: Partial<Record<keyof DepartmentForm, string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
     const strName = dicForm.name.trim();
@@ -276,9 +290,11 @@ export default function DepartmentMasterPanel() {
   }
 
   function saveDepartment() {
+    // Decides between create and update based on the current dialog mode.
     if (!validateForm()) {
       return;
     }
+    // The backend owns tenant/company scoping; the form only sends editable department fields.
     const objBody = {
       strDepartmentCode: dicForm.code.trim().toUpperCase(),
       strDepartmentName: dicForm.name.trim(),
@@ -302,12 +318,14 @@ export default function DepartmentMasterPanel() {
   }
 
   function toggleSelection(strDepartmentId: string) {
+    // Adds or removes a single row from the bulk-action selection set.
     setLstSelectedIds((lstPrevious) => lstPrevious.includes(strDepartmentId)
       ? lstPrevious.filter((strId) => strId !== strDepartmentId)
       : [...lstPrevious, strDepartmentId]);
   }
 
   function toggleSelectAll() {
+    // Selects only the rows visible on the current page so pagination remains predictable.
     if (blnAllVisibleSelected) {
       setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleDepartments.some((dicDepartment) => dicDepartment.id === strId)));
       return;
@@ -316,6 +334,7 @@ export default function DepartmentMasterPanel() {
   }
 
   function bulkUpdateStatus(strStatus: DepartmentStatus) {
+    // Confirms and applies the same active/inactive state to all selected rows.
     openConfirmDialog({
       strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Departments`,
       strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected department record(s) as ${strStatus.toLowerCase()}?`,
@@ -329,6 +348,7 @@ export default function DepartmentMasterPanel() {
   }
 
   function bulkDelete() {
+    // Confirms and deletes all currently selected department rows.
     openConfirmDialog({
       strTitle: "Bulk Delete Departments",
       strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected department record(s)?`,
@@ -342,6 +362,7 @@ export default function DepartmentMasterPanel() {
   }
 
   function deleteDepartment(strDepartmentId: string) {
+    // Deletes a single department by routing through the same bulk-delete backend endpoint.
     openConfirmDialog({
       strTitle: "Delete Department",
       strMessage: "Are you sure you want to delete this department record?",
@@ -355,6 +376,7 @@ export default function DepartmentMasterPanel() {
   }
 
   function toggleDepartmentStatus(strDepartmentId: string) {
+    // Flips one row between Active and Inactive through the shared bulk-status API.
     const objDepartment = lstDepartments.find((dicItem) => dicItem.id === strDepartmentId);
     if (!objDepartment) {
       return;
@@ -448,6 +470,7 @@ export default function DepartmentMasterPanel() {
             <Typography sx={{ mt: 1 }}>Loading departments...</Typography>
           </Box>
         ) : (
+        // Only the grid region scrolls; the header, filters, and bulk action bar stay fixed above it.
         <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
