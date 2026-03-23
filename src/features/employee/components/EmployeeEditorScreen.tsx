@@ -3,7 +3,6 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -18,8 +17,9 @@ import {
   Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
 
+import AlertDialog from "@/components/common/AlertDialog";
 import dicConstant from "@/constants/Constant.json";
 import {
   dicEmptyEmployeeAddressForm,
@@ -91,8 +91,13 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
   const [blnAddressSaving, setBlnAddressSaving] = useState(false);
   const [blnBankSaving, setBlnBankSaving] = useState(false);
   const [blnStatutorySaving, setBlnStatutorySaving] = useState(false);
-  const [strFeedback, setStrFeedback] = useState("");
-  const [strError, setStrError] = useState("");
+  const [objAlertDialog, setObjAlertDialog] = useState({
+    blnOpen: false,
+    strMessage: "",
+    strSeverity: "success" as "success" | "error",
+    strTitle: "",
+  });
+  const objLastFocusedFieldRef = useRef<HTMLElement | null>(null);
   const dicFieldRefs: Partial<Record<keyof EmployeeFormValues | keyof EmployeeAddressFormValues | keyof EmployeeBankFormValues, RefObject<HTMLInputElement | null>>> = {
     strEmployeeCode: useRef<HTMLInputElement | null>(null),
     strFirstName: useRef<HTMLInputElement | null>(null),
@@ -109,12 +114,47 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
   const blnViewOnly = strMode === "view";
   const blnChildTabsEnabled = intResolvedEmployeeID !== null;
 
+  function getFooterActionConfig() {
+    if (blnViewOnly) {
+      return null;
+    }
+
+    if (strActiveTab === "basicInfo") {
+      return {
+        fnOnClick: handleBasicSave,
+        blnDisabled: blnBasicSaving,
+        strLabel: blnBasicSaving ? "Saving Basic Info..." : "Save Basic Info",
+      };
+    }
+
+    if (strActiveTab === "address") {
+      return {
+        fnOnClick: handleAddressSave,
+        blnDisabled: blnAddressSaving,
+        strLabel: blnAddressSaving ? "Saving Address..." : "Save Address",
+      };
+    }
+
+    if (strActiveTab === "bankDetails") {
+      return {
+        fnOnClick: handleBankSave,
+        blnDisabled: blnBankSaving,
+        strLabel: blnBankSaving ? "Saving Bank Details..." : "Save Bank Details",
+      };
+    }
+
+    return {
+      fnOnClick: handleStatutorySave,
+      blnDisabled: blnStatutorySaving,
+      strLabel: blnStatutorySaving ? "Saving Statutory..." : "Save Statutory",
+    };
+  }
+
   useEffect(() => {
     let blnMounted = true;
 
     async function loadScreenData() {
       setBlnLoading(true);
-      setStrError("");
       try {
         const [lstEmployeeData, dicOptionData] = await Promise.all([
           employeeService.getEmployees(),
@@ -160,7 +200,7 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
         }
       } catch (objError) {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load employee workspace.");
+          openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to load employee workspace.");
         }
       } finally {
         if (blnMounted) {
@@ -197,6 +237,33 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
 
   function updateStatutoryField<TKey extends keyof EmployeeStatutoryFormValues>(strField: TKey, objValue: EmployeeStatutoryFormValues[TKey]) {
     setDicStatutoryForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function handleEditorFocusCapture(objEvent: FocusEvent<HTMLElement>) {
+    const objTarget = objEvent.target as HTMLElement;
+    if (!objTarget) {
+      return;
+    }
+    const strTagName = objTarget.tagName;
+    if (strTagName === "INPUT" || strTagName === "TEXTAREA" || objTarget.getAttribute("role") === "combobox") {
+      objLastFocusedFieldRef.current = objTarget;
+    }
+  }
+
+  function openAlertDialog(strSeverity: "success" | "error", strMessage: string, strTitle = "") {
+    setObjAlertDialog({
+      blnOpen: true,
+      strMessage,
+      strSeverity,
+      strTitle,
+    });
+  }
+
+  function closeAlertDialog() {
+    setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+    window.requestAnimationFrame(() => {
+      objLastFocusedFieldRef.current?.focus();
+    });
   }
 
   function validateAddressForm() {
@@ -249,25 +316,28 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
     }
 
     setBlnBasicSaving(true);
-    setStrError("");
     try {
       const dicSavedEmployee = strMode === "add" && intResolvedEmployeeID === null
         ? await employeeService.createEmployee(dicBasicForm)
         : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicBasicForm);
       setIntResolvedEmployeeID(dicSavedEmployee.intID);
-      setStrFeedback(strMode === "add" && intEmployeeID === undefined ? dicConstant.employeeMaster.saveSuccess : dicConstant.employeeMaster.updateSuccess);
+      openAlertDialog("success", strMode === "add" && intEmployeeID === undefined ? dicConstant.employeeMaster.saveSuccess : dicConstant.employeeMaster.updateSuccess);
       if (strMode === "add") {
         objRouter.replace(`/masters/employee/edit/${dicSavedEmployee.intID}`);
       }
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save employee.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to save employee.");
     } finally {
       setBlnBasicSaving(false);
     }
   }
 
   async function handleAddressSave() {
-    if (blnViewOnly || !intResolvedEmployeeID) {
+    if (blnViewOnly) {
+      return;
+    }
+    if (!intResolvedEmployeeID) {
+      openAlertDialog("error", dicConstant.employeeMaster.createFirstHint);
       return;
     }
     const dicValidationErrors = validateAddressForm();
@@ -276,20 +346,23 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
       return;
     }
     setBlnAddressSaving(true);
-    setStrError("");
     try {
       const dicRecord = await employeeService.saveEmployeeAddress(intResolvedEmployeeID, dicAddressForm);
       setDicAddressForm(toEmployeeAddressFormValues(dicRecord));
-      setStrFeedback(dicConstant.employeeMaster.addressSaveSuccess);
+      openAlertDialog("success", dicConstant.employeeMaster.addressSaveSuccess);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save employee address.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to save employee address.");
     } finally {
       setBlnAddressSaving(false);
     }
   }
 
   async function handleBankSave() {
-    if (blnViewOnly || !intResolvedEmployeeID) {
+    if (blnViewOnly) {
+      return;
+    }
+    if (!intResolvedEmployeeID) {
+      openAlertDialog("error", dicConstant.employeeMaster.createFirstHint);
       return;
     }
     const dicValidationErrors = validateBankForm();
@@ -302,30 +375,35 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
       return;
     }
     setBlnBankSaving(true);
-    setStrError("");
     try {
       const dicRecord = await employeeService.saveEmployeeBankAccount(intResolvedEmployeeID, dicBankForm);
-      setDicBankForm(toEmployeeBankFormValues(dicRecord));
-      setStrFeedback(dicConstant.employeeMaster.bankSaveSuccess);
+      setDicBankForm((dicPrevious) => ({
+        ...toEmployeeBankFormValues(dicRecord),
+        strAccountNumber: dicRecord.strAccountNumber ?? dicPrevious.strAccountNumber
+      }));
+      openAlertDialog("success", dicConstant.employeeMaster.bankSaveSuccess);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save employee bank details.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to save employee bank details.");
     } finally {
       setBlnBankSaving(false);
     }
   }
 
   async function handleStatutorySave() {
-    if (blnViewOnly || !intResolvedEmployeeID) {
+    if (blnViewOnly) {
+      return;
+    }
+    if (!intResolvedEmployeeID) {
+      openAlertDialog("error", dicConstant.employeeMaster.createFirstHint);
       return;
     }
     setBlnStatutorySaving(true);
-    setStrError("");
     try {
       const dicRecord = await employeeService.saveEmployeeStatutory(intResolvedEmployeeID, dicStatutoryForm);
       setDicStatutoryForm(toEmployeeStatutoryFormValues(dicRecord));
-      setStrFeedback(dicConstant.employeeMaster.statutorySaveSuccess);
+      openAlertDialog("success", dicConstant.employeeMaster.statutorySaveSuccess);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save employee statutory details.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to save employee statutory details.");
     } finally {
       setBlnStatutorySaving(false);
     }
@@ -368,17 +446,6 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
     );
   }
 
-  function renderChildTabGuard() {
-    if (blnChildTabsEnabled) {
-      return null;
-    }
-    return (
-      <Alert severity="info" sx={{ mb: 2 }}>
-        {dicConstant.employeeMaster.createFirstHint}
-      </Alert>
-    );
-  }
-
   if (blnLoading) {
     return (
       <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
@@ -391,7 +458,7 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
   }
 
   return (
-    <Stack spacing={2.5}>
+    <Stack spacing={2.5} sx={{ pb: blnViewOnly ? 0 : { xs: 12, md: 13 } }} onFocusCapture={handleEditorFocusCapture}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
         <Box>
           <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 800, color: "#0f172a" }}>
@@ -402,13 +469,18 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
                 : dicConstant.employeeMaster.editPageTitle}
           </Typography>
         </Box>
-        <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/masters/employee")} sx={{ borderRadius: "14px", px: 2.25 }}>
-          {dicConstant.employeeMaster.backButton}
-        </Button>
       </Stack>
 
-      {strFeedback ? <Alert severity="success" onClose={() => setStrFeedback("")}>{strFeedback}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
+      <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+          <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.employeeCode)} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+          {renderSelectField(dicConstant.employeeMaster.fields.title, dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
+          <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.firstName)} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+          <TextField label={dicConstant.employeeMaster.fields.middleName} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+          <TextField label={dicConstant.employeeMaster.fields.lastName} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+          <TextField type="date" label={dicConstant.employeeMaster.fields.dateOfBirth} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+        </Box>
+      </Paper>
 
       <Paper sx={{ borderRadius: "26px", overflow: "hidden", border: "1px solid rgba(148,163,184,0.24)" }}>
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
@@ -423,7 +495,6 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
                 key={strTabKey}
                 value={strTabKey}
                 label={dicConstant.employeeMaster.tabs[strTabKey]}
-                disabled={strTabKey !== "basicInfo" && !blnChildTabsEnabled}
               />
             ))}
           </Tabs>
@@ -435,12 +506,6 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.5 }}>Identity & Employment</Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
-                  <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.employeeCode)} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
-                  {renderSelectField(dicConstant.employeeMaster.fields.title, dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
-                  <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.firstName)} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
-                  <TextField label={dicConstant.employeeMaster.fields.middleName} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-                  <TextField label={dicConstant.employeeMaster.fields.lastName} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-                  <TextField type="date" label={dicConstant.employeeMaster.fields.dateOfBirth} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   <TextField type="date" label={renderRequiredLabel(dicConstant.employeeMaster.fields.dateOfJoining)} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(renderRequiredLabel(dicConstant.employeeMaster.fields.employmentType), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue as number | ""), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), dicFieldRefs.intEmploymentTypeID)}
                   {renderSelectField(dicConstant.employeeMaster.fields.department, dicBasicForm.intDepartmentID, (objValue) => updateBasicField("intDepartmentID", objValue as number | ""), objFormOptions?.lstDepartments ?? [], blnViewOnly)}
@@ -468,93 +533,128 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
                   </Box>
                 </Box>
               </Box>
-
-              {!blnViewOnly ? (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
-                  <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleBasicSave} disabled={blnBasicSaving} sx={{ borderRadius: "14px", px: 2.5 }}>
-                    {blnBasicSaving ? "Saving..." : dicConstant.common.save}
-                  </Button>
-                </Box>
-              ) : null}
             </Stack>
           ) : null}
 
           {strActiveTab === "address" ? (
             <Stack spacing={2.5}>
-              {renderChildTabGuard()}
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, opacity: blnChildTabsEnabled ? 1 : 0.6 }}>
-                {renderSelectField(dicConstant.employeeMaster.fields.addressType, dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly || !blnChildTabsEnabled)}
-                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.addressLine1)} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={dicConstant.employeeMaster.fields.addressLine2} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={dicConstant.employeeMaster.fields.cityName} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                {renderSelectField(dicConstant.employeeMaster.fields.state, dicAddressForm.intStateID, (objValue) => updateAddressField("intStateID", objValue as number | ""), objFormOptions?.lstStates ?? [], blnViewOnly || !blnChildTabsEnabled)}
-                <TextField label={dicConstant.employeeMaster.fields.postalCode} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                {renderSelectField(renderRequiredLabel(dicConstant.employeeMaster.fields.country), dicAddressForm.intCountryID, (objValue) => updateAddressField("intCountryID", objValue as number | ""), objFormOptions?.lstCountries ?? [], blnViewOnly || !blnChildTabsEnabled, dicAddressErrors.intCountryID, Boolean(dicAddressErrors.intCountryID), dicFieldRefs.intCountryID)}
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+                {renderSelectField(dicConstant.employeeMaster.fields.addressType, dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
+                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.addressLine1)} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
+                <TextField label={dicConstant.employeeMaster.fields.addressLine2} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField label={dicConstant.employeeMaster.fields.cityName} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                {renderSelectField(dicConstant.employeeMaster.fields.state, dicAddressForm.intStateID, (objValue) => updateAddressField("intStateID", objValue as number | ""), objFormOptions?.lstStates ?? [], blnViewOnly)}
+                <TextField label={dicConstant.employeeMaster.fields.postalCode} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                {renderSelectField(renderRequiredLabel(dicConstant.employeeMaster.fields.country), dicAddressForm.intCountryID, (objValue) => updateAddressField("intCountryID", objValue as number | ""), objFormOptions?.lstCountries ?? [], blnViewOnly, dicAddressErrors.intCountryID, Boolean(dicAddressErrors.intCountryID), dicFieldRefs.intCountryID)}
               </Box>
-              {!blnViewOnly ? (
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleAddressSave} disabled={!blnChildTabsEnabled || blnAddressSaving} sx={{ borderRadius: "14px", px: 2.5 }}>
-                    {blnAddressSaving ? "Saving..." : dicConstant.common.save}
-                  </Button>
-                </Box>
-              ) : null}
             </Stack>
           ) : null}
 
           {strActiveTab === "bankDetails" ? (
             <Stack spacing={2.5}>
-              {renderChildTabGuard()}
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, opacity: blnChildTabsEnabled ? 1 : 0.6 }}>
-                {renderSelectField(renderRequiredLabel(dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly || !blnChildTabsEnabled, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), dicFieldRefs.intBankID)}
-                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.accountHolderName)} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.accountNumber)} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={dicConstant.employeeMaster.fields.ifscCode} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+                {renderSelectField(renderRequiredLabel(dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), dicFieldRefs.intBankID)}
+                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.accountHolderName)} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
+                <TextField label={renderRequiredLabel(dicConstant.employeeMaster.fields.accountNumber)} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} fullWidth />
+                <TextField label={dicConstant.employeeMaster.fields.ifscCode} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicBankForm.blnIsPrimary} onChange={(_, blnChecked) => updateBankField("blnIsPrimary", blnChecked)} disabled={blnViewOnly || !blnChildTabsEnabled} />} label={dicConstant.employeeMaster.fields.isPrimary} />
+                  <FormControlLabel control={<Switch checked={dicBankForm.blnIsPrimary} onChange={(_, blnChecked) => updateBankField("blnIsPrimary", blnChecked)} disabled={blnViewOnly} />} label={dicConstant.employeeMaster.fields.isPrimary} />
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicBankForm.blnIsActive} onChange={(_, blnChecked) => updateBankField("blnIsActive", blnChecked)} disabled={blnViewOnly || !blnChildTabsEnabled} />} label={dicConstant.employeeMaster.fields.bankActive} />
+                  <FormControlLabel control={<Switch checked={dicBankForm.blnIsActive} onChange={(_, blnChecked) => updateBankField("blnIsActive", blnChecked)} disabled={blnViewOnly} />} label={dicConstant.employeeMaster.fields.bankActive} />
                 </Box>
               </Box>
-              {!blnViewOnly ? (
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleBankSave} disabled={!blnChildTabsEnabled || blnBankSaving} sx={{ borderRadius: "14px", px: 2.5 }}>
-                    {blnBankSaving ? "Saving..." : dicConstant.common.save}
-                  </Button>
-                </Box>
-              ) : null}
             </Stack>
           ) : null}
 
           {strActiveTab === "statutory" ? (
             <Stack spacing={2.5}>
-              {renderChildTabGuard()}
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, opacity: blnChildTabsEnabled ? 1 : 0.6 }}>
-                <TextField label={dicConstant.employeeMaster.fields.panNumber} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={dicConstant.employeeMaster.fields.uanNumber} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                <TextField label={dicConstant.employeeMaster.fields.esiNumber} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} disabled={blnViewOnly || !blnChildTabsEnabled} fullWidth />
-                {renderSelectField(dicConstant.employeeMaster.fields.taxRegimeCode, dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly || !blnChildTabsEnabled)}
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+                <TextField label={dicConstant.employeeMaster.fields.panNumber} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                <TextField label={dicConstant.employeeMaster.fields.uanNumber} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField label={dicConstant.employeeMaster.fields.esiNumber} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                {renderSelectField(dicConstant.employeeMaster.fields.taxRegimeCode, dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPfApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPfApplicable", blnChecked)} disabled={blnViewOnly || !blnChildTabsEnabled} />} label="PF Applicable" />
+                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPfApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPfApplicable", blnChecked)} disabled={blnViewOnly} />} label="PF Applicable" />
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnEsiApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnEsiApplicable", blnChecked)} disabled={blnViewOnly || !blnChildTabsEnabled} />} label="ESI Applicable" />
+                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnEsiApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnEsiApplicable", blnChecked)} disabled={blnViewOnly} />} label="ESI Applicable" />
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly || !blnChildTabsEnabled} />} label="PT Applicable" />
+                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} />} label="PT Applicable" />
                 </Box>
               </Box>
-              {!blnViewOnly ? (
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleStatutorySave} disabled={!blnChildTabsEnabled || blnStatutorySaving} sx={{ borderRadius: "14px", px: 2.5 }}>
-                    {blnStatutorySaving ? "Saving..." : dicConstant.common.save}
-                  </Button>
-                </Box>
-              ) : null}
             </Stack>
           ) : null}
         </Box>
       </Paper>
+
+      <AlertDialog
+        blnOpen={objAlertDialog.blnOpen}
+        strMessage={objAlertDialog.strMessage}
+        strSeverity={objAlertDialog.strSeverity}
+        strTitle={objAlertDialog.strTitle}
+        fnOnClose={closeAlertDialog}
+      />
+
+      {!blnViewOnly ? (
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1200,
+            px: { xs: 2, md: 3 },
+            py: 1.5,
+            borderTop: "1px solid rgba(148,163,184,0.24)",
+            bgcolor: "rgba(255,255,255,0.96)",
+            backdropFilter: "blur(10px)",
+            boxShadow: "0 -10px 30px rgba(15,23,42,0.08)",
+          }}
+        >
+          <Box
+            sx={{
+              width: "100%",
+              maxWidth: "none",
+              mx: "auto",
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 1.25,
+              flexDirection: { xs: "column", sm: "row" },
+            }}
+          >
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => objRouter.push("/masters/employee")}
+              sx={{
+                minWidth: { xs: "100%", sm: 140 },
+                borderRadius: "14px",
+                px: 2.25,
+                order: { xs: 2, sm: 1 },
+              }}
+            >
+              {dicConstant.common.cancel}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SaveRoundedIcon />}
+              onClick={getFooterActionConfig()?.fnOnClick}
+              disabled={getFooterActionConfig()?.blnDisabled}
+              sx={{
+                minWidth: { xs: "100%", sm: 180 },
+                borderRadius: "14px",
+                px: 2.5,
+                order: { xs: 1, sm: 2 },
+              }}
+            >
+              {getFooterActionConfig()?.strLabel ?? dicConstant.common.save}
+            </Button>
+          </Box>
+        </Box>
+      ) : null}
     </Stack>
   );
 }

@@ -8,10 +8,11 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Pagination, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, CircularProgress, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import AlertDialog from "@/components/common/AlertDialog";
 import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -43,19 +44,29 @@ export default function EmployeeMasterListPanel() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
-  const [strFeedback, setStrFeedback] = useState("");
-  const [strError, setStrError] = useState("");
+  const [objAlertDialog, setObjAlertDialog] = useState({
+    blnOpen: false,
+    strMessage: "",
+    strSeverity: "success" as "success" | "error",
+  });
+
+  function openAlertDialog(strSeverity: "success" | "error", strMessage: string) {
+    setObjAlertDialog({
+      blnOpen: true,
+      strMessage,
+      strSeverity,
+    });
+  }
 
   async function loadModuleData() {
     setBlnLoading(true);
-    setStrError("");
     try {
       const lstEmployeeData = await employeeService.getEmployees();
       setLstEmployees(lstEmployeeData);
       setLstSelectedIDs([]);
       setIntPage(1);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load employee data.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to load employee data.");
     } finally {
       setBlnLoading(false);
     }
@@ -84,13 +95,12 @@ export default function EmployeeMasterListPanel() {
       return;
     }
     setBlnSubmitting(true);
-    setStrError("");
     try {
       await employeeService.bulkUpdateStatus(lstIDs, blnIsActive);
-      setStrFeedback(dicConstant.employeeMaster.statusSuccess);
+      openAlertDialog("success", dicConstant.employeeMaster.statusSuccess);
       await loadModuleData();
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to update employee status.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to update employee status.");
     } finally {
       setBlnSubmitting(false);
     }
@@ -105,13 +115,12 @@ export default function EmployeeMasterListPanel() {
       return;
     }
     setBlnSubmitting(true);
-    setStrError("");
     try {
       await employeeService.bulkDelete(lstIDs);
-      setStrFeedback(dicConstant.employeeMaster.deleteSuccess);
+      openAlertDialog("success", dicConstant.employeeMaster.deleteSuccess);
       await loadModuleData();
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to deactivate employee.");
+      openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to deactivate employee.");
     } finally {
       setBlnSubmitting(false);
     }
@@ -146,10 +155,6 @@ export default function EmployeeMasterListPanel() {
             </Button>
           </Box>
         </Box>
-
-        {strFeedback ? <Alert severity="success" onClose={() => setStrFeedback("")} sx={{ mt: 1.5 }}>{strFeedback}</Alert> : null}
-        {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ mt: 1.5 }}>{strError}</Alert> : null}
-
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicConstant.employeeMaster.search.namePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicConstant.employeeMaster.search.codePlaceholder} fullWidth />
@@ -255,6 +260,13 @@ export default function EmployeeMasterListPanel() {
           </Box>
         )}
       </Box>
+
+      <AlertDialog
+        blnOpen={objAlertDialog.blnOpen}
+        strMessage={objAlertDialog.strMessage}
+        strSeverity={objAlertDialog.strSeverity}
+        fnOnClose={() => setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
+      />
     </Box>
   );
 }
