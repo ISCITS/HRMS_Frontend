@@ -61,6 +61,47 @@ export type StateApiRecord = {
   blnIsActive: boolean;
 };
 
+export type BankApiRecord = {
+  intID: number;
+  intTenantID: number;
+  strBankCode: string;
+  strBankName: string;
+  blnIsActive: boolean;
+};
+
+export type CostCenterApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number;
+  strCostCenterCode: string;
+  strCostCenterName: string;
+  blnIsActive: boolean;
+};
+
+export type GradeApiRecord = {
+  intID: number;
+  intTenantID: number;
+  strGradeCode: string;
+  strGradeName: string;
+  blnIsActive: boolean;
+};
+
+export type LocationApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number;
+  strLocationCode: string;
+  strLocationName: string;
+  intStateID: number | null;
+  strStateName: string | null;
+  strCityName: string | null;
+  blnIsActive: boolean;
+};
+
+export type LocationFormOptionsApiRecord = {
+  lstStates: EmployeeLookupOptionApiRecord[];
+};
+
 export type EmployeeApiRecord = {
   intID: number;
   strEmployeeCode: string;
@@ -502,6 +543,9 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_LOCATION_BULK_DELETE"
+    });
+  },
+
   // User CRUD and bulk actions.
   getUsers() {
     return requestApi<UserApiRecord[]>({

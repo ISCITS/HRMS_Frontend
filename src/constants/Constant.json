@@ -384,6 +384,19 @@
         "grid": {
             "code": "Code",
             "name": "Bank Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Bank Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Bank Code already exists.",
+            "nameRequired": "Bank Name is required.",
+            "nameMin": "Bank Name must be at least 3 characters.",
+            "nameDuplicate": "Bank Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
     "users": {
         "pageTitle": "User",
         "addButton": "Add User",
@@ -414,13 +427,14 @@
             "action": "Action"
         },
         "validation": {
-            "codeRequired": "Bank Code is required.",
-            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
-            "codeDuplicate": "Bank Code already exists.",
-            "nameRequired": "Bank Name is required.",
-            "nameMin": "Bank Name must be at least 3 characters.",
-            "nameDuplicate": "Bank Name already exists.",
-            "statusRequired": "Status is required."
+            "loginNameRequired": "Login Name is required.",
+            "loginNameMin": "Login Name must be at least 3 characters.",
+            "emailRequired": "Email Address is required.",
+            "emailInvalid": "Enter a valid email address.",
+            "passwordRequired": "Password is required for new users.",
+            "passwordMin": "Password must be at least 8 characters.",
+            "mobileInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
+            "authSourceRequired": "Auth Source is required."
         }
     },
     "costCenters": {
@@ -435,14 +449,22 @@
         "fields": {
             "code": "Cost Center Code",
             "name": "Cost Center Name",
-            "loginNameRequired": "Login Name is required.",
-            "loginNameMin": "Login Name must be at least 3 characters.",
-            "emailRequired": "Email Address is required.",
-            "emailInvalid": "Enter a valid email address.",
-            "passwordRequired": "Password is required for new users.",
-            "passwordMin": "Password must be at least 8 characters.",
-            "mobileInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
-            "authSourceRequired": "Auth Source is required."
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Cost Center Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Cost Center Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Cost Center Code already exists.",
+            "nameRequired": "Cost Center Name is required.",
+            "nameMin": "Cost Center Name must be at least 3 characters.",
+            "nameDuplicate": "Cost Center Name already exists.",
+            "statusRequired": "Status is required."
         }
     },
     "countries": {
@@ -461,19 +483,19 @@
         },
         "grid": {
             "code": "Code",
-            "name": "Cost Center Name",
+            "name": "Country Name",
             "currencyCode": "Currency",
             "phoneCode": "Phone Code",
             "status": "Status",
             "action": "Action"
         },
         "validation": {
-            "codeRequired": "Cost Center Code is required.",
-            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
-            "codeDuplicate": "Cost Center Code already exists.",
-            "nameRequired": "Cost Center Name is required.",
-            "nameMin": "Cost Center Name must be at least 3 characters.",
-            "nameDuplicate": "Cost Center Name already exists.",
+            "codeRequired": "Country Code is required.",
+            "codeFormat": "Country Code must be exactly 2 letters.",
+            "nameRequired": "Country Name is required.",
+            "nameMin": "Country Name must be at least 2 characters.",
+            "currencyRequired": "Currency Code is required.",
+            "currencyFormat": "Currency Code must be exactly 3 letters.",
             "statusRequired": "Status is required."
         }
     },
@@ -494,12 +516,17 @@
         "grid": {
             "code": "Code",
             "name": "Grade Name",
-            "codeRequired": "Country Code is required.",
-            "codeFormat": "Country Code must be exactly 2 letters.",
-            "nameRequired": "Country Name is required.",
-            "nameMin": "Country Name must be at least 2 characters.",
-            "currencyRequired": "Currency Code is required.",
-            "currencyFormat": "Currency Code must be exactly 3 letters."
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Grade Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Grade Code already exists.",
+            "nameRequired": "Grade Name is required.",
+            "nameMin": "Grade Name must be at least 3 characters.",
+            "nameDuplicate": "Grade Name already exists.",
+            "statusRequired": "Status is required."
         }
     },
     "states": {
@@ -563,9 +590,9 @@
             "cityMax": "City can be at most 100 characters.",
             "statusRequired": "Status is required.",
             "countryRequired": "Country is required.",
-            "codeFormat": "State Code must be 2-20 uppercase letters, numbers, spaces, slash, underscore, or hyphen.",
-            "nameRequired": "State Name is required.",
-            "nameMin": "State Name must be at least 2 characters."
+            "codeFormat": "Location Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "nameRequired": "Location Name is required.",
+            "nameMin": "Location Name must be at least 3 characters."
         }
     }
 }

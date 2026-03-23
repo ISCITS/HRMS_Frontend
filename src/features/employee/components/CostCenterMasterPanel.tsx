@@ -286,8 +286,8 @@ export default function CostCenterMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? "Cost Center saved successfully." : "Cost Center updated successfully.");
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
-    objRequest.finally(() => setBlnSubmitting(false));
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strCostCenterId: string) {

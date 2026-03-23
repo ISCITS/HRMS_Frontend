@@ -287,8 +287,8 @@ export default function BankMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? "Bank saved successfully." : "Bank updated successfully.");
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
-    objRequest.finally(() => setBlnSubmitting(false));
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strBankId: string) {

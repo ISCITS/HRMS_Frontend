@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import { enMessages } from "@/i18n/messages/en";
+import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -42,7 +43,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         setObjUserContext(objUserResult.Data);
-        setObjMenu(objMenuResult.Data);
+        setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
       .catch(() => {
         if (blnMounted) {

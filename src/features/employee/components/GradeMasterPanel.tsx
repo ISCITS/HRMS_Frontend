@@ -286,8 +286,8 @@ export default function GradeMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? "Grade saved successfully." : "Grade updated successfully.");
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
-    objRequest.finally(() => setBlnSubmitting(false));
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strGradeId: string) {

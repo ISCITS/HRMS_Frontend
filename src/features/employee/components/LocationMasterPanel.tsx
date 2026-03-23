@@ -316,8 +316,8 @@ export default function LocationMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? "Location saved successfully." : "Location updated successfully.");
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
-    objRequest.finally(() => setBlnSubmitting(false));
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strLocationId: string) {
