@@ -73,6 +73,18 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
               <Button component={Link} href="/designations" variant="outlined">
                 Designation
               </Button>
+              <Button component={Link} href="/banks" variant="outlined">
+                Bank
+              </Button>
+              <Button component={Link} href="/cost-centers" variant="outlined">
+                Cost Center
+              </Button>
+              <Button component={Link} href="/grades" variant="outlined">
+                Grade
+              </Button>
+              <Button component={Link} href="/locations" variant="outlined">
+                Location
+              </Button>
             </Stack>
           </Paper>
         </Stack>

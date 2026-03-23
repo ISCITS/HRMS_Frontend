@@ -141,6 +141,38 @@ export default function UserManagementPage() {
             >
               Designation
             </Button>
+            <Button
+              component={Link}
+              href="/banks"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Bank
+            </Button>
+            <Button
+              component={Link}
+              href="/cost-centers"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Cost Center
+            </Button>
+            <Button
+              component={Link}
+              href="/grades"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Grade
+            </Button>
+            <Button
+              component={Link}
+              href="/locations"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Location
+            </Button>
           </Stack>
         </Stack>
       </Paper>
