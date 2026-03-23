@@ -135,6 +135,30 @@ export default function UserManagementPage() {
             </Button>
             <Button
               component={Link}
+              href="/users"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              User
+            </Button>
+            <Button
+              component={Link}
+              href="/countries"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              Country
+            </Button>
+            <Button
+              component={Link}
+              href="/states"
+              variant="outlined"
+              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+            >
+              State
+            </Button>
+            <Button
+              component={Link}
               href="/designations"
               variant="outlined"
               sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
@@ -156,6 +180,9 @@ export default function UserManagementPage() {
             <Typography><strong>Email:</strong> {objUserContext.objUser.strEmailAddress}</Typography>
             <Typography><strong>Tenant:</strong> {objUserContext.objTenant.strTenantName}</Typography>
             <Typography><strong>Home route:</strong> {objMenu.strHomeRoute}</Typography>
+            <Typography><strong>User master route:</strong> /users</Typography>
+            <Typography><strong>Country route:</strong> /countries</Typography>
+            <Typography><strong>State route:</strong> /states</Typography>
           </Stack>
         </Paper>
 

@@ -361,5 +361,104 @@
             "nameDuplicate": "Designation Name already exists.",
             "statusRequired": "Status is required."
         }
+    },
+    "users": {
+        "pageTitle": "User",
+        "addButton": "Add User",
+        "backButton": "Back",
+        "saveUser": "Save",
+        "updateUser": "Update User",
+        "dialogAddTitle": "Add User",
+        "dialogEditTitle": "Edit User",
+        "dialogViewTitle": "View User",
+        "fields": {
+            "loginName": "Login Name",
+            "email": "Email Address",
+            "mobile": "Mobile Number",
+            "password": "Password",
+            "authSource": "Auth Source",
+            "ssoEnabled": "SSO Enabled",
+            "ssoLoginMapping": "SSO Login Mapping",
+            "status": "Status",
+            "locked": "Locked"
+        },
+        "grid": {
+            "loginName": "Login Name",
+            "email": "Email Address",
+            "mobile": "Mobile Number",
+            "authSource": "Auth Source",
+            "ssoEnabled": "SSO",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "loginNameRequired": "Login Name is required.",
+            "loginNameMin": "Login Name must be at least 3 characters.",
+            "emailRequired": "Email Address is required.",
+            "emailInvalid": "Enter a valid email address.",
+            "passwordRequired": "Password is required for new users.",
+            "passwordMin": "Password must be at least 8 characters.",
+            "mobileInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
+            "authSourceRequired": "Auth Source is required."
+        }
+    },
+    "countries": {
+        "pageTitle": "Country Master",
+        "addButton": "Add Country",
+        "backButton": "Back",
+        "dialogAddTitle": "Add Country",
+        "dialogEditTitle": "Edit Country",
+        "dialogViewTitle": "View Country",
+        "fields": {
+            "code": "Country Code",
+            "name": "Country Name",
+            "currencyCode": "Currency Code",
+            "phoneCode": "Phone Code",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Country Name",
+            "currencyCode": "Currency",
+            "phoneCode": "Phone Code",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Country Code is required.",
+            "codeFormat": "Country Code must be exactly 2 letters.",
+            "nameRequired": "Country Name is required.",
+            "nameMin": "Country Name must be at least 2 characters.",
+            "currencyRequired": "Currency Code is required.",
+            "currencyFormat": "Currency Code must be exactly 3 letters."
+        }
+    },
+    "states": {
+        "pageTitle": "State Master",
+        "addButton": "Add State",
+        "backButton": "Back",
+        "dialogAddTitle": "Add State",
+        "dialogEditTitle": "Edit State",
+        "dialogViewTitle": "View State",
+        "fields": {
+            "country": "Country",
+            "code": "State Code",
+            "name": "State Name",
+            "status": "Status"
+        },
+        "grid": {
+            "country": "Country",
+            "code": "Code",
+            "name": "State Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "countryRequired": "Country is required.",
+            "codeRequired": "State Code is required.",
+            "codeFormat": "State Code must be 2-20 uppercase letters, numbers, spaces, slash, underscore, or hyphen.",
+            "nameRequired": "State Name is required.",
+            "nameMin": "State Name must be at least 2 characters."
+        }
     }
 }
