@@ -90,7 +90,7 @@
         }
     },
     "employeeMaster": {
-        "pageTitle": "Employee",
+        "pageTitle": "Employees",
         "backButton": "Back",
         "addButton": "Add Employee",
         "dialogAddTitle": "Add Employee",
