@@ -22,6 +22,11 @@ const lstKpis = [
 ];
 
 export default function DashboardLanding({ objUserContext, objMenu }: DashboardLandingProps) {
+  const lstMasterItems = objMenu.lstMenuItems.find((objItem) => objItem.strModuleCode === "MASTERS")?.lstChildren ?? [];
+  const lstNavigableItems = objMenu.lstMenuItems.flatMap((objItem) =>
+    objItem.lstChildren.length > 0 ? objItem.lstChildren : [objItem]
+  );
+
   return (
     <Stack spacing={3}>
       <Paper
@@ -60,31 +65,15 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
             <Button component={Link} href={objMenu.strHomeRoute} variant="contained" sx={{ mt: 2 }}>
               Open landing module
             </Button>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1.5 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
               <Button component={Link} href="/dashboard" variant="outlined">
                 Open dashboard
               </Button>
-              <Button component={Link} href="/employees" variant="outlined">
-                Employees
-              </Button>
-              <Button component={Link} href="/departments" variant="outlined">
-                Department
-              </Button>
-              <Button component={Link} href="/designations" variant="outlined">
-                Designation
-              </Button>
-              <Button component={Link} href="/banks" variant="outlined">
-                Bank
-              </Button>
-              <Button component={Link} href="/cost-centers" variant="outlined">
-                Cost Center
-              </Button>
-              <Button component={Link} href="/grades" variant="outlined">
-                Grade
-              </Button>
-              <Button component={Link} href="/locations" variant="outlined">
-                Location
-              </Button>
+              {lstMasterItems.slice(0, 4).map((objItem) => (
+                <Button key={objItem.strModuleCode} component={Link} href={objItem.strRoute ?? "#"} variant="outlined">
+                  {objItem.strModuleName}
+                </Button>
+              ))}
             </Stack>
           </Paper>
         </Stack>
@@ -125,12 +114,12 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
           <Typography variant="h6">Dynamic modules</Typography>
         </Stack>
 
-        {objMenu.lstMenuItems.length === 0 ? (
+        {lstNavigableItems.length === 0 ? (
           <Typography sx={{ color: "#64748b" }}>{enMessages.dashboard.menuEmpty}</Typography>
         ) : (
           <Grid container spacing={2}>
-            {objMenu.lstMenuItems.map((objItem) => (
-              <Grid key={objItem.strRoute} item xs={12} md={6}>
+            {lstNavigableItems.map((objItem) => (
+              <Grid key={objItem.strRoute ?? objItem.strModuleCode} item xs={12} md={6}>
                 <Paper
                   sx={{
                     p: 2.5,
@@ -143,7 +132,7 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
                   </Typography>
                   <Typography variant="h6">{objItem.strModuleName}</Typography>
                   <Typography sx={{ mt: 0.75, color: "#64748b" }}>{objItem.lstPermissionCodes.join(" | ")}</Typography>
-                  <Button href={objItem.strRoute} sx={{ mt: 2 }} variant={objItem.blnIsHome ? "contained" : "outlined"}>
+                  <Button component={Link} href={objItem.strRoute ?? "#"} sx={{ mt: 2 }} variant={objItem.blnIsHome ? "contained" : "outlined"}>
                     Open module
                   </Button>
                 </Paper>

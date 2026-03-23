@@ -30,45 +30,35 @@ export type DesignationApiRecord = {
   intTenantID: number;
 };
 
-export type BankApiRecord = {
+export type UserApiRecord = {
   intID: number;
-  strBankCode: string;
-  strBankName: string;
-  blnIsActive: boolean;
   intTenantID: number;
+  intCompanyID: number | null;
+  strLoginName: string | null;
+  strEmailAddress: string | null;
+  strMobileNumber: string | null;
+  strAuthSource: "local" | "sso";
+  blnIsSsoEnabled: boolean;
+  strSsoLoginMapping: string | null;
+  blnIsActive: boolean;
+  blnIsLocked: boolean;
 };
 
-export type CostCenterApiRecord = {
+export type CountryApiRecord = {
   intID: number;
-  strCostCenterCode: string;
-  strCostCenterName: string;
+  strCountryCode: string;
+  strCountryName: string;
+  strCurrencyCode: string;
+  strPhoneCode: string | null;
   blnIsActive: boolean;
-  intTenantID: number;
-  intCompanyID: number;
 };
 
-export type GradeApiRecord = {
+export type StateApiRecord = {
   intID: number;
-  strGradeCode: string;
-  strGradeName: string;
+  intCountryID: number;
+  strStateCode: string;
+  strStateName: string;
   blnIsActive: boolean;
-  intTenantID: number;
-};
-
-export type LocationApiRecord = {
-  intID: number;
-  strLocationCode: string;
-  strLocationName: string;
-  intStateID: number | null;
-  strStateName: string | null;
-  strCityName: string | null;
-  blnIsActive: boolean;
-  intTenantID: number;
-  intCompanyID: number;
-};
-
-export type LocationFormOptionsApiRecord = {
-  lstStates: EmployeeLookupOptionApiRecord[];
 };
 
 export type EmployeeApiRecord = {
@@ -512,6 +502,176 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_LOCATION_BULK_DELETE"
+  // User CRUD and bulk actions.
+  getUsers() {
+    return requestApi<UserApiRecord[]>({
+      strPath: "/masters/users",
+      strMethod: "GET",
+      strMenuAction: "MASTER_USER_LIST"
+    });
+  },
+
+  createUser(objBody: {
+    strLoginName: string;
+    strEmailAddress: string;
+    strMobileNumber: string | null;
+    strPassword: string | null;
+    strAuthSource: "local" | "sso";
+    blnIsSsoEnabled: boolean;
+    strSsoLoginMapping: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<UserApiRecord>({
+      strPath: "/masters/users",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_USER_CREATE"
+    });
+  },
+
+  updateUser(intID: number, objBody: {
+    strLoginName: string;
+    strEmailAddress: string;
+    strMobileNumber: string | null;
+    strPassword: string | null;
+    strAuthSource: "local" | "sso";
+    blnIsSsoEnabled: boolean;
+    strSsoLoginMapping: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<UserApiRecord>({
+      strPath: `/masters/users/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_USER_UPDATE"
+    });
+  },
+
+  bulkUserStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/users/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_USER_BULK_STATUS"
+    });
+  },
+
+  bulkUserDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/users/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_USER_BULK_DELETE"
+    });
+  },
+
+  getCountries() {
+    return requestApi<CountryApiRecord[]>({
+      strPath: "/masters/countries",
+      strMethod: "GET",
+      strMenuAction: "MASTER_COUNTRY_LIST"
+    });
+  },
+
+  createCountry(objBody: {
+    strCountryCode: string;
+    strCountryName: string;
+    strCurrencyCode: string;
+    strPhoneCode: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<CountryApiRecord>({
+      strPath: "/masters/countries",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_COUNTRY_CREATE"
+    });
+  },
+
+  updateCountry(intID: number, objBody: {
+    strCountryCode: string;
+    strCountryName: string;
+    strCurrencyCode: string;
+    strPhoneCode: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<CountryApiRecord>({
+      strPath: `/masters/countries/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_COUNTRY_UPDATE"
+    });
+  },
+
+  bulkCountryStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/countries/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_COUNTRY_BULK_STATUS"
+    });
+  },
+
+  bulkCountryDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/countries/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_COUNTRY_BULK_DELETE"
+    });
+  },
+
+  getStates() {
+    return requestApi<StateApiRecord[]>({
+      strPath: "/masters/states",
+      strMethod: "GET",
+      strMenuAction: "MASTER_STATE_LIST"
+    });
+  },
+
+  createState(objBody: {
+    intCountryID: number;
+    strStateCode: string;
+    strStateName: string;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<StateApiRecord>({
+      strPath: "/masters/states",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_STATE_CREATE"
+    });
+  },
+
+  updateState(intID: number, objBody: {
+    intCountryID: number;
+    strStateCode: string;
+    strStateName: string;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<StateApiRecord>({
+      strPath: `/masters/states/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_STATE_UPDATE"
+    });
+  },
+
+  bulkStateStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/states/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_STATE_BULK_STATUS"
+    });
+  },
+
+  bulkStateDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/states/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_STATE_BULK_DELETE"
     });
   },
 
