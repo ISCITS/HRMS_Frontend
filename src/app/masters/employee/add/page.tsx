@@ -1,5 +1,5 @@
-import EmployeeEditorScreen from "@/features/employee/components/EmployeeEditorScreen";
+import { redirect } from "next/navigation";
 
 export default function AddEmployeePage() {
-  return <EmployeeEditorScreen strMode="add" />;
+  redirect("/employees/add");
 }

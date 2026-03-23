@@ -323,7 +323,7 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
       setIntResolvedEmployeeID(dicSavedEmployee.intID);
       openAlertDialog("success", strMode === "add" && intEmployeeID === undefined ? dicConstant.employeeMaster.saveSuccess : dicConstant.employeeMaster.updateSuccess);
       if (strMode === "add") {
-        objRouter.replace(`/masters/employee/edit/${dicSavedEmployee.intID}`);
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
       }
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to save employee.");
@@ -628,7 +628,7 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
             <Button
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push("/masters/employee")}
+              onClick={() => objRouter.push("/employees")}
               sx={{
                 minWidth: { xs: "100%", sm: 140 },
                 borderRadius: "14px",

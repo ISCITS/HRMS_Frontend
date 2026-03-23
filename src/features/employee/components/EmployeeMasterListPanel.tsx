@@ -150,7 +150,7 @@ export default function EmployeeMasterListPanel() {
         <Box className={styles.controlsHeader}>
           <Typography component="h1" className={styles.title}>{dicConstant.employeeMaster.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/masters/employee/add")} disabled={blnLoading || blnSubmitting}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting}>
               {dicConstant.employeeMaster.addButton}
             </Button>
           </Box>
@@ -246,8 +246,8 @@ export default function EmployeeMasterListPanel() {
                       <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/masters/employee/view/${dicEmployee.intID}`)}><VisibilityOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/masters/employee/edit/${dicEmployee.intID}`)}><EditOutlinedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityOutlinedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}><EditOutlinedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>

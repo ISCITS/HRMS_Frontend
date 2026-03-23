@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import EmployeeEditorScreen from "@/features/employee/components/EmployeeEditorScreen";
 
 type ViewEmployeePageProps = {
   params: Promise<{
@@ -8,5 +8,5 @@ type ViewEmployeePageProps = {
 
 export default async function ViewEmployeePage({ params }: ViewEmployeePageProps) {
   const { id } = await params;
-  redirect(`/employees/view/${id}`);
+  return <EmployeeEditorScreen strMode="view" intEmployeeID={Number(id)} />;
 }

@@ -1,5 +1,5 @@
-import EmployeeMasterListPanel from "@/features/employee/components/EmployeeMasterListPanel";
+import { redirect } from "next/navigation";
 
 export default function EmployeeMasterPage() {
-  return <EmployeeMasterListPanel />;
+  redirect("/employees");
 }
