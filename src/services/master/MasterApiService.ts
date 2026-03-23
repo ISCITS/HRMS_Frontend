@@ -61,6 +61,47 @@ export type StateApiRecord = {
   blnIsActive: boolean;
 };
 
+export type BankApiRecord = {
+  intID: number;
+  intTenantID: number;
+  strBankCode: string;
+  strBankName: string;
+  blnIsActive: boolean;
+};
+
+export type CostCenterApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number;
+  strCostCenterCode: string;
+  strCostCenterName: string;
+  blnIsActive: boolean;
+};
+
+export type GradeApiRecord = {
+  intID: number;
+  intTenantID: number;
+  strGradeCode: string;
+  strGradeName: string;
+  blnIsActive: boolean;
+};
+
+export type LocationApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number;
+  strLocationCode: string;
+  strLocationName: string;
+  intStateID: number | null;
+  strStateName: string | null;
+  strCityName: string | null;
+  blnIsActive: boolean;
+};
+
+export type LocationFormOptionsApiRecord = {
+  lstStates: EmployeeLookupOptionApiRecord[];
+};
+
 export type EmployeeApiRecord = {
   intID: number;
   strEmployeeCode: string;
@@ -309,6 +350,199 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_DESIGNATION_BULK_DELETE"
+    });
+  },
+
+  // Bank CRUD and bulk actions.
+  getBanks() {
+    // Fetches the bank list scoped by the logged-in tenant.
+    return requestApi<BankApiRecord[]>({
+      strPath: "/masters/banks",
+      strMethod: "GET",
+      strMenuAction: "MASTER_BANK_LIST"
+    });
+  },
+
+  createBank(objBody: { strBankCode: string; strBankName: string; blnIsActive: boolean }) {
+    // Creates a new bank record.
+    return requestApi<BankApiRecord>({
+      strPath: "/masters/banks",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_BANK_CREATE"
+    });
+  },
+
+  updateBank(intID: number, objBody: { strBankCode: string; strBankName: string; blnIsActive: boolean }) {
+    // Updates an existing bank by primary key.
+    return requestApi<BankApiRecord>({
+      strPath: `/masters/banks/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_BANK_UPDATE"
+    });
+  },
+
+  bulkBankStatus(lstIDs: number[], blnIsActive: boolean) {
+    // Applies one status change to all selected banks.
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/banks/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_BANK_BULK_STATUS"
+    });
+  },
+
+  bulkBankDelete(lstIDs: number[]) {
+    // Deletes multiple bank records in one backend request.
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/banks/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_BANK_BULK_DELETE"
+    });
+  },
+
+  // Cost Center CRUD and bulk actions.
+  getCostCenters() {
+    return requestApi<CostCenterApiRecord[]>({
+      strPath: "/masters/cost-centers",
+      strMethod: "GET",
+      strMenuAction: "MASTER_COST_CENTER_LIST"
+    });
+  },
+
+  createCostCenter(objBody: { strCostCenterCode: string; strCostCenterName: string; blnIsActive: boolean }) {
+    return requestApi<CostCenterApiRecord>({
+      strPath: "/masters/cost-centers",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_COST_CENTER_CREATE"
+    });
+  },
+
+  updateCostCenter(intID: number, objBody: { strCostCenterCode: string; strCostCenterName: string; blnIsActive: boolean }) {
+    return requestApi<CostCenterApiRecord>({
+      strPath: `/masters/cost-centers/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_COST_CENTER_UPDATE"
+    });
+  },
+
+  bulkCostCenterStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/cost-centers/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_COST_CENTER_BULK_STATUS"
+    });
+  },
+
+  bulkCostCenterDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/cost-centers/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_COST_CENTER_BULK_DELETE"
+    });
+  },
+
+  // Grade CRUD and bulk actions.
+  getGrades() {
+    return requestApi<GradeApiRecord[]>({
+      strPath: "/masters/grades",
+      strMethod: "GET",
+      strMenuAction: "MASTER_GRADE_LIST"
+    });
+  },
+
+  createGrade(objBody: { strGradeCode: string; strGradeName: string; blnIsActive: boolean }) {
+    return requestApi<GradeApiRecord>({
+      strPath: "/masters/grades",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_GRADE_CREATE"
+    });
+  },
+
+  updateGrade(intID: number, objBody: { strGradeCode: string; strGradeName: string; blnIsActive: boolean }) {
+    return requestApi<GradeApiRecord>({
+      strPath: `/masters/grades/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_GRADE_UPDATE"
+    });
+  },
+
+  bulkGradeStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/grades/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_GRADE_BULK_STATUS"
+    });
+  },
+
+  bulkGradeDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/grades/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_GRADE_BULK_DELETE"
+    });
+  },
+
+  // Location CRUD, lookup, and bulk actions.
+  getLocations() {
+    return requestApi<LocationApiRecord[]>({
+      strPath: "/masters/locations",
+      strMethod: "GET",
+      strMenuAction: "MASTER_LOCATION_LIST"
+    });
+  },
+
+  getLocationFormOptions() {
+    return requestApi<LocationFormOptionsApiRecord>({
+      strPath: "/masters/locations/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_LOCATION_FORM_OPTIONS"
+    });
+  },
+
+  createLocation(objBody: { strLocationCode: string; strLocationName: string; intStateID: number | null; strCityName: string | null; blnIsActive: boolean }) {
+    return requestApi<LocationApiRecord>({
+      strPath: "/masters/locations",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_LOCATION_CREATE"
+    });
+  },
+
+  updateLocation(intID: number, objBody: { strLocationCode: string; strLocationName: string; intStateID: number | null; strCityName: string | null; blnIsActive: boolean }) {
+    return requestApi<LocationApiRecord>({
+      strPath: `/masters/locations/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_LOCATION_UPDATE"
+    });
+  },
+
+  bulkLocationStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/locations/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_LOCATION_BULK_STATUS"
+    });
+  },
+
+  bulkLocationDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/locations/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_LOCATION_BULK_DELETE"
     });
   },
 

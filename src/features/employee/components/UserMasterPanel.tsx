@@ -427,7 +427,7 @@ export default function UserMasterPanel() {
     <Box className={styles.page}>
       <Box className={styles.topBar}>
         <Typography className={styles.breadcrumbs}>Admin / Master / Users</Typography>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/user-management")}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicConstant.users.backButton}
         </Button>
       </Box>

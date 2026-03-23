@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -43,7 +44,7 @@ export default function UserManagementPage() {
         }
 
         setObjUserContext(objUserResult.Data);
-        setObjMenu(objMenuResult.Data);
+        setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
       .catch(() => {
         if (blnMounted) {

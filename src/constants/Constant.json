@@ -29,6 +29,10 @@
             "addEmployee": "Add Employee",
             "userMaster": "User Master",
             "departmentMaster": "Department Master",
+            "bankMaster": "Bank Master",
+            "costCenterMaster": "Cost Center Master",
+            "gradeMaster": "Grade Master",
+            "locationMaster": "Location Master",
             "departmentMasterInline": "Department Master Inline",
             "leave": "Leave",
             "leaveRequests": "Leave Requests",
@@ -362,6 +366,37 @@
             "statusRequired": "Status is required."
         }
     },
+    "banks": {
+        "pageTitle": "Bank Master",
+        "addButton": "Add Bank",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveBank": "Save",
+        "updateBank": "Update Bank",
+        "dialogAddTitle": "Add Bank",
+        "dialogEditTitle": "Edit Bank",
+        "helperText": "Based on `tblbank`, this master exposes bank code, bank name, and active status.",
+        "fields": {
+            "code": "Bank Code",
+            "name": "Bank Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Bank Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Bank Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Bank Code already exists.",
+            "nameRequired": "Bank Name is required.",
+            "nameMin": "Bank Name must be at least 3 characters.",
+            "nameDuplicate": "Bank Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
     "users": {
         "pageTitle": "User",
         "addButton": "Add User",
@@ -402,6 +437,36 @@
             "authSourceRequired": "Auth Source is required."
         }
     },
+    "costCenters": {
+        "pageTitle": "Cost Center Master",
+        "addButton": "Add Cost Center",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveCostCenter": "Save",
+        "updateCostCenter": "Update Cost Center",
+        "dialogAddTitle": "Add Cost Center",
+        "dialogEditTitle": "Edit Cost Center",
+        "fields": {
+            "code": "Cost Center Code",
+            "name": "Cost Center Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Cost Center Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Cost Center Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Cost Center Code already exists.",
+            "nameRequired": "Cost Center Name is required.",
+            "nameMin": "Cost Center Name must be at least 3 characters.",
+            "nameDuplicate": "Cost Center Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
     "countries": {
         "pageTitle": "Country Master",
         "addButton": "Add Country",
@@ -430,7 +495,38 @@
             "nameRequired": "Country Name is required.",
             "nameMin": "Country Name must be at least 2 characters.",
             "currencyRequired": "Currency Code is required.",
-            "currencyFormat": "Currency Code must be exactly 3 letters."
+            "currencyFormat": "Currency Code must be exactly 3 letters.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "grades": {
+        "pageTitle": "Grade Master",
+        "addButton": "Add Grade",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveGrade": "Save",
+        "updateGrade": "Update Grade",
+        "dialogAddTitle": "Add Grade",
+        "dialogEditTitle": "Edit Grade",
+        "fields": {
+            "code": "Grade Code",
+            "name": "Grade Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Grade Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Grade Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Grade Code already exists.",
+            "nameRequired": "Grade Name is required.",
+            "nameMin": "Grade Name must be at least 3 characters.",
+            "nameDuplicate": "Grade Name already exists.",
+            "statusRequired": "Status is required."
         }
     },
     "states": {
@@ -454,11 +550,49 @@
             "action": "Action"
         },
         "validation": {
+            "codeRequired": "Grade Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Grade Code already exists.",
+            "nameRequired": "Grade Name is required.",
+            "nameMin": "Grade Name must be at least 3 characters.",
+            "nameDuplicate": "Grade Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "locations": {
+        "pageTitle": "Location Master",
+        "addButton": "Add Location",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveLocation": "Save",
+        "updateLocation": "Update Location",
+        "dialogAddTitle": "Add Location",
+        "dialogEditTitle": "Edit Location",
+        "fields": {
+            "code": "Location Code",
+            "name": "Location Name",
+            "state": "State",
+            "city": "City",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Location Name",
+            "state": "State",
+            "city": "City",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Location Code is required.",
+            "codeDuplicate": "Location Code already exists.",
+            "nameDuplicate": "Location Name already exists.",
+            "cityMax": "City can be at most 100 characters.",
+            "statusRequired": "Status is required.",
             "countryRequired": "Country is required.",
-            "codeRequired": "State Code is required.",
-            "codeFormat": "State Code must be 2-20 uppercase letters, numbers, spaces, slash, underscore, or hyphen.",
-            "nameRequired": "State Name is required.",
-            "nameMin": "State Name must be at least 2 characters."
+            "codeFormat": "Location Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "nameRequired": "Location Name is required.",
+            "nameMin": "Location Name must be at least 3 characters."
         }
     }
 }

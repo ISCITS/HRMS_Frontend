@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardLanding from "@/components/dashboard/DashboardLanding";
+import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -23,7 +24,7 @@ export default function DashboardPage() {
           return;
         }
         setObjUserContext(objUserResult.Data);
-        setObjMenu(objMenuResult.Data);
+        setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
       .catch(() => {
         if (blnMounted) {

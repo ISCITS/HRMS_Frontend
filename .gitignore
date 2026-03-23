@@ -15,3 +15,10 @@ node_modules/
 README.md
 .github/workflows
    
+HRMS_FRONTEND_WORKFLOW.docx
+HRMS_FRONTEND_WORKFLOW.md
+src/COUNTRY_MASTER_FLOW.md
+src/STATE_MASTER_FLOW.md
+src/USER_MASTER_FLOW.md
+tools/generate_workflow_doc.py
+~$MS_FRONTEND_WORKFLOW.docx
