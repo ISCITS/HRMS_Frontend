@@ -72,6 +72,7 @@ export default function UserManagementPage() {
     );
   }
 
+  const lstMasterMenuItems = objMenu.lstMenuItems.find((objItem) => objItem.strModuleCode === "MASTERS")?.lstChildren ?? [];
   const intModuleCount = objMenu.lstMenuItems.length;
   const strPrimaryRole = objUserContext.objUser.lstRoles[0] ?? "Workspace User";
 
@@ -113,58 +114,21 @@ export default function UserManagementPage() {
             />
           </Stack>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
             <Button component={Link} href="/dashboard" variant="contained" sx={{ borderRadius: "16px", px: 2.5 }}>
               Open dashboard
             </Button>
-            <Button
-              component={Link}
-              href="/masters/employee"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              Employees
-            </Button>
-            <Button
-              component={Link}
-              href="/departments"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              Department
-            </Button>
-            <Button
-              component={Link}
-              href="/users"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              User
-            </Button>
-            <Button
-              component={Link}
-              href="/countries"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              Country
-            </Button>
-            <Button
-              component={Link}
-              href="/states"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              State
-            </Button>
-            <Button
-              component={Link}
-              href="/designations"
-              variant="outlined"
-              sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
-            >
-              Designation
-            </Button>
+            {lstMasterMenuItems.map((objItem) => (
+              <Button
+                key={objItem.strModuleCode}
+                component={Link}
+                href={objItem.strRoute ?? "#"}
+                variant="outlined"
+                sx={{ borderRadius: "16px", px: 2.5, borderColor: "rgba(255,255,255,0.32)", color: "#f8fafc" }}
+              >
+                {objItem.strModuleName}
+              </Button>
+            ))}
           </Stack>
         </Stack>
       </Paper>
@@ -180,9 +144,7 @@ export default function UserManagementPage() {
             <Typography><strong>Email:</strong> {objUserContext.objUser.strEmailAddress}</Typography>
             <Typography><strong>Tenant:</strong> {objUserContext.objTenant.strTenantName}</Typography>
             <Typography><strong>Home route:</strong> {objMenu.strHomeRoute}</Typography>
-            <Typography><strong>User master route:</strong> /users</Typography>
-            <Typography><strong>Country route:</strong> /countries</Typography>
-            <Typography><strong>State route:</strong> /states</Typography>
+            <Typography><strong>Masters children:</strong> {lstMasterMenuItems.map((objItem) => objItem.strModuleName).join(", ") || "None"}</Typography>
           </Stack>
         </Paper>
 
@@ -195,7 +157,7 @@ export default function UserManagementPage() {
             <Typography><strong>Modules available:</strong> {intModuleCount}</Typography>
             <Typography><strong>Primary role:</strong> {strPrimaryRole}</Typography>
             <Typography>
-              <strong>Permissions:</strong> {objMenu.lstMenuItems.flatMap((objItem) => objItem.lstPermissionCodes).join(", ") || "None"}
+              <strong>Permissions:</strong> {objMenu.lstMenuItems.flatMap((objItem) => [objItem, ...objItem.lstChildren]).flatMap((objItem) => objItem.lstPermissionCodes).join(", ") || "None"}
             </Typography>
           </Stack>
         </Paper>

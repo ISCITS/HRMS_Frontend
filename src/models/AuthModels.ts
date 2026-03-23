@@ -65,9 +65,10 @@ export type CurrentUserContext = {
 export type MenuItem = {
   strModuleCode: string;
   strModuleName: string;
-  strRoute: string;
+  strRoute: string | null;
   lstPermissionCodes: string[];
   blnIsHome: boolean;
+  lstChildren: MenuItem[];
 };
 
 export type MenuResponse = {
