@@ -8,25 +8,17 @@ import { authHelpers } from "@/lib/auth";
 
 const intDefaultLanguageID = 1;
 
-
-
 export function useEmployeeLabels() {
-  const [intLanguageID, setIntLanguageIDState] = useState(intDefaultLanguageID);
+  const [intLanguageID] = useState(() => {
+    if (typeof window === "undefined") {
+      return intDefaultLanguageID;
+    }
+    return authHelpers.getLanguageID() ?? intDefaultLanguageID;
+  });
   const [dicLabels, setDicLabels] = useState<Record<string, string>>({});
   const [strLanguageCode, setStrLanguageCode] = useState("en");
   const [blnLoadingLabels, setBlnLoadingLabels] = useState(true);
   const [strLabelError, setStrLabelError] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const intLanguageID = authHelpers.getLanguageID();
-    if (intLanguageID) {
-      setIntLanguageIDState(intLanguageID);
-    }
-  }, []);
 
   useEffect(() => {
     let blnMounted = true;

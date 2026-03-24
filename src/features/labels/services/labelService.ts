@@ -2,12 +2,10 @@
 
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import { callAPI } from "@/lib/apiClient";
-import { encryptPayload } from "@/lib/security/encryptPayload";
 
 export const labelService = {
   async getLabels(intLanguageID: number, strModuleName: string): Promise<ModuleLabelsResponse> {
     const objQueryPreview = { language_id: intLanguageID, module_name: strModuleName };
-    console.debug("[Labels API] encrypted request", await encryptPayload(objQueryPreview));
 
     try {
       const objResponse = await callAPI<ModuleLabelsResponse>(
@@ -19,15 +17,8 @@ export const labelService = {
           params: objQueryPreview,
         }
       );
-
-      console.debug("[Labels API] raw response", objResponse.Response);
-      console.debug("[Labels API] decrypted response", objResponse.Response);
       return objResponse.Response;
     } catch (objError) {
-      console.warn("[Labels API] request failed, falling back to default labels", {
-        query: objQueryPreview,
-        error: objError instanceof Error ? objError.message : objError,
-      });
       return {
         module: strModuleName,
         language: "en",
