@@ -6,13 +6,23 @@ import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { apiConstants } from "@/config/constants";
-import { GenericLoginRequest, LoginRequest, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type SsoRedirectData, type TenantLookupData } from "@/models/AuthModels";
+import { GenericLoginRequest, LoginRequest, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type SsoRedirectData, type TenantAuthDetails, type TenantLookupData } from "@/models/AuthModels";
 
 type ApiEnvelope<TData> = {
   ResultCode: number;
   Msg: string;
   Data: TData;
 };
+
+export class clsApiRequestError extends Error {
+  objData?: unknown;
+
+  constructor(strMessage: string, objData?: unknown) {
+    super(strMessage);
+    this.name = "clsApiRequestError";
+    this.objData = objData;
+  }
+}
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -25,9 +35,11 @@ async function requestApi<TData>(objOptions: {
 
   if (objOptions.blnUseAuthHeader) {
     const strAccessToken = authHelpers.getAccessToken();
-    if (strAccessToken) {
-      objHeaders.Authorization = `Bearer ${strAccessToken}`;
+    if (!strAccessToken) {
+      throw new Error("Unauthorized");
     }
+
+    objHeaders.Authorization = `Bearer ${strAccessToken}`;
   }
 
   try {
@@ -45,7 +57,7 @@ async function requestApi<TData>(objOptions: {
       : objRawPayload;
 
     if (objPayload.ResultCode !== 1) {
-      throw new Error(objPayload.Msg ?? "Request failed.");
+      throw new clsApiRequestError(objPayload.Msg ?? "Request failed.", objPayload.Data);
     }
 
     return objPayload;
@@ -54,10 +66,10 @@ async function requestApi<TData>(objOptions: {
       const objResponseData = objError.response?.data as ApiEnvelope<TData> | { payload?: string; Msg?: string } | undefined;
       if (objResponseData?.payload) {
         const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
-        throw new Error(objDecryptedPayload.Msg ?? "Request failed.");
+        throw new clsApiRequestError(objDecryptedPayload.Msg ?? "Request failed.", objDecryptedPayload.Data);
       }
 
-      throw new Error(objResponseData?.Msg ?? objError.message ?? "Request failed.");
+      throw new clsApiRequestError(objResponseData?.Msg ?? objError.message ?? "Request failed.");
     }
 
     throw objError;
@@ -70,6 +82,14 @@ export const authApiService = {
       strPath: `auth/tenant/${strTenantUUID}`,
       strMethod: "GET",
       strMenuAction: "AUTH_TENANT_LOOKUP"
+    });
+  },
+
+  async getTenantAuthDetails(strTenantUUID: string) {
+    return requestApi<TenantAuthDetails>({
+      strPath: `tenant/${strTenantUUID}/auth-details`,
+      strMethod: "GET",
+      strMenuAction: "AUTH_TENANT_DETAILS"
     });
   },
 

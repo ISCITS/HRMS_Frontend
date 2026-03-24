@@ -15,6 +15,13 @@ export type TenantLookupData = {
   blnAllowGenericLogin: boolean;
 };
 
+export type TenantAuthDetails = {
+  tenant_id: number;
+  tenant_uuid: string;
+  is_active: boolean;
+  auth_mode: "LOCAL" | "SSO";
+};
+
 export type LoginRequest = {
   strTenantUUID: string;
   strLoginID: string;
