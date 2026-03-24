@@ -142,10 +142,6 @@ export default function EmployeeMasterListPanel() {
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.topBar}>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.employeeMaster.backButton}</Button>
-      </Box>
-
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
           <Typography component="h1" className={styles.title}>{dicConstant.employeeMaster.pageTitle}</Typography>
