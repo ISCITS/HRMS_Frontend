@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 
 import AlertDialog from "@/components/common/AlertDialog";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -267,6 +268,7 @@ export default function EmployeeMasterListPanel() {
         strSeverity={objAlertDialog.strSeverity}
         fnOnClose={() => setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
       />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
     </Box>
   );
 }

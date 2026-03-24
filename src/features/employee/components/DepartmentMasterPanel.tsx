@@ -30,6 +30,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { DepartmentApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
@@ -313,8 +314,8 @@ export default function DepartmentMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? "Department saved successfully." : "Department updated successfully.");
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"));
-    objRequest.finally(() => setBlnSubmitting(false));
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function toggleSelection(strDepartmentId: string) {
@@ -512,49 +513,31 @@ export default function DepartmentMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
-        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicConstant.departments.dialogAddTitle : strMode === "edit" ? dicConstant.departments.dialogEditTitle : "View Department"}</DialogTitle>
-        <DialogContent className={styles.dialogContent}>
-          <Typography className={styles.sectionBar}>Basic Information</Typography>
-          <Box className={styles.dialogGrid}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
+        <DialogTitle>{strMode === "add" ? dicConstant.departments.dialogAddTitle : strMode === "edit" ? dicConstant.departments.dialogEditTitle : "View Department"}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={`${dicConstant.departments.fields.name} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
             <TextField label={`${dicConstant.departments.fields.code} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
             <TextField label="Employees" value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0} disabled fullWidth />
-          </Box>
-
-          <Typography className={styles.sectionBar}>Record Status</Typography>
-          <Box className={styles.switchRow}>
-            <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-            <Typography className={styles.switchLabel}>{dicForm.status}</Typography>
+            <Box className={styles.switchRow}>
+              <Typography className={styles.switchLabel}>Is Active</Typography>
+              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            </Box>
           </Box>
         </DialogContent>
-        <Box className={styles.dialogFooter}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           {strMode === "view" ? (
-            <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
+            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.close}</Button>
           ) : (
             <>
-              <Button
-                className={styles.textAction}
-                onClick={() => openConfirmDialog({
-                  strTitle: "Reset Form",
-                  strMessage: "Are you sure you want to reset this form?",
-                  strConfirmLabel: "Reset",
-                  fnOnConfirm: async () => {
-                    setDicErrors({});
-                    setDicForm(dicEmptyForm);
-                    showToast("Department form reset successfully.");
-                  }
-                })}
-              >
-                {dicConstant.common.reset}
-              </Button>
-              <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
+              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
               <Button className={styles.primaryButton} onClick={saveDepartment} disabled={blnSubmitting}>
                 {blnSubmitting ? "Saving..." : dicConstant.common.save}
               </Button>
             </>
           )}
-        </Box>
+        </DialogActions>
       </Dialog>
 
       <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
@@ -569,6 +552,8 @@ export default function DepartmentMasterPanel() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

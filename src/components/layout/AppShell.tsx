@@ -8,7 +8,12 @@ import {
   AppBar,
   Avatar,
   Box,
+  Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Drawer,
   IconButton,
   Paper,
@@ -17,9 +22,10 @@ import {
   Typography
 } from "@mui/material";
 import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { enMessages } from "@/i18n/messages/en";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
@@ -29,8 +35,12 @@ const intDrawerWidth = 318;
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
+  const strPathname = usePathname();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoggingOut, setBlnLoggingOut] = useState(false);
+  const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
+  const [blnNavigating, setBlnNavigating] = useState(false);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
 
@@ -61,7 +71,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [objRouter]);
 
-  async function handleLogout() {
+  useEffect(() => {
+    setBlnNavigating(false);
+  }, [strPathname]);
+
+  async function confirmLogout() {
+    setBlnLogoutDialogOpen(false);
+    setBlnLoggingOut(true);
     await authApiService.logout().catch(() => undefined);
     objRouter.replace("/login");
   }
@@ -70,7 +86,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strAvatarText = strUserName.slice(0, 2).toUpperCase();
 
   const objDrawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#fcfffe" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#fcfffe", overflow: "hidden" }}>
       <Paper
         sx={{
           p: 2.25,
@@ -90,8 +106,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Typography>
       </Paper>
 
-      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1 }}>
-        <DynamicMenu lstMenuItems={objMenu.lstMenuItems} onNavigate={() => setBlnDrawerOpen(false)} />
+      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+        <DynamicMenu
+          lstMenuItems={objMenu.lstMenuItems}
+          onNavigate={() => {
+            setBlnDrawerOpen(false);
+            setBlnNavigating(true);
+          }}
+        />
       </Paper>
     </Box>
   );
@@ -109,6 +131,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f5f8fa" }}>
+      <BlockingLoader blnOpen={blnLoggingOut || blnNavigating} strLabel={blnLoggingOut ? "Logging out..." : "Loading..."} intZIndex={1600} />
       <Drawer
         variant="temporary"
         open={blnDrawerOpen}
@@ -116,7 +139,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: "block",
-          "& .MuiDrawer-paper": { width: intDrawerWidth, border: "none", backgroundColor: "transparent", boxShadow: "none" }
+          "& .MuiDrawer-paper": { width: intDrawerWidth, border: "none", backgroundColor: "transparent", boxShadow: "none", overflow: "hidden" }
         }}
       >
         {objDrawer}
@@ -178,7 +201,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   {objUserContext?.objTenant.strTenantName}
                 </Typography>
               </Box>
-              <IconButton onClick={handleLogout}>
+              <IconButton onClick={() => setBlnLogoutDialogOpen(true)} disabled={blnLoggingOut}>
                 <LogoutRoundedIcon />
               </IconButton>
             </Paper>
@@ -187,6 +210,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         <Box component="main">{children}</Box>
       </Box>
+
+      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Logout</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to logout?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>Cancel</Button>
+          <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -31,8 +31,6 @@ export const enMessages = {
   dashboard: {
     title: "People operations at a glance",
     subtitle: "Your landing view adapts to role permissions and tenant context in real time.",
-    menuEmpty: "No modules are currently assigned to this user.",
-    homeCardTitle: "Default landing route",
-    homeCardSubtitle: "Backend-driven redirect logic keeps the first meaningful action in reach."
+    menuEmpty: "No modules are currently assigned to this user."
   }
 } as const;

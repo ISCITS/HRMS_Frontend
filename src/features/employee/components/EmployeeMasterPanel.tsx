@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
@@ -560,6 +561,8 @@ export default function EmployeeMasterPanel() {
           )}
         </Box>
       </Dialog>
+
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
     </Box>
   );
 }
