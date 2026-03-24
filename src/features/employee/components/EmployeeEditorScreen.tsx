@@ -461,7 +461,15 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
     <Stack spacing={2.5} sx={{ pb: blnViewOnly ? 0 : { xs: 12, md: 13 } }} onFocusCapture={handleEditorFocusCapture}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
         <Box>
-          <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 800, color: "#0f172a" }}>
+          <Typography
+            sx={{
+              mt: 0.5,
+              fontWeight: 800,
+              color: "#1f2937",
+              fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)",
+              lineHeight: 1.05,
+            }}
+          >
             {strMode === "add"
               ? dicConstant.employeeMaster.addPageTitle
               : strMode === "view"

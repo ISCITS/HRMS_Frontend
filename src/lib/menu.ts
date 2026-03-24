@@ -5,7 +5,7 @@ type MasterKey = "department" | "designation" | "employee" | "user" | "state" | 
 const dicMasterDefinitions: Record<MasterKey, { strModuleCode: string; strModuleName: string; strRoute: string }> = {
   department: { strModuleCode: "DEPARTMENT", strModuleName: "Department", strRoute: "/departments" },
   designation: { strModuleCode: "DESIGNATION", strModuleName: "Designation", strRoute: "/designations" },
-  employee: { strModuleCode: "EMPLOYEE", strModuleName: "Employee", strRoute: "/masters/employee" },
+  employee: { strModuleCode: "EMPLOYEE", strModuleName: "Employee", strRoute: "/employees" },
   user: { strModuleCode: "USER", strModuleName: "User", strRoute: "/users" },
   state: { strModuleCode: "STATE", strModuleName: "State", strRoute: "/states" },
   country: { strModuleCode: "COUNTRY", strModuleName: "Country", strRoute: "/countries" },
