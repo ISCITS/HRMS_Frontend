@@ -3,7 +3,6 @@
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   AppBar,
   Avatar,
@@ -26,7 +25,6 @@ import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
@@ -94,30 +92,42 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.slice(0, 2).toUpperCase();
+  const strTenantName = objUserContext?.objTenant.strTenantName || "Acme HRMS";
 
   const objDrawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#fcfffe", overflow: "hidden" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#f4f8fb", overflow: "hidden" }}>
       <Paper
         sx={{
           px: 2.25,
-          py: 1.75,
-          borderRadius: "24px",
-          background: "linear-gradient(160deg, rgba(15,118,110,0.9), rgba(14,116,144,0.88))",
-          color: "#ecfeff"
+          py: 1.6,
+          borderRadius: "28px",
+          background: "linear-gradient(145deg, #0f766e 0%, #0e7490 52%, #155e75 100%)",
+          color: "#ecfeff",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "0 18px 40px rgba(14,116,144,0.22)",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(circle at top right, rgba(255,255,255,0.22), transparent 34%)",
+            pointerEvents: "none",
+          },
         }}
       >
         <Typography
-          variant="h5"
           sx={{
-            fontWeight: 800,
-            letterSpacing: "-0.02em"
+            fontSize: "1.65rem",
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: 1,
           }}
         >
-          HRMS
+          {strTenantName}
         </Typography>
       </Paper>
 
-      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", boxShadow: "0 14px 34px rgba(15,23,42,0.06)" }}>
         <DynamicMenu
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
@@ -163,35 +173,76 @@ export default function AppShell({ children }: { children: ReactNode }) {
           sx={{
             borderRadius: "28px",
             mb: 2.5,
-            px: 1,
+            px: { xs: 1, md: 1.2 },
             backgroundColor: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(18px)"
+            backdropFilter: "blur(18px)",
+            boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
+            border: "1px solid rgba(148,163,184,0.2)",
           }}
         >
-          <Toolbar sx={{ gap: 1.5 }}>
-            <IconButton onClick={() => setBlnDrawerOpen(true)}>
+          <Toolbar sx={{ gap: 1.2, position: "relative", minHeight: { xs: 66, md: 70 } }}>
+            <IconButton onClick={() => setBlnDrawerOpen(true)} sx={{ position: "relative", zIndex: 2 }}>
               <MenuRoundedIcon />
             </IconButton>
 
-            <Paper
+            <Box
               sx={{
-                px: 2,
-                py: 1.2,
-                borderRadius: "18px",
+                position: "absolute",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: { xs: "calc(100% - 190px)", md: "calc(100% - 430px)" },
                 display: "flex",
-                alignItems: "center",
-                gap: 1.25,
-                minWidth: 0,
-                flex: 1
+                justifyContent: "center",
+                pointerEvents: "none",
               }}
             >
-              <SearchRoundedIcon sx={{ color: "#64748b" }} />
-              <Typography sx={{ color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {enMessages.shell.searchPlaceholder}
-              </Typography>
-            </Paper>
+              <Box sx={{ minWidth: 0, textAlign: "center" }}>
+                <Typography
+                  sx={{
+                    color: "#0f172a",
+                    fontWeight: 900,
+                    letterSpacing: "-0.03em",
+                    fontSize: { xs: "0.98rem", sm: "1.1rem", md: "1.2rem" },
+                    lineHeight: 1.1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "flex",
+                    alignItems: "baseline",
+                    justifyContent: "center",
+                    gap: { xs: 0.5, md: 0.8 },
+                  }}
+                >
+                  <Box component="span">Human Resource Management System</Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      color: "#475569",
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    -
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      color: "#0e7490",
+                      fontWeight: 900,
+                      letterSpacing: "0.08em",
+                      fontSize: { xs: "0.84rem", md: "0.9rem" },
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    HRMS
+                  </Box>
+                </Typography>
+              </Box>
+            </Box>
 
-            <IconButton>
+            <Box sx={{ flex: 1 }} />
+
+            <IconButton sx={{ position: "relative", zIndex: 2 }}>
               <NotificationsNoneRoundedIcon />
             </IconButton>
 
@@ -202,14 +253,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 borderRadius: "18px",
                 display: "flex",
                 alignItems: "center",
-                gap: 1.25
+                gap: 1.25,
+                position: "relative",
+                zIndex: 2,
+                boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
               }}
             >
               <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700 }}>{strAvatarText}</Avatar>
               <Box sx={{ display: { xs: "none", sm: "block" } }}>
                 <Typography sx={{ fontWeight: 700 }}>{strUserName}</Typography>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {objUserContext?.objTenant.strTenantName}
+                  {strTenantName}
                 </Typography>
               </Box>
               <IconButton onClick={() => setBlnLogoutDialogOpen(true)} disabled={blnLoggingOut}>
