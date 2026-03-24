@@ -135,7 +135,21 @@ export function isEmailValid(strValue: string): boolean {
 export function validateEmployeeForm(
   dicForm: EmployeeFormValues,
   lstEmployeeCodes: Array<{ intID: number; strEmployeeCode: string }>,
-  intEditingEmployeeID: number | null
+  intEditingEmployeeID: number | null,
+  dicValidationLabels = {
+    employeeCodeRequired: dicConstant.employeeMaster.validation.employeeCodeRequired,
+    employeeCodeFormat: dicConstant.employeeMaster.validation.employeeCodeFormat,
+    employeeCodeDuplicate: dicConstant.employeeMaster.validation.employeeCodeDuplicate,
+    firstNameRequired: dicConstant.employeeMaster.validation.firstNameRequired,
+    joiningDateRequired: dicConstant.employeeMaster.validation.joiningDateRequired,
+    employmentTypeRequired: dicConstant.employeeMaster.validation.employmentTypeRequired,
+    locationRequired: dicConstant.employeeMaster.validation.locationRequired,
+    workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
+    personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
+    mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
+    birthDateInvalid: dicConstant.employeeMaster.validation.birthDateInvalid,
+    exitDateInvalid: dicConstant.employeeMaster.validation.exitDateInvalid,
+  }
 ): Partial<Record<keyof EmployeeFormValues, string>> {
   const dicNextErrors: Partial<Record<keyof EmployeeFormValues, string>> = {};
   const strEmployeeCode = dicForm.strEmployeeCode.trim().toUpperCase();
@@ -146,47 +160,47 @@ export function validateEmployeeForm(
   const dtExitDate = dicForm.dtDateOfExit ? new Date(dicForm.dtDateOfExit) : null;
 
   if (!strEmployeeCode) {
-    dicNextErrors.strEmployeeCode = dicConstant.employeeMaster.validation.employeeCodeRequired;
+    dicNextErrors.strEmployeeCode = dicValidationLabels.employeeCodeRequired;
   } else if (!/^[A-Z0-9/_-]{2,50}$/.test(strEmployeeCode)) {
-    dicNextErrors.strEmployeeCode = dicConstant.employeeMaster.validation.employeeCodeFormat;
+    dicNextErrors.strEmployeeCode = dicValidationLabels.employeeCodeFormat;
   } else if (lstEmployeeCodes.some((dicEmployee) => dicEmployee.strEmployeeCode.toUpperCase() === strEmployeeCode && dicEmployee.intID !== intEditingEmployeeID)) {
-    dicNextErrors.strEmployeeCode = dicConstant.employeeMaster.validation.employeeCodeDuplicate;
+    dicNextErrors.strEmployeeCode = dicValidationLabels.employeeCodeDuplicate;
   }
 
   if (!dicForm.strFirstName.trim()) {
-    dicNextErrors.strFirstName = dicConstant.employeeMaster.validation.firstNameRequired;
+    dicNextErrors.strFirstName = dicValidationLabels.firstNameRequired;
   }
 
   if (!dicForm.dtDateOfJoining) {
-    dicNextErrors.dtDateOfJoining = dicConstant.employeeMaster.validation.joiningDateRequired;
+    dicNextErrors.dtDateOfJoining = dicValidationLabels.joiningDateRequired;
   }
 
   if (dicForm.intEmploymentTypeID === "") {
-    dicNextErrors.intEmploymentTypeID = dicConstant.employeeMaster.validation.employmentTypeRequired;
+    dicNextErrors.intEmploymentTypeID = dicValidationLabels.employmentTypeRequired;
   }
 
   if (dicForm.intLocationID === "") {
-    dicNextErrors.intLocationID = dicConstant.employeeMaster.validation.locationRequired;
+    dicNextErrors.intLocationID = dicValidationLabels.locationRequired;
   }
 
   if (strWorkEmail && !isEmailValid(strWorkEmail)) {
-    dicNextErrors.strWorkEmail = dicConstant.employeeMaster.validation.workEmailInvalid;
+    dicNextErrors.strWorkEmail = dicValidationLabels.workEmailInvalid;
   }
 
   if (strPersonalEmail && !isEmailValid(strPersonalEmail)) {
-    dicNextErrors.strPersonalEmail = dicConstant.employeeMaster.validation.personalEmailInvalid;
+    dicNextErrors.strPersonalEmail = dicValidationLabels.personalEmailInvalid;
   }
 
   if (dicForm.strMobileNumber && !/^[0-9+\- ]+$/.test(dicForm.strMobileNumber)) {
-    dicNextErrors.strMobileNumber = dicConstant.employeeMaster.validation.mobileNumberInvalid;
+    dicNextErrors.strMobileNumber = dicValidationLabels.mobileNumberInvalid;
   }
 
   if (dtBirthDate && dtJoiningDate && dtBirthDate >= dtJoiningDate) {
-    dicNextErrors.dtDateOfBirth = dicConstant.employeeMaster.validation.birthDateInvalid;
+    dicNextErrors.dtDateOfBirth = dicValidationLabels.birthDateInvalid;
   }
 
   if (dtExitDate && dtJoiningDate && dtExitDate < dtJoiningDate) {
-    dicNextErrors.dtDateOfExit = dicConstant.employeeMaster.validation.exitDateInvalid;
+    dicNextErrors.dtDateOfExit = dicValidationLabels.exitDateInvalid;
   }
 
   return dicNextErrors;

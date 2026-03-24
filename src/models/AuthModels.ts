@@ -37,6 +37,7 @@ export type TenantSummary = {
   strTenantUUID: string;
   strTenantCode: string;
   strTenantName: string;
+  intLanguageID:number;
 };
 
 export type UserSummary = {

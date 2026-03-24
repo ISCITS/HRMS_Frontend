@@ -8,6 +8,11 @@ export type ApiClientResponse<TResponse> = {
   MethodName: string;
 };
 
+export type ApiCallOptions = {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  params?: Record<string, string | number | boolean | null | undefined>;
+};
+
 function toEndpoint(methodName: string) {
   if (methodName.startsWith("/")) {
     return methodName;
@@ -33,18 +38,21 @@ Failure behavior:
 export async function callAPI<TResponse = unknown>(
   data: unknown,
   methodName: string,
-  menuAction = methodName
+  menuAction = methodName,
+  options: ApiCallOptions = {}
 ): Promise<ApiClientResponse<TResponse>> {
 
   const csrfToken = generateCSRFToken(apiConstants.csrfSecretKey, menuAction);
+  const strMethod = options.method ?? "POST";
 
   const requestConfig: ApiRequestConfig = {
-    method: "POST",
+    method: strMethod,
 
     // use dynamic endpoint
     url: toEndpoint(methodName),
 
-    data,
+    data: strMethod === "GET" ? undefined : data,
+    params: options.params,
 
     csrfMenuAction: menuAction,
     csrfToken

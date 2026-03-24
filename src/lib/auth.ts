@@ -53,6 +53,47 @@ export const authHelpers = {
       document.cookie = `${this.tenantCookieName}=${encodeURIComponent(strTenantUUID)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
     }
   },
+  setTenantContext(intTenantID: number, intCompanyID?: number, intLanguageID?:number) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("hrms_tenant_id", String(intTenantID));
+    if (typeof intCompanyID === "number" && Number.isFinite(intCompanyID)) {
+      window.localStorage.setItem("hrms_company_id", String(intCompanyID));
+    }
+
+    if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
+      window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+    }
+  },
+  getTenantID() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const strTenantID = window.localStorage.getItem("hrms_tenant_id");
+    const intTenantID = Number(strTenantID);
+    return Number.isFinite(intTenantID) && intTenantID > 0 ? intTenantID : null;
+  },
+  setLanguageID(intLanguageID?:number) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
+      window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+    }
+  },
+  getLanguageID() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const strLanguageID = window.localStorage.getItem("hrms_language_id");
+    const intLanguageID = Number(strLanguageID);
+    return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : 1;
+  },
   clearSession() {
     if (typeof document === "undefined") {
       return;
@@ -60,6 +101,8 @@ export const authHelpers = {
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("hrms_session_token");
+      window.localStorage.removeItem("hrms_tenant_id");
+      window.localStorage.removeItem("hrms_company_id");
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;

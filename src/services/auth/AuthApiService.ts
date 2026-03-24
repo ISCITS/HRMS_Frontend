@@ -85,6 +85,8 @@ export const authApiService = {
       strMenuAction: "AUTH_LOGIN"
     });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
+    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
   },
 
@@ -100,6 +102,8 @@ export const authApiService = {
       strMenuAction: "AUTH_GENERIC_LOGIN"
     });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
+    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
   },
 
@@ -118,6 +122,8 @@ export const authApiService = {
       strMenuAction: "AUTH_SSO_CALLBACK"
     });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
+    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
   },
 
