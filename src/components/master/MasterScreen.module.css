@@ -24,14 +24,7 @@
 }
 
 .backButton {
-  border: 1px solid #9db9d7 !important;
-  border-radius: 9px !important;
-  color: #1d5d96 !important;
-  font-size: 0.82rem !important;
-  font-weight: 700 !important;
-  min-height: 30px !important;
-  min-width: 74px;
-  padding: 0 9px !important;
+  display: none !important;
 }
 
 .controlsCard,
@@ -332,6 +325,14 @@
   border-radius: 22px !important;
   max-width: 520px;
   width: min(92vw, 520px);
+}
+
+.compactDialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 24px !important;
+  max-width: 620px;
+  width: min(92vw, 620px);
 }
 
 .confirmDialogTitle {

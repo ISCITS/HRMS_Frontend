@@ -22,7 +22,6 @@ const lstKpis = [
 ];
 
 export default function DashboardLanding({ objUserContext, objMenu }: DashboardLandingProps) {
-  const lstMasterItems = objMenu.lstMenuItems.find((objItem) => objItem.strModuleCode === "MASTERS")?.lstChildren ?? [];
   const lstNavigableItems = objMenu.lstMenuItems.flatMap((objItem) =>
     objItem.lstChildren.length > 0 ? objItem.lstChildren : [objItem]
   );
@@ -51,31 +50,6 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
               {objUserContext.objTenant.strTenantName} | {objUserContext.objUser.lstRoles.join(", ") || "Workspace user"}
             </Typography>
           </Box>
-
-          <Paper sx={{ minWidth: 260, p: 2.5, borderRadius: "24px" }}>
-            <Typography variant="overline" sx={{ color: "#64748b" }}>
-              {enMessages.dashboard.homeCardTitle}
-            </Typography>
-            <Typography variant="h5" sx={{ mt: 1 }}>
-              {objMenu.strHomeRoute}
-            </Typography>
-            <Typography sx={{ mt: 1, color: "#64748b" }}>
-              {enMessages.dashboard.homeCardSubtitle}
-            </Typography>
-            <Button component={Link} href={objMenu.strHomeRoute} variant="contained" sx={{ mt: 2 }}>
-              Open landing module
-            </Button>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
-              <Button component={Link} href="/dashboard" variant="outlined">
-                Open dashboard
-              </Button>
-              {lstMasterItems.slice(0, 4).map((objItem) => (
-                <Button key={objItem.strModuleCode} component={Link} href={objItem.strRoute ?? "#"} variant="outlined">
-                  {objItem.strModuleName}
-                </Button>
-              ))}
-            </Stack>
-          </Paper>
         </Stack>
       </Paper>
 
