@@ -4,7 +4,8 @@ import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 
-const publicPrefixes = ["/login", "/register", "/forgot-password", "/t", "/sso/callback"];
+const publicRoutes = ["/", "/home", "/login", "/register", "/forgot-password"];
+const publicPrefixes = ["/t", "/sso/callback"];
 
 /*
 Functional responsibility:
@@ -21,13 +22,16 @@ Failure behavior:
 */
 export default function AppLayoutBoundary({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isPublicRoute = publicPrefixes.some((prefix) => {
-    if (prefix === "/t") {
-      return pathname === "/t" || pathname.startsWith("/t/");
-    }
+  const isPublicRoute =
+    !pathname ||
+    publicRoutes.includes(pathname) ||
+    publicPrefixes.some((prefix) => {
+      if (prefix === "/t") {
+        return pathname === "/t" || pathname.startsWith("/t/");
+      }
 
-    return pathname === prefix || pathname.startsWith(`${prefix}/`);
-  });
+      return pathname === prefix || pathname.startsWith(`${prefix}/`);
+    });
 
   if (isPublicRoute) {
     return <>{children}</>;

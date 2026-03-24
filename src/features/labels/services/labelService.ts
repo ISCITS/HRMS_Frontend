@@ -24,11 +24,16 @@ export const labelService = {
       console.debug("[Labels API] decrypted response", objResponse.Response);
       return objResponse.Response;
     } catch (objError) {
-      console.error("[Labels API] request failed", {
+      console.warn("[Labels API] request failed, falling back to default labels", {
         query: objQueryPreview,
         error: objError instanceof Error ? objError.message : objError,
       });
-      throw (objError instanceof Error ? objError : new Error("Unable to load labels."));
+      return {
+        module: strModuleName,
+        language: "en",
+        fallback_language: null,
+        labels: {}
+      };
     }
   },
 

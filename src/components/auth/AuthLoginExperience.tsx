@@ -1,8 +1,8 @@
 "use client";
 
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
+import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import {
@@ -18,7 +18,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { apiConstants } from "@/config/constants";
@@ -32,11 +32,11 @@ import { clsApiRequestError } from "@/services/auth/AuthApiService";
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
   strTenantUUID?: string;
+  strTenantHint?: string;
 };
 
 export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLoginExperienceProps) {
   const objRouter = useRouter();
-  const objSearchParams = useSearchParams();
   const [strLoginID, setStrLoginID] = useState("");
   const [strPassword, setStrPassword] = useState("");
   const [strError, setStrError] = useState("");
@@ -162,26 +162,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     }
   }
 
-  async function startSso() {
-    if (!strTenantUUID) {
-      return;
-    }
-
-    try {
-      authHelpers.clearSession();
-      const objRedirect = await authApiService.getSsoRedirect(strTenantUUID);
-      window.location.href = objRedirect.Data.strRedirectUrl;
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to start SSO.");
-    }
-  }
-
   const strTitle = strMode === "tenant" ? enMessages.auth.tenantTitle : enMessages.auth.genericTitle;
   const strSubtitle = strMode === "tenant" ? enMessages.auth.tenantSubtitle : enMessages.auth.genericSubtitle;
-  const strCta = strMode === "tenant" ? enMessages.auth.localButton : enMessages.auth.genericButton;
-  const strTenantHint = objSearchParams.get("tenant");
-  const strSwitchHref = strMode === "tenant" ? "/login" : strTenantHint ? `/t/${strTenantHint}/login` : "";
-  const strSwitchLabel = strMode === "tenant" ? enMessages.auth.backToGeneric : enMessages.auth.backToTenant;
   const blnShowTenantTransition =
     strMode === "tenant" &&
     (blnTenantLoading || blnSsoRedirecting || objTenantAuthDetails?.auth_mode === "SSO") &&
@@ -228,58 +210,28 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       </Box>
     );
   }
+  const strDisplayTitle = "Sign In";
+  const strDisplaySubtitle = "";
 
   return (
     <Box className={styles.pageRoot}>
       <Box className={styles.shell}>
         <Box className={styles.heroPanel}>
           <Box className={styles.heroContent}>
-            <Box className={styles.badgeRow}>
-              <span className={styles.heroBadge}>SaaS HRMS</span>
-              <span className={styles.heroBadge}>Tenant-aware access</span>
-            </Box>
-
-            <h1 className={styles.heroTitle}>Secure people operations without login friction.</h1>
-            <p className={styles.heroSubtitle}>
-              Resolve tenant context early, blend local and SSO-ready experiences, and land every user on the right dashboard with a cleaner enterprise flow.
-            </p>
-
-            <Box className={styles.heroStats}>
-              <Box className={styles.heroStat}>
-                <Typography variant="body2" sx={{ opacity: 0.76 }}>
-                  Tenant routing
-                </Typography>
-                <Typography variant="h5" sx={{ mt: 1 }}>
-                  UUID-first
-                </Typography>
-              </Box>
-              <Box className={styles.heroStat}>
-                <Typography variant="body2" sx={{ opacity: 0.76 }}>
-                  Access modes
-                </Typography>
-                <Typography variant="h5" sx={{ mt: 1 }}>
-                  Local + SSO
-                </Typography>
-              </Box>
-              <Box className={styles.heroStat}>
-                <Typography variant="body2" sx={{ opacity: 0.76 }}>
-                  Landing logic
-                </Typography>
-                <Typography variant="h5" sx={{ mt: 1 }}>
-                  Role-aware
-                </Typography>
-              </Box>
+            <Box className={styles.heroIllustrationFrame}>
+              <Box component="img" src="/images/hrms-login.png" alt="HRMS login visual" className={styles.heroImage} />
             </Box>
           </Box>
         </Box>
 
         <Box className={styles.formPanel}>
           <Box className={styles.formCard}>
-            <Typography className={styles.eyebrow}>
-              {strMode === "tenant" ? "Tenant access" : "Generic access"}
-            </Typography>
-            <Typography className={styles.title}>{strTitle}</Typography>
-            <Typography className={styles.subtitle}>{strSubtitle}</Typography>
+            <Box className={styles.formIntro}>
+              <Typography className={styles.welcomeTitle}>Welcome to HRMS</Typography>
+              <Typography className={styles.welcomeSubtitle}>Human Resource Management System</Typography>
+            </Box>
+            <Typography className={styles.title}>{strDisplayTitle}</Typography>
+            {strDisplaySubtitle ? <Typography className={styles.subtitle}>{strDisplaySubtitle}</Typography> : null}
 
             <Stack spacing={2.25} sx={{ mt: 3 }}>
               {strError ? (
@@ -300,29 +252,53 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Box>
               ) : null}
 
-              <TextField
-                label={strMode === "tenant" ? enMessages.auth.loginIdLabel : enMessages.auth.emailLabel}
-                value={strLoginID}
-                onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
-                fullWidth
-              />
+              <Box>
+                <Typography className={styles.fieldLabel}>Work Email</Typography>
+                <TextField
+                  placeholder="Enter your work email"
+                  value={strLoginID}
+                  onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <AlternateEmailRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Box>
 
-              <TextField
-                label={enMessages.auth.passwordLabel}
-                type={blnPasswordVisible ? "text" : "password"}
-                value={strPassword}
-                onChange={(objEvent) => setStrPassword(objEvent.target.value)}
-                fullWidth
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
-                        {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
+              <Box>
+                <Typography className={styles.fieldLabel}>Password</Typography>
+                <TextField
+                  placeholder="Enter your password"
+                  type={blnPasswordVisible ? "text" : "password"}
+                  value={strPassword}
+                  onChange={(objEvent) => setStrPassword(objEvent.target.value)}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
+                          {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
+                <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
+                  Forgot Password?
+                </Typography>
+              </Box>
 
               <Button
                 variant="contained"
@@ -337,39 +313,40 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 onClick={submitForm}
                 sx={{
                   minHeight: 52,
-                  borderRadius: "18px",
-                  background: "linear-gradient(135deg, #0f766e 0%, #0e7490 100%)",
-                  boxShadow: "0 16px 30px rgba(14, 116, 144, 0.22)"
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
+                  boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)"
                 }}
                 startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : <LockRoundedIcon />}
               >
-                {strCta}
+                Sign In
               </Button>
 
-              {strMode === "tenant" && objTenantAuthDetails?.auth_mode === "SSO" ? (
-                <>
-                  <Divider>or</Divider>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    onClick={startSso}
-                    endIcon={<OpenInNewRoundedIcon />}
-                    sx={{ minHeight: 52, borderRadius: "18px" }}
-                  >
-                    {enMessages.auth.ssoButton}
-                  </Button>
-                </>
-              ) : null}
+              <Divider sx={{ color: "#64748b", fontSize: "0.92rem" }}>Or sign in with:</Divider>
+
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  disabled
+                  sx={{ minHeight: 48, borderRadius: "10px", textTransform: "none", color: "#94a3b8", borderColor: "#dbe4ee" }}
+                >
+                  Single Sign-On (SSO)
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  disabled
+                  sx={{ minHeight: 48, borderRadius: "10px", textTransform: "none", color: "#94a3b8", borderColor: "#dbe4ee" }}
+                >
+                  Google
+                </Button>
+              </Box>
 
               <Box className={styles.helperLinks}>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  Secure routing, runtime session checks, and backend-driven home redirect.
+                  {strMode === "tenant" ? strTitle : strSubtitle}
                 </Typography>
-                {strMode === "tenant" || strSwitchHref ? (
-                  <Button href={strSwitchHref} variant="text">
-                    {strSwitchLabel}
-                  </Button>
-                ) : null}
               </Box>
             </Stack>
           </Box>

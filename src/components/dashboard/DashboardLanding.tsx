@@ -1,13 +1,13 @@
 "use client";
 
-import AutoGraphRoundedIcon from "@mui/icons-material/AutoGraphRounded";
-import Groups2RoundedIcon from "@mui/icons-material/Groups2Rounded";
-import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
-import TipsAndUpdatesRoundedIcon from "@mui/icons-material/TipsAndUpdatesRounded";
-import Link from "next/link";
-import { Box, Button, Grid, Paper, Stack, Typography } from "@mui/material";
+import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
+import { Box, Grid, Paper, Stack, Typography } from "@mui/material";
 
-import { enMessages } from "@/i18n/messages/en";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 
 type DashboardLandingProps = {
@@ -15,106 +15,122 @@ type DashboardLandingProps = {
   objMenu: MenuResponse;
 };
 
-const lstKpis = [
-  { strLabel: "Team visibility", strValue: "Live", objIcon: <Groups2RoundedIcon color="primary" /> },
-  { strLabel: "Task posture", strValue: "Stable", objIcon: <TaskAltRoundedIcon color="primary" /> },
-  { strLabel: "Insights cadence", strValue: "Daily", objIcon: <AutoGraphRoundedIcon color="primary" /> }
+const lstOverviewCards = [
+  {
+    strTitle: "Workforce Administration",
+    strDescription: "Centralized employee records, master data governance, and organization-wide visibility.",
+    objIcon: <BadgeRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+  },
+  {
+    strTitle: "Attendance and Leave",
+    strDescription: "Track shifts, review attendance posture, and manage time-off operations from one place.",
+    objIcon: <CalendarMonthRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+  },
+  {
+    strTitle: "Payroll Operations",
+    strDescription: "Prepare salary workflows, align payout cycles, and keep finance-ready HR operations.",
+    objIcon: <PaymentsRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+  }
+];
+
+const lstFocusAreas = [
+  {
+    strLabel: "Employee lifecycle",
+    strValue: "Onboarding, profile, hierarchy, role assignment",
+    objIcon: <ApartmentRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
+  },
+  {
+    strLabel: "Approvals and controls",
+    strValue: "Leave, attendance, access, and compliance checkpoints",
+    objIcon: <AssignmentTurnedInRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
+  },
+  {
+    strLabel: "Operational insights",
+    strValue: "Workforce trends, reporting readiness, and structured decision support",
+    objIcon: <TimelineRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
+  }
 ];
 
 export default function DashboardLanding({ objUserContext, objMenu }: DashboardLandingProps) {
-  const lstNavigableItems = objMenu.lstMenuItems.flatMap((objItem) =>
-    objItem.lstChildren.length > 0 ? objItem.lstChildren : [objItem]
-  );
+  const strRoleSummary = objUserContext.objUser.lstRoles.join(", ") || "Workspace user";
+  const strDisplayWorkspaceName = "HRMS";
 
   return (
     <Stack spacing={3}>
       <Paper
         sx={{
-          p: { xs: 3, md: 4 },
-          borderRadius: "30px",
-          background: "linear-gradient(135deg, rgba(15,118,110,0.08), rgba(14,116,144,0.14))"
+          overflow: "hidden",
+          borderRadius: "32px",
+          background: "linear-gradient(135deg, #fff8f1 0%, #fff1df 38%, #fde7cf 100%)",
+          border: "1px solid rgba(249,115,22,0.12)",
+          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.06)"
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={3} justifyContent="space-between">
-          <Box>
-            <Typography variant="overline" sx={{ color: "#0f766e", fontWeight: 700 }}>
-              {enMessages.shell.welcome}
-            </Typography>
-            <Typography variant="h3" sx={{ mt: 1, fontSize: { xs: 34, md: 46 }, lineHeight: 1.05 }}>
-              {enMessages.dashboard.title}
-            </Typography>
-            <Typography sx={{ mt: 1.5, maxWidth: 720, color: "#475569", lineHeight: 1.7 }}>
-              {enMessages.dashboard.subtitle}
-            </Typography>
-            <Typography sx={{ mt: 2, color: "#0f172a", fontWeight: 700 }}>
-              {objUserContext.objTenant.strTenantName} | {objUserContext.objUser.lstRoles.join(", ") || "Workspace user"}
-            </Typography>
-          </Box>
-        </Stack>
+        <Box
+          sx={{
+            p: { xs: 3, md: 4.5 },
+            background: "radial-gradient(circle at top right, rgba(249,115,22,0.18), transparent 34%)"
+          }}
+        >
+          <Typography sx={{ color: "#c2410c", fontWeight: 700, letterSpacing: "0.16em", fontSize: "0.78rem" }}>
+            HRMS PROJECT
+          </Typography>
+          <Typography
+            variant="h2"
+            sx={{
+              mt: 1.5,
+              fontSize: { xs: "2.2rem", md: "3.25rem" },
+              lineHeight: 1.02,
+              letterSpacing: "-0.03em",
+              color: "#111827",
+              fontWeight: 800
+            }}
+          >
+            Human Resource Management System.
+          </Typography>
+          <Typography sx={{ mt: 2, maxWidth: 860, color: "#4b5563", lineHeight: 1.75, fontSize: "1rem" }}>
+          
+          </Typography>
+          <Typography sx={{ mt: 2.5, color: "#1f2937", fontWeight: 700 }}>
+            {strDisplayWorkspaceName} | {strRoleSummary}
+          </Typography>
+        </Box>
       </Paper>
 
       <Grid container spacing={2.5}>
-        {lstKpis.map((objKpi) => (
-          <Grid key={objKpi.strLabel} item xs={12} md={4}>
-            <Paper sx={{ p: 3, borderRadius: "24px", height: "100%" }}>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box
-                  sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: "16px",
-                    display: "grid",
-                    placeItems: "center",
-                    backgroundColor: "rgba(14,116,144,0.1)"
-                  }}
-                >
-                  {objKpi.objIcon}
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>
-                    {objKpi.strLabel}
-                  </Typography>
-                  <Typography variant="h5">{objKpi.strValue}</Typography>
-                </Box>
-              </Stack>
+        {lstOverviewCards.map((objCard) => (
+          <Grid key={objCard.strTitle} item xs={12} md={4}>
+            <Paper
+              sx={{
+                p: 3,
+                height: "100%",
+                borderRadius: "24px",
+                border: "1px solid rgba(148, 163, 184, 0.18)",
+                boxShadow: "0 14px 28px rgba(15, 23, 42, 0.04)"
+              }}
+            >
+              <Box
+                sx={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: "18px",
+                  display: "grid",
+                  placeItems: "center",
+                  backgroundColor: "rgba(249,115,22,0.10)"
+                }}
+              >
+                {objCard.objIcon}
+              </Box>
+              <Typography variant="h6" sx={{ mt: 2.25, color: "#111827", fontWeight: 700 }}>
+                {objCard.strTitle}
+              </Typography>
+              <Typography sx={{ mt: 1, color: "#6b7280", lineHeight: 1.7 }}>
+                {objCard.strDescription}
+              </Typography>
             </Paper>
           </Grid>
         ))}
       </Grid>
-
-      <Paper sx={{ p: 3, borderRadius: "24px" }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-          <TipsAndUpdatesRoundedIcon color="primary" />
-          <Typography variant="h6">Dynamic modules</Typography>
-        </Stack>
-
-        {lstNavigableItems.length === 0 ? (
-          <Typography sx={{ color: "#64748b" }}>{enMessages.dashboard.menuEmpty}</Typography>
-        ) : (
-          <Grid container spacing={2}>
-            {lstNavigableItems.map((objItem) => (
-              <Grid key={objItem.strRoute ?? objItem.strModuleCode} item xs={12} md={6}>
-                <Paper
-                  sx={{
-                    p: 2.5,
-                    borderRadius: "20px",
-                    backgroundColor: objItem.blnIsHome ? "rgba(14,116,144,0.08)" : "#fff"
-                  }}
-                >
-                  <Typography variant="overline" sx={{ color: "#64748b" }}>
-                    {objItem.strModuleCode}
-                  </Typography>
-                  <Typography variant="h6">{objItem.strModuleName}</Typography>
-                  <Typography sx={{ mt: 0.75, color: "#64748b" }}>{objItem.lstPermissionCodes.join(" | ")}</Typography>
-                  <Button component={Link} href={objItem.strRoute ?? "#"} sx={{ mt: 2 }} variant={objItem.blnIsHome ? "contained" : "outlined"}>
-                    Open module
-                  </Button>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-      </Paper>
     </Stack>
   );
 }

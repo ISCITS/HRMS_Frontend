@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -471,7 +471,6 @@ export default function DepartmentMasterPanel() {
             <Typography sx={{ mt: 1 }}>Loading departments...</Typography>
           </Box>
         ) : (
-        // Only the grid region scrolls; the header, filters, and bulk action bar stay fixed above it.
         <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>

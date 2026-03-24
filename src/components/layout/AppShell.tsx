@@ -27,6 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { enMessages } from "@/i18n/messages/en";
+import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
@@ -46,6 +47,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let blnMounted = true;
+    const strAccessToken = authHelpers.getAccessToken();
+
+    if (!strAccessToken) {
+      setBlnLoading(false);
+      objRouter.replace("/login");
+      return () => {
+        blnMounted = false;
+      };
+    }
 
     Promise.all([authApiService.getCurrentUser(), authApiService.getMenu()])
       .then(([objUserResult, objMenuResult]) => {
@@ -89,20 +99,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#fcfffe", overflow: "hidden" }}>
       <Paper
         sx={{
-          p: 2.25,
+          px: 2.25,
+          py: 1.75,
           borderRadius: "24px",
           background: "linear-gradient(160deg, rgba(15,118,110,0.9), rgba(14,116,144,0.88))",
           color: "#ecfeff"
         }}
       >
-        <Typography variant="overline" sx={{ opacity: 0.78 }}>
-          {enMessages.shell.workspace}
-        </Typography>
-        <Typography variant="h5" sx={{ mt: 0.5 }}>
-          {objUserContext?.objTenant.strTenantName ?? "Resolving workspace"}
-        </Typography>
-        <Typography sx={{ mt: 1, opacity: 0.82 }}>
-          {objUserContext?.objTenant.strTenantCode ?? "TENANT"}
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: "-0.02em"
+          }}
+        >
+          HRMS
         </Typography>
       </Paper>
 
