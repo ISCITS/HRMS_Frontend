@@ -3,7 +3,6 @@
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   AppBar,
   Avatar,
@@ -26,7 +25,6 @@ import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
@@ -168,28 +166,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
             backdropFilter: "blur(18px)"
           }}
         >
-          <Toolbar sx={{ gap: 1.5 }}>
+          <Toolbar sx={{ gap: 1.5, position: "relative" }}>
             <IconButton onClick={() => setBlnDrawerOpen(true)}>
               <MenuRoundedIcon />
             </IconButton>
 
-            <Paper
+            <Box
               sx={{
+                position: "absolute",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "min(100%, 640px)",
                 px: 2,
-                py: 1.2,
-                borderRadius: "18px",
-                display: "flex",
-                alignItems: "center",
-                gap: 1.25,
-                minWidth: 0,
-                flex: 1
+                pointerEvents: "none"
               }}
             >
-              <SearchRoundedIcon sx={{ color: "#64748b" }} />
-              <Typography sx={{ color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {enMessages.shell.searchPlaceholder}
+              <Typography
+                sx={{
+                  fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  textAlign: "center"
+                }}
+              >
+                Human Resource Management System
               </Typography>
-            </Paper>
+            </Box>
+
+            <Box sx={{ flex: 1 }} />
 
             <IconButton>
               <NotificationsNoneRoundedIcon />
