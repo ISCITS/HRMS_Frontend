@@ -42,10 +42,6 @@ Failure behavior:
 - Throws if crypto.randomUUID is unavailable in the current runtime.
 */
 export function generateCSRFToken(secretKey: string, menuAction: string) {
-  if (!globalThis.crypto?.randomUUID) {
-    throw new Error("crypto.randomUUID is not available in the current runtime.");
-  }
-
   const header: CSRFHeader = {
     alg: "HS256",
     typ: "JWT"
@@ -53,7 +49,7 @@ export function generateCSRFToken(secretKey: string, menuAction: string) {
 
   const nowInSeconds = Math.floor(Date.now() / 1000);
   const payload: CSRFPayload = {
-    jti: globalThis.crypto.randomUUID(),
+    jti: generateTokenId(),
     act: menuAction,
     iat: nowInSeconds,
     exp: nowInSeconds + apiConstants.csrfTokenTtlSeconds
@@ -65,6 +61,23 @@ export function generateCSRFToken(secretKey: string, menuAction: string) {
   const signature = createSignature(unsignedToken, secretKey);
 
   return `${unsignedToken}.${signature}`;
+}
+
+function generateTokenId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  if (globalThis.crypto?.getRandomValues) {
+    const arrBytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    arrBytes[6] = (arrBytes[6] & 0x0f) | 0x40;
+    arrBytes[8] = (arrBytes[8] & 0x3f) | 0x80;
+    const strHex = Array.from(arrBytes, (intByte) => intByte.toString(16).padStart(2, "0")).join("");
+    return `${strHex.slice(0, 8)}-${strHex.slice(8, 12)}-${strHex.slice(12, 16)}-${strHex.slice(16, 20)}-${strHex.slice(20)}`;
+  }
+
+  const strRandomHex = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex);
+  return `${strRandomHex.slice(0, 8)}-${strRandomHex.slice(8, 12)}-${strRandomHex.slice(12, 16)}-${strRandomHex.slice(16, 20)}-${strRandomHex.slice(20)}`;
 }
 
 
