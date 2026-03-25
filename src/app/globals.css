@@ -8,6 +8,17 @@ html,
 body {
   margin: 0;
   padding: 0;
+  background: var(--app-bg-color);
+  color: var(--app-text-color);
+  font-family: var(--app-font-family);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--app-font-family);
 }
 
 a {

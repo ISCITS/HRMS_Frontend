@@ -525,7 +525,7 @@ export default function GradeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
+      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
         <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
@@ -547,7 +547,7 @@ export default function GradeMasterPanel() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? t("close", "Close") : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveGrade} disabled={blnSubmitting}>
               {blnSubmitting ? t("saving", "Saving...") : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
@@ -556,22 +556,22 @@ export default function GradeMasterPanel() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} fullWidth maxWidth="xs">
-        <DialogTitle>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent dividers>
-          <Typography>{objConfirmDialog?.strMessage}</Typography>
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
-          <Button className={styles.bulkDelete} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel}
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button className={styles.textAction} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
+          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
           </Button>
         </DialogActions>
       </Dialog>
 
       <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
           {objToast.strMessage}
         </Alert>

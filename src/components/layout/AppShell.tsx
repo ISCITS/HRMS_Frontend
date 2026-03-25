@@ -99,12 +99,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strAvatarText = strUserName.slice(0, 2).toUpperCase();
 
   const objDrawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#fcfffe", overflow: "hidden" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "var(--app-surface-muted)", overflow: "hidden" }}>
       <Paper
         sx={{
           px: 2.25,
           py: 1.75,
-          borderRadius: "24px",
+          borderRadius: "0 24px 24px 0",
           background: "linear-gradient(160deg, rgba(15,118,110,0.9), rgba(14,116,144,0.88))",
           color: "#ecfeff"
         }}
@@ -120,7 +120,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Typography>
       </Paper>
 
-      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "0 24px 24px 0", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
         <DynamicMenu
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
@@ -153,7 +153,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: "block",
-          "& .MuiDrawer-paper": { width: intDrawerWidth, border: "none", backgroundColor: "transparent", boxShadow: "none", overflow: "hidden" }
+          "& .MuiDrawer-paper": {
+            width: intDrawerWidth,
+            border: "none",
+            borderRadius: "0 28px 28px 0",
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            overflow: "hidden"
+          }
         }}
       >
         {objDrawer}
@@ -162,9 +169,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Box sx={{ flex: 1, minWidth: 0, p: { xs: 1.5, md: 2.5 } }}>
         <AppBar
           position="sticky"
-          color="inherit"
+            color="inherit"
           sx={{
-            borderRadius: "28px",
+            borderRadius: "var(--app-card-radius)",
             mb: 2.5,
             px: 1,
             backgroundColor: "rgba(255,255,255,0.88)",
