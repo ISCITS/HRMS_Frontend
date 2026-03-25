@@ -103,6 +103,7 @@ export const authHelpers = {
       window.localStorage.removeItem("hrms_session_token");
       window.localStorage.removeItem("hrms_tenant_id");
       window.localStorage.removeItem("hrms_company_id");
+      window.localStorage.removeItem("hrms_language_id");
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;

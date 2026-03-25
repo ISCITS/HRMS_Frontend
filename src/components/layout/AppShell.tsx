@@ -60,6 +60,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
         if (!blnMounted) {
           return;
         }
+        authHelpers.setTenantContext(
+          objUserResult.Data.objTenant.intTenantID,
+          undefined,
+          objUserResult.Data.objTenant.intLanguageID ?? undefined
+        );
         setObjUserContext(objUserResult.Data);
         setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })

@@ -31,6 +31,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { LocationApiRecord, LocationFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type LocationStatus = "Active" | "Inactive";
@@ -160,6 +161,7 @@ function exportPdf(strTitle: string, lstRows: LocationRecord[]) {
 
 export default function LocationMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("location");
   const [lstLocations, setLstLocations] = useState<LocationRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<LocationFormOptionsApiRecord | null>(null);
   const [strMode, setStrMode] = useState<LocationMode>("add");
@@ -176,6 +178,36 @@ export default function LocationMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const dicCommonLabels = {
+    cancel: t("cancel", dicConstant.common.cancel),
+    clear: t("clear", dicConstant.common.clear),
+    exportExcel: t("export_excel", dicConstant.common.exportExcel),
+    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
+    search: t("search", dicConstant.common.search),
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
+    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
+    loading: t("loading", "Loading..."),
+    processing: t("processing", "Processing..."),
+  };
+  const dicModuleLabels = {
+    breadcrumbs: t("breadcrumbs", "Admin / Master / Locations"),
+    pageTitle: t("page_title", dicConstant.locations.pageTitle),
+    backButton: t("back_button", dicConstant.locations.backButton),
+    addButton: t("add_button", dicConstant.locations.addButton),
+    searchNamePlaceholder: t("search_name_placeholder", "Search Location Name"),
+    searchCodePlaceholder: t("search_code_placeholder", "Search Location Code"),
+    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
+    tableName: t("table_name", "Location Name"),
+    tableCode: t("table_code", "Location Code"),
+    tableState: t("table_state", "State"),
+    tableCity: t("table_city", "City"),
+    tableStatus: t("table_status", "Status"),
+    tableActions: t("table_actions", "Actions"),
+    loadingRecords: t("loading_records", "Loading locations..."),
+    emptyMessage: t("empty_message", "No location records found."),
+  };
 
   async function loadLocations() {
     setBlnLoading(true);
@@ -395,44 +427,44 @@ export default function LocationMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>Admin / Master / Locations</Typography>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.locations.backButton}</Button>
+        <Typography className={styles.breadcrumbs}>{dicModuleLabels.breadcrumbs}</Typography>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicConstant.locations.pageTitle}</Typography>
+          <Typography component="h1" className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicConstant.locations.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Location Master", lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("location-master.xls", lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportExcel}</Button>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("location-master.xls", lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
           </Box>
         </Box>
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder="Search Location Name" fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder="Search Location Code" fullWidth />
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
           <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">Status</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            <MenuItem value="All">{dicModuleLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.search}</Button></Box>
-          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
       {blnSubmitting ? (
         <Box className={styles.bulkBar}>
           <CircularProgress size={20} />
-          <Typography className={styles.bulkCount}>Applying changes...</Typography>
+          <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
         </Box>
       ) : lstSelectedIds.length > 0 ? (
         <Box className={styles.bulkBar}>
-          <Typography className={styles.bulkCount}>{lstSelectedIds.length} row(s) selected</Typography>
-          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>Bulk Activate</Button>
-          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>Bulk Deactivate</Button>
-          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>Bulk Delete</Button>
+          <Typography className={styles.bulkCount}>{lstSelectedIds.length} {t("bulk_rows_selected", "row(s) selected")}</Typography>
+          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Bulk Activate")}</Button>
+          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Bulk Delete")}</Button>
         </Box>
       ) : null}
 
@@ -440,7 +472,7 @@ export default function LocationMasterPanel() {
         {!blnLoading && lstFilteredLocations.length > 0 ? (
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
                 select
                 size="small"
@@ -456,7 +488,7 @@ export default function LocationMasterPanel() {
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredLocations.length)} {dicConstant.common.paginationSeparator} {lstFilteredLocations.length}
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredLocations.length)} {dicCommonLabels.paginationSeparator} {lstFilteredLocations.length}
               </Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
@@ -466,7 +498,7 @@ export default function LocationMasterPanel() {
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>Loading locations...</Typography>
+            <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -474,17 +506,17 @@ export default function LocationMasterPanel() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                  <th>Location Name</th>
-                  <th>Location Code</th>
-                  <th>State</th>
-                  <th>City</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{dicModuleLabels.tableName}</th>
+                  <th>{dicModuleLabels.tableCode}</th>
+                  <th>{dicModuleLabels.tableState}</th>
+                  <th>{dicModuleLabels.tableCity}</th>
+                  <th>{dicModuleLabels.tableStatus}</th>
+                  <th>{dicModuleLabels.tableActions}</th>
                 </tr>
               </thead>
               <tbody>
                 {lstFilteredLocations.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={7}>No location records found.</td></tr>
+                  <tr><td className={styles.emptyState} colSpan={7}>{dicModuleLabels.emptyMessage}</td></tr>
                 ) : lstVisibleLocations.map((dicLocation) => {
                   const blnSelected = lstSelectedIds.includes(dicLocation.id);
                   return (
@@ -513,7 +545,7 @@ export default function LocationMasterPanel() {
       </Box>
 
       <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{strMode === "add" ? dicConstant.locations.dialogAddTitle : strMode === "edit" ? dicConstant.locations.dialogEditTitle : "View Location"}</DialogTitle>
+        <DialogTitle>{strMode === "add" ? dicConstant.locations.dialogAddTitle : strMode === "edit" ? dicConstant.locations.dialogEditTitle : t("dialog_view_title", "View Location")}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={dicConstant.locations.fields.code} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
@@ -545,16 +577,16 @@ export default function LocationMasterPanel() {
               fullWidth
               disabled={strMode === "view"}
             >
-              <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
             </TextField>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicConstant.common.close : dicConstant.common.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveLocation} disabled={blnSubmitting}>
-              {blnSubmitting ? "Saving..." : strMode === "add" ? dicConstant.locations.saveLocation : dicConstant.locations.updateLocation}
+              {blnSubmitting ? t("saving", "Saving...") : strMode === "add" ? t("save", dicConstant.common.save) : t("update", dicConstant.common.update)}
             </Button>
           ) : null}
         </DialogActions>
@@ -566,14 +598,14 @@ export default function LocationMasterPanel() {
           <Typography>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicConstant.common.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.bulkDelete} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? "Processing..." : objConfirmDialog?.strConfirmLabel}
+            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

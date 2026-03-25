@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { type UserApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type UserStatus = "Active" | "Inactive";
@@ -181,6 +182,7 @@ function exportPdf(strTitle: string, lstRows: UserRecord[]) {
 
 export default function UserMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("user");
   const [lstUsers, setLstUsers] = useState<UserRecord[]>(lstDefaultUsers);
   const [strMode, setStrMode] = useState<UserMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -196,6 +198,37 @@ export default function UserMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const dicCommonLabels = {
+    cancel: t("cancel", dicConstant.common.cancel),
+    clear: t("clear", dicConstant.common.clear),
+    exportExcel: t("export_excel", dicConstant.common.exportExcel),
+    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
+    search: t("search", dicConstant.common.search),
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
+    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
+    loading: t("loading", "Loading..."),
+    processing: t("processing", "Processing..."),
+  };
+  const dicModuleLabels = {
+    breadcrumbs: t("breadcrumbs", "Admin / Master / Users"),
+    pageTitle: t("page_title", dicConstant.users.pageTitle),
+    backButton: t("back_button", dicConstant.users.backButton),
+    addButton: t("add_button", dicConstant.users.addButton),
+    searchCodePlaceholder: t("search_code_placeholder", "Search Login Name"),
+    searchNamePlaceholder: t("search_name_placeholder", "Search Email Address"),
+    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
+    tableLoginName: t("table_login_name", "Login Name"),
+    tableEmail: t("table_email", "Email Address"),
+    tableMobile: t("table_mobile", "Mobile Number"),
+    tableAuthSource: t("table_auth_source", "Auth Source"),
+    tableSsoEnabled: t("table_sso_enabled", "SSO Enabled"),
+    tableStatus: t("table_status", "Status"),
+    tableActions: t("table_actions", "Actions"),
+    loadingRecords: t("loading_records", "Loading users..."),
+    emptyMessage: t("empty_message", "No user records found."),
+  };
 
   async function loadUsers() {
     setBlnLoading(true);
@@ -427,24 +460,24 @@ export default function UserMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>Admin / Master / Users</Typography>
+        <Typography className={styles.breadcrumbs}>{dicModuleLabels.breadcrumbs}</Typography>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
-          {dicConstant.users.backButton}
+          {dicModuleLabels.backButton}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Typography className={styles.title}>{dicConstant.users.pageTitle}</Typography>
+          <Typography className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("User Master", lstFilteredUsers)}>
-              {dicConstant.common.exportPdf}
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
+              {dicCommonLabels.exportPdf}
             </Button>
             <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
-              {dicConstant.common.exportExcel}
+              {dicCommonLabels.exportExcel}
             </Button>
             <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              {dicConstant.users.addButton}
+              {dicModuleLabels.addButton}
             </Button>
           </Box>
         </Box>
@@ -452,43 +485,43 @@ export default function UserMasterPanel() {
         <Box className={styles.searchRow}>
             <TextField
               size="small"
-              label={dicConstant.users.fields.loginName}
+              label={dicModuleLabels.searchCodePlaceholder}
               value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
           />
           <TextField
             size="small"
-            label={dicConstant.users.fields.email}
+             label={dicModuleLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
           />
           <TextField
             select
             size="small"
-            label={dicConstant.users.fields.status}
+            label={dicModuleLabels.searchStatusPlaceholder}
             value={dicSearchDraft.status}
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
-            <MenuItem value="All">All</MenuItem>
-            <MenuItem value="Active">Active</MenuItem>
-            <MenuItem value="Inactive">Inactive</MenuItem>
+            <MenuItem value="All">{dicModuleLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
-              {dicConstant.common.search}
+              {dicCommonLabels.search}
             </Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }}>
-              {dicConstant.common.clear}
+              {dicCommonLabels.clear}
             </Button>
           </Box>
         </Box>
 
         {lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{lstSelectedIds.length} selected</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>Bulk Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>Bulk Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete}>Bulk Delete</Button>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {t("bulk_rows_selected", "selected")}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{t("bulk_activate", "Bulk Activate")}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete}>{t("bulk_delete", "Bulk Delete")}</Button>
           </Box>
         ) : null}
       </Box>
@@ -496,7 +529,7 @@ export default function UserMasterPanel() {
       <Box className={styles.tableCard}>
         <Box className={styles.paginationBar}>
           <Box className={styles.paginationInfo}>
-            <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+            <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
             <TextField
               select
               size="small"
@@ -512,7 +545,7 @@ export default function UserMasterPanel() {
               ))}
             </TextField>
             <Typography className={styles.paginationRange}>
-              {lstFilteredUsers.length === 0 ? "0" : intStartIndex + 1} {dicConstant.common.paginationSeparator} {Math.min(intStartIndex + intRowsPerPage, lstFilteredUsers.length)} of {lstFilteredUsers.length}
+              {lstFilteredUsers.length === 0 ? "0" : intStartIndex + 1} {dicCommonLabels.paginationSeparator} {Math.min(intStartIndex + intRowsPerPage, lstFilteredUsers.length)} of {lstFilteredUsers.length}
             </Typography>
           </Box>
           <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" />
@@ -530,19 +563,19 @@ export default function UserMasterPanel() {
                   <th>
                     <Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} />
                   </th>
-                  <th>{dicConstant.users.grid.loginName}</th>
-                  <th>{dicConstant.users.grid.email}</th>
-                  <th>{dicConstant.users.grid.mobile}</th>
-                  <th>{dicConstant.users.grid.authSource}</th>
-                  <th>{dicConstant.users.grid.ssoEnabled}</th>
-                  <th>{dicConstant.users.grid.status}</th>
-                  <th>{dicConstant.users.grid.action}</th>
+                  <th>{dicModuleLabels.tableLoginName}</th>
+                  <th>{dicModuleLabels.tableEmail}</th>
+                  <th>{dicModuleLabels.tableMobile}</th>
+                  <th>{dicModuleLabels.tableAuthSource}</th>
+                  <th>{dicModuleLabels.tableSsoEnabled}</th>
+                  <th>{dicModuleLabels.tableStatus}</th>
+                  <th>{dicModuleLabels.tableActions}</th>
                 </tr>
               </thead>
               <tbody>
                 {lstVisibleUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className={styles.emptyState}>No user records found.</td>
+                    <td colSpan={8} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
                   </tr>
                 ) : lstVisibleUsers.map((dicUser) => (
                   <tr key={dicUser.id} className={lstSelectedIds.includes(dicUser.id) ? styles.selectedRow : undefined}>
@@ -621,7 +654,7 @@ export default function UserMasterPanel() {
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={4000} onClose={closeToast}>
         <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled">{objToast.strMessage}</Alert>

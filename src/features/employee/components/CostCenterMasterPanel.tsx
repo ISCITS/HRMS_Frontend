@@ -31,6 +31,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { CostCenterApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type CostCenterStatus = "Active" | "Inactive";
@@ -148,6 +149,7 @@ function exportPdf(strTitle: string, lstRows: CostCenterRecord[]) {
 
 export default function CostCenterMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("cost_center");
   const [lstCostCenters, setLstCostCenters] = useState<CostCenterRecord[]>([]);
   const [strMode, setStrMode] = useState<CostCenterMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -163,6 +165,51 @@ export default function CostCenterMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const dicCommonLabels = {
+    cancel: t("cancel", dicConstant.common.cancel),
+    clear: t("clear", dicConstant.common.clear),
+    exportExcel: t("export_excel", dicConstant.common.exportExcel),
+    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
+    save: t("save", dicConstant.common.save),
+    search: t("search", dicConstant.common.search),
+    update: t("update", dicConstant.common.update),
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
+    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
+    loading: t("loading", "Loading..."),
+    processing: t("processing", "Processing..."),
+  };
+  const dicModuleLabels = {
+    breadcrumbs: t("breadcrumbs", "Admin / Master / Cost Centers"),
+    pageTitle: t("page_title", dicConstant.costCenters.pageTitle),
+    backButton: t("back_button", dicConstant.costCenters.backButton),
+    addButton: t("add_button", dicConstant.costCenters.addButton),
+    dialogAddTitle: t("dialog_add_title", dicConstant.costCenters.dialogAddTitle),
+    dialogEditTitle: t("dialog_edit_title", dicConstant.costCenters.dialogEditTitle),
+    dialogViewTitle: t("dialog_view_title", "View Cost Center"),
+    exportTitle: t("export_title", "Cost Center Master"),
+    exportFileName: t("export_file_name", "cost-center-master.xls"),
+    searchNamePlaceholder: t("search_name_placeholder", "Search Cost Center Name"),
+    searchCodePlaceholder: t("search_code_placeholder", "Search Cost Center Code"),
+    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
+    loadingRecords: t("loading_records", "Loading cost centers..."),
+    emptyMessage: t("empty_message", "No cost center records found."),
+    bulkRowsSelected: t("bulk_rows_selected", "row(s) selected"),
+    bulkActivate: t("bulk_activate", "Bulk Activate"),
+    bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
+    bulkDelete: t("bulk_delete", "Bulk Delete"),
+    tableName: t("table_name", "Cost Center Name"),
+    tableCode: t("table_code", "Cost Center Code"),
+    tableStatus: t("table_status", "Status"),
+    tableActions: t("table_actions", "Actions"),
+    fieldName: t("field_name", dicConstant.costCenters.fields.name),
+    fieldCode: t("field_code", dicConstant.costCenters.fields.code),
+    fieldStatus: t("field_status", dicConstant.costCenters.fields.status),
+    saveSuccess: t("save_success", "Cost Center saved successfully."),
+    updateSuccess: t("update_success", "Cost Center updated successfully."),
+    requestFailed: t("request_failed", "Request failed."),
+  };
 
   async function loadCostCenters() {
     setBlnLoading(true);
@@ -285,9 +332,9 @@ export default function CostCenterMasterPanel() {
       .then(() => loadCostCenters())
       .then(() => {
         closeDialog();
-        showToast(strMode === "add" ? "Cost Center saved successfully." : "Cost Center updated successfully.");
+        showToast(strMode === "add" ? dicModuleLabels.saveSuccess : dicModuleLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error"))
       .finally(() => setBlnSubmitting(false));
   }
 
@@ -365,44 +412,44 @@ export default function CostCenterMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>Admin / Master / Cost Centers</Typography>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.costCenters.backButton}</Button>
+        <Typography className={styles.breadcrumbs}>{dicModuleLabels.breadcrumbs}</Typography>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicConstant.costCenters.pageTitle}</Typography>
+          <Typography component="h1" className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicConstant.costCenters.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Cost Center Master", lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("cost-center-master.xls", lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportExcel}</Button>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
           </Box>
         </Box>
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder="Search Cost Center Name" fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder="Search Cost Center Code" fullWidth />
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
           <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">Status</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            <MenuItem value="All">{dicModuleLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.search}</Button></Box>
-          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
       {blnSubmitting ? (
         <Box className={styles.bulkBar}>
           <CircularProgress size={20} />
-          <Typography className={styles.bulkCount}>Applying changes...</Typography>
+          <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
         </Box>
       ) : lstSelectedIds.length > 0 ? (
         <Box className={styles.bulkBar}>
-          <Typography className={styles.bulkCount}>{lstSelectedIds.length} row(s) selected</Typography>
-          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>Bulk Activate</Button>
-          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>Bulk Deactivate</Button>
-          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>Bulk Delete</Button>
+          <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
+          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button>
+          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button>
+          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button>
         </Box>
       ) : null}
 
@@ -410,7 +457,7 @@ export default function CostCenterMasterPanel() {
         {!blnLoading && lstFilteredCostCenters.length > 0 ? (
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
                 select
                 size="small"
@@ -426,7 +473,7 @@ export default function CostCenterMasterPanel() {
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredCostCenters.length)} {dicConstant.common.paginationSeparator} {lstFilteredCostCenters.length}
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredCostCenters.length)} {dicCommonLabels.paginationSeparator} {lstFilteredCostCenters.length}
               </Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
@@ -436,7 +483,7 @@ export default function CostCenterMasterPanel() {
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>Loading cost centers...</Typography>
+            <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -444,15 +491,15 @@ export default function CostCenterMasterPanel() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                  <th>Cost Center Name</th>
-                  <th>Cost Center Code</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{dicModuleLabels.tableName}</th>
+                  <th>{dicModuleLabels.tableCode}</th>
+                  <th>{dicModuleLabels.tableStatus}</th>
+                  <th>{dicModuleLabels.tableActions}</th>
                 </tr>
               </thead>
               <tbody>
                 {lstFilteredCostCenters.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={5}>No cost center records found.</td></tr>
+                  <tr><td className={styles.emptyState} colSpan={5}>{dicModuleLabels.emptyMessage}</td></tr>
                 ) : lstVisibleCostCenters.map((dicCostCenter) => {
                   const blnSelected = lstSelectedIds.includes(dicCostCenter.id);
                   return (
@@ -479,13 +526,13 @@ export default function CostCenterMasterPanel() {
       </Box>
 
       <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{strMode === "add" ? dicConstant.costCenters.dialogAddTitle : strMode === "edit" ? dicConstant.costCenters.dialogEditTitle : "View Cost Center"}</DialogTitle>
+        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={dicConstant.costCenters.fields.code} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
-            <TextField label={dicConstant.costCenters.fields.name} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
+            <TextField label={dicModuleLabels.fieldCode} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
+            <TextField label={dicModuleLabels.fieldName} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
             <TextField
-              label={dicConstant.costCenters.fields.status}
+              label={dicModuleLabels.fieldStatus}
               select
               value={dicForm.status}
               onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as CostCenterStatus }))}
@@ -494,16 +541,16 @@ export default function CostCenterMasterPanel() {
               fullWidth
               disabled={strMode === "view"}
             >
-              <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
             </TextField>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicConstant.common.close : dicConstant.common.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveCostCenter} disabled={blnSubmitting}>
-              {blnSubmitting ? "Saving..." : strMode === "add" ? dicConstant.costCenters.saveCostCenter : dicConstant.costCenters.updateCostCenter}
+              {blnSubmitting ? t("saving", "Saving...") : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
             </Button>
           ) : null}
         </DialogActions>
@@ -515,14 +562,14 @@ export default function CostCenterMasterPanel() {
           <Typography>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicConstant.common.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.bulkDelete} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? "Processing..." : objConfirmDialog?.strConfirmLabel}
+            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
