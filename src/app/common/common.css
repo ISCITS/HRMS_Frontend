@@ -1,5 +1,5 @@
 :root {
-  --app-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --app-font-family: 'Inter var', Roboto, Helvetica Neue, Arial, sans-serif;
   --app-header-color: #1c2536;
   --app-text-color: #334155;
   --app-muted-color: #64748b;

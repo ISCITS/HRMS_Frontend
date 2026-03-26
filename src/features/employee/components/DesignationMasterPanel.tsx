@@ -475,20 +475,10 @@ export default function DesignationMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>{dicDesignationLabels.breadcrumbs}</Typography>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDesignationLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicDesignationLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDesignationLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-          </Box>
-        </Box>
-
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} fullWidth />
@@ -517,8 +507,15 @@ export default function DesignationMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredDesignations.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDesignationLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+          </Box>
+
+          {!blnLoading && lstFilteredDesignations.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
@@ -542,6 +539,7 @@ export default function DesignationMasterPanel() {
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
           </Box>
         ) : null}
+        </Box>
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
@@ -554,10 +552,10 @@ export default function DesignationMasterPanel() {
             <thead>
               <tr>
                 <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                <th>{dicDesignationLabels.tableActions}</th>
                 <th>{dicDesignationLabels.tableName}</th>
                 <th>{dicDesignationLabels.tableCode}</th>
                 <th>{dicDesignationLabels.tableStatus}</th>
-                <th>{dicDesignationLabels.tableActions}</th>
               </tr>
             </thead>
             <tbody>
@@ -568,9 +566,6 @@ export default function DesignationMasterPanel() {
                 return (
                   <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} /></td>
-                    <td>{dicDesignation.name}</td>
-                    <td>{dicDesignation.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status}</span></td>
                     <td>
                       <Box className={styles.actionCell}>
                         <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicDesignation)}><VisibilityOutlinedIcon fontSize="small" /></button>
@@ -579,6 +574,9 @@ export default function DesignationMasterPanel() {
                         <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleDesignationStatus(dicDesignation.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                       </Box>
                     </td>
+                    <td>{dicDesignation.name}</td>
+                    <td>{dicDesignation.code}</td>
+                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status}</span></td>
                   </tr>
                 );
               })}

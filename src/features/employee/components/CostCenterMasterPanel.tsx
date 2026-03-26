@@ -412,20 +412,10 @@ export default function CostCenterMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>{dicModuleLabels.breadcrumbs}</Typography>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-          </Box>
-        </Box>
-
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
@@ -454,8 +444,15 @@ export default function CostCenterMasterPanel() {
       ) : null}
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredCostCenters.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+          </Box>
+
+          {!blnLoading && lstFilteredCostCenters.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
@@ -479,6 +476,7 @@ export default function CostCenterMasterPanel() {
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
           </Box>
         ) : null}
+        </Box>
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
@@ -491,10 +489,10 @@ export default function CostCenterMasterPanel() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                  <th>{dicModuleLabels.tableActions}</th>
                   <th>{dicModuleLabels.tableName}</th>
                   <th>{dicModuleLabels.tableCode}</th>
                   <th>{dicModuleLabels.tableStatus}</th>
-                  <th>{dicModuleLabels.tableActions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -505,9 +503,6 @@ export default function CostCenterMasterPanel() {
                   return (
                     <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} /></td>
-                      <td>{dicCostCenter.name}</td>
-                      <td>{dicCostCenter.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicCostCenter)}><VisibilityOutlinedIcon fontSize="small" /></button>
@@ -516,6 +511,9 @@ export default function CostCenterMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleCostCenterStatus(dicCostCenter.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
+                      <td>{dicCostCenter.name}</td>
+                      <td>{dicCostCenter.code}</td>
+                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status}</span></td>
                     </tr>
                   );
                 })}

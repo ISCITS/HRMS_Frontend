@@ -254,7 +254,19 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const table = (
     <Stack spacing={2.5}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between">
-        <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
+          {showExportOptions ? (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button variant="outlined" size="small" startIcon={<TableViewOutlinedIcon />} onClick={handleExportExcel}>
+                {dicConstant.commonDataGrid.exportExcel}
+              </Button>
+              <Button variant="outlined" size="small" startIcon={<PictureAsPdfOutlinedIcon />} onClick={handleExportPdf}>
+                {dicConstant.commonDataGrid.exportPdf}
+              </Button>
+            </Stack>
+          ) : null}
+        </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: { xs: "100%", sm: "auto" } }}>
           <TextField
             placeholder={dicConstant.commonDataGrid.filterPlaceholder}
@@ -266,19 +278,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 <InputAdornment position="start">
                   <SearchIcon fontSize="small" />
                 </InputAdornment>
-              )
-            }}
-          />
-          {showExportOptions ? (
-            <Stack direction="row" spacing={1}>
-              <Button variant="outlined" size="small" startIcon={<TableViewOutlinedIcon />} onClick={handleExportExcel}>
-                {dicConstant.commonDataGrid.exportExcel}
-              </Button>
-              <Button variant="outlined" size="small" startIcon={<PictureAsPdfOutlinedIcon />} onClick={handleExportPdf}>
-                {dicConstant.commonDataGrid.exportPdf}
-              </Button>
-            </Stack>
-          ) : null}
+                )
+              }}
+            />
         </Stack>
       </Stack>
 

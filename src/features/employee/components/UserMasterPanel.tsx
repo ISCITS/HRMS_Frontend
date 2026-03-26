@@ -460,28 +460,12 @@ export default function UserMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>{dicModuleLabels.breadcrumbs}</Typography>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicModuleLabels.backButton}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
-              {dicCommonLabels.exportPdf}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
-              {dicCommonLabels.exportExcel}
-            </Button>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              {dicModuleLabels.addButton}
-            </Button>
-          </Box>
-        </Box>
-
         <Box className={styles.searchRow}>
             <TextField
               size="small"
@@ -527,7 +511,20 @@ export default function UserMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
+              {dicModuleLabels.addButton}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
+              {dicCommonLabels.exportExcel}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
+              {dicCommonLabels.exportPdf}
+            </Button>
+          </Box>
+
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
           <Box className={styles.paginationInfo}>
             <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
             <TextField
@@ -550,6 +547,7 @@ export default function UserMasterPanel() {
           </Box>
           <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" />
         </Box>
+        </Box>
 
         <Box className={styles.tableWrap}>
           {blnLoading ? (
@@ -563,13 +561,13 @@ export default function UserMasterPanel() {
                   <th>
                     <Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} />
                   </th>
+                  <th>{dicModuleLabels.tableActions}</th>
                   <th>{dicModuleLabels.tableLoginName}</th>
                   <th>{dicModuleLabels.tableEmail}</th>
                   <th>{dicModuleLabels.tableMobile}</th>
                   <th>{dicModuleLabels.tableAuthSource}</th>
                   <th>{dicModuleLabels.tableSsoEnabled}</th>
                   <th>{dicModuleLabels.tableStatus}</th>
-                  <th>{dicModuleLabels.tableActions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -582,6 +580,14 @@ export default function UserMasterPanel() {
                     <td>
                       <Checkbox checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
                     </td>
+                    <td>
+                      <Box className={styles.actionCell}>
+                        <button type="button" className={`${styles.iconButton} ${styles.viewIcon}`} onClick={() => openDialog("view", dicUser)}><VisibilityOutlinedIcon fontSize="small" /></button>
+                        <button type="button" className={`${styles.iconButton} ${styles.editIcon}`} onClick={() => openDialog("edit", dicUser)}><EditOutlinedIcon fontSize="small" /></button>
+                        <button type="button" className={`${styles.iconButton} ${styles.toggleIcon}`} onClick={() => toggleUserStatus(dicUser.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
+                        <button type="button" className={`${styles.iconButton} ${styles.deleteIcon}`} onClick={() => deleteUser(dicUser.id)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
+                      </Box>
+                    </td>
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>
                     <td>{dicUser.mobile || "-"}</td>
@@ -591,14 +597,6 @@ export default function UserMasterPanel() {
                       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
                         {dicUser.status}
                       </span>
-                    </td>
-                    <td>
-                      <Box className={styles.actionCell}>
-                        <button type="button" className={`${styles.iconButton} ${styles.viewIcon}`} onClick={() => openDialog("view", dicUser)}><VisibilityOutlinedIcon fontSize="small" /></button>
-                        <button type="button" className={`${styles.iconButton} ${styles.editIcon}`} onClick={() => openDialog("edit", dicUser)}><EditOutlinedIcon fontSize="small" /></button>
-                        <button type="button" className={`${styles.iconButton} ${styles.toggleIcon}`} onClick={() => toggleUserStatus(dicUser.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
-                        <button type="button" className={`${styles.iconButton} ${styles.deleteIcon}`} onClick={() => deleteUser(dicUser.id)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
-                      </Box>
                     </td>
                   </tr>
                 ))}

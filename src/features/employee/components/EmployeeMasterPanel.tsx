@@ -368,15 +368,6 @@ export default function EmployeeMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicConstant.employeeMaster.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
-              {dicConstant.employeeMaster.addButton}
-            </Button>
-          </Box>
-        </Box>
-
         {strFeedback ? <Alert severity="success" onClose={() => setStrFeedback("")} sx={{ mt: 1.5 }}>{strFeedback}</Alert> : null}
         {strError && !blnDialogOpen ? <Alert severity="error" onClose={() => setStrError("")} sx={{ mt: 1.5 }}>{strError}</Alert> : null}
 
@@ -416,6 +407,13 @@ export default function EmployeeMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
+              {dicConstant.employeeMaster.addButton}
+            </Button>
+          </Box>
+        </Box>
         {!blnLoading && lstFilteredEmployees.length > 0 ? (
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
@@ -453,6 +451,7 @@ export default function EmployeeMasterPanel() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                  <th>{dicConstant.employeeMaster.grid.actions}</th>
                   <th>{dicConstant.employeeMaster.grid.employeeCode}</th>
                   <th>{dicConstant.employeeMaster.grid.fullName}</th>
                   <th>{dicConstant.employeeMaster.grid.workEmail}</th>
@@ -461,7 +460,6 @@ export default function EmployeeMasterPanel() {
                   <th>{dicConstant.employeeMaster.grid.designation}</th>
                   <th>{dicConstant.employeeMaster.grid.joiningDate}</th>
                   <th>{dicConstant.employeeMaster.grid.status}</th>
-                  <th>{dicConstant.employeeMaster.grid.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,14 +470,6 @@ export default function EmployeeMasterPanel() {
                   return (
                     <tr key={dicEmployee.intID} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} /></td>
-                      <td>{dicEmployee.strEmployeeCode}</td>
-                      <td>{dicEmployee.strFullName}</td>
-                      <td>{dicEmployee.strWorkEmail || "-"}</td>
-                      <td>{dicEmployee.strMobileNumber || "-"}</td>
-                      <td>{dicEmployee.strDepartmentName || "-"}</td>
-                      <td>{dicEmployee.strDesignationName || "-"}</td>
-                      <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicEmployee.intID)}><VisibilityOutlinedIcon fontSize="small" /></button>
@@ -488,6 +478,14 @@ export default function EmployeeMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
+                      <td>{dicEmployee.strEmployeeCode}</td>
+                      <td>{dicEmployee.strFullName}</td>
+                      <td>{dicEmployee.strWorkEmail || "-"}</td>
+                      <td>{dicEmployee.strMobileNumber || "-"}</td>
+                      <td>{dicEmployee.strDepartmentName || "-"}</td>
+                      <td>{dicEmployee.strDesignationName || "-"}</td>
+                      <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
                     </tr>
                   );
                 })}

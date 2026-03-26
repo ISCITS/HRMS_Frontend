@@ -3,6 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
@@ -33,6 +34,10 @@ function formatDisplayDate(strDate: string | null): string {
     return "-";
   }
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(strDate));
+}
+
+function toCsvCell(strValue: string) {
+  return `"${strValue.replace(/"/g, '""')}"`;
 }
 
 export default function EmployeeMasterListPanel() {
@@ -142,17 +147,106 @@ export default function EmployeeMasterListPanel() {
     setLstSelectedIDs((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleEmployees.map((dicEmployee) => dicEmployee.intID)])]);
   }
 
+  function handleExportExcel() {
+    const lstHeaders = [
+      t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode),
+      t("grid_full_name", dicConstant.employeeMaster.grid.fullName),
+      t("grid_work_email", dicConstant.employeeMaster.grid.workEmail),
+      t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber),
+      t("grid_department", dicConstant.employeeMaster.grid.department),
+      t("grid_designation", dicConstant.employeeMaster.grid.designation),
+      t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
+      t("grid_status", dicConstant.employeeMaster.grid.status)
+    ];
+
+    const strCsvContent = [
+      lstHeaders.map(toCsvCell).join(","),
+      ...lstFilteredEmployees.map((dicEmployee) =>
+        [
+          dicEmployee.strEmployeeCode,
+          dicEmployee.strFullName,
+          dicEmployee.strWorkEmail || "-",
+          dicEmployee.strMobileNumber || "-",
+          dicEmployee.strDepartmentName || "-",
+          dicEmployee.strDesignationName || "-",
+          formatDisplayDate(dicEmployee.dtDateOfJoining),
+          dicEmployee.strEmploymentStatus
+        ].map((strValue) => toCsvCell(String(strValue))).join(",")
+      )
+    ].join("\n");
+
+    const objBlob = new Blob([`\uFEFF${strCsvContent}`], { type: "text/csv;charset=utf-8;" });
+    const strUrl = URL.createObjectURL(objBlob);
+    const objLink = document.createElement("a");
+    objLink.href = strUrl;
+    objLink.download = "employee-master.csv";
+    objLink.click();
+    URL.revokeObjectURL(strUrl);
+  }
+
+  function handleExportPdf() {
+    const dicPrintWindow = window.open("", "_blank", "width=1100,height=720");
+    if (!dicPrintWindow) {
+      return;
+    }
+
+    const strTableRows = lstFilteredEmployees
+      .map(
+        (dicEmployee) => `
+          <tr>
+            <td>${dicEmployee.strEmployeeCode}</td>
+            <td>${dicEmployee.strFullName}</td>
+            <td>${dicEmployee.strWorkEmail || "-"}</td>
+            <td>${dicEmployee.strMobileNumber || "-"}</td>
+            <td>${dicEmployee.strDepartmentName || "-"}</td>
+            <td>${dicEmployee.strDesignationName || "-"}</td>
+            <td>${formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
+            <td>${dicEmployee.strEmploymentStatus}</td>
+          </tr>
+        `
+      )
+      .join("");
+
+    dicPrintWindow.document.write(`
+      <html>
+        <head>
+          <title>Employee Master</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+            h2 { margin: 0 0 16px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #dbe4ee; padding: 8px 10px; text-align: left; font-size: 12px; }
+            th { background: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <h2>${t("page_title", dicConstant.employeeMaster.pageTitle)}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>${t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)}</th>
+                <th>${t("grid_full_name", dicConstant.employeeMaster.grid.fullName)}</th>
+                <th>${t("grid_work_email", dicConstant.employeeMaster.grid.workEmail)}</th>
+                <th>${t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber)}</th>
+                <th>${t("grid_department", dicConstant.employeeMaster.grid.department)}</th>
+                <th>${t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
+                <th>${t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
+                <th>${t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
+              </tr>
+            </thead>
+            <tbody>${strTableRows}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    dicPrintWindow.document.close();
+    dicPrintWindow.focus();
+    dicPrintWindow.print();
+  }
+
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{t("page_title", dicConstant.employeeMaster.pageTitle)}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting}>
-              {t("add_button", dicConstant.employeeMaster.addButton)}
-            </Button>
-          </Box>
-        </Box>
         {strLabelError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
         ) : null}
@@ -192,20 +286,43 @@ export default function EmployeeMasterListPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredEmployees.length > 0 ? (
-          <Box className={styles.paginationBar}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
-              <TextField select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
-                {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>)}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredEmployees.length)} {dicConstant.common.paginationSeparator} {lstFilteredEmployees.length}
-              </Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: { xs: "stretch", md: "center" },
+            gap: 1.25,
+            flexWrap: "wrap",
+            pb: 1
+          }}
+        >
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting}>
+              {t("add_button", dicConstant.employeeMaster.addButton)}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting}>
+              {t("export_excel", dicConstant.common.exportExcel)}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting}>
+              {t("export_pdf", dicConstant.common.exportPdf)}
+            </Button>
           </Box>
-        ) : null}
+
+          {!blnLoading && lstFilteredEmployees.length > 0 ? (
+            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+              <Box className={styles.paginationInfo}>
+                <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+                <TextField select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
+                  {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>)}
+                </TextField>
+                <Typography className={styles.paginationRange}>
+                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredEmployees.length)} {dicConstant.common.paginationSeparator} {lstFilteredEmployees.length}
+                </Typography>
+              </Box>
+              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
+            </Box>
+          ) : null}
+        </Box>
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
@@ -218,6 +335,7 @@ export default function EmployeeMasterListPanel() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                  <th>{t("grid_actions", dicConstant.employeeMaster.grid.actions)}</th>
                   <th>{t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)}</th>
                   <th>{t("grid_full_name", dicConstant.employeeMaster.grid.fullName)}</th>
                   <th>{t("grid_work_email", dicConstant.employeeMaster.grid.workEmail)}</th>
@@ -226,7 +344,6 @@ export default function EmployeeMasterListPanel() {
                   <th>{t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
                   <th>{t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
                   <th>{t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
-                  <th>{t("grid_actions", dicConstant.employeeMaster.grid.actions)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -237,14 +354,6 @@ export default function EmployeeMasterListPanel() {
                   return (
                     <tr key={dicEmployee.intID} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} /></td>
-                      <td>{dicEmployee.strEmployeeCode}</td>
-                      <td>{dicEmployee.strFullName}</td>
-                      <td>{dicEmployee.strWorkEmail || "-"}</td>
-                      <td>{dicEmployee.strMobileNumber || "-"}</td>
-                      <td>{dicEmployee.strDepartmentName || "-"}</td>
-                      <td>{dicEmployee.strDesignationName || "-"}</td>
-                      <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityOutlinedIcon fontSize="small" /></button>
@@ -253,6 +362,14 @@ export default function EmployeeMasterListPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
+                      <td>{dicEmployee.strEmployeeCode}</td>
+                      <td>{dicEmployee.strFullName}</td>
+                      <td>{dicEmployee.strWorkEmail || "-"}</td>
+                      <td>{dicEmployee.strMobileNumber || "-"}</td>
+                      <td>{dicEmployee.strDepartmentName || "-"}</td>
+                      <td>{dicEmployee.strDesignationName || "-"}</td>
+                      <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
                     </tr>
                   );
                 })}

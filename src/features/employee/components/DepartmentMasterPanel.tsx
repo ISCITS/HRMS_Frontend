@@ -482,20 +482,10 @@ export default function DepartmentMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>{dicDepartmentLabels.breadcrumbs}</Typography>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicDepartmentLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDepartmentLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDepartmentLabels.exportTitle, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDepartmentLabels.exportFileName, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-          </Box>
-        </Box>
-
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} fullWidth />
@@ -524,8 +514,15 @@ export default function DepartmentMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredDepartments.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDepartmentLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDepartmentLabels.exportFileName, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDepartmentLabels.exportTitle, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+          </Box>
+
+          {!blnLoading && lstFilteredDepartments.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
@@ -549,6 +546,7 @@ export default function DepartmentMasterPanel() {
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
           </Box>
         ) : null}
+        </Box>
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
@@ -560,11 +558,11 @@ export default function DepartmentMasterPanel() {
             <thead>
               <tr>
                 <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                <th>{dicDepartmentLabels.tableActions}</th>
                 <th>{dicDepartmentLabels.tableName}</th>
                 <th>{dicDepartmentLabels.tableCode}</th>
                 <th>{dicDepartmentLabels.tableStatus}</th>
                 <th>{dicDepartmentLabels.tableEmployees}</th>
-                <th>{dicDepartmentLabels.tableActions}</th>
               </tr>
             </thead>
             <tbody>
@@ -575,10 +573,6 @@ export default function DepartmentMasterPanel() {
                 return (
                   <tr key={dicDepartment.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} /></td>
-                    <td>{dicDepartment.name}</td>
-                    <td>{dicDepartment.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicDepartment.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDepartment.status}</span></td>
-                    <td>{dicDepartment.employeeCount}</td>
                     <td>
                       <Box className={styles.actionCell}>
                         <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicDepartment)}><VisibilityOutlinedIcon fontSize="small" /></button>
@@ -587,6 +581,10 @@ export default function DepartmentMasterPanel() {
                         <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleDepartmentStatus(dicDepartment.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                       </Box>
                     </td>
+                    <td>{dicDepartment.name}</td>
+                    <td>{dicDepartment.code}</td>
+                    <td><span className={`${styles.statusPill} ${dicDepartment.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDepartment.status}</span></td>
+                    <td>{dicDepartment.employeeCount}</td>
                   </tr>
                 );
               })}

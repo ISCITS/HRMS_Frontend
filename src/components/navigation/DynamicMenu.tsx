@@ -17,7 +17,7 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SourceRoundedIcon from "@mui/icons-material/SourceRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import WorkspacesRoundedIcon from "@mui/icons-material/WorkspacesRounded";
-import { Collapse, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
+import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -29,7 +29,7 @@ type DynamicMenuProps = {
   onNavigate?: () => void;
 };
 
-const objMenuIconSx = { color: "#f97316" };
+const objMenuIconSx = { color: "inherit" };
 
 function getMenuIcon(objItem: MenuItem) {
   if (objItem.blnIsHome) {
@@ -130,18 +130,25 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     }));
   }
 
-function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
+  function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
     return {
-      borderTopLeftRadius: 0,
-      borderBottomLeftRadius: 0,
-      borderTopRightRadius: "18px",
-      borderBottomRightRadius: "18px",
+      borderRadius: "18px",
       mb: 0.5,
-      minHeight: 48,
+      minHeight: intDepth === 0 ? 50 : 44,
       alignItems: "center",
       pl: 1.5 + intDepth * 2,
-      backgroundColor: blnIsActive ? "var(--app-primary-soft)" : "transparent",
-      border: blnIsActive ? "1px solid var(--app-primary-border)" : "1px solid transparent"
+      pr: 1.25,
+      background: blnIsActive
+        ? "linear-gradient(135deg, rgba(219,234,254,0.92), rgba(224,242,254,0.88))"
+        : "transparent",
+      border: blnIsActive ? "1px solid rgba(96, 165, 250, 0.28)" : "1px solid transparent",
+      boxShadow: blnIsActive ? "0 10px 24px rgba(59, 130, 246, 0.12)" : "none",
+      transition: "all 160ms ease",
+      "&:hover": {
+        background: blnIsActive
+          ? "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(224,242,254,0.92))"
+          : "rgba(241,245,249,0.9)"
+      }
     };
   }
 
@@ -157,39 +164,45 @@ function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
           return (
             <Fragment key={objItem.strModuleCode}>
               <ListItemButton onClick={() => toggleMenu(objItem.strModuleCode)} sx={getButtonStyles(blnHasActiveChild)}>
-                <ListItemIcon sx={{ minWidth: 36 }}>
+                <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
                   {getMenuIcon(objItem)}
                 </ListItemIcon>
                 <ListItemText
                   primary={objItem.strModuleName}
-                  primaryTypographyProps={{ fontWeight: 700, color: "#0f172a" }}
+                  primaryTypographyProps={{ fontWeight: 700, color: "#0f172a", fontSize: "0.96rem" }}
                 />
-                {blnExpanded ? <ExpandLessRoundedIcon color="primary" /> : <ExpandMoreRoundedIcon color="primary" />}
+                {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "#2563eb" }} /> : <ExpandMoreRoundedIcon sx={{ color: "#2563eb" }} />}
               </ListItemButton>
 
               <Collapse in={blnExpanded} timeout="auto" unmountOnExit>
-                <List disablePadding sx={{ mt: 0.25 }}>
-                  {objItem.lstChildren.map((objChild) => {
-                    const blnIsChildActive = objChild.strRoute === strPathname;
-                    return (
-                      <ListItemButton
-                        key={objChild.strModuleCode}
-                        component={Link}
-                        href={objChild.strRoute ?? "#"}
-                        onClick={onNavigate}
-                        sx={getButtonStyles(blnIsChildActive, 1)}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          {getMenuIcon(objChild)}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={objChild.strModuleName}
-                          primaryTypographyProps={{ fontWeight: 700, color: "#0f172a" }}
-                        />
-                      </ListItemButton>
-                    );
-                  })}
-                </List>
+                <Box sx={{ position: "relative", ml: 1.25, mt: 0.25, mb: 0.5 }}>
+                  <List disablePadding>
+                    {objItem.lstChildren.map((objChild) => {
+                      const blnIsChildActive = objChild.strRoute === strPathname;
+                      return (
+                        <ListItemButton
+                          key={objChild.strModuleCode}
+                          component={Link}
+                          href={objChild.strRoute ?? "#"}
+                          onClick={onNavigate}
+                          sx={getButtonStyles(blnIsChildActive, 1)}
+                        >
+                          <ListItemIcon sx={{ minWidth: 34, color: blnIsChildActive ? "#2563eb" : "#94a3b8" }}>
+                            {getMenuIcon(objChild)}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={objChild.strModuleName}
+                            primaryTypographyProps={{
+                              fontWeight: blnIsChildActive ? 700 : 600,
+                              color: "#334155",
+                              fontSize: "0.9rem"
+                            }}
+                          />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                </Box>
               </Collapse>
             </Fragment>
           );
@@ -203,12 +216,12 @@ function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
             onClick={onNavigate}
             sx={getButtonStyles(blnIsActive)}
           >
-            <ListItemIcon sx={{ minWidth: 36 }}>
+            <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "#2563eb" : "#64748b" }}>
               {getMenuIcon(objItem)}
             </ListItemIcon>
             <ListItemText
               primary={objItem.strModuleName}
-              primaryTypographyProps={{ fontWeight: 700, color: "#0f172a" }}
+              primaryTypographyProps={{ fontWeight: 700, color: "#0f172a", fontSize: "0.96rem" }}
             />
           </ListItemButton>
         );

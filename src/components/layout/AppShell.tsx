@@ -2,7 +2,7 @@
 
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
-import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
+import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
 import {
   AppBar,
   Avatar,
@@ -30,12 +30,43 @@ import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
-const intDrawerWidth = 318;
+const intDrawerWidth = 308;
+
+function getPageTitle(strPathname: string) {
+  if (!strPathname || strPathname === "/") {
+    return "Dashboard";
+  }
+
+  const lstSegments = strPathname
+    .split("/")
+    .filter(Boolean)
+    .map((strSegment) => {
+      if (strSegment === "add") {
+        return "Add";
+      }
+
+      if (strSegment === "edit") {
+        return "Edit";
+      }
+
+      if (/^\d+$/.test(strSegment)) {
+        return "";
+      }
+
+      return strSegment
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (strCharacter) => strCharacter.toUpperCase());
+    })
+    .filter(Boolean);
+
+  return lstSegments.join(" / ") || "Dashboard";
+}
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
+  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(true);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
@@ -97,30 +128,95 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.slice(0, 2).toUpperCase();
+  const strPageTitle = getPageTitle(strPathname);
+  const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
 
-  const objDrawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "var(--app-surface-muted)", overflow: "hidden" }}>
+  function handleMenuToggle() {
+    if (typeof window !== "undefined" && window.innerWidth >= 1200) {
+      setBlnDesktopSidebarOpen((blnPrevious) => !blnPrevious);
+      return;
+    }
+
+    setBlnDrawerOpen(true);
+  }
+
+  const objSidebarContent = (
+    <Box
+      sx={{
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.75,
+        p: 2,
+        background:
+          "linear-gradient(180deg, rgba(248,250,252,0.98) 0%, rgba(241,245,249,0.96) 50%, rgba(248,250,252,0.98) 100%)",
+        overflow: "hidden"
+      }}
+    >
       <Paper
         sx={{
           px: 2.25,
-          py: 1.75,
-          borderRadius: "0 24px 24px 0",
-          background: "linear-gradient(160deg, rgba(15,118,110,0.9), rgba(14,116,144,0.88))",
-          color: "#ecfeff"
+          py: 2,
+          borderRadius: "28px",
+          background: "linear-gradient(145deg, #0f766e 0%, #0f5d8d 52%, #1d4ed8 100%)",
+          color: "#effcff",
+          boxShadow: "0 24px 50px rgba(15, 23, 42, 0.18)"
         }}
       >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 800,
-            letterSpacing: "-0.02em"
-          }}
-        >
-          HRMS
-        </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 46,
+              height: 46,
+              borderRadius: "16px",
+              display: "grid",
+              placeItems: "center",
+              backgroundColor: "rgba(255,255,255,0.16)",
+              border: "1px solid rgba(255,255,255,0.18)"
+            }}
+          >
+            <SpaceDashboardRoundedIcon />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              HRMS
+            </Typography>
+            {/* <Typography sx={{ mt: 0.5, fontSize: "0.82rem", color: "rgba(236, 254, 255, 0.84)" }}>
+              Human Resource Management System
+            </Typography> */}
+          </Box>
+        </Stack>
       </Paper>
 
-      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "0 24px 24px 0", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+      <Paper
+        sx={{
+          p: 1.25,
+          borderRadius: "28px",
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          backgroundColor: "rgba(255,255,255,0.86)",
+          backdropFilter: "blur(22px)",
+          border: "1px solid rgba(148, 163, 184, 0.16)",
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(148, 163, 184, 0.9) transparent",
+          "&::-webkit-scrollbar": {
+            width: 8
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent"
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: "rgba(148, 163, 184, 0.85)",
+            borderRadius: "999px",
+            border: "2px solid transparent",
+            backgroundClip: "padding-box"
+          }
+        }}
+      >
         <DynamicMenu
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
@@ -144,102 +240,161 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f5f8fa" }}>
+    <Box
+      sx={{
+        display: "flex",
+        height: "100vh",
+        minHeight: "100vh",
+        overflow: "hidden",
+        background:
+          "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
+      }}
+    >
       <BlockingLoader blnOpen={blnLoggingOut || blnNavigating} strLabel={blnLoggingOut ? "Logging out..." : "Loading..."} intZIndex={1600} />
+      <Box
+        sx={{
+          width: blnDesktopSidebarOpen ? intDrawerWidth + 28 : 0,
+          flexShrink: 0,
+          height: "100vh",
+          minHeight: 0,
+          display: { xs: "none", lg: "block" },
+          p: blnDesktopSidebarOpen ? 1.75 : 0,
+          pr: blnDesktopSidebarOpen ? 0 : 0,
+          overflow: "hidden",
+          transition: "width 220ms ease, opacity 220ms ease, padding 220ms ease",
+          opacity: blnDesktopSidebarOpen ? 1 : 0,
+          pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
+        }}
+      >
+        {objSidebarContent}
+      </Box>
       <Drawer
         variant="temporary"
         open={blnDrawerOpen}
         onClose={() => setBlnDrawerOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          display: "block",
+          display: { xs: "block", lg: "none" },
           "& .MuiDrawer-paper": {
             width: intDrawerWidth,
+            height: "100vh",
             border: "none",
-            borderRadius: "0 28px 28px 0",
+            borderRadius: "0 32px 32px 0",
             backgroundColor: "transparent",
             boxShadow: "none",
             overflow: "hidden"
           }
         }}
       >
-        {objDrawer}
+        {objSidebarContent}
       </Drawer>
 
-      <Box sx={{ flex: 1, minWidth: 0, p: { xs: 1.5, md: 2.5 } }}>
+      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", p: { xs: 1.25, md: 2.25 } }}>
         <AppBar
           position="sticky"
-            color="inherit"
+          color="inherit"
           sx={{
-            borderRadius: "var(--app-card-radius)",
-            mb: 2.5,
-            px: 1,
-            backgroundColor: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(18px)"
+            borderRadius: "24px",
+            mb: 2.25,
+            px: { xs: 0.25, sm: 0.75 },
+            background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.6)",
+            boxShadow:
+              "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
           }}
         >
-          <Toolbar sx={{ gap: 1.5, position: "relative" }}>
-            <IconButton onClick={() => setBlnDrawerOpen(true)}>
+          <Toolbar sx={{ gap: 1.5, minHeight: "82px", alignItems: "center" }}>
+            <IconButton
+              onClick={handleMenuToggle}
+              sx={{
+                display: "inline-flex",
+                border: "1px solid rgba(148, 163, 184, 0.18)",
+                backgroundColor: "rgba(248,250,252,0.88)"
+              }}
+            >
               <MenuRoundedIcon />
             </IconButton>
 
-            <Box
-              sx={{
-                position: "absolute",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "min(100%, 640px)",
-                px: 2,
-                pointerEvents: "none"
-              }}
-            >
+            <Box sx={{ minWidth: 0, flexShrink: 0 }}>
               <Typography
                 sx={{
-                  fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
-                  fontWeight: 800,
-                  color: "#0f172a",
-                  lineHeight: 1.2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  textAlign: "center"
+                  fontSize: "0.875rem",
+                  color: "#64748b",
+                  textTransform: "none",
+                  letterSpacing: "normal",
+                  fontWeight: 400,
+                  lineHeight: 1.43,
+                  whiteSpace: "nowrap"
                 }}
               >
                 Human Resource Management System
               </Typography>
             </Box>
 
-            <Box sx={{ flex: 1 }} />
-
-            <IconButton>
-              <NotificationsNoneRoundedIcon />
-            </IconButton>
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                justifyContent: "center",
+                minWidth: 0,
+                px: { xs: 0.5, md: 1.5 },
+                transform: { xs: "translateX(-10px)", lg: "translateX(-24px)" }
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1.1,
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "100%"
+                }}
+              >
+                {strPageTitle}
+              </Typography>
+            </Box>
 
             <Paper
               sx={{
-                px: 1.25,
-                py: 0.8,
-                borderRadius: "18px",
+                px: 1.1,
+                py: 0.9,
+                borderRadius: "22px",
                 display: "flex",
                 alignItems: "center",
-                gap: 1.25
+                gap: 1.25,
+                backgroundColor: "transparent",
+                border: "none",
+                boxShadow: "none"
               }}
             >
-              <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700 }}>{strAvatarText}</Avatar>
+              <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                {strAvatarText}
+              </Avatar>
               <Box sx={{ display: { xs: "none", sm: "block" } }}>
-                <Typography sx={{ fontWeight: 700 }}>{strUserName}</Typography>
+                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {objUserContext?.objTenant.strTenantName}
+                  {strTenantName}
                 </Typography>
               </Box>
-              <IconButton onClick={() => setBlnLogoutDialogOpen(true)} disabled={blnLoggingOut}>
+              <IconButton
+                onClick={() => setBlnLogoutDialogOpen(true)}
+                disabled={blnLoggingOut}
+                sx={{
+                  backgroundColor: "rgba(248,250,252,0.92)"
+                }}
+              >
                 <LogoutRoundedIcon />
               </IconButton>
             </Paper>
           </Toolbar>
         </AppBar>
 
-        <Box component="main">{children}</Box>
+        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 106px)", overflow: "hidden" }}>{children}</Box>
       </Box>
 
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
