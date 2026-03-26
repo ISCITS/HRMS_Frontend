@@ -28,8 +28,10 @@ export function middleware(req: NextRequest) {
   }
 
   const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup"];
+  const blnIsTenantLoginRoute = strPathname.startsWith(`${appRoutes.login}/`);
   const intIsPublicRoute =
     lstPublicRoutes.includes(strPathname) ||
+    blnIsTenantLoginRoute ||
     strPathname.startsWith("/t/") ||
     strPathname.startsWith("/sso/callback")
       ? 1
@@ -44,7 +46,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(dicLoginUrl);
   }
 
-  if (intIsAuthenticated === 1 && intIsPublicRoute === 1 && (strPathname === appRoutes.login || strPathname.startsWith("/t/"))) {
+  if (
+    intIsAuthenticated === 1 &&
+    intIsPublicRoute === 1 &&
+    (strPathname === appRoutes.login || strPathname.startsWith("/t/"))
+  ) {
     const dicDashboardUrl = req.nextUrl.clone();
     dicDashboardUrl.pathname = appRoutes.dashboard;
     return NextResponse.redirect(dicDashboardUrl);

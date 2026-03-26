@@ -60,6 +60,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
         if (!blnMounted) {
           return;
         }
+        authHelpers.setTenantContext(
+          objUserResult.Data.objTenant.intTenantID,
+          undefined,
+          objUserResult.Data.objTenant.intLanguageID ?? undefined
+        );
         setObjUserContext(objUserResult.Data);
         setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
@@ -92,42 +97,30 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.slice(0, 2).toUpperCase();
-  const strTenantName = objUserContext?.objTenant.strTenantName || "Acme HRMS";
 
   const objDrawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "#f4f8fb", overflow: "hidden" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2.25, backgroundColor: "var(--app-surface-muted)", overflow: "hidden" }}>
       <Paper
         sx={{
           px: 2.25,
-          py: 1.6,
-          borderRadius: "28px",
-          background: "linear-gradient(145deg, #0f766e 0%, #0e7490 52%, #155e75 100%)",
-          color: "#ecfeff",
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "0 18px 40px rgba(14,116,144,0.22)",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            inset: 0,
-            background: "radial-gradient(circle at top right, rgba(255,255,255,0.22), transparent 34%)",
-            pointerEvents: "none",
-          },
+          py: 1.75,
+          borderRadius: "0 24px 24px 0",
+          background: "linear-gradient(160deg, rgba(15,118,110,0.9), rgba(14,116,144,0.88))",
+          color: "#ecfeff"
         }}
       >
         <Typography
+          variant="h5"
           sx={{
-            fontSize: "1.65rem",
-            fontWeight: 900,
-            letterSpacing: "-0.04em",
-            lineHeight: 1,
+            fontWeight: 800,
+            letterSpacing: "-0.02em"
           }}
         >
-          {strTenantName}
+          HRMS
         </Typography>
       </Paper>
 
-      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "24px", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", boxShadow: "0 14px 34px rgba(15,23,42,0.06)" }}>
+      <Paper sx={{ mt: 2, p: 1.5, borderRadius: "0 24px 24px 0", flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
         <DynamicMenu
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
@@ -160,7 +153,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: "block",
-          "& .MuiDrawer-paper": { width: intDrawerWidth, border: "none", backgroundColor: "transparent", boxShadow: "none", overflow: "hidden" }
+          "& .MuiDrawer-paper": {
+            width: intDrawerWidth,
+            border: "none",
+            borderRadius: "0 28px 28px 0",
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            overflow: "hidden"
+          }
         }}
       >
         {objDrawer}
@@ -169,19 +169,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Box sx={{ flex: 1, minWidth: 0, p: { xs: 1.5, md: 2.5 } }}>
         <AppBar
           position="sticky"
-          color="inherit"
+            color="inherit"
           sx={{
-            borderRadius: "28px",
+            borderRadius: "var(--app-card-radius)",
             mb: 2.5,
-            px: { xs: 1, md: 1.2 },
+            px: 1,
             backgroundColor: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(18px)",
-            boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
-            border: "1px solid rgba(148,163,184,0.2)",
+            backdropFilter: "blur(18px)"
           }}
         >
-          <Toolbar sx={{ gap: 1.2, position: "relative", minHeight: { xs: 66, md: 70 } }}>
-            <IconButton onClick={() => setBlnDrawerOpen(true)} sx={{ position: "relative", zIndex: 2 }}>
+          <Toolbar sx={{ gap: 1.5, position: "relative" }}>
+            <IconButton onClick={() => setBlnDrawerOpen(true)}>
               <MenuRoundedIcon />
             </IconButton>
 
@@ -190,59 +188,30 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 position: "absolute",
                 left: "50%",
                 transform: "translateX(-50%)",
-                width: { xs: "calc(100% - 190px)", md: "calc(100% - 430px)" },
-                display: "flex",
-                justifyContent: "center",
-                pointerEvents: "none",
+                width: "min(100%, 640px)",
+                px: 2,
+                pointerEvents: "none"
               }}
             >
-              <Box sx={{ minWidth: 0, textAlign: "center" }}>
-                <Typography
-                  sx={{
-                    color: "#0f172a",
-                    fontWeight: 900,
-                    letterSpacing: "-0.03em",
-                    fontSize: { xs: "0.98rem", sm: "1.1rem", md: "1.2rem" },
-                    lineHeight: 1.1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: "flex",
-                    alignItems: "baseline",
-                    justifyContent: "center",
-                    gap: { xs: 0.5, md: 0.8 },
-                  }}
-                >
-                  <Box component="span">Human Resource Management System</Box>
-                  <Box
-                    component="span"
-                    sx={{
-                      color: "#475569",
-                      fontWeight: 700,
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    -
-                  </Box>
-                  <Box
-                    component="span"
-                    sx={{
-                      color: "#0e7490",
-                      fontWeight: 900,
-                      letterSpacing: "0.08em",
-                      fontSize: { xs: "0.84rem", md: "0.9rem" },
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    HRMS
-                  </Box>
-                </Typography>
-              </Box>
+              <Typography
+                sx={{
+                  fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  textAlign: "center"
+                }}
+              >
+                Human Resource Management System
+              </Typography>
             </Box>
 
             <Box sx={{ flex: 1 }} />
 
-            <IconButton sx={{ position: "relative", zIndex: 2 }}>
+            <IconButton>
               <NotificationsNoneRoundedIcon />
             </IconButton>
 
@@ -253,17 +222,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 borderRadius: "18px",
                 display: "flex",
                 alignItems: "center",
-                gap: 1.25,
-                position: "relative",
-                zIndex: 2,
-                boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
+                gap: 1.25
               }}
             >
               <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700 }}>{strAvatarText}</Avatar>
               <Box sx={{ display: { xs: "none", sm: "block" } }}>
                 <Typography sx={{ fontWeight: 700 }}>{strUserName}</Typography>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {strTenantName}
+                  {objUserContext?.objTenant.strTenantName}
                 </Typography>
               </Box>
               <IconButton onClick={() => setBlnLogoutDialogOpen(true)} disabled={blnLoggingOut}>

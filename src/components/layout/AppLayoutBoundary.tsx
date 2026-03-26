@@ -22,9 +22,11 @@ Failure behavior:
 */
 export default function AppLayoutBoundary({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isTenantLoginRoute = Boolean(pathname?.startsWith("/login/"));
   const isPublicRoute =
     !pathname ||
     publicRoutes.includes(pathname) ||
+    isTenantLoginRoute ||
     publicPrefixes.some((prefix) => {
       if (prefix === "/t") {
         return pathname === "/t" || pathname.startsWith("/t/");

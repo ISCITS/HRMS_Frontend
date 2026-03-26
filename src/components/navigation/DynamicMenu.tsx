@@ -130,15 +130,18 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     }));
   }
 
-  function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
+function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
     return {
-      borderRadius: "18px",
+      borderTopLeftRadius: 0,
+      borderBottomLeftRadius: 0,
+      borderTopRightRadius: "18px",
+      borderBottomRightRadius: "18px",
       mb: 0.5,
       minHeight: 48,
       alignItems: "center",
       pl: 1.5 + intDepth * 2,
-      backgroundColor: blnIsActive ? "rgba(14,116,144,0.12)" : "transparent",
-      border: blnIsActive ? "1px solid rgba(14,116,144,0.22)" : "1px solid transparent"
+      backgroundColor: blnIsActive ? "var(--app-primary-soft)" : "transparent",
+      border: blnIsActive ? "1px solid var(--app-primary-border)" : "1px solid transparent"
     };
   }
 

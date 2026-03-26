@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { DesignationApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type DesignationStatus = "Active" | "Inactive";
@@ -154,6 +155,7 @@ function exportPdf(strTitle: string, lstRows: DesignationRecord[]) {
 // Designation master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function DesignationMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("designation");
   const [lstDesignations, setLstDesignations] = useState<DesignationRecord[]>(lstDefaultDesignations);
   const [strMode, setStrMode] = useState<DesignationMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -169,6 +171,86 @@ export default function DesignationMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  const dicCommonLabels = {
+    cancel: t("cancel", dicConstant.common.cancel),
+    clear: t("clear", dicConstant.common.clear),
+    close: t("close", dicConstant.common.close),
+    exportExcel: t("export_excel", dicConstant.common.exportExcel),
+    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
+    save: t("save", dicConstant.common.save),
+    search: t("search", dicConstant.common.search),
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
+    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
+    loading: t("loading", "Loading..."),
+    processing: t("processing", "Processing..."),
+  };
+  const dicDesignationLabels = {
+    breadcrumbs: t("breadcrumbs", "Admin / Master / Designations"),
+    pageTitle: t("page_title", dicConstant.designations.pageTitle),
+    backButton: t("back_button", dicConstant.designations.backButton),
+    addButton: t("add_button", dicConstant.designations.addButton),
+    dialogAddTitle: t("dialog_add_title", dicConstant.designations.dialogAddTitle),
+    dialogEditTitle: t("dialog_edit_title", dicConstant.designations.dialogEditTitle),
+    dialogViewTitle: t("dialog_view_title", "View Designation"),
+    exportTitle: t("export_title", "Designation Master"),
+    exportFileName: t("export_file_name", "designation-master.xls"),
+    searchNamePlaceholder: t("search_name_placeholder", "Search Designation Name"),
+    searchCodePlaceholder: t("search_code_placeholder", "Search Designation Code"),
+    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
+    bulkApplyingChanges: t("bulk_applying_changes", "Applying changes..."),
+    bulkRowsSelected: t("bulk_rows_selected", "row(s) selected"),
+    bulkActivate: t("bulk_activate", "Bulk Activate"),
+    bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
+    bulkDelete: t("bulk_delete", "Bulk Delete"),
+    loadingRecords: t("loading_records", "Loading designations..."),
+    emptyMessage: t("empty_message", "No designation records found."),
+    tableName: t("table_name", "Designation Name"),
+    tableCode: t("table_code", "Designation Code"),
+    tableStatus: t("table_status", "Status"),
+    tableActions: t("table_actions", "Actions"),
+    saveSuccess: t("save_success", "Designation saved successfully."),
+    updateSuccess: t("update_success", "Designation updated successfully."),
+    requestFailed: t("request_failed", "Request failed."),
+    deleteSuccess: t("delete_success", "Designation deleted successfully."),
+    activateSuccess: t("activate_success", "Designation activated successfully."),
+    deactivateSuccess: t("deactivate_success", "Designation deactivated successfully."),
+    bulkActivateSuccess: t("bulk_activate_success", "Selected designation records activated successfully."),
+    bulkDeactivateSuccess: t("bulk_deactivate_success", "Selected designation records deactivated successfully."),
+    bulkDeleteSuccess: t("bulk_delete_success", "Selected designation records deleted successfully."),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title", "Bulk Activate Designations"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title", "Bulk Deactivate Designations"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title", "Bulk Delete Designations"),
+    confirmDeleteTitle: t("confirm_delete_title", "Delete Designation"),
+    confirmActivateTitle: t("confirm_activate_title", "Activate Designation"),
+    confirmDeactivateTitle: t("confirm_deactivate_title", "Deactivate Designation"),
+    confirmBulkActivateLabel: t("confirm_bulk_activate_label", "Bulk Activate"),
+    confirmBulkDeactivateLabel: t("confirm_bulk_deactivate_label", "Bulk Deactivate"),
+    confirmBulkDeleteLabel: t("confirm_bulk_delete_label", "Bulk Delete"),
+    confirmActivateLabel: t("confirm_activate_label", "Activate"),
+    confirmDeactivateLabel: t("confirm_deactivate_label", "Deactivate"),
+    confirmDeleteLabel: t("confirm_delete_label", "Delete"),
+    confirmButton: t("confirm_button", "Confirm"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message", "Are you sure you want to mark {count} selected designation record(s) as active?"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message", "Are you sure you want to mark {count} selected designation record(s) as inactive?"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message", "Are you sure you want to delete {count} selected designation record(s)?"),
+    confirmDeleteMessage: t("confirm_delete_message", "Are you sure you want to delete this designation record?"),
+    confirmActivateMessage: t("confirm_activate_message", "Are you sure you want to mark this designation as active?"),
+    confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this designation as inactive?"),
+    fieldName: t("field_name", dicConstant.designations.fields.name),
+    fieldCode: t("field_code", dicConstant.designations.fields.code),
+    fieldStatus: t("field_status", "Status"),
+    fieldIsActive: t("field_is_active", "Is Active"),
+    saving: t("saving", "Saving..."),
+    validationNameRequired: t("validation_name_required", dicConstant.designations.validation.nameRequired),
+    validationNameMin: t("validation_name_min", dicConstant.designations.validation.nameMin),
+    validationCodeRequired: t("validation_code_required", dicConstant.designations.validation.codeRequired),
+    validationCodeFormat: t("validation_code_format", dicConstant.designations.validation.codeFormat),
+    validationCodeDuplicate: t("validation_code_duplicate", dicConstant.designations.validation.codeDuplicate),
+    validationNameDuplicate: t("validation_name_duplicate", dicConstant.designations.validation.nameDuplicate),
+  };
 
   async function loadDesignations() {
     // Reload from the backend after every mutation so pagination, selection, and DB state stay in sync.
@@ -249,7 +331,7 @@ export default function DesignationMasterPanel() {
     try {
       await objConfirmDialog.fnOnConfirm();
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+      showToast(objError instanceof Error ? objError.message : dicDesignationLabels.requestFailed, "error");
     } finally {
       setBlnSubmitting(false);
       closeConfirmDialog();
@@ -263,23 +345,23 @@ export default function DesignationMasterPanel() {
     const strName = dicForm.name.trim();
 
     if (!strName) {
-      dicNextErrors.name = dicConstant.designations.validation.nameRequired;
+      dicNextErrors.name = dicDesignationLabels.validationNameRequired;
     } else if (strName.length < 3) {
-      dicNextErrors.name = dicConstant.designations.validation.nameMin;
+      dicNextErrors.name = dicDesignationLabels.validationNameMin;
     }
 
     if (!strCode) {
-      dicNextErrors.code = dicConstant.designations.validation.codeRequired;
+      dicNextErrors.code = dicDesignationLabels.validationCodeRequired;
     } else if (!/^[A-Z0-9/& _-]{2,50}$/.test(strCode)) {
-      dicNextErrors.code = dicConstant.designations.validation.codeFormat;
+      dicNextErrors.code = dicDesignationLabels.validationCodeFormat;
     }
 
     if (lstDesignations.some((dicDesignation) => dicDesignation.code.toUpperCase() === strCode && dicDesignation.id !== strEditingDesignationId)) {
-      dicNextErrors.code = dicConstant.designations.validation.codeDuplicate;
+      dicNextErrors.code = dicDesignationLabels.validationCodeDuplicate;
     }
 
     if (lstDesignations.some((dicDesignation) => dicDesignation.name.trim().toLowerCase() === strName.toLowerCase() && dicDesignation.id !== strEditingDesignationId)) {
-      dicNextErrors.name = dicConstant.designations.validation.nameDuplicate;
+      dicNextErrors.name = dicDesignationLabels.validationNameDuplicate;
     }
 
     setDicErrors(dicNextErrors);
@@ -307,9 +389,9 @@ export default function DesignationMasterPanel() {
       .then(() => loadDesignations())
       .then(() => {
         closeDialog();
-        showToast(strMode === "add" ? "Designation saved successfully." : "Designation updated successfully.");
+        showToast(strMode === "add" ? dicDesignationLabels.saveSuccess : dicDesignationLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDesignationLabels.requestFailed, "error"))
       .finally(() => setBlnSubmitting(false));
   }
 
@@ -332,13 +414,13 @@ export default function DesignationMasterPanel() {
   function bulkUpdateStatus(strStatus: DesignationStatus) {
     // Confirms and applies a shared status to all selected designation rows.
     openConfirmDialog({
-      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Designations`,
-      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected designation record(s) as ${strStatus.toLowerCase()}?`,
-      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      strTitle: strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateTitle : dicDesignationLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateMessage : dicDesignationLabels.confirmBulkDeactivateMessage).replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateLabel : dicDesignationLabels.confirmBulkDeactivateLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active");
         await loadDesignations();
-        showToast(strStatus === "Active" ? "Selected designation records activated successfully." : "Selected designation records deactivated successfully.");
+        showToast(strStatus === "Active" ? dicDesignationLabels.bulkActivateSuccess : dicDesignationLabels.bulkDeactivateSuccess);
       }
     });
   }
@@ -346,13 +428,13 @@ export default function DesignationMasterPanel() {
   function bulkDelete() {
     // Confirms and deletes the currently selected designation rows.
     openConfirmDialog({
-      strTitle: "Bulk Delete Designations",
-      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected designation record(s)?`,
-      strConfirmLabel: "Bulk Delete",
+      strTitle: dicDesignationLabels.confirmBulkDeleteTitle,
+      strMessage: dicDesignationLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: dicDesignationLabels.confirmBulkDeleteLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number));
         await loadDesignations();
-        showToast("Selected designation records deleted successfully.");
+        showToast(dicDesignationLabels.bulkDeleteSuccess);
       }
     });
   }
@@ -360,13 +442,13 @@ export default function DesignationMasterPanel() {
   function deleteDesignation(strDesignationId: string) {
     // Deletes a single row by reusing the same backend bulk-delete endpoint.
     openConfirmDialog({
-      strTitle: "Delete Designation",
-      strMessage: "Are you sure you want to delete this designation record?",
-      strConfirmLabel: "Delete",
+      strTitle: dicDesignationLabels.confirmDeleteTitle,
+      strMessage: dicDesignationLabels.confirmDeleteMessage,
+      strConfirmLabel: dicDesignationLabels.confirmDeleteLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDesignationDelete([Number(strDesignationId)]);
         await loadDesignations();
-        showToast("Designation deleted successfully.");
+        showToast(dicDesignationLabels.deleteSuccess);
       }
     });
   }
@@ -379,13 +461,13 @@ export default function DesignationMasterPanel() {
     }
     const strNextStatus = objDesignation.status === "Active" ? "Inactive" : "Active";
     openConfirmDialog({
-      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} Designation`,
-      strMessage: `Are you sure you want to mark this designation as ${strNextStatus.toLowerCase()}?`,
-      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      strTitle: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateTitle : dicDesignationLabels.confirmDeactivateTitle,
+      strMessage: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateMessage : dicDesignationLabels.confirmDeactivateMessage,
+      strConfirmLabel: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateLabel : dicDesignationLabels.confirmDeactivateLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDesignationStatus([Number(strDesignationId)], strNextStatus === "Active");
         await loadDesignations();
-        showToast(strNextStatus === "Active" ? "Designation activated successfully." : "Designation deactivated successfully.");
+        showToast(strNextStatus === "Active" ? dicDesignationLabels.activateSuccess : dicDesignationLabels.deactivateSuccess);
       }
     });
   }
@@ -393,43 +475,43 @@ export default function DesignationMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>Admin / Master / Designations</Typography>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.designations.backButton}</Button>
+        <Typography className={styles.breadcrumbs}>{dicDesignationLabels.breadcrumbs}</Typography>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDesignationLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicConstant.designations.pageTitle}</Typography>
+          <Typography component="h1" className={styles.title}>{dicDesignationLabels.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicConstant.designations.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Designation Master", lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("designation-master.xls", lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportExcel}</Button>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDesignationLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
           </Box>
         </Box>
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder="Search Designation Name" fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder="Search Designation Code" fullWidth />
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} fullWidth />
           <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">Status</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            <MenuItem value="All">{dicDesignationLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.search}</Button></Box>
-          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
             <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>Applying changes...</Typography>
+            <Typography className={styles.bulkCount}>{dicDesignationLabels.bulkApplyingChanges}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{lstSelectedIds.length} row(s) selected</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>Bulk Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>Bulk Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>Bulk Delete</Button>
+            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDesignationLabels.bulkRowsSelected}`}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDesignationLabels.bulkActivate}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDesignationLabels.bulkDeactivate}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDesignationLabels.bulkDelete}</Button>
           </Box>
         ) : null}
       </Box>
@@ -438,7 +520,7 @@ export default function DesignationMasterPanel() {
         {!blnLoading && lstFilteredDesignations.length > 0 ? (
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
                 select
                 size="small"
@@ -454,7 +536,7 @@ export default function DesignationMasterPanel() {
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDesignations.length)} {dicConstant.common.paginationSeparator} {lstFilteredDesignations.length}
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDesignations.length)} {dicCommonLabels.paginationSeparator} {lstFilteredDesignations.length}
               </Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
@@ -463,7 +545,7 @@ export default function DesignationMasterPanel() {
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>Loading designations...</Typography>
+            <Typography sx={{ mt: 1 }}>{dicDesignationLabels.loadingRecords}</Typography>
           </Box>
         ) : (
         // The table wrapper is the only scrolling region so the master header stays stable on screen.
@@ -472,15 +554,15 @@ export default function DesignationMasterPanel() {
             <thead>
               <tr>
                 <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                <th>Designation Name</th>
-                <th>Designation Code</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{dicDesignationLabels.tableName}</th>
+                <th>{dicDesignationLabels.tableCode}</th>
+                <th>{dicDesignationLabels.tableStatus}</th>
+                <th>{dicDesignationLabels.tableActions}</th>
               </tr>
             </thead>
             <tbody>
               {lstFilteredDesignations.length === 0 ? (
-                <tr><td className={styles.emptyState} colSpan={5}>No designation records found.</td></tr>
+                <tr><td className={styles.emptyState} colSpan={5}>{dicDesignationLabels.emptyMessage}</td></tr>
               ) : lstVisibleDesignations.map((dicDesignation) => {
                 const blnSelected = lstSelectedIds.includes(dicDesignation.id);
                 return (
@@ -507,25 +589,25 @@ export default function DesignationMasterPanel() {
       </Box>
 
       <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicConstant.designations.dialogAddTitle : strMode === "edit" ? dicConstant.designations.dialogEditTitle : "View Designation"}</DialogTitle>
+        <DialogTitle>{strMode === "add" ? dicDesignationLabels.dialogAddTitle : strMode === "edit" ? dicDesignationLabels.dialogEditTitle : dicDesignationLabels.dialogViewTitle}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicConstant.designations.fields.name} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
-            <TextField label={`${dicConstant.designations.fields.code} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
+            <TextField label={`${dicDesignationLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
+            <TextField label={`${dicDesignationLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
             <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>Is Active</Typography>
+              <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
               <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           {strMode === "view" ? (
-            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.close}</Button>
+            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.close}</Button>
           ) : (
             <>
-              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
+              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
               <Button className={styles.primaryButton} onClick={saveDesignation} disabled={blnSubmitting}>
-                {blnSubmitting ? "Saving..." : dicConstant.common.save}
+                {blnSubmitting ? dicDesignationLabels.saving : dicCommonLabels.save}
               </Button>
             </>
           )}
@@ -538,14 +620,14 @@ export default function DesignationMasterPanel() {
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog}>Cancel</Button>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {objConfirmDialog?.strConfirmLabel ?? "Confirm"}
+            {objConfirmDialog?.strConfirmLabel ?? dicDesignationLabels.confirmButton}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

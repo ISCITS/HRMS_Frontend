@@ -142,7 +142,8 @@ function cloneMenuItem(objItem: MenuItem): MenuItem {
 }
 
 export function getPostLoginRoute(strPreferredRoute?: string | null) {
-  return normalizeRoute(strPreferredRoute) ?? "/dashboard";
+  void strPreferredRoute;
+  return "/dashboard";
 }
 
 export function normalizeMenuResponse(objMenu: MenuResponse): MenuResponse {

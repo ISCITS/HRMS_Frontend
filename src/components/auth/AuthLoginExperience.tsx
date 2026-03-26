@@ -5,18 +5,7 @@ import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Divider,
-  IconButton,
-  InputAdornment,
-  Stack,
-  TextField,
-  Typography
-} from "@mui/material";
+import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -321,27 +310,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               >
                 Sign In
               </Button>
-
-              <Divider sx={{ color: "#64748b", fontSize: "0.92rem" }}>Or sign in with:</Divider>
-
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  disabled
-                  sx={{ minHeight: 48, borderRadius: "10px", textTransform: "none", color: "#94a3b8", borderColor: "#dbe4ee" }}
-                >
-                  Single Sign-On (SSO)
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  disabled
-                  sx={{ minHeight: 48, borderRadius: "10px", textTransform: "none", color: "#94a3b8", borderColor: "#dbe4ee" }}
-                >
-                  Google
-                </Button>
-              </Box>
 
               <Box className={styles.helperLinks}>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>

@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { DepartmentApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type DepartmentStatus = "Active" | "Inactive";
@@ -158,6 +159,7 @@ function exportPdf(strTitle: string, lstRows: DepartmentRecord[]) {
 // Department master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function DepartmentMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("department");
   const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>(lstDefaultDepartments);
   const [strMode, setStrMode] = useState<DepartmentMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -173,6 +175,88 @@ export default function DepartmentMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(5);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  const dicCommonLabels = {
+    cancel: t("cancel", dicConstant.common.cancel),
+    clear: t("clear", dicConstant.common.clear),
+    close: t("close", dicConstant.common.close),
+    delete: t("delete", dicConstant.common.delete),
+    exportExcel: t("export_excel", dicConstant.common.exportExcel),
+    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
+    save: t("save", dicConstant.common.save),
+    search: t("search", dicConstant.common.search),
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
+    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
+    loading: t("loading", "Loading..."),
+    processing: t("processing", "Processing..."),
+  };
+  const dicDepartmentLabels = {
+    breadcrumbs: t("breadcrumbs", "Admin / Master / Departments"),
+    pageTitle: t("page_title", dicConstant.departments.pageTitle),
+    backButton: t("back_button", dicConstant.departments.backButton),
+    addButton: t("add_button", dicConstant.departments.addButton),
+    dialogAddTitle: t("dialog_add_title", dicConstant.departments.dialogAddTitle),
+    dialogEditTitle: t("dialog_edit_title", dicConstant.departments.dialogEditTitle),
+    dialogViewTitle: t("dialog_view_title", "View Department"),
+    exportTitle: t("export_title", "Department Master"),
+    exportFileName: t("export_file_name", "department-master.xls"),
+    searchNamePlaceholder: t("search_name_placeholder", "Search Department Name"),
+    searchCodePlaceholder: t("search_code_placeholder", "Search Department Code"),
+    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
+    bulkApplyingChanges: t("bulk_applying_changes", "Applying changes..."),
+    bulkRowsSelected: t("bulk_rows_selected", "row(s) selected"),
+    bulkActivate: t("bulk_activate", "Bulk Activate"),
+    bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
+    bulkDelete: t("bulk_delete", "Bulk Delete"),
+    loadingDepartments: t("loading_departments", "Loading departments..."),
+    emptyMessage: t("empty_message", "No department records found."),
+    tableName: t("table_name", "Department Name"),
+    tableCode: t("table_code", "Department Code"),
+    tableStatus: t("table_status", "Status"),
+    tableEmployees: t("table_employees", "Employees"),
+    tableActions: t("table_actions", "Actions"),
+    saveSuccess: t("save_success", "Department saved successfully."),
+    updateSuccess: t("update_success", "Department updated successfully."),
+    requestFailed: t("request_failed", "Request failed."),
+    deleteSuccess: t("delete_success", "Department deleted successfully."),
+    activateSuccess: t("activate_success", "Department activated successfully."),
+    deactivateSuccess: t("deactivate_success", "Department deactivated successfully."),
+    bulkActivateSuccess: t("bulk_activate_success", "Selected department records activated successfully."),
+    bulkDeactivateSuccess: t("bulk_deactivate_success", "Selected department records deactivated successfully."),
+    bulkDeleteSuccess: t("bulk_delete_success", "Selected department records deleted successfully."),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title", "Bulk Activate Departments"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title", "Bulk Deactivate Departments"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title", "Bulk Delete Departments"),
+    confirmDeleteTitle: t("confirm_delete_title", "Delete Department"),
+    confirmActivateTitle: t("confirm_activate_title", "Activate Department"),
+    confirmDeactivateTitle: t("confirm_deactivate_title", "Deactivate Department"),
+    confirmBulkActivateLabel: t("confirm_bulk_activate_label", "Bulk Activate"),
+    confirmBulkDeactivateLabel: t("confirm_bulk_deactivate_label", "Bulk Deactivate"),
+    confirmBulkDeleteLabel: t("confirm_bulk_delete_label", "Bulk Delete"),
+    confirmActivateLabel: t("confirm_activate_label", "Activate"),
+    confirmDeactivateLabel: t("confirm_deactivate_label", "Deactivate"),
+    confirmDeleteLabel: t("confirm_delete_label", "Delete"),
+    confirmButton: t("confirm_button", "Confirm"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message", "Are you sure you want to mark {count} selected department record(s) as active?"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message", "Are you sure you want to mark {count} selected department record(s) as inactive?"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message", "Are you sure you want to delete {count} selected department record(s)?"),
+    confirmDeleteMessage: t("confirm_delete_message", "Are you sure you want to delete this department record?"),
+    confirmActivateMessage: t("confirm_activate_message", "Are you sure you want to mark this department as active?"),
+    confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this department as inactive?"),
+    fieldName: t("field_name", dicConstant.departments.fields.name),
+    fieldCode: t("field_code", dicConstant.departments.fields.code),
+    fieldEmployees: t("field_employees", "Employees"),
+    fieldIsActive: t("field_is_active", "Is Active"),
+    saving: t("saving", "Saving..."),
+    validationNameRequired: t("validation_name_required", dicConstant.departments.validation.nameRequired),
+    validationNameMin: t("validation_name_min", dicConstant.departments.validation.nameMin),
+    validationCodeRequired: t("validation_code_required", dicConstant.departments.validation.codeRequired),
+    validationCodeFormat: t("validation_code_format", dicConstant.departments.validation.codeFormat),
+    validationCodeDuplicate: t("validation_code_duplicate", dicConstant.departments.validation.codeDuplicate),
+    validationNameDuplicate: t("validation_name_duplicate", dicConstant.departments.validation.nameDuplicate),
+  };
 
   async function loadDepartments() {
     // Every mutation reloads from the backend so the grid stays aligned with the persisted DB state.
@@ -267,23 +351,23 @@ export default function DepartmentMasterPanel() {
     const strName = dicForm.name.trim();
 
     if (!strName) {
-      dicNextErrors.name = dicConstant.departments.validation.nameRequired;
+      dicNextErrors.name = dicDepartmentLabels.validationNameRequired;
     } else if (strName.length < 3) {
-      dicNextErrors.name = dicConstant.departments.validation.nameMin;
+      dicNextErrors.name = dicDepartmentLabels.validationNameMin;
     }
 
     if (!strCode) {
-      dicNextErrors.code = dicConstant.departments.validation.codeRequired;
+      dicNextErrors.code = dicDepartmentLabels.validationCodeRequired;
     } else if (!/^[A-Z0-9-]{2,20}$/.test(strCode)) {
-      dicNextErrors.code = dicConstant.departments.validation.codeFormat;
+      dicNextErrors.code = dicDepartmentLabels.validationCodeFormat;
     }
 
     if (lstDepartments.some((dicDepartment) => dicDepartment.code.toUpperCase() === strCode && dicDepartment.id !== strEditingDepartmentId)) {
-      dicNextErrors.code = dicConstant.departments.validation.codeDuplicate;
+      dicNextErrors.code = dicDepartmentLabels.validationCodeDuplicate;
     }
 
     if (lstDepartments.some((dicDepartment) => dicDepartment.name.trim().toLowerCase() === strName.toLowerCase() && dicDepartment.id !== strEditingDepartmentId)) {
-      dicNextErrors.name = dicConstant.departments.validation.nameDuplicate;
+      dicNextErrors.name = dicDepartmentLabels.validationNameDuplicate;
     }
 
     setDicErrors(dicNextErrors);
@@ -312,9 +396,9 @@ export default function DepartmentMasterPanel() {
       .then(() => loadDepartments())
       .then(() => {
         closeDialog();
-        showToast(strMode === "add" ? "Department saved successfully." : "Department updated successfully.");
+        showToast(strMode === "add" ? dicDepartmentLabels.saveSuccess : dicDepartmentLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error"))
       .finally(() => setBlnSubmitting(false));
   }
 
@@ -337,13 +421,13 @@ export default function DepartmentMasterPanel() {
   function bulkUpdateStatus(strStatus: DepartmentStatus) {
     // Confirms and applies the same active/inactive state to all selected rows.
     openConfirmDialog({
-      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Departments`,
-      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected department record(s) as ${strStatus.toLowerCase()}?`,
-      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      strTitle: strStatus === "Active" ? dicDepartmentLabels.confirmBulkActivateTitle : dicDepartmentLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicDepartmentLabels.confirmBulkActivateMessage : dicDepartmentLabels.confirmBulkDeactivateMessage).replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: strStatus === "Active" ? dicDepartmentLabels.confirmBulkActivateLabel : dicDepartmentLabels.confirmBulkDeactivateLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDepartmentStatus(lstSelectedIds.map(Number), strStatus === "Active");
         await loadDepartments();
-        showToast(strStatus === "Active" ? "Selected department records activated successfully." : "Selected department records deactivated successfully.");
+        showToast(strStatus === "Active" ? dicDepartmentLabels.bulkActivateSuccess : dicDepartmentLabels.bulkDeactivateSuccess);
       }
     });
   }
@@ -351,13 +435,13 @@ export default function DepartmentMasterPanel() {
   function bulkDelete() {
     // Confirms and deletes all currently selected department rows.
     openConfirmDialog({
-      strTitle: "Bulk Delete Departments",
-      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected department record(s)?`,
-      strConfirmLabel: "Bulk Delete",
+      strTitle: dicDepartmentLabels.confirmBulkDeleteTitle,
+      strMessage: dicDepartmentLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: dicDepartmentLabels.confirmBulkDeleteLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDepartmentDelete(lstSelectedIds.map(Number));
         await loadDepartments();
-        showToast("Selected department records deleted successfully.");
+        showToast(dicDepartmentLabels.bulkDeleteSuccess);
       }
     });
   }
@@ -365,13 +449,13 @@ export default function DepartmentMasterPanel() {
   function deleteDepartment(strDepartmentId: string) {
     // Deletes a single department by routing through the same bulk-delete backend endpoint.
     openConfirmDialog({
-      strTitle: "Delete Department",
-      strMessage: "Are you sure you want to delete this department record?",
-      strConfirmLabel: "Delete",
+      strTitle: dicDepartmentLabels.confirmDeleteTitle,
+      strMessage: dicDepartmentLabels.confirmDeleteMessage,
+      strConfirmLabel: dicDepartmentLabels.confirmDeleteLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDepartmentDelete([Number(strDepartmentId)]);
         await loadDepartments();
-        showToast("Department deleted successfully.");
+        showToast(dicDepartmentLabels.deleteSuccess);
       }
     });
   }
@@ -384,13 +468,13 @@ export default function DepartmentMasterPanel() {
     }
     const strNextStatus = objDepartment.status === "Active" ? "Inactive" : "Active";
     openConfirmDialog({
-      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} Department`,
-      strMessage: `Are you sure you want to mark this department as ${strNextStatus.toLowerCase()}?`,
-      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      strTitle: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateTitle : dicDepartmentLabels.confirmDeactivateTitle,
+      strMessage: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateMessage : dicDepartmentLabels.confirmDeactivateMessage,
+      strConfirmLabel: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateLabel : dicDepartmentLabels.confirmDeactivateLabel,
       fnOnConfirm: async () => {
         await masterApiService.bulkDepartmentStatus([Number(strDepartmentId)], strNextStatus === "Active");
         await loadDepartments();
-        showToast(strNextStatus === "Active" ? "Department activated successfully." : "Department deactivated successfully.");
+        showToast(strNextStatus === "Active" ? dicDepartmentLabels.activateSuccess : dicDepartmentLabels.deactivateSuccess);
       }
     });
   }
@@ -398,43 +482,43 @@ export default function DepartmentMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Typography className={styles.breadcrumbs}>Admin / Master / Departments</Typography>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.departments.backButton}</Button>
+        <Typography className={styles.breadcrumbs}>{dicDepartmentLabels.breadcrumbs}</Typography>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicConstant.departments.pageTitle}</Typography>
+          <Typography component="h1" className={styles.title}>{dicDepartmentLabels.pageTitle}</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicConstant.departments.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Department Master", lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("department-master.xls", lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicConstant.common.exportExcel}</Button>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDepartmentLabels.addButton}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDepartmentLabels.exportTitle, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDepartmentLabels.exportFileName, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
           </Box>
         </Box>
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder="Search Department Name" fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder="Search Department Code" fullWidth />
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} fullWidth />
           <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">Status</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            <MenuItem value="All">{dicDepartmentLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.search}</Button></Box>
-          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicConstant.common.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
             <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>Applying changes...</Typography>
+            <Typography className={styles.bulkCount}>{dicDepartmentLabels.bulkApplyingChanges}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{lstSelectedIds.length} row(s) selected</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>Bulk Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>Bulk Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>Bulk Delete</Button>
+            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDepartmentLabels.bulkRowsSelected}`}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
           </Box>
         ) : null}
       </Box>
@@ -443,7 +527,7 @@ export default function DepartmentMasterPanel() {
         {!blnLoading && lstFilteredDepartments.length > 0 ? (
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
+              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
               <TextField
                 select
                 size="small"
@@ -459,7 +543,7 @@ export default function DepartmentMasterPanel() {
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDepartments.length)} {dicConstant.common.paginationSeparator} {lstFilteredDepartments.length}
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDepartments.length)} {dicCommonLabels.paginationSeparator} {lstFilteredDepartments.length}
               </Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
@@ -468,7 +552,7 @@ export default function DepartmentMasterPanel() {
         {blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>Loading departments...</Typography>
+            <Typography sx={{ mt: 1 }}>{dicDepartmentLabels.loadingDepartments}</Typography>
           </Box>
         ) : (
         <Box className={styles.tableWrap}>
@@ -476,16 +560,16 @@ export default function DepartmentMasterPanel() {
             <thead>
               <tr>
                 <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                <th>Department Name</th>
-                <th>Department Code</th>
-                <th>Status</th>
-                <th>Employees</th>
-                <th>Actions</th>
+                <th>{dicDepartmentLabels.tableName}</th>
+                <th>{dicDepartmentLabels.tableCode}</th>
+                <th>{dicDepartmentLabels.tableStatus}</th>
+                <th>{dicDepartmentLabels.tableEmployees}</th>
+                <th>{dicDepartmentLabels.tableActions}</th>
               </tr>
             </thead>
             <tbody>
               {lstFilteredDepartments.length === 0 ? (
-                <tr><td className={styles.emptyState} colSpan={6}>No department records found.</td></tr>
+                <tr><td className={styles.emptyState} colSpan={6}>{dicDepartmentLabels.emptyMessage}</td></tr>
               ) : lstVisibleDepartments.map((dicDepartment) => {
                 const blnSelected = lstSelectedIds.includes(dicDepartment.id);
                 return (
@@ -513,26 +597,26 @@ export default function DepartmentMasterPanel() {
       </Box>
 
       <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicConstant.departments.dialogAddTitle : strMode === "edit" ? dicConstant.departments.dialogEditTitle : "View Department"}</DialogTitle>
+        <DialogTitle>{strMode === "add" ? dicDepartmentLabels.dialogAddTitle : strMode === "edit" ? dicDepartmentLabels.dialogEditTitle : dicDepartmentLabels.dialogViewTitle}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicConstant.departments.fields.name} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
-            <TextField label={`${dicConstant.departments.fields.code} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
-            <TextField label="Employees" value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0} disabled fullWidth />
+            <TextField label={`${dicDepartmentLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
+            <TextField label={`${dicDepartmentLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
+            <TextField label={dicDepartmentLabels.fieldEmployees} value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0} disabled fullWidth />
             <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>Is Active</Typography>
+              <Typography className={styles.switchLabel}>{dicDepartmentLabels.fieldIsActive}</Typography>
               <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           {strMode === "view" ? (
-            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.close}</Button>
+            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.close}</Button>
           ) : (
             <>
-              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
+              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
               <Button className={styles.primaryButton} onClick={saveDepartment} disabled={blnSubmitting}>
-                {blnSubmitting ? "Saving..." : dicConstant.common.save}
+                {blnSubmitting ? dicDepartmentLabels.saving : dicCommonLabels.save}
               </Button>
             </>
           )}
@@ -545,14 +629,14 @@ export default function DepartmentMasterPanel() {
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog}>Cancel</Button>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {objConfirmDialog?.strConfirmLabel ?? "Confirm"}
+            {objConfirmDialog?.strConfirmLabel ?? dicDepartmentLabels.confirmButton}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
