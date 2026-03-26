@@ -31,6 +31,7 @@ import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
+const intTopBarHeight = 60;
 
 function getPageTitle(strPathname: string) {
   if (!strPathname || strPathname === "/") {
@@ -147,8 +148,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
-        gap: 1.75,
-        p: 2,
+        gap: 1.5,
+        p: { xs: 1, md: 1.5 },
         background:
           "linear-gradient(180deg, rgba(248,250,252,0.98) 0%, rgba(241,245,249,0.96) 50%, rgba(248,250,252,0.98) 100%)",
         overflow: "hidden"
@@ -157,14 +158,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Paper
         sx={{
           px: 2.25,
-          py: 2,
-          borderRadius: "28px",
+          height: `${intTopBarHeight}px`,
+          borderRadius: "24px",
           background: "linear-gradient(145deg, #0f766e 0%, #0f5d8d 52%, #1d4ed8 100%)",
           color: "#effcff",
-          boxShadow: "0 24px 50px rgba(15, 23, 42, 0.18)"
+          boxShadow: "0 24px 50px rgba(15, 23, 42, 0.18)",
+          display: "flex",
+          alignItems: "center",
+          boxSizing: "border-box",
+          overflow: "hidden"
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%" }}>
           <Box
             sx={{
               width: 46,
@@ -192,7 +197,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Paper
         sx={{
           p: 1.25,
-          borderRadius: "28px",
+          borderRadius: "24px",
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
@@ -258,7 +263,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           height: "100vh",
           minHeight: 0,
           display: { xs: "none", lg: "block" },
-          p: blnDesktopSidebarOpen ? 1.75 : 0,
+          p: blnDesktopSidebarOpen ? { xs: 1, md: 1.5 } : 0,
           pr: blnDesktopSidebarOpen ? 0 : 0,
           overflow: "hidden",
           transition: "width 220ms ease, opacity 220ms ease, padding 220ms ease",
@@ -289,13 +294,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {objSidebarContent}
       </Drawer>
 
-      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", p: { xs: 1.25, md: 2.25 } }}>
+      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", p: { xs: 1, md: 1.5 } }}>
         <AppBar
           position="sticky"
           color="inherit"
           sx={{
             borderRadius: "24px",
-            mb: 2.25,
+            mb: 1.5,
             px: { xs: 0.25, sm: 0.75 },
             background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
             border: "1px solid rgba(255, 255, 255, 0.6)",
@@ -318,8 +323,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Box sx={{ minWidth: 0, flexShrink: 0 }}>
               <Typography
                 sx={{
-                  fontSize: "0.875rem",
-                  color: "#64748b",
+                  fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                  color: "#0f172a",
                   textTransform: "none",
                   letterSpacing: "normal",
                   fontWeight: 400,
@@ -347,7 +352,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   fontWeight: 700,
                   color: "#0f172a",
                   letterSpacing: "-0.03em",
-                  lineHeight: 1.1,
                   textAlign: "center",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -394,7 +398,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 106px)", overflow: "hidden" }}>{children}</Box>
+        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflow: "hidden" }}>{children}</Box>
       </Box>
 
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">

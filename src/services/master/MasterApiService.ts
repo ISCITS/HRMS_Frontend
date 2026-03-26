@@ -170,7 +170,6 @@ export type EmployeeFormOptionsApiRecord = {
   lstEmploymentStatuses: Array<"Active" | "Inactive">;
   lstAddressTypes: string[];
   lstTaxRegimeCodes: string[];
-  lstSalaryStructures: EmployeeSalaryStructureApiRecord[];
 };
 
 export type EmployeeAddressApiRecord = {
@@ -204,38 +203,6 @@ export type EmployeeStatutoryApiRecord = {
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
-};
-
-export type EmployeeSalaryComponentApiRecord = {
-  intID: number | null;
-  intSalaryComponentID: number;
-  strComponentName: string;
-  strComponentCode: string | null;
-  strComponentType: "Earning" | "Deduction";
-  strCalculationType: "Fixed" | "Percentage";
-  fltValue: number | null;
-  fltPercentageValue: number | null;
-  intCalculationOrder: number;
-  blnIsRequired: boolean;
-  blnValueReadOnly: boolean;
-  lstDependencyComponentIDs: number[];
-};
-
-export type EmployeeSalaryApiRecord = {
-  intID: number | null;
-  intSalaryStructureID: number | null;
-  strSalaryStructureName: string | null;
-  lstSalaryComponents: EmployeeSalaryComponentApiRecord[];
-  fltTotalEarnings: number;
-  fltTotalDeductions: number;
-  fltNetSalary: number;
-};
-
-export type EmployeeSalaryStructureApiRecord = {
-  intID: number;
-  strLabel: string;
-  strCode?: string;
-  lstSalaryComponents: EmployeeSalaryComponentApiRecord[];
 };
 
 export type SalaryComponentApiRecord = {
@@ -908,33 +875,6 @@ export const masterApiService = {
       strMenuAction: "MASTER_EMPLOYEE_STATUTORY_SAVE"
     });
   },
-
-  getEmployeeSalary(intID: number) {
-    return requestApi<EmployeeSalaryApiRecord>({
-      strPath: `/masters/employee/${intID}/salary`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_SALARY_VIEW"
-    });
-  },
-
-  createEmployeeSalary(intID: number, objBody: Record<string, unknown>) {
-    return requestApi<EmployeeSalaryApiRecord>({
-      strPath: `/masters/employee/${intID}/salary`,
-      strMethod: "POST",
-      objBody,
-      strMenuAction: "MASTER_EMPLOYEE_SALARY_CREATE"
-    });
-  },
-
-  updateEmployeeSalary(intID: number, objBody: Record<string, unknown>) {
-    return requestApi<EmployeeSalaryApiRecord>({
-      strPath: `/masters/employee/${intID}/salary`,
-      strMethod: "PUT",
-      objBody,
-      strMenuAction: "MASTER_EMPLOYEE_SALARY_UPDATE"
-    });
-  },
-
   getSalaryComponents() {
     return requestApi<SalaryComponentApiRecord[]>({
       strPath: "/masters/salary-components",

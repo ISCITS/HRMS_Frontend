@@ -2,13 +2,13 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import { Box, Button, Checkbox, CircularProgress, MenuItem, Pagination, TextField, Typography } from "@mui/material";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import { Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +27,14 @@ type SearchForm = {
 };
 
 const dicEmptySearch: SearchForm = { name: "", code: "", status: "All" };
-const lstRowsPerPageOptions = [5, 10, 20];
+const lstRowsPerPageOptions = [10, 20, 50];
+
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
+  fnOnConfirm: () => Promise<void>;
+};
 
 function formatDisplayDate(strDate: string | null): string {
   if (!strDate) {
@@ -50,7 +57,8 @@ export default function EmployeeMasterListPanel() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(5);
+  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objAlertDialog, setObjAlertDialog] = useState({
     blnOpen: false,
     strMessage: "",
@@ -63,6 +71,29 @@ export default function EmployeeMasterListPanel() {
       strMessage,
       strSeverity,
     });
+  }
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    if (blnSubmitting) {
+      return;
+    }
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    if (!objConfirmDialog) {
+      return;
+    }
+
+    try {
+      await objConfirmDialog.fnOnConfirm();
+    } finally {
+      setObjConfirmDialog(null);
+    }
   }
 
   async function loadModuleData() {
@@ -117,20 +148,23 @@ export default function EmployeeMasterListPanel() {
     if (!lstIDs.length) {
       return;
     }
-    const blnConfirmed = window.confirm(blnIsSingle ? t("confirm_delete_single", dicConstant.employeeMaster.confirmDeleteSingle) : t("confirm_deactivate", dicConstant.employeeMaster.confirmDeactivate));
-    if (!blnConfirmed) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await employeeService.bulkDelete(lstIDs);
-      openAlertDialog("success", t("delete_success", dicConstant.employeeMaster.deleteSuccess));
-      await loadModuleData();
-    } catch (objError) {
-      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_deactivate", "Unable to deactivate employee."));
-    } finally {
-      setBlnSubmitting(false);
-    }
+    openConfirmDialog({
+      strTitle: blnIsSingle ? t("confirm_delete_title", "Delete Employee") : t("confirm_deactivate_title", "Deactivate Employees"),
+      strMessage: blnIsSingle ? t("confirm_delete_single", dicConstant.employeeMaster.confirmDeleteSingle) : t("confirm_deactivate", dicConstant.employeeMaster.confirmDeactivate),
+      strConfirmLabel: blnIsSingle ? t("delete_button", "Delete") : t("deactivate_button", "Deactivate"),
+      fnOnConfirm: async () => {
+        setBlnSubmitting(true);
+        try {
+          await employeeService.bulkDelete(lstIDs);
+          openAlertDialog("success", t("delete_success", dicConstant.employeeMaster.deleteSuccess));
+          await loadModuleData();
+        } catch (objError) {
+          openAlertDialog("error", objError instanceof Error ? objError.message : t("error_deactivate", "Unable to deactivate employee."));
+        } finally {
+          setBlnSubmitting(false);
+        }
+      },
+    });
   }
 
   function toggleSelection(intEmployeeID: number) {
@@ -356,9 +390,9 @@ export default function EmployeeMasterListPanel() {
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} /></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}><EditOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}><EditRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
@@ -385,6 +419,20 @@ export default function EmployeeMasterListPanel() {
         strSeverity={objAlertDialog.strSeverity}
         fnOnClose={() => setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
       />
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
+        </DialogContent>
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>
+            {dicConstant.common.cancel}
+          </Button>
+          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+            {objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
     </Box>
   );

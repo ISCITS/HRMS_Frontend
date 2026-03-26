@@ -94,7 +94,6 @@ export type EmployeeFormOptions = {
   lstEmploymentStatuses: EmployeeStatus[];
   lstAddressTypes: string[];
   lstTaxRegimeCodes: string[];
-  lstSalaryStructures: EmployeeSalaryStructureOption[];
 };
 
 export type EmployeeAddressRecord = {
@@ -157,56 +156,4 @@ export type EmployeeStatutoryFormValues = {
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
-};
-
-export type EmployeeSalaryComponentRecord = {
-  intID: number | null;
-  intSalaryComponentID: number;
-  strComponentName: string;
-  strComponentCode: string | null;
-  strComponentType: "Earning" | "Deduction";
-  strCalculationType: "Fixed" | "Percentage";
-  fltValue: number | null;
-  fltPercentageValue: number | null;
-  intCalculationOrder: number;
-  blnIsRequired: boolean;
-  blnValueReadOnly: boolean;
-  lstDependencyComponentIDs: number[];
-};
-
-export type EmployeeSalaryRecord = {
-  intID: number | null;
-  intSalaryStructureID: number | null;
-  strSalaryStructureName: string | null;
-  lstSalaryComponents: EmployeeSalaryComponentRecord[];
-  fltTotalEarnings: number;
-  fltTotalDeductions: number;
-  fltNetSalary: number;
-};
-
-export type EmployeeSalaryComponentFormValues = {
-  intID: number | null;
-  intSalaryComponentID: number;
-  strComponentName: string;
-  strComponentCode: string;
-  strComponentType: "Earning" | "Deduction";
-  strCalculationType: "Fixed" | "Percentage";
-  strValue: string;
-  fltPercentageValue: number | null;
-  intCalculationOrder: number;
-  blnIsRequired: boolean;
-  blnValueReadOnly: boolean;
-  lstDependencyComponentIDs: number[];
-};
-
-export type EmployeeSalaryFormValues = {
-  intSalaryStructureID: number | "";
-  lstSalaryComponents: EmployeeSalaryComponentFormValues[];
-};
-
-export type EmployeeSalaryStructureOption = {
-  intID: number;
-  strLabel: string;
-  strCode?: string;
-  lstSalaryComponents: EmployeeSalaryComponentRecord[];
 };

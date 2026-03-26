@@ -1,8 +1,8 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  height: calc(100vh - 138px);
+  gap: 6px;
+  height: calc(100vh - 124px);
   margin-top: -4px;
   min-height: 0;
   overflow: hidden;
@@ -37,7 +37,7 @@
 }
 
 .controlsCard {
-  padding: 12px 12px 10px;
+  padding: 10px 12px 8px;
   flex: 0 0 auto;
 }
 
@@ -144,13 +144,14 @@
   flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
-  padding: 12px;
+  padding: 10px 10px 0;
   min-height: 0;
 }
 
 .tableWrap {
-  flex: 1 1 auto;
-  height: 100%;
+  flex: 0 1 auto;
+  height: auto;
+  max-height: 100%;
   overflow-x: auto;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -166,9 +167,9 @@
 .table thead th {
   border-bottom: 1px solid #d9e6ef;
   color: #1c242d;
-  font-size: 0.88rem;
+  font-size: 0.83rem;
   font-weight: 700;
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
   white-space: nowrap;
   background: rgba(255, 255, 255, 0.82);
@@ -195,8 +196,8 @@
 .table tbody td {
   border-bottom: 1px solid #d9e6ef;
   color: #25313d;
-  font-size: 0.9rem;
-  padding: 9px 12px;
+  font-size: 0.86rem;
+  padding: 6px 10px;
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -208,9 +209,9 @@
 .statusPill {
   border-radius: 999px;
   display: inline-flex;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  padding: 3px 10px;
+  padding: 2px 9px;
 }
 
 .statusActive {
@@ -238,7 +239,17 @@
   cursor: pointer;
   display: inline-flex;
   justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   padding: 0;
+}
+
+.table :global(.MuiCheckbox-root) {
+  padding: 4px;
+}
+
+.table :global(.MuiSvgIcon-root) {
+  font-size: 1.35rem;
 }
 
 .viewIcon {
@@ -269,7 +280,7 @@
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-  padding: 0 2px 6px;
+  padding: 0 2px 0;
 }
 
 .paginationInfo {

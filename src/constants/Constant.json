@@ -110,7 +110,6 @@
         "addressSaveSuccess": "Employee address saved successfully.",
         "bankSaveSuccess": "Employee bank details saved successfully.",
         "statutorySaveSuccess": "Employee statutory details saved successfully.",
-        "salarySaveSuccess": "Employee salary saved successfully.",
         "statusSuccess": "Employee status updated successfully.",
         "deleteSuccess": "Employee deactivated successfully.",
         "createFirstHint": "Save Basic Info first to enable the remaining tabs.",
@@ -120,8 +119,7 @@
             "basicInfo": "Basic Info",
             "address": "Address",
             "bankDetails": "Bank Details",
-            "statutory": "Statutory",
-            "salary": "Salary"
+            "statutory": "Statutory"
         },
         "fields": {
             "employeeCode": "Employee Code",
@@ -164,14 +162,6 @@
             "uanNumber": "UAN Number",
             "esiNumber": "ESI Number",
             "taxRegimeCode": "Tax Regime"
-            ,"salaryStructure": "Salary Structure"
-            ,"salaryComponent": "Component"
-            ,"salaryValue": "Value"
-            ,"salaryType": "Type"
-            ,"salaryCalculationType": "Calculation Type"
-            ,"totalEarnings": "Total Earnings"
-            ,"totalDeductions": "Total Deductions"
-            ,"netSalary": "Net Salary"
         },
         "grid": {
             "employeeCode": "Employee Code",
@@ -206,10 +196,7 @@
             "countryRequired": "Country is required.",
             "bankRequired": "Bank is required.",
             "accountHolderRequired": "Account Holder Name is required.",
-            "accountNumberRequired": "Account Number is required.",
-            "salaryStructureRequired": "Salary Structure is required.",
-            "salaryComponentValueRequired": "Component value is required.",
-            "salaryComponentValueInvalid": "Enter a valid numeric value."
+            "accountNumberRequired": "Account Number is required."
         }
     },
     "leave": {

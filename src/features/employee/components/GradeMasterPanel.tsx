@@ -3,12 +3,12 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
@@ -71,7 +71,7 @@ type ToastState = {
 
 const dicEmptyForm: GradeForm = { code: "", name: "", status: "Active" };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
-const lstRowsPerPageOptions = [5, 10, 20];
+const lstRowsPerPageOptions = [10, 20, 50];
 
 function mapGradeRecord(dicRecord: GradeApiRecord): GradeRecord {
   return {
@@ -162,7 +162,7 @@ export default function GradeMasterPanel() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(5);
+  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const dicCommonLabels = {
@@ -504,9 +504,9 @@ export default function GradeMasterPanel() {
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicGrade.id)} /></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicGrade)}><VisibilityOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicGrade)}><EditOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteGrade(dicGrade.id)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicGrade)}><VisibilityRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicGrade)}><EditRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteGrade(dicGrade.id)}><DeleteRoundedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleGradeStatus(dicGrade.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
