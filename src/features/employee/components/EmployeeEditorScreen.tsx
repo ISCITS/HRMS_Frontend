@@ -12,6 +12,11 @@ import {
   Stack,
   Switch,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   Tabs,
   TextField,
   Typography
@@ -25,12 +30,15 @@ import {
   dicEmptyEmployeeAddressForm,
   dicEmptyEmployeeBankForm,
   dicEmptyEmployeeForm,
+  dicEmptyEmployeeSalaryForm,
   dicEmptyEmployeeStatutoryForm,
   toEmployeeAddressFormValues,
   toEmployeeBankFormValues,
   toEmployeeFormValues,
+  toEmployeeSalaryFormValues,
   toEmployeeStatutoryFormValues,
-  validateEmployeeForm
+  validateEmployeeForm,
+  validateEmployeeSalaryForm
 } from "@/features/employee/EmployeeFormUtils";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -40,6 +48,9 @@ import type {
   EmployeeFormOptions,
   EmployeeFormValues,
   EmployeeListRecord,
+  EmployeeSalaryComponentFormValues,
+  EmployeeSalaryRecord,
+  EmployeeSalaryFormValues,
   EmployeeStatutoryFormValues,
   EmployeeStatus
 } from "@/features/employee/types";
@@ -49,10 +60,65 @@ type EmployeeEditorScreenProps = {
   intEmployeeID?: number;
 };
 
-type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory";
+type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory" | "salary";
 
-const lstTabOrder: TabKey[] = ["basicInfo", "address", "bankDetails", "statutory"];
+const lstTabOrder: TabKey[] = ["basicInfo", "address", "bankDetails", "statutory", "salary"];
 const strRequiredAsteriskColor = "#dc2626";
+
+function roundSalaryValue(fltValue: number) {
+  return Math.round((fltValue + Number.EPSILON) * 100) / 100;
+}
+
+function recalculateSalaryComponents(lstComponents: EmployeeSalaryComponentFormValues[]) {
+  const dicValueByComponentID = new Map<number, number>();
+
+  const lstNextComponents = [...lstComponents]
+    .sort((dicLeft, dicRight) => dicLeft.intCalculationOrder - dicRight.intCalculationOrder)
+    .map((dicComponent) => {
+      if (
+        dicComponent.strCalculationType === "Percentage"
+        && dicComponent.lstDependencyComponentIDs.length > 0
+        && dicComponent.fltPercentageValue !== null
+      ) {
+        const fltDependencyBase = dicComponent.lstDependencyComponentIDs.reduce(
+          (fltRunningValue, intDependencyID) => fltRunningValue + (dicValueByComponentID.get(intDependencyID) ?? 0),
+          0
+        );
+        const fltComputedValue = roundSalaryValue((fltDependencyBase * dicComponent.fltPercentageValue) / 100);
+        dicValueByComponentID.set(dicComponent.intSalaryComponentID, fltComputedValue);
+        return {
+          ...dicComponent,
+          strValue: String(fltComputedValue)
+        };
+      }
+
+      const fltParsedValue = dicComponent.strValue.trim() ? Number(dicComponent.strValue) : 0;
+      dicValueByComponentID.set(dicComponent.intSalaryComponentID, Number.isNaN(fltParsedValue) ? 0 : fltParsedValue);
+      return dicComponent;
+    });
+
+  return lstNextComponents;
+}
+
+function summarizeSalary(lstComponents: EmployeeSalaryComponentFormValues[]) {
+  return lstComponents.reduce((dicTotals, dicComponent) => {
+    const fltValue = dicComponent.strValue.trim() ? Number(dicComponent.strValue) : 0;
+    if (Number.isNaN(fltValue)) {
+      return dicTotals;
+    }
+    if (dicComponent.strComponentType === "Earning") {
+      dicTotals.fltTotalEarnings += fltValue;
+    } else {
+      dicTotals.fltTotalDeductions += fltValue;
+    }
+    dicTotals.fltNetSalary = dicTotals.fltTotalEarnings - dicTotals.fltTotalDeductions;
+    return dicTotals;
+  }, {
+    fltTotalEarnings: 0,
+    fltTotalDeductions: 0,
+    fltNetSalary: 0
+  });
+}
 
 function renderRequiredLabel(strLabel: string) {
   return (
@@ -84,15 +150,20 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
   const [dicAddressForm, setDicAddressForm] = useState<EmployeeAddressFormValues>(dicEmptyEmployeeAddressForm);
   const [dicBankForm, setDicBankForm] = useState<EmployeeBankFormValues>(dicEmptyEmployeeBankForm);
   const [dicStatutoryForm, setDicStatutoryForm] = useState<EmployeeStatutoryFormValues>(dicEmptyEmployeeStatutoryForm);
+  const [dicSalaryForm, setDicSalaryForm] = useState<EmployeeSalaryFormValues>(dicEmptyEmployeeSalaryForm);
   const [dicBasicErrors, setDicBasicErrors] = useState<Partial<Record<keyof EmployeeFormValues, string>>>({});
   const [dicAddressErrors, setDicAddressErrors] = useState<Partial<Record<keyof EmployeeAddressFormValues, string>>>({});
   const [dicBankErrors, setDicBankErrors] = useState<Partial<Record<keyof EmployeeBankFormValues, string>>>({});
+  const [strSalaryStructureError, setStrSalaryStructureError] = useState<string>();
+  const [dicSalaryComponentErrors, setDicSalaryComponentErrors] = useState<Record<number, string>>({});
   const [intResolvedEmployeeID, setIntResolvedEmployeeID] = useState<number | null>(intEmployeeID ?? null);
+  const [intEmployeeSalaryRecordID, setIntEmployeeSalaryRecordID] = useState<number | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnBasicSaving, setBlnBasicSaving] = useState(false);
   const [blnAddressSaving, setBlnAddressSaving] = useState(false);
   const [blnBankSaving, setBlnBankSaving] = useState(false);
   const [blnStatutorySaving, setBlnStatutorySaving] = useState(false);
+  const [blnSalarySaving, setBlnSalarySaving] = useState(false);
   const [objAlertDialog, setObjAlertDialog] = useState({
     blnOpen: false,
     strMessage: "",
@@ -144,6 +215,14 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
       };
     }
 
+    if (strActiveTab === "salary") {
+      return {
+        fnOnClick: handleSalarySave,
+        blnDisabled: blnSalarySaving,
+        strLabel: blnSalarySaving ? t("action_saving_salary", "Saving Salary...") : t("action_save_salary", "Save Salary"),
+      };
+    }
+
     return {
       fnOnClick: handleStatutorySave,
       blnDisabled: blnStatutorySaving,
@@ -180,7 +259,8 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
           const lstChildResults = await Promise.allSettled([
             employeeService.getEmployeeAddress(intEmployeeID),
             employeeService.getEmployeeBankAccount(intEmployeeID),
-            employeeService.getEmployeeStatutory(intEmployeeID)
+            employeeService.getEmployeeStatutory(intEmployeeID),
+            employeeService.getEmployeeSalary(intEmployeeID)
           ]);
 
           if (!blnMounted) {
@@ -197,6 +277,12 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
 
           if (lstChildResults[2].status === "fulfilled") {
             setDicStatutoryForm(toEmployeeStatutoryFormValues(lstChildResults[2].value));
+          }
+
+          if (lstChildResults[3].status === "fulfilled") {
+            const dicSalaryRecord = lstChildResults[3].value as EmployeeSalaryRecord;
+            setDicSalaryForm(toEmployeeSalaryFormValues(dicSalaryRecord));
+            setIntEmployeeSalaryRecordID(dicSalaryRecord.intID ?? null);
           }
         }
       } catch (objError) {
@@ -238,6 +324,54 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
 
   function updateStatutoryField<TKey extends keyof EmployeeStatutoryFormValues>(strField: TKey, objValue: EmployeeStatutoryFormValues[TKey]) {
     setDicStatutoryForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function applySalaryStructure(intSalaryStructureID: number | "") {
+    setStrSalaryStructureError(undefined);
+    setDicSalaryComponentErrors({});
+
+    if (intSalaryStructureID === "") {
+      setDicSalaryForm(dicEmptyEmployeeSalaryForm);
+      setIntEmployeeSalaryRecordID(null);
+      return;
+    }
+
+    const intNormalizedSalaryStructureID = Number(intSalaryStructureID);
+    const dicSelectedStructure = objFormOptions?.lstSalaryStructures.find((dicStructure) => Number(dicStructure.intID) === intNormalizedSalaryStructureID);
+    const dicNextSalaryForm = dicSelectedStructure
+      ? toEmployeeSalaryFormValues({
+        intID: null,
+        intSalaryStructureID: intNormalizedSalaryStructureID,
+        strSalaryStructureName: dicSelectedStructure.strLabel,
+        lstSalaryComponents: dicSelectedStructure.lstSalaryComponents,
+        fltTotalEarnings: 0,
+        fltTotalDeductions: 0,
+        fltNetSalary: 0
+      })
+      : dicEmptyEmployeeSalaryForm;
+
+    setDicSalaryForm({
+      ...dicNextSalaryForm,
+      intSalaryStructureID: dicSelectedStructure ? intNormalizedSalaryStructureID : "",
+      lstSalaryComponents: recalculateSalaryComponents(dicNextSalaryForm.lstSalaryComponents)
+    });
+  }
+
+  function updateSalaryComponentValue(intSalaryComponentID: number, strValue: string) {
+    setDicSalaryComponentErrors((dicPrevious) => ({
+      ...dicPrevious,
+      [intSalaryComponentID]: ""
+    }));
+    setDicSalaryForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstSalaryComponents: recalculateSalaryComponents(
+        dicPrevious.lstSalaryComponents.map((dicComponent) => (
+          dicComponent.intSalaryComponentID === intSalaryComponentID
+            ? { ...dicComponent, strValue }
+            : dicComponent
+        ))
+      )
+    }));
   }
 
   function handleEditorFocusCapture(objEvent: FocusEvent<HTMLElement>) {
@@ -424,6 +558,41 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
     }
   }
 
+  async function handleSalarySave() {
+    if (blnViewOnly) {
+      return;
+    }
+    if (!intResolvedEmployeeID) {
+      openAlertDialog("error", t("create_first_hint", dicConstant.employeeMaster.createFirstHint));
+      return;
+    }
+
+    const dicValidation = validateEmployeeSalaryForm(dicSalaryForm, {
+      salaryStructureRequired: t("validation_salary_structure_required", dicConstant.employeeMaster.validation.salaryStructureRequired),
+      componentValueInvalid: t("validation_salary_component_value_invalid", dicConstant.employeeMaster.validation.salaryComponentValueInvalid),
+      componentValueRequired: t("validation_salary_component_value_required", dicConstant.employeeMaster.validation.salaryComponentValueRequired)
+    });
+    setStrSalaryStructureError(dicValidation.strSalaryStructureError);
+    setDicSalaryComponentErrors(dicValidation.dicComponentErrors);
+    if (dicValidation.strSalaryStructureError || Object.keys(dicValidation.dicComponentErrors).length > 0) {
+      return;
+    }
+
+    setBlnSalarySaving(true);
+    try {
+      const dicRecord = intEmployeeSalaryRecordID
+        ? await employeeService.updateEmployeeSalary(intResolvedEmployeeID, dicSalaryForm)
+        : await employeeService.createEmployeeSalary(intResolvedEmployeeID, dicSalaryForm);
+      setDicSalaryForm(toEmployeeSalaryFormValues(dicRecord));
+      setIntEmployeeSalaryRecordID(dicRecord.intID ?? null);
+      openAlertDialog("success", t("salary_save_success", dicConstant.employeeMaster.salarySaveSuccess ?? "Employee salary saved successfully."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_salary", "Unable to save employee salary."));
+    } finally {
+      setBlnSalarySaving(false);
+    }
+  }
+
   function renderSelectField<TValue extends string | number | "">(
     objLabel: ReactNode,
     objValue: TValue,
@@ -471,6 +640,8 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
       </Box>
     );
   }
+
+  const dicSalarySummary = summarizeSalary(dicSalaryForm.lstSalaryComponents);
 
   return (
     <Stack spacing={2.5} sx={{ pb: blnViewOnly ? 0 : { xs: 12, md: 13 } }} onFocusCapture={handleEditorFocusCapture}>
@@ -526,7 +697,9 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
                     ? t("tab_address", dicConstant.employeeMaster.tabs.address)
                     : strTabKey === "bankDetails"
                       ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
-                      : t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)}
+                      : strTabKey === "statutory"
+                        ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
+                        : t("tab_salary", dicConstant.employeeMaster.tabs.salary ?? "Salary")}
               />
             ))}
           </Tabs>
@@ -616,6 +789,97 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
                   <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} />} label={t("field_pt_applicable", "PT Applicable")} />
                 </Box>
               </Box>
+            </Stack>
+          ) : null}
+
+          {strActiveTab === "salary" ? (
+            <Stack spacing={2.5}>
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 420px)" } }}>
+                {renderSelectField(
+                  renderRequiredLabel(t("field_salary_structure", dicConstant.employeeMaster.fields.salaryStructure ?? "Salary Structure")),
+                  dicSalaryForm.intSalaryStructureID,
+                  (objValue) => applySalaryStructure(objValue as number | ""),
+                  objFormOptions?.lstSalaryStructures ?? [],
+                  blnViewOnly,
+                  strSalaryStructureError,
+                  Boolean(strSalaryStructureError)
+                )}
+              </Box>
+
+              <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("field_total_earnings", dicConstant.employeeMaster.fields.totalEarnings ?? "Total Earnings")}</Typography>
+                  <Typography sx={{ mt: 0.5, fontWeight: 800, color: "#166534" }}>{dicSalarySummary.fltTotalEarnings.toFixed(2)}</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("field_total_deductions", dicConstant.employeeMaster.fields.totalDeductions ?? "Total Deductions")}</Typography>
+                  <Typography sx={{ mt: 0.5, fontWeight: 800, color: "#b91c1c" }}>{dicSalarySummary.fltTotalDeductions.toFixed(2)}</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("field_net_salary", dicConstant.employeeMaster.fields.netSalary ?? "Net Salary")}</Typography>
+                  <Typography sx={{ mt: 0.5, fontWeight: 800, color: "#0f172a" }}>{dicSalarySummary.fltNetSalary.toFixed(2)}</Typography>
+                </Paper>
+              </Box>
+
+              {dicSalaryForm.intSalaryStructureID === "" ? (
+                <Typography sx={{ color: "#64748b" }}>
+                  {t("salary_structure_hint", "Select a salary structure to load the configured earning and deduction components.")}
+                </Typography>
+              ) : (
+                <Paper variant="outlined" sx={{ borderRadius: "20px", overflow: "hidden" }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t("field_salary_component", dicConstant.employeeMaster.fields.salaryComponent ?? "Component")}</TableCell>
+                        <TableCell>{t("field_salary_type", dicConstant.employeeMaster.fields.salaryType ?? "Type")}</TableCell>
+                        <TableCell>{t("field_salary_calculation_type", dicConstant.employeeMaster.fields.salaryCalculationType ?? "Calculation Type")}</TableCell>
+                        <TableCell sx={{ minWidth: 180 }}>{t("field_salary_value", dicConstant.employeeMaster.fields.salaryValue ?? "Value")}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {dicSalaryForm.lstSalaryComponents.map((dicComponent) => {
+                        const strDependencyLabel = dicComponent.lstDependencyComponentIDs.length > 0
+                          ? dicSalaryForm.lstSalaryComponents
+                            .filter((dicDependency) => dicComponent.lstDependencyComponentIDs.includes(dicDependency.intSalaryComponentID))
+                            .map((dicDependency) => dicDependency.strComponentName)
+                            .join(", ")
+                          : "";
+
+                        return (
+                          <TableRow key={dicComponent.intSalaryComponentID} hover>
+                            <TableCell>
+                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicComponent.strComponentName}</Typography>
+                              {dicComponent.strComponentCode ? (
+                                <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicComponent.strComponentCode}</Typography>
+                              ) : null}
+                              {dicComponent.strCalculationType === "Percentage" && dicComponent.fltPercentageValue !== null ? (
+                                <Typography sx={{ color: "#64748b", fontSize: "0.8rem", mt: 0.5 }}>
+                                  {`${dicComponent.fltPercentageValue}%${strDependencyLabel ? ` of ${strDependencyLabel}` : ""}`}
+                                </Typography>
+                              ) : null}
+                            </TableCell>
+                            <TableCell>{dicComponent.strComponentType}</TableCell>
+                            <TableCell>{dicComponent.strCalculationType}</TableCell>
+                            <TableCell>
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={dicComponent.strValue}
+                                onChange={(objEvent) => updateSalaryComponentValue(dicComponent.intSalaryComponentID, objEvent.target.value)}
+                                disabled={blnViewOnly || dicComponent.blnValueReadOnly}
+                                error={Boolean(dicSalaryComponentErrors[dicComponent.intSalaryComponentID])}
+                                helperText={dicSalaryComponentErrors[dicComponent.intSalaryComponentID] || (dicComponent.blnValueReadOnly ? t("salary_auto_calculated", "Auto calculated") : " ")}
+                                inputProps={{ step: "0.01", min: "0" }}
+                                fullWidth
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              )}
             </Stack>
           ) : null}
         </Box>

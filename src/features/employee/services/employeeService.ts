@@ -7,6 +7,9 @@ import type {
   EmployeeFormOptions,
   EmployeeFormValues,
   EmployeeListRecord,
+  EmployeeSalaryFormValues,
+  EmployeeSalaryRecord,
+  EmployeeSalaryStructureOption,
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
@@ -44,6 +47,44 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
   };
 }
 
+function normalizeSalaryStructures(lstSalaryStructures: unknown): EmployeeSalaryStructureOption[] {
+  if (!Array.isArray(lstSalaryStructures)) {
+    return [];
+  }
+
+  return lstSalaryStructures.map((objStructure) => {
+    const dicStructure = objStructure as Record<string, unknown>;
+    const lstSalaryComponents = Array.isArray(dicStructure.lstSalaryComponents)
+      ? dicStructure.lstSalaryComponents.map((objComponent) => {
+        const dicComponent = objComponent as Record<string, unknown>;
+        return {
+          intID: typeof dicComponent.intID === "number" ? dicComponent.intID : null,
+          intSalaryComponentID: Number(dicComponent.intSalaryComponentID ?? dicComponent.intID ?? 0),
+          strComponentName: String(dicComponent.strComponentName ?? ""),
+          strComponentCode: dicComponent.strComponentCode ? String(dicComponent.strComponentCode) : null,
+          strComponentType: String(dicComponent.strComponentType ?? dicComponent.strComponentCategory ?? "Earning") as "Earning" | "Deduction",
+          strCalculationType: String(dicComponent.strCalculationType ?? "Fixed") as "Fixed" | "Percentage",
+          fltValue: typeof dicComponent.fltValue === "number" ? dicComponent.fltValue : null,
+          fltPercentageValue: typeof dicComponent.fltPercentageValue === "number" ? dicComponent.fltPercentageValue : null,
+          intCalculationOrder: Number(dicComponent.intCalculationOrder ?? dicComponent.intLineOrder ?? 0),
+          blnIsRequired: Boolean(dicComponent.blnIsRequired ?? dicComponent.blnIsMandatory ?? false),
+          blnValueReadOnly: Boolean(dicComponent.blnValueReadOnly ?? false),
+          lstDependencyComponentIDs: Array.isArray(dicComponent.lstDependencyComponentIDs)
+            ? dicComponent.lstDependencyComponentIDs.map((objValue) => Number(objValue))
+            : []
+        };
+      })
+      : [];
+
+    return {
+      intID: Number(dicStructure.intID ?? 0),
+      strLabel: String(dicStructure.strLabel ?? dicStructure.strStructureName ?? ""),
+      strCode: dicStructure.strCode ? String(dicStructure.strCode) : dicStructure.strStructureCode ? String(dicStructure.strStructureCode) : undefined,
+      lstSalaryComponents
+    };
+  }).filter((dicStructure) => dicStructure.intID > 0 && dicStructure.strLabel);
+}
+
 export const employeeService = {
   async getEmployees(): Promise<EmployeeListRecord[]> {
     const objResult = await masterApiService.getEmployees();
@@ -57,7 +98,10 @@ export const employeeService = {
 
   async getFormOptions(): Promise<EmployeeFormOptions> {
     const objResult = await masterApiService.getEmployeeFormOptions();
-    return objResult.Data;
+    return {
+      ...objResult.Data,
+      lstSalaryStructures: normalizeSalaryStructures((objResult.Data as EmployeeFormOptions & { lstSalaryStructures?: unknown }).lstSalaryStructures)
+    };
   },
 
   async createEmployee(dicValues: EmployeeFormValues): Promise<EmployeeDetailRecord> {
@@ -127,6 +171,35 @@ export const employeeService = {
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable
+    });
+    return objResult.Data;
+  },
+
+  async getEmployeeSalary(intEmployeeID: number): Promise<EmployeeSalaryRecord> {
+    const objResult = await masterApiService.getEmployeeSalary(intEmployeeID);
+    return objResult.Data;
+  },
+
+  async createEmployeeSalary(intEmployeeID: number, dicValues: EmployeeSalaryFormValues): Promise<EmployeeSalaryRecord> {
+    const objResult = await masterApiService.createEmployeeSalary(intEmployeeID, {
+      intSalaryStructureID: dicValues.intSalaryStructureID,
+      lstSalaryComponents: dicValues.lstSalaryComponents.map((dicComponent) => ({
+        intID: dicComponent.intID,
+        intSalaryComponentID: dicComponent.intSalaryComponentID,
+        fltValue: dicComponent.strValue.trim() ? Number(dicComponent.strValue) : null
+      }))
+    });
+    return objResult.Data;
+  },
+
+  async updateEmployeeSalary(intEmployeeID: number, dicValues: EmployeeSalaryFormValues): Promise<EmployeeSalaryRecord> {
+    const objResult = await masterApiService.updateEmployeeSalary(intEmployeeID, {
+      intSalaryStructureID: dicValues.intSalaryStructureID,
+      lstSalaryComponents: dicValues.lstSalaryComponents.map((dicComponent) => ({
+        intID: dicComponent.intID,
+        intSalaryComponentID: dicComponent.intSalaryComponentID,
+        fltValue: dicComponent.strValue.trim() ? Number(dicComponent.strValue) : null
+      }))
     });
     return objResult.Data;
   }

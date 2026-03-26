@@ -6,6 +6,8 @@ import type {
   EmployeeBankRecord,
   EmployeeDetailRecord,
   EmployeeFormValues,
+  EmployeeSalaryFormValues,
+  EmployeeSalaryRecord,
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
@@ -63,6 +65,11 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   blnPfApplicable: false,
   blnEsiApplicable: false,
   blnPtApplicable: false
+};
+
+export const dicEmptyEmployeeSalaryForm: EmployeeSalaryFormValues = {
+  intSalaryStructureID: "",
+  lstSalaryComponents: []
 };
 
 export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
@@ -125,6 +132,26 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
     blnPtApplicable: dicRecord.blnPtApplicable
+  };
+}
+
+export function toEmployeeSalaryFormValues(dicRecord: EmployeeSalaryRecord): EmployeeSalaryFormValues {
+  return {
+    intSalaryStructureID: dicRecord.intSalaryStructureID ?? "",
+    lstSalaryComponents: (dicRecord.lstSalaryComponents ?? []).map((dicComponent) => ({
+      intID: dicComponent.intID ?? null,
+      intSalaryComponentID: dicComponent.intSalaryComponentID,
+      strComponentName: dicComponent.strComponentName ?? "",
+      strComponentCode: dicComponent.strComponentCode ?? "",
+      strComponentType: dicComponent.strComponentType,
+      strCalculationType: dicComponent.strCalculationType,
+      strValue: dicComponent.fltValue === null || dicComponent.fltValue === undefined ? "" : String(dicComponent.fltValue),
+      fltPercentageValue: dicComponent.fltPercentageValue ?? null,
+      intCalculationOrder: dicComponent.intCalculationOrder ?? 0,
+      blnIsRequired: dicComponent.blnIsRequired,
+      blnValueReadOnly: dicComponent.blnValueReadOnly,
+      lstDependencyComponentIDs: dicComponent.lstDependencyComponentIDs ?? []
+    }))
   };
 }
 
@@ -204,4 +231,44 @@ export function validateEmployeeForm(
   }
 
   return dicNextErrors;
+}
+
+export function validateEmployeeSalaryForm(
+  dicForm: EmployeeSalaryFormValues,
+  dicValidationLabels = {
+    salaryStructureRequired: "Salary Structure is required.",
+    componentValueInvalid: "Enter a valid numeric value.",
+    componentValueRequired: "Component value is required."
+  }
+): {
+  strSalaryStructureError?: string;
+  dicComponentErrors: Record<number, string>;
+} {
+  const dicComponentErrors: Record<number, string> = {};
+
+  if (dicForm.intSalaryStructureID === "") {
+    return {
+      strSalaryStructureError: dicValidationLabels.salaryStructureRequired,
+      dicComponentErrors
+    };
+  }
+
+  dicForm.lstSalaryComponents.forEach((dicComponent) => {
+    if (dicComponent.blnValueReadOnly) {
+      return;
+    }
+    const strTrimmedValue = dicComponent.strValue.trim();
+    if (!strTrimmedValue) {
+      if (dicComponent.blnIsRequired) {
+        dicComponentErrors[dicComponent.intSalaryComponentID] = dicValidationLabels.componentValueRequired;
+      }
+      return;
+    }
+    const fltParsedValue = Number(strTrimmedValue);
+    if (Number.isNaN(fltParsedValue)) {
+      dicComponentErrors[dicComponent.intSalaryComponentID] = dicValidationLabels.componentValueInvalid;
+    }
+  });
+
+  return { dicComponentErrors };
 }
