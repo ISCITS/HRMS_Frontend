@@ -485,14 +485,6 @@ export default function LocationMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography component="h1" className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-          </Box>
-        </Box>
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
@@ -602,10 +594,10 @@ export default function LocationMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
-        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent className={styles.dialogContent}>
-          <Box className={styles.dialogGrid}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
+        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
             <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
             <TextField
@@ -640,7 +632,7 @@ export default function LocationMasterPanel() {
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
-            <Button className={styles.primaryButton} onClick={saveLocation} disabled={blnSubmitting}>{strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}</Button>
+            <Button className={styles.primaryButton} onClick={saveLocation} disabled={blnSubmitting}>{blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}</Button>
           ) : null}
         </DialogActions>
       </Dialog>

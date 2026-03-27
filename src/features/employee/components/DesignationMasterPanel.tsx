@@ -567,9 +567,6 @@ export default function DesignationMasterPanel() {
                 return (
                   <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} /></td>
-                    <td>{dicDesignation.name}</td>
-                    <td>{dicDesignation.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     <td>
                       <Box className={styles.actionCell}>
                         <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicDesignation)}><VisibilityRoundedIcon fontSize="small" /></button>
@@ -578,8 +575,9 @@ export default function DesignationMasterPanel() {
                         <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleDesignationStatus(dicDesignation.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                       </Box>
                     </td>
+                    <td>{dicDesignation.name}</td>
                     <td>{dicDesignation.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status}</span></td>
+                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                   </tr>
                 );
               })}

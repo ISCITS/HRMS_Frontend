@@ -534,9 +534,6 @@ export default function GradeMasterPanel() {
                   return (
                     <tr key={dicGrade.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicGrade.id)} /></td>
-                      <td>{dicGrade.name}</td>
-                      <td>{dicGrade.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicGrade.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicGrade.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicGrade)}><VisibilityRoundedIcon fontSize="small" /></button>
@@ -545,8 +542,9 @@ export default function GradeMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleGradeStatus(dicGrade.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
+                      <td>{dicGrade.name}</td>
                       <td>{dicGrade.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicGrade.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicGrade.status}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicGrade.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicGrade.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -556,10 +554,10 @@ export default function GradeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
-        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent className={styles.dialogContent}>
-          <Box className={styles.dialogGrid}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
+        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
             <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
             <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as GradeStatus }))} fullWidth disabled={strMode === "view"}>
@@ -572,7 +570,7 @@ export default function GradeMasterPanel() {
           <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveGrade} disabled={blnSubmitting}>
-              {strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+              {blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
             </Button>
           ) : null}
         </DialogActions>

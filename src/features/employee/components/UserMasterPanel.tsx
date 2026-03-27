@@ -524,20 +524,6 @@ export default function UserMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              {dicModuleLabels.addButton}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
-              {dicCommonLabels.exportPdf}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
-              {dicCommonLabels.exportExcel}
-            </Button>
-          </Box>
-        </Box>
         <Box className={styles.searchRow}>
           <TextField
             value={dicSearchDraft.code}
@@ -658,8 +644,8 @@ export default function UserMasterPanel() {
                       <Box className={styles.actionCell}>
                         <button type="button" className={`${styles.iconButton} ${styles.viewIcon}`} onClick={() => openDialog("view", dicUser)}><VisibilityRoundedIcon fontSize="small" /></button>
                         <button type="button" className={`${styles.iconButton} ${styles.editIcon}`} onClick={() => openDialog("edit", dicUser)}><EditRoundedIcon fontSize="small" /></button>
-                        <button type="button" className={`${styles.iconButton} ${styles.toggleIcon}`} onClick={() => toggleUserStatus(dicUser.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         <button type="button" className={`${styles.iconButton} ${styles.deleteIcon}`} onClick={() => deleteUser(dicUser.id)}><DeleteRoundedIcon fontSize="small" /></button>
+                        <button type="button" className={`${styles.iconButton} ${styles.toggleIcon}`} onClick={() => toggleUserStatus(dicUser.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                       </Box>
                     </td>
                     <td>{dicUser.loginName}</td>
@@ -680,10 +666,10 @@ export default function UserMasterPanel() {
         </Box>
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
-        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent className={styles.dialogContent}>
-          <Box className={styles.dialogGrid}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
+        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth />
             <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth />
             <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />

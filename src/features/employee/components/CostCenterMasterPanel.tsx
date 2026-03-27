@@ -168,7 +168,12 @@ export default function CostCenterMasterPanel() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const dicCommonLabels = {
     cancel: t("cancel"),
+    close: t("close"),
+    confirm: t("confirm"),
+    activate: t("activate"),
+    deactivate: t("deactivate"),
     clear: t("clear"),
+    delete: t("delete"),
     exportExcel: t("export_excel"),
     exportPdf: t("export_pdf"),
     save: t("save"),
@@ -209,7 +214,27 @@ export default function CostCenterMasterPanel() {
     fieldStatus: t("field_status"),
     saveSuccess: t("save_success"),
     updateSuccess: t("update_success"),
+    deleteSuccess: t("delete_success"),
+    activateSuccess: t("activate_success"),
+    deactivateSuccess: t("deactivate_success"),
+    bulkActivateSuccess: t("bulk_activate_success"),
+    bulkDeactivateSuccess: t("bulk_deactivate_success"),
+    bulkDeleteSuccess: t("bulk_delete_success"),
     requestFailed: t("request_failed"),
+    confirmDeleteTitle: t("confirm_delete_title"),
+    confirmDeleteMessage: t("confirm_delete_message"),
+    confirmActivateTitle: t("confirm_activate_title"),
+    confirmActivateMessage: t("confirm_activate_message"),
+    confirmDeactivateTitle: t("confirm_deactivate_title"),
+    confirmDeactivateMessage: t("confirm_deactivate_message"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message"),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
+    bulkApplyingChanges: t("bulk_applying_changes", "Applying changes..."),
+    confirmButton: t("confirm_button", "Confirm"),
   };
 
   async function loadCostCenters() {
@@ -355,39 +380,41 @@ export default function CostCenterMasterPanel() {
 
   function bulkUpdateStatus(strStatus: CostCenterStatus) {
     openConfirmDialog({
-      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Cost Centers`,
-      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected cost center record(s) as ${strStatus.toLowerCase()}?`,
-      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      strTitle: strStatus === "Active" ? dicModuleLabels.confirmBulkActivateTitle : dicModuleLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicModuleLabels.confirmBulkActivateMessage : dicModuleLabels.confirmBulkDeactivateMessage)
+        .replace("{count}", String(lstSelectedIds.length))
+        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strStatus === "Active" ? dicModuleLabels.bulkActivate : dicModuleLabels.bulkDeactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkCostCenterStatus(lstSelectedIds.map(Number), strStatus === "Active");
         await loadCostCenters();
-        showToast(strStatus === "Active" ? "Selected cost center records activated successfully." : "Selected cost center records deactivated successfully.");
+        showToast(strStatus === "Active" ? dicModuleLabels.bulkActivateSuccess : dicModuleLabels.bulkDeactivateSuccess);
       }
     });
   }
 
   function bulkDelete() {
     openConfirmDialog({
-      strTitle: "Bulk Delete Cost Centers",
-      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected cost center record(s)?`,
-      strConfirmLabel: "Bulk Delete",
+      strTitle: dicModuleLabels.confirmBulkDeleteTitle,
+      strMessage: dicModuleLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: dicModuleLabels.bulkDelete,
       fnOnConfirm: async () => {
         await masterApiService.bulkCostCenterDelete(lstSelectedIds.map(Number));
         await loadCostCenters();
-        showToast("Selected cost center records deleted successfully.");
+        showToast(dicModuleLabels.bulkDeleteSuccess);
       }
     });
   }
 
   function deleteCostCenter(strCostCenterId: string) {
     openConfirmDialog({
-      strTitle: "Delete Cost Center",
-      strMessage: "Are you sure you want to delete this cost center record?",
-      strConfirmLabel: "Delete",
+      strTitle: dicModuleLabels.confirmDeleteTitle,
+      strMessage: dicModuleLabels.confirmDeleteMessage,
+      strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
         await masterApiService.bulkCostCenterDelete([Number(strCostCenterId)]);
         await loadCostCenters();
-        showToast("Cost Center deleted successfully.");
+        showToast(dicModuleLabels.deleteSuccess);
       }
     });
   }
@@ -399,13 +426,14 @@ export default function CostCenterMasterPanel() {
     }
     const strNextStatus = objCostCenter.status === "Active" ? "Inactive" : "Active";
     openConfirmDialog({
-      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} Cost Center`,
-      strMessage: `Are you sure you want to mark this cost center as ${strNextStatus.toLowerCase()}?`,
-      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
+      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
+        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkCostCenterStatus([Number(strCostCenterId)], strNextStatus === "Active");
         await loadCostCenters();
-        showToast(strNextStatus === "Active" ? "Cost Center activated successfully." : "Cost Center deactivated successfully.");
+        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
       }
     });
   }
@@ -431,7 +459,7 @@ export default function CostCenterMasterPanel() {
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
             <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
+            <Typography className={styles.bulkCount}>{dicModuleLabels.bulkApplyingChanges}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar}>
@@ -503,9 +531,6 @@ export default function CostCenterMasterPanel() {
                   return (
                     <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} /></td>
-                      <td>{dicCostCenter.name}</td>
-                      <td>{dicCostCenter.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicCostCenter)}><VisibilityRoundedIcon fontSize="small" /></button>
@@ -514,8 +539,9 @@ export default function CostCenterMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleCostCenterStatus(dicCostCenter.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
+                      <td>{dicCostCenter.name}</td>
                       <td>{dicCostCenter.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -529,8 +555,8 @@ export default function CostCenterMasterPanel() {
         <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={dicModuleLabels.fieldCode} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
             <TextField label={dicModuleLabels.fieldName} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
+            <TextField label={dicModuleLabels.fieldCode} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
             <TextField
               label={dicModuleLabels.fieldStatus}
               select
@@ -547,10 +573,10 @@ export default function CostCenterMasterPanel() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? t("close", "Close") : dicCommonLabels.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveCostCenter} disabled={blnSubmitting}>
-              {blnSubmitting ? t("saving", "Saving...") : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+              {blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
             </Button>
           ) : null}
         </DialogActions>
@@ -564,7 +590,7 @@ export default function CostCenterMasterPanel() {
         <DialogActions className={styles.confirmDialogActions}>
           <Button className={styles.textAction} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
+            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicModuleLabels.confirmButton}
           </Button>
         </DialogActions>
       </Dialog>
