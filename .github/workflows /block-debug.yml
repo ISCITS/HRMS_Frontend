@@ -2,6 +2,8 @@ name: block-debug
 
 on:
   pull_request:
+    branches:
+      - testing
   push:
     branches:
       - testing
