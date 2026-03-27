@@ -28,6 +28,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
@@ -66,6 +68,43 @@ function getPageTitle(strPathname: string) {
   return lstSegments.join(" / ") || "Dashboard";
 }
 
+function getHeaderModuleName(strPathname: string) {
+  const strLowerPath = (strPathname || "").toLowerCase();
+
+  if (strLowerPath.startsWith("/departments")) {
+    return "department";
+  }
+  if (strLowerPath.startsWith("/designations")) {
+    return "designation";
+  }
+  if (strLowerPath.startsWith("/banks")) {
+    return "bank";
+  }
+  if (strLowerPath.startsWith("/cost-centers")) {
+    return "cost_center";
+  }
+  if (strLowerPath.startsWith("/grades")) {
+    return "grade";
+  }
+  if (strLowerPath.startsWith("/locations")) {
+    return "location";
+  }
+  if (strLowerPath.startsWith("/countries")) {
+    return "country";
+  }
+  if (strLowerPath.startsWith("/states")) {
+    return "state";
+  }
+  if (strLowerPath.startsWith("/users")) {
+    return "user";
+  }
+  if (strLowerPath.startsWith("/employees")) {
+    return "employee";
+  }
+
+  return "";
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
@@ -78,6 +117,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
+  const strHeaderModuleName = getHeaderModuleName(strPathname);
+  const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
 
   useEffect(() => {
     let blnMounted = true;
@@ -133,7 +174,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
-  const strPageTitle = getPageTitle(strPathname);
+  const strPageTitle = strHeaderModuleName ? stripMasterTitle(tHeader("page_title", getPageTitle(strPathname))) : getPageTitle(strPathname);
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
