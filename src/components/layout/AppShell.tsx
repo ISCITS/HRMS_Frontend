@@ -9,12 +9,15 @@ import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Drawer,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Toolbar,
@@ -67,11 +70,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
-  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(true);
+  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
   const [blnNavigating, setBlnNavigating] = useState(false);
+  const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
 
@@ -128,9 +132,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
-  const strAvatarText = strUserName.slice(0, 2).toUpperCase();
+  const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
   const strPageTitle = getPageTitle(strPathname);
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
+  const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   function handleMenuToggle() {
     if (typeof window !== "undefined" && window.innerWidth >= 1200) {
@@ -139,6 +144,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
 
     setBlnDrawerOpen(true);
+  }
+
+  function openProfileMenu(objEvent: React.MouseEvent<HTMLElement>) {
+    setObjProfileAnchorEl(objEvent.currentTarget);
+  }
+
+  function closeProfileMenu() {
+    setObjProfileAnchorEl(null);
   }
 
   const objSidebarContent = (
@@ -226,6 +239,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
             setBlnDrawerOpen(false);
+            setBlnDesktopSidebarOpen(false);
             setBlnNavigating(true);
           }}
         />
@@ -327,7 +341,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   color: "#0f172a",
                   textTransform: "none",
                   letterSpacing: "normal",
-                  fontWeight: 400,
+                  fontWeight: 700,
                   lineHeight: 1.43,
                   whiteSpace: "nowrap"
                 }}
@@ -336,14 +350,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Typography>
             </Box>
 
+            <Box sx={{ flex: 1, minWidth: 0 }} />
+
             <Box
               sx={{
-                flex: 1,
                 display: "flex",
-                justifyContent: "center",
+                alignItems: "center",
+                justifyContent: "flex-end",
                 minWidth: 0,
-                px: { xs: 0.5, md: 1.5 },
-                transform: { xs: "translateX(-10px)", lg: "translateX(-24px)" }
+                pr: { xs: 0.25, md: 0.75 }
               }}
             >
               <Typography
@@ -352,54 +367,67 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   fontWeight: 700,
                   color: "#0f172a",
                   letterSpacing: "-0.03em",
-                  textAlign: "center",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  maxWidth: "100%"
+                  maxWidth: { xs: "120px", sm: "220px", md: "320px" },
+                  textAlign: "right"
                 }}
               >
                 {strPageTitle}
               </Typography>
             </Box>
 
-            <Paper
+            <IconButton
+              onClick={openProfileMenu}
+              disabled={blnLoggingOut}
               sx={{
-                px: 1.1,
-                py: 0.9,
-                borderRadius: "22px",
-                display: "flex",
-                alignItems: "center",
-                gap: 1.25,
-                backgroundColor: "transparent",
-                border: "none",
-                boxShadow: "none"
+                p: 0.4,
+                border: "1px solid rgba(148, 163, 184, 0.18)",
+                backgroundColor: "rgba(248,250,252,0.92)"
               }}
             >
               <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
                 {strAvatarText}
               </Avatar>
-              <Box sx={{ display: { xs: "none", sm: "block" } }}>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
-                <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {strTenantName}
-                </Typography>
-              </Box>
-              <IconButton
-                onClick={() => setBlnLogoutDialogOpen(true)}
-                disabled={blnLoggingOut}
-                sx={{
-                  backgroundColor: "rgba(248,250,252,0.92)"
-                }}
-              >
-                <LogoutRoundedIcon />
-              </IconButton>
-            </Paper>
+            </IconButton>
           </Toolbar>
         </AppBar>
 
         <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflow: "hidden" }}>{children}</Box>
       </Box>
+
+      <Menu
+        anchorEl={objProfileAnchorEl}
+        open={blnProfileMenuOpen}
+        onClose={closeProfileMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 240,
+            borderRadius: "18px",
+            boxShadow: "0 20px 45px rgba(15, 23, 42, 0.14)"
+          }
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.5, textAlign: "left" }}>
+          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            closeProfileMenu();
+            setBlnLogoutDialogOpen(true);
+          }}
+          disabled={blnLoggingOut}
+          sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
+        >
+          <LogoutRoundedIcon fontSize="small" />
+          <Typography sx={{ fontWeight: 600 }}>Logout</Typography>
+        </MenuItem>
+      </Menu>
 
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Logout</DialogTitle>
