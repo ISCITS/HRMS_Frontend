@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - testing
+      - development
 
 jobs:
   block-debug:
