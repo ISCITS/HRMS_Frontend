@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
 
@@ -109,6 +110,7 @@ function isEmailValid(strValue: string): boolean {
 
 export default function EmployeeMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useEmployeeLabels();
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [strMode, setStrMode] = useState<EmployeeMode>("add");
@@ -125,6 +127,10 @@ export default function EmployeeMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [strFeedback, setStrFeedback] = useState("");
   const [strError, setStrError] = useState("");
+  const dicCommonLabels = {
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+  };
 
   async function loadModuleData() {
     setBlnLoading(true);
@@ -376,8 +382,8 @@ export default function EmployeeMasterPanel() {
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicConstant.employeeMaster.search.codePlaceholder} fullWidth />
           <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
             <MenuItem value="All">{dicConstant.employeeMaster.search.statusPlaceholder}</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
@@ -485,7 +491,15 @@ export default function EmployeeMasterPanel() {
                       <td>{dicEmployee.strDepartmentName || "-"}</td>
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
+                      <td>
+                        <Box className={styles.actionCell}>
+                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicEmployee.intID)}><VisibilityOutlinedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicEmployee.intID)}><EditOutlinedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteOutlineRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
+                        </Box>
+                      </td>
                     </tr>
                   );
                 })}

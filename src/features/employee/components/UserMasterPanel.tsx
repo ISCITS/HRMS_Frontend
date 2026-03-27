@@ -31,8 +31,8 @@ import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { type UserApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type UserStatus = "Active" | "Inactive";
@@ -199,35 +199,90 @@ export default function UserMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const dicCommonLabels = {
-    cancel: t("cancel", dicConstant.common.cancel),
-    clear: t("clear", dicConstant.common.clear),
-    exportExcel: t("export_excel", dicConstant.common.exportExcel),
-    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
-    search: t("search", dicConstant.common.search),
-    statusActive: t("status_active", dicConstant.common.statusActive),
-    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
-    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
-    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
-    loading: t("loading", "Loading..."),
-    processing: t("processing", "Processing..."),
+    cancel: t("cancel"),
+    close: t("close"),
+    clear: t("clear"),
+    confirm: t("confirm"),
+    delete: t("delete"),
+    activate: t("activate"),
+    deactivate: t("deactivate"),
+    exportExcel: t("export_excel"),
+    exportPdf: t("export_pdf"),
+    search: t("search"),
+    statusActive: t("status_active"),
+    statusInactive: t("status_inactive"),
+    rowsPerPage: t("rows_per_page"),
+    paginationSeparator: t("pagination_separator"),
+    loading: t("loading"),
+    processing: t("processing"),
   };
   const dicModuleLabels = {
-    breadcrumbs: t("breadcrumbs", "Admin / Master / Users"),
-    pageTitle: t("page_title", dicConstant.users.pageTitle),
-    backButton: t("back_button", dicConstant.users.backButton),
-    addButton: t("add_button", dicConstant.users.addButton),
-    searchCodePlaceholder: t("search_code_placeholder", "Search Login Name"),
-    searchNamePlaceholder: t("search_name_placeholder", "Search Email Address"),
-    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
-    tableLoginName: t("table_login_name", "Login Name"),
-    tableEmail: t("table_email", "Email Address"),
-    tableMobile: t("table_mobile", "Mobile Number"),
-    tableAuthSource: t("table_auth_source", "Auth Source"),
-    tableSsoEnabled: t("table_sso_enabled", "SSO Enabled"),
-    tableStatus: t("table_status", "Status"),
-    tableActions: t("table_actions", "Actions"),
-    loadingRecords: t("loading_records", "Loading users..."),
-    emptyMessage: t("empty_message", "No user records found."),
+    breadcrumbs: t("breadcrumbs"),
+    pageTitle: stripMasterTitle(t("page_title")),
+    backButton: t("back_button"),
+    addButton: t("add_button"),
+    dialogAddTitle: t("dialog_add_title"),
+    dialogEditTitle: t("dialog_edit_title"),
+    dialogViewTitle: t("dialog_view_title"),
+    searchCodePlaceholder: t("search_code_placeholder"),
+    searchNamePlaceholder: t("search_name_placeholder"),
+    searchStatusPlaceholder: t("search_status_placeholder"),
+    tableLoginName: t("table_login_name"),
+    tableEmail: t("table_email"),
+    tableMobile: t("table_mobile"),
+    tableAuthSource: t("table_auth_source"),
+    tableSsoEnabled: t("table_sso_enabled"),
+    tableStatus: t("table_status"),
+    tableActions: t("table_actions"),
+    loadingRecords: t("loading_records"),
+    emptyMessage: t("empty_message"),
+    fieldLoginName: t("field_login_name"),
+    fieldEmail: t("field_email"),
+    fieldMobile: t("field_mobile"),
+    fieldPassword: t("field_password"),
+    fieldAuthSource: t("field_auth_source"),
+    fieldSsoLoginMapping: t("field_sso_login_mapping"),
+    fieldStatus: t("field_status"),
+    fieldSsoEnabled: t("field_sso_enabled"),
+    helperPasswordOptional: t("helper_password_optional"),
+    authSourceLocal: t("auth_source_local"),
+    authSourceSso: t("auth_source_sso"),
+    ssoEnabledYes: t("sso_enabled_yes"),
+    ssoEnabledNo: t("sso_enabled_no"),
+    saveButton: t("save_button"),
+    updateButton: t("update_button"),
+    saveSuccess: t("save_success"),
+    updateSuccess: t("update_success"),
+    deleteSuccess: t("delete_success"),
+    activateSuccess: t("activate_success"),
+    deactivateSuccess: t("deactivate_success"),
+    bulkActivateSuccess: t("bulk_activate_success"),
+    bulkDeactivateSuccess: t("bulk_deactivate_success"),
+    bulkDeleteSuccess: t("bulk_delete_success"),
+    requestFailed: t("request_failed"),
+    validationLoginNameRequired: t("validation_login_name_required"),
+    validationLoginNameMin: t("validation_login_name_min"),
+    validationEmailRequired: t("validation_email_required"),
+    validationEmailInvalid: t("validation_email_invalid"),
+    validationPasswordRequired: t("validation_password_required"),
+    validationPasswordMin: t("validation_password_min"),
+    validationMobileInvalid: t("validation_mobile_invalid"),
+    bulkRowsSelected: t("bulk_rows_selected"),
+    bulkActivate: t("bulk_activate"),
+    bulkDeactivate: t("bulk_deactivate"),
+    bulkDelete: t("bulk_delete"),
+    confirmDeleteTitle: t("confirm_delete_title"),
+    confirmDeleteMessage: t("confirm_delete_message"),
+    confirmActivateTitle: t("confirm_activate_title"),
+    confirmActivateMessage: t("confirm_activate_message"),
+    confirmDeactivateTitle: t("confirm_deactivate_title"),
+    confirmDeactivateMessage: t("confirm_deactivate_message"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message"),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
   };
 
   async function loadUsers() {
@@ -315,7 +370,7 @@ export default function UserMasterPanel() {
     try {
       await objConfirmDialog.fnOnConfirm();
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+      showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error");
     } finally {
       setBlnSubmitting(false);
       closeConfirmDialog();
@@ -329,25 +384,25 @@ export default function UserMasterPanel() {
     const strMobile = dicForm.mobile.trim();
 
     if (!strLoginName) {
-      dicNextErrors.loginName = dicConstant.users.validation.loginNameRequired;
+      dicNextErrors.loginName = dicModuleLabels.validationLoginNameRequired;
     } else if (strLoginName.length < 3) {
-      dicNextErrors.loginName = dicConstant.users.validation.loginNameMin;
+      dicNextErrors.loginName = dicModuleLabels.validationLoginNameMin;
     }
 
     if (!strEmail) {
-      dicNextErrors.email = dicConstant.users.validation.emailRequired;
+      dicNextErrors.email = dicModuleLabels.validationEmailRequired;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strEmail)) {
-      dicNextErrors.email = dicConstant.users.validation.emailInvalid;
+      dicNextErrors.email = dicModuleLabels.validationEmailInvalid;
     }
 
     if (strMode === "add" && !dicForm.password.trim()) {
-      dicNextErrors.password = dicConstant.users.validation.passwordRequired;
+      dicNextErrors.password = dicModuleLabels.validationPasswordRequired;
     } else if (dicForm.password.trim() && dicForm.password.trim().length < 8) {
-      dicNextErrors.password = dicConstant.users.validation.passwordMin;
+      dicNextErrors.password = dicModuleLabels.validationPasswordMin;
     }
 
     if (strMobile && !/^[0-9+\-\s]+$/.test(strMobile)) {
-      dicNextErrors.mobile = dicConstant.users.validation.mobileInvalid;
+      dicNextErrors.mobile = dicModuleLabels.validationMobileInvalid;
     }
 
     setDicErrors(dicNextErrors);
@@ -379,9 +434,9 @@ export default function UserMasterPanel() {
       .then(() => loadUsers())
       .then(() => {
         closeDialog();
-        showToast(strMode === "add" ? "User saved successfully." : "User updated successfully.");
+        showToast(strMode === "add" ? dicModuleLabels.saveSuccess : dicModuleLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : "Request failed.", "error"))
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error"))
       .finally(() => setBlnSubmitting(false));
   }
 
@@ -401,39 +456,41 @@ export default function UserMasterPanel() {
 
   function bulkUpdateStatus(strStatus: UserStatus) {
     openConfirmDialog({
-      strTitle: `${strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate"} Users`,
-      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected user record(s) as ${strStatus.toLowerCase()}?`,
-      strConfirmLabel: strStatus === "Active" ? "Bulk Activate" : "Bulk Deactivate",
+      strTitle: strStatus === "Active" ? dicModuleLabels.confirmBulkActivateTitle : dicModuleLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicModuleLabels.confirmBulkActivateMessage : dicModuleLabels.confirmBulkDeactivateMessage)
+        .replace("{count}", String(lstSelectedIds.length))
+        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strStatus === "Active" ? dicModuleLabels.bulkActivate : dicModuleLabels.bulkDeactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserStatus(lstSelectedIds.map(Number), strStatus === "Active");
         await loadUsers();
-        showToast(strStatus === "Active" ? "Selected user records activated successfully." : "Selected user records deactivated successfully.");
+        showToast(strStatus === "Active" ? dicModuleLabels.bulkActivateSuccess : dicModuleLabels.bulkDeactivateSuccess);
       }
     });
   }
 
   function bulkDelete() {
     openConfirmDialog({
-      strTitle: "Bulk Delete Users",
-      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected user record(s)?`,
-      strConfirmLabel: "Bulk Delete",
+      strTitle: dicModuleLabels.confirmBulkDeleteTitle,
+      strMessage: dicModuleLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: dicModuleLabels.bulkDelete,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserDelete(lstSelectedIds.map(Number));
         await loadUsers();
-        showToast("Selected user records deleted successfully.");
+        showToast(dicModuleLabels.bulkDeleteSuccess);
       }
     });
   }
 
   function deleteUser(strUserId: string) {
     openConfirmDialog({
-      strTitle: "Delete User",
-      strMessage: "Are you sure you want to delete this user record?",
-      strConfirmLabel: "Delete",
+      strTitle: dicModuleLabels.confirmDeleteTitle,
+      strMessage: dicModuleLabels.confirmDeleteMessage,
+      strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserDelete([Number(strUserId)]);
         await loadUsers();
-        showToast("User deleted successfully.");
+        showToast(dicModuleLabels.deleteSuccess);
       }
     });
   }
@@ -446,13 +503,14 @@ export default function UserMasterPanel() {
 
     const strNextStatus = objUser.status === "Active" ? "Inactive" : "Active";
     openConfirmDialog({
-      strTitle: `${strNextStatus === "Active" ? "Activate" : "Deactivate"} User`,
-      strMessage: `Are you sure you want to mark this user as ${strNextStatus.toLowerCase()}?`,
-      strConfirmLabel: strNextStatus === "Active" ? "Activate" : "Deactivate",
+      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
+      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
+        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserStatus([Number(strUserId)], strNextStatus === "Active");
         await loadUsers();
-        showToast(strNextStatus === "Active" ? "User activated successfully." : "User deactivated successfully.");
+        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
       }
     });
   }
@@ -466,24 +524,37 @@ export default function UserMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
+        <Box className={styles.controlsHeader}>
+          <Typography className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
+          <Box className={styles.headerActions}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
+              {dicModuleLabels.addButton}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
+              {dicCommonLabels.exportPdf}
+            </Button>
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
+              {dicCommonLabels.exportExcel}
+            </Button>
+          </Box>
+        </Box>
         <Box className={styles.searchRow}>
-            <TextField
-              size="small"
-              label={dicModuleLabels.searchCodePlaceholder}
-              value={dicSearchDraft.code}
+          <TextField
+            value={dicSearchDraft.code}
+            placeholder={dicModuleLabels.searchCodePlaceholder}
+            fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
           />
           <TextField
-            size="small"
-             label={dicModuleLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
+            placeholder={dicModuleLabels.searchNamePlaceholder}
+            fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
           />
           <TextField
             select
-            size="small"
-            label={dicModuleLabels.searchStatusPlaceholder}
             value={dicSearchDraft.status}
+            fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
             <MenuItem value="All">{dicModuleLabels.searchStatusPlaceholder}</MenuItem>
@@ -494,6 +565,8 @@ export default function UserMasterPanel() {
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
               {dicCommonLabels.search}
             </Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }}>
               {dicCommonLabels.clear}
             </Button>
@@ -502,10 +575,10 @@ export default function UserMasterPanel() {
 
         {lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {t("bulk_rows_selected", "selected")}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{t("bulk_activate", "Bulk Activate")}</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete}>{t("bulk_delete", "Bulk Delete")}</Button>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{dicModuleLabels.bulkActivate}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{dicModuleLabels.bulkDeactivate}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete}>{dicModuleLabels.bulkDelete}</Button>
           </Box>
         ) : null}
       </Box>
@@ -542,7 +615,7 @@ export default function UserMasterPanel() {
               ))}
             </TextField>
             <Typography className={styles.paginationRange}>
-              {lstFilteredUsers.length === 0 ? "0" : intStartIndex + 1} {dicCommonLabels.paginationSeparator} {Math.min(intStartIndex + intRowsPerPage, lstFilteredUsers.length)} of {lstFilteredUsers.length}
+              {lstFilteredUsers.length === 0 ? "0" : intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredUsers.length)} {dicCommonLabels.paginationSeparator} {lstFilteredUsers.length}
             </Typography>
           </Box>
           <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" />
@@ -553,6 +626,7 @@ export default function UserMasterPanel() {
           {blnLoading ? (
             <Box className={styles.emptyState}>
               <CircularProgress size={24} />
+              <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
             </Box>
           ) : (
             <table className={styles.table}>
@@ -591,11 +665,11 @@ export default function UserMasterPanel() {
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>
                     <td>{dicUser.mobile || "-"}</td>
-                    <td>{dicUser.authSource.toUpperCase()}</td>
-                    <td>{dicUser.ssoEnabled ? "Yes" : "No"}</td>
+                    <td>{dicUser.authSource === "local" ? dicModuleLabels.authSourceLocal : dicModuleLabels.authSourceSso}</td>
+                    <td>{dicUser.ssoEnabled ? dicModuleLabels.ssoEnabledYes : dicModuleLabels.ssoEnabledNo}</td>
                     <td>
                       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
-                        {dicUser.status}
+                        {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
                       </span>
                     </td>
                   </tr>
@@ -606,34 +680,34 @@ export default function UserMasterPanel() {
         </Box>
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicConstant.users.dialogAddTitle : strMode === "edit" ? dicConstant.users.dialogEditTitle : dicConstant.users.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "grid", gap: 2, mt: 1 }}>
-            <TextField label={dicConstant.users.fields.loginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} />
-            <TextField label={dicConstant.users.fields.email} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} />
-            <TextField label={dicConstant.users.fields.mobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} />
-            <TextField label={dicConstant.users.fields.password} type="password" value={dicForm.password} onChange={(objEvent) => setFormField("password", objEvent.target.value)} error={Boolean(dicErrors.password)} helperText={strMode === "edit" && !dicErrors.password ? "Leave blank to keep the existing password." : dicErrors.password} disabled={strMode === "view"} />
-            <TextField select label={dicConstant.users.fields.authSource} value={dicForm.authSource} onChange={(objEvent) => setFormField("authSource", objEvent.target.value as AuthSource)} disabled={strMode === "view"}>
-              <MenuItem value="local">Local</MenuItem>
-              <MenuItem value="sso">SSO</MenuItem>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
+        <DialogTitle className={styles.dialogTitle}>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
+        <DialogContent className={styles.dialogContent}>
+          <Box className={styles.dialogGrid}>
+            <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth />
+            <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth />
+            <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
+            <TextField label={dicModuleLabels.fieldPassword} type="password" value={dicForm.password} onChange={(objEvent) => setFormField("password", objEvent.target.value)} error={Boolean(dicErrors.password)} helperText={strMode === "edit" && !dicErrors.password ? dicModuleLabels.helperPasswordOptional : dicErrors.password} disabled={strMode === "view"} fullWidth />
+            <TextField select label={dicModuleLabels.fieldAuthSource} value={dicForm.authSource} onChange={(objEvent) => setFormField("authSource", objEvent.target.value as AuthSource)} disabled={strMode === "view"} fullWidth>
+              <MenuItem value="local">{dicModuleLabels.authSourceLocal}</MenuItem>
+              <MenuItem value="sso">{dicModuleLabels.authSourceSso}</MenuItem>
             </TextField>
-            <TextField label={dicConstant.users.fields.ssoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} />
-            <TextField select label={dicConstant.users.fields.status} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"}>
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
+            <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
             </TextField>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-              <Typography>{dicConstant.users.fields.ssoEnabled}</Typography>
+            <Box className={styles.switchRow}>
+              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldSsoEnabled}</Typography>
               <Switch checked={dicForm.ssoEnabled} onChange={(_, blnChecked) => setFormField("ssoEnabled", blnChecked)} disabled={strMode === "view"} />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? t("close", "Close") : dicConstant.common.cancel}</Button>
+          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveUser} disabled={blnSubmitting}>
-              {strMode === "add" ? dicConstant.users.saveUser : dicConstant.users.updateUser}
+              {strMode === "add" ? dicModuleLabels.saveButton : dicModuleLabels.updateButton}
             </Button>
           ) : null}
         </DialogActions>
@@ -645,9 +719,9 @@ export default function UserMasterPanel() {
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicConstant.common.cancel}</Button>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicCommonLabels.cancel}</Button>
           <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
+            {objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
           </Button>
         </DialogActions>
       </Dialog>

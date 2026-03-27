@@ -403,7 +403,7 @@ export default function EmployeeMasterListPanel() {
                       <td>{dicEmployee.strDepartmentName || "-"}</td>
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span></td>
                     </tr>
                   );
                 })}

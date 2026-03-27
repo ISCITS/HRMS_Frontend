@@ -32,6 +32,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { CostCenterApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type CostCenterStatus = "Active" | "Inactive";
@@ -166,49 +167,49 @@ export default function CostCenterMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const dicCommonLabels = {
-    cancel: t("cancel", dicConstant.common.cancel),
-    clear: t("clear", dicConstant.common.clear),
-    exportExcel: t("export_excel", dicConstant.common.exportExcel),
-    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
-    save: t("save", dicConstant.common.save),
-    search: t("search", dicConstant.common.search),
-    update: t("update", dicConstant.common.update),
-    statusActive: t("status_active", dicConstant.common.statusActive),
-    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
-    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
-    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
-    loading: t("loading", "Loading..."),
-    processing: t("processing", "Processing..."),
+    cancel: t("cancel"),
+    clear: t("clear"),
+    exportExcel: t("export_excel"),
+    exportPdf: t("export_pdf"),
+    save: t("save"),
+    search: t("search"),
+    update: t("update"),
+    statusActive: t("status_active"),
+    statusInactive: t("status_inactive"),
+    rowsPerPage: t("rows_per_page"),
+    paginationSeparator: t("pagination_separator"),
+    loading: t("loading"),
+    processing: t("processing"),
   };
   const dicModuleLabels = {
-    breadcrumbs: t("breadcrumbs", "Admin / Master / Cost Centers"),
-    pageTitle: t("page_title", dicConstant.costCenters.pageTitle),
-    backButton: t("back_button", dicConstant.costCenters.backButton),
-    addButton: t("add_button", dicConstant.costCenters.addButton),
-    dialogAddTitle: t("dialog_add_title", dicConstant.costCenters.dialogAddTitle),
-    dialogEditTitle: t("dialog_edit_title", dicConstant.costCenters.dialogEditTitle),
-    dialogViewTitle: t("dialog_view_title", "View Cost Center"),
-    exportTitle: t("export_title", "Cost Center Master"),
-    exportFileName: t("export_file_name", "cost-center-master.xls"),
-    searchNamePlaceholder: t("search_name_placeholder", "Search Cost Center Name"),
-    searchCodePlaceholder: t("search_code_placeholder", "Search Cost Center Code"),
-    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
-    loadingRecords: t("loading_records", "Loading cost centers..."),
-    emptyMessage: t("empty_message", "No cost center records found."),
-    bulkRowsSelected: t("bulk_rows_selected", "row(s) selected"),
-    bulkActivate: t("bulk_activate", "Bulk Activate"),
-    bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
-    bulkDelete: t("bulk_delete", "Bulk Delete"),
-    tableName: t("table_name", "Cost Center Name"),
-    tableCode: t("table_code", "Cost Center Code"),
-    tableStatus: t("table_status", "Status"),
-    tableActions: t("table_actions", "Actions"),
-    fieldName: t("field_name", dicConstant.costCenters.fields.name),
-    fieldCode: t("field_code", dicConstant.costCenters.fields.code),
-    fieldStatus: t("field_status", dicConstant.costCenters.fields.status),
-    saveSuccess: t("save_success", "Cost Center saved successfully."),
-    updateSuccess: t("update_success", "Cost Center updated successfully."),
-    requestFailed: t("request_failed", "Request failed."),
+    breadcrumbs: t("breadcrumbs"),
+    pageTitle: stripMasterTitle(t("page_title")),
+    backButton: t("back_button"),
+    addButton: t("add_button"),
+    dialogAddTitle: t("dialog_add_title"),
+    dialogEditTitle: t("dialog_edit_title"),
+    dialogViewTitle: t("dialog_view_title"),
+    exportTitle: stripMasterTitle(t("export_title")),
+    exportFileName: t("export_file_name"),
+    searchNamePlaceholder: t("search_name_placeholder"),
+    searchCodePlaceholder: t("search_code_placeholder"),
+    searchStatusPlaceholder: t("search_status_placeholder"),
+    loadingRecords: t("loading_records"),
+    emptyMessage: t("empty_message"),
+    bulkRowsSelected: t("bulk_rows_selected"),
+    bulkActivate: t("bulk_activate"),
+    bulkDeactivate: t("bulk_deactivate"),
+    bulkDelete: t("bulk_delete"),
+    tableName: t("table_name"),
+    tableCode: t("table_code"),
+    tableStatus: t("table_status"),
+    tableActions: t("table_actions"),
+    fieldName: t("field_name"),
+    fieldCode: t("field_code"),
+    fieldStatus: t("field_status"),
+    saveSuccess: t("save_success"),
+    updateSuccess: t("update_success"),
+    requestFailed: t("request_failed"),
   };
 
   async function loadCostCenters() {
@@ -427,21 +428,20 @@ export default function CostCenterMasterPanel() {
           <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
           <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
+        {blnSubmitting ? (
+          <Box className={styles.bulkBar}>
+            <CircularProgress size={20} />
+            <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
+          </Box>
+        ) : lstSelectedIds.length > 0 ? (
+          <Box className={styles.bulkBar}>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button>
+          </Box>
+        ) : null}
       </Box>
-
-      {blnSubmitting ? (
-        <Box className={styles.bulkBar}>
-          <CircularProgress size={20} />
-          <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
-        </Box>
-      ) : lstSelectedIds.length > 0 ? (
-        <Box className={styles.bulkBar}>
-          <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button>
-          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button>
-          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button>
-        </Box>
-      ) : null}
 
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
@@ -503,6 +503,9 @@ export default function CostCenterMasterPanel() {
                   return (
                     <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} /></td>
+                      <td>{dicCostCenter.name}</td>
+                      <td>{dicCostCenter.code}</td>
+                      <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                       <td>
                         <Box className={styles.actionCell}>
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicCostCenter)}><VisibilityRoundedIcon fontSize="small" /></button>
@@ -511,7 +514,6 @@ export default function CostCenterMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleCostCenterStatus(dicCostCenter.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
-                      <td>{dicCostCenter.name}</td>
                       <td>{dicCostCenter.code}</td>
                       <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status}</span></td>
                     </tr>
