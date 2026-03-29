@@ -74,7 +74,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
-  const [blnNavigating, setBlnNavigating] = useState(false);
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
@@ -119,10 +118,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
       blnMounted = false;
     };
   }, [objRouter]);
-
-  useEffect(() => {
-    setBlnNavigating(false);
-  }, [strPathname]);
 
   async function confirmLogout() {
     setBlnLogoutDialogOpen(false);
@@ -240,7 +235,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           onNavigate={() => {
             setBlnDrawerOpen(false);
             setBlnDesktopSidebarOpen(false);
-            setBlnNavigating(true);
           }}
         />
       </Paper>
@@ -269,7 +263,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
       }}
     >
-      <BlockingLoader blnOpen={blnLoggingOut || blnNavigating} strLabel={blnLoggingOut ? "Logging out..." : "Loading..."} intZIndex={1600} />
+      <BlockingLoader blnOpen={blnLoggingOut} strLabel="Logging out..." intZIndex={1600} />
       <Box
         sx={{
           width: blnDesktopSidebarOpen ? intDrawerWidth + 28 : 0,

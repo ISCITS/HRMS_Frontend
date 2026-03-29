@@ -524,20 +524,6 @@ export default function UserMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Typography className={styles.title}>{dicModuleLabels.pageTitle}</Typography>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              {dicModuleLabels.addButton}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)}>
-              {dicCommonLabels.exportPdf}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)}>
-              {dicCommonLabels.exportExcel}
-            </Button>
-          </Box>
-        </Box>
         <Box className={styles.searchRow}>
           <TextField
             value={dicSearchDraft.code}
@@ -553,11 +539,12 @@ export default function UserMasterPanel() {
           />
           <TextField
             select
+            label={dicModuleLabels.searchStatusPlaceholder}
             value={dicSearchDraft.status}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
-            <MenuItem value="All">{dicModuleLabels.searchStatusPlaceholder}</MenuItem>
+            <MenuItem value="All">All</MenuItem>
             <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>

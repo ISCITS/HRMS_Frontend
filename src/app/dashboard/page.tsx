@@ -1,10 +1,10 @@
 "use client";
 
-import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardLanding from "@/components/dashboard/DashboardLanding";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
@@ -44,12 +44,7 @@ export default function DashboardPage() {
 
   if (blnLoading || !objUserContext || !objMenu) {
     return (
-      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
-        <Stack spacing={2} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>Loading dashboard...</Typography>
-        </Stack>
-      </Box>
+      <BlockingLoader blnOpen strLabel="Loading dashboard..." />
     );
   }
 
