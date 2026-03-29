@@ -79,6 +79,15 @@ export const authHelpers = {
     const intTenantID = Number(strTenantID);
     return Number.isFinite(intTenantID) && intTenantID > 0 ? intTenantID : null;
   },
+  getCompanyID() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const strCompanyID = window.localStorage.getItem("hrms_company_id");
+    const intCompanyID = Number(strCompanyID);
+    return Number.isFinite(intCompanyID) && intCompanyID > 0 ? intCompanyID : null;
+  },
   setLanguageID(intLanguageID?:number) {
     if (typeof window === "undefined") {
       return;

@@ -84,6 +84,11 @@ export type MenuResponse = {
   strHomeRoute: string;
 };
 
+export type ActionRightsResponse = {
+  dicAllowedActions: Record<string, string[]>;
+  dicAccessScopeByAction: Record<string, string>;
+};
+
 export type SsoRedirectData = {
   strRedirectUrl: string;
   strState: string;

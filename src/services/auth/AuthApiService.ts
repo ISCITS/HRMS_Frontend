@@ -6,7 +6,7 @@ import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { apiConstants } from "@/config/constants";
-import { GenericLoginRequest, LoginRequest, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type SsoRedirectData, type TenantAuthDetails, type TenantLookupData } from "@/models/AuthModels";
+import { GenericLoginRequest, LoginRequest, type ActionRightsResponse, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type SsoRedirectData, type TenantAuthDetails, type TenantLookupData } from "@/models/AuthModels";
 
 type ApiEnvelope<TData> = {
   ResultCode: number;
@@ -161,6 +161,15 @@ export const authApiService = {
       strPath: "auth/menu",
       strMethod: "GET",
       strMenuAction: "AUTH_MENU",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async getActionRights() {
+    return requestApi<ActionRightsResponse>({
+      strPath: "auth/action-rights",
+      strMethod: "GET",
+      strMenuAction: "AUTH_ACTION_RIGHTS",
       blnUseAuthHeader: true
     });
   },
