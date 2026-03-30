@@ -28,6 +28,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
@@ -464,7 +465,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </MenuItem>
       </Menu>
 
-      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
         <DialogTitle>Logout</DialogTitle>
         <DialogContent>
           <Typography>Are you sure you want to logout?</Typography>
