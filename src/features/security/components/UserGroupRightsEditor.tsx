@@ -312,7 +312,16 @@ export default function UserGroupRightsEditor({
   const lstFilteredNodes = useMemo(() => filterNodes(lstNodes, strSearch), [lstNodes, strSearch]);
 
   useEffect(() => {
-    setObjExpandedMenuIDs(new Set());
+    const setAvailableMenuIDs = new Set(collectMenuIDs(lstNodes));
+    setObjExpandedMenuIDs((objPrevious) => {
+      const objNext = new Set(
+        [...objPrevious].filter((intMenuID) => setAvailableMenuIDs.has(intMenuID)),
+      );
+      if (objNext.size === objPrevious.size) {
+        return objPrevious;
+      }
+      return objNext;
+    });
   }, [lstNodes]);
 
   function fnToggleAllowed(intMenuID: number, intActionID: number, blnIsAllowed: boolean) {
