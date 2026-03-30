@@ -255,6 +255,7 @@ export default function UserMasterPanel() {
     fieldUserGroup: t("field_user_group", "User Group"),
     fieldStatus: t("field_status"),
     fieldSsoEnabled: t("field_sso_enabled"),
+    helperSsoEnabled: t("helper_sso_enabled", "Enable only when this user should authenticate through SSO mapping."),
     helperPasswordOptional: t("helper_password_optional"),
     authSourceLocal: t("auth_source_local"),
     authSourceSso: t("auth_source_sso"),
@@ -829,7 +830,7 @@ export default function UserMasterPanel() {
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldSsoEnabled}</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    Enable only when this user should authenticate through SSO mapping.
+                    {dicModuleLabels.helperSsoEnabled}
                   </Typography>
                 </Box>
                 <Switch checked={dicForm.ssoEnabled} onChange={(_, blnChecked) => setFormField("ssoEnabled", blnChecked)} disabled={strMode === "view"} />
