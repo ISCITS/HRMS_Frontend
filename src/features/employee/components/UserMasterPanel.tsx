@@ -33,7 +33,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
-import { type UserApiRecord, masterApiService } from "@/services/master/MasterApiService";
+import { type UserApiRecord, type UserFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type UserStatus = "Active" | "Inactive";
 type UserMode = "add" | "edit" | "view";
@@ -47,6 +47,9 @@ type UserRecord = {
   authSource: AuthSource;
   ssoEnabled: boolean;
   ssoLoginMapping: string;
+  preferredLanguageID: number | null;
+  userGroupID: number | null;
+  userGroupName: string;
   status: UserStatus;
   locked: boolean;
 };
@@ -59,6 +62,8 @@ type UserForm = {
   authSource: AuthSource;
   ssoEnabled: boolean;
   ssoLoginMapping: string;
+  preferredLanguageID: number | "";
+  userGroupID: number | "";
   status: UserStatus;
 };
 
@@ -89,6 +94,8 @@ const dicEmptyForm: UserForm = {
   authSource: "local",
   ssoEnabled: false,
   ssoLoginMapping: "",
+  preferredLanguageID: "",
+  userGroupID: "",
   status: "Active"
 };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
@@ -104,6 +111,9 @@ function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
     authSource: dicRecord.strAuthSource ?? "local",
     ssoEnabled: dicRecord.blnIsSsoEnabled,
     ssoLoginMapping: dicRecord.strSsoLoginMapping ?? "",
+    preferredLanguageID: dicRecord.intPreferredLanguageID,
+    userGroupID: dicRecord.intUserGroupID,
+    userGroupName: dicRecord.strUserGroupName ?? "",
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
     locked: dicRecord.blnIsLocked
   };
@@ -184,6 +194,7 @@ export default function UserMasterPanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("user");
   const [lstUsers, setLstUsers] = useState<UserRecord[]>(lstDefaultUsers);
+  const [objFormOptions, setObjFormOptions] = useState<UserFormOptionsApiRecord>({ lstLanguages: [], lstUserGroups: [] });
   const [strMode, setStrMode] = useState<UserMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingUserId, setStrEditingUserId] = useState("");
@@ -231,6 +242,7 @@ export default function UserMasterPanel() {
     tableEmail: t("table_email"),
     tableMobile: t("table_mobile"),
     tableAuthSource: t("table_auth_source"),
+    tableUserGroup: t("table_user_group", "User Group"),
     tableSsoEnabled: t("table_sso_enabled"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
@@ -242,6 +254,8 @@ export default function UserMasterPanel() {
     fieldPassword: t("field_password"),
     fieldAuthSource: t("field_auth_source"),
     fieldSsoLoginMapping: t("field_sso_login_mapping"),
+    fieldPreferredLanguage: t("field_preferred_language", "Preferred Language"),
+    fieldUserGroup: t("field_user_group", "User Group"),
     fieldStatus: t("field_status"),
     fieldSsoEnabled: t("field_sso_enabled"),
     helperPasswordOptional: t("helper_password_optional"),
@@ -267,6 +281,7 @@ export default function UserMasterPanel() {
     validationPasswordRequired: t("validation_password_required"),
     validationPasswordMin: t("validation_password_min"),
     validationMobileInvalid: t("validation_mobile_invalid"),
+    validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
@@ -285,11 +300,15 @@ export default function UserMasterPanel() {
     confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
   };
 
-  async function loadUsers() {
+  async function loadData() {
     setBlnLoading(true);
     try {
-      const objResult = await masterApiService.getUsers();
-      setLstUsers(objResult.Data.map(mapUserRecord));
+      const [objUsers, objOptions] = await Promise.all([
+        masterApiService.getUsers(),
+        masterApiService.getUserFormOptions(),
+      ]);
+      setLstUsers(objUsers.Data.map(mapUserRecord));
+      setObjFormOptions(objOptions.Data);
       setLstSelectedIds([]);
       setIntPage(1);
     } finally {
@@ -298,7 +317,7 @@ export default function UserMasterPanel() {
   }
 
   useEffect(() => {
-    loadUsers().catch(() => undefined);
+    loadData().catch(() => undefined);
   }, []);
 
   const lstFilteredUsers = useMemo(() => lstUsers.filter((dicUser) => {
@@ -327,6 +346,8 @@ export default function UserMasterPanel() {
       authSource: dicUser.authSource,
       ssoEnabled: dicUser.ssoEnabled,
       ssoLoginMapping: dicUser.ssoLoginMapping,
+      preferredLanguageID: dicUser.preferredLanguageID ?? "",
+      userGroupID: dicUser.userGroupID ?? "",
       status: dicUser.status
     } : dicEmptyForm);
     setBlnDialogOpen(true);
@@ -405,6 +426,10 @@ export default function UserMasterPanel() {
       dicNextErrors.mobile = dicModuleLabels.validationMobileInvalid;
     }
 
+    if (!dicForm.userGroupID) {
+      dicNextErrors.userGroupID = dicModuleLabels.validationUserGroupRequired;
+    }
+
     setDicErrors(dicNextErrors);
     return Object.keys(dicNextErrors).length === 0;
   }
@@ -422,6 +447,8 @@ export default function UserMasterPanel() {
       strAuthSource: dicForm.authSource,
       blnIsSsoEnabled: dicForm.ssoEnabled,
       strSsoLoginMapping: dicForm.ssoLoginMapping.trim() || null,
+      intPreferredLanguageID: dicForm.preferredLanguageID || null,
+      intUserGroupID: Number(dicForm.userGroupID),
       blnIsActive: dicForm.status === "Active"
     } as const;
 
@@ -431,7 +458,7 @@ export default function UserMasterPanel() {
 
     setBlnSubmitting(true);
     objRequest
-      .then(() => loadUsers())
+      .then(() => loadData())
       .then(() => {
         closeDialog();
         showToast(strMode === "add" ? dicModuleLabels.saveSuccess : dicModuleLabels.updateSuccess);
@@ -463,7 +490,7 @@ export default function UserMasterPanel() {
       strConfirmLabel: strStatus === "Active" ? dicModuleLabels.bulkActivate : dicModuleLabels.bulkDeactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserStatus(lstSelectedIds.map(Number), strStatus === "Active");
-        await loadUsers();
+        await loadData();
         showToast(strStatus === "Active" ? dicModuleLabels.bulkActivateSuccess : dicModuleLabels.bulkDeactivateSuccess);
       }
     });
@@ -476,7 +503,7 @@ export default function UserMasterPanel() {
       strConfirmLabel: dicModuleLabels.bulkDelete,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserDelete(lstSelectedIds.map(Number));
-        await loadUsers();
+        await loadData();
         showToast(dicModuleLabels.bulkDeleteSuccess);
       }
     });
@@ -489,7 +516,7 @@ export default function UserMasterPanel() {
       strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserDelete([Number(strUserId)]);
-        await loadUsers();
+        await loadData();
         showToast(dicModuleLabels.deleteSuccess);
       }
     });
@@ -509,7 +536,7 @@ export default function UserMasterPanel() {
       strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkUserStatus([Number(strUserId)], strNextStatus === "Active");
-        await loadUsers();
+        await loadData();
         showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
       }
     });
@@ -627,6 +654,7 @@ export default function UserMasterPanel() {
                   <th>{dicModuleLabels.tableEmail}</th>
                   <th>{dicModuleLabels.tableMobile}</th>
                   <th>{dicModuleLabels.tableAuthSource}</th>
+                  <th>{dicModuleLabels.tableUserGroup}</th>
                   <th>{dicModuleLabels.tableSsoEnabled}</th>
                   <th>{dicModuleLabels.tableStatus}</th>
                 </tr>
@@ -634,7 +662,7 @@ export default function UserMasterPanel() {
               <tbody>
                 {lstVisibleUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
+                    <td colSpan={9} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
                   </tr>
                 ) : lstVisibleUsers.map((dicUser) => (
                   <tr key={dicUser.id} className={lstSelectedIds.includes(dicUser.id) ? styles.selectedRow : undefined}>
@@ -653,6 +681,7 @@ export default function UserMasterPanel() {
                     <td>{dicUser.email}</td>
                     <td>{dicUser.mobile || "-"}</td>
                     <td>{dicUser.authSource === "local" ? dicModuleLabels.authSourceLocal : dicModuleLabels.authSourceSso}</td>
+                    <td>{dicUser.userGroupName || "-"}</td>
                     <td>{dicUser.ssoEnabled ? dicModuleLabels.ssoEnabledYes : dicModuleLabels.ssoEnabledNo}</td>
                     <td>
                       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
@@ -667,30 +696,140 @@ export default function UserMasterPanel() {
         </Box>
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
+      <Dialog
+        open={blnDialogOpen}
+        onClose={blnSubmitting ? undefined : closeDialog}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 0,
+            overflow: "hidden",
+            maxHeight: "86vh",
+            background: "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ px: 2.5, py: 2, borderBottom: "1px solid #e2e8f0" }}>
+          <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", color: "#0f172a" }}>
+            {strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 2.5, py: 2.5 }}>
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth />
-            <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth />
-            <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
-            <TextField label={dicModuleLabels.fieldPassword} type="password" value={dicForm.password} onChange={(objEvent) => setFormField("password", objEvent.target.value)} error={Boolean(dicErrors.password)} helperText={strMode === "edit" && !dicErrors.password ? dicModuleLabels.helperPasswordOptional : dicErrors.password} disabled={strMode === "view"} fullWidth />
-            <TextField select label={dicModuleLabels.fieldAuthSource} value={dicForm.authSource} onChange={(objEvent) => setFormField("authSource", objEvent.target.value as AuthSource)} disabled={strMode === "view"} fullWidth>
-              <MenuItem value="local">{dicModuleLabels.authSourceLocal}</MenuItem>
-              <MenuItem value="sso">{dicModuleLabels.authSourceSso}</MenuItem>
-            </TextField>
-            <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
-            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
-              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldSsoEnabled}</Typography>
-              <Switch checked={dicForm.ssoEnabled} onChange={(_, blnChecked) => setFormField("ssoEnabled", blnChecked)} disabled={strMode === "view"} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
+              <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
+              <TextField label={dicModuleLabels.fieldPassword} type="password" value={dicForm.password} onChange={(objEvent) => setFormField("password", objEvent.target.value)} error={Boolean(dicErrors.password)} helperText={strMode === "edit" && !dicErrors.password ? dicModuleLabels.helperPasswordOptional : dicErrors.password} disabled={strMode === "view"} fullWidth />
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              <TextField select label={dicModuleLabels.fieldAuthSource} value={dicForm.authSource} onChange={(objEvent) => setFormField("authSource", objEvent.target.value as AuthSource)} disabled={strMode === "view"} fullWidth>
+                <MenuItem value="local">{dicModuleLabels.authSourceLocal}</MenuItem>
+                <MenuItem value="sso">{dicModuleLabels.authSourceSso}</MenuItem>
+              </TextField>
+              <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              <TextField
+                select
+                label={dicModuleLabels.fieldPreferredLanguage}
+                value={String(dicForm.preferredLanguageID)}
+                onChange={(objEvent) => setFormField("preferredLanguageID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+                disabled={strMode === "view"}
+                fullWidth
+              >
+                <MenuItem value="">Default</MenuItem>
+                {objFormOptions.lstLanguages.map((objLanguage) => (
+                  <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)}>
+                    {objLanguage.strLabel}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label={dicModuleLabels.fieldUserGroup}
+                value={String(dicForm.userGroupID)}
+                onChange={(objEvent) => setFormField("userGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+                error={Boolean(dicErrors.userGroupID)}
+                helperText={dicErrors.userGroupID}
+                disabled={strMode === "view"}
+                fullWidth
+                required
+              >
+                <MenuItem value="">Select</MenuItem>
+                {objFormOptions.lstUserGroups.map((objGroup) => (
+                  <MenuItem key={objGroup.intID} value={String(objGroup.intID)}>
+                    {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+              }}
+            >
+              <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
+                <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+                <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+              </TextField>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: 0,
+                  border: "1px solid #dbe7f0",
+                  background: "rgba(248,250,252,0.9)",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldSsoEnabled}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    Enable only when this user should authenticate through SSO mapping.
+                  </Typography>
+                </Box>
+                <Switch checked={dicForm.ssoEnabled} onChange={(_, blnChecked) => setFormField("ssoEnabled", blnChecked)} disabled={strMode === "view"} />
+              </Box>
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
+        <DialogActions sx={{ px: 2.5, py: 2, borderTop: "1px solid #e2e8f0", gap: 1 }}>
           <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
           {strMode !== "view" ? (
             <Button className={styles.primaryButton} onClick={saveUser} disabled={blnSubmitting}>
