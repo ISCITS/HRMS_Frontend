@@ -12,7 +12,10 @@ import {
   Box,
   Button,
   Checkbox,
-  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   InputAdornment,
   LinearProgress,
   MenuItem,
@@ -25,12 +28,19 @@ import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/components/master/MasterScreen.module.css";
 import { authHelpers } from "@/lib/auth";
 import type { UserGroupFormPayload, UserGroupRecord, UserGroupRightSaveItem } from "@/models/SecurityModels";
 import { securityApiService } from "@/features/security/services/securityApiService";
 
 type FormMode = "add" | "edit" | "view";
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
+  fnOnConfirm: () => Promise<void>;
+};
 
 const objEmptyForm: UserGroupFormPayload = {
   strGroupCode: "",
@@ -53,6 +63,7 @@ function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
 }
 
 export default function UserGroupMasterScreen() {
+  const { t } = useModuleLabels("user_group");
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -64,11 +75,82 @@ export default function UserGroupMasterScreen() {
   const [strMode, setStrMode] = useState<FormMode>("add");
   const [intEditingID, setIntEditingID] = useState<number | null>(null);
   const [objForm, setObjForm] = useState<UserGroupFormPayload>(objEmptyForm);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
     severity: "success",
   });
+  const dicLabels = {
+    searchNamePlaceholder: t("search_name_placeholder", "Search group name"),
+    searchCodePlaceholder: t("search_code_placeholder", "Search group code"),
+    searchStatusLabel: t("search_status_label", "Status"),
+    searchStatusAll: t("search_status_all", "All"),
+    searchStatusActive: t("search_status_active", "Active"),
+    searchStatusInactive: t("search_status_inactive", "Inactive"),
+    searchButton: t("search_button", "Search"),
+    clearButton: t("clear_button", "Clear"),
+    cancelButton: t("cancel_button", "Cancel"),
+    addButton: t("add_button", "Add User Group"),
+    exportExcelButton: t("export_excel_button", "Export Excel"),
+    exportPdfButton: t("export_pdf_button", "Export PDF"),
+    quickSearchPlaceholder: t("quick_search_placeholder", "Quick search"),
+    emptyTitle: t("empty_title", "No user groups found"),
+    emptyMessage: t("empty_message", "Add the first user group to start assigning dynamic menu and action rights from `tblmenu` and `tblaction`."),
+    tableActions: t("table_actions", "Actions"),
+    tableCode: t("table_code", "Code"),
+    tableName: t("table_name", "Name"),
+    tableDescription: t("table_description", "Description"),
+    tableIsActive: t("table_is_active", "Is Active"),
+    statusActive: t("status_active", "Active"),
+    statusInactive: t("status_inactive", "Inactive"),
+    noDescription: t("no_description", "No description configured."),
+    loading: t("loading", "Loading user groups..."),
+    processing: t("processing", "Processing..."),
+    errorLoad: t("error_load", "Unable to load user groups."),
+    validationRequired: t("validation_group_code_name_required", "Group code and group name are required."),
+    saveSuccess: t("save_success", "User group and rights saved successfully."),
+    updateSuccess: t("update_success", "User group updated successfully."),
+    errorSave: t("error_save", "Unable to save user group."),
+    statusUpdateSuccess: t("status_update_success", "User group status updated successfully."),
+    statusUpdateError: t("status_update_error", "Unable to update status."),
+    confirmActivateTitle: t("confirm_activate_title", "Activate User Group"),
+    confirmDeactivateTitle: t("confirm_deactivate_title", "Deactivate User Group"),
+    confirmActivateMessage: t("confirm_activate_message", "Are you sure you want to mark this user group as active?"),
+    confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this user group as inactive?"),
+    confirmActivateLabel: t("confirm_activate_label", "Activate"),
+    confirmDeactivateLabel: t("confirm_deactivate_label", "Deactivate"),
+    confirmButton: t("confirm_button", "Confirm"),
+    exportTitle: t("export_title", "User Groups"),
+    exportFileName: t("export_file_name", "user_groups.csv"),
+  };
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    if (!objConfirmDialog) {
+      return;
+    }
+    setBlnSaving(true);
+    try {
+      await objConfirmDialog.fnOnConfirm();
+    } catch (objError) {
+      setObjToast({
+        open: true,
+        message: objError instanceof Error ? objError.message : dicLabels.statusUpdateError,
+        severity: "error",
+      });
+    } finally {
+      setBlnSaving(false);
+      closeConfirmDialog();
+    }
+  }
 
   async function loadUserGroups() {
     setBlnLoading(true);
@@ -79,7 +161,7 @@ export default function UserGroupMasterScreen() {
     } catch (objError) {
       setObjToast({
         open: true,
-        message: objError instanceof Error ? objError.message : "Unable to load user groups.",
+        message: objError instanceof Error ? objError.message : dicLabels.errorLoad,
         severity: "error",
       });
     } finally {
@@ -134,11 +216,16 @@ export default function UserGroupMasterScreen() {
   }
 
   function downloadCsv() {
-    const lstHeaders = ["Code", "Name", "Description", "Status"];
+    const lstHeaders = [dicLabels.tableCode, dicLabels.tableName, dicLabels.tableDescription, dicLabels.tableIsActive];
     const lstRows = [
       lstHeaders.join(","),
       ...lstVisibleRecords.map((objRecord) =>
-        [objRecord.strGroupCode, objRecord.strGroupName, objRecord.strGroupDescription ?? "", objRecord.blnIsActive ? "Active" : "Inactive"]
+        [
+          objRecord.strGroupCode,
+          objRecord.strGroupName,
+          objRecord.strGroupDescription ?? "",
+          objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive
+        ]
           .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
           .join(","),
       ),
@@ -147,7 +234,7 @@ export default function UserGroupMasterScreen() {
     const strUrl = URL.createObjectURL(objBlob);
     const objLink = document.createElement("a");
     objLink.href = strUrl;
-    objLink.download = "user_groups.csv";
+    objLink.download = dicLabels.exportFileName;
     objLink.click();
     URL.revokeObjectURL(strUrl);
   }
@@ -164,7 +251,7 @@ export default function UserGroupMasterScreen() {
             <td>${objRecord.strGroupCode}</td>
             <td>${objRecord.strGroupName}</td>
             <td>${objRecord.strGroupDescription ?? ""}</td>
-            <td>${objRecord.blnIsActive ? "Active" : "Inactive"}</td>
+            <td>${objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}</td>
           </tr>
         `,
       )
@@ -172,7 +259,7 @@ export default function UserGroupMasterScreen() {
     objWindow.document.write(`
       <html>
         <head>
-          <title>User Groups</title>
+          <title>${dicLabels.exportTitle}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 24px; }
             table { width: 100%; border-collapse: collapse; }
@@ -181,10 +268,10 @@ export default function UserGroupMasterScreen() {
           </style>
         </head>
         <body>
-          <h1>User Groups</h1>
+          <h1>${dicLabels.exportTitle}</h1>
           <table>
             <thead>
-              <tr><th>Code</th><th>Name</th><th>Description</th><th>Status</th></tr>
+              <tr><th>${dicLabels.tableCode}</th><th>${dicLabels.tableName}</th><th>${dicLabels.tableDescription}</th><th>${dicLabels.tableIsActive}</th></tr>
             </thead>
             <tbody>${strRows}</tbody>
           </table>
@@ -210,7 +297,7 @@ export default function UserGroupMasterScreen() {
     if (!strGroupCode || !strGroupName) {
       setObjToast({
         open: true,
-        message: "Group code and group name are required.",
+        message: dicLabels.validationRequired,
         severity: "error",
       });
       return;
@@ -234,7 +321,7 @@ export default function UserGroupMasterScreen() {
         setObjForm({ ...objEmptyForm });
         setObjToast({
           open: true,
-          message: "User group and rights saved successfully.",
+          message: dicLabels.saveSuccess,
           severity: "success",
         });
         return;
@@ -253,13 +340,13 @@ export default function UserGroupMasterScreen() {
       setBlnDialogOpen(false);
       setObjToast({
         open: true,
-        message: "User group updated successfully.",
+        message: dicLabels.updateSuccess,
         severity: "success",
       });
     } catch (objError) {
       setObjToast({
         open: true,
-        message: objError instanceof Error ? objError.message : "Unable to save user group.",
+        message: objError instanceof Error ? objError.message : dicLabels.errorSave,
         severity: "error",
       });
     } finally {
@@ -268,24 +355,21 @@ export default function UserGroupMasterScreen() {
   }
 
   async function toggleStatus(objRecord: UserGroupRecord) {
-    setBlnSaving(true);
-    try {
-      await securityApiService.updateUserGroupStatus(objRecord.intID, !objRecord.blnIsActive);
-      await loadUserGroups();
-      setObjToast({
-        open: true,
-        message: "User group status updated successfully.",
-        severity: "success",
-      });
-    } catch (objError) {
-      setObjToast({
-        open: true,
-        message: objError instanceof Error ? objError.message : "Unable to update status.",
-        severity: "error",
-      });
-    } finally {
-      setBlnSaving(false);
-    }
+    const blnNextIsActive = !objRecord.blnIsActive;
+    openConfirmDialog({
+      strTitle: blnNextIsActive ? dicLabels.confirmActivateTitle : dicLabels.confirmDeactivateTitle,
+      strMessage: blnNextIsActive ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
+      strConfirmLabel: blnNextIsActive ? dicLabels.confirmActivateLabel : dicLabels.confirmDeactivateLabel,
+      fnOnConfirm: async () => {
+        await securityApiService.updateUserGroupStatus(objRecord.intID, blnNextIsActive);
+        await loadUserGroups();
+        setObjToast({
+          open: true,
+          message: dicLabels.statusUpdateSuccess,
+          severity: "success",
+        });
+      }
+    });
   }
 
   return (
@@ -293,29 +377,29 @@ export default function UserGroupMasterScreen() {
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <TextField
-            placeholder="Search group name"
+            placeholder={dicLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))}
             fullWidth
           />
           <TextField
-            placeholder="Search group code"
+            placeholder={dicLabels.searchCodePlaceholder}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))}
             fullWidth
           />
           <TextField
             select
-            label="Status"
+            label={dicLabels.searchStatusLabel}
             value={dicSearchDraft.status}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as "All" | "Active" | "Inactive" }))
             }
             fullWidth
           >
-            <MenuItem value="All">All</MenuItem>
-            <MenuItem value="Active">Active</MenuItem>
-            <MenuItem value="Inactive">Inactive</MenuItem>
+            <MenuItem value="All">{dicLabels.searchStatusAll}</MenuItem>
+            <MenuItem value="Active">{dicLabels.searchStatusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicLabels.searchStatusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
@@ -323,7 +407,7 @@ export default function UserGroupMasterScreen() {
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
             >
-              Search
+              {dicLabels.searchButton}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
@@ -337,7 +421,7 @@ export default function UserGroupMasterScreen() {
                 setStrSearch("");
               }}
             >
-              Clear
+              {dicLabels.clearButton}
             </Button>
           </Box>
         </Box>
@@ -347,17 +431,17 @@ export default function UserGroupMasterScreen() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              Add User Group
+              {dicLabels.addButton}
             </Button>
             <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={downloadCsv}>
-              Export Excel
+              {dicLabels.exportExcelButton}
             </Button>
             <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportPdf}>
-              Export PDF
+              {dicLabels.exportPdfButton}
             </Button>
           </Box>
           <TextField
-            placeholder="Quick search"
+            placeholder={dicLabels.quickSearchPlaceholder}
             value={strSearch}
             onChange={(objEvent) => setStrSearch(objEvent.target.value)}
             sx={{ minWidth: { xs: "100%", md: 260 } }}
@@ -383,10 +467,8 @@ export default function UserGroupMasterScreen() {
           {lstVisibleRecords.length === 0 && !blnLoading ? (
             <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
               <Stack spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>No user groups found</Typography>
-                <Typography sx={{ color: "#64748b", textAlign: "center" }}>
-                  Add the first user group to start assigning dynamic menu and action rights from `tblmenu` and `tblaction`.
-                </Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
+                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.emptyMessage}</Typography>
               </Stack>
             </Box>
           ) : (
@@ -394,11 +476,11 @@ export default function UserGroupMasterScreen() {
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                  <th>Actions</th>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Description</th>
-                  <th>Is Active</th>
+                  <th>{dicLabels.tableActions}</th>
+                  <th>{dicLabels.tableCode}</th>
+                  <th>{dicLabels.tableName}</th>
+                  <th>{dicLabels.tableDescription}</th>
+                  <th>{dicLabels.tableIsActive}</th>
                 </tr>
               </thead>
               <tbody>
@@ -416,10 +498,10 @@ export default function UserGroupMasterScreen() {
                       </td>
                       <td>{objRecord.strGroupCode}</td>
                       <td>{objRecord.strGroupName}</td>
-                      <td>{objRecord.strGroupDescription || "No description configured."}</td>
+                      <td>{objRecord.strGroupDescription || dicLabels.noDescription}</td>
                       <td>
                         <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                          {objRecord.blnIsActive ? "Active" : "Inactive"}
+                          {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
                         </span>
                       </td>
                     </tr>
@@ -446,7 +528,20 @@ export default function UserGroupMasterScreen() {
         onSave={saveRecord}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? "Loading user groups..." : "Processing..."} />
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
+        </DialogContent>
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicLabels.cancelButton}</Button>
+          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSaving}>
+            {objConfirmDialog?.strConfirmLabel ?? dicLabels.confirmButton}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}

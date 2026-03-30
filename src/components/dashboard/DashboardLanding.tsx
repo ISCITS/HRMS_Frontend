@@ -1,13 +1,11 @@
 "use client";
 
-import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
-import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
-import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import { Box, Grid, Paper, Stack, Typography } from "@mui/material";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 
 type DashboardLandingProps = {
@@ -15,45 +13,45 @@ type DashboardLandingProps = {
   objMenu: MenuResponse;
 };
 
-const lstOverviewCards = [
-  {
-    strTitle: "Workforce Administration",
-    strDescription: "Centralized employee records, master data governance, and organization-wide visibility.",
-    objIcon: <BadgeRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
-  },
-  {
-    strTitle: "Attendance and Leave",
-    strDescription: "Track shifts, review attendance posture, and manage time-off operations from one place.",
-    objIcon: <CalendarMonthRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
-  },
-  {
-    strTitle: "Payroll Operations",
-    strDescription: "Prepare salary workflows, align payout cycles, and keep finance-ready HR operations.",
-    objIcon: <PaymentsRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
-  }
-];
-
-const lstFocusAreas = [
-  {
-    strLabel: "Employee lifecycle",
-    strValue: "Onboarding, profile, hierarchy, role assignment",
-    objIcon: <ApartmentRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
-  },
-  {
-    strLabel: "Approvals and controls",
-    strValue: "Leave, attendance, access, and compliance checkpoints",
-    objIcon: <AssignmentTurnedInRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
-  },
-  {
-    strLabel: "Operational insights",
-    strValue: "Workforce trends, reporting readiness, and structured decision support",
-    objIcon: <TimelineRoundedIcon sx={{ color: "#f97316", fontSize: 22 }} />
-  }
-];
+function toRoleLabelKey(strRoleName: string) {
+  return `role_${strRoleName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+}
 
 export default function DashboardLanding({ objUserContext, objMenu }: DashboardLandingProps) {
-  const strRoleSummary = objUserContext.objUser.lstRoles.join(", ") || "Workspace user";
-  const strDisplayWorkspaceName = "HRMS";
+  const { t } = useModuleLabels("common");
+  const strRoleSummary = objUserContext.objUser.lstRoles.length
+    ? objUserContext.objUser.lstRoles.map((strRoleName) => t(toRoleLabelKey(strRoleName), strRoleName)).join(", ")
+    : t("workspace_user", "Workspace user");
+  const strDisplayWorkspaceName = t("workspace_name", "HRMS");
+  const lstOverviewCards = [
+    {
+      strKey: "workforce",
+      strTitle: t("dashboard_card_workforce_title", "Workforce Administration"),
+      strDescription: t(
+        "dashboard_card_workforce_desc",
+        "Centralized employee records, master data governance, and organization-wide visibility."
+      ),
+      objIcon: <BadgeRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+    },
+    {
+      strKey: "attendance",
+      strTitle: t("dashboard_card_attendance_title", "Attendance and Leave"),
+      strDescription: t(
+        "dashboard_card_attendance_desc",
+        "Track shifts, review attendance posture, and manage time-off operations from one place."
+      ),
+      objIcon: <CalendarMonthRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+    },
+    {
+      strKey: "payroll",
+      strTitle: t("dashboard_card_payroll_title", "Payroll Operations"),
+      strDescription: t(
+        "dashboard_card_payroll_desc",
+        "Prepare salary workflows, align payout cycles, and keep finance-ready HR operations."
+      ),
+      objIcon: <PaymentsRoundedIcon sx={{ color: "#f97316", fontSize: 30 }} />
+    }
+  ];
 
   return (
     <Stack spacing={3}>
@@ -73,7 +71,7 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
           }}
         >
           <Typography sx={{ color: "#c2410c", fontWeight: 700, letterSpacing: "0.16em", fontSize: "0.78rem" }}>
-            HRMS PROJECT
+            {t("dashboard_hero_eyebrow", "HRMS PROJECT")}
           </Typography>
           <Typography
             variant="h2"
@@ -86,7 +84,7 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
               fontWeight: 800
             }}
           >
-            Human Resource Management System.
+            {t("dashboard_hero_title", "Human Resource Management System.")}
           </Typography>
           <Typography sx={{ mt: 2, maxWidth: 860, color: "#4b5563", lineHeight: 1.75, fontSize: "1rem" }}>
           
@@ -99,7 +97,7 @@ export default function DashboardLanding({ objUserContext, objMenu }: DashboardL
 
       <Grid container spacing={2.5}>
         {lstOverviewCards.map((objCard) => (
-          <Grid key={objCard.strTitle} item xs={12} md={4}>
+          <Grid key={objCard.strKey} item xs={12} md={4}>
             <Paper
               sx={{
                 p: 3,

@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import UserGroupRightsEditor, { clearMenuTreeRights, serializeRights } from "@/features/security/components/UserGroupRightsEditor";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityMenuNode, UserGroupAuthorizationMetadata, UserGroupFormPayload, UserGroupRightSaveItem } from "@/models/SecurityModels";
@@ -46,6 +47,7 @@ export default function UserGroupMasterDialog({
   onChange,
   onSave,
 }: UserGroupMasterDialogProps) {
+  const { t } = useModuleLabels("user_group");
   const blnReadOnly = strMode === "view";
   const intCurrentCompanyID = authHelpers.getCompanyID();
   const [intActiveTab, setIntActiveTab] = useState(0);
@@ -121,6 +123,33 @@ export default function UserGroupMasterDialog({
     });
   }
 
+  const dicLabels = {
+    dialogAddTitle: t("dialog_add_title", "Add User Group"),
+    dialogEditTitle: t("dialog_edit_title", "Edit User Group"),
+    dialogViewTitle: t("dialog_view_title", "View User Group"),
+    tabBasicDetails: t("tab_basic_details", "Basic Details"),
+    tabRights: t("tab_rights", "Menu & Action Rights"),
+    fieldGroupCode: t("field_group_code", "Group Code"),
+    fieldGroupName: t("field_group_name", "Group Name"),
+    fieldGroupDescription: t("field_group_description", "Group Description"),
+    fieldGroupScope: t("field_group_scope", "Group Scope"),
+    scopeNoCompany: t("scope_no_company", "No company context is available in the current session."),
+    scopeTenantWide: t("scope_tenant_wide", "This group is available tenant-wide."),
+    scopeCompanyScoped: t("scope_company_scoped", "This group is scoped to company {companyId}."),
+    scopeTenantOption: t("scope_tenant_option", "Tenant-wide"),
+    scopeCompanyOption: t("scope_company_option", "Current company only"),
+    fieldIsActive: t("field_is_active", "Is Active"),
+    fieldIsActiveHelp: t("field_is_active_help", "Inactive groups are excluded from permission resolution."),
+    summaryVisibleMenus: t("summary_visible_menus", "Visible Menus"),
+    summaryAllowedActions: t("summary_allowed_actions", "Allowed Actions"),
+    summaryAssignedUsers: t("summary_assigned_users", "Assigned Users"),
+    rightsMetadataEmpty: t("rights_metadata_empty", "Dynamic menu metadata is not available yet. Create at least one user group seed record or refresh the backend data."),
+    closeButton: t("close_button", "Close"),
+    cancelButton: t("cancel_button", "Cancel"),
+    saveButton: t("save_button", "Save User Group"),
+    saveChangesButton: t("save_changes_button", "Save Changes"),
+  };
+
   return (
     <Dialog
       open={blnOpen}
@@ -139,7 +168,7 @@ export default function UserGroupMasterDialog({
     >
       <DialogTitle sx={{ px: 2.5, py: 2, borderBottom: "1px solid #e2e8f0" }}>
         <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", color: "#0f172a" }}>
-          {strMode === "add" ? "Add User Group" : strMode === "edit" ? "Edit User Group" : "View User Group"}
+          {strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
         </Typography>
       </DialogTitle>
 
@@ -148,8 +177,8 @@ export default function UserGroupMasterDialog({
         onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
         sx={{ px: 1.5, borderBottom: "1px solid #e2e8f0", minHeight: 54 }}
       >
-        <Tab label="Basic Details" sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} />
-        <Tab label="Menu & Action Rights" sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} />
+        <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} />
+        <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} />
       </Tabs>
 
       <DialogContent sx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -163,14 +192,14 @@ export default function UserGroupMasterDialog({
               }}
             >
               <TextField
-                label="Group Code"
+                label={dicLabels.fieldGroupCode}
                 value={objForm.strGroupCode}
                 onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
                 disabled={blnReadOnly}
                 required
               />
               <TextField
-                label="Group Name"
+                label={dicLabels.fieldGroupName}
                 value={objForm.strGroupName}
                 onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
                 disabled={blnReadOnly}
@@ -179,7 +208,7 @@ export default function UserGroupMasterDialog({
             </Box>
 
             <TextField
-              label="Group Description"
+              label={dicLabels.fieldGroupDescription}
               value={objForm.strGroupDescription ?? ""}
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
               disabled={blnReadOnly}
@@ -189,20 +218,20 @@ export default function UserGroupMasterDialog({
 
             <TextField
               select
-              label="Group Scope"
+              label={dicLabels.fieldGroupScope}
               value={objForm.intCompanyID == null ? "tenant" : "company"}
               onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
               disabled={blnReadOnly || intCurrentCompanyID == null}
               helperText={
                 intCurrentCompanyID == null
-                  ? "No company context is available in the current session."
+                  ? dicLabels.scopeNoCompany
                   : objForm.intCompanyID == null
-                    ? "This group is available tenant-wide."
-                    : `This group is scoped to company ${objForm.intCompanyID}.`
+                    ? dicLabels.scopeTenantWide
+                    : dicLabels.scopeCompanyScoped.replace("{companyId}", String(objForm.intCompanyID))
               }
             >
-              <MenuItem value="tenant">Tenant-wide</MenuItem>
-              <MenuItem value="company">Current company only</MenuItem>
+              <MenuItem value="tenant">{dicLabels.scopeTenantOption}</MenuItem>
+              <MenuItem value="company">{dicLabels.scopeCompanyOption}</MenuItem>
             </TextField>
 
             <Box
@@ -218,9 +247,9 @@ export default function UserGroupMasterDialog({
               }}
             >
               <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>Is Active</Typography>
+                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  Inactive groups are excluded from permission resolution.
+                  {dicLabels.fieldIsActiveHelp}
                 </Typography>
               </Box>
               <Switch
@@ -239,15 +268,15 @@ export default function UserGroupMasterDialog({
                 }}
               >
                 <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Visible Menus</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryVisibleMenus}</Typography>
                   <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
                 <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Allowed Actions</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAllowedActions}</Typography>
                   <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
                 <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Assigned Users</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAssignedUsers}</Typography>
                   <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
@@ -264,7 +293,7 @@ export default function UserGroupMasterDialog({
               />
             ) : (
               <Alert severity="info" variant="outlined" sx={{ borderRadius: 0 }}>
-                Dynamic menu metadata is not available yet. Create at least one user group seed record or refresh the backend data.
+                {dicLabels.rightsMetadataEmpty}
               </Alert>
             )}
           </Box>
@@ -273,7 +302,7 @@ export default function UserGroupMasterDialog({
 
       <DialogActions sx={{ px: 2.5, py: 2, borderTop: "1px solid #e2e8f0", gap: 1 }}>
         <Button variant="outlined" onClick={onClose} disabled={blnSaving} sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700 }}>
-          {blnReadOnly ? "Close" : "Cancel"}
+          {blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
         </Button>
         {!blnReadOnly ? (
           <Button
@@ -282,7 +311,7 @@ export default function UserGroupMasterDialog({
             disabled={blnSaving || blnMetadataLoading}
             sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, px: 2.5 }}
           >
-            {strMode === "add" ? "Save User Group" : "Save Changes"}
+            {strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
           </Button>
         ) : null}
       </DialogActions>

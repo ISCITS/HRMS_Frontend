@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityActionRight, SecurityMenuNode, UserGroupRightSaveItem } from "@/models/SecurityModels";
 
@@ -306,10 +307,18 @@ export default function UserGroupRightsEditor({
   blnEmbedded = false,
   onChange,
 }: UserGroupRightsEditorProps) {
+  const { t } = useModuleLabels("user_group");
   const [strSearch, setStrSearch] = useState("");
   const [objExpandedMenuIDs, setObjExpandedMenuIDs] = useState<Set<number>>(new Set());
   const strLanguageCode: "en" | "hi" = authHelpers.getLanguageID() === 2 ? "hi" : "en";
   const lstFilteredNodes = useMemo(() => filterNodes(lstNodes, strSearch), [lstNodes, strSearch]);
+  const dicLabels = {
+    searchPlaceholder: t("rights_search_placeholder", "Search menu, module, or action"),
+    expandAll: t("rights_expand_all", "Expand All"),
+    collapseAll: t("rights_collapse_all", "Collapse All"),
+    reset: t("rights_reset", "Reset"),
+    panelTitle: t("rights_panel_title", "Menu / Action Hierarchy"),
+  };
 
   useEffect(() => {
     setObjExpandedMenuIDs(new Set());
@@ -361,7 +370,7 @@ export default function UserGroupRightsEditor({
         }}
       >
         <TextField
-          placeholder="Search menu, module, or action"
+          placeholder={dicLabels.searchPlaceholder}
           value={strSearch}
           onChange={(objEvent) => setStrSearch(objEvent.target.value)}
           InputProps={{
@@ -378,7 +387,7 @@ export default function UserGroupRightsEditor({
           onClick={() => setObjExpandedMenuIDs(new Set(collectMenuIDs(lstNodes)))}
           sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700 }}
         >
-          Expand All
+          {dicLabels.expandAll}
         </Button>
         <Button
           variant="outlined"
@@ -386,7 +395,7 @@ export default function UserGroupRightsEditor({
           onClick={() => setObjExpandedMenuIDs(new Set())}
           sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700 }}
         >
-          Collapse All
+          {dicLabels.collapseAll}
         </Button>
         <Button
           variant="outlined"
@@ -398,7 +407,7 @@ export default function UserGroupRightsEditor({
           }}
           sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700 }}
         >
-          Reset
+          {dicLabels.reset}
         </Button>
       </Box>
 
@@ -426,7 +435,7 @@ export default function UserGroupRightsEditor({
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <TuneRoundedIcon sx={{ color: "#1d4ed8" }} />
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Menu / Action Hierarchy</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.panelTitle}</Typography>
           </Stack>
         </Box>
 

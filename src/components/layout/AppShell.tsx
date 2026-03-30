@@ -68,6 +68,14 @@ function getPageTitle(strPathname: string) {
   return lstSegments.join(" / ") || "Dashboard";
 }
 
+function getCommonPageTitle(strPathname: string, tCommon: (strKey: string, strFallback?: string) => string) {
+  const strLowerPath = (strPathname || "").toLowerCase();
+  if (strLowerPath === "/dashboard") {
+    return tCommon("dashboard", "Dashboard");
+  }
+  return getPageTitle(strPathname);
+}
+
 function getHeaderModuleName(strPathname: string) {
   const strLowerPath = (strPathname || "").toLowerCase();
 
@@ -95,6 +103,9 @@ function getHeaderModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/states")) {
     return "state";
   }
+  if (strLowerPath.startsWith("/security/user-groups")) {
+    return "user_group";
+  }
   if (strLowerPath.startsWith("/users")) {
     return "user";
   }
@@ -117,6 +128,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const strHeaderModuleName = getHeaderModuleName(strPathname);
+  const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
 
   useEffect(() => {
@@ -169,7 +181,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
-  const strPageTitle = strHeaderModuleName ? stripMasterTitle(tHeader("page_title", getPageTitle(strPathname))) : getPageTitle(strPathname);
+  const strPageTitle = strHeaderModuleName
+    ? stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)))
+    : getCommonPageTitle(strPathname, tCommon);
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
@@ -236,9 +250,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
               HRMS
             </Typography>
-            {/* <Typography sx={{ mt: 0.5, fontSize: "0.82rem", color: "rgba(236, 254, 255, 0.84)" }}>
-              Human Resource Management System
-            </Typography> */}
           </Box>
         </Stack>
       </Paper>
@@ -287,7 +298,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
           <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>Preparing your workspace...</Typography>
+          <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>
     );
@@ -381,7 +392,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   whiteSpace: "nowrap"
                 }}
               >
-                Human Resource Management System
+                {tCommon("app_title", "Human Resource Management System")}
               </Typography>
             </Box>
 
@@ -460,19 +471,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
           sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
         >
           <LogoutRoundedIcon fontSize="small" />
-          <Typography sx={{ fontWeight: 600 }}>Logout</Typography>
+          <Typography sx={{ fontWeight: 600 }}>{tCommon("logout", "Logout")}</Typography>
         </MenuItem>
       </Menu>
 
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Logout</DialogTitle>
+        <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to logout?</Typography>
+          <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>Cancel</Button>
+          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>{tCommon("cancel", "Cancel")}</Button>
           <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
-            Logout
+            {tCommon("logout", "Logout")}
           </Button>
         </DialogActions>
       </Dialog>
