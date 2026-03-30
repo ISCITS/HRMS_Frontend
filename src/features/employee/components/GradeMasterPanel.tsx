@@ -3,22 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Pagination,
   Snackbar,
@@ -28,10 +20,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { GradeApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type GradeStatus = "Active" | "Inactive";
@@ -150,6 +146,7 @@ function exportPdf(strTitle: string, lstRows: GradeRecord[]) {
 export default function GradeMasterPanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("grade");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(["GRADE", "GRADES"]);
   const [lstGrades, setLstGrades] = useState<GradeRecord[]>([]);
   const [strMode, setStrMode] = useState<GradeMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -242,6 +239,13 @@ export default function GradeMasterPanel() {
   };
 
   async function loadGrades() {
+    if (!canViewAny()) {
+      setLstGrades([]);
+      setLstSelectedIds([]);
+      setIntPage(1);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     try {
       const objResult = await masterApiService.getGrades();
@@ -254,8 +258,11 @@ export default function GradeMasterPanel() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
     loadGrades().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
 
   const lstFilteredGrades = useMemo(() => lstGrades.filter((dicGrade) => {
     const blnCodeMatch = !dicSearchApplied.code || dicGrade.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
@@ -270,6 +277,13 @@ export default function GradeMasterPanel() {
   const lstVisibleGrades = lstFilteredGrades.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const blnAllVisibleSelected = lstVisibleGrades.length > 0 && lstVisibleGrades.every((dicGrade) => lstSelectedIds.includes(dicGrade.id));
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleGrades.some((dicGrade) => dicGrade.id === strId));
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanExport = canDoAny("export");
+  const blnReadOnly = isReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
 
   function openDialog(strNextMode: GradeMode, dicGrade?: GradeRecord) {
     setStrMode(strNextMode);
@@ -449,6 +463,8 @@ export default function GradeMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
+        {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
+        {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
@@ -465,12 +481,12 @@ export default function GradeMasterPanel() {
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{dicModuleLabels.bulkApplyingChanges}</Typography>
           </Box>
-        ) : lstSelectedIds.length > 0 ? (
+        ) : lstSelectedIds.length > 0 && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button>
+            {blnCanEdit ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanEdit ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -478,9 +494,9 @@ export default function GradeMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredGrades)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredGrades)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredGrades)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredGrades)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredGrades.length > 0 ? (
@@ -514,6 +530,10 @@ export default function GradeMasterPanel() {
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
           </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography>You do not have permission to view this screen.</Typography>
+          </Box>
         ) : (
           <Box className={styles.tableWrap}>
             <table className={styles.table}>
@@ -534,14 +554,7 @@ export default function GradeMasterPanel() {
                   return (
                     <tr key={dicGrade.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicGrade.id)} /></td>
-                      <td>
-                        <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicGrade)}><VisibilityRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicGrade)}><EditRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteGrade(dicGrade.id)}><DeleteRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleGradeStatus(dicGrade.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
-                        </Box>
-                      </td>
+                      <td><CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicGrade)} onEdit={() => openDialog("edit", dicGrade)} onDelete={() => deleteGrade(dicGrade.id)} onToggle={() => toggleGradeStatus(dicGrade.id)} /></td>
                       <td>{dicGrade.name}</td>
                       <td>{dicGrade.code}</td>
                       <td><span className={`${styles.statusPill} ${dicGrade.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicGrade.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -554,42 +567,31 @@ export default function GradeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
-            <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
-            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as GradeStatus }))} fullWidth disabled={strMode === "view"}>
-              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
-          {strMode !== "view" ? (
-            <Button className={styles.primaryButton} onClick={saveGrade} disabled={blnSubmitting}>
-              {blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
-            </Button>
-          ) : null}
-        </DialogActions>
-      </Dialog>
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
+        strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        onPrimaryAction={saveGrade}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}><TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} /><TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} /><TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as GradeStatus }))} fullWidth disabled={strMode === "view"}><MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField></Box>}
+      />
 
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
-        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
-        </DialogContent>
-        <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
-          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
+        blnConfirmDisabled={blnSubmitting}
+        blnCancelDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting || blnRightsLoading} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

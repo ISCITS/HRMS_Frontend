@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlertDialog from "@/components/common/AlertDialog";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
@@ -482,7 +483,7 @@ export default function EmployeeMasterListPanel() {
         strSeverity={objAlertDialog.strSeverity}
         fnOnClose={() => setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
       />
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper }}>
         <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
         <DialogContent className={styles.confirmDialogContent}>
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>

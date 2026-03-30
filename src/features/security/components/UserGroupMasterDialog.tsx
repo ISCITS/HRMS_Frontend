@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import UserGroupRightsEditor, { clearMenuTreeRights, serializeRights } from "@/features/security/components/UserGroupRightsEditor";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityMenuNode, UserGroupAuthorizationMetadata, UserGroupFormPayload, UserGroupRightSaveItem } from "@/models/SecurityModels";
@@ -154,6 +155,7 @@ export default function UserGroupMasterDialog({
     <Dialog
       open={blnOpen}
       onClose={blnSaving ? undefined : onClose}
+      onKeyDown={handleSingleDialogActionEnter}
       fullWidth
       maxWidth="md"
       PaperProps={{

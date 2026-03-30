@@ -26,6 +26,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
@@ -501,7 +502,7 @@ export default function EmployeeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.dialogPaper }}>
         <DialogTitle className={styles.dialogTitle}>
           {strMode === "add" ? dicConstant.employeeMaster.dialogAddTitle : strMode === "edit" ? dicConstant.employeeMaster.dialogEditTitle : dicConstant.employeeMaster.dialogViewTitle}
         </DialogTitle>

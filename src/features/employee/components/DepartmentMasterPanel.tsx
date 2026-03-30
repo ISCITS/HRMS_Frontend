@@ -3,22 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Pagination,
   Snackbar,
@@ -29,11 +21,15 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { DepartmentApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type DepartmentStatus = "Active" | "Inactive";
@@ -76,6 +72,7 @@ const dicEmptyForm: DepartmentForm = { code: "", name: "", status: "Active" };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDepartments: DepartmentRecord[] = [];
 const lstRowsPerPageOptions = [10, 20, 50];
+const lstDepartmentModuleCodes = ["DEPARTMENT", "DEPARTMENTS", "MASTER_DEPARTMENT"];
 
 // The API returns backend field names; the UI keeps a smaller view model for rendering and form state.
 function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
@@ -161,6 +158,7 @@ function exportPdf(strTitle: string, lstRows: DepartmentRecord[]) {
 export default function DepartmentMasterPanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("department");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, objRights, canDo, canViewModule } = useActionRights();
   const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>(lstDefaultDepartments);
   const [strMode, setStrMode] = useState<DepartmentMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -176,6 +174,26 @@ export default function DepartmentMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  const lstResolvedDepartmentModuleCodes = useMemo(() => {
+    const lstDynamicMatches = Object.keys(objRights.dicAllowedActions ?? {}).filter((strModuleCode) => {
+      const strNormalized = strModuleCode.trim().toUpperCase().replace(/[-\s]/g, "_");
+      return strNormalized.includes("DEPARTMENT");
+    });
+    return lstDynamicMatches.length > 0 ? lstDynamicMatches : lstDepartmentModuleCodes;
+  }, [objRights.dicAllowedActions]);
+
+  function canDoDepartmentAction(strActionCode: string) {
+    return lstResolvedDepartmentModuleCodes.some((strModuleCode) => canDo(strModuleCode, strActionCode));
+  }
+
+  function canViewDepartmentModule() {
+    return lstResolvedDepartmentModuleCodes.some((strModuleCode) => canViewModule(strModuleCode));
+  }
+
+  function isDepartmentReadOnly() {
+    return canViewDepartmentModule() && !["add", "edit", "delete", "approve", "submit", "export"].some(canDoDepartmentAction);
+  }
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -261,6 +279,12 @@ export default function DepartmentMasterPanel() {
 
   async function loadDepartments() {
     // Every mutation reloads from the backend so the grid stays aligned with the persisted DB state.
+    if (!canViewDepartmentModule()) {
+      setLstDepartments([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     try {
       const objResult = await masterApiService.getDepartments();
@@ -273,8 +297,27 @@ export default function DepartmentMasterPanel() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
+    if (!canViewDepartmentModule()) {
+      setLstDepartments([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
+
     loadDepartments().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
+
+  const blnCanView = canViewDepartmentModule();
+  const blnCanAdd = canDoDepartmentAction("add");
+  const blnCanEdit = canDoDepartmentAction("edit");
+  const blnCanDelete = canDoDepartmentAction("delete");
+  const blnCanExport = canDoDepartmentAction("export");
+  const blnReadOnly = isDepartmentReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
 
   // Search is applied explicitly so typing in the filters does not re-query/re-page the grid on every keypress.
   const lstFilteredDepartments = useMemo(() => lstDepartments.filter((dicDepartment) => {
@@ -487,6 +530,14 @@ export default function DepartmentMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
+        {strRightsError ? (
+          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+        ) : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("read_only_mode", "You have view-only access for Department.")}
+          </Typography>
+        ) : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} fullWidth />
@@ -504,12 +555,18 @@ export default function DepartmentMasterPanel() {
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{dicDepartmentLabels.bulkApplyingChanges}</Typography>
           </Box>
-        ) : lstSelectedIds.length > 0 ? (
+        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDepartmentLabels.bulkRowsSelected}`}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
+            {blnCanChangeStatus ? (
+              <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
+            ) : null}
+            {blnCanChangeStatus ? (
+              <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
+            ) : null}
+            {blnCanDelete ? (
+              <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
+            ) : null}
           </Box>
         ) : null}
       </Box>
@@ -517,9 +574,15 @@ export default function DepartmentMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicDepartmentLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDepartmentLabels.exportFileName, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDepartmentLabels.exportTitle, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            {blnCanAdd ? (
+              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDepartmentLabels.addButton}</Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDepartmentLabels.exportFileName, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDepartmentLabels.exportTitle, lstFilteredDepartments)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button>
+            ) : null}
           </Box>
 
           {!blnLoading && lstFilteredDepartments.length > 0 ? (
@@ -548,10 +611,17 @@ export default function DepartmentMasterPanel() {
           </Box>
         ) : null}
         </Box>
-        {blnLoading ? (
+        {blnRightsLoading || blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicDepartmentLabels.loadingDepartments}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Department access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("access_denied_help", "Contact your administrator if you need department visibility.")}
+            </Typography>
           </Box>
         ) : (
         <Box className={styles.tableWrap}>
@@ -574,14 +644,7 @@ export default function DepartmentMasterPanel() {
                 return (
                   <tr key={dicDepartment.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} /></td>
-                    <td>
-                      <Box className={styles.actionCell}>
-                        <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicDepartment)}><VisibilityRoundedIcon fontSize="small" /></button>
-                        <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicDepartment)}><EditRoundedIcon fontSize="small" /></button>
-                        <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteDepartment(dicDepartment.id)}><DeleteRoundedIcon fontSize="small" /></button>
-                        <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleDepartmentStatus(dicDepartment.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
-                      </Box>
-                    </td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicDepartment)} onEdit={() => openDialog("edit", dicDepartment)} onDelete={() => deleteDepartment(dicDepartment.id)} onToggle={() => toggleDepartmentStatus(dicDepartment.id)} /></td>
                     <td>{dicDepartment.name}</td>
                     <td>{dicDepartment.code}</td>
                     <td><span className={`${styles.statusPill} ${dicDepartment.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDepartment.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -595,9 +658,16 @@ export default function DepartmentMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicDepartmentLabels.dialogAddTitle : strMode === "edit" ? dicDepartmentLabels.dialogEditTitle : dicDepartmentLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strMode === "add" ? dicDepartmentLabels.dialogAddTitle : strMode === "edit" ? dicDepartmentLabels.dialogEditTitle : dicDepartmentLabels.dialogViewTitle}
+        strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicDepartmentLabels.saving : dicCommonLabels.save}
+        onPrimaryAction={saveDepartment}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        nodeContent={
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={`${dicDepartmentLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
             <TextField label={`${dicDepartmentLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
@@ -607,35 +677,21 @@ export default function DepartmentMasterPanel() {
               <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          {strMode === "view" ? (
-            <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.close}</Button>
-          ) : (
-            <>
-              <Button className={styles.secondaryButton} onClick={closeDialog}>{dicCommonLabels.cancel}</Button>
-              <Button className={styles.primaryButton} onClick={saveDepartment} disabled={blnSubmitting}>
-                {blnSubmitting ? dicDepartmentLabels.saving : dicCommonLabels.save}
-              </Button>
-            </>
-          )}
-        </DialogActions>
-      </Dialog>
+        }
+      />
 
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
-        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
-        </DialogContent>
-        <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicCommonLabels.cancel}</Button>
-          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {objConfirmDialog?.strConfirmLabel ?? dicDepartmentLabels.confirmButton}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicDepartmentLabels.confirmButton}
+        blnConfirmDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

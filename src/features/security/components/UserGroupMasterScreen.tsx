@@ -30,6 +30,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/components/master/MasterScreen.module.css";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
 import type { UserGroupFormPayload, UserGroupRecord, UserGroupRightSaveItem } from "@/models/SecurityModels";
 import { securityApiService } from "@/features/security/services/securityApiService";
@@ -64,6 +65,7 @@ function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
 
 export default function UserGroupMasterScreen() {
   const { t } = useModuleLabels("user_group");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -95,6 +97,8 @@ export default function UserGroupMasterScreen() {
     exportExcelButton: t("export_excel_button", "Export Excel"),
     exportPdfButton: t("export_pdf_button", "Export PDF"),
     quickSearchPlaceholder: t("quick_search_placeholder", "Quick search"),
+    accessUnavailableTitle: t("access_unavailable_title", "User group access is not available for your user group"),
+    accessUnavailableMessage: t("access_unavailable_message", "Contact your administrator if you need user group visibility."),
     emptyTitle: t("empty_title", "No user groups found"),
     emptyMessage: t("empty_message", "Add the first user group to start assigning dynamic menu and action rights from `tblmenu` and `tblaction`."),
     tableActions: t("table_actions", "Actions"),
@@ -153,6 +157,12 @@ export default function UserGroupMasterScreen() {
   }
 
   async function loadUserGroups() {
+    if (!canViewAny()) {
+      setLstRecords([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     try {
       const objResult = await securityApiService.listUserGroups();
@@ -170,8 +180,24 @@ export default function UserGroupMasterScreen() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+    if (!canViewAny()) {
+      setLstRecords([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
     loadUserGroups().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
+
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanExport = canDoAny("export");
+  const blnCanChangeStatus = canDoAny("edit");
+  const blnReadOnly = isReadOnly();
 
   const lstFilteredRecords = useMemo(() => {
     return lstRecords.filter((objRecord) => {
@@ -375,6 +401,14 @@ export default function UserGroupMasterScreen() {
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
+        {strRightsError ? (
+          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+        ) : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            You have view-only access for User Group.
+          </Typography>
+        ) : null}
         <Box className={styles.searchRow}>
           <TextField
             placeholder={dicLabels.searchNamePlaceholder}
@@ -430,15 +464,21 @@ export default function UserGroupMasterScreen() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")}>
-              {dicLabels.addButton}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={downloadCsv}>
-              {dicLabels.exportExcelButton}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportPdf}>
-              {dicLabels.exportPdfButton}
-            </Button>
+            {blnCanAdd ? (
+              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading}>
+                {dicLabels.addButton}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={downloadCsv} disabled={blnLoading || blnSaving || blnRightsLoading}>
+                {dicLabels.exportExcelButton}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportPdf} disabled={blnLoading || blnSaving || blnRightsLoading}>
+                {dicLabels.exportPdfButton}
+              </Button>
+            ) : null}
           </Box>
           <TextField
             placeholder={dicLabels.quickSearchPlaceholder}
@@ -463,8 +503,15 @@ export default function UserGroupMasterScreen() {
             flex: 1,
           }}
         >
-          {blnLoading ? <LinearProgress /> : null}
-          {lstVisibleRecords.length === 0 && !blnLoading ? (
+          {blnLoading || blnRightsLoading ? <LinearProgress /> : null}
+          {!blnCanView && !blnLoading && !blnRightsLoading ? (
+            <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
+              <Stack spacing={1} alignItems="center">
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
+                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
+              </Stack>
+            </Box>
+          ) : lstVisibleRecords.length === 0 && !blnLoading && !blnRightsLoading ? (
             <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
               <Stack spacing={1} alignItems="center">
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
@@ -491,9 +538,9 @@ export default function UserGroupMasterScreen() {
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(objRecord.intID)} /></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)}><VisibilityOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)}><EditOutlinedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleStatus(objRecord)}><ToggleOnRoundedIcon fontSize="small" /></button>
+                          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
+                          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)}><EditOutlinedIcon fontSize="small" /></button> : null}
+                          {blnCanChangeStatus ? <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleStatus(objRecord)}><ToggleOnRoundedIcon fontSize="small" /></button> : null}
                         </Box>
                       </td>
                       <td>{objRecord.strGroupCode}</td>
@@ -542,6 +589,7 @@ export default function UserGroupMasterScreen() {
       </Dialog>
 
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSaving} strLabel={blnLoading || blnRightsLoading ? "Loading user groups..." : "Processing..."} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}

@@ -3,22 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Pagination,
   Snackbar,
@@ -28,10 +20,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { LocationApiRecord, LocationFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type LocationStatus = "Active" | "Inactive";
@@ -162,6 +158,7 @@ function exportPdf(strTitle: string, lstRows: LocationRecord[]) {
 export default function LocationMasterPanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("location");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(["LOCATION", "LOCATIONS"]);
   const [lstLocations, setLstLocations] = useState<LocationRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<LocationFormOptionsApiRecord | null>(null);
   const [strMode, setStrMode] = useState<LocationMode>("add");
@@ -261,6 +258,14 @@ export default function LocationMasterPanel() {
   };
 
   async function loadLocations() {
+    if (!canViewAny()) {
+      setLstLocations([]);
+      setObjFormOptions(null);
+      setLstSelectedIds([]);
+      setIntPage(1);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     try {
       const [objListResult, objOptionResult] = await Promise.all([
@@ -277,8 +282,11 @@ export default function LocationMasterPanel() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
     loadLocations().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
 
   const lstFilteredLocations = useMemo(() => lstLocations.filter((dicLocation) => {
     const blnCodeMatch = !dicSearchApplied.code || dicLocation.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
@@ -293,6 +301,13 @@ export default function LocationMasterPanel() {
   const lstVisibleLocations = lstFilteredLocations.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const blnAllVisibleSelected = lstVisibleLocations.length > 0 && lstVisibleLocations.every((dicLocation) => lstSelectedIds.includes(dicLocation.id));
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleLocations.some((dicLocation) => dicLocation.id === strId));
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanExport = canDoAny("export");
+  const blnReadOnly = isReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
 
   function openDialog(strNextMode: LocationMode, dicLocation?: LocationRecord) {
     setStrMode(strNextMode);
@@ -485,6 +500,8 @@ export default function LocationMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
+        {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
+        {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
@@ -501,12 +518,12 @@ export default function LocationMasterPanel() {
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{dicModuleLabels.bulkApplyingChanges}</Typography>
           </Box>
-        ) : lstSelectedIds.length > 0 ? (
+        ) : lstSelectedIds.length > 0 && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button>
+            {blnCanEdit ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanEdit ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -514,9 +531,9 @@ export default function LocationMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("location-master.xls", lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredLocations)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("location-master.xls", lstFilteredLocations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredLocations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredLocations.length > 0 ? (
@@ -550,6 +567,10 @@ export default function LocationMasterPanel() {
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
           </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography>You do not have permission to view this screen.</Typography>
+          </Box>
         ) : (
           <Box className={styles.tableWrap}>
             <table className={styles.table}>
@@ -572,14 +593,7 @@ export default function LocationMasterPanel() {
                   return (
                     <tr key={dicLocation.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicLocation.id)} /></td>
-                      <td>
-                        <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicLocation)}><VisibilityRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicLocation)}><EditRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteLocation(dicLocation.id)}><DeleteRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleLocationStatus(dicLocation.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
-                        </Box>
-                      </td>
+                      <td><CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicLocation)} onEdit={() => openDialog("edit", dicLocation)} onDelete={() => deleteLocation(dicLocation.id)} onToggle={() => toggleLocationStatus(dicLocation.id)} /></td>
                       <td>{dicLocation.name}</td>
                       <td>{dicLocation.code}</td>
                       <td>{dicLocation.strStateName || "-"}</td>
@@ -594,63 +608,31 @@ export default function LocationMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-        <DialogTitle>{strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
-            <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
-            <TextField
-              label={dicModuleLabels.fieldState}
-              select
-              value={dicForm.intStateID === "" ? "" : String(dicForm.intStateID)}
-              onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: objEvent.target.value ? Number(objEvent.target.value) : "" }))}
-              fullWidth
-              disabled={strMode === "view"}
-            >
-              <MenuItem value="">{dicModuleLabels.selectState}</MenuItem>
-              {(objFormOptions?.lstStates ?? []).map((dicState) => (
-                <MenuItem key={dicState.intID} value={String(dicState.intID)}>
-                  {dicState.strLabel}{dicState.strCode ? ` (${dicState.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField label={dicModuleLabels.fieldCity} value={dicForm.strCityName} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, strCityName: objEvent.target.value }))} error={Boolean(dicErrors.strCityName)} helperText={dicErrors.strCityName} fullWidth disabled={strMode === "view"} />
-            <TextField
-              label={dicModuleLabels.fieldStatus}
-              select
-              value={dicForm.status}
-              onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as LocationStatus }))}
-              fullWidth
-              disabled={strMode === "view"}
-            >
-              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}</Button>
-          {strMode !== "view" ? (
-            <Button className={styles.primaryButton} onClick={saveLocation} disabled={blnSubmitting}>{blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}</Button>
-          ) : null}
-        </DialogActions>
-      </Dialog>
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
+        strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        onPrimaryAction={saveLocation}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}><TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} /><TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} /><TextField label={dicModuleLabels.fieldState} select value={dicForm.intStateID === "" ? "" : String(dicForm.intStateID)} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: objEvent.target.value ? Number(objEvent.target.value) : "" }))} fullWidth disabled={strMode === "view"}><MenuItem value="">{dicModuleLabels.selectState}</MenuItem>{(objFormOptions?.lstStates ?? []).map((dicState) => (<MenuItem key={dicState.intID} value={String(dicState.intID)}>{dicState.strLabel}{dicState.strCode ? ` (${dicState.strCode})` : ""}</MenuItem>))}</TextField><TextField label={dicModuleLabels.fieldCity} value={dicForm.strCityName} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, strCityName: objEvent.target.value }))} error={Boolean(dicErrors.strCityName)} helperText={dicErrors.strCityName} fullWidth disabled={strMode === "view"} /><TextField label={dicModuleLabels.fieldStatus} select value={dicForm.status} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as LocationStatus }))} fullWidth disabled={strMode === "view"}><MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField></Box>}
+      />
 
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
-        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
-        </DialogContent>
-        <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
-          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
+        blnConfirmDisabled={blnSubmitting}
+        blnCancelDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnSubmitting || blnRightsLoading} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

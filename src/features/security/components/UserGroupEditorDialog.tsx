@@ -2,11 +2,6 @@
 
 import {
   Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Stack,
   Switch,
@@ -14,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import CommonMasterDialog from "@/components/master/CommonMasterDialog";
 import { authHelpers } from "@/lib/auth";
 import type { UserGroupFormPayload } from "@/models/SecurityModels";
 
@@ -49,32 +45,30 @@ export default function UserGroupEditorDialog({
   }
 
   return (
-    <Dialog
-      open={blnOpen}
-      onClose={blnSaving ? undefined : onClose}
-      fullWidth
+    <CommonMasterDialog
+      blnOpen={blnOpen}
+      onClose={onClose}
+      onDialogClose={blnSaving ? undefined : onClose}
       maxWidth="sm"
-      PaperProps={{
-        sx: {
-          borderRadius: 4,
-          overflow: "hidden",
-          background:
-            "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
-        },
+      paperClassName=""
+      paperSx={{
+        borderRadius: 4,
+        overflow: "hidden",
+        background:
+          "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
       }}
-    >
-      <DialogTitle sx={{ px: 3, py: 2.5, borderBottom: "1px solid #e2e8f0" }}>
-        <Stack spacing={0.5}>
-          <Typography sx={{ fontWeight: 800, fontSize: "1.35rem", color: "#0f172a" }}>
-            {strMode === "add" ? "Create User Group" : strMode === "edit" ? "Edit User Group" : "View User Group"}
-          </Typography>
+      strTitle={strMode === "add" ? "Create User Group" : strMode === "edit" ? "Edit User Group" : "View User Group"}
+      strSecondaryLabel={blnReadOnly ? "Close" : "Cancel"}
+      strPrimaryLabel={strMode === "add" ? "Create Group" : "Save Changes"}
+      onPrimaryAction={onSave}
+      blnPrimaryDisabled={blnSaving}
+      blnHidePrimary={blnReadOnly}
+      nodeContent={<Stack spacing={2.25} sx={{ pt: 1 }}>
+        <Stack spacing={0.5} sx={{ mb: 0.5 }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>
             Maintain the business identity and activation state for this group.
           </Typography>
         </Stack>
-      </DialogTitle>
-      <DialogContent sx={{ px: 3, py: 3 }}>
-        <Stack spacing={2.25} sx={{ pt: 1 }}>
           <Box
             sx={{
               display: "grid",
@@ -127,9 +121,9 @@ export default function UserGroupEditorDialog({
             <MenuItem value="company">Current company only</MenuItem>
           </TextField>
 
-          <Box
-            sx={{
-              display: "flex",
+            <Box
+              sx={{
+                display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               px: 1.5,
@@ -149,30 +143,9 @@ export default function UserGroupEditorDialog({
               checked={objForm.blnIsActive}
               onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)}
               disabled={blnReadOnly}
-            />
-          </Box>
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2.25, borderTop: "1px solid #e2e8f0", gap: 1 }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          disabled={blnSaving}
-          sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700 }}
-        >
-          {blnReadOnly ? "Close" : "Cancel"}
-        </Button>
-        {!blnReadOnly ? (
-          <Button
-            variant="contained"
-            onClick={onSave}
-            disabled={blnSaving}
-            sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700, px: 2.5 }}
-          >
-            {strMode === "add" ? "Create Group" : "Save Changes"}
-          </Button>
-        ) : null}
-      </DialogActions>
-    </Dialog>
+              />
+            </Box>
+        </Stack>}
+    />
   );
 }
