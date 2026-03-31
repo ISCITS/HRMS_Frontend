@@ -3,22 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Pagination,
   Snackbar,
@@ -29,10 +21,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { BankApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type BankStatus = "Active" | "Inactive";
@@ -73,6 +69,7 @@ type ToastState = {
 const dicEmptyForm: BankForm = { code: "", name: "", status: "Active" };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstRowsPerPageOptions = [10, 20, 50];
+const lstBankModuleCodes = ["BANK", "BANKS"];
 
 function mapBankRecord(dicRecord: BankApiRecord): BankRecord {
   return {
@@ -151,6 +148,7 @@ function exportPdf(strTitle: string, lstRows: BankRecord[]) {
 export default function BankMasterPanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("bank");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstBankModuleCodes);
   const [lstBanks, setLstBanks] = useState<BankRecord[]>([]);
   const [strMode, setStrMode] = useState<BankMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -167,65 +165,88 @@ export default function BankMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const dicCommonLabels = {
-    cancel: t("cancel", dicConstant.common.cancel),
-    clear: t("clear", dicConstant.common.clear),
-    delete: t("delete", "Delete"),
-    exportExcel: t("export_excel", dicConstant.common.exportExcel),
-    exportPdf: t("export_pdf", dicConstant.common.exportPdf),
-    save: t("save", dicConstant.common.save),
-    search: t("search", dicConstant.common.search),
-    update: t("update", dicConstant.common.update),
-    statusActive: t("status_active", dicConstant.common.statusActive),
-    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
-    rowsPerPage: t("rows_per_page", dicConstant.common.rowsPerPage),
-    paginationSeparator: t("pagination_separator", dicConstant.common.paginationSeparator),
-    loading: t("loading", "Loading..."),
-    processing: t("processing", "Processing..."),
+    cancel: t("cancel"),
+    close: t("close"),
+    confirm: t("confirm"),
+    activate: t("activate"),
+    deactivate: t("deactivate"),
+    clear: t("clear"),
+    delete: t("delete"),
+    exportExcel: t("export_excel"),
+    exportPdf: t("export_pdf"),
+    save: t("save"),
+    search: t("search"),
+    update: t("update"),
+    statusActive: t("status_active"),
+    statusInactive: t("status_inactive"),
+    rowsPerPage: t("rows_per_page"),
+    paginationSeparator: t("pagination_separator"),
+    loading: t("loading"),
+    processing: t("processing"),
   };
   const dicBankLabels = {
-    breadcrumbs: t("breadcrumbs", "Admin / Master / Banks"),
-    pageTitle: t("page_title", dicConstant.banks.pageTitle),
-    backButton: t("back_button", dicConstant.banks.backButton),
-    addButton: t("add_button", dicConstant.banks.addButton),
-    dialogAddTitle: t("dialog_add_title", dicConstant.banks.dialogAddTitle),
-    dialogEditTitle: t("dialog_edit_title", dicConstant.banks.dialogEditTitle),
-    dialogViewTitle: t("dialog_view_title", "View Bank"),
-    exportTitle: t("export_title", "Bank Master"),
-    exportFileName: t("export_file_name", "bank-master.xls"),
-    searchNamePlaceholder: t("search_name_placeholder", "Search Bank Name"),
-    searchCodePlaceholder: t("search_code_placeholder", "Search Bank Code"),
-    searchStatusPlaceholder: t("search_status_placeholder", "Status"),
-    loadingRecords: t("loading_records", "Loading banks..."),
-    emptyMessage: t("empty_message", "No bank records found."),
-    bulkRowsSelected: t("bulk_rows_selected", "row(s) selected"),
-    bulkActivate: t("bulk_activate", "Bulk Activate"),
-    bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
-    bulkDelete: t("bulk_delete", "Bulk Delete"),
-    tableName: t("table_name", "Bank Name"),
-    tableCode: t("table_code", "Bank Code"),
-    tableStatus: t("table_status", "Status"),
-    tableActions: t("table_actions", "Actions"),
-    fieldName: t("field_name", dicConstant.banks.fields.name),
-    fieldCode: t("field_code", dicConstant.banks.fields.code),
-    fieldStatus: t("field_status", dicConstant.banks.fields.status),
-    saveSuccess: t("save_success", "Bank saved successfully."),
-    updateSuccess: t("update_success", "Bank updated successfully."),
-    deleteSuccess: t("delete_success", "Bank deleted successfully."),
-    activateSuccess: t("activate_success", "Bank activated successfully."),
-    deactivateSuccess: t("deactivate_success", "Bank deactivated successfully."),
-    bulkActivateSuccess: t("bulk_activate_success", "Selected bank records activated successfully."),
-    bulkDeactivateSuccess: t("bulk_deactivate_success", "Selected bank records deactivated successfully."),
-    bulkDeleteSuccess: t("bulk_delete_success", "Selected bank records deleted successfully."),
-    requestFailed: t("request_failed", "Request failed."),
-    validationNameRequired: t("validation_name_required", dicConstant.banks.validation.nameRequired),
-    validationNameMin: t("validation_name_min", dicConstant.banks.validation.nameMin),
-    validationCodeRequired: t("validation_code_required", dicConstant.banks.validation.codeRequired),
-    validationCodeFormat: t("validation_code_format", dicConstant.banks.validation.codeFormat),
-    validationCodeDuplicate: t("validation_code_duplicate", dicConstant.banks.validation.codeDuplicate),
-    validationNameDuplicate: t("validation_name_duplicate", dicConstant.banks.validation.nameDuplicate),
+    breadcrumbs: t("breadcrumbs"),
+    pageTitle: stripMasterTitle(t("page_title")),
+    backButton: t("back_button"),
+    addButton: t("add_button"),
+    dialogAddTitle: t("dialog_add_title"),
+    dialogEditTitle: t("dialog_edit_title"),
+    dialogViewTitle: t("dialog_view_title"),
+    exportTitle: stripMasterTitle(t("export_title")),
+    exportFileName: t("export_file_name"),
+    searchNamePlaceholder: t("search_name_placeholder"),
+    searchCodePlaceholder: t("search_code_placeholder"),
+    searchStatusPlaceholder: t("search_status_placeholder"),
+    loadingRecords: t("loading_records"),
+    emptyMessage: t("empty_message"),
+    bulkRowsSelected: t("bulk_rows_selected"),
+    bulkActivate: t("bulk_activate"),
+    bulkDeactivate: t("bulk_deactivate"),
+    bulkDelete: t("bulk_delete"),
+    tableName: t("table_name"),
+    tableCode: t("table_code"),
+    tableStatus: t("table_status"),
+    tableActions: t("table_actions"),
+    fieldName: t("field_name"),
+    fieldCode: t("field_code"),
+    fieldStatus: t("field_status"),
+    saveSuccess: t("save_success"),
+    updateSuccess: t("update_success"),
+    deleteSuccess: t("delete_success"),
+    activateSuccess: t("activate_success"),
+    deactivateSuccess: t("deactivate_success"),
+    bulkActivateSuccess: t("bulk_activate_success"),
+    bulkDeactivateSuccess: t("bulk_deactivate_success"),
+    bulkDeleteSuccess: t("bulk_delete_success"),
+    requestFailed: t("request_failed"),
+    validationNameRequired: t("validation_name_required"),
+    validationNameMin: t("validation_name_min"),
+    validationCodeRequired: t("validation_code_required"),
+    validationCodeFormat: t("validation_code_format"),
+    validationCodeDuplicate: t("validation_code_duplicate"),
+    validationNameDuplicate: t("validation_name_duplicate"),
+    confirmDeleteTitle: t("confirm_delete_title"),
+    confirmDeleteMessage: t("confirm_delete_message"),
+    confirmActivateTitle: t("confirm_activate_title"),
+    confirmActivateMessage: t("confirm_activate_message"),
+    confirmDeactivateTitle: t("confirm_deactivate_title"),
+    confirmDeactivateMessage: t("confirm_deactivate_message"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message"),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
+    bulkApplyingChanges: t("bulk_applying_changes"),
   };
 
   async function loadBanks() {
+    if (!canViewAny()) {
+      setLstBanks([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     try {
       const objResult = await masterApiService.getBanks();
@@ -238,8 +259,25 @@ export default function BankMasterPanel() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+    if (!canViewAny()) {
+      setLstBanks([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
     loadBanks().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
+
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanExport = canDoAny("export");
+  const blnReadOnly = isReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
 
   const lstFilteredBanks = useMemo(() => lstBanks.filter((dicBank) => {
     const blnCodeMatch = !dicSearchApplied.code || dicBank.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
@@ -368,8 +406,10 @@ export default function BankMasterPanel() {
 
   function bulkUpdateStatus(strStatus: BankStatus) {
     openConfirmDialog({
-      strTitle: `${strStatus === "Active" ? dicBankLabels.bulkActivate : dicBankLabels.bulkDeactivate} ${dicBankLabels.pageTitle.replace(/ Master$/,"")}`,
-      strMessage: `Are you sure you want to mark ${lstSelectedIds.length} selected bank record(s) as ${strStatus.toLowerCase()}?`,
+      strTitle: strStatus === "Active" ? dicBankLabels.confirmBulkActivateTitle : dicBankLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicBankLabels.confirmBulkActivateMessage : dicBankLabels.confirmBulkDeactivateMessage)
+        .replace("{count}", String(lstSelectedIds.length))
+        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
       strConfirmLabel: strStatus === "Active" ? dicBankLabels.bulkActivate : dicBankLabels.bulkDeactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkBankStatus(lstSelectedIds.map(Number), strStatus === "Active");
@@ -381,8 +421,8 @@ export default function BankMasterPanel() {
 
   function bulkDelete() {
     openConfirmDialog({
-      strTitle: `${dicBankLabels.bulkDelete} ${dicBankLabels.pageTitle.replace(/ Master$/,"")}`,
-      strMessage: `Are you sure you want to delete ${lstSelectedIds.length} selected bank record(s)?`,
+      strTitle: dicBankLabels.confirmBulkDeleteTitle,
+      strMessage: dicBankLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
       strConfirmLabel: dicBankLabels.bulkDelete,
       fnOnConfirm: async () => {
         await masterApiService.bulkBankDelete(lstSelectedIds.map(Number));
@@ -394,8 +434,8 @@ export default function BankMasterPanel() {
 
   function deleteBank(strBankId: string) {
     openConfirmDialog({
-      strTitle: `${dicCommonLabels.delete} ${dicBankLabels.pageTitle.replace(/ Master$/,"")}`,
-      strMessage: t("confirm_delete_message", "Are you sure you want to delete this bank record?"),
+      strTitle: dicBankLabels.confirmDeleteTitle,
+      strMessage: dicBankLabels.confirmDeleteMessage,
       strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
         await masterApiService.bulkBankDelete([Number(strBankId)]);
@@ -412,9 +452,10 @@ export default function BankMasterPanel() {
     }
     const strNextStatus = objBank.status === "Active" ? "Inactive" : "Active";
     openConfirmDialog({
-      strTitle: `${strNextStatus === "Active" ? t("activate", "Activate") : t("deactivate", "Deactivate")} ${dicBankLabels.pageTitle.replace(/ Master$/,"")}`,
-      strMessage: `Are you sure you want to mark this bank as ${strNextStatus.toLowerCase()}?`,
-      strConfirmLabel: strNextStatus === "Active" ? t("activate", "Activate") : t("deactivate", "Deactivate"),
+      strTitle: strNextStatus === "Active" ? dicBankLabels.confirmActivateTitle : dicBankLabels.confirmDeactivateTitle,
+      strMessage: (strNextStatus === "Active" ? dicBankLabels.confirmActivateMessage : dicBankLabels.confirmDeactivateMessage)
+        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
         await masterApiService.bulkBankStatus([Number(strBankId)], strNextStatus === "Active");
         await loadBanks();
@@ -430,40 +471,47 @@ export default function BankMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
+        {strRightsError ? (
+          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+        ) : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("read_only_mode", "You have view-only access for Bank.")}
+          </Typography>
+        ) : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} fullWidth />
-          <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">{dicBankLabels.searchStatusPlaceholder}</MenuItem>
-            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-          </TextField>
+            <TextField select label={dicBankLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+            </TextField>
           <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
           <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
+        {blnSubmitting ? (
+          <Box className={styles.bulkBar}>
+            <CircularProgress size={20} />
+            <Typography className={styles.bulkCount}>{dicBankLabels.bulkApplyingChanges}</Typography>
+          </Box>
+        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
+          <Box className={styles.bulkBar}>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicBankLabels.bulkRowsSelected}</Typography>
+            {blnCanChangeStatus ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicBankLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicBankLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicBankLabels.bulkDelete}</Button> : null}
+          </Box>
+        ) : null}
       </Box>
-
-      {blnSubmitting ? (
-        <Box className={styles.bulkBar}>
-          <CircularProgress size={20} />
-          <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
-        </Box>
-      ) : lstSelectedIds.length > 0 ? (
-        <Box className={styles.bulkBar}>
-          <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicBankLabels.bulkRowsSelected}</Typography>
-          <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicBankLabels.bulkActivate}</Button>
-          <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicBankLabels.bulkDeactivate}</Button>
-          <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicBankLabels.bulkDelete}</Button>
-        </Box>
-      ) : null}
 
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting}>{dicBankLabels.addButton}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicBankLabels.exportFileName, lstFilteredBanks)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicBankLabels.exportTitle, lstFilteredBanks)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button>
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicBankLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicBankLabels.exportFileName, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicBankLabels.exportTitle, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredBanks.length > 0 ? (
@@ -493,10 +541,15 @@ export default function BankMasterPanel() {
         ) : null}
         </Box>
 
-        {blnLoading ? (
+        {blnRightsLoading || blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicBankLabels.loadingRecords}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -518,17 +571,10 @@ export default function BankMasterPanel() {
                   return (
                     <tr key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} /></td>
-                      <td>
-                        <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicBank)}><VisibilityRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicBank)}><EditRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteBank(dicBank.id)}><DeleteRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleBankStatus(dicBank.id)}><ToggleOnRoundedIcon fontSize="small" /></button>
-                        </Box>
-                      </td>
+                      <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} onToggle={() => toggleBankStatus(dicBank.id)} /></td>
                       <td>{dicBank.name}</td>
                       <td>{dicBank.code}</td>
-                      <td><span className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -538,51 +584,31 @@ export default function BankMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} fullWidth maxWidth="sm" PaperProps={{ className: styles.compactDialogPaper }}>
-         <DialogTitle>{strMode === "add" ? dicBankLabels.dialogAddTitle : strMode === "edit" ? dicBankLabels.dialogEditTitle : dicBankLabels.dialogViewTitle}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-             <TextField label={dicBankLabels.fieldCode} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} />
-             <TextField label={dicBankLabels.fieldName} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} />
-            <TextField
-               label={dicBankLabels.fieldStatus}
-              select
-              value={dicForm.status}
-              onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as BankStatus }))}
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 0.5 }}
-              fullWidth
-              disabled={strMode === "view"}
-            >
-               <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-               <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-           <Button className={styles.secondaryButton} onClick={closeDialog}>{strMode === "view" ? t("close", "Close") : dicCommonLabels.cancel}</Button>
-           {strMode !== "view" ? (
-             <Button className={styles.primaryButton} onClick={saveBank} disabled={blnSubmitting}>
-               {blnSubmitting ? t("saving", "Saving...") : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
-             </Button>
-           ) : null}
-        </DialogActions>
-      </Dialog>
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strMode === "add" ? dicBankLabels.dialogAddTitle : strMode === "edit" ? dicBankLabels.dialogEditTitle : dicBankLabels.dialogViewTitle}
+        strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        onPrimaryAction={saveBank}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}><TextField label={dicBankLabels.fieldCode} value={dicForm.code} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} /><TextField label={dicBankLabels.fieldName} value={dicForm.name} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} /><TextField label={dicBankLabels.fieldStatus} select value={dicForm.status} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as BankStatus }))} InputLabelProps={{ shrink: true }} sx={{ mt: 0.5 }} fullWidth disabled={strMode === "view"}><MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField></Box>}
+      />
 
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
-        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
-        </DialogContent>
-        <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog} disabled={blnSubmitting}>{dicCommonLabels.cancel}</Button>
-          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
-            {blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm}
+        blnConfirmDisabled={blnSubmitting}
+        blnCancelDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

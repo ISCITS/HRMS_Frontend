@@ -13,10 +13,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlertDialog from "@/components/common/AlertDialog";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
 
@@ -50,6 +52,7 @@ function toCsvCell(strValue: string) {
 export default function EmployeeMasterListPanel() {
   const objRouter = useRouter();
   const { strLabelError, t } = useEmployeeLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDo, canViewModule, isReadOnlyModule } = useActionRights();
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -97,6 +100,13 @@ export default function EmployeeMasterListPanel() {
   }
 
   async function loadModuleData() {
+    if (!canViewModule("EMPLOYEE")) {
+      setLstEmployees([]);
+      setLstSelectedIDs([]);
+      setBlnLoading(false);
+      return;
+    }
+
     setBlnLoading(true);
     try {
       const lstEmployeeData = await employeeService.getEmployees();
@@ -111,8 +121,27 @@ export default function EmployeeMasterListPanel() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
+    if (!canViewModule("EMPLOYEE")) {
+      setLstEmployees([]);
+      setLstSelectedIDs([]);
+      setBlnLoading(false);
+      return;
+    }
+
     loadModuleData().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
+
+  const blnCanView = canViewModule("EMPLOYEE");
+  const blnCanAdd = canDo("EMPLOYEE", "add");
+  const blnCanEdit = canDo("EMPLOYEE", "edit");
+  const blnCanDelete = canDo("EMPLOYEE", "delete");
+  const blnCanExport = canDo("EMPLOYEE", "export");
+  const blnReadOnly = isReadOnlyModule("EMPLOYEE");
+  const blnCanChangeStatus = blnCanEdit;
 
   const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
     const blnNameMatch = !dicSearchApplied.name || dicEmployee.strFullName.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
@@ -284,14 +313,22 @@ export default function EmployeeMasterListPanel() {
         {strLabelError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
         ) : null}
+        {strRightsError ? (
+          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+        ) : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("read_only_mode", "You have view-only access for Employee.")}
+          </Typography>
+        ) : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
-          <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">{t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)}</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
-          </TextField>
+            <TextField select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
+            </TextField>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {t("search_button", dicConstant.common.search)}
@@ -309,12 +346,18 @@ export default function EmployeeMasterListPanel() {
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
-        ) : lstSelectedIDs.length > 0 ? (
+        ) : lstSelectedIDs.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIDs.length} {t("bulk_rows_selected", "row(s) selected")}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
-            <Button className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+            {blnCanChangeStatus ? (
+              <Button className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
+            ) : null}
+            {blnCanChangeStatus ? (
+              <Button className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+            ) : null}
+            {blnCanDelete ? (
+              <Button className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+            ) : null}
           </Box>
         ) : null}
       </Box>
@@ -331,15 +374,21 @@ export default function EmployeeMasterListPanel() {
           }}
         >
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting}>
-              {t("add_button", dicConstant.employeeMaster.addButton)}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting}>
-              {t("export_excel", dicConstant.common.exportExcel)}
-            </Button>
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting}>
-              {t("export_pdf", dicConstant.common.exportPdf)}
-            </Button>
+            {blnCanAdd ? (
+              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("add_button", dicConstant.employeeMaster.addButton)}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("export_excel", dicConstant.common.exportExcel)}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("export_pdf", dicConstant.common.exportPdf)}
+              </Button>
+            ) : null}
           </Box>
 
           {!blnLoading && lstFilteredEmployees.length > 0 ? (
@@ -358,10 +407,17 @@ export default function EmployeeMasterListPanel() {
           ) : null}
         </Box>
 
-        {blnLoading ? (
+        {blnRightsLoading || blnLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{t("loading", dicConstant.employeeMaster.loading)}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Employee access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("access_denied_help", "Contact your administrator if you need employee visibility.")}
+            </Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -390,10 +446,18 @@ export default function EmployeeMasterListPanel() {
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} /></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}><EditRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
+                          {blnCanView ? (
+                            <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}><VisibilityRoundedIcon fontSize="small" /></button>
+                          ) : null}
+                          {blnCanEdit ? (
+                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}><EditRoundedIcon fontSize="small" /></button>
+                          ) : null}
+                          {blnCanDelete ? (
+                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
+                          ) : null}
+                          {blnCanChangeStatus ? (
+                            <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
+                          ) : null}
                         </Box>
                       </td>
                       <td>{dicEmployee.strEmployeeCode}</td>
@@ -403,7 +467,7 @@ export default function EmployeeMasterListPanel() {
                       <td>{dicEmployee.strDepartmentName || "-"}</td>
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -419,7 +483,7 @@ export default function EmployeeMasterListPanel() {
         strSeverity={objAlertDialog.strSeverity}
         fnOnClose={() => setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
       />
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper }}>
         <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
         <DialogContent className={styles.confirmDialogContent}>
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
@@ -433,7 +497,7 @@ export default function EmployeeMasterListPanel() {
           </Button>
         </DialogActions>
       </Dialog>
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
     </Box>
   );
 }

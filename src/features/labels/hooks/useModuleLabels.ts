@@ -5,14 +5,12 @@ import { useEffect, useState } from "react";
 import { labelService } from "@/features/labels/services/labelService";
 import { authHelpers } from "@/lib/auth";
 
-const intDefaultLanguageID = 1;
-
 export function useModuleLabels(strModuleName: string, strFallbackError = "") {
-  const [intLanguageID] = useState(() => {
+  const [intLanguageID, setIntLanguageID] = useState<number | null>(() => {
     if (typeof window === "undefined") {
-      return intDefaultLanguageID;
+      return null;
     }
-    return authHelpers.getLanguageID() ?? intDefaultLanguageID;
+    return authHelpers.getLanguageID();
   });
   const [dicLabels, setDicLabels] = useState<Record<string, string>>({});
   const [strLanguageCode, setStrLanguageCode] = useState("en");
@@ -20,9 +18,30 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
   const [strLabelError, setStrLabelError] = useState("");
 
   useEffect(() => {
+    function syncLanguage() {
+      setIntLanguageID(authHelpers.getLanguageID());
+    }
+
+    syncLanguage();
+    window.addEventListener("storage", syncLanguage);
+    window.addEventListener("hrms:language-changed", syncLanguage as EventListener);
+    return () => {
+      window.removeEventListener("storage", syncLanguage);
+      window.removeEventListener("hrms:language-changed", syncLanguage as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
     let blnMounted = true;
 
     async function loadLabels() {
+      if (!intLanguageID) {
+        if (blnMounted) {
+          setDicLabels({});
+          setBlnLoadingLabels(true);
+        }
+        return;
+      }
       setBlnLoadingLabels(true);
       setStrLabelError("");
       try {
@@ -53,8 +72,17 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
     };
   }, [intLanguageID, strFallbackError, strModuleName]);
 
-  function t(strKey: string, strFallback: string) {
-    return dicLabels[strKey] ?? strFallback;
+  function t(strKey: string, strFallback?: string) {
+    if (dicLabels[strKey]) {
+      return dicLabels[strKey];
+    }
+    if (blnLoadingLabels) {
+      return "";
+    }
+    if (typeof strFallback === "string") {
+      return strFallback;
+    }
+    return `[[${strModuleName}.${strKey}]]`;
   }
 
   return {

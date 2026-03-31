@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Paper,
   Stack,
   Typography
@@ -17,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { normalizeMenuResponse } from "@/lib/menu";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -64,12 +64,7 @@ export default function UserManagementPage() {
 
   if (blnLoading || !objUserContext || !objMenu) {
     return (
-      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
-        <Stack spacing={2} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>Loading user management workspace...</Typography>
-        </Stack>
-      </Box>
+      <BlockingLoader blnOpen strLabel="Loading user management..." />
     );
   }
 

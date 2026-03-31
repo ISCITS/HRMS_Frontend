@@ -9,12 +9,15 @@ import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Drawer,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Toolbar,
@@ -25,6 +28,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
@@ -63,17 +68,68 @@ function getPageTitle(strPathname: string) {
   return lstSegments.join(" / ") || "Dashboard";
 }
 
+function getCommonPageTitle(strPathname: string, tCommon: (strKey: string, strFallback?: string) => string) {
+  const strLowerPath = (strPathname || "").toLowerCase();
+  if (strLowerPath === "/dashboard") {
+    return tCommon("dashboard", "Dashboard");
+  }
+  return getPageTitle(strPathname);
+}
+
+function getHeaderModuleName(strPathname: string) {
+  const strLowerPath = (strPathname || "").toLowerCase();
+
+  if (strLowerPath.startsWith("/departments")) {
+    return "department";
+  }
+  if (strLowerPath.startsWith("/designations")) {
+    return "designation";
+  }
+  if (strLowerPath.startsWith("/banks")) {
+    return "bank";
+  }
+  if (strLowerPath.startsWith("/cost-centers")) {
+    return "cost_center";
+  }
+  if (strLowerPath.startsWith("/grades")) {
+    return "grade";
+  }
+  if (strLowerPath.startsWith("/locations")) {
+    return "location";
+  }
+  if (strLowerPath.startsWith("/countries")) {
+    return "country";
+  }
+  if (strLowerPath.startsWith("/states")) {
+    return "state";
+  }
+  if (strLowerPath.startsWith("/security/user-groups")) {
+    return "user_group";
+  }
+  if (strLowerPath.startsWith("/users")) {
+    return "user";
+  }
+  if (strLowerPath.startsWith("/employees")) {
+    return "employee";
+  }
+
+  return "";
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
-  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(true);
+  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
-  const [blnNavigating, setBlnNavigating] = useState(false);
+  const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
+  const strHeaderModuleName = getHeaderModuleName(strPathname);
+  const { t: tCommon } = useModuleLabels("common");
+  const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
 
   useEffect(() => {
     let blnMounted = true;
@@ -116,10 +172,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [objRouter]);
 
-  useEffect(() => {
-    setBlnNavigating(false);
-  }, [strPathname]);
-
   async function confirmLogout() {
     setBlnLogoutDialogOpen(false);
     setBlnLoggingOut(true);
@@ -128,9 +180,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
-  const strAvatarText = strUserName.slice(0, 2).toUpperCase();
-  const strPageTitle = getPageTitle(strPathname);
+  const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
+  const strPageTitle = strHeaderModuleName
+    ? stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)))
+    : getCommonPageTitle(strPathname, tCommon);
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
+  const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   function handleMenuToggle() {
     if (typeof window !== "undefined" && window.innerWidth >= 1200) {
@@ -139,6 +194,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
 
     setBlnDrawerOpen(true);
+  }
+
+  function openProfileMenu(objEvent: React.MouseEvent<HTMLElement>) {
+    setObjProfileAnchorEl(objEvent.currentTarget);
+  }
+
+  function closeProfileMenu() {
+    setObjProfileAnchorEl(null);
   }
 
   const objSidebarContent = (
@@ -187,9 +250,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
               HRMS
             </Typography>
-            {/* <Typography sx={{ mt: 0.5, fontSize: "0.82rem", color: "rgba(236, 254, 255, 0.84)" }}>
-              Human Resource Management System
-            </Typography> */}
           </Box>
         </Stack>
       </Paper>
@@ -226,7 +286,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
             setBlnDrawerOpen(false);
-            setBlnNavigating(true);
+            setBlnDesktopSidebarOpen(false);
           }}
         />
       </Paper>
@@ -238,7 +298,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
           <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>Preparing your workspace...</Typography>
+          <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>
     );
@@ -255,7 +315,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
       }}
     >
-      <BlockingLoader blnOpen={blnLoggingOut || blnNavigating} strLabel={blnLoggingOut ? "Logging out..." : "Loading..."} intZIndex={1600} />
+      <BlockingLoader blnOpen={blnLoggingOut} strLabel="Logging out..." intZIndex={1600} />
       <Box
         sx={{
           width: blnDesktopSidebarOpen ? intDrawerWidth + 28 : 0,
@@ -327,23 +387,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   color: "#0f172a",
                   textTransform: "none",
                   letterSpacing: "normal",
-                  fontWeight: 400,
+                  fontWeight: 700,
                   lineHeight: 1.43,
                   whiteSpace: "nowrap"
                 }}
               >
-                Human Resource Management System
+                {tCommon("app_title", "Human Resource Management System")}
               </Typography>
             </Box>
 
+            <Box sx={{ flex: 1, minWidth: 0 }} />
+
             <Box
               sx={{
-                flex: 1,
                 display: "flex",
-                justifyContent: "center",
+                alignItems: "center",
+                justifyContent: "flex-end",
                 minWidth: 0,
-                px: { xs: 0.5, md: 1.5 },
-                transform: { xs: "translateX(-10px)", lg: "translateX(-24px)" }
+                pr: { xs: 0.25, md: 0.75 }
               }}
             >
               <Typography
@@ -352,64 +413,77 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   fontWeight: 700,
                   color: "#0f172a",
                   letterSpacing: "-0.03em",
-                  textAlign: "center",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  maxWidth: "100%"
+                  maxWidth: { xs: "120px", sm: "220px", md: "320px" },
+                  textAlign: "right"
                 }}
               >
                 {strPageTitle}
               </Typography>
             </Box>
 
-            <Paper
+            <IconButton
+              onClick={openProfileMenu}
+              disabled={blnLoggingOut}
               sx={{
-                px: 1.1,
-                py: 0.9,
-                borderRadius: "22px",
-                display: "flex",
-                alignItems: "center",
-                gap: 1.25,
-                backgroundColor: "transparent",
-                border: "none",
-                boxShadow: "none"
+                p: 0.4,
+                border: "1px solid rgba(148, 163, 184, 0.18)",
+                backgroundColor: "rgba(248,250,252,0.92)"
               }}
             >
               <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
                 {strAvatarText}
               </Avatar>
-              <Box sx={{ display: { xs: "none", sm: "block" } }}>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
-                <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {strTenantName}
-                </Typography>
-              </Box>
-              <IconButton
-                onClick={() => setBlnLogoutDialogOpen(true)}
-                disabled={blnLoggingOut}
-                sx={{
-                  backgroundColor: "rgba(248,250,252,0.92)"
-                }}
-              >
-                <LogoutRoundedIcon />
-              </IconButton>
-            </Paper>
+            </IconButton>
           </Toolbar>
         </AppBar>
 
         <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflowY: "auto", overflowX: "hidden", pr: 0.5 }}>{children}</Box>
       </Box>
 
+      <Menu
+        anchorEl={objProfileAnchorEl}
+        open={blnProfileMenuOpen}
+        onClose={closeProfileMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 240,
+            borderRadius: "18px",
+            boxShadow: "0 20px 45px rgba(15, 23, 42, 0.14)"
+          }
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.5, textAlign: "left" }}>
+          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            closeProfileMenu();
+            setBlnLogoutDialogOpen(true);
+          }}
+          disabled={blnLoggingOut}
+          sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
+        >
+          <LogoutRoundedIcon fontSize="small" />
+          <Typography sx={{ fontWeight: 600 }}>{tCommon("logout", "Logout")}</Typography>
+        </MenuItem>
+      </Menu>
+
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Logout</DialogTitle>
+        <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to logout?</Typography>
+          <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>Cancel</Button>
+          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>{tCommon("cancel", "Cancel")}</Button>
           <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
-            Logout
+            {tCommon("logout", "Logout")}
           </Button>
         </DialogActions>
       </Dialog>

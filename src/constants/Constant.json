@@ -27,12 +27,12 @@
             "employees": "Employees",
             "employeeList": "Employee List",
             "addEmployee": "Add Employee",
-            "userMaster": "User Master",
-            "departmentMaster": "Department Master",
-            "bankMaster": "Bank Master",
-            "costCenterMaster": "Cost Center Master",
-            "gradeMaster": "Grade Master",
-            "locationMaster": "Location Master",
+            "userMaster": "User",
+            "departmentMaster": "Department",
+            "bankMaster": "Bank",
+            "costCenterMaster": "Cost Center",
+            "gradeMaster": "Grade",
+            "locationMaster": "Location",
             "departmentMasterInline": "Department Master Inline",
             "leave": "Leave",
             "leaveRequests": "Leave Requests",
@@ -303,7 +303,7 @@
         }
     },
     "departments": {
-        "pageTitle": "Department Master",
+        "pageTitle": "Department",
         "inlinePageTitle": "Department Master (Inline)",
         "addButton": "Add Department",
         "backButton": "Back",
@@ -336,7 +336,7 @@
         }
     },
     "designations": {
-        "pageTitle": "Designation Master",
+        "pageTitle": "Designation",
         "addButton": "Add Designation",
         "backButton": "Back",
         "editButton": "Edit",
@@ -367,7 +367,7 @@
         }
     },
     "banks": {
-        "pageTitle": "Bank Master",
+        "pageTitle": "Bank",
         "addButton": "Add Bank",
         "backButton": "Back",
         "editButton": "Edit",
@@ -438,7 +438,7 @@
         }
     },
     "costCenters": {
-        "pageTitle": "Cost Center Master",
+        "pageTitle": "Cost Center",
         "addButton": "Add Cost Center",
         "backButton": "Back",
         "editButton": "Edit",
@@ -468,7 +468,7 @@
         }
     },
     "countries": {
-        "pageTitle": "Country Master",
+        "pageTitle": "Country",
         "addButton": "Add Country",
         "backButton": "Back",
         "dialogAddTitle": "Add Country",
@@ -500,7 +500,7 @@
         }
     },
     "grades": {
-        "pageTitle": "Grade Master",
+        "pageTitle": "Grade",
         "addButton": "Add Grade",
         "backButton": "Back",
         "editButton": "Edit",
@@ -530,7 +530,7 @@
         }
     },
     "states": {
-        "pageTitle": "State Master",
+        "pageTitle": "State",
         "addButton": "Add State",
         "backButton": "Back",
         "dialogAddTitle": "Add State",
@@ -560,7 +560,7 @@
         }
     },
     "locations": {
-        "pageTitle": "Location Master",
+        "pageTitle": "Location",
         "addButton": "Add Location",
         "backButton": "Back",
         "editButton": "Edit",

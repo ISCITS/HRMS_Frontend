@@ -4,6 +4,7 @@ import axios from "axios";
 
 import { authHelpers } from "@/lib/auth";
 import { axiosInstance } from "@/lib/axiosInstance";
+import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 
 type ApiEnvelope<TData> = {
@@ -40,8 +41,23 @@ export type UserApiRecord = {
   strAuthSource: "local" | "sso";
   blnIsSsoEnabled: boolean;
   strSsoLoginMapping: string | null;
+  intPreferredLanguageID: number | null;
+  intUserGroupID: number | null;
+  strUserGroupCode: string | null;
+  strUserGroupName: string | null;
   blnIsActive: boolean;
   blnIsLocked: boolean;
+};
+
+export type UserFormOptionApiRecord = {
+  intID: number;
+  strLabel: string;
+  strCode?: string;
+};
+
+export type UserFormOptionsApiRecord = {
+  lstLanguages: UserFormOptionApiRecord[];
+  lstUserGroups: UserFormOptionApiRecord[];
 };
 
 export type CountryApiRecord = {
@@ -732,6 +748,14 @@ export const masterApiService = {
     });
   },
 
+  getUserFormOptions() {
+    return requestApi<UserFormOptionsApiRecord>({
+      strPath: "/masters/users/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_USER_FORM_OPTIONS"
+    });
+  },
+
   createUser(objBody: {
     strLoginName: string;
     strEmailAddress: string;
@@ -740,12 +764,18 @@ export const masterApiService = {
     strAuthSource: "local" | "sso";
     blnIsSsoEnabled: boolean;
     strSsoLoginMapping: string | null;
+    intPreferredLanguageID: number | null;
+    intUserGroupID: number;
     blnIsActive: boolean;
   }) {
+    const objEncryptedBody = {
+      ...objBody,
+      strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
+    };
     return requestApi<UserApiRecord>({
       strPath: "/masters/users",
       strMethod: "POST",
-      objBody,
+      objBody: objEncryptedBody,
       strMenuAction: "MASTER_USER_CREATE"
     });
   },
@@ -758,12 +788,18 @@ export const masterApiService = {
     strAuthSource: "local" | "sso";
     blnIsSsoEnabled: boolean;
     strSsoLoginMapping: string | null;
+    intPreferredLanguageID: number | null;
+    intUserGroupID: number;
     blnIsActive: boolean;
   }) {
+    const objEncryptedBody = {
+      ...objBody,
+      strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
+    };
     return requestApi<UserApiRecord>({
       strPath: `/masters/users/${intID}`,
       strMethod: "PUT",
-      objBody,
+      objBody: objEncryptedBody,
       strMenuAction: "MASTER_USER_UPDATE"
     });
   },

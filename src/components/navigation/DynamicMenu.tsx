@@ -20,7 +20,7 @@ import WorkspacesRoundedIcon from "@mui/icons-material/WorkspacesRounded";
 import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import type { MenuItem } from "@/models/AuthModels";
 
@@ -32,6 +32,7 @@ type DynamicMenuProps = {
 const objMenuIconSx = { color: "inherit" };
 
 function getMenuIcon(objItem: MenuItem) {
+  const strIconName = (objItem as MenuItem & { strIconName?: string | null }).strIconName?.toLowerCase() ?? "";
   if (objItem.blnIsHome) {
     return <DashboardRoundedIcon sx={objMenuIconSx} />;
   }
@@ -39,7 +40,7 @@ function getMenuIcon(objItem: MenuItem) {
   const strRoute = (objItem.strRoute ?? "").toLowerCase();
   const strModuleName = objItem.strModuleName.toLowerCase();
   const strModuleCode = objItem.strModuleCode.toLowerCase();
-  const strLookupKey = `${strModuleCode} ${strModuleName} ${strRoute}`;
+  const strLookupKey = `${strIconName} ${strModuleCode} ${strModuleName} ${strRoute}`;
 
   if (strLookupKey.includes("bank")) {
     return <AccountBalanceRoundedIcon sx={objMenuIconSx} />;
@@ -98,16 +99,29 @@ function getMenuIcon(objItem: MenuItem) {
 
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
   const strPathname = usePathname();
+  function hasActiveDescendant(objItem: MenuItem): boolean {
+    return objItem.lstChildren.some(
+      (objChild) => objChild.strRoute === strPathname || hasActiveDescendant(objChild),
+    );
+  }
+
+  function collectExpandableDefaults(lstItems: MenuItem[]): Record<string, boolean> {
+    return Object.fromEntries(
+      lstItems.flatMap((objItem) => {
+        if (objItem.lstChildren.length === 0) {
+          return [];
+        }
+
+        return [
+          [objItem.strModuleCode, hasActiveDescendant(objItem)],
+          ...Object.entries(collectExpandableDefaults(objItem.lstChildren)),
+        ];
+      }),
+    );
+  }
+
   const dicDefaultExpanded = useMemo(
-    () =>
-      Object.fromEntries(
-        lstMenuItems
-          .filter((objItem) => objItem.lstChildren.length > 0)
-          .map((objItem) => [
-            objItem.strModuleCode,
-            objItem.lstChildren.some((objChild) => objChild.strRoute === strPathname),
-          ]),
-      ),
+    () => collectExpandableDefaults(lstMenuItems),
     [lstMenuItems, strPathname],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
@@ -115,11 +129,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   useEffect(() => {
     setDicExpandedMenus((dicPrevious) => ({
       ...dicPrevious,
-      ...Object.fromEntries(
-        lstMenuItems
-          .filter((objItem) => objItem.lstChildren.some((objChild) => objChild.strRoute === strPathname))
-          .map((objItem) => [objItem.strModuleCode, true]),
-      ),
+      ...collectExpandableDefaults(lstMenuItems),
     }));
   }, [lstMenuItems, strPathname]);
 
@@ -152,80 +162,67 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     };
   }
 
-  return (
-    <List sx={{ mt: 0 }}>
-      {lstMenuItems.map((objItem) => {
-        const blnIsActive = objItem.strRoute === strPathname;
-        const blnHasChildren = objItem.lstChildren.length > 0;
-        const blnHasActiveChild = objItem.lstChildren.some((objChild) => objChild.strRoute === strPathname);
-        const blnExpanded = dicExpandedMenus[objItem.strModuleCode] ?? blnHasActiveChild;
+  function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
+    const blnIsActive = objItem.strRoute === strPathname;
+    const blnHasChildren = objItem.lstChildren.length > 0;
+    const blnHasActiveChild = hasActiveDescendant(objItem);
+    const blnExpanded = dicExpandedMenus[objItem.strModuleCode] ?? blnHasActiveChild;
 
-        if (blnHasChildren) {
-          return (
-            <Fragment key={objItem.strModuleCode}>
-              <ListItemButton onClick={() => toggleMenu(objItem.strModuleCode)} sx={getButtonStyles(blnHasActiveChild)}>
-                <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
-                  {getMenuIcon(objItem)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={objItem.strModuleName}
-                  primaryTypographyProps={{ fontWeight: 700, color: "#0f172a", fontSize: "0.96rem" }}
-                />
-                {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "#2563eb" }} /> : <ExpandMoreRoundedIcon sx={{ color: "#2563eb" }} />}
-              </ListItemButton>
-
-              <Collapse in={blnExpanded} timeout="auto" unmountOnExit>
-                <Box sx={{ position: "relative", ml: 1.25, mt: 0.25, mb: 0.5 }}>
-                  <List disablePadding>
-                    {objItem.lstChildren.map((objChild) => {
-                      const blnIsChildActive = objChild.strRoute === strPathname;
-                      return (
-                        <ListItemButton
-                          key={objChild.strModuleCode}
-                          component={Link}
-                          href={objChild.strRoute ?? "#"}
-                          onClick={onNavigate}
-                          sx={getButtonStyles(blnIsChildActive, 1)}
-                        >
-                          <ListItemIcon sx={{ minWidth: 34, color: blnIsChildActive ? "#2563eb" : "#94a3b8" }}>
-                            {getMenuIcon(objChild)}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={objChild.strModuleName}
-                            primaryTypographyProps={{
-                              fontWeight: blnIsChildActive ? 700 : 600,
-                              color: "#334155",
-                              fontSize: "0.9rem"
-                            }}
-                          />
-                        </ListItemButton>
-                      );
-                    })}
-                  </List>
-                </Box>
-              </Collapse>
-            </Fragment>
-          );
-        }
-
-        return (
-          <ListItemButton
-            key={objItem.strRoute ?? objItem.strModuleCode}
-            component={Link}
-            href={objItem.strRoute ?? "#"}
-            onClick={onNavigate}
-            sx={getButtonStyles(blnIsActive)}
-          >
-            <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "#2563eb" : "#64748b" }}>
+    if (blnHasChildren) {
+      return (
+        <Fragment key={`${objItem.strModuleCode}-${intDepth}`}>
+          <ListItemButton onClick={() => toggleMenu(objItem.strModuleCode)} sx={getButtonStyles(blnHasActiveChild, intDepth)}>
+            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
               {getMenuIcon(objItem)}
             </ListItemIcon>
             <ListItemText
               primary={objItem.strModuleName}
-              primaryTypographyProps={{ fontWeight: 700, color: "#0f172a", fontSize: "0.96rem" }}
+              primaryTypographyProps={{
+                fontWeight: 700,
+                color: "#0f172a",
+                fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
+              }}
             />
+            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "#2563eb" }} /> : <ExpandMoreRoundedIcon sx={{ color: "#2563eb" }} />}
           </ListItemButton>
-        );
-      })}
+
+          <Collapse in={blnExpanded} timeout="auto" unmountOnExit>
+            <Box sx={{ position: "relative", ml: intDepth === 0 ? 1.25 : 0.5, mt: 0.25, mb: 0.5 }}>
+              <List disablePadding>
+                {objItem.lstChildren.map((objChild) => renderMenuItem(objChild, intDepth + 1))}
+              </List>
+            </Box>
+          </Collapse>
+        </Fragment>
+      );
+    }
+
+    return (
+      <ListItemButton
+        key={objItem.strRoute ?? objItem.strModuleCode}
+        component={Link}
+        href={objItem.strRoute ?? "#"}
+        onClick={onNavigate}
+        sx={getButtonStyles(blnIsActive, intDepth)}
+      >
+        <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "#2563eb" : "#64748b" }}>
+          {getMenuIcon(objItem)}
+        </ListItemIcon>
+        <ListItemText
+          primary={objItem.strModuleName}
+          primaryTypographyProps={{
+            fontWeight: blnIsActive ? 700 : 600,
+            color: intDepth === 0 ? "#0f172a" : "#334155",
+            fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
+          }}
+        />
+      </ListItemButton>
+    );
+  }
+
+  return (
+    <List sx={{ mt: 0 }}>
+      {lstMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );
 }

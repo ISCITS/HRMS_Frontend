@@ -26,9 +26,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
+import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
 
@@ -109,6 +111,7 @@ function isEmailValid(strValue: string): boolean {
 
 export default function EmployeeMasterPanel() {
   const objRouter = useRouter();
+  const { t } = useEmployeeLabels();
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [strMode, setStrMode] = useState<EmployeeMode>("add");
@@ -125,6 +128,10 @@ export default function EmployeeMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [strFeedback, setStrFeedback] = useState("");
   const [strError, setStrError] = useState("");
+  const dicCommonLabels = {
+    statusActive: t("status_active", dicConstant.common.statusActive),
+    statusInactive: t("status_inactive", dicConstant.common.statusInactive),
+  };
 
   async function loadModuleData() {
     setBlnLoading(true);
@@ -374,11 +381,11 @@ export default function EmployeeMasterPanel() {
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicConstant.employeeMaster.search.namePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicConstant.employeeMaster.search.codePlaceholder} fullWidth />
-          <TextField select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem value="All">{dicConstant.employeeMaster.search.statusPlaceholder}</MenuItem>
-            <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
-          </TextField>
+            <TextField select label={dicConstant.employeeMaster.search.statusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+            </TextField>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {dicConstant.common.search}
@@ -485,7 +492,7 @@ export default function EmployeeMasterPanel() {
                       <td>{dicEmployee.strDepartmentName || "-"}</td>
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus}</span></td>
+                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -495,7 +502,7 @@ export default function EmployeeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} PaperProps={{ className: styles.dialogPaper }}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.dialogPaper }}>
         <DialogTitle className={styles.dialogTitle}>
           {strMode === "add" ? dicConstant.employeeMaster.dialogAddTitle : strMode === "edit" ? dicConstant.employeeMaster.dialogEditTitle : dicConstant.employeeMaster.dialogViewTitle}
         </DialogTitle>

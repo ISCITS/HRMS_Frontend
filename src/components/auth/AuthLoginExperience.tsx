@@ -6,7 +6,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/auth/AuthLoginExperience.module.css";
@@ -201,6 +201,20 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
   const strDisplayTitle = "Sign In";
   const strDisplaySubtitle = "";
+  const blnCanSubmit =
+    Boolean(strLoginID.trim()) &&
+    Boolean(strPassword.trim()) &&
+    !blnSubmitting &&
+    intLockRemainingSeconds <= 0 &&
+    !(strMode === "tenant" && blnTenantLoading);
+
+  function handleLoginSubmit(objEvent: FormEvent<HTMLFormElement>) {
+    objEvent.preventDefault();
+    if (!blnCanSubmit) {
+      return;
+    }
+    submitForm().catch(() => undefined);
+  }
 
   return (
     <Box className={styles.pageRoot}>
@@ -222,7 +236,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             <Typography className={styles.title}>{strDisplayTitle}</Typography>
             {strDisplaySubtitle ? <Typography className={styles.subtitle}>{strDisplaySubtitle}</Typography> : null}
 
-            <Stack spacing={2.25} sx={{ mt: 3 }}>
+            <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
               {strError ? (
                 <Alert severity="error">
                   {strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
@@ -292,14 +306,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Button
                 variant="contained"
                 size="large"
-                disabled={
-                  !strLoginID.trim() ||
-                  !strPassword.trim() ||
-                  blnSubmitting ||
-                  intLockRemainingSeconds > 0 ||
-                  (strMode === "tenant" && blnTenantLoading)
-                }
-                onClick={submitForm}
+                disabled={!blnCanSubmit}
+                onClick={() => submitForm().catch(() => undefined)}
+                type="submit"
                 sx={{
                   minHeight: 52,
                   borderRadius: "10px",

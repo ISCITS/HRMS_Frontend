@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle
 } from "@mui/material";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 
 type AlertDialogProps = {
   blnOpen: boolean;
@@ -25,7 +26,7 @@ export default function AlertDialog({
   fnOnClose
 }: AlertDialogProps) {
   return (
-    <Dialog open={blnOpen} onClose={fnOnClose} fullWidth maxWidth="xs">
+    <Dialog open={blnOpen} onClose={fnOnClose} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
       <DialogTitle>{strTitle ?? (strSeverity === "success" ? "Success" : "Error")}</DialogTitle>
       <DialogContent>
         <Alert severity={strSeverity}>

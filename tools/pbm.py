@@ -1145,7 +1145,6 @@ def main() -> None:
     patch_service()
     patch_routes()
     patch_repository()
-    print("Backend master patches applied")
 
 
 if __name__ == "__main__":

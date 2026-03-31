@@ -1,5 +1,7 @@
 import { appConfig } from "@/config";
 
+const strLanguageChangedEventName = "hrms:language-changed";
+
 /*
 Functional responsibility:
 - Share lightweight auth helpers across middleware, routes, and services.
@@ -65,6 +67,7 @@ export const authHelpers = {
 
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
       window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+      window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID } }));
     }
   },
   getTenantID() {
@@ -76,6 +79,15 @@ export const authHelpers = {
     const intTenantID = Number(strTenantID);
     return Number.isFinite(intTenantID) && intTenantID > 0 ? intTenantID : null;
   },
+  getCompanyID() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const strCompanyID = window.localStorage.getItem("hrms_company_id");
+    const intCompanyID = Number(strCompanyID);
+    return Number.isFinite(intCompanyID) && intCompanyID > 0 ? intCompanyID : null;
+  },
   setLanguageID(intLanguageID?:number) {
     if (typeof window === "undefined") {
       return;
@@ -83,6 +95,7 @@ export const authHelpers = {
 
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
       window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+      window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID } }));
     }
   },
   getLanguageID() {
@@ -92,7 +105,7 @@ export const authHelpers = {
 
     const strLanguageID = window.localStorage.getItem("hrms_language_id");
     const intLanguageID = Number(strLanguageID);
-    return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : 1;
+    return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
   },
   clearSession() {
     if (typeof document === "undefined") {
@@ -104,6 +117,7 @@ export const authHelpers = {
       window.localStorage.removeItem("hrms_tenant_id");
       window.localStorage.removeItem("hrms_company_id");
       window.localStorage.removeItem("hrms_language_id");
+      window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
