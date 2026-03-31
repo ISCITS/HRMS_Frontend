@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type {
@@ -34,9 +35,11 @@ import type {
 
 type EmployeeSalaryDetailPageProps = {
   intEmployeeID: number;
+  blnViewMode?: boolean;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
+const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 
 function formatCurrency(decValue: number | null, strCurrencyCode = "INR") {
   if (decValue === null) {
@@ -111,9 +114,10 @@ function buildRevisionForm(
   };
 }
 
-export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSalaryDetailPageProps) {
+export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false }: EmployeeSalaryDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -126,10 +130,26 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
   const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
   const [intHistoryPage, setIntHistoryPage] = useState(1);
   const [intHistoryRowsPerPage, setIntHistoryRowsPerPage] = useState(10);
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanSave = canDoAny("save");
+  const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSave;
+  const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
+  const blnCanLoadWorkspace = blnCanView;
 
   useEffect(() => {
     let blnMounted = true;
     async function loadData() {
+      if (blnRightsLoading) {
+        return;
+      }
+      if (!blnCanLoadWorkspace) {
+        if (blnMounted) {
+          setBlnLoading(false);
+        }
+        return;
+      }
       setBlnLoading(true);
       setStrError("");
       try {
@@ -161,7 +181,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
     return () => {
       blnMounted = false;
     };
-  }, [intEmployeeID]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID]);
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
     const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
@@ -237,7 +257,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
@@ -246,6 +266,20 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
             {t("employee_salary_loading_workspace", "Loading employee salary workspace...")}
           </Typography>
         </Stack>
+      </Box>
+    );
+  }
+
+  if (!blnCanLoadWorkspace) {
+    return (
+      <Box className={styles.emptyState}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+          {t("employee_salary_access_denied", "Employee salary access is not available for your user group.")}
+        </Typography>
+        <Typography sx={{ mt: 1, color: "#64748b" }}>
+          {t("employee_salary_access_denied_help", "Contact your administrator if you need employee salary access.")}
+        </Typography>
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
       </Box>
     );
   }
@@ -266,7 +300,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {t("employee_salary_detail_title", "Employee Salary Detail")}
+                {blnEffectiveViewMode
+                  ? t("employee_salary_view_title", "View Employee Salary Detail")
+                  : t("employee_salary_detail_title", "Employee Salary Detail")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {objDetail?.objEmployeeSummary.strEmployeeName} ({objDetail?.objEmployeeSummary.strEmployeeCode})
@@ -295,33 +331,36 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
               >
                 {t("employee_salary_back_button", "Back")}
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<HistoryRoundedIcon />}
-                onClick={() => setBlnDialogOpen(true)}
-                sx={{
-                  borderRadius: "14px",
-                  height: 40,
-                  minHeight: 40,
-                  py: 0,
-                  px: 2,
-                  fontSize: "0.92rem",
-                  lineHeight: 1.1,
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1.05rem"
+              {!blnEffectiveViewMode ? (
+                <Button
+                  variant="contained"
+                  startIcon={<HistoryRoundedIcon />}
+                  onClick={() => setBlnDialogOpen(true)}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 40,
+                    minHeight: 40,
+                    py: 0,
+                    px: 2,
+                    fontSize: "0.92rem",
+                    lineHeight: 1.1,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1.05rem"
+                      }
                     }
-                  }
-                }}
-              >
-                {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
-              </Button>
+                  }}
+                >
+                  {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
+                </Button>
+              ) : null}
             </Stack>
           </Stack>
 
           {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+          {blnEffectiveViewMode ? <Alert severity="info">{t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}</Alert> : null}
         </Stack>
       </Paper>
 
@@ -520,7 +559,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID }: EmployeeSala
         </Box>
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={() => !blnSaving && setBlnDialogOpen(false)} fullWidth maxWidth="md">
+      <Dialog open={!blnEffectiveViewMode && blnDialogOpen} onClose={() => !blnSaving && setBlnDialogOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{t("employee_salary_dialog_title", "Assign / Revise Salary")}</DialogTitle>
         <DialogContent sx={{ pb: 3 }}>
           <Stack spacing={2} sx={{ mt: 1 }}>

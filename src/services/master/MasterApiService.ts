@@ -1093,10 +1093,28 @@ export const masterApiService = {
     });
   },
 
+  bulkSalaryComponentStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/salary-components/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_SALARY_COMPONENT_STATUS"
+    });
+  },
+
   deleteSalaryComponent(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: `/masters/salary-components/${intID}`,
       strMethod: "DELETE",
+      strMenuAction: "MASTER_SALARY_COMPONENT_DELETE"
+    });
+  },
+
+  bulkSalaryComponentDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/salary-components/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
       strMenuAction: "MASTER_SALARY_COMPONENT_DELETE"
     });
   },

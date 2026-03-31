@@ -1,12 +1,11 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import {
   Alert,
   Box,
@@ -18,6 +17,7 @@ import {
   DialogTitle,
   MenuItem,
   Pagination,
+  Snackbar,
   Stack,
   TextField,
   Typography
@@ -25,7 +25,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryStructureLabels } from "@/features/salary-structures/hooks/useSalaryStructureLabels";
 import {
   createCloneForm,
@@ -37,7 +41,27 @@ import type {
   SalaryStructureListRecord
 } from "@/features/salary-structures/types";
 
+type Status = "Active" | "Inactive";
+type SearchForm = {
+  strName: string;
+  strCode: string;
+  strStatus: "All" | Status;
+};
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
+  fnOnConfirm: () => Promise<void>;
+};
+type ToastState = {
+  blnOpen: boolean;
+  strMessage: string;
+  strSeverity: "success" | "error";
+};
+
 const lstRowsPerPageOptions = [10, 20, 50];
+const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
+const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
 
 function formatDate(strDate: string | null) {
   if (!strDate) {
@@ -51,16 +75,7 @@ function formatDate(strDate: string | null) {
 }
 
 function downloadCsv(strFileName: string, lstRows: SalaryStructureListRecord[]) {
-  const lstHeaders = [
-    "Code",
-    "Structure Name",
-    "Scope",
-    "Currency",
-    "Effective From",
-    "Effective To",
-    "Components",
-    "Status"
-  ];
+  const lstHeaders = ["Code", "Structure Name", "Scope", "Currency", "Effective From", "Effective To", "Components", "Status"];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
@@ -146,74 +161,143 @@ function exportPdf(strTitle: string, lstRows: SalaryStructureListRecord[]) {
 export default function SalaryStructureListPage() {
   const objRouter = useRouter();
   const { t } = useSalaryStructureLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstSalaryStructureModuleCodes);
   const [lstStructures, setLstStructures] = useState<SalaryStructureListRecord[]>([]);
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
-  const [strError, setStrError] = useState("");
-  const [strSuccess, setStrSuccess] = useState("");
-  const [dicSearch, setDicSearch] = useState({
-    strName: "",
-    strCode: "",
-    strStatus: "All"
-  });
-  const [dicAppliedSearch, setDicAppliedSearch] = useState(dicSearch);
+  const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [blnCloneOpen, setBlnCloneOpen] = useState(false);
   const [objCloneSource, setObjCloneSource] = useState<SalaryStructureDetailRecord | null>(null);
   const [dicCloneForm, setDicCloneForm] = useState<SalaryStructureCloneValues | null>(null);
   const [blnCloneSaving, setBlnCloneSaving] = useState(false);
 
   async function loadStructures() {
+    if (!canViewAny()) {
+      setLstStructures([]);
+      setIntPage(1);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
-    setStrError("");
     try {
       setLstStructures(await salaryStructureService.getSalaryStructures());
+      setIntPage(1);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load salary structures.");
+      showToast(objError instanceof Error ? objError.message : "Unable to load salary structures.", "error");
     } finally {
       setBlnLoading(false);
     }
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
     loadStructures().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
+
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanExport = canDoAny("export");
+  const blnReadOnly = isReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
+  const blnCanClone = blnCanAdd;
 
   const lstFilteredRows = useMemo(() => {
     return lstStructures.filter((dicRow) => {
-      const blnNameMatch = !dicAppliedSearch.strName || dicRow.strStructureName.toLowerCase().includes(dicAppliedSearch.strName.toLowerCase());
-      const blnCodeMatch = !dicAppliedSearch.strCode || dicRow.strStructureCode.toLowerCase().includes(dicAppliedSearch.strCode.toLowerCase());
+      const blnNameMatch = !dicSearchApplied.strName || dicRow.strStructureName.toLowerCase().includes(dicSearchApplied.strName.toLowerCase());
+      const blnCodeMatch = !dicSearchApplied.strCode || dicRow.strStructureCode.toLowerCase().includes(dicSearchApplied.strCode.toLowerCase());
       const blnStatusMatch =
-        dicAppliedSearch.strStatus === "All" ||
-        (dicAppliedSearch.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
+        dicSearchApplied.strStatus === "All" ||
+        (dicSearchApplied.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
       return blnNameMatch && blnCodeMatch && blnStatusMatch;
     });
-  }, [dicAppliedSearch, lstStructures]);
+  }, [dicSearchApplied, lstStructures]);
 
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intResolvedPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intResolvedPage - 1) * intRowsPerPage;
+  const intCurrentPage = Math.min(intPage, intPageCount);
+  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
   const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
 
-  async function handleStatusToggle(dicRow: SalaryStructureListRecord) {
-    try {
-      await salaryStructureService.setSalaryStructureStatus(dicRow.intID, !dicRow.blnIsActive);
-      setStrSuccess(`Salary structure ${!dicRow.blnIsActive ? "activated" : "deactivated"} successfully.`);
-      await loadStructures();
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to update salary structure status.");
+  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function closeToast() {
+    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    if (!objConfirmDialog) {
+      return;
     }
+    setBlnSubmitting(true);
+    try {
+      await objConfirmDialog.fnOnConfirm();
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+    } finally {
+      setBlnSubmitting(false);
+      closeConfirmDialog();
+    }
+  }
+
+  function toggleStatus(dicRow: SalaryStructureListRecord) {
+    const blnNextIsActive = !dicRow.blnIsActive;
+    openConfirmDialog({
+      strTitle: blnNextIsActive
+        ? t("confirm_activate_title", "Activate Salary Structure")
+        : t("confirm_deactivate_title", "Deactivate Salary Structure"),
+      strMessage: blnNextIsActive
+        ? t("confirm_activate_message", "Are you sure you want to mark this salary structure as active?")
+        : t("confirm_deactivate_message", "Are you sure you want to mark this salary structure as inactive?"),
+      strConfirmLabel: blnNextIsActive ? t("activate_button", "Activate") : t("deactivate_button", "Deactivate"),
+      fnOnConfirm: async () => {
+        await salaryStructureService.setSalaryStructureStatus(dicRow.intID, blnNextIsActive);
+        await loadStructures();
+        showToast(blnNextIsActive
+          ? t("activate_success", "Salary structure activated successfully.")
+          : t("deactivate_success", "Salary structure deactivated successfully."));
+      }
+    });
+  }
+
+  function deleteStructure(intSalaryStructureID: number) {
+    openConfirmDialog({
+      strTitle: t("confirm_delete_title", "Delete Salary Structure"),
+      strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary structure record?"),
+      strConfirmLabel: t("delete_button", "Delete"),
+      fnOnConfirm: async () => {
+        await salaryStructureService.deleteSalaryStructure(intSalaryStructureID);
+        await loadStructures();
+        showToast(t("delete_success", "Salary structure deleted successfully."));
+      }
+    });
   }
 
   async function handleCloneOpen(intSalaryStructureID: number) {
     try {
-      setStrError("");
       const dicDetail = await salaryStructureService.getSalaryStructureById(intSalaryStructureID);
       setObjCloneSource(dicDetail);
       setDicCloneForm(createCloneForm(dicDetail));
       setBlnCloneOpen(true);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load salary structure for clone.");
+      showToast(objError instanceof Error ? objError.message : "Unable to load salary structure for clone.", "error");
     }
   }
 
@@ -222,17 +306,17 @@ export default function SalaryStructureListPage() {
       return;
     }
     if (!dicCloneForm.strStructureCode.trim() || !dicCloneForm.strStructureName.trim() || !dicCloneForm.dtEffectiveFrom) {
-      setStrError("Clone code, clone name, and effective from date are required.");
+      showToast("Clone code, clone name, and effective from date are required.", "error");
       return;
     }
     setBlnCloneSaving(true);
     try {
       const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.intID, dicCloneForm);
       setBlnCloneOpen(false);
-      setStrSuccess("Salary structure cloned successfully.");
+      showToast("Salary structure cloned successfully.");
       objRouter.push(`/salary-structures/edit/${dicRecord.intID}`);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to clone salary structure.");
+      showToast(objError instanceof Error ? objError.message : "Unable to clone salary structure.", "error");
     } finally {
       setBlnCloneSaving(false);
     }
@@ -240,27 +324,38 @@ export default function SalaryStructureListPage() {
 
   return (
     <Box className={styles.page}>
+      <Box className={styles.topBar}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+          {t("back_button", "Back")}
+        </Button>
+      </Box>
+
       <Box className={styles.controlsCard}>
-        {strError ? <Alert severity="error" sx={{ mt: 1.25 }} onClose={() => setStrError("")}>{strError}</Alert> : null}
-        {strSuccess ? <Alert severity="success" sx={{ mt: 1.25 }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("read_only_mode", "You have view-only access for Salary Structure.")}
+          </Typography>
+        ) : null}
 
         <Box className={styles.searchRow}>
           <TextField
-            value={dicSearch.strName}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
+            value={dicSearchDraft.strName}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("search_structure_name", "Search structure name")}
             fullWidth
           />
           <TextField
-            value={dicSearch.strCode}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
+            value={dicSearchDraft.strCode}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
             placeholder={t("search_structure_code", "Search structure code")}
             fullWidth
           />
           <TextField
             select
-            value={dicSearch.strStatus}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value }))}
+            label={t("search_status_label", "Status")}
+            value={dicSearchDraft.strStatus}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
             fullWidth
           >
             <MenuItem value="All">{t("all_status", "All Status")}</MenuItem>
@@ -272,9 +367,10 @@ export default function SalaryStructureListPage() {
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
-                setDicAppliedSearch(dicSearch);
+                setDicSearchApplied(dicSearchDraft);
                 setIntPage(1);
               }}
+              disabled={blnLoading || blnSubmitting}
             >
               {t("search_button", "Search")}
             </Button>
@@ -284,11 +380,11 @@ export default function SalaryStructureListPage() {
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
-                const dicDefaultSearch = { strName: "", strCode: "", strStatus: "All" };
-                setDicSearch(dicDefaultSearch);
-                setDicAppliedSearch(dicDefaultSearch);
+                setDicSearchDraft(dicEmptySearch);
+                setDicSearchApplied(dicEmptySearch);
                 setIntPage(1);
               }}
+              disabled={blnLoading || blnSubmitting}
             >
               {t("clear_button", "Clear")}
             </Button>
@@ -299,64 +395,59 @@ export default function SalaryStructureListPage() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")}>
-              {t("add_salary_structure", "Add Salary Structure")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => downloadCsv("salary_structures.csv", lstFilteredRows)}
-            >
-              {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => exportPdf(t("salary_structure_title", "Salary Structures"), lstFilteredRows)}
-            >
-              {t("export_pdf", "Export PDF")}
-            </Button>
+            {blnCanAdd ? (
+              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("add_salary_structure", "Add Salary Structure")}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("salary_structures.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("export_excel", "Export Excel")}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("salary_structure_title", "Salary Structures"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("export_pdf", "Export PDF")}
+              </Button>
+            ) : null}
           </Box>
 
           {!blnLoading && lstFilteredRows.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} of {lstFilteredRows.length}
-              </Typography>
+            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+              <Box className={styles.paginationInfo}>
+                <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
+                <TextField
+                  select
+                  size="small"
+                  value={String(intRowsPerPage)}
+                  onChange={(objEvent) => {
+                    setIntRowsPerPage(Number(objEvent.target.value));
+                    setIntPage(1);
+                  }}
+                  className={styles.rowsPerPageSelect}
+                >
+                  {lstRowsPerPageOptions.map((intOption) => (
+                    <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
+                  ))}
+                </TextField>
+                <Typography className={styles.paginationRange}>
+                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} {t("pagination_separator", "of")} {lstFilteredRows.length}
+                </Typography>
+              </Box>
+              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
             </Box>
-            <Pagination
-              count={intPageCount}
-              page={intResolvedPage}
-              onChange={(_, intNextPage) => setIntPage(intNextPage)}
-              size="small"
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
-          </Box>
-        ) : null}
+          ) : null}
         </Box>
 
-        {blnLoading ? (
+        {blnLoading || blnRightsLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>Loading {t("salary_structure_title", "Salary Structures").toLowerCase()}...</Typography>
+            <Typography sx={{ mt: 1 }}>{t("loading_salary_structures", "Loading salary structures...")}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary structure access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary structure visibility.")}</Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -377,38 +468,32 @@ export default function SalaryStructureListPage() {
               <tbody>
                 {lstFilteredRows.length === 0 ? (
                   <tr>
-                    <td className={styles.emptyState} colSpan={9}>
-                      {t("no_salary_structures_found", "No salary structures found.")}
-                    </td>
+                    <td className={styles.emptyState} colSpan={9}>{t("no_salary_structures_found", "No salary structures found.")}</td>
                   </tr>
                 ) : lstVisibleRows.map((dicRow) => (
                   <tr key={dicRow.intID}>
                     <td>
                       <Box className={styles.actionCell}>
-                        <button
-                          className={`${styles.iconButton} ${styles.editIcon}`}
-                          type="button"
-                          onClick={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
-                          title={t("action_edit", "Edit")}
-                        >
-                          <EditRoundedIcon fontSize="small" />
-                        </button>
-                        <button
-                          className={`${styles.iconButton} ${styles.editIcon}`}
-                          type="button"
-                          onClick={() => handleCloneOpen(dicRow.intID)}
-                          title={t("clone_button", "Clone")}
-                        >
-                          <ContentCopyRoundedIcon fontSize="small" />
-                        </button>
-                        <button
-                          className={`${styles.iconButton} ${styles.toggleIcon}`}
-                          type="button"
-                          onClick={() => handleStatusToggle(dicRow)}
-                          title={dicRow.blnIsActive ? t("deactivate_button", "Deactivate") : t("activate_button", "Activate")}
-                        >
-                          <ToggleOnRoundedIcon fontSize="small" />
-                        </button>
+                        <CommonRowActions
+                          blnCanView={!blnCanEdit && blnCanView}
+                          blnCanEdit={blnCanEdit}
+                          blnCanDelete={blnCanDelete}
+                          blnCanToggle={blnCanChangeStatus}
+                          onView={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
+                          onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
+                          onDelete={() => deleteStructure(dicRow.intID)}
+                          onToggle={() => toggleStatus(dicRow)}
+                        />
+                        {blnCanClone ? (
+                          <button
+                            className={`${styles.iconButton} ${styles.editIcon}`}
+                            type="button"
+                            onClick={() => handleCloneOpen(dicRow.intID)}
+                            title={t("clone_button", "Clone")}
+                          >
+                            <ContentCopyRoundedIcon fontSize="small" />
+                          </button>
+                        ) : null}
                       </Box>
                     </td>
                     <td>{dicRow.strStructureCode}</td>
@@ -420,9 +505,7 @@ export default function SalaryStructureListPage() {
                     <td>{dicRow.intComponentCount}</td>
                     <td>
                       <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                        {dicRow.blnIsActive
-                          ? t("status_active", "Active")
-                          : t("status_inactive", "Inactive")}
+                        {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
                       </span>
                     </td>
                   </tr>
@@ -434,53 +517,81 @@ export default function SalaryStructureListPage() {
       </Box>
 
       <Dialog open={blnCloneOpen} onClose={() => !blnCloneSaving && setBlnCloneOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Clone Salary Structure</DialogTitle>
+        <DialogTitle>{t("clone_salary_structure", "Clone Salary Structure")}</DialogTitle>
         <DialogContent>
           {dicCloneForm ? (
             <Stack spacing={2} sx={{ pt: 1 }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.92rem" }}>
-                Create a new structure by copying component configuration and multilingual text from <strong>{objCloneSource?.strStructureName}</strong>.
+                {t("clone_salary_structure_help", "Create a new structure by copying component configuration and multilingual text from the selected structure.")}
               </Typography>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
                 <TextField
-                  label="New Structure Code"
+                  label={t("new_structure_code", "New Structure Code")}
                   value={dicCloneForm.strStructureCode}
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureCode: objEvent.target.value.toUpperCase() } : dicPrev)}
+                  disabled={blnCloneSaving}
                   fullWidth
                 />
                 <TextField
-                  label="New Structure Name"
+                  label={t("new_structure_name", "New Structure Name")}
                   value={dicCloneForm.strStructureName}
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureName: objEvent.target.value } : dicPrev)}
+                  disabled={blnCloneSaving}
                   fullWidth
                 />
                 <TextField
-                  label="Effective From"
+                  label={t("effective_from", "Effective From")}
                   type="date"
                   value={dicCloneForm.dtEffectiveFrom}
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, dtEffectiveFrom: objEvent.target.value } : dicPrev)}
                   InputLabelProps={{ shrink: true }}
+                  disabled={blnCloneSaving}
                   fullWidth
                 />
                 <TextField
-                  label="Effective To"
+                  label={t("effective_to", "Effective To")}
                   type="date"
                   value={dicCloneForm.dtEffectiveTo}
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, dtEffectiveTo: objEvent.target.value } : dicPrev)}
                   InputLabelProps={{ shrink: true }}
+                  disabled={blnCloneSaving}
                   fullWidth
                 />
               </Box>
+              {objCloneSource ? (
+                <Alert severity="info">
+                  {t("clone_source", "Clone source")}: {objCloneSource.strStructureName}
+                </Alert>
+              ) : null}
             </Stack>
           ) : null}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setBlnCloneOpen(false)} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
           <Button variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
-            {blnCloneSaving ? "Cloning..." : "Clone Structure"}
+            {blnCloneSaving ? t("cloning", "Cloning...") : t("clone_button", "Clone")}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={t("cancel_button", "Cancel")}
+        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
+        blnConfirmDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
+
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading", "Loading...") : t("processing", "Processing...")} intZIndex={1400} />
+
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+          {objToast.strMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

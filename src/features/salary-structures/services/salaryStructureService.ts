@@ -279,5 +279,9 @@ export const salaryStructureService = {
   async setSalaryStructureStatus(intSalaryStructureID: number, blnIsActive: boolean): Promise<SalaryStructureDetailRecord> {
     const objResult = await masterApiService.setSalaryStructureStatus(intSalaryStructureID, blnIsActive);
     return mapApiRecord(objResult.Data);
+  },
+
+  async deleteSalaryStructure(intSalaryStructureID: number): Promise<void> {
+    await masterApiService.deleteSalaryStructure(intSalaryStructureID);
   }
 };

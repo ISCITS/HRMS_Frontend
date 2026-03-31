@@ -3,24 +3,40 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
   MenuItem,
   Pagination,
+  Snackbar,
   TextField,
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalaryListRecord } from "@/features/employee-salary/types";
+
+type SearchForm = {
+  strName: string;
+  strCode: string;
+  strStatus: "All" | "Assigned" | "Unassigned";
+};
+
+type ToastState = {
+  blnOpen: boolean;
+  strMessage: string;
+  strSeverity: "success" | "error";
+};
 
 function formatCurrency(decValue: number | null) {
   if (decValue === null) {
@@ -45,6 +61,8 @@ function formatDate(strDate: string | null) {
 }
 
 const lstRowsPerPageOptions = [10, 20, 50];
+const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
+const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 
 function downloadCsv(strFileName: string, lstRows: EmployeeSalaryListRecord[]) {
   const lstHeaders = [
@@ -138,35 +156,54 @@ function exportPdf(strTitle: string, lstRows: EmployeeSalaryListRecord[]) {
 export default function EmployeeSalaryListPage() {
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [lstEmployeeSalaries, setLstEmployeeSalaries] = useState<EmployeeSalaryListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
-  const [dicSearch, setDicSearch] = useState({
-    strName: "",
-    strCode: "",
-    strStatus: "All"
-  });
+  const [dicSearch, setDicSearch] = useState<SearchForm>(dicEmptySearch);
   const [dicAppliedSearch, setDicAppliedSearch] = useState(dicSearch);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanExport = canDoAny("export");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanAdd = canDoAny("add");
+  const blnCanSave = canDoAny("save");
+  const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSave;
+  const blnReadOnly = isReadOnly() || (blnCanView && !blnCanMutate);
+
+  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function closeToast() {
+    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  async function loadEmployeeSalaries() {
+    if (!blnCanView) {
+      setLstEmployeeSalaries([]);
+      setIntPage(1);
+      setBlnLoading(false);
+      return;
+    }
+    setBlnLoading(true);
+    try {
+      setLstEmployeeSalaries(await employeeSalaryService.getEmployeeSalaries());
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : "Unable to load employee salary records.", "error");
+    } finally {
+      setBlnLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let blnMounted = true;
-    setBlnLoading(true);
-    employeeSalaryService.getEmployeeSalaries()
-      .then((lstData) => {
-        if (blnMounted) {
-          setLstEmployeeSalaries(lstData);
-        }
-      })
-      .finally(() => {
-        if (blnMounted) {
-          setBlnLoading(false);
-        }
-      });
-    return () => {
-      blnMounted = false;
-    };
-  }, []);
+    if (blnRightsLoading) {
+      return;
+    }
+    loadEmployeeSalaries().catch(() => undefined);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     return lstEmployeeSalaries.filter((dicRow) => {
@@ -185,6 +222,12 @@ export default function EmployeeSalaryListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}
+          </Typography>
+        ) : null}
 
         <Box className={styles.searchRow}>
           <TextField
@@ -226,7 +269,6 @@ export default function EmployeeSalaryListPage() {
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
-                const dicEmptySearch = { strName: "", strCode: "", strStatus: "All" };
                 setDicSearch(dicEmptySearch);
                 setDicAppliedSearch(dicEmptySearch);
                 setIntPage(1);
@@ -241,32 +283,38 @@ export default function EmployeeSalaryListPage() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              className={styles.primaryButton}
-              startIcon={<AddRoundedIcon />}
-              onClick={() => {
-                const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
-                if (dicFirstUnassigned) {
-                  objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
-                }
-              }}
-            >
-              {t("employee_salary_open_employee", "Open Employee")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => downloadCsv("employee_salary.csv", lstFilteredRows)}
-            >
-              {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => exportPdf(t("employee_salary_title", "Employee Salary"), lstFilteredRows)}
-            >
-              {t("export_pdf", "Export PDF")}
-            </Button>
+            {blnCanMutate ? (
+              <Button
+                className={styles.primaryButton}
+                startIcon={<AddRoundedIcon />}
+                onClick={() => {
+                  const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
+                  if (dicFirstUnassigned) {
+                    objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
+                  }
+                }}
+              >
+                {t("employee_salary_open_employee", "Open Employee")}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<DownloadRoundedIcon />}
+                onClick={() => downloadCsv("employee_salary.csv", lstFilteredRows)}
+              >
+                {t("export_excel", "Export Excel")}
+              </Button>
+            ) : null}
+            {blnCanExport ? (
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<DownloadRoundedIcon />}
+                onClick={() => exportPdf(t("employee_salary_title", "Employee Salary"), lstFilteredRows)}
+              >
+                {t("export_pdf", "Export PDF")}
+              </Button>
+            ) : null}
           </Box>
 
           {!blnLoading && lstFilteredRows.length > 0 ? (
@@ -304,10 +352,19 @@ export default function EmployeeSalaryListPage() {
         ) : null}
         </Box>
 
-        {blnLoading ? (
+        {blnLoading || blnRightsLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{t("employee_salary_loading_records", "Loading employee salary records...")}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              {t("employee_salary_access_denied", "Employee salary access is not available for your user group.")}
+            </Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("employee_salary_access_denied_help", "Contact your administrator if you need employee salary visibility.")}
+            </Typography>
           </Box>
         ) : (
           <Box className={styles.tableWrap}>
@@ -332,18 +389,12 @@ export default function EmployeeSalaryListPage() {
                 ) : lstVisibleRows.map((dicRow) => (
                   <tr key={dicRow.intEmployeeID}>
                     <td>
-                      <Box className={styles.actionCell}>
-                        <button
-                          className={`${styles.iconButton} ${styles.viewIcon}`}
-                          type="button"
-                          onClick={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
-                          title={dicRow.strSalaryStatus === "Assigned"
-                            ? t("employee_salary_open_button", "Open")
-                            : t("employee_salary_assign_button", "Assign")}
-                        >
-                          <OpenInNewRoundedIcon fontSize="small" />
-                        </button>
-                      </Box>
+                      <CommonRowActions
+                        blnCanView={blnCanView}
+                        blnCanEdit={blnCanMutate}
+                        onView={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}?mode=view`)}
+                        onEdit={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
+                      />
                     </td>
                     <td>{dicRow.strEmployeeCode}</td>
                     <td>{dicRow.strEmployeeName}</td>
@@ -365,6 +416,14 @@ export default function EmployeeSalaryListPage() {
           </Box>
         )}
       </Box>
+
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading", "Loading...")} intZIndex={1400} />
+
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+          {objToast.strMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

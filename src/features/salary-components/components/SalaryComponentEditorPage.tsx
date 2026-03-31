@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import {
   createEmptySalaryComponentTextRow,
@@ -41,6 +42,8 @@ type SalaryComponentEditorPageProps = {
   strMode: "add" | "edit";
   intSalaryComponentID?: number;
 };
+
+const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
 
 function parseMultiSelectNumberValues(objValue: string | string[]) {
   const lstRawValues = Array.isArray(objValue) ? objValue : objValue.split(",");
@@ -70,6 +73,7 @@ export default function SalaryComponentEditorPage({
 }: SalaryComponentEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useSalaryComponentLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstSalaryComponentModuleCodes);
   const [objFormOptions, setObjFormOptions] = useState<SalaryComponentFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<SalaryComponentFormValues>(createInitialSalaryComponentForm());
   const [blnLoading, setBlnLoading] = useState(true);
@@ -77,9 +81,26 @@ export default function SalaryComponentEditorPage({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
 
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
+  const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
+
   useEffect(() => {
     let blnMounted = true;
     async function loadData() {
+      if (blnRightsLoading) {
+        return;
+      }
+      if (!blnCanLoadWorkspace) {
+        if (blnMounted) {
+          setBlnLoading(false);
+        }
+        return;
+      }
       setBlnLoading(true);
       setStrError("");
       try {
@@ -121,7 +142,7 @@ export default function SalaryComponentEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [intSalaryComponentID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intSalaryComponentID, strMode]);
 
   const dicDependencyOptionByID = useMemo(() => {
     return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -168,6 +189,9 @@ export default function SalaryComponentEditorPage({
   }
 
   async function handleSave() {
+    if (!blnCanSave) {
+      return;
+    }
     if (!dicForm.strComponentCode.trim() || !dicForm.strComponentName.trim() || !dicForm.strComponentCategory.trim() || !dicForm.strCalcMethod.trim()) {
       setStrError("Component code, name, category, and calculation method are required.");
       return;
@@ -190,13 +214,29 @@ export default function SalaryComponentEditorPage({
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
           <CircularProgress />
           <Typography sx={{ color: "#64748b" }}>{t("loading_salary_component_workspace", "Loading salary component workspace...")}</Typography>
         </Stack>
+      </Box>
+    );
+  }
+
+  if (!blnCanLoadWorkspace) {
+    return (
+      <Box className={styles.emptyState}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+          {strMode === "add"
+            ? t("access_denied_add", "Salary component create access is not available for your user group.")
+            : t("access_denied", "Salary component access is not available for your user group.")}
+        </Typography>
+        <Typography sx={{ mt: 1, color: "#64748b" }}>
+          {t("access_denied_help", "Contact your administrator if you need salary component access.")}
+        </Typography>
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
       </Box>
     );
   }
@@ -246,7 +286,7 @@ export default function SalaryComponentEditorPage({
                 variant="contained"
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
-                disabled={blnSaving}
+                disabled={!blnCanSave || blnSaving}
                 sx={{
                   borderRadius: "14px",
                   height: 38,
@@ -272,67 +312,68 @@ export default function SalaryComponentEditorPage({
 
           {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+          {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Salary Component.")}</Alert> : null}
         </Stack>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>1. {t("basic_information", "Basic Information")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-          <TextField label={t("component_code", "Component Code")} value={dicForm.strComponentCode} onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())} fullWidth />
-          <TextField label={t("component_name", "Component Name")} value={dicForm.strComponentName} onChange={(objEvent) => updateRootField("strComponentName", objEvent.target.value)} fullWidth />
-          <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} fullWidth>
+          <TextField label={t("component_code", "Component Code")} value={dicForm.strComponentCode} onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
+          <TextField label={t("component_name", "Component Name")} value={dicForm.strComponentName} onChange={(objEvent) => updateRootField("strComponentName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+          <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             {lstCategoryOptions.map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} fullWidth>
+          <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             <MenuItem value="">{t("none", "None")}</MenuItem>
             {lstGroupOptions.map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("description", "Description")} value={dicForm.strComponentDescription} onChange={(objEvent) => updateRootField("strComponentDescription", objEvent.target.value)} fullWidth multiline minRows={3} sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }} />
+          <TextField label={t("description", "Description")} value={dicForm.strComponentDescription} onChange={(objEvent) => updateRootField("strComponentDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }} />
         </Box>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>2. {t("calculation_setup", "Calculation Setup")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField select label={t("calculation_method", "Calculation Method")} value={resolveSelectValue(objFormOptions?.lstCalcMethods ?? [], dicForm.strCalcMethod)} onChange={(objEvent) => updateRootField("strCalcMethod", objEvent.target.value)} fullWidth>
+          <TextField select label={t("calculation_method", "Calculation Method")} value={resolveSelectValue(objFormOptions?.lstCalcMethods ?? [], dicForm.strCalcMethod)} onChange={(objEvent) => updateRootField("strCalcMethod", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             {(objFormOptions?.lstCalcMethods ?? []).map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("rounding_rule", "Rounding Rule")} value={resolveSelectValue(objFormOptions?.lstRoundingRules ?? [], dicForm.strRoundingRule)} onChange={(objEvent) => updateRootField("strRoundingRule", objEvent.target.value)} fullWidth>
+          <TextField select label={t("rounding_rule", "Rounding Rule")} value={resolveSelectValue(objFormOptions?.lstRoundingRules ?? [], dicForm.strRoundingRule)} onChange={(objEvent) => updateRootField("strRoundingRule", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             <MenuItem value="">{t("none", "None")}</MenuItem>
             {(objFormOptions?.lstRoundingRules ?? []).map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("default_periodicity", "Default Periodicity")} value={resolveSelectValue(objFormOptions?.lstDefaultPeriodicities ?? [], dicForm.strDefaultPeriodicity)} onChange={(objEvent) => updateRootField("strDefaultPeriodicity", objEvent.target.value)} fullWidth>
+          <TextField select label={t("default_periodicity", "Default Periodicity")} value={resolveSelectValue(objFormOptions?.lstDefaultPeriodicities ?? [], dicForm.strDefaultPeriodicity)} onChange={(objEvent) => updateRootField("strDefaultPeriodicity", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             {(objFormOptions?.lstDefaultPeriodicities ?? []).map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("tax_treatment", "Tax Treatment")} value={resolveSelectValue(objFormOptions?.lstTaxTreatments ?? [], dicForm.strTaxTreatment)} onChange={(objEvent) => updateRootField("strTaxTreatment", objEvent.target.value)} fullWidth>
+          <TextField select label={t("tax_treatment", "Tax Treatment")} value={resolveSelectValue(objFormOptions?.lstTaxTreatments ?? [], dicForm.strTaxTreatment)} onChange={(objEvent) => updateRootField("strTaxTreatment", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             <MenuItem value="">{t("none", "None")}</MenuItem>
             {(objFormOptions?.lstTaxTreatments ?? []).map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} fullWidth multiline minRows={3} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} />
+          <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} />
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
-          <FormControlLabel control={<Switch checked={dicForm.blnAllowManualOverride} onChange={(objEvent) => updateRootField("blnAllowManualOverride", objEvent.target.checked)} />} label={t("allow_manual_override", "Allow manual override")} />
-          <FormControlLabel control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} />} label={t("active_component", "Active component")} />
+          <FormControlLabel control={<Switch checked={dicForm.blnAllowManualOverride} onChange={(objEvent) => updateRootField("blnAllowManualOverride", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("allow_manual_override", "Allow manual override")} />
+          <FormControlLabel control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("active_component", "Active component")} />
         </Stack>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("declaration_proof", "Declaration / Proof")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} />} label={t("declaration_required", "Declaration required")} />
-          <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} />} label={t("proof_required", "Proof required")} />
+          <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("declaration_required", "Declaration required")} />
+          <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("proof_required", "Proof required")} />
         </Stack>
       </Paper>
 
@@ -344,21 +385,21 @@ export default function SalaryComponentEditorPage({
               {t("multilingual_text_help", "Add translated component names and descriptions for supported languages.")}
             </Typography>
           </Box>
-          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} sx={{ borderRadius: "12px" }}>
+          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
             {t("add_language", "Add Language")}
           </Button>
         </Stack>
         <Stack spacing={1.5}>
           {dicForm.lstTexts.map((dicText) => (
             <Box key={dicText.strRowID} sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "220px 1fr 1.1fr auto" }, alignItems: "start", border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
-              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} fullWidth>
+              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth>
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
                   <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                 ))}
               </TextField>
-              <TextField label={t("component_name", "Component Name")} value={dicText.strComponentName} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)} fullWidth />
-              <TextField label={t("description", "Description")} value={dicText.strComponentDescription} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)} fullWidth />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} sx={{ minHeight: 54 }}>
+              <TextField label={t("component_name", "Component Name")} value={dicText.strComponentName} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+              <TextField label={t("description", "Description")} value={dicText.strComponentDescription} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled={blnFieldDisabled} sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>
@@ -386,6 +427,7 @@ export default function SalaryComponentEditorPage({
                 })}
               </Box>
             ) }}
+            disabled={blnFieldDisabled}
             fullWidth
           >
             {(objFormOptions?.lstDependencyComponents ?? [])

@@ -209,5 +209,17 @@ export const salaryComponentService = {
   async setSalaryComponentStatus(intSalaryComponentID: number, blnIsActive: boolean): Promise<SalaryComponentDetailRecord> {
     const objResult = await masterApiService.setSalaryComponentStatus(intSalaryComponentID, blnIsActive);
     return mapApiRecord(objResult.Data);
+  },
+
+  async bulkSalaryComponentStatus(lstIDs: number[], blnIsActive: boolean): Promise<void> {
+    await masterApiService.bulkSalaryComponentStatus(lstIDs, blnIsActive);
+  },
+
+  async deleteSalaryComponent(intSalaryComponentID: number): Promise<void> {
+    await masterApiService.deleteSalaryComponent(intSalaryComponentID);
+  },
+
+  async bulkDeleteSalaryComponents(lstIDs: number[]): Promise<void> {
+    await masterApiService.bulkSalaryComponentDelete(lstIDs);
   }
 };

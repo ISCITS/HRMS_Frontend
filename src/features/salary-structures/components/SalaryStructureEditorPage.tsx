@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryStructureLabels } from "@/features/salary-structures/hooks/useSalaryStructureLabels";
 import {
   createEmptyLineRow,
@@ -40,6 +41,8 @@ type SalaryStructureEditorPageProps = {
   strMode: "add" | "edit";
   intSalaryStructureID?: number;
 };
+
+const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
 
 function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
   if (lstLines.length === 0) {
@@ -62,6 +65,7 @@ export default function SalaryStructureEditorPage({
 }: SalaryStructureEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useSalaryStructureLabels();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstSalaryStructureModuleCodes);
   const [objFormOptions, setObjFormOptions] = useState<SalaryStructureFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<SalaryStructureFormValues>(createInitialSalaryStructureForm());
   const [blnLoading, setBlnLoading] = useState(true);
@@ -69,10 +73,27 @@ export default function SalaryStructureEditorPage({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
 
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
+  const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
+
   useEffect(() => {
     let blnMounted = true;
 
     async function loadData() {
+      if (blnRightsLoading) {
+        return;
+      }
+      if (!blnCanLoadWorkspace) {
+        if (blnMounted) {
+          setBlnLoading(false);
+        }
+        return;
+      }
       setBlnLoading(true);
       setStrError("");
       try {
@@ -116,7 +137,7 @@ export default function SalaryStructureEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [intSalaryStructureID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intSalaryStructureID, strMode]);
 
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -222,6 +243,9 @@ export default function SalaryStructureEditorPage({
   }
 
   async function handleSave() {
+    if (!blnCanSave) {
+      return;
+    }
     if (!dicForm.strStructureCode.trim() || !dicForm.strStructureName.trim() || !dicForm.dtEffectiveFrom) {
       setStrError("Structure code, structure name, and effective from date are required.");
       return;
@@ -248,13 +272,29 @@ export default function SalaryStructureEditorPage({
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
           <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>Loading salary structure workspace...</Typography>
+          <Typography sx={{ color: "#64748b" }}>{t("loading_salary_structure_workspace", "Loading salary structure workspace...")}</Typography>
         </Stack>
+      </Box>
+    );
+  }
+
+  if (!blnCanLoadWorkspace) {
+    return (
+      <Box className={styles.emptyState}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+          {strMode === "add"
+            ? t("access_denied_add", "Salary structure create access is not available for your user group.")
+            : t("access_denied", "Salary structure access is not available for your user group.")}
+        </Typography>
+        <Typography sx={{ mt: 1, color: "#64748b" }}>
+          {t("access_denied_help", "Contact your administrator if you need salary structure access.")}
+        </Typography>
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
       </Box>
     );
   }
@@ -296,6 +336,7 @@ export default function SalaryStructureEditorPage({
                   py: 0,
                   px: 1.5,
                   fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
@@ -310,7 +351,7 @@ export default function SalaryStructureEditorPage({
                 variant="contained"
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
-                disabled={blnSaving}
+                disabled={!blnCanSave || blnSaving}
                 sx={{
                   borderRadius: "14px",
                   height: 38,
@@ -318,6 +359,7 @@ export default function SalaryStructureEditorPage({
                   py: 0,
                   px: 1.75,
                   fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
@@ -333,6 +375,7 @@ export default function SalaryStructureEditorPage({
 
           {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+          {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Salary Structure.")}</Alert> : null}
         </Stack>
       </Paper>
 
@@ -345,12 +388,14 @@ export default function SalaryStructureEditorPage({
             label={t("structure_code", "Structure Code")}
             value={dicForm.strStructureCode}
             onChange={(objEvent) => updateRootField("strStructureCode", objEvent.target.value.toUpperCase())}
+            disabled={blnFieldDisabled}
             fullWidth
           />
           <TextField
             label={t("structure_name", "Structure Name")}
             value={dicForm.strStructureName}
             onChange={(objEvent) => updateRootField("strStructureName", objEvent.target.value)}
+            disabled={blnFieldDisabled}
             fullWidth
           />
         </Box>
@@ -366,6 +411,7 @@ export default function SalaryStructureEditorPage({
             label={t("currency", "Currency")}
             value={dicForm.strCurrencyCode}
             onChange={(objEvent) => updateRootField("strCurrencyCode", objEvent.target.value)}
+            disabled={blnFieldDisabled}
             fullWidth
           >
             {(objFormOptions?.lstCurrencies ?? []).map((strCurrencyCode) => (
@@ -378,6 +424,7 @@ export default function SalaryStructureEditorPage({
             value={dicForm.dtEffectiveFrom}
             onChange={(objEvent) => updateRootField("dtEffectiveFrom", objEvent.target.value)}
             InputLabelProps={{ shrink: true }}
+            disabled={blnFieldDisabled}
             fullWidth
           />
           <TextField
@@ -386,16 +433,17 @@ export default function SalaryStructureEditorPage({
             value={dicForm.dtEffectiveTo}
             onChange={(objEvent) => updateRootField("dtEffectiveTo", objEvent.target.value)}
             InputLabelProps={{ shrink: true }}
+            disabled={blnFieldDisabled}
             fullWidth
           />
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
           <FormControlLabel
-            control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} />}
+            control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} disabled={blnFieldDisabled} />}
             label={t("default_structure", "Default Structure")}
           />
           <FormControlLabel
-            control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} />}
+            control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />}
             label={t("active_structure", "Active Structure")}
           />
         </Stack>
@@ -414,7 +462,7 @@ export default function SalaryStructureEditorPage({
               )}
             </Typography>
           </Box>
-          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} sx={{ borderRadius: "12px" }}>
+          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
             {t("add_language", "Add Language")}
           </Button>
         </Stack>
@@ -438,6 +486,7 @@ export default function SalaryStructureEditorPage({
                 label={t("language", "Language")}
                 value={dicText.intLanguageID}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))}
+                disabled={blnFieldDisabled}
                 fullWidth
               >
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
@@ -448,15 +497,17 @@ export default function SalaryStructureEditorPage({
                 label={t("structure_name", "Structure Name")}
                 value={dicText.strStructureName}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureName", objEvent.target.value)}
+                disabled={blnFieldDisabled}
                 fullWidth
               />
               <TextField
                 label={t("description", "Description")}
                 value={dicText.strStructureDescription}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureDescription", objEvent.target.value)}
+                disabled={blnFieldDisabled}
                 fullWidth
               />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} sx={{ minHeight: 54 }}>
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled={blnFieldDisabled} sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>
@@ -477,7 +528,7 @@ export default function SalaryStructureEditorPage({
               )}
             </Typography>
           </Box>
-          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={handleAddLineRow} sx={{ borderRadius: "12px" }}>
+          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={handleAddLineRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
             {t("add_line", "Add Line")}
           </Button>
         </Stack>
@@ -510,6 +561,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.intLineOrder}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
+                        disabled={blnFieldDisabled}
                         sx={{ minWidth: 110 }}
                       />
                     </td>
@@ -519,6 +571,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.intSalaryComponentID}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                        disabled={blnFieldDisabled}
                         sx={{ minWidth: 220 }}
                       >
                         {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
@@ -534,6 +587,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.strValueSource}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
+                        disabled={blnFieldDisabled}
                         sx={{ minWidth: 150 }}
                       >
                         {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
@@ -546,7 +600,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltFixedAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
-                        disabled={dicLine.strValueSource !== "Fixed"}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Fixed"}
                         sx={{ minWidth: 130 }}
                       />
                     </td>
@@ -555,7 +609,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltPercentageValue}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltPercentageValue", objEvent.target.value)}
-                        disabled={dicLine.strValueSource !== "Percentage"}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
                         sx={{ minWidth: 120 }}
                       />
                     </td>
@@ -565,7 +619,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.intBasisComponentID}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                        disabled={dicLine.strValueSource !== "Percentage"}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
                         sx={{ minWidth: 210 }}
                       >
                         <MenuItem value="">{t("none", "None")}</MenuItem>
@@ -583,8 +637,8 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.strFormulaExpression}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
-                        disabled={dicLine.strValueSource !== "Formula"}
-                        sx={{ minWidth: 220 }}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Formula"}
+                        sx={{ minWidth: 210 }}
                       />
                     </td>
                     <td>
@@ -592,7 +646,8 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltMinAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMinAmount", objEvent.target.value)}
-                        sx={{ minWidth: 110 }}
+                        disabled={blnFieldDisabled}
+                        sx={{ minWidth: 120 }}
                       />
                     </td>
                     <td>
@@ -600,17 +655,26 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltMaxAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMaxAmount", objEvent.target.value)}
-                        sx={{ minWidth: 110 }}
+                        disabled={blnFieldDisabled}
+                        sx={{ minWidth: 120 }}
                       />
                     </td>
                     <td>
-                      <Switch checked={dicLine.blnIsMandatory} onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsMandatory", objEvent.target.checked)} />
+                      <Switch
+                        checked={dicLine.blnIsMandatory}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsMandatory", objEvent.target.checked)}
+                        disabled={blnFieldDisabled}
+                      />
                     </td>
                     <td>
-                      <Switch checked={dicLine.blnIsActive} onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsActive", objEvent.target.checked)} />
+                      <Switch
+                        checked={dicLine.blnIsActive}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsActive", objEvent.target.checked)}
+                        disabled={blnFieldDisabled}
+                      />
                     </td>
                     <td>
-                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLineRow(dicLine.strRowID)}>
+                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLineRow(dicLine.strRowID)} disabled={blnFieldDisabled}>
                         {t("remove_button", "Remove")}
                       </Button>
                     </td>
