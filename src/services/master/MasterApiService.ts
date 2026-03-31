@@ -209,6 +209,7 @@ export type SalaryComponentApiRecord = {
   intID: number;
   strComponentCode: string;
   strComponentName: string;
+  strComponentDescription?: string | null;
   strComponentCategory: string;
   strComponentGroup: string | null;
   strCalcMethod: string;
@@ -221,22 +222,53 @@ export type SalaryComponentApiRecord = {
   blnAllowManualOverride: boolean;
   blnIsActive: boolean;
   lstDependencyComponentIDs: number[];
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strComponentName: string;
+    strComponentDescription: string | null;
+  }>;
+  lstDependencyComponents?: Array<{
+    intSalaryComponentID: number;
+    strComponentCode: string | null;
+    strComponentName: string;
+  }>;
+};
+
+export type SalaryComponentFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstDependencyComponents: EmployeeLookupOptionApiRecord[];
+  lstComponentCategories: string[];
+  lstComponentGroups: string[];
+  lstCalcMethods: string[];
+  lstRoundingRules: string[];
+  lstDefaultPeriodicities: string[];
+  lstTaxTreatments: string[];
 };
 
 export type SalaryStructureComponentApiRecord = {
   intID: number;
   intSalaryComponentID: number;
+  strComponentCode?: string | null;
   strComponentName: string;
   intLineOrder: number;
   strValueSource: string;
   fltFixedAmount: number | null;
   fltPercentageValue: number | null;
   intBasisComponentID: number | null;
+  strBasisComponentName?: string | null;
   strFormulaExpression: string | null;
   fltMinAmount: number | null;
   fltMaxAmount: number | null;
   blnIsMandatory: boolean;
   blnIsActive: boolean;
+};
+
+export type SalaryStructureTextApiRecord = {
+  intLanguageID: number;
+  strLanguageName?: string;
+  strStructureName: string;
+  strStructureDescription: string | null;
 };
 
 export type SalaryStructureApiRecord = {
@@ -248,7 +280,106 @@ export type SalaryStructureApiRecord = {
   dtEffectiveTo: string | null;
   blnIsDefault: boolean;
   blnIsActive: boolean;
+  strScopeLabel?: string;
+  intComponentCount?: number;
   lstComponents: SalaryStructureComponentApiRecord[];
+  lstTexts: SalaryStructureTextApiRecord[];
+};
+
+export type SalaryStructureFormOptionsApiRecord = {
+  lstSalaryComponents: EmployeeLookupOptionApiRecord[];
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstValueSources: string[];
+  lstCurrencies: string[];
+};
+
+export type EmployeeSalaryListApiRecord = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strWorkEmail: string | null;
+  strEmploymentStatus: "Active" | "Inactive";
+  strSalaryStatus: "Assigned" | "Unassigned";
+  strStructureName: string | null;
+  strStructureCode: string | null;
+  dtEffectiveFrom: string | null;
+  decGrossMonthly: number | null;
+  decCtcAnnual: number | null;
+  strRevisionReason: string | null;
+};
+
+export type EmployeeSalaryFormOptionApiRecord = {
+  intID: number;
+  strLabel: string;
+  strCode?: string;
+  strCurrencyCode?: string;
+  dtEffectiveFrom?: string;
+};
+
+export type EmployeeSalaryFormOptionsApiRecord = {
+  lstEmployees: EmployeeSalaryFormOptionApiRecord[];
+  lstSalaryStructures: EmployeeSalaryFormOptionApiRecord[];
+};
+
+export type EmployeeSalaryComponentLineApiRecord = {
+  intEmployeeSalaryComponentID: number;
+  intSalaryComponentID: number;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  strComponentCategory: string | null;
+  blnAllowManualOverride: boolean;
+  strComponentValueType: string;
+  decAmountMonthly: number | null;
+  decAmountAnnual: number | null;
+  decPercentageValue: number | null;
+  intBasisComponentID: number | null;
+  strFormulaExpression: string | null;
+  blnIsOverride: boolean;
+  strRemarks: string | null;
+};
+
+export type EmployeeSalaryHistoryApiRecord = {
+  intEmployeeSalaryStructureID: number;
+  strStructureName: string | null;
+  strStructureCode: string | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo: string | null;
+  decCtcAnnual: number | null;
+  decGrossMonthly: number | null;
+  strRevisionReason: string | null;
+  blnIsCurrent: boolean;
+};
+
+export type EmployeeSalaryDetailApiRecord = {
+  objEmployeeSummary: {
+    intEmployeeID: number;
+    strEmployeeCode: string;
+    strEmployeeName: string;
+    strWorkEmail: string | null;
+    strEmploymentStatus: "Active" | "Inactive";
+  };
+  objCurrentSalarySnapshot: {
+    decCtcAnnual: number | null;
+    decGrossMonthly: number | null;
+    strRevisionReason: string | null;
+    dtEffectiveFrom: string;
+  } | null;
+  objAssignedStructure: {
+    intSalaryStructureID: number;
+    strStructureName: string | null;
+    strStructureCode: string | null;
+    strCurrencyCode: string;
+    dtEffectiveFrom: string;
+  } | null;
+  lstComponentLines: EmployeeSalaryComponentLineApiRecord[];
+  lstRevisionHistory: EmployeeSalaryHistoryApiRecord[];
+};
+
+export type EmployeeSalarySummaryApiRecord = {
+  objEmployeeSummary: EmployeeSalaryDetailApiRecord["objEmployeeSummary"];
+  objCurrentSalarySnapshot: EmployeeSalaryDetailApiRecord["objCurrentSalarySnapshot"];
+  objAssignedStructure: EmployeeSalaryDetailApiRecord["objAssignedStructure"];
+  intRevisionCount: number;
 };
 
 async function requestApi<TData>(objOptions: {
@@ -883,6 +1014,22 @@ export const masterApiService = {
     });
   },
 
+  getSalaryComponent(intID: number) {
+    return requestApi<SalaryComponentApiRecord>({
+      strPath: `/masters/salary-components/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_SALARY_COMPONENT_GET"
+    });
+  },
+
+  getSalaryComponentFormOptions() {
+    return requestApi<SalaryComponentFormOptionsApiRecord>({
+      strPath: "/masters/salary-component-form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_SALARY_COMPONENT_FORM_OPTIONS"
+    });
+  },
+
   createSalaryComponent(objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
       strPath: "/masters/salary-components",
@@ -901,6 +1048,15 @@ export const masterApiService = {
     });
   },
 
+  setSalaryComponentStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<SalaryComponentApiRecord>({
+      strPath: `/masters/salary-components/${intID}/status`,
+      strMethod: "POST",
+      objBody: { blnIsActive },
+      strMenuAction: "MASTER_SALARY_COMPONENT_STATUS"
+    });
+  },
+
   deleteSalaryComponent(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: `/masters/salary-components/${intID}`,
@@ -914,6 +1070,22 @@ export const masterApiService = {
       strPath: "/masters/salary-structures",
       strMethod: "GET",
       strMenuAction: "MASTER_SALARY_STRUCTURE_LIST"
+    });
+  },
+
+  getSalaryStructure(intID: number) {
+    return requestApi<SalaryStructureApiRecord>({
+      strPath: `/masters/salary-structures/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_SALARY_STRUCTURE_GET"
+    });
+  },
+
+  getSalaryStructureFormOptions() {
+    return requestApi<SalaryStructureFormOptionsApiRecord>({
+      strPath: "/masters/salary-structures/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_SALARY_STRUCTURE_FORM_OPTIONS"
     });
   },
 
@@ -935,11 +1107,70 @@ export const masterApiService = {
     });
   },
 
+  cloneSalaryStructure(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<SalaryStructureApiRecord>({
+      strPath: `/masters/salary-structures/${intID}/clone`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_SALARY_STRUCTURE_CLONE"
+    });
+  },
+
+  setSalaryStructureStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<SalaryStructureApiRecord>({
+      strPath: `/masters/salary-structures/${intID}/status`,
+      strMethod: "POST",
+      objBody: { blnIsActive },
+      strMenuAction: "MASTER_SALARY_STRUCTURE_STATUS"
+    });
+  },
+
   deleteSalaryStructure(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: `/masters/salary-structures/${intID}`,
       strMethod: "DELETE",
       strMenuAction: "MASTER_SALARY_STRUCTURE_DELETE"
+    });
+  },
+
+  getEmployeeSalaries() {
+    return requestApi<EmployeeSalaryListApiRecord[]>({
+      strPath: "/employee-salary",
+      strMethod: "GET",
+      strMenuAction: "EMPLOYEE_SALARY_LIST"
+    });
+  },
+
+  getEmployeeSalaryFormOptions() {
+    return requestApi<EmployeeSalaryFormOptionsApiRecord>({
+      strPath: "/employee-salary/form-options",
+      strMethod: "GET",
+      strMenuAction: "EMPLOYEE_SALARY_FORM_OPTIONS"
+    });
+  },
+
+  getEmployeeSalaryDetail(intEmployeeID: number) {
+    return requestApi<EmployeeSalaryDetailApiRecord>({
+      strPath: `/employee-salary/${intEmployeeID}`,
+      strMethod: "GET",
+      strMenuAction: "EMPLOYEE_SALARY_VIEW"
+    });
+  },
+
+  getEmployeeSalarySummary(intEmployeeID: number) {
+    return requestApi<EmployeeSalarySummaryApiRecord>({
+      strPath: `/employee-salary/${intEmployeeID}/summary`,
+      strMethod: "GET",
+      strMenuAction: "EMPLOYEE_SALARY_SUMMARY"
+    });
+  },
+
+  createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeSalaryDetailApiRecord>({
+      strPath: `/employee-salary/${intEmployeeID}/revisions`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "EMPLOYEE_SALARY_SAVE"
     });
   }
 };

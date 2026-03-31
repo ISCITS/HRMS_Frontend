@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   InputAdornment,
+  MenuItem,
   Paper,
   SxProps,
   Stack,
@@ -18,6 +19,7 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
+  Typography,
   Theme
 } from "@mui/material";
 import { ReactNode, isValidElement, useEffect, useMemo, useState } from "react";
@@ -44,6 +46,7 @@ type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   pageSizeOptions?: number[];
   exportFileName?: string;
   showExportOptions?: boolean;
+  showPaginationSummary?: boolean;
   emptyMessage?: string;
   withPaper?: boolean;
   sx?: SxProps<Theme>;
@@ -59,6 +62,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   pageSizeOptions = [5, 10, 25],
   exportFileName = dicConstant.commonDataGrid.defaultExportFileName,
   showExportOptions = false,
+  showPaginationSummary = false,
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
   sx
@@ -283,6 +287,53 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             />
         </Stack>
       </Stack>
+
+      {showPaginationSummary ? (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ sm: "center" }}
+          justifyContent="space-between"
+          sx={{
+            px: 0.25,
+            py: 0.5,
+            borderRadius: 2,
+            backgroundColor: "rgba(248,250,252,0.8)",
+            border: "1px solid",
+            borderColor: "divider"
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
+            <Typography sx={{ fontSize: "0.9rem", color: "text.secondary", fontWeight: 600 }}>
+              {dicConstant.common.rowsPerPage}
+            </Typography>
+            <TextField
+              select
+              size="small"
+              value={String(rowsPerPage)}
+              onChange={(event) => {
+                setRowsPerPage(parseInt(event.target.value, 10));
+                setPage(0);
+              }}
+              sx={{ width: 88 }}
+            >
+              {pageSizeOptions.map((intOption) => (
+                <MenuItem key={intOption} value={String(intOption)}>
+                  {intOption}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Typography sx={{ fontSize: "0.9rem", color: "text.secondary" }}>
+              {filteredAndSortedRows.length === 0
+                ? `0 ${dicConstant.common.paginationSeparator} 0`
+                : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${dicConstant.common.paginationSeparator} ${filteredAndSortedRows.length}`}
+            </Typography>
+          </Box>
+          <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
+            Page {filteredAndSortedRows.length === 0 ? 0 : page + 1} of {Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
+          </Typography>
+        </Stack>
+      ) : null}
 
       <Table size="small" sx={{ borderCollapse: "separate", borderSpacing: 0 }}>
         <TableHead>

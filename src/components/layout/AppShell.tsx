@@ -398,7 +398,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflow: "hidden" }}>{children}</Box>
+        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflowY: "auto", overflowX: "hidden", pr: 0.5 }}>{children}</Box>
       </Box>
 
       <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs">
