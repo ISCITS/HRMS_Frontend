@@ -3,9 +3,9 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOffRoundedIcon from "@mui/icons-material/ToggleOffRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import {
   Alert,
@@ -48,6 +48,99 @@ function formatDate(strDate: string | null) {
     month: "short",
     year: "numeric"
   }).format(new Date(strDate));
+}
+
+function downloadCsv(strFileName: string, lstRows: SalaryStructureListRecord[]) {
+  const lstHeaders = [
+    "Code",
+    "Structure Name",
+    "Scope",
+    "Currency",
+    "Effective From",
+    "Effective To",
+    "Components",
+    "Status"
+  ];
+  const lstLines = [
+    lstHeaders.join(","),
+    ...lstRows.map((dicRow) =>
+      [
+        dicRow.strStructureCode,
+        dicRow.strStructureName,
+        dicRow.strScopeLabel,
+        dicRow.strCurrencyCode,
+        formatDate(dicRow.dtEffectiveFrom),
+        formatDate(dicRow.dtEffectiveTo),
+        dicRow.intComponentCount,
+        dicRow.blnIsActive ? "Active" : "Inactive"
+      ]
+        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
+        .join(",")
+    )
+  ];
+  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const strUrl = URL.createObjectURL(objBlob);
+  const objLink = document.createElement("a");
+  objLink.href = strUrl;
+  objLink.download = strFileName;
+  objLink.click();
+  URL.revokeObjectURL(strUrl);
+}
+
+function exportPdf(strTitle: string, lstRows: SalaryStructureListRecord[]) {
+  const objWindow = window.open("", "_blank", "width=1400,height=900");
+  if (!objWindow) {
+    return;
+  }
+
+  const strRows = lstRows.map((dicRow) => `
+    <tr>
+      <td>${dicRow.strStructureCode}</td>
+      <td>${dicRow.strStructureName}</td>
+      <td>${dicRow.strScopeLabel}</td>
+      <td>${dicRow.strCurrencyCode}</td>
+      <td>${formatDate(dicRow.dtEffectiveFrom)}</td>
+      <td>${formatDate(dicRow.dtEffectiveTo)}</td>
+      <td>${dicRow.intComponentCount}</td>
+      <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
+    </tr>
+  `).join("");
+
+  objWindow.document.write(`
+    <html>
+      <head>
+        <title>${strTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          h1 { margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 12px; }
+          th { background: #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <h1>${strTitle}</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Structure Name</th>
+              <th>Scope</th>
+              <th>Currency</th>
+              <th>Effective From</th>
+              <th>Effective To</th>
+              <th>Components</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${strRows}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  objWindow.document.close();
+  objWindow.focus();
+  objWindow.print();
 }
 
 export default function SalaryStructureListPage() {
@@ -148,23 +241,6 @@ export default function SalaryStructureListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box>
-            <Typography className={styles.title}>{t("salary_structure_title", "Salary Structures")}</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.75, maxWidth: 820, fontSize: "0.92rem" }}>
-              {t(
-                "list_description",
-                "Configure enterprise salary structures with effective dates, multilingual labels, and component-wise value source rules from one master workspace."
-              )}
-            </Typography>
-          </Box>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")}>
-              {t("add_salary_structure", "Add Salary Structure")}
-            </Button>
-          </Box>
-        </Box>
-
         {strError ? <Alert severity="error" sx={{ mt: 1.25 }} onClose={() => setStrError("")}>{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success" sx={{ mt: 1.25 }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
 
@@ -221,8 +297,29 @@ export default function SalaryStructureListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredRows.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")}>
+              {t("add_salary_structure", "Add Salary Structure")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => downloadCsv("salary_structures.csv", lstFilteredRows)}
+            >
+              {t("export_excel", "Export Excel")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => exportPdf(t("salary_structure_title", "Salary Structures"), lstFilteredRows)}
+            >
+              {t("export_pdf", "Export PDF")}
+            </Button>
+          </Box>
+
+          {!blnLoading && lstFilteredRows.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
               <TextField
@@ -254,6 +351,7 @@ export default function SalaryStructureListPage() {
             />
           </Box>
         ) : null}
+        </Box>
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
@@ -286,23 +384,32 @@ export default function SalaryStructureListPage() {
                 ) : lstVisibleRows.map((dicRow) => (
                   <tr key={dicRow.intID}>
                     <td>
-                      <Stack direction="row" spacing={0.75} className={styles.actionCell}>
-                        <Button className={styles.secondaryButton} startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}>
-                          {t("action_edit", "Edit")}
-                        </Button>
-                        <Button className={styles.secondaryButton} startIcon={<ContentCopyRoundedIcon />} onClick={() => handleCloneOpen(dicRow.intID)}>
-                          {t("clone_button", "Clone")}
-                        </Button>
-                        <Button
-                          className={dicRow.blnIsActive ? styles.secondaryButton : styles.primaryButton}
-                          startIcon={dicRow.blnIsActive ? <ToggleOffRoundedIcon /> : <ToggleOnRoundedIcon />}
-                          onClick={() => handleStatusToggle(dicRow)}
+                      <Box className={styles.actionCell}>
+                        <button
+                          className={`${styles.iconButton} ${styles.editIcon}`}
+                          type="button"
+                          onClick={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
+                          title={t("action_edit", "Edit")}
                         >
-                          {dicRow.blnIsActive
-                            ? t("deactivate_button", "Deactivate")
-                            : t("activate_button", "Activate")}
-                        </Button>
-                      </Stack>
+                          <EditRoundedIcon fontSize="small" />
+                        </button>
+                        <button
+                          className={`${styles.iconButton} ${styles.editIcon}`}
+                          type="button"
+                          onClick={() => handleCloneOpen(dicRow.intID)}
+                          title={t("clone_button", "Clone")}
+                        >
+                          <ContentCopyRoundedIcon fontSize="small" />
+                        </button>
+                        <button
+                          className={`${styles.iconButton} ${styles.toggleIcon}`}
+                          type="button"
+                          onClick={() => handleStatusToggle(dicRow)}
+                          title={dicRow.blnIsActive ? t("deactivate_button", "Deactivate") : t("activate_button", "Activate")}
+                        >
+                          <ToggleOnRoundedIcon fontSize="small" />
+                        </button>
+                      </Box>
                     </td>
                     <td>{dicRow.strStructureCode}</td>
                     <td>{dicRow.strStructureName}</td>

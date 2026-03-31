@@ -2,9 +2,9 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOffRoundedIcon from "@mui/icons-material/ToggleOffRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import {
   Alert,
@@ -13,7 +13,6 @@ import {
   CircularProgress,
   MenuItem,
   Pagination,
-  Stack,
   TextField,
   Typography
 } from "@mui/material";
@@ -26,6 +25,119 @@ import { salaryComponentService } from "@/features/salary-components/services/sa
 import type { SalaryComponentListRecord } from "@/features/salary-components/types";
 
 const lstRowsPerPageOptions = [10, 20, 50];
+
+function downloadCsv(strFileName: string, lstRows: SalaryComponentListRecord[]) {
+  const lstHeaders = [
+    "Code",
+    "Component Name",
+    "Category",
+    "Group",
+    "Calc Method",
+    "Rounding",
+    "Periodicity",
+    "Tax Treatment",
+    "Manual Override",
+    "Declaration",
+    "Proof",
+    "Dependencies",
+    "Status"
+  ];
+  const lstLines = [
+    lstHeaders.join(","),
+    ...lstRows.map((dicRow) =>
+      [
+        dicRow.strComponentCode,
+        dicRow.strComponentName,
+        dicRow.strComponentCategory,
+        dicRow.strComponentGroup ?? "-",
+        dicRow.strCalcMethod,
+        dicRow.strRoundingRule ?? "-",
+        dicRow.strDefaultPeriodicity,
+        dicRow.strTaxTreatment ?? "-",
+        dicRow.blnAllowManualOverride ? "Yes" : "No",
+        dicRow.blnDeclarationRequired ? "Yes" : "No",
+        dicRow.blnProofRequired ? "Yes" : "No",
+        dicRow.intDependencyCount,
+        dicRow.blnIsActive ? "Active" : "Inactive"
+      ]
+        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
+        .join(",")
+    )
+  ];
+  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const strUrl = URL.createObjectURL(objBlob);
+  const objLink = document.createElement("a");
+  objLink.href = strUrl;
+  objLink.download = strFileName;
+  objLink.click();
+  URL.revokeObjectURL(strUrl);
+}
+
+function exportPdf(strTitle: string, lstRows: SalaryComponentListRecord[]) {
+  const objWindow = window.open("", "_blank", "width=1400,height=900");
+  if (!objWindow) {
+    return;
+  }
+
+  const strRows = lstRows.map((dicRow) => `
+    <tr>
+      <td>${dicRow.strComponentCode}</td>
+      <td>${dicRow.strComponentName}</td>
+      <td>${dicRow.strComponentCategory}</td>
+      <td>${dicRow.strComponentGroup ?? "-"}</td>
+      <td>${dicRow.strCalcMethod}</td>
+      <td>${dicRow.strRoundingRule ?? "-"}</td>
+      <td>${dicRow.strDefaultPeriodicity}</td>
+      <td>${dicRow.strTaxTreatment ?? "-"}</td>
+      <td>${dicRow.blnAllowManualOverride ? "Yes" : "No"}</td>
+      <td>${dicRow.blnDeclarationRequired ? "Yes" : "No"}</td>
+      <td>${dicRow.blnProofRequired ? "Yes" : "No"}</td>
+      <td>${dicRow.intDependencyCount}</td>
+      <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
+    </tr>
+  `).join("");
+
+  objWindow.document.write(`
+    <html>
+      <head>
+        <title>${strTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          h1 { margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 12px; }
+          th { background: #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <h1>${strTitle}</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Component Name</th>
+              <th>Category</th>
+              <th>Group</th>
+              <th>Calc Method</th>
+              <th>Rounding</th>
+              <th>Periodicity</th>
+              <th>Tax Treatment</th>
+              <th>Manual Override</th>
+              <th>Declaration</th>
+              <th>Proof</th>
+              <th>Dependencies</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${strRows}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  objWindow.document.close();
+  objWindow.focus();
+  objWindow.print();
+}
 
 export default function SalaryComponentListPage() {
   const objRouter = useRouter();
@@ -88,22 +200,7 @@ export default function SalaryComponentListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box>
-            <Typography className={styles.title}>{t("salary_component_title", "Salary Components")}</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.75, maxWidth: 840, fontSize: "0.92rem" }}>
-              {t(
-                "list_description",
-                "Maintain salary component masters with calculation setup, declaration/proof flags, multilingual text, and dependency mapping in one dedicated workspace."
-              )}
-            </Typography>
-          </Box>
-          <Box className={styles.headerActions}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-components/add")}>
-              {t("add_component", "Add Component")}
-            </Button>
-          </Box>
-        </Box>
+
 
         {strError ? <Alert severity="error" sx={{ mt: 1.25 }} onClose={() => setStrError("")}>{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success" sx={{ mt: 1.25 }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
@@ -154,8 +251,29 @@ export default function SalaryComponentListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredRows.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-components/add")}>
+              {t("add_component", "Add Component")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => downloadCsv("salary_components.csv", lstFilteredRows)}
+            >
+              {t("export_excel", "Export Excel")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => exportPdf(t("salary_component_title", "Salary Components"), lstFilteredRows)}
+            >
+              {t("export_pdf", "Export PDF")}
+            </Button>
+          </Box>
+
+          {!blnLoading && lstFilteredRows.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
               <TextField
@@ -179,6 +297,7 @@ export default function SalaryComponentListPage() {
             <Pagination count={intPageCount} page={intResolvedPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
           </Box>
         ) : null}
+        </Box>
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
@@ -214,18 +333,24 @@ export default function SalaryComponentListPage() {
                 ) : lstVisibleRows.map((dicRow) => (
                   <tr key={dicRow.intID}>
                     <td>
-                      <Stack direction="row" spacing={0.75} className={styles.actionCell}>
-                        <Button className={styles.secondaryButton} startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/salary-components/edit/${dicRow.intID}`)}>
-                          {t("action_edit", "Edit")}
-                        </Button>
-                        <Button
-                          className={dicRow.blnIsActive ? styles.secondaryButton : styles.primaryButton}
-                          startIcon={dicRow.blnIsActive ? <ToggleOffRoundedIcon /> : <ToggleOnRoundedIcon />}
-                          onClick={() => handleStatusToggle(dicRow)}
+                      <Box className={styles.actionCell}>
+                        <button
+                          className={`${styles.iconButton} ${styles.editIcon}`}
+                          type="button"
+                          onClick={() => objRouter.push(`/salary-components/edit/${dicRow.intID}`)}
+                          title={t("action_edit", "Edit")}
                         >
-                          {dicRow.blnIsActive ? t("deactivate_button", "Deactivate") : t("activate_button", "Activate")}
-                        </Button>
-                      </Stack>
+                          <EditRoundedIcon fontSize="small" />
+                        </button>
+                        <button
+                          className={`${styles.iconButton} ${styles.toggleIcon}`}
+                          type="button"
+                          onClick={() => handleStatusToggle(dicRow)}
+                          title={dicRow.blnIsActive ? t("deactivate_button", "Deactivate") : t("activate_button", "Activate")}
+                        >
+                          <ToggleOnRoundedIcon fontSize="small" />
+                        </button>
+                      </Box>
                     </td>
                     <td>{dicRow.strComponentCode}</td>
                     <td>{dicRow.strComponentName}</td>

@@ -1,8 +1,9 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Box,
@@ -44,6 +45,95 @@ function formatDate(strDate: string | null) {
 }
 
 const lstRowsPerPageOptions = [10, 20, 50];
+
+function downloadCsv(strFileName: string, lstRows: EmployeeSalaryListRecord[]) {
+  const lstHeaders = [
+    "Employee Code",
+    "Employee Name",
+    "Salary Status",
+    "Assigned Structure",
+    "Effective From",
+    "Gross Monthly",
+    "CTC Annual"
+  ];
+  const lstLines = [
+    lstHeaders.join(","),
+    ...lstRows.map((dicRow) =>
+      [
+        dicRow.strEmployeeCode,
+        dicRow.strEmployeeName,
+        dicRow.strSalaryStatus,
+        dicRow.strStructureName ?? "Not assigned",
+        formatDate(dicRow.dtEffectiveFrom),
+        formatCurrency(dicRow.decGrossMonthly),
+        formatCurrency(dicRow.decCtcAnnual)
+      ]
+        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
+        .join(",")
+    )
+  ];
+  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const strUrl = URL.createObjectURL(objBlob);
+  const objLink = document.createElement("a");
+  objLink.href = strUrl;
+  objLink.download = strFileName;
+  objLink.click();
+  URL.revokeObjectURL(strUrl);
+}
+
+function exportPdf(strTitle: string, lstRows: EmployeeSalaryListRecord[]) {
+  const objWindow = window.open("", "_blank", "width=1400,height=900");
+  if (!objWindow) {
+    return;
+  }
+
+  const strRows = lstRows.map((dicRow) => `
+    <tr>
+      <td>${dicRow.strEmployeeCode}</td>
+      <td>${dicRow.strEmployeeName}</td>
+      <td>${dicRow.strSalaryStatus}</td>
+      <td>${dicRow.strStructureName ?? "Not assigned"}</td>
+      <td>${formatDate(dicRow.dtEffectiveFrom)}</td>
+      <td>${formatCurrency(dicRow.decGrossMonthly)}</td>
+      <td>${formatCurrency(dicRow.decCtcAnnual)}</td>
+    </tr>
+  `).join("");
+
+  objWindow.document.write(`
+    <html>
+      <head>
+        <title>${strTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          h1 { margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 12px; }
+          th { background: #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <h1>${strTitle}</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Employee Code</th>
+              <th>Employee Name</th>
+              <th>Salary Status</th>
+              <th>Assigned Structure</th>
+              <th>Effective From</th>
+              <th>Gross Monthly</th>
+              <th>CTC Annual</th>
+            </tr>
+          </thead>
+          <tbody>${strRows}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  objWindow.document.close();
+  objWindow.focus();
+  objWindow.print();
+}
 
 export default function EmployeeSalaryListPage() {
   const objRouter = useRouter();
@@ -95,33 +185,6 @@ export default function EmployeeSalaryListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box>
-            <Typography className={styles.title}>
-              {t("employee_salary_title", "Employee Salary")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.75, maxWidth: 760, fontSize: "0.92rem" }}>
-              {t(
-                "employee_salary_list_description",
-                "Manage employee salary assignments, revisions, current salary snapshots, and effective-dated salary history from one dedicated module."
-              )}
-            </Typography>
-          </Box>
-          <Box className={styles.headerActions}>
-            <Button
-              className={styles.primaryButton}
-              startIcon={<AddRoundedIcon />}
-              onClick={() => {
-                const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
-                if (dicFirstUnassigned) {
-                  objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
-                }
-              }}
-            >
-              {t("employee_salary_open_employee", "Open Employee")}
-            </Button>
-          </Box>
-        </Box>
 
         <Box className={styles.searchRow}>
           <TextField
@@ -176,8 +239,38 @@ export default function EmployeeSalaryListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnLoading && lstFilteredRows.length > 0 ? (
-          <Box className={styles.paginationBar}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button
+              className={styles.primaryButton}
+              startIcon={<AddRoundedIcon />}
+              onClick={() => {
+                const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
+                if (dicFirstUnassigned) {
+                  objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
+                }
+              }}
+            >
+              {t("employee_salary_open_employee", "Open Employee")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => downloadCsv("employee_salary.csv", lstFilteredRows)}
+            >
+              {t("export_excel", "Export Excel")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => exportPdf(t("employee_salary_title", "Employee Salary"), lstFilteredRows)}
+            >
+              {t("export_pdf", "Export PDF")}
+            </Button>
+          </Box>
+
+          {!blnLoading && lstFilteredRows.length > 0 ? (
+          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
               <TextField
@@ -209,6 +302,7 @@ export default function EmployeeSalaryListPage() {
             />
           </Box>
         ) : null}
+        </Box>
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
@@ -239,15 +333,16 @@ export default function EmployeeSalaryListPage() {
                   <tr key={dicRow.intEmployeeID}>
                     <td>
                       <Box className={styles.actionCell}>
-                        <Button
-                          className={dicRow.strSalaryStatus === "Assigned" ? styles.secondaryButton : styles.primaryButton}
-                          endIcon={<ArrowForwardRoundedIcon />}
+                        <button
+                          className={`${styles.iconButton} ${styles.viewIcon}`}
+                          type="button"
                           onClick={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
-                        >
-                          {dicRow.strSalaryStatus === "Assigned"
+                          title={dicRow.strSalaryStatus === "Assigned"
                             ? t("employee_salary_open_button", "Open")
                             : t("employee_salary_assign_button", "Assign")}
-                        </Button>
+                        >
+                          <OpenInNewRoundedIcon fontSize="small" />
+                        </button>
                       </Box>
                     </td>
                     <td>{dicRow.strEmployeeCode}</td>
