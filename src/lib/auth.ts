@@ -1,6 +1,7 @@
 import { appConfig } from "@/config";
 
 let blnSessionExpiryRedirectInProgress = false;
+const strLanguageChangedEventName = "hrms:language-changed";
 
 /*
 Functional responsibility:
