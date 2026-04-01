@@ -9,6 +9,7 @@ export type TenantLookupData = {
   strTenantUUID: string;
   strTenantCode: string;
   strTenantName: string;
+  intLanguageID?: number | null;
   strIsolationMode: string;
   lstAuthModes: string[];
   blnSsoEnabled: boolean;
@@ -18,8 +19,10 @@ export type TenantLookupData = {
 export type TenantAuthDetails = {
   tenant_id: number;
   tenant_uuid: string;
+  language_id?: number | null;
   is_active: boolean;
   auth_mode: "LOCAL" | "SSO";
+  labels?: Record<string, string>;
 };
 
 export type LoginRequest = {

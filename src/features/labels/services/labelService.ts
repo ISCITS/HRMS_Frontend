@@ -10,7 +10,7 @@ export const labelService = {
     try {
       const objResponse = await callAPI<ModuleLabelsResponse>(
         null,
-        "/api/v1/labels",
+        "labels",
         "MASTER_EMPLOYEE_LABELS",
         {
           method: "GET",

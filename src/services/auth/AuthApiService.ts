@@ -6,7 +6,22 @@ import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { apiConstants } from "@/config/constants";
-import { GenericLoginRequest, LoginRequest, type AuthLoginData, type AuthOtpChallengeData, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type ResendOtpRequest, type SsoRedirectData, type TenantAuthDetails, type TenantLookupData, type VerifyOtpRequest } from "@/models/AuthModels";
+import type { ModuleLabelsResponse } from "@/features/labels/types";
+import {
+  GenericLoginRequest,
+  LoginRequest,
+  type ActionRightsResponse,
+  type AuthLoginData,
+  type AuthOtpChallengeData,
+  type AuthSuccessData,
+  type CurrentUserContext,
+  type MenuResponse,
+  type ResendOtpRequest,
+  type SsoRedirectData,
+  type TenantAuthDetails,
+  type TenantLookupData,
+  type VerifyOtpRequest
+} from "@/models/AuthModels";
 
 type ApiEnvelope<TData> = {
   ResultCode: number;
@@ -96,6 +111,14 @@ export const authApiService = {
       strPath: `tenant/${strTenantUUID}/auth-details`,
       strMethod: "GET",
       strMenuAction: "AUTH_TENANT_DETAILS"
+    });
+  },
+
+  async getLoginLabels(strTenantUUID: string) {
+    return requestApi<ModuleLabelsResponse>({
+      strPath: `tenant/${strTenantUUID}/login-labels`,
+      strMethod: "GET",
+      strMenuAction: "AUTH_LOGIN_LABELS"
     });
   },
 
