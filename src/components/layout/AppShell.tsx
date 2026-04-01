@@ -33,7 +33,7 @@ import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
-import { authApiService } from "@/services";
+import { authApiService, clsApiRequestError } from "@/services";
 
 const intDrawerWidth = 308;
 const intTopBarHeight = 60;
@@ -131,13 +131,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
 
+  function redirectToSessionExpired() {
+    authHelpers.redirectToSessionExpired();
+  }
+
   useEffect(() => {
     let blnMounted = true;
     const strAccessToken = authHelpers.getAccessToken();
 
     if (!strAccessToken) {
       setBlnLoading(false);
-      objRouter.replace("/login");
+      redirectToSessionExpired();
       return () => {
         blnMounted = false;
       };
@@ -156,9 +160,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
         setObjUserContext(objUserResult.Data);
         setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
-      .catch(() => {
+      .catch((objError: unknown) => {
         if (blnMounted) {
-          objRouter.replace("/login");
+          if (isSessionExpiredError(objError)) {
+            redirectToSessionExpired();
+          } else {
+            objRouter.replace("/login");
+          }
         }
       })
       .finally(() => {
@@ -489,4 +497,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </Dialog>
     </Box>
   );
+}
+
+function isSessionExpiredError(objError: unknown): boolean {
+  if (objError instanceof clsApiRequestError) {
+    if (objError.intStatusCode === 401 || objError.intStatusCode === 403) {
+      return true;
+    }
+
+    return /unauthorized|session|token|expired|forbidden/i.test(objError.message);
+  }
+
+  return objError instanceof Error && /unauthorized|session|token|expired|forbidden/i.test(objError.message);
 }

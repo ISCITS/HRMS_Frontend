@@ -27,7 +27,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup"];
+  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup", "/session-expired"];
   const blnIsTenantLoginRoute = strPathname.startsWith(`${appRoutes.login}/`);
   const intIsPublicRoute =
     lstPublicRoutes.includes(strPathname) ||

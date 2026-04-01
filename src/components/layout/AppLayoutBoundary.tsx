@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 
-const publicRoutes = ["/", "/home", "/login", "/register", "/forgot-password"];
+const publicRoutes = ["/", "/home", "/login", "/register", "/forgot-password", "/session-expired"];
 const publicPrefixes = ["/t", "/sso/callback"];
 
 /*

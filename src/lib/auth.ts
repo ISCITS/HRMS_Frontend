@@ -1,6 +1,6 @@
 import { appConfig } from "@/config";
 
-const strLanguageChangedEventName = "hrms:language-changed";
+let blnSessionExpiryRedirectInProgress = false;
 
 /*
 Functional responsibility:
@@ -41,6 +41,15 @@ export const authHelpers = {
     }
 
     return this.getCookieValue(this.cookieName);
+  },
+  getTenantUUID() {
+    return this.getCookieValue(this.tenantCookieName);
+  },
+  getSessionExpiredUrl() {
+    const strTenantUUID = this.getTenantUUID();
+    return strTenantUUID
+      ? `/session-expired?tenantUuid=${encodeURIComponent(strTenantUUID)}`
+      : "/session-expired";
   },
   setAuthenticatedSession(strAccessToken: string, strTenantUUID?: string) {
     if (typeof document === "undefined") {
@@ -121,5 +130,22 @@ export const authHelpers = {
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+  },
+  redirectToSessionExpired() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (blnSessionExpiryRedirectInProgress) {
+      return;
+    }
+
+    blnSessionExpiryRedirectInProgress = true;
+    const strSessionExpiredUrl = this.getSessionExpiredUrl();
+    this.clearSession();
+    window.location.replace(strSessionExpiredUrl);
+  },
+  resetSessionExpiryRedirect() {
+    blnSessionExpiryRedirectInProgress = false;
   }
 };

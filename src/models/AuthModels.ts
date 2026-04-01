@@ -62,6 +62,25 @@ export type AuthSuccessData = {
   blnPasswordResetRequired: boolean;
 };
 
+export type AuthOtpChallengeData = {
+  blnRequiresOtp: boolean;
+  intUserID: number;
+  intTenantID: number;
+};
+
+export type AuthLoginData = AuthSuccessData | AuthOtpChallengeData;
+
+export type VerifyOtpRequest = {
+  intUserID: number;
+  intTenantID: number;
+  strOtp: string;
+};
+
+export type ResendOtpRequest = {
+  intUserID: number;
+  intTenantID: number;
+};
+
 export type CurrentUserContext = {
   objTenant: TenantSummary;
   objUser: UserSummary;
