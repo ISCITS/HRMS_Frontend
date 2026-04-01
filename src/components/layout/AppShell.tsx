@@ -165,7 +165,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           if (isSessionExpiredError(objError)) {
             redirectToSessionExpired();
           } else {
-            objRouter.replace("/login");
+            objRouter.replace(authHelpers.getLoginUrl());
           }
         }
       })
@@ -184,7 +184,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setBlnLogoutDialogOpen(false);
     setBlnLoggingOut(true);
     await authApiService.logout().catch(() => undefined);
-    objRouter.replace("/login");
+    objRouter.replace(authHelpers.getLoginUrl());
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";

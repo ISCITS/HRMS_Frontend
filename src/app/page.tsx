@@ -5,5 +5,12 @@ import { appConfig, appRoutes } from "@/config";
 export default async function RootPage() {
   const objCookieStore = await cookies();
   const strAccessToken = objCookieStore.get(appConfig.authCookieName)?.value;
-  redirect(strAccessToken ? appRoutes.dashboard : appRoutes.login);
+  const strTenantUUID = objCookieStore.get(appConfig.tenantCookieName)?.value?.trim() ?? "";
+  redirect(
+    strAccessToken
+      ? appRoutes.dashboard
+      : strTenantUUID
+        ? `${appRoutes.login}/${encodeURIComponent(strTenantUUID)}`
+        : "/session-expired"
+  );
 }

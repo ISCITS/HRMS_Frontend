@@ -236,7 +236,7 @@ export const authApiService = {
       strMenuAction: "AUTH_LOGOUT",
       blnUseAuthHeader: true
     });
-    authHelpers.clearSession();
+    authHelpers.clearSession(true);
     return objResult;
   }
 };

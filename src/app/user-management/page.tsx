@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 
 import { normalizeMenuResponse } from "@/lib/menu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { authHelpers } from "@/lib/auth";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -48,7 +49,7 @@ export default function UserManagementPage() {
       })
       .catch(() => {
         if (blnMounted) {
-          objRouter.replace("/login");
+          objRouter.replace(authHelpers.getLoginUrl());
         }
       })
       .finally(() => {

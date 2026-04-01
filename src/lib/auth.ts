@@ -46,6 +46,12 @@ export const authHelpers = {
   getTenantUUID() {
     return this.getCookieValue(this.tenantCookieName);
   },
+  getLoginUrl(strTenantUUID?: string) {
+    const strResolvedTenantUUID = (strTenantUUID || this.getTenantUUID()).trim();
+    return strResolvedTenantUUID
+      ? `/login/${encodeURIComponent(strResolvedTenantUUID)}`
+      : "/session-expired";
+  },
   getSessionExpiredUrl() {
     const strTenantUUID = this.getTenantUUID();
     return strTenantUUID
@@ -117,11 +123,12 @@ export const authHelpers = {
     const intLanguageID = Number(strLanguageID);
     return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
   },
-  clearSession() {
+  clearSession(blnPreserveTenantContext = false) {
     if (typeof document === "undefined") {
       return;
     }
 
+    const strTenantUUID = this.getTenantUUID();
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("hrms_session_token");
       window.localStorage.removeItem("hrms_tenant_id");
@@ -130,7 +137,11 @@ export const authHelpers = {
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
-    document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+    if (blnPreserveTenantContext && strTenantUUID) {
+      document.cookie = `${this.tenantCookieName}=${encodeURIComponent(strTenantUUID)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
+    } else {
+      document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+    }
   },
   redirectToSessionExpired() {
     if (typeof window === "undefined") {

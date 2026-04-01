@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import DashboardLanding from "@/components/dashboard/DashboardLanding";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
@@ -28,7 +29,7 @@ export default function DashboardPage() {
       })
       .catch(() => {
         if (blnMounted) {
-          objRouter.replace("/login");
+          objRouter.replace(authHelpers.getLoginUrl());
         }
       })
       .finally(() => {
