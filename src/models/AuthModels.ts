@@ -52,6 +52,7 @@ export type TenantSummary = {
 
 export type UserSummary = {
   intUserID: number;
+  intEmployeeID?: number | null;
   strLoginName: string | null;
   strEmailAddress: string | null;
   lstRoles: string[];

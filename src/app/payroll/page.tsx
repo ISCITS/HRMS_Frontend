@@ -30,7 +30,7 @@ export default function PayrollPage() {
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button
-              href="/payroll/run"
+              href="/payroll/runs"
               variant="contained"
               sx={{
                 minHeight: 52,
@@ -49,7 +49,7 @@ export default function PayrollPage() {
                 }
               }}
             >
-              Run Payroll
+              Payroll Runs
             </Button>
             <Button
               href="/payroll/payslips"
@@ -68,7 +68,45 @@ export default function PayrollPage() {
                 }
               }}
             >
-              View Payslips
+              Payroll Results
+            </Button>
+            <Button
+              href="/payroll/statutory-rules"
+              variant="outlined"
+              sx={{
+                minHeight: 52,
+                px: 2.5,
+                borderRadius: "14px",
+                fontWeight: 600,
+                borderColor: "#0f766e",
+                color: "#0f766e",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: "rgba(15,118,110,0.06)",
+                  borderColor: "#115e59"
+                }
+              }}
+            >
+              Statutory Rules
+            </Button>
+            <Button
+              href="/payroll/employee-payroll-inputs"
+              variant="outlined"
+              sx={{
+                minHeight: 52,
+                px: 2.5,
+                borderRadius: "14px",
+                fontWeight: 600,
+                borderColor: "#9333ea",
+                color: "#7e22ce",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: "rgba(147,51,234,0.06)",
+                  borderColor: "#7e22ce"
+                }
+              }}
+            >
+              Employee Inputs
             </Button>
           </Stack>
         </Stack>

@@ -1,0 +1,515 @@
+"use client";
+
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import {
+  Alert,
+  Box,
+  Button,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
+import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import {
+  createEmptyEmployeePayrollInputLine,
+  createInitialEmployeePayrollInputForm,
+  employeePayrollInputService,
+  toEmployeePayrollInputFormValues,
+} from "@/features/payroll/services/employeePayrollInputService";
+import type {
+  EmployeePayrollInputFormLine,
+  EmployeePayrollInputFormOptions,
+  EmployeePayrollInputFormValues,
+} from "@/features/payroll/types";
+
+type EmployeePayrollInputEditorPageProps = {
+  strMode: "add" | "edit";
+  intInputID?: number;
+};
+
+function formatAmount(decValue: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(decValue);
+}
+
+function parseAmount(strValue: string) {
+  const decValue = Number(strValue);
+  return Number.isFinite(decValue) ? decValue : 0;
+}
+
+export default function EmployeePayrollInputEditorPage({
+  strMode,
+  intInputID,
+}: EmployeePayrollInputEditorPageProps) {
+  const objRouter = useRouter();
+  const { t } = useModuleLabels("employee-payroll-input");
+  const { t: tCommon } = useModuleLabels("common");
+  const [dicForm, setDicForm] = useState<EmployeePayrollInputFormValues>(
+    createInitialEmployeePayrollInputForm()
+  );
+  const [objOptions, setObjOptions] = useState<EmployeePayrollInputFormOptions | null>(
+    null
+  );
+  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnSaving, setBlnSaving] = useState(false);
+  const [strError, setStrError] = useState("");
+  const [strSuccess, setStrSuccess] = useState("");
+
+  useEffect(() => {
+    let blnMounted = true;
+
+    async function loadPage() {
+      setBlnLoading(true);
+      setStrError("");
+      try {
+        const [dicOptions, dicInput] = await Promise.all([
+          employeePayrollInputService.getFormOptions(),
+          strMode === "edit" && intInputID
+            ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
+            : Promise.resolve(null),
+        ]);
+        if (!blnMounted) {
+          return;
+        }
+        setObjOptions(dicOptions);
+        if (dicInput) {
+          setDicForm(toEmployeePayrollInputFormValues(dicInput));
+        }
+      } catch (objError) {
+        if (blnMounted) {
+          setStrError(
+            objError instanceof Error
+              ? objError.message
+              : "Unable to load employee payroll input workspace."
+          );
+        }
+      } finally {
+        if (blnMounted) {
+          setBlnLoading(false);
+        }
+      }
+    }
+
+    loadPage().catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, [intInputID, strMode]);
+
+  const dicSelectedEmployee = useMemo(
+    () =>
+      objOptions?.lstEmployees.find(
+        (dicEmployee) => dicEmployee.intID === dicForm.intEmployeeID
+      ) ?? null,
+    [dicForm.intEmployeeID, objOptions]
+  );
+
+  const dicSelectedRun = useMemo(
+    () =>
+      objOptions?.lstPayrollRuns.find(
+        (dicRun) => dicRun.intID === dicForm.intPayrollRunID
+      ) ?? null,
+    [dicForm.intPayrollRunID, objOptions]
+  );
+
+  const decTotalLines = useMemo(
+    () =>
+      dicForm.lstLines.reduce(
+        (decTotal, dicLine) => decTotal + parseAmount(dicLine.strAmount),
+        0
+      ),
+    [dicForm.lstLines]
+  );
+
+  const blnFormLocked =
+    blnSaving || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
+
+  function updateField<TKey extends keyof EmployeePayrollInputFormValues>(
+    strField: TKey,
+    objValue: EmployeePayrollInputFormValues[TKey]
+  ) {
+    setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateLine(
+    intTempID: number,
+    strField: keyof EmployeePayrollInputFormLine,
+    objValue: EmployeePayrollInputFormLine[keyof EmployeePayrollInputFormLine]
+  ) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstLines: dicPrevious.lstLines.map((dicLine) =>
+        dicLine.intTempID === intTempID
+          ? { ...dicLine, [strField]: objValue }
+          : dicLine
+      ),
+    }));
+  }
+
+  function addLine() {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstLines: [...dicPrevious.lstLines, createEmptyEmployeePayrollInputLine()],
+    }));
+  }
+
+  function removeLine(intTempID: number) {
+    setDicForm((dicPrevious) => {
+      const lstFilteredLines = dicPrevious.lstLines.filter(
+        (dicLine) => dicLine.intTempID !== intTempID
+      );
+      return {
+        ...dicPrevious,
+        lstLines: lstFilteredLines.length
+          ? lstFilteredLines
+          : [createEmptyEmployeePayrollInputLine()],
+      };
+    });
+  }
+
+  function validateForm() {
+    if (!dicForm.intEmployeeID) {
+      return t("employee_required", "Employee is required.");
+    }
+    if (!dicForm.intPayrollRunID) {
+      return t("payroll_run_required", "Payroll run is required.");
+    }
+    if (
+      dicForm.lstLines.some(
+        (dicLine) => !dicLine.intSalaryComponentID || !dicLine.strAmount.trim()
+      )
+    ) {
+      return t(
+        "input_line_required",
+        "Each payroll input line must have a salary component and amount."
+      );
+    }
+    if (
+      dicForm.lstLines.some((dicLine) => Number.isNaN(Number(dicLine.strAmount)))
+    ) {
+      return t("amount_invalid", "Each input line amount must be a valid number.");
+    }
+    const lstComponentIDs = dicForm.lstLines.map((dicLine) =>
+      Number(dicLine.intSalaryComponentID)
+    );
+    if (new Set(lstComponentIDs).size !== lstComponentIDs.length) {
+      return t(
+        "component_duplicate",
+        "Each salary component can be used only once in a payroll input."
+      );
+    }
+    return "";
+  }
+
+  async function saveRecord() {
+    const strValidationError = validateForm();
+    if (strValidationError) {
+      setStrError(strValidationError);
+      setStrSuccess("");
+      return;
+    }
+
+    setBlnSaving(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      if (strMode === "edit" && intInputID) {
+        await employeePayrollInputService.updateEmployeePayrollInput(
+          intInputID,
+          dicForm
+        );
+        setStrSuccess(
+          t("update_success", "Employee payroll input updated successfully.")
+        );
+      } else {
+        await employeePayrollInputService.createEmployeePayrollInput(dicForm);
+        setStrSuccess(
+          t("save_success", "Employee payroll input saved successfully.")
+        );
+        setDicForm(createInitialEmployeePayrollInputForm());
+      }
+      window.setTimeout(() => {
+        objRouter.push("/payroll/employee-payroll-inputs");
+      }, 600);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error
+          ? objError.message
+          : "Unable to save employee payroll input."
+      );
+    } finally {
+      setBlnSaving(false);
+    }
+  }
+
+  if (blnLoading) {
+    return (
+      <BlockingLoader
+        strLabel={t(
+          "loading_employee_payroll_input",
+          "Loading employee payroll input..."
+        )}
+      />
+    );
+  }
+
+  const nodeEditorContent = (
+    <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+
+      <Stack spacing={0.5}>
+        <Typography className={styles.title}>
+          {strMode === "edit"
+            ? t("edit_title", "Edit Employee Payroll Input")
+            : t("add_title", "Create Employee Payroll Input")}
+        </Typography>
+      </Stack>
+
+      <Box
+        sx={{
+          border: "1px solid #d9e6ef",
+          borderRadius: 2,
+          p: 1.5,
+          background:
+            "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)",
+        }}
+      >
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+          {t("section_employee_run", "1. Employee and Run Details")}
+        </Typography>
+        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          <TextField
+            select
+            label={t("employee", "Employee")}
+            value={dicForm.intEmployeeID}
+            onChange={(objEvent) => updateField("intEmployeeID", Number(objEvent.target.value))}
+            disabled={blnFormLocked}
+            fullWidth
+          >
+            <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
+            {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
+              <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
+                {dicEmployee.strCode} - {dicEmployee.strLabel}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label={t("payroll_run", "Payroll Run")}
+            value={dicForm.intPayrollRunID}
+            onChange={(objEvent) => updateField("intPayrollRunID", Number(objEvent.target.value))}
+            disabled={blnFormLocked}
+            fullWidth
+          >
+            <MenuItem value="">{t("select_payroll_run", "Select payroll run")}</MenuItem>
+            {(objOptions?.lstPayrollRuns ?? []).map((dicRun) => (
+              <MenuItem key={dicRun.intID} value={dicRun.intID}>
+                {dicRun.strCode} - {dicRun.strLabel}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
+        <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr" }, mt: 1.25 }}>
+          <TextField label={t("employee_code", "Employee Code")} value={dicSelectedEmployee?.strCode ?? ""} InputProps={{ readOnly: true }} fullWidth />
+          <TextField label={t("payroll_month", "Payroll Month")} value={dicSelectedRun?.dtPayrollMonth ?? ""} InputProps={{ readOnly: true }} fullWidth />
+          <TextField label={t("run_status", "Run Status")} value={dicSelectedRun?.strStatus ?? ""} InputProps={{ readOnly: true }} fullWidth />
+          <TextField label={t("run_locked", "Run Locked")} value={dicSelectedRun?.blnIsLocked ? "Yes" : "No"} InputProps={{ readOnly: true }} fullWidth />
+        </Box>
+      </Box>
+
+      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+          {t("section_attendance", "2. Attendance / LWP / LOP")}
+        </Typography>
+        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          <TextField label={t("lwp_days", "LWP Days")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
+          <TextField label={t("lop_days", "LOP Days")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
+        </Box>
+      </Box>
+
+      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
+          <Box>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              {t("section_lines", "3. Input Lines")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.25 }}>
+              {t(
+                "line_help",
+                "Capture additions, deductions, arrears, and recoveries at salary component level."
+              )}
+            </Typography>
+          </Box>
+          <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked}>
+            {t("add_line", "Add Line")}
+          </Button>
+        </Box>
+
+        <Box sx={{ overflowX: "auto", maxHeight: 260, overflowY: "auto" }}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t("component", "Component")}</th>
+                <th>{t("line_type", "Line Type")}</th>
+                <th>{t("amount", "Amount")}</th>
+                <th>{t("remarks", "Remarks")}</th>
+                <th>{t("actions", "Actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dicForm.lstLines.map((dicLine) => (
+                <tr key={dicLine.intTempID}>
+                  <td>
+                    <TextField select value={dicLine.intSalaryComponentID} onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", Number(objEvent.target.value))} disabled={blnFormLocked} fullWidth>
+                      <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
+                      {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
+                        <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
+                          {dicComponent.strCode} - {dicComponent.strLabel}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </td>
+                  <td>
+                    <TextField select value={dicLine.strLineType} onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])} disabled={blnFormLocked} fullWidth>
+                      {(objOptions?.lstLineTypes ?? []).map((dicType) => (
+                        <MenuItem key={dicType.strCode} value={dicType.strCode}>
+                          {dicType.strLabel}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </td>
+                  <td>
+                    <TextField value={dicLine.strAmount} onChange={(objEvent) => updateLine(dicLine.intTempID, "strAmount", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
+                  </td>
+                  <td>
+                    <TextField value={dicLine.strRemarks} onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("line_remarks", "Optional line remarks")} fullWidth />
+                  </td>
+                  <td>
+                    <Button className={styles.secondaryButton} startIcon={<DeleteOutlineRoundedIcon />} onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked}>
+                      {t("remove", "Remove")}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Box>
+
+        <Box sx={{ mt: 1, display: "flex", justifyContent: "flex-end", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+          <Typography sx={{ color: "#64748b" }}>
+            {t("total_lines", "Total Input Value")}
+          </Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+            {formatAmount(decTotalLines)}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+          {t("section_remarks_status", "4. Remarks / Status")}
+        </Typography>
+        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          <TextField select label={t("status", "Status")} value={dicForm.strStatus} onChange={(objEvent) => updateField("strStatus", objEvent.target.value as EmployeePayrollInputFormValues["strStatus"])} disabled={blnFormLocked} fullWidth>
+            {(objOptions?.lstStatuses ?? []).map((dicStatus) => (
+              <MenuItem key={dicStatus.strCode} value={dicStatus.strCode}>
+                {dicStatus.strLabel}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField label={t("remarks", "Remarks")} value={dicForm.strRemarks} onChange={(objEvent) => updateField("strRemarks", objEvent.target.value)} disabled={blnFormLocked} multiline minRows={2} fullWidth />
+        </Box>
+
+        <FormControlLabel
+          sx={{ mt: 1.25 }}
+          control={
+            <Switch
+              checked={dicForm.blnIsLocked}
+              onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
+              disabled={blnSaving || dicForm.strStatus === "Locked"}
+            />
+          }
+          label={t("lock_record", "Lock this payroll input")}
+        />
+      </Box>
+    </Stack>
+  );
+
+  return (
+    <Box className={styles.page}>
+      <Typography className={styles.breadcrumbs}>
+        {t("breadcrumbs_editor", "Payroll / Employee Payroll Input / Editor")}
+      </Typography>
+      <Box className={styles.topBar}>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
+        >
+          {t("back_to_list", "Back to List")}
+        </Button>
+      </Box>
+
+      <CommonPayrollDialog
+        blnOpen
+        onClose={() => objRouter.push("/payroll/employee-payroll-inputs")}
+        onDialogClose={blnSaving ? undefined : () => objRouter.push("/payroll/employee-payroll-inputs")}
+        strTitle={
+          strMode === "edit"
+            ? t("edit_title", "Edit Employee Payroll Input")
+            : t("add_title", "Create Employee Payroll Input")
+        }
+        strSecondaryLabel={tCommon("cancel", "Cancel")}
+        strPrimaryLabel={blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+        onPrimaryAction={saveRecord}
+        blnPrimaryDisabled={blnSaving || (blnFormLocked && strMode === "edit")}
+        nodeContent={nodeEditorContent}
+        paperClassName=""
+        maxWidth="lg"
+        paperSx={{
+          width: "min(92vw, 1180px)",
+          maxWidth: "1180px",
+          maxHeight: "82vh",
+          borderRadius: 2,
+          overflow: "hidden",
+          background:
+            "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
+          "& .MuiDialogTitle-root": {
+            px: 3,
+            py: 2,
+            borderBottom: "1px solid #d9e6ef",
+            fontWeight: 800,
+          },
+          "& .MuiDialogContent-root": {
+            px: 3,
+            py: 2,
+          },
+          "& .MuiDialogActions-root": {
+            px: 3,
+            py: 2,
+            borderTop: "1px solid #d9e6ef",
+            background: "rgba(255,255,255,0.96)",
+            position: "sticky",
+            bottom: 0,
+          },
+        }}
+      />
+    </Box>
+  );
+}
