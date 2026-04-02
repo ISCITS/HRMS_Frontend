@@ -32,7 +32,7 @@ import type {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
-  strMode: "add" | "edit";
+  strMode: "add" | "edit" | "view";
   intPayrollCycleID?: number;
 };
 
@@ -55,9 +55,10 @@ export default function PayrollCycleEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
+  const blnForcedView = strMode === "view";
+  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function PayrollCycleEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if (strMode === "edit" && intPayrollCycleID) {
+        if ((strMode === "edit" || strMode === "view") && intPayrollCycleID) {
           const dicDetail = await payrollCycleService.getPayrollCycleById(intPayrollCycleID);
           if (!blnMounted) {
             return;
@@ -136,7 +137,7 @@ export default function PayrollCycleEditorPage({
       setDicForm(toPayrollCycleFormValues(dicSavedRecord));
       setStrSuccess(`Payroll cycle ${strMode === "edit" ? "updated" : "created"} successfully.`);
       if (strMode === "add") {
-        objRouter.push(`/payroll-cycles/edit/${dicSavedRecord.intID}`);
+        objRouter.push(`/payroll/cycles/edit/${dicSavedRecord.intID}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to save payroll cycle.");
@@ -186,18 +187,59 @@ export default function PayrollCycleEditorPage({
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "edit" ? t("edit_title", "Edit Payroll Cycle") : t("add_title", "Add Payroll Cycle")}
+                {strMode === "view"
+                  ? t("view_title", "View Payroll Cycle")
+                  : strMode === "edit"
+                    ? t("edit_title", "Edit Payroll Cycle")
+                    : t("add_title", "Add Payroll Cycle")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("subtitle", "Define period cadence, group ownership, and cutoff timing without exposing internal system metadata.")}
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll-cycles")}>
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<ArrowBackRoundedIcon />}
+                onClick={() => objRouter.push("/payroll/cycles")}
+                sx={{
+                  height: 38,
+                  minHeight: 38,
+                  py: 0,
+                  px: 1.5,
+                  fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
+                  "& .MuiButton-startIcon": {
+                    mr: 0.75,
+                    "& svg": {
+                      fontSize: "1rem"
+                    }
+                  }
+                }}
+              >
                 {t("back_to_list", "Back to list")}
               </Button>
               {blnCanSave ? (
-                <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
+                <Button
+                  className={styles.primaryButton}
+                  startIcon={<SaveRoundedIcon />}
+                  onClick={handleSave}
+                  disabled={blnSaving}
+                  sx={{
+                    height: 38,
+                    minHeight: 38,
+                    py: 0,
+                    px: 1.75,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
+                    }
+                  }}
+                >
                   {blnSaving ? t("saving", "Saving...") : t("save", "Save Payroll Cycle")}
                 </Button>
               ) : null}
