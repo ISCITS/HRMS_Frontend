@@ -328,18 +328,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Alert>
               ) : null}
 
-              {strMode === "tenant" ? (
-                <Box className={styles.tenantSummary}>
-                  <Typography className={styles.tenantSummaryLabel}>{getLoginLabel("resolvedWorkspaceLabel")}</Typography>
-                  <Typography className={styles.tenantSummaryValue}>
-                    {blnTenantLoading ? getLoginLabel("resolvingTenantStatus") : objTenant?.strTenantName ?? getLoginLabel("tenantUnavailable")}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.75, color: "#475569" }}>
-                    {strTenantUUID}
-                  </Typography>
-                </Box>
-              ) : null}
-
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("loginIdLabel")}</Typography>
                 <TextField
@@ -402,7 +390,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               {!blnOtpStep ? (
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
                   <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
-                    {getLoginLabel("forgotPassword")}
+                    {/* {getLoginLabel("forgotPassword")} */}
                   </Typography>
                 </Box>
               ) : null}

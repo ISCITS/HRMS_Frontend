@@ -5,12 +5,16 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   CircularProgress,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Pagination,
   Snackbar,
@@ -29,21 +33,31 @@ import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { authHelpers } from "@/lib/auth";
+import { authApiService } from "@/services/auth/AuthApiService";
 import { type UserApiRecord, type UserFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type UserStatus = "Active" | "Inactive";
 type UserMode = "add" | "edit" | "view";
-type AuthSource = "local" | "sso";
+
+type EmployeeOption = {
+  intID: number;
+  strLabel: string;
+  strCode?: string;
+};
 
 type UserRecord = {
   id: string;
   loginName: string;
   email: string;
   mobile: string;
-  authSource: AuthSource;
+  authSource: "local" | "sso";
   ssoEnabled: boolean;
+  mfaEnabled: boolean;
   ssoLoginMapping: string;
   preferredLanguageID: number | null;
+  employeeID: number | null;
+  employeeName: string;
   userGroupID: number | null;
   userGroupName: string;
   status: UserStatus;
@@ -55,10 +69,13 @@ type UserForm = {
   email: string;
   mobile: string;
   password: string;
-  authSource: AuthSource;
+  confirmPassword: string;
   ssoEnabled: boolean;
+  mfaEnabled: boolean;
+  loginAsEmployee: boolean;
   ssoLoginMapping: string;
   preferredLanguageID: number | "";
+  employeeID: number | "";
   userGroupID: number | "";
   status: UserStatus;
 };
@@ -87,10 +104,13 @@ const dicEmptyForm: UserForm = {
   email: "",
   mobile: "",
   password: "",
-  authSource: "local",
+  confirmPassword: "",
   ssoEnabled: false,
+  mfaEnabled: false,
+  loginAsEmployee: false,
   ssoLoginMapping: "",
   preferredLanguageID: "",
+  employeeID: "",
   userGroupID: "",
   status: "Active"
 };
@@ -106,8 +126,11 @@ function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
     mobile: dicRecord.strMobileNumber ?? "",
     authSource: dicRecord.strAuthSource ?? "local",
     ssoEnabled: dicRecord.blnIsSsoEnabled,
+    mfaEnabled: dicRecord.blnMfaEnabled ?? false,
     ssoLoginMapping: dicRecord.strSsoLoginMapping ?? "",
     preferredLanguageID: dicRecord.intPreferredLanguageID,
+    employeeID: dicRecord.intEmployeeID ?? null,
+    employeeName: dicRecord.strEmployeeName ?? "",
     userGroupID: dicRecord.intUserGroupID,
     userGroupName: dicRecord.strUserGroupName ?? "",
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
@@ -116,11 +139,11 @@ function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
 }
 
 function downloadCsv(strFileName: string, lstRows: UserRecord[]) {
-  const lstHeaders = ["Login Name", "Email Address", "Mobile Number", "Auth Source", "SSO Enabled", "Status"];
+  const lstHeaders = ["Login Name", "Email Address", "Mobile Number", "User Group", "Status"];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
-      [dicRow.loginName, dicRow.email, dicRow.mobile, dicRow.authSource, dicRow.ssoEnabled ? "Yes" : "No", dicRow.status]
+      [dicRow.loginName, dicRow.email, dicRow.mobile, dicRow.userGroupName, dicRow.status]
         .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
         .join(",")
     )
@@ -145,8 +168,7 @@ function exportPdf(strTitle: string, lstRows: UserRecord[]) {
       <td>${dicRow.loginName}</td>
       <td>${dicRow.email}</td>
       <td>${dicRow.mobile}</td>
-      <td>${dicRow.authSource}</td>
-      <td>${dicRow.ssoEnabled ? "Yes" : "No"}</td>
+      <td>${dicRow.userGroupName}</td>
       <td>${dicRow.status}</td>
     </tr>
   `).join("");
@@ -171,8 +193,7 @@ function exportPdf(strTitle: string, lstRows: UserRecord[]) {
               <th>Login Name</th>
               <th>Email Address</th>
               <th>Mobile Number</th>
-              <th>Auth Source</th>
-              <th>SSO Enabled</th>
+              <th>User Group</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -188,10 +209,11 @@ function exportPdf(strTitle: string, lstRows: UserRecord[]) {
 
 export default function UserMasterPanel() {
   const objRouter = useRouter();
-  const { t } = useModuleLabels("user");
+  const { t, strLanguageCode } = useModuleLabels("user");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(["USER", "USERS"]);
   const [lstUsers, setLstUsers] = useState<UserRecord[]>(lstDefaultUsers);
   const [objFormOptions, setObjFormOptions] = useState<UserFormOptionsApiRecord>({ lstLanguages: [], lstUserGroups: [] });
+  const [lstEmployeeOptions, setLstEmployeeOptions] = useState<EmployeeOption[]>([]);
   const [strMode, setStrMode] = useState<UserMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingUserId, setStrEditingUserId] = useState("");
@@ -206,6 +228,10 @@ export default function UserMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [intTenantLanguageID, setIntTenantLanguageID] = useState<number | null>(authHelpers.getLanguageID());
+  const [blnTenantOtpEnabled, setBlnTenantOtpEnabled] = useState(false);
+  const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
+  const [blnConfirmPasswordVisible, setBlnConfirmPasswordVisible] = useState(false);
   const dicCommonLabels = {
     cancel: t("cancel"),
     close: t("close"),
@@ -228,19 +254,20 @@ export default function UserMasterPanel() {
     breadcrumbs: t("breadcrumbs"),
     pageTitle: stripMasterTitle(t("page_title")),
     backButton: t("back_button"),
-    addButton: t("add_button"),
-    dialogAddTitle: t("dialog_add_title"),
-    dialogEditTitle: t("dialog_edit_title"),
-    dialogViewTitle: t("dialog_view_title"),
+    addButton:
+      strLanguageCode === "hi"
+        ? "उपयोगकर्ता जोड़ें"
+        : "Add User",
+    dialogAddTitle: t("dialog_add_title", "Add User"),
+    dialogEditTitle: t("dialog_edit_title", "Edit User"),
+    dialogViewTitle: t("dialog_view_title", "View User"),
     searchCodePlaceholder: t("search_code_placeholder"),
     searchNamePlaceholder: t("search_name_placeholder"),
     searchStatusPlaceholder: t("search_status_placeholder"),
     tableLoginName: t("table_login_name"),
     tableEmail: t("table_email"),
     tableMobile: t("table_mobile"),
-    tableAuthSource: t("table_auth_source"),
     tableUserGroup: t("table_user_group", "User Group"),
-    tableSsoEnabled: t("table_sso_enabled"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     loadingRecords: t("loading_records"),
@@ -249,18 +276,17 @@ export default function UserMasterPanel() {
     fieldEmail: t("field_email"),
     fieldMobile: t("field_mobile"),
     fieldPassword: t("field_password"),
-    fieldAuthSource: t("field_auth_source"),
+    fieldConfirmPassword: t("field_confirm_password", "Confirm Password"),
     fieldSsoLoginMapping: t("field_sso_login_mapping"),
     fieldPreferredLanguage: t("field_preferred_language", "Preferred Language"),
     fieldUserGroup: t("field_user_group", "User Group"),
+    fieldEnableOtpOnly: t("field_enable_otp_only", "Enable OTP Only"),
+    helperEnableOtpOnly: t("helper_enable_otp_only", "Require OTP-based login for this user when tenant OTP mode is enabled."),
+    fieldLoginAsEmployee: t("field_login_as_employee", "Login as Employee"),
+    helperLoginAsEmployee: t("helper_login_as_employee", "Link this user account to an employee profile."),
+    fieldEmployee: t("field_employee", "Employee"),
     fieldStatus: t("field_status"),
-    fieldSsoEnabled: t("field_sso_enabled"),
-    helperSsoEnabled: t("helper_sso_enabled", "Enable only when this user should authenticate through SSO mapping."),
     helperPasswordOptional: t("helper_password_optional"),
-    authSourceLocal: t("auth_source_local"),
-    authSourceSso: t("auth_source_sso"),
-    ssoEnabledYes: t("sso_enabled_yes"),
-    ssoEnabledNo: t("sso_enabled_no"),
     saveButton: t("save_button"),
     updateButton: t("update_button"),
     saveSuccess: t("save_success"),
@@ -278,7 +304,10 @@ export default function UserMasterPanel() {
     validationEmailInvalid: t("validation_email_invalid"),
     validationPasswordRequired: t("validation_password_required"),
     validationPasswordMin: t("validation_password_min"),
+    validationConfirmPasswordRequired: t("validation_confirm_password_required", "Confirm password is required."),
+    validationConfirmPasswordMismatch: t("validation_confirm_password_mismatch", "Password and confirm password must match."),
     validationMobileInvalid: t("validation_mobile_invalid"),
+    validationEmployeeRequired: t("validation_employee_required", "Employee is required."),
     validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
@@ -302,6 +331,7 @@ export default function UserMasterPanel() {
     if (!canViewAny()) {
       setLstUsers(lstDefaultUsers);
       setObjFormOptions({ lstLanguages: [], lstUserGroups: [] });
+      setLstEmployeeOptions([]);
       setLstSelectedIds([]);
       setIntPage(1);
       setBlnLoading(false);
@@ -309,12 +339,23 @@ export default function UserMasterPanel() {
     }
     setBlnLoading(true);
     try {
-      const [objUsers, objOptions] = await Promise.all([
+      const strTenantUUID = authHelpers.getTenantUUID();
+      const [objUsers, objOptions, objEmployees, objTenant] = await Promise.all([
         masterApiService.getUsers(),
         masterApiService.getUserFormOptions(),
+        masterApiService.getEmployees().catch(() => ({ Data: [] })),
+        strTenantUUID ? authApiService.getTenant(strTenantUUID).catch(() => null) : Promise.resolve(null),
       ]);
+      const intResolvedTenantLanguageID = authHelpers.getLanguageID();
       setLstUsers(objUsers.Data.map(mapUserRecord));
       setObjFormOptions(objOptions.Data);
+      setLstEmployeeOptions(objEmployees.Data.map((dicEmployee) => ({
+        intID: dicEmployee.intID,
+        strLabel: dicEmployee.strFullName,
+        strCode: dicEmployee.strEmployeeCode,
+      })));
+      setIntTenantLanguageID(intResolvedTenantLanguageID);
+      setBlnTenantOtpEnabled((objTenant?.Data.lstAuthModes ?? []).some((strModeValue) => strModeValue.trim().toLowerCase() === "otp"));
       setLstSelectedIds([]);
       setIntPage(1);
     } finally {
@@ -349,23 +390,32 @@ export default function UserMasterPanel() {
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
+  const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
 
   function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     setStrMode(strNextMode);
     setStrEditingUserId(dicUser?.id ?? "");
     setDicErrors({});
+    setBlnPasswordVisible(false);
+    setBlnConfirmPasswordVisible(false);
     setDicForm(dicUser ? {
       loginName: dicUser.loginName,
       email: dicUser.email,
       mobile: dicUser.mobile,
       password: "",
-      authSource: dicUser.authSource,
+      confirmPassword: "",
       ssoEnabled: dicUser.ssoEnabled,
+      mfaEnabled: dicUser.mfaEnabled,
+      loginAsEmployee: Boolean(dicUser.employeeID),
       ssoLoginMapping: dicUser.ssoLoginMapping,
-      preferredLanguageID: dicUser.preferredLanguageID ?? "",
+      preferredLanguageID: intTenantLanguageID ?? dicUser.preferredLanguageID ?? "",
+      employeeID: dicUser.employeeID ?? "",
       userGroupID: dicUser.userGroupID ?? "",
       status: dicUser.status
-    } : dicEmptyForm);
+    } : {
+      ...dicEmptyForm,
+      preferredLanguageID: intTenantLanguageID ?? "",
+    });
     setBlnDialogOpen(true);
   }
 
@@ -382,12 +432,24 @@ export default function UserMasterPanel() {
   }
 
   function setFormField<TKey extends keyof UserForm>(strField: TKey, objValue: UserForm[TKey]) {
-    setDicForm((objPrevious) => ({ ...objPrevious, [strField]: objValue }));
+    setDicForm((objPrevious) => {
+      const dicNextForm = { ...objPrevious, [strField]: objValue } as UserForm;
+      if (strField === "loginAsEmployee" && !Boolean(objValue)) {
+        dicNextForm.employeeID = "";
+      }
+      return dicNextForm;
+    });
     setDicErrors((objPrevious) => {
       if (!objPrevious[strField]) {
-        return objPrevious;
+        if (!(strField === "loginAsEmployee" && objPrevious.employeeID)) {
+          return objPrevious;
+        }
       }
-      return { ...objPrevious, [strField]: undefined };
+      return {
+        ...objPrevious,
+        [strField]: undefined,
+        ...(strField === "loginAsEmployee" ? { employeeID: undefined } : {}),
+      };
     });
   }
 
@@ -432,10 +494,16 @@ export default function UserMasterPanel() {
       dicNextErrors.email = dicModuleLabels.validationEmailInvalid;
     }
 
-    if (strMode === "add" && !dicForm.password.trim()) {
+    if (!dicForm.password.trim()) {
       dicNextErrors.password = dicModuleLabels.validationPasswordRequired;
     } else if (dicForm.password.trim() && dicForm.password.trim().length < 8) {
       dicNextErrors.password = dicModuleLabels.validationPasswordMin;
+    }
+
+    if (!dicForm.confirmPassword.trim()) {
+      dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordRequired;
+    } else if (dicForm.password.trim() !== dicForm.confirmPassword.trim()) {
+      dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordMismatch;
     }
 
     if (strMobile && !/^[0-9+\-\s]+$/.test(strMobile)) {
@@ -444,6 +512,10 @@ export default function UserMasterPanel() {
 
     if (!dicForm.userGroupID) {
       dicNextErrors.userGroupID = dicModuleLabels.validationUserGroupRequired;
+    }
+
+    if (dicForm.loginAsEmployee && !dicForm.employeeID) {
+      dicNextErrors.employeeID = dicModuleLabels.validationEmployeeRequired;
     }
 
     setDicErrors(dicNextErrors);
@@ -460,10 +532,12 @@ export default function UserMasterPanel() {
       strEmailAddress: dicForm.email.trim(),
       strMobileNumber: dicForm.mobile.trim() || null,
       strPassword: dicForm.password.trim() || null,
-      strAuthSource: dicForm.authSource,
+      strAuthSource: dicForm.ssoEnabled ? "sso" as const : "local" as const,
       blnIsSsoEnabled: dicForm.ssoEnabled,
-      strSsoLoginMapping: dicForm.ssoLoginMapping.trim() || null,
-      intPreferredLanguageID: dicForm.preferredLanguageID || null,
+      blnMfaEnabled: blnTenantOtpEnabled ? dicForm.mfaEnabled : false,
+      strSsoLoginMapping: dicForm.ssoEnabled ? dicForm.ssoLoginMapping.trim() || null : null,
+      intPreferredLanguageID: (intTenantLanguageID ?? dicForm.preferredLanguageID) || null,
+      intEmployeeID: dicForm.loginAsEmployee ? Number(dicForm.employeeID) : null,
       intUserGroupID: Number(dicForm.userGroupID),
       blnIsActive: dicForm.status === "Active"
     } as const;
@@ -669,16 +743,14 @@ export default function UserMasterPanel() {
                   <th>{dicModuleLabels.tableLoginName}</th>
                   <th>{dicModuleLabels.tableEmail}</th>
                   <th>{dicModuleLabels.tableMobile}</th>
-                  <th>{dicModuleLabels.tableAuthSource}</th>
                   <th>{dicModuleLabels.tableUserGroup}</th>
-                  <th>{dicModuleLabels.tableSsoEnabled}</th>
                   <th>{dicModuleLabels.tableStatus}</th>
                 </tr>
               </thead>
               <tbody>
                 {lstVisibleUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
+                    <td colSpan={7} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
                   </tr>
                 ) : lstVisibleUsers.map((dicUser) => (
                   <tr key={dicUser.id} className={lstSelectedIds.includes(dicUser.id) ? styles.selectedRow : undefined}>
@@ -691,9 +763,7 @@ export default function UserMasterPanel() {
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>
                     <td>{dicUser.mobile || "-"}</td>
-                    <td>{dicUser.authSource === "local" ? dicModuleLabels.authSourceLocal : dicModuleLabels.authSourceSso}</td>
                     <td>{dicUser.userGroupName || "-"}</td>
-                    <td>{dicUser.ssoEnabled ? dicModuleLabels.ssoEnabledYes : dicModuleLabels.ssoEnabledNo}</td>
                     <td>
                       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
                         {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
@@ -719,102 +789,178 @@ export default function UserMasterPanel() {
           maxHeight: "86vh",
           background: "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
         }}
-        strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
+        strTitle={strMode === "add" ? "Add User" : strMode === "edit" ? "Edit User" : "View User"}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={strMode === "add" ? dicModuleLabels.saveButton : dicModuleLabels.updateButton}
         onPrimaryAction={saveUser}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
+            <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
+            <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
+            <TextField
+              label={dicModuleLabels.fieldPassword}
+              type={blnPasswordVisible ? "text" : "password"}
+              value={dicForm.password}
+              onChange={(objEvent) => setFormField("password", objEvent.target.value)}
+              error={Boolean(dicErrors.password)}
+              helperText={dicErrors.password}
+              disabled={strMode === "view"}
+              fullWidth
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
+            <TextField
+              label={dicModuleLabels.fieldConfirmPassword}
+              type={blnConfirmPasswordVisible ? "text" : "password"}
+              value={dicForm.confirmPassword}
+              onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
+              error={Boolean(dicErrors.confirmPassword)}
+              helperText={dicErrors.confirmPassword}
+              disabled={strMode === "view"}
+              fullWidth
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+            <TextField
+              select
+              label={dicModuleLabels.fieldUserGroup}
+              value={String(dicForm.userGroupID)}
+              onChange={(objEvent) => setFormField("userGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              error={Boolean(dicErrors.userGroupID)}
+              helperText={dicErrors.userGroupID}
+              disabled={strMode === "view"}
+              fullWidth
+              required
+            >
+              <MenuItem value="">Select</MenuItem>
+              {objFormOptions.lstUserGroups.map((objGroup) => (
+                <MenuItem key={objGroup.intID} value={String(objGroup.intID)}>
+                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          {dicForm.ssoEnabled ? (
+            <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+          ) : null}
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
+            <TextField
+              select
+              label={dicModuleLabels.fieldPreferredLanguage}
+              value={String(intTenantLanguageID ?? dicForm.preferredLanguageID)}
+              disabled
+              fullWidth
+              helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
+            >
+              {objFormOptions.lstLanguages.map((objLanguage) => (
+                <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)}>
+                  {objLanguage.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+            </TextField>
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
             <Box
               sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 1.5,
+                py: 1.25,
+                borderRadius: 0,
+                border: "1px solid #dbe7f0",
+                background: "rgba(248,250,252,0.9)",
               }}
             >
-              <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
-              <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
+              <Box>
+                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                  {dicModuleLabels.helperLoginAsEmployee}
+                </Typography>
+              </Box>
+              <Switch checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={strMode === "view"} />
             </Box>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
-              }}
-            >
-              <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
-              <TextField label={dicModuleLabels.fieldPassword} type="password" value={dicForm.password} onChange={(objEvent) => setFormField("password", objEvent.target.value)} error={Boolean(dicErrors.password)} helperText={strMode === "edit" && !dicErrors.password ? dicModuleLabels.helperPasswordOptional : dicErrors.password} disabled={strMode === "view"} fullWidth />
-            </Box>
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
-              }}
-            >
-              <TextField select label={dicModuleLabels.fieldAuthSource} value={dicForm.authSource} onChange={(objEvent) => setFormField("authSource", objEvent.target.value as AuthSource)} disabled={strMode === "view"} fullWidth>
-                <MenuItem value="local">{dicModuleLabels.authSourceLocal}</MenuItem>
-                <MenuItem value="sso">{dicModuleLabels.authSourceSso}</MenuItem>
-              </TextField>
-              <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
-            </Box>
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
-              }}
-            >
+            {dicForm.loginAsEmployee ? (
               <TextField
                 select
-                label={dicModuleLabels.fieldPreferredLanguage}
-                value={String(dicForm.preferredLanguageID)}
-                onChange={(objEvent) => setFormField("preferredLanguageID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-                disabled={strMode === "view"}
-                fullWidth
-              >
-                <MenuItem value="">Default</MenuItem>
-                {objFormOptions.lstLanguages.map((objLanguage) => (
-                  <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)}>
-                    {objLanguage.strLabel}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label={dicModuleLabels.fieldUserGroup}
-                value={String(dicForm.userGroupID)}
-                onChange={(objEvent) => setFormField("userGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-                error={Boolean(dicErrors.userGroupID)}
-                helperText={dicErrors.userGroupID}
+                label={dicModuleLabels.fieldEmployee}
+                value={String(dicForm.employeeID)}
+                onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+                error={Boolean(dicErrors.employeeID)}
+                helperText={dicErrors.employeeID}
                 disabled={strMode === "view"}
                 fullWidth
                 required
               >
                 <MenuItem value="">Select</MenuItem>
-                {objFormOptions.lstUserGroups.map((objGroup) => (
-                  <MenuItem key={objGroup.intID} value={String(objGroup.intID)}>
-                    {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                {lstEmployeeOptions.map((objEmployee) => (
+                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)}>
+                    {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
                   </MenuItem>
                 ))}
               </TextField>
-            </Box>
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
-              }}
-            >
-              <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
-                <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-                <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-              </TextField>
+            ) : blnTenantOtpEnabled ? (
               <Box
                 sx={{
                   display: "flex",
@@ -828,15 +974,41 @@ export default function UserMasterPanel() {
                 }}
               >
                 <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldSsoEnabled}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperSsoEnabled}
+                    {dicModuleLabels.helperEnableOtpOnly}
                   </Typography>
                 </Box>
-                <Switch checked={dicForm.ssoEnabled} onChange={(_, blnChecked) => setFormField("ssoEnabled", blnChecked)} disabled={strMode === "view"} />
+                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view"} />
+              </Box>
+            ) : null}
+          </Box>
+
+          {dicForm.loginAsEmployee && blnTenantOtpEnabled ? (
+            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: 0,
+                  border: "1px solid #dbe7f0",
+                  background: "rgba(248,250,252,0.9)",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    {dicModuleLabels.helperEnableOtpOnly}
+                  </Typography>
+                </Box>
+                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view"} />
               </Box>
             </Box>
-          </Box>}
+          ) : null}
+        </Box>}
       />
 
       <CommonConfirmDialog
