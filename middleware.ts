@@ -19,6 +19,7 @@ export function middleware(req: NextRequest) {
   */
   const strPathname = req.nextUrl.pathname;
   const strAuthCookie = req.cookies.get(authHelpers.cookieName)?.value ?? "";
+  const strTenantUUID = req.cookies.get(authHelpers.tenantCookieName)?.value?.trim() ?? "";
   const intIsAuthenticated = authHelpers.isAuthenticated(strAuthCookie) ? 1 : 0;
 
   // Skips auth checks for static assets from /public or files with extensions.
@@ -27,7 +28,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup"];
+  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup", "/session-expired"];
   const blnIsTenantLoginRoute = strPathname.startsWith(`${appRoutes.login}/`);
   const intIsPublicRoute =
     lstPublicRoutes.includes(strPathname) ||
@@ -39,10 +40,16 @@ export function middleware(req: NextRequest) {
 
   if (intIsAuthenticated === 0 && intIsPublicRoute === 0) {
     const dicLoginUrl = req.nextUrl.clone();
-    dicLoginUrl.pathname = appRoutes.login;
+    dicLoginUrl.pathname = strTenantUUID ? `${appRoutes.login}/${strTenantUUID}` : "/session-expired";
     if (strPathname !== appRoutes.home) {
       dicLoginUrl.searchParams.set("redirect", strPathname);
     }
+    return NextResponse.redirect(dicLoginUrl);
+  }
+
+  if (intIsAuthenticated === 0 && strPathname === appRoutes.login) {
+    const dicLoginUrl = req.nextUrl.clone();
+    dicLoginUrl.pathname = strTenantUUID ? `${appRoutes.login}/${strTenantUUID}` : "/session-expired";
     return NextResponse.redirect(dicLoginUrl);
   }
 

@@ -1,5 +1,6 @@
 import { appConfig } from "@/config";
 
+let blnSessionExpiryRedirectInProgress = false;
 const strLanguageChangedEventName = "hrms:language-changed";
 
 /*
@@ -41,6 +42,21 @@ export const authHelpers = {
     }
 
     return this.getCookieValue(this.cookieName);
+  },
+  getTenantUUID() {
+    return this.getCookieValue(this.tenantCookieName);
+  },
+  getLoginUrl(strTenantUUID?: string) {
+    const strResolvedTenantUUID = (strTenantUUID || this.getTenantUUID()).trim();
+    return strResolvedTenantUUID
+      ? `/login/${encodeURIComponent(strResolvedTenantUUID)}`
+      : "/session-expired";
+  },
+  getSessionExpiredUrl() {
+    const strTenantUUID = this.getTenantUUID();
+    return strTenantUUID
+      ? `/session-expired?tenantUuid=${encodeURIComponent(strTenantUUID)}`
+      : "/session-expired";
   },
   setAuthenticatedSession(strAccessToken: string, strTenantUUID?: string) {
     if (typeof document === "undefined") {
@@ -107,11 +123,12 @@ export const authHelpers = {
     const intLanguageID = Number(strLanguageID);
     return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
   },
-  clearSession() {
+  clearSession(blnPreserveTenantContext = false) {
     if (typeof document === "undefined") {
       return;
     }
 
+    const strTenantUUID = this.getTenantUUID();
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("hrms_session_token");
       window.localStorage.removeItem("hrms_tenant_id");
@@ -120,6 +137,27 @@ export const authHelpers = {
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
-    document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+    if (blnPreserveTenantContext && strTenantUUID) {
+      document.cookie = `${this.tenantCookieName}=${encodeURIComponent(strTenantUUID)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
+    } else {
+      document.cookie = `${this.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+    }
+  },
+  redirectToSessionExpired() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (blnSessionExpiryRedirectInProgress) {
+      return;
+    }
+
+    blnSessionExpiryRedirectInProgress = true;
+    const strSessionExpiredUrl = this.getSessionExpiredUrl();
+    this.clearSession();
+    window.location.replace(strSessionExpiredUrl);
+  },
+  resetSessionExpiryRedirect() {
+    blnSessionExpiryRedirectInProgress = false;
   }
 };

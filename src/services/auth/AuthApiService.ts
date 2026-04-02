@@ -6,7 +6,22 @@ import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { apiConstants } from "@/config/constants";
-import { GenericLoginRequest, LoginRequest, type ActionRightsResponse, type AuthSuccessData, type CurrentUserContext, type MenuResponse, type SsoRedirectData, type TenantAuthDetails, type TenantLookupData } from "@/models/AuthModels";
+import type { ModuleLabelsResponse } from "@/features/labels/types";
+import {
+  GenericLoginRequest,
+  LoginRequest,
+  type ActionRightsResponse,
+  type AuthLoginData,
+  type AuthOtpChallengeData,
+  type AuthSuccessData,
+  type CurrentUserContext,
+  type MenuResponse,
+  type ResendOtpRequest,
+  type SsoRedirectData,
+  type TenantAuthDetails,
+  type TenantLookupData,
+  type VerifyOtpRequest
+} from "@/models/AuthModels";
 
 type ApiEnvelope<TData> = {
   ResultCode: number;
@@ -16,12 +31,18 @@ type ApiEnvelope<TData> = {
 
 export class clsApiRequestError extends Error {
   objData?: unknown;
+  intStatusCode?: number;
 
-  constructor(strMessage: string, objData?: unknown) {
+  constructor(strMessage: string, objData?: unknown, intStatusCode?: number) {
     super(strMessage);
     this.name = "clsApiRequestError";
     this.objData = objData;
+    this.intStatusCode = intStatusCode;
   }
+}
+
+export function isOtpChallengeData(objData: AuthLoginData): objData is AuthOtpChallengeData {
+  return "blnRequiresOtp" in objData && objData.blnRequiresOtp === true;
 }
 
 async function requestApi<TData>(objOptions: {
@@ -66,10 +87,10 @@ async function requestApi<TData>(objOptions: {
       const objResponseData = objError.response?.data as ApiEnvelope<TData> | { payload?: string; Msg?: string } | undefined;
       if (objResponseData?.payload) {
         const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
-        throw new clsApiRequestError(objDecryptedPayload.Msg ?? "Request failed.", objDecryptedPayload.Data);
+        throw new clsApiRequestError(objDecryptedPayload.Msg ?? "Request failed.", objDecryptedPayload.Data, objError.response?.status);
       }
 
-      throw new clsApiRequestError(objResponseData?.Msg ?? objError.message ?? "Request failed.");
+      throw new clsApiRequestError(objResponseData?.Msg ?? objError.message ?? "Request failed.", undefined, objError.response?.status);
     }
 
     throw objError;
@@ -93,20 +114,30 @@ export const authApiService = {
     });
   },
 
+  async getLoginLabels(strTenantUUID: string) {
+    return requestApi<ModuleLabelsResponse>({
+      strPath: `tenant/${strTenantUUID}/login-labels`,
+      strMethod: "GET",
+      strMenuAction: "AUTH_LOGIN_LABELS"
+    });
+  },
+
   async login(objPayload: LoginRequest) {
     const objRequestBody = {
       ...objPayload,
       strPassword: encryptPassBase64(objPayload.strPassword)
     };
-    const objResult = await requestApi<AuthSuccessData>({
+    const objResult = await requestApi<AuthLoginData>({
       strPath: "auth/login",
       strMethod: "POST",
       objBody: objRequestBody,
       strMenuAction: "AUTH_LOGIN"
     });
-    authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
-    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    if (!isOtpChallengeData(objResult.Data)) {
+      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
+      authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+      authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    }
     return objResult;
   },
 
@@ -115,16 +146,40 @@ export const authApiService = {
       ...objPayload,
       strPassword: encryptPassBase64(objPayload.strPassword)
     };
-    const objResult = await requestApi<AuthSuccessData>({
+    const objResult = await requestApi<AuthLoginData>({
       strPath: "auth/login/generic",
       strMethod: "POST",
       objBody: objRequestBody,
       strMenuAction: "AUTH_GENERIC_LOGIN"
     });
+    if (!isOtpChallengeData(objResult.Data)) {
+      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
+      authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+      authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    }
+    return objResult;
+  },
+
+  async verifyOtp(objPayload: VerifyOtpRequest) {
+    const objResult = await requestApi<AuthSuccessData>({
+      strPath: "auth/verify-otp",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "AUTH_VERIFY_OTP"
+    });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
     authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
     authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
+  },
+
+  async resendOtp(objPayload: ResendOtpRequest) {
+    return requestApi<{ blnOtpResent: boolean }>({
+      strPath: "auth/resend-otp",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "AUTH_RESEND_OTP"
+    });
   },
 
   async getSsoRedirect(strTenantUUID: string) {
@@ -181,7 +236,7 @@ export const authApiService = {
       strMenuAction: "AUTH_LOGOUT",
       blnUseAuthHeader: true
     });
-    authHelpers.clearSession();
+    authHelpers.clearSession(true);
     return objResult;
   }
 };

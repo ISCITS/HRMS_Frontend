@@ -24,6 +24,34 @@ function ensureHeaders(headers?: InternalAxiosRequestConfig["headers"]) {
   return new AxiosHeaders(headers);
 }
 
+function shouldRedirectToSessionExpired(objError: unknown) {
+  if (!axios.isAxiosError(objError)) {
+    return false;
+  }
+
+  const intStatusCode = objError.response?.status;
+  if (intStatusCode !== 401 && intStatusCode !== 403) {
+    return false;
+  }
+
+  const strRequestUrl = String(objError.config?.url ?? "");
+  const blnIsPublicAuthEndpoint =
+    /\/auth\/login(\/generic)?$/i.test(strRequestUrl) ||
+    /\/auth\/sso\/callback/i.test(strRequestUrl) ||
+    /\/tenant\/[^/]+\/auth-details/i.test(strRequestUrl) ||
+    /\/auth\/tenant\//i.test(strRequestUrl);
+
+  if (blnIsPublicAuthEndpoint) {
+    return false;
+  }
+
+  const strAuthorizationHeader = objError.config?.headers instanceof AxiosHeaders
+    ? objError.config.headers.get("Authorization")
+    : undefined;
+
+  return Boolean(strAuthorizationHeader?.trim() || authHelpers.getAccessToken());
+}
+
 export const axiosInstance = axios.create({
   baseURL: apiConstants.baseURL,
   headers: {
@@ -78,4 +106,10 @@ axiosInstance.interceptors.response.use(async (response) => {
     response.data = await decryptPayload(dicResponseData.payload);
   }
   return response;
+}, async (objError) => {
+  if (shouldRedirectToSessionExpired(objError)) {
+    authHelpers.redirectToSessionExpired();
+  }
+
+  return Promise.reject(objError);
 });

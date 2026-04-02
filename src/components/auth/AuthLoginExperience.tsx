@@ -13,10 +13,10 @@ import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
-import type { TenantAuthDetails, TenantLookupData } from "@/models/AuthModels";
+import type { AuthOtpChallengeData, TenantAuthDetails, TenantLookupData } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
-import { clsApiRequestError } from "@/services/auth/AuthApiService";
+import { clsApiRequestError, isOtpChallengeData } from "@/services/auth/AuthApiService";
 
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
@@ -28,15 +28,20 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const objRouter = useRouter();
   const [strLoginID, setStrLoginID] = useState("");
   const [strPassword, setStrPassword] = useState("");
+  const [strOtp, setStrOtp] = useState("");
   const [strError, setStrError] = useState("");
   const [blnSubmitting, setBlnSubmitting] = useState(false);
+  const [blnResendingOtp, setBlnResendingOtp] = useState(false);
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
   const [objTenant, setObjTenant] = useState<TenantLookupData | null>(null);
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
+  const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
   const [blnSsoRedirecting, setBlnSsoRedirecting] = useState(false);
   const [strSsoStatus, setStrSsoStatus] = useState("Verifying your workspace and preparing Microsoft sign-in.");
   const [intLockRemainingSeconds, setIntLockRemainingSeconds] = useState(0);
+  const [intResendRemainingSeconds, setIntResendRemainingSeconds] = useState(0);
+  const [dicLoginLabels, setDicLoginLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (strMode !== "tenant" || !strTenantUUID) {
@@ -54,9 +59,15 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
 
         setObjTenantAuthDetails(objAuthDetailsResult.Data);
+        authHelpers.setTenantContext(
+          objAuthDetailsResult.Data.tenant_id,
+          undefined,
+          objAuthDetailsResult.Data.language_id ?? undefined
+        );
+        setDicLoginLabels(objAuthDetailsResult.Data.labels ?? {});
         if (objAuthDetailsResult.Data.auth_mode === "SSO") {
           setBlnSsoRedirecting(true);
-          setStrSsoStatus("Workspace verified. Redirecting to Microsoft sign-in.");
+          setStrSsoStatus(getLoginLabel("ssoRedirectStatus"));
           authHelpers.clearSession();
           window.setTimeout(() => {
             window.location.href = `${apiConstants.baseURL}/${apiConstants.apiPrefix}/auth/sso/login/${strTenantUUID}`;
@@ -69,6 +80,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           return;
         }
         setObjTenant(objTenantResult.Data);
+        authHelpers.setTenantContext(
+          objTenantResult.Data.intTenantID,
+          undefined,
+          objTenantResult.Data.intLanguageID ?? objAuthDetailsResult.Data.language_id ?? undefined
+        );
       })
       .catch((objError: Error) => {
         if (!blnActive) {
@@ -82,6 +98,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
         setObjTenant(null);
         setObjTenantAuthDetails(null);
+        setDicLoginLabels({});
       })
       .finally(() => {
         if (blnActive) {
@@ -112,17 +129,53 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     return () => window.clearInterval(intTimer);
   }, [intLockRemainingSeconds]);
 
+  useEffect(() => {
+    if (intResendRemainingSeconds <= 0) {
+      return;
+    }
+
+    const intTimer = window.setInterval(() => {
+      setIntResendRemainingSeconds((intCurrentSeconds) => {
+        if (intCurrentSeconds <= 1) {
+          window.clearInterval(intTimer);
+          return 0;
+        }
+        return intCurrentSeconds - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(intTimer);
+  }, [intResendRemainingSeconds]);
+
   async function submitForm() {
     setStrError("");
     setBlnSubmitting(true);
 
     try {
+      if (objOtpChallenge) {
+        const objResult = await authApiService.verifyOtp({
+          intUserID: objOtpChallenge.intUserID,
+          intTenantID: objOtpChallenge.intTenantID,
+          strOtp
+        });
+        setObjOtpChallenge(null);
+        setStrOtp("");
+        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+        return;
+      }
+
       if (strMode === "tenant" && strTenantUUID) {
         const objResult = await authApiService.login({
           strTenantUUID,
           strLoginID,
           strPassword
         });
+        if (isOtpChallengeData(objResult.Data)) {
+          setObjOtpChallenge(objResult.Data);
+          setStrOtp("");
+          setIntResendRemainingSeconds(30);
+          return;
+        }
         objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
@@ -131,13 +184,19 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         strEmailAddress: strLoginID,
         strPassword
       });
-        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+      if (isOtpChallengeData(objResult.Data)) {
+        setObjOtpChallenge(objResult.Data);
+        setStrOtp("");
+        setIntResendRemainingSeconds(30);
+        return;
+      }
+      objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
     } catch (objError) {
       if (objError instanceof clsApiRequestError) {
         const intRemainingSeconds = extractRemainingSeconds(objError.objData);
         if (intRemainingSeconds > 0) {
           setIntLockRemainingSeconds(intRemainingSeconds);
-          setStrError(`Account locked. Try again in ${formatLockDuration(intRemainingSeconds)}`);
+          setStrError(`Account locked. Try again in ${formatDuration(intRemainingSeconds)}`);
         } else {
           setIntLockRemainingSeconds(0);
           setStrError(objError.message);
@@ -151,13 +210,42 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     }
   }
 
-  const strTitle = strMode === "tenant" ? enMessages.auth.tenantTitle : enMessages.auth.genericTitle;
-  const strSubtitle = strMode === "tenant" ? enMessages.auth.tenantSubtitle : enMessages.auth.genericSubtitle;
+  async function resendOtp() {
+    if (!objOtpChallenge) {
+      return;
+    }
+
+    setStrError("");
+    setBlnResendingOtp(true);
+    try {
+      await authApiService.resendOtp({
+        intUserID: objOtpChallenge.intUserID,
+        intTenantID: objOtpChallenge.intTenantID
+      });
+      setIntResendRemainingSeconds(30);
+    } catch (objError) {
+      if (objError instanceof clsApiRequestError) {
+        const intRemainingSeconds = extractRemainingSeconds(objError.objData);
+        if (intRemainingSeconds > 0) {
+          setIntResendRemainingSeconds(intRemainingSeconds);
+        }
+        setStrError(objError.message);
+      } else {
+        setStrError(objError instanceof Error ? objError.message : "Unable to resend OTP.");
+      }
+    } finally {
+      setBlnResendingOtp(false);
+    }
+  }
+
+  const strTitle = strMode === "tenant" ? getLoginLabel("tenantTitle") : enMessages.auth.genericTitle;
+  const strSubtitle = strMode === "tenant" ? getLoginLabel("tenantSubtitle") : enMessages.auth.genericSubtitle;
   const blnShowTenantTransition =
     strMode === "tenant" &&
     (blnTenantLoading || blnSsoRedirecting || objTenantAuthDetails?.auth_mode === "SSO") &&
     !strError;
-  const strLockCountdown = intLockRemainingSeconds > 0 ? formatLockDuration(intLockRemainingSeconds) : null;
+  const strLockCountdown = intLockRemainingSeconds > 0 ? formatDuration(intLockRemainingSeconds) : null;
+  const blnOtpStep = Boolean(objOtpChallenge);
 
   if (blnShowTenantTransition) {
     return (
@@ -185,9 +273,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               >
                 <CheckCircleOutlineRoundedIcon color="primary" sx={{ fontSize: 34 }} />
               </Box>
-              <Typography variant="h4">{enMessages.auth.ssoCallbackTitle}</Typography>
+              <Typography variant="h4">{getLoginLabel("ssoCallbackTitle")}</Typography>
               <Typography sx={{ color: "#64748b" }}>
-                {blnTenantLoading ? "Verifying your workspace and sign-in method." : strSsoStatus}
+                {blnTenantLoading ? getLoginLabel("verifyingWorkspaceStatus") : strSsoStatus}
               </Typography>
               <Typography variant="body2" sx={{ color: "#94a3b8" }}>
                 {strTenantUUID}
@@ -199,8 +287,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       </Box>
     );
   }
-  const strDisplayTitle = "Sign In";
-  const strDisplaySubtitle = "";
   const blnCanSubmit =
     Boolean(strLoginID.trim()) &&
     Boolean(strPassword.trim()) &&
@@ -222,7 +308,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         <Box className={styles.heroPanel}>
           <Box className={styles.heroContent}>
             <Box className={styles.heroIllustrationFrame}>
-              <Box component="img" src="/images/hrms-login.png" alt="HRMS login visual" className={styles.heroImage} />
+              <Box component="img" src="/images/hrms-login.png" alt={getLoginLabel("heroImageAlt")} className={styles.heroImage} />
             </Box>
           </Box>
         </Box>
@@ -230,11 +316,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         <Box className={styles.formPanel}>
           <Box className={styles.formCard}>
             <Box className={styles.formIntro}>
-              <Typography className={styles.welcomeTitle}>Welcome to HRMS</Typography>
-              <Typography className={styles.welcomeSubtitle}>Human Resource Management System</Typography>
+              <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
+              <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
             </Box>
-            <Typography className={styles.title}>{strDisplayTitle}</Typography>
-            {strDisplaySubtitle ? <Typography className={styles.subtitle}>{strDisplaySubtitle}</Typography> : null}
+            <Typography className={styles.title}>{blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}</Typography>
 
             <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
               {strError ? (
@@ -245,9 +330,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
 
               {strMode === "tenant" ? (
                 <Box className={styles.tenantSummary}>
-                  <Typography className={styles.tenantSummaryLabel}>Resolved workspace</Typography>
+                  <Typography className={styles.tenantSummaryLabel}>{getLoginLabel("resolvedWorkspaceLabel")}</Typography>
                   <Typography className={styles.tenantSummaryValue}>
-                    {blnTenantLoading ? "Resolving tenant..." : objTenant?.strTenantName ?? "Tenant unavailable"}
+                    {blnTenantLoading ? getLoginLabel("resolvingTenantStatus") : objTenant?.strTenantName ?? getLoginLabel("tenantUnavailable")}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75, color: "#475569" }}>
                     {strTenantUUID}
@@ -256,12 +341,13 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
 
               <Box>
-                <Typography className={styles.fieldLabel}>Work Email</Typography>
+                <Typography className={styles.fieldLabel}>{getLoginLabel("loginIdLabel")}</Typography>
                 <TextField
-                  placeholder="Enter your work email"
+                  placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
                   fullWidth
+                  disabled={blnOtpStep}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -273,13 +359,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               </Box>
 
               <Box>
-                <Typography className={styles.fieldLabel}>Password</Typography>
+                <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
-                  placeholder="Enter your password"
+                  placeholder={getLoginLabel("passwordPlaceholder")}
                   type={blnPasswordVisible ? "text" : "password"}
                   value={strPassword}
                   onChange={(objEvent) => setStrPassword(objEvent.target.value)}
                   fullWidth
+                  disabled={blnOtpStep}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -297,18 +384,40 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 />
               </Box>
 
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
-                <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
-                  Forgot Password?
-                </Typography>
-              </Box>
+              {blnOtpStep ? (
+                <Box>
+                  <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
+                  <TextField
+                    placeholder={getLoginLabel("otpPlaceholder")}
+                    value={strOtp}
+                    onChange={(objEvent) => setStrOtp(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
+                    fullWidth
+                  />
+                  <Typography variant="body2" sx={{ mt: 1, color: "#64748b" }}>
+                    {getLoginLabel("otpSentMessage")}
+                  </Typography>
+                </Box>
+              ) : null}
+
+              {!blnOtpStep ? (
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
+                  <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
+                    {getLoginLabel("forgotPassword")}
+                  </Typography>
+                </Box>
+              ) : null}
 
               <Button
                 variant="contained"
                 size="large"
-                disabled={!blnCanSubmit}
-                onClick={() => submitForm().catch(() => undefined)}
-                type="submit"
+                disabled={
+                  !strLoginID.trim() ||
+                  !strPassword.trim() ||
+                  blnSubmitting ||
+                  intLockRemainingSeconds > 0 ||
+                  (strMode === "tenant" && blnTenantLoading)
+                }
+                onClick={submitForm}
                 sx={{
                   minHeight: 52,
                   borderRadius: "10px",
@@ -317,12 +426,26 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 }}
                 startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : <LockRoundedIcon />}
               >
-                Sign In
+                {blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}
               </Button>
+
+              {blnOtpStep ? (
+                <Button
+                  variant="text"
+                  onClick={resendOtp}
+                  disabled={blnResendingOtp || intResendRemainingSeconds > 0}
+                >
+                  {blnResendingOtp
+                    ? getLoginLabel("resendingOtpButton")
+                    : intResendRemainingSeconds > 0
+                      ? getLoginLabel("resendOtpCountdown").replace("{time}", formatDuration(intResendRemainingSeconds))
+                      : getLoginLabel("resendOtpButton")}
+                </Button>
+              ) : null}
 
               <Box className={styles.helperLinks}>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
-                  {strMode === "tenant" ? strTitle : strSubtitle}
+                  {blnOtpStep ? getLoginLabel("otpContinueMessage") : strMode === "tenant" ? strTitle : strSubtitle}
                 </Typography>
               </Box>
             </Stack>
@@ -331,6 +454,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       </Box>
     </Box>
   );
+
+  function getLoginLabel(strKey: LoginLabelKey): string {
+    const strServerKey = dicLoginServerKeyMap[strKey];
+    return dicLoginLabels[strKey] ?? (strServerKey ? dicLoginLabels[strServerKey] : undefined) ?? dicLoginFallbacks[strKey];
+  }
 }
 
 function extractRemainingSeconds(objData: unknown): number {
@@ -342,8 +470,91 @@ function extractRemainingSeconds(objData: unknown): number {
   return typeof objRemainingSeconds === "number" && objRemainingSeconds > 0 ? Math.floor(objRemainingSeconds) : 0;
 }
 
-function formatLockDuration(intSeconds: number): string {
+function formatDuration(intSeconds: number): string {
   const intMinutes = Math.floor(intSeconds / 60);
   const intRemainingSeconds = intSeconds % 60;
   return `${String(intMinutes).padStart(2, "0")}:${String(intRemainingSeconds).padStart(2, "0")}`;
 }
+
+type LoginLabelKey =
+  | "forgotPassword"
+  | "heroImageAlt"
+  | "loginIdLabel"
+  | "loginIdPlaceholder"
+  | "otpContinueMessage"
+  | "otpLabel"
+  | "otpPlaceholder"
+  | "otpSentMessage"
+  | "passwordLabel"
+  | "passwordPlaceholder"
+  | "resendOtpButton"
+  | "resendOtpCountdown"
+  | "resendingOtpButton"
+  | "resolvedWorkspaceLabel"
+  | "resolvingTenantStatus"
+  | "signInButton"
+  | "ssoCallbackTitle"
+  | "ssoRedirectStatus"
+  | "tenantSubtitle"
+  | "tenantTitle"
+  | "tenantUnavailable"
+  | "verifyOtpTitle"
+  | "verifyingWorkspaceStatus"
+  | "welcomeSubtitle"
+  | "welcomeTitle";
+
+const dicLoginFallbacks: Record<LoginLabelKey, string> = {
+  forgotPassword: "Forgot Password?",
+  heroImageAlt: "HRMS login visual",
+  loginIdLabel: enMessages.auth.loginIdLabel,
+  loginIdPlaceholder: "Enter your work email",
+  otpContinueMessage: "Complete OTP verification to continue.",
+  otpLabel: "OTP",
+  otpPlaceholder: "Enter the 6-digit OTP",
+  otpSentMessage: "We have sent a login OTP to your registered email address.",
+  passwordLabel: enMessages.auth.passwordLabel,
+  passwordPlaceholder: "Enter your password",
+  resendOtpButton: "Resend OTP",
+  resendOtpCountdown: "Resend OTP in {time}",
+  resendingOtpButton: "Resending OTP...",
+  resolvedWorkspaceLabel: "Resolved workspace",
+  resolvingTenantStatus: "Resolving tenant...",
+  signInButton: "Sign In",
+  ssoCallbackTitle: enMessages.auth.ssoCallbackTitle,
+  ssoRedirectStatus: "Workspace verified. Redirecting to Microsoft sign-in.",
+  tenantSubtitle: enMessages.auth.tenantSubtitle,
+  tenantTitle: enMessages.auth.tenantTitle,
+  tenantUnavailable: "Tenant unavailable",
+  verifyOtpTitle: "Verify OTP",
+  verifyingWorkspaceStatus: "Verifying your workspace and sign-in method.",
+  welcomeSubtitle: "Human Resource Management System",
+  welcomeTitle: "Welcome to HRMS",
+};
+
+const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
+  forgotPassword: "forgot_password",
+  heroImageAlt: "hero_image_alt",
+  loginIdLabel: "login_id_label",
+  loginIdPlaceholder: "login_id_placeholder",
+  otpContinueMessage: "otp_continue_message",
+  otpLabel: "otp_label",
+  otpPlaceholder: "otp_placeholder",
+  otpSentMessage: "otp_sent_message",
+  passwordLabel: "password_label",
+  passwordPlaceholder: "password_placeholder",
+  resendOtpButton: "resend_otp_button",
+  resendOtpCountdown: "resend_otp_countdown",
+  resendingOtpButton: "resending_otp_button",
+  resolvedWorkspaceLabel: "resolved_workspace_label",
+  resolvingTenantStatus: "resolving_tenant_status",
+  signInButton: "sign_in_button",
+  ssoCallbackTitle: "sso_callback_title",
+  ssoRedirectStatus: "sso_redirect_status",
+  tenantSubtitle: "tenant_subtitle",
+  tenantTitle: "tenant_title",
+  tenantUnavailable: "tenant_unavailable",
+  verifyOtpTitle: "verify_otp_title",
+  verifyingWorkspaceStatus: "verifying_workspace_status",
+  welcomeSubtitle: "welcome_subtitle",
+  welcomeTitle: "welcome_title",
+};
