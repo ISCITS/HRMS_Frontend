@@ -40,7 +40,7 @@
             "payroll": "Payroll",
             "payrollOverview": "Payroll Overview",
             "runPayroll": "Run Payroll",
-            "payslips": "Payslips",
+            "payslips": "Payroll Results",
             "attendance": "Attendance",
             "theme": "Theme",
             "profile": "Profile",
@@ -250,12 +250,12 @@
             "cycleBiWeekly": "Bi-Weekly"
         },
         "payslips": {
-            "title": "Payslips",
-            "download": "Download",
+            "title": "Payroll Results",
+            "download": "View",
             "grid": {
-                "id": "Payslip ID",
+                "id": "Result ID",
                 "employee": "Employee",
-                "month": "Month",
+                "month": "Payroll Month",
                 "amount": "Net Amount",
                 "status": "Status",
                 "action": "Action"
