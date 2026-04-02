@@ -390,7 +390,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               {!blnOtpStep ? (
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
                   <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
-                    {getLoginLabel("forgotPassword")}
+                    {/* {getLoginLabel("forgotPassword")} */}
                   </Typography>
                 </Box>
               ) : null}
