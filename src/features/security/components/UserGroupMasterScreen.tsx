@@ -503,15 +503,18 @@ export default function UserGroupMasterScreen() {
             flex: 1,
           }}
         >
-          {blnLoading || blnRightsLoading ? <LinearProgress /> : null}
-          {!blnCanView && !blnLoading && !blnRightsLoading ? (
+          {blnLoading || blnRightsLoading ? (
+            <Box sx={{ minHeight: 240 }}>
+              <LinearProgress />
+            </Box>
+          ) : !blnCanView ? (
             <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
               <Stack spacing={1} alignItems="center">
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
                 <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
               </Stack>
             </Box>
-          ) : lstVisibleRecords.length === 0 && !blnLoading && !blnRightsLoading ? (
+          ) : lstVisibleRecords.length === 0 ? (
             <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
               <Stack spacing={1} alignItems="center">
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
@@ -589,7 +592,6 @@ export default function UserGroupMasterScreen() {
       </Dialog>
 
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSaving} strLabel={blnLoading || blnRightsLoading ? "Loading user groups..." : "Processing..."} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}
