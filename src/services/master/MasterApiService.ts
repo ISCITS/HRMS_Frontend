@@ -118,6 +118,24 @@ export type LocationFormOptionsApiRecord = {
   lstStates: EmployeeLookupOptionApiRecord[];
 };
 
+export type PayrollCycleApiRecord = {
+  intID: number;
+  intCompanyID: number;
+  intPayrollGroupID: number;
+  strPayrollGroupCode: string | null;
+  strPayrollGroupName: string | null;
+  strCycleCode: string;
+  strCycleName: string;
+  strPeriodType: string;
+  intCutoffDay: number | null;
+  blnIsActive: boolean;
+};
+
+export type PayrollCycleFormOptionsApiRecord = {
+  lstPayrollGroups: EmployeeLookupOptionApiRecord[];
+  lstPeriodTypes: string[];
+};
+
 export type EmployeeApiRecord = {
   intID: number;
   strEmployeeCode: string;
@@ -1116,6 +1134,57 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_SALARY_COMPONENT_DELETE"
+    });
+  },
+
+  getPayrollCycles() {
+    return requestApi<PayrollCycleApiRecord[]>({
+      strPath: "/masters/payroll-cycles",
+      strMethod: "GET",
+      strMenuAction: "MASTER_PAYROLL_CYCLE_LIST"
+    });
+  },
+
+  getPayrollCycle(intID: number) {
+    return requestApi<PayrollCycleApiRecord>({
+      strPath: `/masters/payroll-cycles/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_PAYROLL_CYCLE_GET"
+    });
+  },
+
+  getPayrollCycleFormOptions() {
+    return requestApi<PayrollCycleFormOptionsApiRecord>({
+      strPath: "/masters/payroll-cycles/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_PAYROLL_CYCLE_FORM_OPTIONS"
+    });
+  },
+
+  createPayrollCycle(objBody: Record<string, unknown>) {
+    return requestApi<PayrollCycleApiRecord>({
+      strPath: "/masters/payroll-cycles",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_PAYROLL_CYCLE_CREATE"
+    });
+  },
+
+  updatePayrollCycle(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<PayrollCycleApiRecord>({
+      strPath: `/masters/payroll-cycles/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_PAYROLL_CYCLE_UPDATE"
+    });
+  },
+
+  setPayrollCycleStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<PayrollCycleApiRecord>({
+      strPath: `/masters/payroll-cycles/${intID}/status`,
+      strMethod: "POST",
+      objBody: { blnIsActive },
+      strMenuAction: "MASTER_PAYROLL_CYCLE_STATUS"
     });
   },
 
