@@ -35,16 +35,19 @@ export type UserApiRecord = {
   intID: number;
   intTenantID: number;
   intCompanyID: number | null;
+  intEmployeeID?: number | null;
   strLoginName: string | null;
   strEmailAddress: string | null;
   strMobileNumber: string | null;
   strAuthSource: "local" | "sso";
   blnIsSsoEnabled: boolean;
+  blnMfaEnabled?: boolean;
   strSsoLoginMapping: string | null;
   intPreferredLanguageID: number | null;
   intUserGroupID: number | null;
   strUserGroupCode: string | null;
   strUserGroupName: string | null;
+  strEmployeeName?: string | null;
   blnIsActive: boolean;
   blnIsLocked: boolean;
 };
@@ -831,8 +834,10 @@ export const masterApiService = {
     strPassword: string | null;
     strAuthSource: "local" | "sso";
     blnIsSsoEnabled: boolean;
+    blnMfaEnabled?: boolean;
     strSsoLoginMapping: string | null;
     intPreferredLanguageID: number | null;
+    intEmployeeID?: number | null;
     intUserGroupID: number;
     blnIsActive: boolean;
   }) {
@@ -855,8 +860,10 @@ export const masterApiService = {
     strPassword: string | null;
     strAuthSource: "local" | "sso";
     blnIsSsoEnabled: boolean;
+    blnMfaEnabled?: boolean;
     strSsoLoginMapping: string | null;
     intPreferredLanguageID: number | null;
+    intEmployeeID?: number | null;
     intUserGroupID: number;
     blnIsActive: boolean;
   }) {
