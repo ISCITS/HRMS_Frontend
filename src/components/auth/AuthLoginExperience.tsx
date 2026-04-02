@@ -328,18 +328,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Alert>
               ) : null}
 
-              {strMode === "tenant" ? (
-                <Box className={styles.tenantSummary}>
-                  <Typography className={styles.tenantSummaryLabel}>{getLoginLabel("resolvedWorkspaceLabel")}</Typography>
-                  <Typography className={styles.tenantSummaryValue}>
-                    {blnTenantLoading ? getLoginLabel("resolvingTenantStatus") : objTenant?.strTenantName ?? getLoginLabel("tenantUnavailable")}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.75, color: "#475569" }}>
-                    {strTenantUUID}
-                  </Typography>
-                </Box>
-              ) : null}
-
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("loginIdLabel")}</Typography>
                 <TextField
