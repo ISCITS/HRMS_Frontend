@@ -2,6 +2,7 @@
 
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import ToggleOffRoundedIcon from "@mui/icons-material/ToggleOffRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Box } from "@mui/material";
@@ -13,6 +14,7 @@ type CommonRowActionsProps = {
   blnCanEdit?: boolean;
   blnCanDelete?: boolean;
   blnCanToggle?: boolean;
+  blnToggleActive?: boolean;
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -24,6 +26,7 @@ export default function CommonRowActions({
   blnCanEdit = false,
   blnCanDelete = false,
   blnCanToggle = false,
+  blnToggleActive = true,
   onView,
   onEdit,
   onDelete,
@@ -48,7 +51,7 @@ export default function CommonRowActions({
       ) : null}
       {blnCanToggle && onToggle ? (
         <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={onToggle}>
-          <ToggleOnRoundedIcon fontSize="small" />
+          {blnToggleActive ? <ToggleOnRoundedIcon fontSize="small" /> : <ToggleOffRoundedIcon fontSize="small" />}
         </button>
       ) : null}
     </Box>

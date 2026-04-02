@@ -136,6 +136,56 @@ export type PayrollCycleFormOptionsApiRecord = {
   lstPeriodTypes: string[];
 };
 
+export type TaxRegimeApiRecord = {
+  intID: number;
+  strRegimeCode: string;
+  strRegimeName: string;
+  strCountryCode: string;
+  blnIsActive: boolean;
+  intSlabCount: number;
+};
+
+export type TaxSlabApiRecord = {
+  intID: number;
+  strFinancialYearCode: string;
+  fltSlabFromAmount: number;
+  fltSlabToAmount: number | null;
+  fltTaxRatePercent: number;
+  blnRebateEligible: boolean;
+  blnIsActive: boolean;
+};
+
+export type TaxRegimeFormOptionsApiRecord = {
+  lstCountries: EmployeeLookupOptionApiRecord[];
+  lstFinancialYears: string[];
+};
+
+export type TaxSlabSetApiRecord = {
+  objRegime: TaxRegimeApiRecord;
+  lstSlabs: TaxSlabApiRecord[];
+  lstFinancialYears: string[];
+};
+
+export type PayrollProcessLogApiRecord = {
+  intID: number;
+  intPayrollRunID: number;
+  intEmployeeID: number | null;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+  strProcessStage: string;
+  strProcessStatus: string;
+  strMessageText: string;
+  strEntityName: string | null;
+  intEntityID: number | null;
+  dtAddedOn: string;
+};
+
+export type PayrollProcessLogFormOptionsApiRecord = {
+  lstEmployees: EmployeeLookupOptionApiRecord[];
+  lstProcessStages: string[];
+  lstProcessStatuses: string[];
+};
+
 export type EmployeeApiRecord = {
   intID: number;
   strEmployeeCode: string;
@@ -1185,6 +1235,113 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { blnIsActive },
       strMenuAction: "MASTER_PAYROLL_CYCLE_STATUS"
+    });
+  },
+
+  getPayrollProcessLogs(objFilters?: {
+    intPayrollRunID?: number | null;
+    intEmployeeID?: number | null;
+    strProcessStage?: string | null;
+    strProcessStatus?: string | null;
+    strSearchText?: string | null;
+  }) {
+    const objParams = new URLSearchParams();
+    if (objFilters?.intPayrollRunID) {
+      objParams.set("intPayrollRunID", String(objFilters.intPayrollRunID));
+    }
+    if (objFilters?.intEmployeeID) {
+      objParams.set("intEmployeeID", String(objFilters.intEmployeeID));
+    }
+    if (objFilters?.strProcessStage) {
+      objParams.set("strProcessStage", objFilters.strProcessStage);
+    }
+    if (objFilters?.strProcessStatus) {
+      objParams.set("strProcessStatus", objFilters.strProcessStatus);
+    }
+    if (objFilters?.strSearchText) {
+      objParams.set("strSearchText", objFilters.strSearchText);
+    }
+    const strQuery = objParams.toString();
+    return requestApi<PayrollProcessLogApiRecord[]>({
+      strPath: `/masters/payroll-process-logs${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_PAYROLL_PROCESS_LOG_LIST"
+    });
+  },
+
+  getPayrollProcessLogFormOptions() {
+    return requestApi<PayrollProcessLogFormOptionsApiRecord>({
+      strPath: "/masters/payroll-process-logs/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_PAYROLL_PROCESS_LOG_FORM_OPTIONS"
+    });
+  },
+
+  getTaxRegimes() {
+    return requestApi<TaxRegimeApiRecord[]>({
+      strPath: "/masters/tax-regimes",
+      strMethod: "GET",
+      strMenuAction: "MASTER_TAX_REGIME_LIST"
+    });
+  },
+
+  getTaxRegime(intID: number) {
+    return requestApi<TaxRegimeApiRecord>({
+      strPath: `/masters/tax-regimes/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_TAX_REGIME_GET"
+    });
+  },
+
+  getTaxRegimeFormOptions() {
+    return requestApi<TaxRegimeFormOptionsApiRecord>({
+      strPath: "/masters/tax-regimes/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_TAX_REGIME_FORM_OPTIONS"
+    });
+  },
+
+  createTaxRegime(objBody: Record<string, unknown>) {
+    return requestApi<TaxRegimeApiRecord>({
+      strPath: "/masters/tax-regimes",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_TAX_REGIME_CREATE"
+    });
+  },
+
+  updateTaxRegime(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRegimeApiRecord>({
+      strPath: `/masters/tax-regimes/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_TAX_REGIME_UPDATE"
+    });
+  },
+
+  setTaxRegimeStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<TaxRegimeApiRecord>({
+      strPath: `/masters/tax-regimes/${intID}/status`,
+      strMethod: "POST",
+      objBody: { blnIsActive },
+      strMenuAction: "MASTER_TAX_REGIME_STATUS"
+    });
+  },
+
+  getTaxSlabs(intTaxRegimeID: number) {
+    return requestApi<TaxSlabSetApiRecord>({
+      strPath: `/masters/tax-regimes/${intTaxRegimeID}/slabs`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_TAX_SLAB_LIST"
+    });
+  },
+
+  saveTaxSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxSlabSetApiRecord>({
+      strPath: `/masters/tax-regimes/${intTaxRegimeID}/slabs`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_TAX_SLAB_SAVE"
     });
   },
 
