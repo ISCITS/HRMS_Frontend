@@ -264,13 +264,21 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow} sx={{ gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr)) auto auto" } }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           <TextField
             label={t("payroll_run_id", "Payroll Run ID")}
             value={dicFiltersDraft.intPayrollRunID}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, intPayrollRunID: objEvent.target.value }))}
             size="small"
             disabled={blnRunScoped}
+            sx={{ minWidth: { xs: "100%", sm: 130 }, maxWidth: { sm: 150 } }}
           />
           <TextField
             select
@@ -283,6 +291,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
               }))
             }
             size="small"
+            sx={{ minWidth: { xs: "100%", sm: 190 }, maxWidth: { sm: 220 } }}
           >
             <MenuItem value="">{t("all_employees", "All Employees")}</MenuItem>
             {dicOptions.lstEmployees.map((dicOption) => (
@@ -297,6 +306,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStage}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: objEvent.target.value }))}
             size="small"
+            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
           >
             <MenuItem value="">{t("all_stages", "All Stages")}</MenuItem>
             {dicOptions.lstProcessStages.map((strStage) => (
@@ -311,6 +321,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStatus}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: objEvent.target.value }))}
             size="small"
+            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
           >
             <MenuItem value="">{t("all_statuses", "All Statuses")}</MenuItem>
             {dicOptions.lstProcessStatuses.map((strStatus) => (
@@ -324,8 +335,9 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strSearchText}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchText: objEvent.target.value }))}
             size="small"
+            sx={{ flex: { xs: "1 1 100%", md: "0 1 260px" }, minWidth: { md: 220 } }}
           />
-          <Box className={styles.searchActions}>
+          <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
               {t("search", "Search")}
             </Button>
@@ -351,9 +363,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Typography sx={{ fontWeight: 800, color: "#17324d" }}>
-            {t("log_records", "Process Log Records")} ({lstLogs.length})
-          </Typography>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanExport ? (
               <Button
@@ -374,6 +383,41 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
               </Button>
             ) : null}
           </Box>
+          {lstLogs.length > 0 ? (
+            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+              <Box className={styles.paginationInfo}>
+                <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
+                <TextField
+                  select
+                  size="small"
+                  value={String(intRowsPerPage)}
+                  onChange={(objEvent) => {
+                    setIntRowsPerPage(Number(objEvent.target.value));
+                    setIntPage(1);
+                  }}
+                  className={styles.rowsPerPageSelect}
+                >
+                  {lstRowsPerPageOptions.map((intOption) => (
+                    <MenuItem key={intOption} value={String(intOption)}>
+                      {intOption}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Typography className={styles.paginationRange}>
+                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstLogs.length)} {t("pagination_separator", "of")} {lstLogs.length}
+                </Typography>
+              </Box>
+              <Pagination
+                count={intPageCount}
+                page={intCurrentPage}
+                onChange={(_objEvent, intValue) => setIntPage(intValue)}
+                size="small"
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          ) : null}
         </Box>
 
         <Box className={styles.tableWrap}>
@@ -391,24 +435,18 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
               </tr>
             </thead>
             <tbody>
-              {lstVisibleRows.length === 0 ? (
+              {lstLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
-                    <Box className={styles.emptyState}>
-                      <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                        {t("empty_message", "No payroll process logs found for the selected filters.")}
-                      </Typography>
-                    </Box>
+                  <td className={styles.emptyState} colSpan={8}>
+                    {t("empty_message", "No payroll process logs found for the selected filters.")}
                   </td>
                 </tr>
-              ) : null}
-
-              {lstVisibleRows.map((dicRow) => (
+              ) : lstVisibleRows.map((dicRow) => (
                 <tr key={dicRow.intID}>
                   <td>
                     <CommonRowActions
                       blnCanView
-                      onView={() => objRouter.push(`/payroll-process-logs/run/${dicRow.intPayrollRunID}`)}
+                      onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
                     />
                   </td>
                   <td>{dicRow.intPayrollRunID}</td>
@@ -442,41 +480,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             </tbody>
           </table>
         </Box>
-
-        {lstLogs.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ py: 1.25 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>
-                    {intOption}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstLogs.length)} {t("pagination_separator", "of")} {lstLogs.length}
-              </Typography>
-            </Box>
-
-            <Pagination
-              count={intPageCount}
-              page={intCurrentPage}
-              onChange={(_objEvent, intValue) => setIntPage(intValue)}
-              color="primary"
-              shape="rounded"
-            />
-          </Box>
-        ) : null}
       </Box>
 
       <Snackbar

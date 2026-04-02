@@ -3,6 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import {
   Alert,
   Box,
@@ -21,6 +22,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
@@ -36,6 +38,12 @@ import type {
 type EmployeeSalaryDetailPageProps = {
   intEmployeeID: number;
   blnViewMode?: boolean;
+};
+
+type ConfirmDialogState = {
+  strTitle: string;
+  strMessage: string;
+  strConfirmLabel: string;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -125,6 +133,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
   const [intComponentPage, setIntComponentPage] = useState(1);
   const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
@@ -257,6 +266,28 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     }
   }
 
+  async function handleConfirmUnassign() {
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      const dicSavedDetail = await employeeSalaryService.unassignSalary(intEmployeeID);
+      setObjDetail(dicSavedDetail);
+      setDicRevisionForm(buildRevisionForm(dicSavedDetail, t));
+      setStrSuccess(
+        t("employee_salary_unassign_success", "Employee salary assignment removed successfully.")
+      );
+      setObjConfirmDialog(null);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error
+          ? objError.message
+          : t("employee_salary_unassign_failed", "Unable to unassign employee salary.")
+      );
+    } finally {
+      setBlnSaving(false);
+    }
+  }
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
@@ -332,28 +363,64 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_back_button", "Back")}
               </Button>
               {!blnEffectiveViewMode ? (
-                <Button
-                  variant="contained"
-                  startIcon={<HistoryRoundedIcon />}
-                  onClick={() => setBlnDialogOpen(true)}
-                  sx={{
-                    borderRadius: "14px",
-                    height: 40,
-                    minHeight: 40,
-                    py: 0,
-                    px: 2,
-                    fontSize: "0.92rem",
-                    lineHeight: 1.1,
-                    "& .MuiButton-startIcon": {
-                      mr: 0.75,
-                      "& svg": {
-                        fontSize: "1.05rem"
+                <>
+                  {objDetail?.objAssignedStructure ? (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      startIcon={<RemoveCircleOutlineRoundedIcon />}
+                      onClick={() =>
+                        setObjConfirmDialog({
+                          strTitle: t("employee_salary_unassign_title", "Unassign Salary"),
+                          strMessage: t(
+                            "employee_salary_unassign_message",
+                            "Are you sure you want to remove the current salary assignment for this employee?"
+                          ),
+                          strConfirmLabel: t("employee_salary_unassign_button", "Unassign Salary")
+                        })
                       }
-                    }
-                  }}
-                >
-                  {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
-                </Button>
+                      sx={{
+                        borderRadius: "14px",
+                        height: 40,
+                        minHeight: 40,
+                        py: 0,
+                        px: 1.75,
+                        fontSize: "0.92rem",
+                        lineHeight: 1.1,
+                        "& .MuiButton-startIcon": {
+                          mr: 0.75,
+                          "& svg": {
+                            fontSize: "1.05rem"
+                          }
+                        }
+                      }}
+                    >
+                      {t("employee_salary_unassign_button", "Unassign Salary")}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="contained"
+                    startIcon={<HistoryRoundedIcon />}
+                    onClick={() => setBlnDialogOpen(true)}
+                    sx={{
+                      borderRadius: "14px",
+                      height: 40,
+                      minHeight: 40,
+                      py: 0,
+                      px: 2,
+                      fontSize: "0.92rem",
+                      lineHeight: 1.1,
+                      "& .MuiButton-startIcon": {
+                        mr: 0.75,
+                        "& svg": {
+                          fontSize: "1.05rem"
+                        }
+                      }
+                    }}
+                  >
+                    {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
+                  </Button>
+                </>
               ) : null}
             </Stack>
           </Stack>
@@ -673,6 +740,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           </Stack>
         </DialogContent>
       </Dialog>
+
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle ?? ""}
+        strMessage={objConfirmDialog?.strMessage ?? ""}
+        strCancelLabel={t("cancel", "Cancel")}
+        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm", "Confirm")}
+        blnConfirmDisabled={blnSaving}
+        blnCancelDisabled={blnSaving}
+        onClose={() => setObjConfirmDialog(null)}
+        onConfirm={handleConfirmUnassign}
+      />
     </Stack>
   );
 }

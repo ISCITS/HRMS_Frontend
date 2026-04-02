@@ -1445,12 +1445,20 @@ export const masterApiService = {
     });
   },
 
-  createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
-    return requestApi<EmployeeSalaryDetailApiRecord>({
-      strPath: `/employee-salary/${intEmployeeID}/revisions`,
-      strMethod: "POST",
-      objBody,
-      strMenuAction: "EMPLOYEE_SALARY_SAVE"
-    });
-  }
-};
+    createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+      return requestApi<EmployeeSalaryDetailApiRecord>({
+        strPath: `/employee-salary/${intEmployeeID}/revisions`,
+        strMethod: "POST",
+        objBody,
+        strMenuAction: "EMPLOYEE_SALARY_SAVE"
+      });
+    },
+
+    unassignEmployeeSalary(intEmployeeID: number) {
+      return requestApi<EmployeeSalaryDetailApiRecord>({
+        strPath: `/employee-salary/${intEmployeeID}/unassign`,
+        strMethod: "POST",
+        strMenuAction: "EMPLOYEE_SALARY_SAVE"
+      });
+    }
+  };

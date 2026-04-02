@@ -62,5 +62,10 @@ export const employeeSalaryService = {
         )
     });
     return objResult.Data;
+  },
+
+  async unassignSalary(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+    const objResult = await masterApiService.unassignEmployeeSalary(intEmployeeID);
+    return objResult.Data;
   }
 };
