@@ -501,12 +501,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
 function isSessionExpiredError(objError: unknown): boolean {
   if (objError instanceof clsApiRequestError) {
-    if (objError.intStatusCode === 401 || objError.intStatusCode === 403) {
+    if (objError.intStatusCode === 401) {
       return true;
     }
 
-    return /unauthorized|session|token|expired|forbidden/i.test(objError.message);
+    return /unauthorized|session|token|expired/i.test(objError.message);
   }
 
-  return objError instanceof Error && /unauthorized|session|token|expired|forbidden/i.test(objError.message);
+  return objError instanceof Error && /unauthorized|session|token|expired/i.test(objError.message);
 }

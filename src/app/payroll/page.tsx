@@ -52,7 +52,7 @@ export default function PayrollPage() {
               Payroll Runs
             </Button>
             <Button
-              href="/payroll/payslips"
+              href="/payroll/results"
               variant="outlined"
               sx={{
                 minHeight: 52,

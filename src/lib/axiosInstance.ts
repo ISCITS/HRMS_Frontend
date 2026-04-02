@@ -30,7 +30,7 @@ function shouldRedirectToSessionExpired(objError: unknown) {
   }
 
   const intStatusCode = objError.response?.status;
-  if (intStatusCode !== 401 && intStatusCode !== 403) {
+  if (intStatusCode !== 401) {
     return false;
   }
 
