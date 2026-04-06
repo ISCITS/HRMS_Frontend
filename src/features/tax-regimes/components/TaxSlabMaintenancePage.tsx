@@ -83,7 +83,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
         setLstSlabs(toTaxSlabFormValues(dicWorkspace));
       } catch (objError) {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load tax slab workspace.");
+          setStrError(objError instanceof Error ? objError.message : t("load_slabs_workspace_failed", "Unable to load tax slab workspace."));
         }
       } finally {
         if (blnMounted) {
@@ -122,7 +122,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
       return;
     }
     if (lstSlabs.length === 0) {
-      setStrError("At least one slab row is required.");
+      setStrError(t("validation_slab_row_required", "At least one slab row is required."));
       return;
     }
     const blnHasInvalidRow = lstSlabs.some((dicLine) => (
@@ -131,7 +131,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
       !dicLine.fltTaxRatePercent.trim()
     ));
     if (blnHasInvalidRow) {
-      setStrError("Financial year, slab from amount, and tax rate are required for every row.");
+      setStrError(t("validation_slab_required_fields", "Financial year, slab from amount, and tax rate are required for every row."));
       return;
     }
     setBlnSaving(true);
@@ -142,9 +142,9 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
       setObjRegime(dicWorkspace.objRegime);
       setLstFinancialYears(dicWorkspace.lstFinancialYears);
       setLstSlabs(toTaxSlabFormValues(dicWorkspace));
-      setStrSuccess("Tax slabs saved successfully.");
+      setStrSuccess(t("save_slabs_success", "Tax slabs saved successfully."));
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save tax slabs.");
+      setStrError(objError instanceof Error ? objError.message : t("save_slabs_failed", "Unable to save tax slabs."));
     } finally {
       setBlnSaving(false);
     }

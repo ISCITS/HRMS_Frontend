@@ -6,6 +6,7 @@ import { Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/ma
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 
@@ -26,6 +27,7 @@ type EmployeeSalarySummaryCardProps = {
 
 export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
+  const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
 
@@ -83,9 +85,9 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSal
               <MonetizationOnRoundedIcon />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>Salary Summary</Typography>
+              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                Snapshot only. Full maintenance stays on the dedicated salary page.
+                {t("salary_summary_card_subtitle", "Snapshot only. Full maintenance stays on the dedicated salary page.")}
               </Typography>
             </Box>
           </Stack>
@@ -96,18 +98,18 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSal
             disabled={!intEmployeeID}
             sx={{ borderRadius: "14px", px: 2 }}
           >
-            Open Salary Page
+            {t("salary_summary_card_open_page", "Open Salary Page")}
           </Button>
         </Stack>
 
         {!intEmployeeID ? (
           <Typography sx={{ color: "#64748b" }}>
-            Save the employee first to view salary information.
+            {t("salary_summary_card_save_employee_first", "Save the employee first to view salary information.")}
           </Typography>
         ) : blnLoading ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, color: "#64748b" }}>
             <CircularProgress size={18} />
-            <Typography>Loading salary summary...</Typography>
+            <Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Box>
         ) : (
           <Box
@@ -118,25 +120,25 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSal
             }}
           >
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>Current Structure</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_current_structure", "Current Structure")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {objSummary?.objAssignedStructure?.strStructureName ?? "Not assigned"}
+                {objSummary?.objAssignedStructure?.strStructureName ?? t("salary_summary_card_not_assigned", "Not assigned")}
               </Typography>
             </Box>
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>Gross Monthly</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_gross_monthly", "Gross Monthly")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
                 {formatCurrency(objSummary?.objCurrentSalarySnapshot?.decGrossMonthly ?? null)}
               </Typography>
             </Box>
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>CTC Annual</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
                 {formatCurrency(objSummary?.objCurrentSalarySnapshot?.decCtcAnnual ?? null)}
               </Typography>
             </Box>
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>Revisions</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_revisions", "Revisions")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
                 {objSummary?.intRevisionCount ?? 0}
               </Typography>

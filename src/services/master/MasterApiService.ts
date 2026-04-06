@@ -473,6 +473,7 @@ async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: "GET" | "POST" | "PUT" | "DELETE";
   objBody?: unknown;
+  objQueryParams?: Record<string, string | number | boolean | null | undefined>;
   strMenuAction: string;
 }): Promise<ApiEnvelope<TData>> {
   // Master screens share the same encrypted API contract as the rest of the app,
@@ -489,6 +490,7 @@ async function requestApi<TData>(objOptions: {
       method: objOptions.strMethod,
       url: `api/v1${objOptions.strPath}`,
       data: objOptions.objBody,
+      params: objOptions.objQueryParams,
       csrfMenuAction: objOptions.strMenuAction,
       headers: objHeaders
     });
@@ -1368,10 +1370,11 @@ export const masterApiService = {
     });
   },
 
-  getSalaryStructureFormOptions() {
+  getSalaryStructureFormOptions(intLanguageID?: number | null) {
     return requestApi<SalaryStructureFormOptionsApiRecord>({
       strPath: "/masters/salary-structures/form-options",
       strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "MASTER_SALARY_STRUCTURE_FORM_OPTIONS"
     });
   },

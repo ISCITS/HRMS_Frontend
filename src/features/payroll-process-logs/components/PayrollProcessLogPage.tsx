@@ -182,7 +182,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
     try {
       setDicOptions(await payrollProcessLogService.getFormOptions());
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to load payroll process log filter options.", "error");
+      showToast(objError instanceof Error ? objError.message : t("load_filter_options_failed", "Unable to load payroll process log filter options."), "error");
     }
   }
 
@@ -199,7 +199,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
       setLstLogs(await payrollProcessLogService.getPayrollProcessLogs(dicFilters));
       setIntPage(1);
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to load payroll process logs.", "error");
+      showToast(objError instanceof Error ? objError.message : t("load_logs_failed", "Unable to load payroll process logs."), "error");
     } finally {
       setBlnLoading(false);
     }

@@ -4,6 +4,7 @@ import {
   type SalaryStructureComponentApiRecord,
   type SalaryStructureTextApiRecord
 } from "@/services/master/MasterApiService";
+import { authHelpers } from "@/lib/auth";
 import type {
   SalaryStructureCloneValues,
   SalaryStructureDetailRecord,
@@ -257,7 +258,7 @@ export const salaryStructureService = {
   },
 
   async getFormOptions(): Promise<SalaryStructureFormOptions> {
-    const objResult = await masterApiService.getSalaryStructureFormOptions();
+    const objResult = await masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1);
     return objResult.Data;
   },
 

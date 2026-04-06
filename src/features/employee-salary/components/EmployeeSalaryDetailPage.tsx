@@ -142,8 +142,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanSave = canDoAny("save");
-  const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSave;
+  const blnCanSubmit = canDoAny("submit") || canDoAny("save");
+  const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSubmit;
   const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
 
@@ -316,6 +316,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   }
 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
+  const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
+  const blnCanOpenAssignRevise =
+    !blnEffectiveViewMode &&
+    (blnHasAssignedSalary ? (blnCanEdit || blnCanSubmit) : (blnCanAdd || blnCanSubmit));
+  const blnCanUnassignSalary =
+    !blnEffectiveViewMode && blnHasAssignedSalary && (blnCanEdit || blnCanSubmit);
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
@@ -364,7 +370,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </Button>
               {!blnEffectiveViewMode ? (
                 <>
-                  {objDetail?.objAssignedStructure ? (
+                  {blnCanUnassignSalary ? (
                     <Button
                       variant="outlined"
                       color="warning"
@@ -398,28 +404,30 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       {t("employee_salary_unassign_button", "Unassign Salary")}
                     </Button>
                   ) : null}
-                  <Button
-                    variant="contained"
-                    startIcon={<HistoryRoundedIcon />}
-                    onClick={() => setBlnDialogOpen(true)}
-                    sx={{
-                      borderRadius: "14px",
-                      height: 40,
-                      minHeight: 40,
-                      py: 0,
-                      px: 2,
-                      fontSize: "0.92rem",
-                      lineHeight: 1.1,
-                      "& .MuiButton-startIcon": {
-                        mr: 0.75,
-                        "& svg": {
-                          fontSize: "1.05rem"
+                  {blnCanOpenAssignRevise ? (
+                    <Button
+                      variant="contained"
+                      startIcon={<HistoryRoundedIcon />}
+                      onClick={() => setBlnDialogOpen(true)}
+                      sx={{
+                        borderRadius: "14px",
+                        height: 40,
+                        minHeight: 40,
+                        py: 0,
+                        px: 2,
+                        fontSize: "0.92rem",
+                        lineHeight: 1.1,
+                        "& .MuiButton-startIcon": {
+                          mr: 0.75,
+                          "& svg": {
+                            fontSize: "1.05rem"
+                          }
                         }
-                      }
-                    }}
-                  >
-                    {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
-                  </Button>
+                      }}
+                    >
+                      {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
             </Stack>

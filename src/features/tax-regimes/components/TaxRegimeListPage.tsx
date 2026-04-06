@@ -152,7 +152,7 @@ export default function TaxRegimeListPage() {
       setLstRegimes(await taxRegimeService.getTaxRegimes());
       setIntPage(1);
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to load tax regimes.", "error");
+      showToast(objError instanceof Error ? objError.message : t("load_tax_regimes_failed", "Unable to load tax regimes."), "error");
     } finally {
       setBlnLoading(false);
     }
@@ -211,7 +211,7 @@ export default function TaxRegimeListPage() {
     try {
       await objConfirmDialog.fnOnConfirm();
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
+      showToast(objError instanceof Error ? objError.message : t("request_failed", "Request failed."), "error");
     } finally {
       setBlnSubmitting(false);
       closeConfirmDialog();

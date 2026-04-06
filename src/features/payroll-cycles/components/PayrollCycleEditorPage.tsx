@@ -96,7 +96,7 @@ export default function PayrollCycleEditorPage({
         }
       } catch (objError) {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load payroll cycle workspace.");
+          setStrError(objError instanceof Error ? objError.message : t("load_workspace_failed", "Unable to load payroll cycle workspace."));
         }
       } finally {
         if (blnMounted) {
@@ -124,7 +124,7 @@ export default function PayrollCycleEditorPage({
       return;
     }
     if (!dicForm.strCycleCode.trim() || !dicForm.strCycleName.trim() || !dicForm.strPeriodType.trim() || dicForm.intPayrollGroupID === "") {
-      setStrError("Cycle code, cycle name, period type, and payroll group are required.");
+      setStrError(t("validation_required_fields", "Cycle code, cycle name, period type, and payroll group are required."));
       return;
     }
     setBlnSaving(true);
@@ -135,12 +135,16 @@ export default function PayrollCycleEditorPage({
         ? await payrollCycleService.updatePayrollCycle(intPayrollCycleID, dicForm)
         : await payrollCycleService.createPayrollCycle(dicForm);
       setDicForm(toPayrollCycleFormValues(dicSavedRecord));
-      setStrSuccess(`Payroll cycle ${strMode === "edit" ? "updated" : "created"} successfully.`);
+      setStrSuccess(
+        strMode === "edit"
+          ? t("update_success", "Payroll cycle updated successfully.")
+          : t("create_success", "Payroll cycle created successfully.")
+      );
       if (strMode === "add") {
         objRouter.push(`/payroll/cycles/edit/${dicSavedRecord.intID}`);
       }
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save payroll cycle.");
+      setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save payroll cycle."));
     } finally {
       setBlnSaving(false);
     }

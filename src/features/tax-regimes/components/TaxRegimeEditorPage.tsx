@@ -91,7 +91,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         }
       } catch (objError) {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load tax regime workspace.");
+          setStrError(objError instanceof Error ? objError.message : t("load_workspace_failed", "Unable to load tax regime workspace."));
         }
       } finally {
         if (blnMounted) {
@@ -119,7 +119,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
       return;
     }
     if (!dicForm.strRegimeCode.trim() || !dicForm.strRegimeName.trim() || !dicForm.strCountryCode.trim()) {
-      setStrError("Regime code, regime name, and country are required.");
+      setStrError(t("validation_required_fields", "Regime code, regime name, and country are required."));
       return;
     }
     setBlnSaving(true);
@@ -130,12 +130,16 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         ? await taxRegimeService.updateTaxRegime(intTaxRegimeID, dicForm)
         : await taxRegimeService.createTaxRegime(dicForm);
       setDicForm(toTaxRegimeFormValues(dicSavedRecord));
-      setStrSuccess(`Tax regime ${strMode === "edit" ? "updated" : "created"} successfully.`);
+      setStrSuccess(
+        strMode === "edit"
+          ? t("update_success", "Tax regime updated successfully.")
+          : t("create_success", "Tax regime created successfully.")
+      );
       if (strMode === "add") {
         objRouter.push(`/payroll/tax-regimes/edit/${dicSavedRecord.intID}`);
       }
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save tax regime.");
+      setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save tax regime."));
     } finally {
       setBlnSaving(false);
     }
