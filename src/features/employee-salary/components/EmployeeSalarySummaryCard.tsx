@@ -23,9 +23,10 @@ function formatCurrency(decValue: number | null) {
 
 type EmployeeSalarySummaryCardProps = {
   intEmployeeID?: number | null;
+  blnHideOpenPageButton?: boolean;
 };
 
-export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSalarySummaryCardProps) {
+export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
@@ -91,15 +92,17 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID }: EmployeeSal
               </Typography>
             </Box>
           </Stack>
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardRoundedIcon />}
-            onClick={() => intEmployeeID && objRouter.push(`/employee-salary/${intEmployeeID}`)}
-            disabled={!intEmployeeID}
-            sx={{ borderRadius: "14px", px: 2 }}
-          >
-            {t("salary_summary_card_open_page", "Open Salary Page")}
-          </Button>
+          {!blnHideOpenPageButton ? (
+            <Button
+              variant="contained"
+              endIcon={<ArrowForwardRoundedIcon />}
+              onClick={() => intEmployeeID && objRouter.push(`/employee-salary/${intEmployeeID}`)}
+              disabled={!intEmployeeID}
+              sx={{ borderRadius: "14px", px: 2 }}
+            >
+              {t("salary_summary_card_open_page", "Open Salary Page")}
+            </Button>
+          ) : null}
         </Stack>
 
         {!intEmployeeID ? (

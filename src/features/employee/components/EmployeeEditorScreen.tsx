@@ -48,6 +48,9 @@ import type {
 type EmployeeEditorScreenProps = {
   strMode: "add" | "edit" | "view";
   intEmployeeID?: number;
+  blnHideSalaryOpenPageButton?: boolean;
+  blnHidePageHeading?: boolean;
+  strBackRoute?: string;
 };
 
 type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory";
@@ -79,7 +82,13 @@ function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function EmployeeEditorScreen({ strMode, intEmployeeID }: EmployeeEditorScreenProps) {
+export default function EmployeeEditorScreen({
+  strMode,
+  intEmployeeID,
+  blnHideSalaryOpenPageButton = false,
+  blnHidePageHeading = false,
+  strBackRoute = "/employees"
+}: EmployeeEditorScreenProps) {
   const objRouter = useRouter();
   const { strLabelError, t } = useEmployeeLabels();
   const [strActiveTab, setStrActiveTab] = useState<TabKey>("basicInfo");
@@ -537,23 +546,25 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
     <Stack spacing={2.5} sx={{ pb: blnViewOnly ? 0 : { xs: 12, md: 13 } }} onFocusCapture={handleEditorFocusCapture}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
         <Box>
-          <Typography
-            sx={{
-              mt: 0.5,
-              fontWeight: 800,
-              color: "#1f2937",
-              fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)",
-              lineHeight: 1.05,
-            }}
-          >
-            {strMode === "add"
-              ? t("add_page_title", dicConstant.employeeMaster.addPageTitle)
-              : strMode === "view"
-                ? t("view_page_title", dicConstant.employeeMaster.dialogViewTitle ?? "View Employee")
-                : t("edit_page_title", dicConstant.employeeMaster.editPageTitle)}
-          </Typography>
+          {!blnHidePageHeading ? (
+            <Typography
+              sx={{
+                mt: 0.5,
+                fontWeight: 800,
+                color: "#1f2937",
+                fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)",
+                lineHeight: 1.05,
+              }}
+            >
+              {strMode === "add"
+                ? t("add_page_title", dicConstant.employeeMaster.addPageTitle)
+                : strMode === "view"
+                  ? t("view_page_title", dicConstant.employeeMaster.dialogViewTitle ?? "View Employee")
+                  : t("edit_page_title", dicConstant.employeeMaster.editPageTitle)}
+            </Typography>
+          ) : null}
           {strLabelError ? (
-            <Typography sx={{ mt: 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
+            <Typography sx={{ mt: blnHidePageHeading ? 0 : 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
           ) : null}
         </Box>
       </Stack>
@@ -569,7 +580,10 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
         </Box>
       </Paper>
 
-      <EmployeeSalarySummaryCard intEmployeeID={intResolvedEmployeeID} />
+      <EmployeeSalarySummaryCard
+        intEmployeeID={intResolvedEmployeeID}
+        blnHideOpenPageButton={blnHideSalaryOpenPageButton}
+      />
 
       <Paper sx={{ borderRadius: "26px", overflow: "hidden", border: "1px solid rgba(148,163,184,0.24)" }}>
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
@@ -723,7 +737,7 @@ export default function EmployeeEditorScreen({ strMode, intEmployeeID }: Employe
             <Button
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push("/employees")}
+              onClick={() => objRouter.push(strBackRoute)}
               sx={{
                 minWidth: { xs: "100%", sm: 140 },
                 borderRadius: "14px",
