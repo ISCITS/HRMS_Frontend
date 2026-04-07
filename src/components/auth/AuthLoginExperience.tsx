@@ -13,7 +13,7 @@ import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
-import type { AuthOtpChallengeData, TenantAuthDetails, TenantLookupData } from "@/models/AuthModels";
+import type { AuthOtpChallengeData, NormalizedTenantAuthMode, TenantAuthDetails } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isOtpChallengeData } from "@/services/auth/AuthApiService";
@@ -33,7 +33,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnResendingOtp, setBlnResendingOtp] = useState(false);
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
-  const [objTenant, setObjTenant] = useState<TenantLookupData | null>(null);
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
   const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
@@ -42,6 +41,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [intLockRemainingSeconds, setIntLockRemainingSeconds] = useState(0);
   const [intResendRemainingSeconds, setIntResendRemainingSeconds] = useState(0);
   const [dicLoginLabels, setDicLoginLabels] = useState<Record<string, string>>({});
+  const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
 
   useEffect(() => {
     if (strMode !== "tenant" || !strTenantUUID) {
@@ -53,38 +53,31 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
 
     authApiService
       .getTenantAuthDetails(strTenantUUID)
-      .then(async (objAuthDetailsResult) => {
+      .then((objAuthDetailsResult) => {
         if (!blnActive) {
           return;
         }
 
-        setObjTenantAuthDetails(objAuthDetailsResult.Data);
+        const objAuthDetails = objAuthDetailsResult.Data;
+        if (!isTenantAuthDetails(objAuthDetails)) {
+          throw new Error(getLoginLabel("tenantUnavailable"));
+        }
+
+        setObjTenantAuthDetails(objAuthDetails);
         authHelpers.setTenantContext(
-          objAuthDetailsResult.Data.tenant_id,
+          objAuthDetails.tenant_id,
           undefined,
-          objAuthDetailsResult.Data.language_id ?? undefined
+          objAuthDetails.language_id ?? undefined
         );
-        setDicLoginLabels(objAuthDetailsResult.Data.labels ?? {});
-        if (objAuthDetailsResult.Data.auth_mode === "SSO") {
+        setDicLoginLabels(objAuthDetails.labels ?? {});
+        if (strTenantModeRequiresSsoRedirect(objAuthDetails.auth_mode)) {
           setBlnSsoRedirecting(true);
           setStrSsoStatus(getLoginLabel("ssoRedirectStatus"));
           authHelpers.clearSession();
           window.setTimeout(() => {
             window.location.href = `${apiConstants.baseURL}/${apiConstants.apiPrefix}/auth/sso/login/${strTenantUUID}`;
           }, 250);
-          return;
         }
-
-        const objTenantResult = await authApiService.getTenant(strTenantUUID);
-        if (!blnActive) {
-          return;
-        }
-        setObjTenant(objTenantResult.Data);
-        authHelpers.setTenantContext(
-          objTenantResult.Data.intTenantID,
-          undefined,
-          objTenantResult.Data.intLanguageID ?? objAuthDetailsResult.Data.language_id ?? undefined
-        );
       })
       .catch((objError: Error) => {
         if (!blnActive) {
@@ -96,7 +89,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         } else {
           setStrError(strMessage);
         }
-        setObjTenant(null);
         setObjTenantAuthDetails(null);
         setDicLoginLabels({});
       })
@@ -242,7 +234,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const strSubtitle = strMode === "tenant" ? getLoginLabel("tenantSubtitle") : enMessages.auth.genericSubtitle;
   const blnShowTenantTransition =
     strMode === "tenant" &&
-    (blnTenantLoading || blnSsoRedirecting || objTenantAuthDetails?.auth_mode === "SSO") &&
+    (blnTenantLoading || blnSsoRedirecting || strTenantAuthMode === "sso") &&
     !strError;
   const strLockCountdown = intLockRemainingSeconds > 0 ? formatDuration(intLockRemainingSeconds) : null;
   const blnOtpStep = Boolean(objOtpChallenge);
@@ -456,6 +448,39 @@ function extractRemainingSeconds(objData: unknown): number {
 
   const objRemainingSeconds = objData.remainingSeconds;
   return typeof objRemainingSeconds === "number" && objRemainingSeconds > 0 ? Math.floor(objRemainingSeconds) : 0;
+}
+
+function isTenantAuthDetails(objData: unknown): objData is TenantAuthDetails {
+  if (!objData || typeof objData !== "object") {
+    return false;
+  }
+
+  const objTenantAuthDetails = objData as Partial<TenantAuthDetails>;
+  return typeof objTenantAuthDetails.tenant_id === "number" &&
+    typeof objTenantAuthDetails.tenant_uuid === "string" &&
+    typeof objTenantAuthDetails.auth_mode === "string" &&
+    objTenantAuthDetails.auth_mode.trim().length > 0;
+}
+
+function normalizeTenantAuthMode(strAuthMode: string | null | undefined): NormalizedTenantAuthMode {
+  const strNormalizedMode = strAuthMode?.trim().toLowerCase();
+  switch (strNormalizedMode) {
+    case "local":
+      return "local";
+    case "sso":
+      return "sso";
+    case "otp":
+      return "otp";
+    case "otp_mandatory":
+    case "otp-mandatory":
+      return "otp_mandatory";
+    default:
+      return "unknown";
+  }
+}
+
+function strTenantModeRequiresSsoRedirect(strAuthMode: string | null | undefined): boolean {
+  return normalizeTenantAuthMode(strAuthMode) === "sso";
 }
 
 function formatDuration(intSeconds: number): string {
