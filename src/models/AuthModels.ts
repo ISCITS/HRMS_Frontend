@@ -21,9 +21,11 @@ export type TenantAuthDetails = {
   tenant_uuid: string;
   language_id?: number | null;
   is_active: boolean;
-  auth_mode: "LOCAL" | "SSO";
+  auth_mode: string;
   labels?: Record<string, string>;
 };
+
+export type NormalizedTenantAuthMode = "local" | "sso" | "otp" | "otp_mandatory" | "unknown";
 
 export type LoginRequest = {
   strTenantUUID: string;
