@@ -140,6 +140,14 @@ function mapNodeDeep(
   );
 }
 
+function isNodeFullyAllowed(objNode: SecurityMenuNode): boolean {
+  if (objNode.lstChildren.length > 0) {
+    return objNode.lstChildren.every((objChild) => isNodeFullyAllowed(objChild));
+  }
+
+  return objNode.blnIsAllowed;
+}
+
 function updateActionState(
   lstMenuNodes: SecurityMenuNode[],
   intMenuID: number,
@@ -148,25 +156,17 @@ function updateActionState(
 ): SecurityMenuNode[] {
   return lstMenuNodes.map((objNode) => {
     if (objNode.intMenuID === intMenuID) {
-      const lstActions = objNode.lstActions.map((objAction) =>
-        objAction.intActionID === intActionID ? fnMutateAction(objAction) : objAction,
-      );
       return {
         ...objNode,
-        lstActions,
-        blnIsAllowed:
-          lstActions.some((objAction) => objAction.blnIsAllowed) ||
-          objNode.lstChildren.some((objChild) => objChild.blnIsAllowed),
+        lstActions: objNode.lstActions.map((objAction) =>
+          objAction.intActionID === intActionID ? fnMutateAction(objAction) : objAction,
+        ),
       };
     }
 
-    const lstChildren = updateActionState(objNode.lstChildren, intMenuID, intActionID, fnMutateAction);
     return {
       ...objNode,
-      lstChildren,
-      blnIsAllowed:
-        objNode.lstActions.some((objAction) => objAction.blnIsAllowed) ||
-        lstChildren.some((objChild) => objChild.blnIsAllowed),
+      lstChildren: updateActionState(objNode.lstChildren, intMenuID, intActionID, fnMutateAction),
     };
   });
 }
@@ -229,6 +229,7 @@ function renderNodeRows(
   intDepth = 0,
 ) {
   const blnExpanded = objExpandedMenuIDs.has(objNode.intMenuID);
+  const blnNodeChecked = isNodeFullyAllowed(objNode);
 
   return (
     <Box key={objNode.intMenuID} sx={{ borderTop: intDepth === 0 ? "none" : "1px solid #edf2f7" }}>
@@ -264,7 +265,7 @@ function renderNodeRows(
         </Box>
         <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
           <Switch
-            checked={objNode.blnIsAllowed}
+            checked={blnNodeChecked}
             disabled={blnReadOnly}
             onChange={(objEvent) => fnToggleNodeAllowed(objNode.intMenuID, objEvent.target.checked)}
             size="small"

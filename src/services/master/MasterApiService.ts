@@ -88,6 +88,29 @@ export type BankApiRecord = {
   blnIsActive: boolean;
 };
 
+export type EssDeclarationCategoryTextApiRecord = {
+  intLanguageID: number;
+  strLanguageName?: string | null;
+  strCategoryName: string;
+  strCategoryDescription: string | null;
+};
+
+export type EssDeclarationCategoryApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number | null;
+  strCategoryCode: string;
+  strCategoryName: string;
+  strCategoryDescription?: string | null;
+  strDeclarationKind: string;
+  intLinkedSalaryComponentID: number | null;
+  strLinkedSalaryComponentName?: string | null;
+  decMaxLimitAmount: number | null;
+  blnProofRequired: boolean;
+  blnIsActive: boolean;
+  lstTexts?: EssDeclarationCategoryTextApiRecord[];
+};
+
 export type CostCenterApiRecord = {
   intID: number;
   intTenantID: number;
@@ -666,6 +689,68 @@ export const masterApiService = {
       strMethod: "POST",
       objBody: { lstIDs },
       strMenuAction: "MASTER_BANK_BULK_DELETE"
+    });
+  },
+
+  getEssDeclarationCategories() {
+    return requestApi<EssDeclarationCategoryApiRecord[]>({
+      strPath: "/masters/ess-declaration-categories",
+      strMethod: "GET",
+      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_LIST"
+    });
+  },
+
+  createEssDeclarationCategory(objBody: {
+    strCategoryCode: string;
+    strCategoryName: string;
+    strCategoryDescription: string | null;
+    strDeclarationKind: string;
+    intLinkedSalaryComponentID: number | null;
+    decMaxLimitAmount: number | null;
+    blnProofRequired: boolean;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<EssDeclarationCategoryApiRecord>({
+      strPath: "/masters/ess-declaration-categories",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_CREATE"
+    });
+  },
+
+  updateEssDeclarationCategory(intID: number, objBody: {
+    strCategoryCode: string;
+    strCategoryName: string;
+    strCategoryDescription: string | null;
+    strDeclarationKind: string;
+    intLinkedSalaryComponentID: number | null;
+    decMaxLimitAmount: number | null;
+    blnProofRequired: boolean;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<EssDeclarationCategoryApiRecord>({
+      strPath: `/masters/ess-declaration-categories/${intID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_UPDATE"
+    });
+  },
+
+  bulkEssDeclarationCategoryStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/ess-declaration-categories/bulk-status",
+      strMethod: "POST",
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_BULK_STATUS"
+    });
+  },
+
+  bulkEssDeclarationCategoryDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: "/masters/ess-declaration-categories/bulk-delete",
+      strMethod: "POST",
+      objBody: { lstIDs },
+      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_BULK_DELETE"
     });
   },
 
