@@ -22,10 +22,13 @@ export type TenantAuthDetails = {
   language_id?: number | null;
   is_active: boolean;
   auth_mode: string;
+  mfa_mode?: string | null;
+  login_method?: string | null;
   labels?: Record<string, string>;
 };
 
 export type NormalizedTenantAuthMode = "local" | "sso" | "otp" | "otp_mandatory" | "unknown";
+export type NormalizedTenantLoginMethod = "email_address" | "login_id";
 
 export type LoginRequest = {
   strTenantUUID: string;

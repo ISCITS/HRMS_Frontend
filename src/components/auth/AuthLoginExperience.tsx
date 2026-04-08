@@ -13,7 +13,7 @@ import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
-import type { AuthOtpChallengeData, NormalizedTenantAuthMode, TenantAuthDetails } from "@/models/AuthModels";
+import type { AuthOtpChallengeData, NormalizedTenantAuthMode, NormalizedTenantLoginMethod, TenantAuthDetails } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isOtpChallengeData } from "@/services/auth/AuthApiService";
@@ -42,6 +42,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [intResendRemainingSeconds, setIntResendRemainingSeconds] = useState(0);
   const [dicLoginLabels, setDicLoginLabels] = useState<Record<string, string>>({});
   const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
+  const strTenantLoginMethod = normalizeTenantLoginMethod(objTenantAuthDetails?.login_method);
+  const strIdentifierLabel = strTenantLoginMethod === "login_id" ? "Login ID" : "Email Address";
+  const strIdentifierPlaceholder = strTenantLoginMethod === "login_id" ? "Enter your login ID" : "Enter your email address";
 
   useEffect(() => {
     if (strMode !== "tenant" || !strTenantUUID) {
@@ -321,9 +324,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
 
               <Box>
-                <Typography className={styles.fieldLabel}>{getLoginLabel("loginIdLabel")}</Typography>
+                <Typography className={styles.fieldLabel}>
+                  {strMode === "tenant" ? strIdentifierLabel : getLoginLabel("loginIdLabel")}
+                </Typography>
                 <TextField
-                  placeholder={getLoginLabel("loginIdPlaceholder")}
+                  placeholder={strMode === "tenant" ? strIdentifierPlaceholder : getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
                   fullWidth
@@ -477,6 +482,10 @@ function normalizeTenantAuthMode(strAuthMode: string | null | undefined): Normal
     default:
       return "unknown";
   }
+}
+
+function normalizeTenantLoginMethod(strLoginMethod: string | null | undefined): NormalizedTenantLoginMethod {
+  return strLoginMethod?.trim().toLowerCase() === "login_id" ? "login_id" : "email_address";
 }
 
 function strTenantModeRequiresSsoRedirect(strAuthMode: string | null | undefined): boolean {
