@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { proxySsoCallback, setAuthCookies } from "@/app/api/auth/AuthProxy";
+import { isAuthSuccessData, proxySsoCallback, setAuthCookies } from "@/app/api/auth/AuthProxy";
 
 export async function GET(request: Request) {
   try {
     const objUrl = new URL(request.url);
     const objResult = await proxySsoCallback(objUrl.search);
     const objResponse = NextResponse.json(objResult, { status: 200 });
-    await setAuthCookies(objResponse, objResult.Data);
+    if (isAuthSuccessData(objResult.Data)) {
+      await setAuthCookies(objResponse, objResult.Data);
+    }
     return objResponse;
   } catch (objError) {
     return NextResponse.json(

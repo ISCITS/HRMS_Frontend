@@ -38,6 +38,7 @@ function shouldRedirectToSessionExpired(objError: unknown) {
   const blnIsPublicAuthEndpoint =
     /\/auth\/login(\/generic)?$/i.test(strRequestUrl) ||
     /\/auth\/sso\/callback/i.test(strRequestUrl) ||
+    /\/auth\/sso\/mfa\/(setup\/verify|verify|backup-code\/verify)$/i.test(strRequestUrl) ||
     /\/tenant\/[^/]+\/auth-details/i.test(strRequestUrl) ||
     /\/auth\/tenant\//i.test(strRequestUrl);
 
@@ -79,8 +80,6 @@ axiosInstance.interceptors.request.use(async (config) => {
   }
 
   if (typeof FormData !== "undefined" && dicConfig.data instanceof FormData) {
-    // Multipart/form-data must remain unwrapped because the browser owns the boundary
-    // generation and servers typically expect the original part structure unchanged.
     headers.delete("Content-Type");
   } else if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");

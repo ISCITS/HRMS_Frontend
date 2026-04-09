@@ -9,14 +9,23 @@ import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
 import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
-import type { AuthOtpChallengeData, NormalizedTenantAuthMode, NormalizedTenantLoginMethod, TenantAuthDetails } from "@/models/AuthModels";
+import type {
+  AuthOtpChallengeData,
+  GoogleMfaChallengeData,
+  NormalizedTenantAuthMode,
+  NormalizedTenantLoginMethod,
+  SsoMfaLoginSuccessData,
+  SsoMfaSetupSuccessData,
+  TenantAuthDetails
+} from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
-import { clsApiRequestError, isOtpChallengeData } from "@/services/auth/AuthApiService";
+import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData } from "@/services/auth/AuthApiService";
 
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
@@ -29,12 +38,17 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [strLoginID, setStrLoginID] = useState("");
   const [strPassword, setStrPassword] = useState("");
   const [strOtp, setStrOtp] = useState("");
+  const [strGoogleCode, setStrGoogleCode] = useState("");
+  const [strBackupCode, setStrBackupCode] = useState("");
   const [strError, setStrError] = useState("");
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnResendingOtp, setBlnResendingOtp] = useState(false);
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
   const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
+  const [objGoogleMfaChallenge, setObjGoogleMfaChallenge] = useState<GoogleMfaChallengeData | null>(null);
+  const [blnUseBackupCode, setBlnUseBackupCode] = useState(false);
+  const [lstBackupCodes, setLstBackupCodes] = useState<string[]>([]);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
   const [blnSsoRedirecting, setBlnSsoRedirecting] = useState(false);
   const [strSsoStatus, setStrSsoStatus] = useState("Verifying your workspace and preparing Microsoft sign-in.");
@@ -147,6 +161,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     setBlnSubmitting(true);
 
     try {
+      if (objGoogleMfaChallenge) {
+        await handleGoogleMfaVerification();
+        return;
+      }
+
       if (objOtpChallenge) {
         const objResult = await authApiService.verifyOtp({
           intUserID: objOtpChallenge.intUserID,
@@ -155,6 +174,13 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         });
         setObjOtpChallenge(null);
         setStrOtp("");
+        if (isGoogleMfaChallengeData(objResult.Data)) {
+          setObjGoogleMfaChallenge(objResult.Data);
+          setStrGoogleCode("");
+          setStrBackupCode("");
+          setBlnUseBackupCode(false);
+          return;
+        }
         objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
@@ -171,6 +197,13 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setIntResendRemainingSeconds(30);
           return;
         }
+        if (isGoogleMfaChallengeData(objResult.Data)) {
+          setObjGoogleMfaChallenge(objResult.Data);
+          setStrGoogleCode("");
+          setStrBackupCode("");
+          setBlnUseBackupCode(false);
+          return;
+        }
         objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
@@ -183,6 +216,13 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         setObjOtpChallenge(objResult.Data);
         setStrOtp("");
         setIntResendRemainingSeconds(30);
+        return;
+      }
+      if (isGoogleMfaChallengeData(objResult.Data)) {
+        setObjGoogleMfaChallenge(objResult.Data);
+        setStrGoogleCode("");
+        setStrBackupCode("");
+        setBlnUseBackupCode(false);
         return;
       }
       objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
@@ -203,6 +243,39 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     } finally {
       setBlnSubmitting(false);
     }
+  }
+
+  async function handleGoogleMfaVerification() {
+    if (!objGoogleMfaChallenge?.strPreAuthToken) {
+      return;
+    }
+
+    if (blnUseBackupCode) {
+      const objResult: { Data: SsoMfaLoginSuccessData } = await authApiService.verifySsoBackupCode({
+        strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
+        strBackupCode: strBackupCode
+      });
+      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      return;
+    }
+
+    if (objGoogleMfaChallenge.blnMfaSetupRequired) {
+      const objResult: { Data: SsoMfaSetupSuccessData } = await authApiService.verifySsoMfaSetup({
+        strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
+        strCode: strGoogleCode
+      });
+      setLstBackupCodes(objResult.Data.lstBackupCodes);
+      setObjGoogleMfaChallenge(null);
+      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      return;
+    }
+
+    const objResult: { Data: SsoMfaLoginSuccessData } = await authApiService.verifySsoMfa({
+      strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
+      strCode: strGoogleCode
+    });
+    setObjGoogleMfaChallenge(null);
+    objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
   }
 
   async function resendOtp() {
@@ -282,6 +355,27 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       </Box>
     );
   }
+
+  if (objGoogleMfaChallenge) {
+    return (
+      <GoogleMfaChallengeView
+        objChallenge={objGoogleMfaChallenge}
+        strError={strError}
+        blnSubmitting={blnSubmitting}
+        blnUseBackupCode={blnUseBackupCode}
+        strCode={strGoogleCode}
+        strBackupCode={strBackupCode}
+        lstBackupCodes={lstBackupCodes}
+        onToggleBackupCode={() => setBlnUseBackupCode((blnCurrent) => !blnCurrent)}
+        onCodeChange={setStrGoogleCode}
+        onBackupCodeChange={setStrBackupCode}
+        onVerify={() => {
+          void handleGoogleMfaVerification();
+        }}
+      />
+    );
+  }
+
   const blnCanSubmit =
     Boolean(strLoginID.trim()) &&
     Boolean(strPassword.trim()) &&
@@ -451,7 +545,7 @@ function extractRemainingSeconds(objData: unknown): number {
     return 0;
   }
 
-  const objRemainingSeconds = objData.remainingSeconds;
+  const objRemainingSeconds = (objData as { remainingSeconds?: unknown }).remainingSeconds;
   return typeof objRemainingSeconds === "number" && objRemainingSeconds > 0 ? Math.floor(objRemainingSeconds) : 0;
 }
 

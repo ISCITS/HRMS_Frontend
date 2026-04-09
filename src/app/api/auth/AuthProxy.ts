@@ -3,10 +3,27 @@ import { NextResponse } from "next/server";
 
 import { appConfig } from "@/config";
 import { callBackendApi } from "@/lib/BackendApi";
-import type { ApiEnvelope, AuthSuccessData, CurrentUserContext, MenuResponse, SsoRedirectData, TenantLookupData } from "@/models/AuthModels";
+import type {
+  ApiEnvelope,
+  AuthSuccessData,
+  CurrentUserContext,
+  MenuResponse,
+  SsoCallbackData,
+  SsoRedirectData,
+  TenantLookupData
+} from "@/models/AuthModels";
 
 function getAuthCookieStore() {
   return cookies();
+}
+
+export function isAuthSuccessData(objData: unknown): objData is AuthSuccessData {
+  return Boolean(
+    objData &&
+    typeof objData === "object" &&
+    "objToken" in objData &&
+    "objTenant" in objData
+  );
 }
 
 export async function getAccessTokenFromCookie() {
@@ -67,7 +84,7 @@ export async function proxySsoRedirect(strTenantUUID: string) {
 }
 
 export async function proxySsoCallback(strSearch: string) {
-  return callBackendApi<ApiEnvelope<AuthSuccessData>>(`/api/v1/auth/sso/callback${strSearch}`, {
+  return callBackendApi<ApiEnvelope<SsoCallbackData>>(`/api/v1/auth/sso/callback${strSearch}`, {
     method: "GET",
     cache: "no-store"
   });

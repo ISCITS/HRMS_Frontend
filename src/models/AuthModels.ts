@@ -1,4 +1,4 @@
-export type ApiEnvelope<TData> = {
+﻿export type ApiEnvelope<TData> = {
   ResultCode: number;
   Msg: string;
   Data: TData;
@@ -53,7 +53,7 @@ export type TenantSummary = {
   strTenantUUID: string;
   strTenantCode: string;
   strTenantName: string;
-  intLanguageID:number;
+  intLanguageID: number;
   intSecondaryLanguageID?: number | null;
 };
 
@@ -77,19 +77,59 @@ export type AuthOtpChallengeData = {
   blnRequiresOtp: boolean;
   intUserID: number;
   intTenantID: number;
+  strPreAuthToken?: string | null;
+  strMfaType?: string | null;
 };
 
-export type AuthLoginData = AuthSuccessData | AuthOtpChallengeData;
+export type SsoMfaChallengeData = {
+  blnMfaRequired: boolean;
+  blnMfaSetupRequired: boolean;
+  strPreAuthToken: string;
+  strQrCodeBase64?: string | null;
+  strOtpauthUri?: string | null;
+  strManualSecret?: string | null;
+  strMessage: string;
+};
+
+export type GoogleMfaChallengeData = SsoMfaChallengeData;
+
+export type SsoMfaLoginSuccessData = {
+  blnLoginSuccess: boolean;
+  objAuth: AuthSuccessData;
+};
+
+export type SsoMfaSetupSuccessData = {
+  blnMfaSetupCompleted: boolean;
+  blnLoginSuccess: boolean;
+  objAuth: AuthSuccessData;
+  lstBackupCodes: string[];
+};
+
+export type AuthLoginData = AuthSuccessData | AuthOtpChallengeData | GoogleMfaChallengeData;
+export type VerifyOtpResponseData = AuthSuccessData | GoogleMfaChallengeData;
+export type SsoCallbackData = AuthSuccessData | SsoMfaChallengeData | AuthOtpChallengeData;
 
 export type VerifyOtpRequest = {
-  intUserID: number;
-  intTenantID: number;
+  intUserID?: number;
+  intTenantID?: number;
+  strPreAuthToken?: string;
   strOtp: string;
 };
 
 export type ResendOtpRequest = {
-  intUserID: number;
-  intTenantID: number;
+  intUserID?: number;
+  intTenantID?: number;
+  strPreAuthToken?: string;
+};
+
+export type SsoMfaVerifyRequest = {
+  strPreAuthToken: string;
+  strCode: string;
+};
+
+export type SsoMfaBackupCodeVerifyRequest = {
+  strPreAuthToken: string;
+  strBackupCode: string;
 };
 
 export type CurrentUserContext = {
@@ -124,3 +164,4 @@ export type SsoRedirectData = {
   strState: string;
   strProviderName: string;
 };
+

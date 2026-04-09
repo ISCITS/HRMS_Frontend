@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import axios from "axios";
 import { axiosInstance } from "@/lib/axiosInstance";
@@ -15,12 +15,20 @@ import {
   type AuthOtpChallengeData,
   type AuthSuccessData,
   type CurrentUserContext,
+  type GoogleMfaChallengeData,
   type MenuResponse,
   type ResendOtpRequest,
+  type SsoCallbackData,
+  type SsoMfaBackupCodeVerifyRequest,
+  type SsoMfaChallengeData,
+  type SsoMfaLoginSuccessData,
+  type SsoMfaSetupSuccessData,
+  type SsoMfaVerifyRequest,
   type SsoRedirectData,
   type TenantAuthDetails,
   type TenantLookupData,
-  type VerifyOtpRequest
+  type VerifyOtpRequest,
+  type VerifyOtpResponseData
 } from "@/models/AuthModels";
 
 type ApiEnvelope<TData> = {
@@ -43,6 +51,19 @@ export class clsApiRequestError extends Error {
 
 export function isOtpChallengeData(objData: AuthLoginData): objData is AuthOtpChallengeData {
   return "blnRequiresOtp" in objData && objData.blnRequiresOtp === true;
+}
+
+export function isGoogleMfaChallengeData(objData: unknown): objData is GoogleMfaChallengeData {
+  return Boolean(
+    objData &&
+    typeof objData === "object" &&
+    "blnMfaRequired" in objData &&
+    (objData as { blnMfaRequired?: boolean }).blnMfaRequired === true
+  );
+}
+
+export function isSsoMfaChallengeData(objData: SsoCallbackData): objData is SsoMfaChallengeData {
+  return isGoogleMfaChallengeData(objData);
 }
 
 async function requestApi<TData>(objOptions: {
@@ -97,6 +118,17 @@ async function requestApi<TData>(objOptions: {
   }
 }
 
+function persistAuthenticatedSession(objAuthData: AuthSuccessData) {
+  authHelpers.setAuthenticatedSession(objAuthData.objToken.strAccessToken, objAuthData.objTenant.strTenantUUID);
+  authHelpers.setTenantContext(
+    objAuthData.objTenant.intTenantID,
+    undefined,
+    objAuthData.objTenant.intLanguageID,
+    objAuthData.objTenant.intSecondaryLanguageID ?? undefined
+  );
+  authHelpers.setLanguageID(objAuthData.objTenant.intLanguageID);
+}
+
 export const authApiService = {
   async getTenant(strTenantUUID: string) {
     return requestApi<TenantLookupData>({
@@ -133,15 +165,8 @@ export const authApiService = {
       objBody: objRequestBody,
       strMenuAction: "AUTH_LOGIN"
     });
-    if (!isOtpChallengeData(objResult.Data)) {
-      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-      authHelpers.setTenantContext(
-        objResult.Data.objTenant.intTenantID,
-        undefined,
-        objResult.Data.objTenant.intLanguageID,
-        objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
-      );
-      authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    if (!isOtpChallengeData(objResult.Data) && !isGoogleMfaChallengeData(objResult.Data)) {
+      persistAuthenticatedSession(objResult.Data);
     }
     return objResult;
   },
@@ -157,34 +182,22 @@ export const authApiService = {
       objBody: objRequestBody,
       strMenuAction: "AUTH_GENERIC_LOGIN"
     });
-    if (!isOtpChallengeData(objResult.Data)) {
-      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-      authHelpers.setTenantContext(
-        objResult.Data.objTenant.intTenantID,
-        undefined,
-        objResult.Data.objTenant.intLanguageID,
-        objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
-      );
-      authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    if (!isOtpChallengeData(objResult.Data) && !isGoogleMfaChallengeData(objResult.Data)) {
+      persistAuthenticatedSession(objResult.Data);
     }
     return objResult;
   },
 
   async verifyOtp(objPayload: VerifyOtpRequest) {
-    const objResult = await requestApi<AuthSuccessData>({
+    const objResult = await requestApi<VerifyOtpResponseData>({
       strPath: "auth/verify-otp",
       strMethod: "POST",
       objBody: objPayload,
       strMenuAction: "AUTH_VERIFY_OTP"
     });
-    authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-    authHelpers.setTenantContext(
-      objResult.Data.objTenant.intTenantID,
-      undefined,
-      objResult.Data.objTenant.intLanguageID,
-      objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
-    );
-    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    if (!isGoogleMfaChallengeData(objResult.Data)) {
+      persistAuthenticatedSession(objResult.Data);
+    }
     return objResult;
   },
 
@@ -206,19 +219,47 @@ export const authApiService = {
   },
 
   async completeSsoCallback(strSearchParams: string) {
-    const objResult = await requestApi<AuthSuccessData>({
+    const objResult = await requestApi<SsoCallbackData>({
       strPath: `auth/sso/callback${strSearchParams ? `?${strSearchParams}` : ""}`,
       strMethod: "GET",
       strMenuAction: "AUTH_SSO_CALLBACK"
     });
-    authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-    authHelpers.setTenantContext(
-      objResult.Data.objTenant.intTenantID,
-      undefined,
-      objResult.Data.objTenant.intLanguageID,
-      objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
-    );
-    authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
+    if (!isSsoMfaChallengeData(objResult.Data) && !isOtpChallengeData(objResult.Data)) {
+      persistAuthenticatedSession(objResult.Data);
+    }
+    return objResult;
+  },
+
+  async verifySsoMfaSetup(objPayload: SsoMfaVerifyRequest) {
+    const objResult = await requestApi<SsoMfaSetupSuccessData>({
+      strPath: "auth/sso/mfa/setup/verify",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "AUTH_SSO_MFA_SETUP_VERIFY"
+    });
+    persistAuthenticatedSession(objResult.Data.objAuth);
+    return objResult;
+  },
+
+  async verifySsoMfa(objPayload: SsoMfaVerifyRequest) {
+    const objResult = await requestApi<SsoMfaLoginSuccessData>({
+      strPath: "auth/sso/mfa/verify",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "AUTH_SSO_MFA_VERIFY"
+    });
+    persistAuthenticatedSession(objResult.Data.objAuth);
+    return objResult;
+  },
+
+  async verifySsoBackupCode(objPayload: SsoMfaBackupCodeVerifyRequest) {
+    const objResult = await requestApi<SsoMfaLoginSuccessData>({
+      strPath: "auth/sso/mfa/backup-code/verify",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "AUTH_SSO_MFA_BACKUP_CODE_VERIFY"
+    });
+    persistAuthenticatedSession(objResult.Data.objAuth);
     return objResult;
   },
 
@@ -260,3 +301,4 @@ export const authApiService = {
     return objResult;
   }
 };
+
