@@ -325,9 +325,9 @@
 .dialogPaper {
   background:
     linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
-  border-radius: 34px !important;
-  max-width: 1350px;
-  width: min(92vw, 1350px);
+  border-radius: 30px !important;
+  max-width: 1215px;
+  width: min(90vw, 1215px);
 }
 
 .confirmDialogPaper {
@@ -376,13 +376,13 @@
 .dialogTitle {
   border-bottom: 1px solid var(--app-divider-color);
   color: #173b63;
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 800;
-  padding: 28px 34px !important;
+  padding: 24px 30px !important;
 }
 
 .dialogContent {
-  padding: 24px 34px !important;
+  padding: 20px 30px !important;
 }
 
 .sectionBar {
@@ -408,7 +408,7 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  padding: 24px 34px 30px !important;
+  padding: 20px 30px 24px !important;
 }
 
 .textAction {

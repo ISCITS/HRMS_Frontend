@@ -135,7 +135,12 @@ export const authApiService = {
     });
     if (!isOtpChallengeData(objResult.Data)) {
       authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-      authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+      authHelpers.setTenantContext(
+        objResult.Data.objTenant.intTenantID,
+        undefined,
+        objResult.Data.objTenant.intLanguageID,
+        objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
+      );
       authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     }
     return objResult;
@@ -154,7 +159,12 @@ export const authApiService = {
     });
     if (!isOtpChallengeData(objResult.Data)) {
       authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-      authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+      authHelpers.setTenantContext(
+        objResult.Data.objTenant.intTenantID,
+        undefined,
+        objResult.Data.objTenant.intLanguageID,
+        objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
+      );
       authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     }
     return objResult;
@@ -168,7 +178,12 @@ export const authApiService = {
       strMenuAction: "AUTH_VERIFY_OTP"
     });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+    authHelpers.setTenantContext(
+      objResult.Data.objTenant.intTenantID,
+      undefined,
+      objResult.Data.objTenant.intLanguageID,
+      objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
+    );
     authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
   },
@@ -197,7 +212,12 @@ export const authApiService = {
       strMenuAction: "AUTH_SSO_CALLBACK"
     });
     authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken, objResult.Data.objTenant.strTenantUUID);
-    authHelpers.setTenantContext(objResult.Data.objTenant.intTenantID);
+    authHelpers.setTenantContext(
+      objResult.Data.objTenant.intTenantID,
+      undefined,
+      objResult.Data.objTenant.intLanguageID,
+      objResult.Data.objTenant.intSecondaryLanguageID ?? undefined
+    );
     authHelpers.setLanguageID(objResult.Data.objTenant.intLanguageID);
     return objResult;
   },

@@ -17,10 +17,21 @@ export type DepartmentApiRecord = {
   intID: number;
   strDepartmentCode: string;
   strDepartmentName: string;
+  strDepartmentDescription?: string | null;
   strManagerName?: string | null;
   blnIsActive: boolean;
   intCompanyID: number;
   intTenantID: number;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strDepartmentName: string;
+    strDepartmentDescription: string | null;
+  }>;
+};
+
+export type DepartmentFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
 };
 
 export type DesignationApiRecord = {
@@ -552,7 +563,52 @@ export const masterApiService = {
     });
   },
 
-  createDepartment(objBody: { strDepartmentCode: string; strDepartmentName: string; strManagerName: string; blnIsActive: boolean }) {
+  getDepartment(intID: number, intLanguageID?: number | null) {
+    return requestApi<DepartmentApiRecord>({
+      strPath: `/masters/departments/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_DEPARTMENT_LIST"
+    });
+  },
+
+  getDepartmentFormOptions() {
+    return requestApi<DepartmentFormOptionsApiRecord>({
+      strPath: "/masters/departments/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_DEPARTMENT_LIST"
+    });
+  },
+
+  translateDepartmentText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/departments/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_DEPARTMENT_LIST"
+    });
+  },
+
+  createDepartment(objBody: {
+    strDepartmentCode: string;
+    strDepartmentName: string;
+    strManagerName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{
+      intLanguageID: number;
+      strDepartmentName: string;
+      strDepartmentDescription: string | null;
+    }>;
+  }) {
     // Creates a new department record inside the current tenant/company scope on the backend.
     return requestApi<DepartmentApiRecord>({
       strPath: "/masters/departments",
@@ -562,7 +618,18 @@ export const masterApiService = {
     });
   },
 
-  updateDepartment(intID: number, objBody: { strDepartmentCode: string; strDepartmentName: string; strManagerName: string; blnIsActive: boolean }) {
+  updateDepartment(intID: number, objBody: {
+    strDepartmentCode: string;
+    strDepartmentName: string;
+    strManagerName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{
+      intLanguageID: number;
+      strDepartmentName: string;
+      strDepartmentDescription: string | null;
+    }>;
+  }) {
     // Updates an existing department by primary key.
     return requestApi<DepartmentApiRecord>({
       strPath: `/masters/departments/${intID}`,
@@ -1102,10 +1169,12 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeFormOptions() {
+  getEmployeeFormOptions(intLanguageID?: number | null) {
+    const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<EmployeeFormOptionsApiRecord>({
       strPath: "/masters/employee/form-options",
       strMethod: "GET",
+      objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
       strMenuAction: "MASTER_EMPLOYEE_FORM_OPTIONS"
     });
   },

@@ -2,6 +2,7 @@
 
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 import type { DialogProps, ReactNode } from "react";
+import type { SxProps, Theme } from "@mui/material/styles";
 
 import styles from "@/components/master/MasterScreen.module.css";
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
@@ -20,6 +21,7 @@ type CommonMasterDialogProps = {
   fullWidth?: boolean;
   paperClassName?: string;
   paperSx?: object;
+  contentSx?: SxProps<Theme>;
   onDialogClose?: DialogProps["onClose"];
 };
 
@@ -37,6 +39,7 @@ export default function CommonMasterDialog({
   fullWidth = true,
   paperClassName = styles.compactDialogPaper,
   paperSx,
+  contentSx,
   onDialogClose,
 }: CommonMasterDialogProps) {
   return (
@@ -49,7 +52,7 @@ export default function CommonMasterDialog({
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
       <DialogTitle>{strTitle}</DialogTitle>
-      <DialogContent dividers>{nodeContent}</DialogContent>
+      <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button className={styles.secondaryButton} onClick={onClose}>
           {strSecondaryLabel}

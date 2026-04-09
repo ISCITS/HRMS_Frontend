@@ -10,6 +10,7 @@ export type TenantLookupData = {
   strTenantCode: string;
   strTenantName: string;
   intLanguageID?: number | null;
+  intSecondaryLanguageID?: number | null;
   strIsolationMode: string;
   lstAuthModes: string[];
   blnSsoEnabled: boolean;
@@ -53,6 +54,7 @@ export type TenantSummary = {
   strTenantCode: string;
   strTenantName: string;
   intLanguageID:number;
+  intSecondaryLanguageID?: number | null;
 };
 
 export type UserSummary = {

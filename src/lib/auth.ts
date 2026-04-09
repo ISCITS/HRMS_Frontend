@@ -71,7 +71,7 @@ export const authHelpers = {
       document.cookie = `${this.tenantCookieName}=${encodeURIComponent(strTenantUUID)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
     }
   },
-  setTenantContext(intTenantID: number, intCompanyID?: number, intLanguageID?:number) {
+  setTenantContext(intTenantID: number, intCompanyID?: number, intLanguageID?:number, intSecondaryLanguageID?: number) {
     if (typeof window === "undefined") {
       return;
     }
@@ -84,6 +84,10 @@ export const authHelpers = {
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
       window.localStorage.setItem("hrms_language_id", String(intLanguageID));
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID } }));
+    }
+
+    if (typeof intSecondaryLanguageID === "number" && Number.isFinite(intSecondaryLanguageID)) {
+      window.localStorage.setItem("hrms_secondary_language_id", String(intSecondaryLanguageID));
     }
   },
   getTenantID() {
@@ -123,6 +127,15 @@ export const authHelpers = {
     const intLanguageID = Number(strLanguageID);
     return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
   },
+  getSecondaryLanguageID() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const strLanguageID = window.localStorage.getItem("hrms_secondary_language_id");
+    const intLanguageID = Number(strLanguageID);
+    return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
+  },
   clearSession(blnPreserveTenantContext = false) {
     if (typeof document === "undefined") {
       return;
@@ -134,6 +147,7 @@ export const authHelpers = {
       window.localStorage.removeItem("hrms_tenant_id");
       window.localStorage.removeItem("hrms_company_id");
       window.localStorage.removeItem("hrms_language_id");
+      window.localStorage.removeItem("hrms_secondary_language_id");
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;

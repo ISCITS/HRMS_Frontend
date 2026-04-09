@@ -11,6 +11,8 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Pagination,
   Snackbar,
@@ -30,7 +32,16 @@ import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
+import { authHelpers } from "@/lib/auth";
 import { DepartmentApiRecord, masterApiService } from "@/services/master/MasterApiService";
+import {
+  createEmptyDepartmentTextRow,
+  createInitialDepartmentForm,
+  departmentService,
+  toDepartmentFormValues,
+  type DepartmentFormValues,
+  type DepartmentTextFormValue,
+} from "@/features/employee/services/departmentService";
 
 type DepartmentStatus = "Active" | "Inactive";
 type DepartmentMode = "add" | "edit" | "view";
@@ -41,12 +52,6 @@ type DepartmentRecord = {
   name: string;
   status: DepartmentStatus;
   employeeCount: number;
-};
-
-type DepartmentForm = {
-  code: string;
-  name: string;
-  status: DepartmentStatus;
 };
 
 type SearchForm = {
@@ -68,7 +73,15 @@ type ToastState = {
   strSeverity: "success" | "error";
 };
 
-const dicEmptyForm: DepartmentForm = { code: "", name: "", status: "Active" };
+type DepartmentFormOptions = {
+  lstLanguages: Array<{
+    intID: number;
+    strLabel: string;
+    strCode?: string;
+  }>;
+};
+
+const dicEmptyForm = createInitialDepartmentForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDepartments: DepartmentRecord[] = [];
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -160,11 +173,14 @@ export default function DepartmentMasterPanel() {
   const { t } = useModuleLabels("department");
   const { blnLoading: blnRightsLoading, strError: strRightsError, objRights, canDo, canViewModule } = useActionRights();
   const [lstDepartments, setLstDepartments] = useState<DepartmentRecord[]>(lstDefaultDepartments);
+  const [objFormOptions, setObjFormOptions] = useState<DepartmentFormOptions>({ lstLanguages: [] });
   const [strMode, setStrMode] = useState<DepartmentMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingDepartmentId, setStrEditingDepartmentId] = useState("");
-  const [dicForm, setDicForm] = useState<DepartmentForm>(dicEmptyForm);
-  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof DepartmentForm, string>>>({});
+  const [dicForm, setDicForm] = useState<DepartmentFormValues>(dicEmptyForm);
+  const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
@@ -277,6 +293,153 @@ export default function DepartmentMasterPanel() {
     validationNameDuplicate: t("validation_name_duplicate", dicConstant.departments.validation.nameDuplicate),
   };
 
+  const intDefaultLanguageID =
+    authHelpers.getLanguageID() ??
+    objFormOptions.lstLanguages[0]?.intID ??
+    1;
+
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID() ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
+    intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strDepartmentName: string,
+    strDepartmentCode: string,
+    lstExistingTexts: DepartmentTextFormValue[],
+  ): DepartmentTextFormValue {
+    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === intLanguageID);
+    const dicExistingText = lstExistingTexts.find((dicText) => Number(dicText.intLanguageID) === intLanguageID);
+    return {
+      ...createEmptyDepartmentTextRow(),
+      ...dicExistingText,
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText?.strLanguageName ?? "",
+      strDepartmentName,
+      strDepartmentCode,
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: DepartmentFormValues) {
+    const dicDefaultRow = buildFixedLanguageRow(
+      intDefaultLanguageID,
+      dicValues.name,
+      dicValues.code,
+      dicValues.lstTexts,
+    );
+    const dicSecondaryExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
+    );
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strDepartmentName ?? "",
+      dicValues.code,
+      dicValues.lstTexts,
+    );
+    return {
+      ...dicValues,
+      lstTexts: [dicDefaultRow, dicSecondaryRow],
+    };
+  }
+
+  function syncEnglishDepartmentName(strDepartmentName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows(dicPrevious);
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0
+          ? { ...dicText, strDepartmentName }
+          : dicText),
+      };
+    });
+  }
+
+  async function translateTextRow(strRowID: string, intLanguageID: number) {
+    const dicSelectedLanguage = objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intLanguageID);
+    const strSourceDepartmentName = dicForm.name.trim();
+
+    if (!dicSelectedLanguage || intLanguageID === intDefaultLanguageID || !strSourceDepartmentName) {
+      return;
+    }
+
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    const strLastTranslatedSource = (dicLastTranslatedSourceByRow[strRowID] ?? "").trim();
+    const blnShouldTranslate =
+      !dicCurrentRow?.strDepartmentName.trim() || strLastTranslatedSource !== strSourceDepartmentName;
+
+    if (!blnShouldTranslate) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const strTranslatedName = await departmentService.translateDepartmentText(
+        strSourceDepartmentName,
+        intDefaultLanguageID,
+        intLanguageID,
+      );
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? {
+              ...dicText,
+              intLanguageID,
+              strLanguageName: dicSelectedLanguage.strLabel,
+              strDepartmentName: strTranslatedName,
+            }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({
+        ...dicPrevious,
+        [strRowID]: strSourceDepartmentName,
+      }));
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error");
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  function syncDepartmentCode(strDepartmentCode: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => ({
+        ...dicText,
+        strDepartmentCode,
+      })),
+    }));
+  }
+
+  function updateTextRow(strRowID: string, strField: keyof DepartmentTextFormValue, objValue: string | number) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => {
+        if (dicText.strRowID !== strRowID) {
+          return dicText;
+        }
+        if (strField === "intLanguageID") {
+          const dicLanguage = objFormOptions.lstLanguages.find((dicOption) => dicOption.intID === Number(objValue));
+          return {
+            ...dicText,
+            intLanguageID: Number(objValue),
+            strLanguageName: dicLanguage?.strLabel ?? "",
+          };
+        }
+        return { ...dicText, [strField]: objValue };
+      }),
+    }));
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
+  }
+
   async function loadDepartments() {
     // Every mutation reloads from the backend so the grid stays aligned with the persisted DB state.
     if (!canViewDepartmentModule()) {
@@ -295,6 +458,28 @@ export default function DepartmentMasterPanel() {
       setBlnLoading(false);
     }
   }
+
+  useEffect(() => {
+    let blnMounted = true;
+    departmentService.getDepartmentFormOptions()
+      .then((dicOptions) => {
+        if (!blnMounted) {
+          return;
+        }
+        setObjFormOptions(dicOptions);
+      })
+      .catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (objFormOptions.lstLanguages.length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
   useEffect(() => {
     if (blnRightsLoading) {
@@ -339,12 +524,21 @@ export default function DepartmentMasterPanel() {
     setStrMode(strNextMode);
     setStrEditingDepartmentId(dicDepartment?.id ?? "");
     setDicErrors({});
-    setDicForm(dicDepartment ? {
-      code: dicDepartment.code,
-      name: dicDepartment.name,
-      status: dicDepartment.status
-    } : dicEmptyForm);
-    setBlnDialogOpen(true);
+    setDicTextTranslationLoading({});
+    setDicLastTranslatedSourceByRow({});
+    if (!dicDepartment) {
+      setDicForm(ensureTenantLanguageRows(createInitialDepartmentForm()));
+      setBlnDialogOpen(true);
+      return;
+    }
+    setBlnSubmitting(true);
+    departmentService.getDepartment(Number(dicDepartment.id))
+      .then((dicRecord) => {
+        setDicForm(ensureTenantLanguageRows(toDepartmentFormValues(dicRecord, objFormOptions)));
+        setBlnDialogOpen(true);
+      })
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function closeDialog() {
@@ -390,7 +584,7 @@ export default function DepartmentMasterPanel() {
 
   function validateForm() {
     // Frontend validation mirrors the backend uniqueness/shape rules to fail fast before submit.
-    const dicNextErrors: Partial<Record<keyof DepartmentForm, string>> = {};
+    const dicNextErrors: Partial<Record<"code" | "name", string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
     const strName = dicForm.name.trim();
 
@@ -423,17 +617,15 @@ export default function DepartmentMasterPanel() {
     if (!validateForm()) {
       return;
     }
-    // The backend owns tenant/company scoping; the form only sends editable department fields.
-    const objBody = {
-      strDepartmentCode: dicForm.code.trim().toUpperCase(),
-      strDepartmentName: dicForm.name.trim(),
-      strManagerName: "",
-      blnIsActive: dicForm.status === "Active"
-    };
+    const dicPayload = ensureTenantLanguageRows({
+      ...dicForm,
+      code: dicForm.code.trim().toUpperCase(),
+      name: dicForm.name.trim(),
+    });
 
     const objRequest = strMode === "add"
-      ? masterApiService.createDepartment(objBody)
-      : masterApiService.updateDepartment(Number(strEditingDepartmentId), objBody);
+      ? departmentService.createDepartment(dicPayload)
+      : departmentService.updateDepartment(Number(strEditingDepartmentId), dicPayload);
 
     setBlnSubmitting(true);
     objRequest
@@ -667,11 +859,154 @@ export default function DepartmentMasterPanel() {
         onPrimaryAction={saveDepartment}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
+        paperClassName={styles.dialogPaper}
+        maxWidth="xl"
+        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicDepartmentLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
-            <TextField label={`${dicDepartmentLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
-            <TextField label={dicDepartmentLabels.fieldEmployees} value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0} disabled fullWidth />
+          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 1.6,
+                gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+                alignItems: "start",
+              }}
+            >
+              <TextField
+                label={`${dicDepartmentLabels.fieldName} *`}
+                value={dicForm.name}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value;
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                  syncEnglishDepartmentName(strValue);
+                }}
+                error={Boolean(dicErrors.name)}
+                helperText={dicErrors.name}
+                fullWidth
+              />
+              <TextField
+                label={`${dicDepartmentLabels.fieldCode} *`}
+                value={dicForm.code}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value.toUpperCase();
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: strValue }));
+                  syncDepartmentCode(strValue);
+                }}
+                error={Boolean(dicErrors.code)}
+                helperText={dicErrors.code}
+                fullWidth
+              />
+              <TextField
+                label={dicDepartmentLabels.fieldEmployees}
+                value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0}
+                disabled
+                fullWidth
+              />
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
+                  {t("multilingual_text_help", "Add translated department names for supported languages.")}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddRoundedIcon />}
+                  disabled
+                >
+                  {t("add_language", "Add Language")}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleTranslateClick()}
+                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+                  sx={{
+                    minWidth: 108,
+                    borderRadius: "12px",
+                    background: "#2563eb",
+                    boxShadow: "none",
+                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                  }}
+                >
+                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
+                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                  ) : (
+                    t("translate", "Translate")
+                  )}
+                </Button>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.map((dicText, intIndex) => (
+                <Box
+                  key={dicText.strRowID}
+                  sx={{
+                     display: "grid",
+                     gap: 1.2,
+                     gridTemplateColumns: {
+                       xs: "1fr",
+                       md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
+                     },
+                     alignItems: "start",
+                     border: "1px solid rgba(203,213,225,0.8)",
+                     borderRadius: "16px",
+                    p: 1.2,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <TextField
+                    select
+                    label={t("language", "Language")}
+                    value={dicText.intLanguageID}
+                    disabled
+                    fullWidth
+                  >
+                    {objFormOptions.lstLanguages.map((dicLanguage) => (
+                      <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label={dicDepartmentLabels.fieldName}
+                    value={dicText.strDepartmentName}
+                    onChange={(objEvent) => {
+                      const strValue = objEvent.target.value;
+                      updateTextRow(dicText.strRowID, "strDepartmentName", strValue);
+                      if (intIndex === 0) {
+                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                      }
+                    }}
+                    disabled={strMode === "view" || intIndex === 0}
+                    InputProps={{
+                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                        ? (
+                            <InputAdornment position="end">
+                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                            </InputAdornment>
+                          )
+                        : undefined,
+                    }}
+                    fullWidth
+                  />
+                  <TextField
+                    label={dicDepartmentLabels.fieldCode}
+                    value={dicText.strDepartmentCode}
+                    disabled
+                    fullWidth
+                  />
+                </Box>
+              ))}
+            </Box>
+
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicDepartmentLabels.fieldIsActive}</Typography>
               <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
