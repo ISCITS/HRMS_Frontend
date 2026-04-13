@@ -326,6 +326,47 @@ export type EmployeeStatutoryApiRecord = {
   blnPtApplicable: boolean;
 };
 
+export type EmployeeExperienceApiRecord = {
+  intID: number;
+  strCompanyName: string;
+  strJobTitle: string;
+  dtFromDate: string;
+  dtToDate: string | null;
+  decTotalYears: number | null;
+  strResponsibilities: string | null;
+  decLastDrawnSalary: number | null;
+  strReasonForLeaving: string | null;
+  blnIsActive: boolean;
+};
+
+export type EmployeeQualificationApiRecord = {
+  intID: number;
+  strDegreeName: string;
+  strSpecialization: string | null;
+  strInstitutionName: string;
+  strUniversityName: string | null;
+  intYearOfPassing: number;
+  strGradeOrPercentage: string | null;
+  strCertificationNumber: string | null;
+  blnIsHighestQualification: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeFamilyDetailApiRecord = {
+  intID: number;
+  intEmployeeID: number;
+  strName: string;
+  strRelationship: string | null;
+  dtDateOfBirth: string | null;
+  strGender: string | null;
+  strContactNumber: string | null;
+  strOccupation: string | null;
+  blnIsDependent: boolean;
+  blnIsNominee: boolean;
+  decNomineePercentage: number | null;
+  strAddress: string | null;
+};
+
 export type SalaryComponentApiRecord = {
   intID: number;
   strComponentCode: string;
@@ -1271,6 +1312,108 @@ export const masterApiService = {
       strMethod: "PUT",
       objBody,
       strMenuAction: "MASTER_EMPLOYEE_STATUTORY_SAVE"
+    });
+  },
+
+  getEmployeeExperiences(intID: number) {
+    return requestApi<EmployeeExperienceApiRecord[]>({
+      strPath: `/masters/employee/${intID}/experiences`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_LIST"
+    });
+  },
+
+  createEmployeeExperience(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeExperienceApiRecord>({
+      strPath: `/masters/employee/${intID}/experiences`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_SAVE"
+    });
+  },
+
+  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeExperienceApiRecord>({
+      strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_SAVE"
+    });
+  },
+
+  deleteEmployeeExperience(intEmployeeID: number, intExperienceID: number) {
+    return requestApi<EmployeeExperienceApiRecord>({
+      strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
+      strMethod: "DELETE",
+      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_DELETE"
+    });
+  },
+
+  getEmployeeQualifications(intID: number) {
+    return requestApi<EmployeeQualificationApiRecord[]>({
+      strPath: `/masters/employee/${intID}/qualifications`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_LIST"
+    });
+  },
+
+  createEmployeeQualification(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeQualificationApiRecord>({
+      strPath: `/masters/employee/${intID}/qualifications`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_SAVE"
+    });
+  },
+
+  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeQualificationApiRecord>({
+      strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_SAVE"
+    });
+  },
+
+  deleteEmployeeQualification(intEmployeeID: number, intQualificationID: number) {
+    return requestApi<EmployeeQualificationApiRecord>({
+      strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
+      strMethod: "DELETE",
+      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_DELETE"
+    });
+  },
+
+  getEmployeeFamilyDetails(intID: number) {
+    return requestApi<EmployeeFamilyDetailApiRecord[]>({
+      strPath: `/masters/employee/${intID}/family`,
+      strMethod: "GET",
+      strMenuAction: "MASTER_EMPLOYEE_FAMILY_LIST"
+    });
+  },
+
+  createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeFamilyDetailApiRecord>({
+      strPath: `/masters/employee/${intID}/family`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_FAMILY_SAVE"
+    });
+  },
+
+  updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeFamilyDetailApiRecord>({
+      strPath: `/masters/family/${intFamilyID}`,
+      strMethod: "PUT",
+      objBody,
+      strMenuAction: "MASTER_EMPLOYEE_FAMILY_SAVE"
+    });
+  },
+
+  deleteEmployeeFamilyDetail(intFamilyID: number) {
+    return requestApi<null>({
+      strPath: `/masters/family/${intFamilyID}`,
+      strMethod: "DELETE",
+      strMenuAction: "MASTER_EMPLOYEE_FAMILY_DELETE"
     });
   },
   getSalaryComponents() {

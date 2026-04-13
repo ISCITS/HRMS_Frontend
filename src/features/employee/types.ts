@@ -157,3 +157,90 @@ export type EmployeeStatutoryFormValues = {
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
 };
+
+export type EmployeeExperienceRecord = {
+  intID: number;
+  strCompanyName: string;
+  strJobTitle: string;
+  dtFromDate: string;
+  dtToDate: string | null;
+  decTotalYears: number | null;
+  strResponsibilities: string | null;
+  decLastDrawnSalary: number | null;
+  strReasonForLeaving: string | null;
+  blnIsActive: boolean;
+};
+
+export type EmployeeExperienceFormValues = {
+  strCompanyName: string;
+  strJobTitle: string;
+  dtFromDate: string;
+  dtToDate: string;
+  decTotalYears: string;
+  strResponsibilities: string;
+  decLastDrawnSalary: string;
+  strReasonForLeaving: string;
+  blnIsActive: boolean;
+};
+
+export type EmployeeQualificationRecord = {
+  intID: number;
+  strDegreeName: string;
+  strSpecialization: string | null;
+  strInstitutionName: string;
+  strUniversityName: string | null;
+  intYearOfPassing: number;
+  strGradeOrPercentage: string | null;
+  strCertificationNumber: string | null;
+  blnIsHighestQualification: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeQualificationFormValues = {
+  strDegreeName: string;
+  strSpecialization: string;
+  strInstitutionName: string;
+  strUniversityName: string;
+  intYearOfPassing: string;
+  strGradeOrPercentage: string;
+  strCertificationNumber: string;
+  blnIsHighestQualification: boolean;
+  blnIsActive: boolean;
+};
+
+export type FamilyRelationship =
+  | "Father"
+  | "Mother"
+  | "Spouse"
+  | "Child"
+  | "Other";
+
+export type FamilyGender = "Male" | "Female" | "Other";
+
+export type EmployeeFamilyDetailRecord = {
+  intID: number;
+  intEmployeeID: number;
+  strName: string;
+  strRelationship: string | null;
+  dtDateOfBirth: string | null;
+  strGender: string | null;
+  strContactNumber: string | null;
+  strOccupation: string | null;
+  blnIsDependent: boolean;
+  blnIsNominee: boolean;
+  decNomineePercentage: number | null;
+  strAddress: string | null;
+};
+
+export type EmployeeFamilyDetailFormValues = {
+  strName: string;
+  strRelationship: FamilyRelationship | "";
+  dtDateOfBirth: string;
+  strGender: FamilyGender | "";
+  strContactNumber: string;
+  strOccupation: string;
+  blnIsDependent: boolean;
+  blnIsNominee: boolean;
+  decNomineePercentage: string;
+  strAddress: string;
+};

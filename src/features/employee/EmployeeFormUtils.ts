@@ -5,7 +5,13 @@ import type {
   EmployeeBankFormValues,
   EmployeeBankRecord,
   EmployeeDetailRecord,
+  EmployeeFamilyDetailFormValues,
+  EmployeeFamilyDetailRecord,
+  EmployeeExperienceFormValues,
+  EmployeeExperienceRecord,
   EmployeeFormValues,
+  EmployeeQualificationFormValues,
+  EmployeeQualificationRecord,
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
@@ -63,6 +69,43 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   blnPfApplicable: false,
   blnEsiApplicable: false,
   blnPtApplicable: false
+};
+
+export const dicEmptyEmployeeExperienceForm: EmployeeExperienceFormValues = {
+  strCompanyName: "",
+  strJobTitle: "",
+  dtFromDate: "",
+  dtToDate: "",
+  decTotalYears: "",
+  strResponsibilities: "",
+  decLastDrawnSalary: "",
+  strReasonForLeaving: "",
+  blnIsActive: true
+};
+
+export const dicEmptyEmployeeQualificationForm: EmployeeQualificationFormValues = {
+  strDegreeName: "",
+  strSpecialization: "",
+  strInstitutionName: "",
+  strUniversityName: "",
+  intYearOfPassing: "",
+  strGradeOrPercentage: "",
+  strCertificationNumber: "",
+  blnIsHighestQualification: false,
+  blnIsActive: true
+};
+
+export const dicEmptyEmployeeFamilyDetailForm: EmployeeFamilyDetailFormValues = {
+  strName: "",
+  strRelationship: "",
+  dtDateOfBirth: "",
+  strGender: "",
+  strContactNumber: "",
+  strOccupation: "",
+  blnIsDependent: false,
+  blnIsNominee: false,
+  decNomineePercentage: "",
+  strAddress: ""
 };
 
 export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
@@ -125,6 +168,49 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
     blnPtApplicable: dicRecord.blnPtApplicable
+  };
+}
+
+export function toEmployeeExperienceFormValues(dicRecord: EmployeeExperienceRecord): EmployeeExperienceFormValues {
+  return {
+    strCompanyName: dicRecord.strCompanyName ?? "",
+    strJobTitle: dicRecord.strJobTitle ?? "",
+    dtFromDate: dicRecord.dtFromDate ?? "",
+    dtToDate: dicRecord.dtToDate ?? "",
+    decTotalYears: dicRecord.decTotalYears != null ? String(dicRecord.decTotalYears) : "",
+    strResponsibilities: dicRecord.strResponsibilities ?? "",
+    decLastDrawnSalary: dicRecord.decLastDrawnSalary != null ? String(dicRecord.decLastDrawnSalary) : "",
+    strReasonForLeaving: dicRecord.strReasonForLeaving ?? "",
+    blnIsActive: dicRecord.blnIsActive
+  };
+}
+
+export function toEmployeeQualificationFormValues(dicRecord: EmployeeQualificationRecord): EmployeeQualificationFormValues {
+  return {
+    strDegreeName: dicRecord.strDegreeName ?? "",
+    strSpecialization: dicRecord.strSpecialization ?? "",
+    strInstitutionName: dicRecord.strInstitutionName ?? "",
+    strUniversityName: dicRecord.strUniversityName ?? "",
+    intYearOfPassing: dicRecord.intYearOfPassing ? String(dicRecord.intYearOfPassing) : "",
+    strGradeOrPercentage: dicRecord.strGradeOrPercentage ?? "",
+    strCertificationNumber: dicRecord.strCertificationNumber ?? "",
+    blnIsHighestQualification: dicRecord.blnIsHighestQualification,
+    blnIsActive: dicRecord.blnIsActive
+  };
+}
+
+export function toEmployeeFamilyDetailFormValues(dicRecord: EmployeeFamilyDetailRecord): EmployeeFamilyDetailFormValues {
+  return {
+    strName: dicRecord.strName ?? "",
+    strRelationship: (dicRecord.strRelationship as EmployeeFamilyDetailFormValues["strRelationship"]) ?? "",
+    dtDateOfBirth: dicRecord.dtDateOfBirth ?? "",
+    strGender: (dicRecord.strGender as EmployeeFamilyDetailFormValues["strGender"]) ?? "",
+    strContactNumber: dicRecord.strContactNumber ?? "",
+    strOccupation: dicRecord.strOccupation ?? "",
+    blnIsDependent: dicRecord.blnIsDependent,
+    blnIsNominee: dicRecord.blnIsNominee,
+    decNomineePercentage: dicRecord.decNomineePercentage != null ? String(dicRecord.decNomineePercentage) : "",
+    strAddress: dicRecord.strAddress ?? ""
   };
 }
 

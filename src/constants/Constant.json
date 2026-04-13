@@ -110,6 +110,9 @@
         "addressSaveSuccess": "Employee address saved successfully.",
         "bankSaveSuccess": "Employee bank details saved successfully.",
         "statutorySaveSuccess": "Employee statutory details saved successfully.",
+        "experienceSaveSuccess": "Employee experience saved successfully.",
+        "qualificationSaveSuccess": "Employee qualification saved successfully.",
+        "familySaveSuccess": "Employee family detail saved successfully.",
         "statusSuccess": "Employee status updated successfully.",
         "deleteSuccess": "Employee deactivated successfully.",
         "createFirstHint": "Save Basic Info first to enable the remaining tabs.",
@@ -119,7 +122,10 @@
             "basicInfo": "Basic Info",
             "address": "Address",
             "bankDetails": "Bank Details",
-            "statutory": "Statutory"
+            "statutory": "Statutory",
+            "experience": "Experience",
+            "qualification": "Qualification",
+            "familyDetails": "Family Details"
         },
         "fields": {
             "employeeCode": "Employee Code",

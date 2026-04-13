@@ -6,6 +6,7 @@ import { Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/ma
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
@@ -94,6 +95,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
           {!blnHideOpenPageButton ? (
             <Button
+              className={styles.primaryButton}
               variant="contained"
               endIcon={<ArrowForwardRoundedIcon />}
               onClick={() => intEmployeeID && objRouter.push(`/employee-salary/${intEmployeeID}`)}

@@ -1,17 +1,31 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   MenuItem,
   Paper,
   Stack,
   Switch,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tabs,
   TextField,
   Typography
@@ -20,27 +34,39 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
 
 import AlertDialog from "@/components/common/AlertDialog";
+import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
+import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
+import FamilyDetailsTab from "@/features/employee/components/FamilyDetailsTab";
 import {
   dicEmptyEmployeeAddressForm,
   dicEmptyEmployeeBankForm,
+  dicEmptyEmployeeExperienceForm,
   dicEmptyEmployeeForm,
+  dicEmptyEmployeeQualificationForm,
   dicEmptyEmployeeStatutoryForm,
   toEmployeeAddressFormValues,
   toEmployeeBankFormValues,
+  toEmployeeExperienceFormValues,
   toEmployeeFormValues,
+  toEmployeeQualificationFormValues,
   toEmployeeStatutoryFormValues,
   validateEmployeeForm
 } from "@/features/employee/EmployeeFormUtils";
-import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
+import { useEmployeeDetailsLabels } from "@/features/employee/hooks/useEmployeeDetailsLabels";
 import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type {
   EmployeeAddressFormValues,
   EmployeeBankFormValues,
+  EmployeeFamilyDetailRecord,
   EmployeeFormOptions,
   EmployeeFormValues,
+  EmployeeExperienceFormValues,
+  EmployeeExperienceRecord,
   EmployeeListRecord,
+  EmployeeQualificationFormValues,
+  EmployeeQualificationRecord,
   EmployeeStatutoryFormValues,
   EmployeeStatus
 } from "@/features/employee/types";
@@ -53,9 +79,9 @@ type EmployeeEditorScreenProps = {
   strBackRoute?: string;
 };
 
-type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory";
+type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory" | "experience" | "qualification" | "family";
 
-const lstTabOrder: TabKey[] = ["basicInfo", "address", "bankDetails", "statutory"];
+const lstTabOrder: TabKey[] = ["basicInfo", "address", "bankDetails", "statutory", "experience", "qualification", "family"];
 const strRequiredAsteriskColor = "#dc2626";
 
 function renderRequiredLabel(strLabel: string) {
@@ -90,7 +116,7 @@ export default function EmployeeEditorScreen({
   strBackRoute = "/employees"
 }: EmployeeEditorScreenProps) {
   const objRouter = useRouter();
-  const { strLabelError, t } = useEmployeeLabels();
+  const { strLabelError, t } = useEmployeeDetailsLabels();
   const [strActiveTab, setStrActiveTab] = useState<TabKey>("basicInfo");
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
@@ -98,15 +124,38 @@ export default function EmployeeEditorScreen({
   const [dicAddressForm, setDicAddressForm] = useState<EmployeeAddressFormValues>(dicEmptyEmployeeAddressForm);
   const [dicBankForm, setDicBankForm] = useState<EmployeeBankFormValues>(dicEmptyEmployeeBankForm);
   const [dicStatutoryForm, setDicStatutoryForm] = useState<EmployeeStatutoryFormValues>(dicEmptyEmployeeStatutoryForm);
+  const [lstExperienceRecords, setLstExperienceRecords] = useState<EmployeeExperienceRecord[]>([]);
+  const [lstQualificationRecords, setLstQualificationRecords] = useState<EmployeeQualificationRecord[]>([]);
+  const [lstFamilyRecords, setLstFamilyRecords] = useState<EmployeeFamilyDetailRecord[]>([]);
+  const [dicExperienceForm, setDicExperienceForm] = useState<EmployeeExperienceFormValues>(dicEmptyEmployeeExperienceForm);
+  const [dicQualificationForm, setDicQualificationForm] = useState<EmployeeQualificationFormValues>(dicEmptyEmployeeQualificationForm);
   const [dicBasicErrors, setDicBasicErrors] = useState<Partial<Record<keyof EmployeeFormValues, string>>>({});
   const [dicAddressErrors, setDicAddressErrors] = useState<Partial<Record<keyof EmployeeAddressFormValues, string>>>({});
   const [dicBankErrors, setDicBankErrors] = useState<Partial<Record<keyof EmployeeBankFormValues, string>>>({});
+  const [dicExperienceErrors, setDicExperienceErrors] = useState<Partial<Record<keyof EmployeeExperienceFormValues, string>>>({});
+  const [dicQualificationErrors, setDicQualificationErrors] = useState<Partial<Record<keyof EmployeeQualificationFormValues, string>>>({});
+  const [blnAddingExperience, setBlnAddingExperience] = useState(false);
+  const [blnAddingQualification, setBlnAddingQualification] = useState(false);
+  const [intEditingExperienceID, setIntEditingExperienceID] = useState<number | null>(null);
+  const [intEditingQualificationID, setIntEditingQualificationID] = useState<number | null>(null);
+  const [objExperienceDeleteDialog, setObjExperienceDeleteDialog] = useState<{ blnOpen: boolean; intExperienceID: number | null; strCompanyName: string }>({
+    blnOpen: false,
+    intExperienceID: null,
+    strCompanyName: ""
+  });
+  const [objQualificationDeleteDialog, setObjQualificationDeleteDialog] = useState<{ blnOpen: boolean; intQualificationID: number | null; strDegreeName: string }>({
+    blnOpen: false,
+    intQualificationID: null,
+    strDegreeName: ""
+  });
   const [intResolvedEmployeeID, setIntResolvedEmployeeID] = useState<number | null>(intEmployeeID ?? null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnBasicSaving, setBlnBasicSaving] = useState(false);
   const [blnAddressSaving, setBlnAddressSaving] = useState(false);
   const [blnBankSaving, setBlnBankSaving] = useState(false);
   const [blnStatutorySaving, setBlnStatutorySaving] = useState(false);
+  const [blnExperienceSaving, setBlnExperienceSaving] = useState(false);
+  const [blnQualificationSaving, setBlnQualificationSaving] = useState(false);
   const [objAlertDialog, setObjAlertDialog] = useState({
     blnOpen: false,
     strMessage: "",
@@ -158,6 +207,26 @@ export default function EmployeeEditorScreen({
       };
     }
 
+    if (strActiveTab === "experience") {
+      return {
+        fnOnClick: handleExperienceSave,
+        blnDisabled: blnExperienceSaving,
+        strLabel: blnExperienceSaving ? t("action_saving_experience", "Saving Experience...") : t("action_save_experience", "Save Experience"),
+      };
+    }
+
+    if (strActiveTab === "qualification") {
+      return {
+        fnOnClick: handleQualificationSave,
+        blnDisabled: blnQualificationSaving,
+        strLabel: blnQualificationSaving ? t("action_saving_qualification", "Saving Qualification...") : t("action_save_qualification", "Save Qualification"),
+      };
+    }
+
+    if (strActiveTab === "family") {
+      return null;
+    }
+
     return {
       fnOnClick: handleStatutorySave,
       blnDisabled: blnStatutorySaving,
@@ -194,7 +263,10 @@ export default function EmployeeEditorScreen({
           const lstChildResults = await Promise.allSettled([
             employeeService.getEmployeeAddress(intEmployeeID),
             employeeService.getEmployeeBankAccount(intEmployeeID),
-            employeeService.getEmployeeStatutory(intEmployeeID)
+            employeeService.getEmployeeStatutory(intEmployeeID),
+            employeeService.getEmployeeExperiences(intEmployeeID),
+            employeeService.getEmployeeQualifications(intEmployeeID),
+            employeeService.getEmployeeFamilyDetails(intEmployeeID)
           ]);
 
           if (!blnMounted) {
@@ -211,6 +283,18 @@ export default function EmployeeEditorScreen({
 
           if (lstChildResults[2].status === "fulfilled") {
             setDicStatutoryForm(toEmployeeStatutoryFormValues(lstChildResults[2].value));
+          }
+
+          if (lstChildResults[3].status === "fulfilled") {
+            setLstExperienceRecords(lstChildResults[3].value);
+          }
+
+          if (lstChildResults[4].status === "fulfilled") {
+            setLstQualificationRecords(lstChildResults[4].value);
+          }
+
+          if (lstChildResults[5].status === "fulfilled") {
+            setLstFamilyRecords(lstChildResults[5].value);
           }
         }
       } catch (objError) {
@@ -252,6 +336,16 @@ export default function EmployeeEditorScreen({
 
   function updateStatutoryField<TKey extends keyof EmployeeStatutoryFormValues>(strField: TKey, objValue: EmployeeStatutoryFormValues[TKey]) {
     setDicStatutoryForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateExperienceField<TKey extends keyof EmployeeExperienceFormValues>(strField: TKey, objValue: EmployeeExperienceFormValues[TKey]) {
+    setDicExperienceErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined }));
+    setDicExperienceForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateQualificationField<TKey extends keyof EmployeeQualificationFormValues>(strField: TKey, objValue: EmployeeQualificationFormValues[TKey]) {
+    setDicQualificationErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined }));
+    setDicQualificationForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
   function handleEditorFocusCapture(objEvent: FocusEvent<HTMLElement>) {
@@ -305,6 +399,47 @@ export default function EmployeeEditorScreen({
       dicNextErrors.strAccountNumber = t("validation_account_number_required", dicConstant.employeeMaster.validation.accountNumberRequired);
     }
     setDicBankErrors(dicNextErrors);
+    return dicNextErrors;
+  }
+
+  function validateExperienceForm() {
+    const dicNextErrors: Partial<Record<keyof EmployeeExperienceFormValues, string>> = {};
+    if (!dicExperienceForm.strCompanyName.trim()) {
+      dicNextErrors.strCompanyName = t("validation_company_name_required", "Company name is required.");
+    }
+    if (!dicExperienceForm.strJobTitle.trim()) {
+      dicNextErrors.strJobTitle = t("validation_job_title_required", "Job title is required.");
+    }
+    if (!dicExperienceForm.dtFromDate) {
+      dicNextErrors.dtFromDate = t("validation_from_date_required", "From date is required.");
+    }
+    if (dicExperienceForm.dtToDate && dicExperienceForm.dtFromDate && dicExperienceForm.dtFromDate > dicExperienceForm.dtToDate) {
+      dicNextErrors.dtToDate = t("validation_experience_dates", "From date must be less than or equal to To date.");
+    }
+    if (dicExperienceForm.decLastDrawnSalary.trim() && Number.isNaN(Number(dicExperienceForm.decLastDrawnSalary))) {
+      dicNextErrors.decLastDrawnSalary = t("validation_last_salary_invalid", "Last drawn salary must be a valid number.");
+    }
+    setDicExperienceErrors(dicNextErrors);
+    return dicNextErrors;
+  }
+
+  function validateQualificationForm() {
+    const dicNextErrors: Partial<Record<keyof EmployeeQualificationFormValues, string>> = {};
+    const intCurrentYear = new Date().getFullYear();
+    const intYearOfPassing = dicQualificationForm.intYearOfPassing.trim() ? Number(dicQualificationForm.intYearOfPassing) : NaN;
+
+    if (!dicQualificationForm.strDegreeName.trim()) {
+      dicNextErrors.strDegreeName = t("validation_degree_required", "Degree name is required.");
+    }
+    if (!dicQualificationForm.strInstitutionName.trim()) {
+      dicNextErrors.strInstitutionName = t("validation_institution_required", "Institution name is required.");
+    }
+    if (!dicQualificationForm.intYearOfPassing.trim()) {
+      dicNextErrors.intYearOfPassing = t("validation_year_of_passing_required", "Year of passing is required.");
+    } else if (!Number.isInteger(intYearOfPassing) || intYearOfPassing < 1900 || intYearOfPassing > intCurrentYear) {
+      dicNextErrors.intYearOfPassing = t("validation_year_of_passing_invalid", "Year of passing must not be in the future.");
+    }
+    setDicQualificationErrors(dicNextErrors);
     return dicNextErrors;
   }
 
@@ -494,6 +629,189 @@ export default function EmployeeEditorScreen({
     }
   }
 
+  function resetExperienceEditor() {
+    setBlnAddingExperience(false);
+    setIntEditingExperienceID(null);
+    setDicExperienceForm(dicEmptyEmployeeExperienceForm);
+    setDicExperienceErrors({});
+  }
+
+  function resetQualificationEditor() {
+    setBlnAddingQualification(false);
+    setIntEditingQualificationID(null);
+    setDicQualificationForm(dicEmptyEmployeeQualificationForm);
+    setDicQualificationErrors({});
+  }
+
+  function handleAddExperienceClick() {
+    setBlnAddingExperience(true);
+    setIntEditingExperienceID(null);
+    setDicExperienceForm(dicEmptyEmployeeExperienceForm);
+    setDicExperienceErrors({});
+  }
+
+  function handleAddQualificationClick() {
+    setBlnAddingQualification(true);
+    setIntEditingQualificationID(null);
+    setDicQualificationForm(dicEmptyEmployeeQualificationForm);
+    setDicQualificationErrors({});
+  }
+
+  function handleExperienceEdit(objRecord: EmployeeExperienceRecord) {
+    setBlnAddingExperience(false);
+    setIntEditingExperienceID(objRecord.intID);
+    setDicExperienceForm(toEmployeeExperienceFormValues(objRecord));
+    setDicExperienceErrors({});
+  }
+
+  function handleQualificationEdit(objRecord: EmployeeQualificationRecord) {
+    setBlnAddingQualification(false);
+    setIntEditingQualificationID(objRecord.intID);
+    setDicQualificationForm(toEmployeeQualificationFormValues(objRecord));
+    setDicQualificationErrors({});
+  }
+
+  async function handleExperienceSave() {
+    if (blnViewOnly) {
+      return;
+    }
+    const dicValidationErrors = validateExperienceForm();
+    if (Object.keys(dicValidationErrors).length > 0) {
+      return;
+    }
+    setBlnExperienceSaving(true);
+    try {
+      const intEmployeeIDToSave = await ensureEmployeeRecordForTabSave();
+      const dicRecord = intEditingExperienceID
+        ? await employeeService.updateEmployeeExperience(intEmployeeIDToSave, intEditingExperienceID, dicExperienceForm)
+        : await employeeService.createEmployeeExperience(intEmployeeIDToSave, dicExperienceForm);
+      setLstExperienceRecords((lstPrevious) => {
+        const lstWithoutCurrent = lstPrevious.filter((objItem) => objItem.intID !== dicRecord.intID);
+        return [dicRecord, ...lstWithoutCurrent].sort((objA, objB) => {
+          if (objA.blnIsActive !== objB.blnIsActive) {
+            return Number(objB.blnIsActive) - Number(objA.blnIsActive);
+          }
+          return objA.dtFromDate < objB.dtFromDate ? 1 : -1;
+        });
+      });
+      resetExperienceEditor();
+      openAlertDialog("success", t("experience_save_success", dicConstant.employeeMaster.experienceSaveSuccess ?? "Employee experience saved successfully."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_experience", "Unable to save employee experience."));
+    } finally {
+      setBlnExperienceSaving(false);
+    }
+  }
+
+  async function handleQualificationSave() {
+    if (blnViewOnly) {
+      return;
+    }
+    const dicValidationErrors = validateQualificationForm();
+    if (Object.keys(dicValidationErrors).length > 0) {
+      return;
+    }
+    setBlnQualificationSaving(true);
+    try {
+      const intEmployeeIDToSave = await ensureEmployeeRecordForTabSave();
+      const dicRecord = intEditingQualificationID
+        ? await employeeService.updateEmployeeQualification(intEmployeeIDToSave, intEditingQualificationID, dicQualificationForm)
+        : await employeeService.createEmployeeQualification(intEmployeeIDToSave, dicQualificationForm);
+      setLstQualificationRecords((lstPrevious) => {
+        const lstWithoutCurrent = lstPrevious.filter((objItem) => objItem.intID !== dicRecord.intID);
+        return [dicRecord, ...lstWithoutCurrent].sort((objA, objB) => {
+          if (objA.blnIsActive !== objB.blnIsActive) {
+            return Number(objB.blnIsActive) - Number(objA.blnIsActive);
+          }
+          if (objA.blnIsHighestQualification !== objB.blnIsHighestQualification) {
+            return Number(objB.blnIsHighestQualification) - Number(objA.blnIsHighestQualification);
+          }
+          return objB.intYearOfPassing - objA.intYearOfPassing;
+        });
+      });
+      resetQualificationEditor();
+      openAlertDialog("success", t("qualification_save_success", dicConstant.employeeMaster.qualificationSaveSuccess ?? "Employee qualification saved successfully."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_qualification", "Unable to save employee qualification."));
+    } finally {
+      setBlnQualificationSaving(false);
+    }
+  }
+
+  function handleExperienceDeleteRequest(intExperienceID: number) {
+    const objRecord = lstExperienceRecords.find((objItem) => objItem.intID === intExperienceID);
+    setObjExperienceDeleteDialog({
+      blnOpen: true,
+      intExperienceID,
+      strCompanyName: objRecord?.strCompanyName ?? ""
+    });
+  }
+
+  function closeExperienceDeleteDialog() {
+    setObjExperienceDeleteDialog({
+      blnOpen: false,
+      intExperienceID: null,
+      strCompanyName: ""
+    });
+  }
+
+  async function handleExperienceDelete() {
+    if (blnViewOnly || !intResolvedEmployeeID) {
+      return;
+    }
+    if (!objExperienceDeleteDialog.intExperienceID) {
+      return;
+    }
+    try {
+      const dicRecord = await employeeService.deleteEmployeeExperience(intResolvedEmployeeID, objExperienceDeleteDialog.intExperienceID);
+      setLstExperienceRecords((lstPrevious) => lstPrevious.map((objItem) => (objItem.intID === dicRecord.intID ? dicRecord : objItem)));
+      if (intEditingExperienceID === objExperienceDeleteDialog.intExperienceID) {
+        resetExperienceEditor();
+      }
+      closeExperienceDeleteDialog();
+      openAlertDialog("success", t("experience_delete_success", "Employee experience deleted successfully."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_delete_experience", "Unable to delete employee experience."));
+    }
+  }
+
+  function handleQualificationDeleteRequest(intQualificationID: number) {
+    const objRecord = lstQualificationRecords.find((objItem) => objItem.intID === intQualificationID);
+    setObjQualificationDeleteDialog({
+      blnOpen: true,
+      intQualificationID,
+      strDegreeName: objRecord?.strDegreeName ?? ""
+    });
+  }
+
+  function closeQualificationDeleteDialog() {
+    setObjQualificationDeleteDialog({
+      blnOpen: false,
+      intQualificationID: null,
+      strDegreeName: ""
+    });
+  }
+
+  async function handleQualificationDelete() {
+    if (blnViewOnly || !intResolvedEmployeeID) {
+      return;
+    }
+    if (!objQualificationDeleteDialog.intQualificationID) {
+      return;
+    }
+    try {
+      const dicRecord = await employeeService.deleteEmployeeQualification(intResolvedEmployeeID, objQualificationDeleteDialog.intQualificationID);
+      setLstQualificationRecords((lstPrevious) => lstPrevious.map((objItem) => (objItem.intID === dicRecord.intID ? dicRecord : objItem)));
+      if (intEditingQualificationID === objQualificationDeleteDialog.intQualificationID) {
+        resetQualificationEditor();
+      }
+      closeQualificationDeleteDialog();
+      openAlertDialog("success", t("qualification_delete_success", "Employee qualification deleted successfully."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_delete_qualification", "Unable to delete employee qualification."));
+    }
+  }
+
   function renderSelectField<TValue extends string | number | "">(
     objLabel: ReactNode,
     objValue: TValue,
@@ -542,8 +860,10 @@ export default function EmployeeEditorScreen({
     );
   }
 
+  const objPageActionConfig = getFooterActionConfig();
+
   return (
-    <Stack spacing={2.5} sx={{ pb: blnViewOnly ? 0 : { xs: 12, md: 13 } }} onFocusCapture={handleEditorFocusCapture}>
+    <Stack spacing={2.5} onFocusCapture={handleEditorFocusCapture}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
         <Box>
           {!blnHidePageHeading ? (
@@ -567,6 +887,59 @@ export default function EmployeeEditorScreen({
             <Typography sx={{ mt: blnHidePageHeading ? 0 : 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
           ) : null}
         </Box>
+        {!blnViewOnly ? (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            <Button
+              className={styles.secondaryButton}
+              variant="outlined"
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => objRouter.push(strBackRoute)}
+              sx={{
+                height: 38,
+                minHeight: 38,
+                minWidth: { xs: "100%", sm: 140 },
+                py: 0,
+                px: 1.5,
+                fontSize: "0.9rem",
+                whiteSpace: "nowrap",
+                "& .MuiButton-startIcon": {
+                  mr: 0.75,
+                  "& svg": {
+                    fontSize: "1rem"
+                  }
+                }
+              }}
+            >
+              {t("back_button", dicConstant.common.cancel)}
+            </Button>
+            {objPageActionConfig ? (
+              <Button
+                className={styles.primaryButton}
+                variant="contained"
+                startIcon={<SaveRoundedIcon />}
+                onClick={objPageActionConfig.fnOnClick}
+                disabled={objPageActionConfig.blnDisabled}
+                sx={{
+                  height: 38,
+                  minHeight: 38,
+                  minWidth: { xs: "100%", sm: 180 },
+                  py: 0,
+                  px: 1.75,
+                  fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
+                  "& .MuiButton-startIcon": {
+                    mr: 0.75,
+                    "& svg": {
+                      fontSize: "1rem"
+                    }
+                  }
+                }}
+              >
+                {objPageActionConfig.strLabel}
+              </Button>
+            ) : null}
+          </Stack>
+        ) : null}
       </Stack>
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
@@ -603,7 +976,13 @@ export default function EmployeeEditorScreen({
                     ? t("tab_address", dicConstant.employeeMaster.tabs.address)
                     : strTabKey === "bankDetails"
                       ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
-                      : t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)}
+                      : strTabKey === "statutory"
+                        ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
+                        : strTabKey === "experience"
+                          ? t("tab_experience", dicConstant.employeeMaster.tabs.experience ?? "Experience")
+                          : strTabKey === "qualification"
+                            ? t("tab_qualification", dicConstant.employeeMaster.tabs.qualification ?? "Qualification")
+                            : t("tab_family_details", dicConstant.employeeMaster.tabs.familyDetails ?? "Family Details")}
               />
             ))}
           </Tabs>
@@ -695,6 +1074,400 @@ export default function EmployeeEditorScreen({
               </Box>
             </Stack>
           ) : null}
+
+          {strActiveTab === "experience" ? (
+            <Stack spacing={2.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_experience", "Experience")}</Typography>
+                  <Typography sx={{ mt: 0.5, color: "#64748b" }}>
+                    {t("section_experience_help", "Capture prior roles, durations, and compensation details for this employee.")}
+                  </Typography>
+                </Box>
+                {!blnViewOnly ? (
+                  <Button
+                    className={styles.primaryButton}
+                    size="small"
+                    variant="contained"
+                    startIcon={<PostAddRoundedIcon />}
+                    onClick={handleAddExperienceClick}
+                    sx={{ borderRadius: "14px", px: 2, minHeight: 32, height: 32, py: 0 }}
+                  >
+                    {t("add_experience", "Add Experience")}
+                  </Button>
+                ) : null}
+              </Stack>
+              <TableContainer component={Paper} sx={{ borderRadius: "18px", border: "1px solid rgba(148,163,184,0.18)" }}>
+                <Table size="small" sx={{ minWidth: 1250 }}>
+                  <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_company_name", "Company Name")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_job_title", "Job Title")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 130 }}>{t("field_from_date", "From Date")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 130 }}>{t("field_to_date", "To Date")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 110 }}>{t("field_total_years", "Total Years")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>{t("field_last_drawn_salary", "Last Drawn Salary")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_reason_for_leaving", "Reason For Leaving")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_responsibilities", "Responsibilities")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, textAlign: "center" }}>{t("field_experience_active", "Active")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 150 }}>{t("actions", "Actions")}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {!blnViewOnly && blnAddingExperience ? (
+                      <TableRow sx={{ bgcolor: intEditingExperienceID ? "rgba(255,249,235,0.75)" : "#fcfcfd" }}>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" type="date" value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" type="date" value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Switch checked={dicExperienceForm.blnIsActive} onChange={(_, blnChecked) => updateExperienceField("blnIsActive", blnChecked)} />
+                        </TableCell>
+                        <TableCell>
+                          <Box className={styles.actionCell}>
+                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleExperienceSave} disabled={blnExperienceSaving} aria-label={blnExperienceSaving ? t("saving", "Saving...") : t("save", "Save")}>
+                              <SaveRoundedIcon fontSize="small" />
+                            </button>
+                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
+                              <CloseRoundedIcon fontSize="small" />
+                            </button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+
+                    {lstExperienceRecords.length === 0 && !blnAddingExperience ? (
+                      <TableRow>
+                        <TableCell colSpan={10} sx={{ py: 3 }}>
+                          <Typography sx={{ color: "#64748b", textAlign: "center" }}>{t("experience_empty", "No experience records added yet.")}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      lstExperienceRecords.map((objRecord) => (
+                        <TableRow key={objRecord.intID} hover sx={{ bgcolor: objRecord.blnIsActive ? "#fff" : "#f8fafc" }}>
+                          {intEditingExperienceID === objRecord.intID ? (
+                            <>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" type="date" value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" type="date" value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
+                              </TableCell>
+                              <TableCell align="center">
+                                <Switch checked={dicExperienceForm.blnIsActive} onChange={(_, blnChecked) => updateExperienceField("blnIsActive", blnChecked)} />
+                              </TableCell>
+                              <TableCell>
+                                <Box className={styles.actionCell}>
+                                  <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleExperienceSave} disabled={blnExperienceSaving} aria-label={blnExperienceSaving ? t("saving", "Saving...") : t("save", "Save")}>
+                                    <SaveRoundedIcon fontSize="small" />
+                                  </button>
+                                  <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
+                                    <CloseRoundedIcon fontSize="small" />
+                                  </button>
+                                </Box>
+                              </TableCell>
+                            </>
+                          ) : (
+                            <>
+                              <TableCell>
+                                <Stack spacing={0.5}>
+                                  <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{objRecord.strCompanyName}</Typography>
+                                </Stack>
+                              </TableCell>
+                              <TableCell>{objRecord.strJobTitle}</TableCell>
+                              <TableCell>{objRecord.dtFromDate}</TableCell>
+                              <TableCell>{objRecord.dtToDate || t("present", "Present")}</TableCell>
+                              <TableCell>{objRecord.decTotalYears ?? "-"}</TableCell>
+                              <TableCell>{objRecord.decLastDrawnSalary ?? "-"}</TableCell>
+                              <TableCell>{objRecord.strReasonForLeaving || "-"}</TableCell>
+                              <TableCell>{objRecord.strResponsibilities || "-"}</TableCell>
+                              <TableCell align="center">{objRecord.blnIsActive ? t("yes", "Yes") : t("no", "No")}</TableCell>
+                              <TableCell>
+                                {!blnViewOnly ? (
+                                  <Box className={styles.actionCell}>
+                                    <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleExperienceEdit(objRecord)} aria-label={t("edit", "Edit")}>
+                                      <EditRoundedIcon fontSize="small" />
+                                    </button>
+                                    {objRecord.blnIsActive ? (
+                                      <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleExperienceDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
+                                        <DeleteRoundedIcon fontSize="small" />
+                                      </button>
+                                    ) : null}
+                                  </Box>
+                                ) : (
+                                  <Typography sx={{ color: "#64748b" }}>-</Typography>
+                                )}
+                              </TableCell>
+                            </>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {(dicExperienceErrors.strCompanyName || dicExperienceErrors.strJobTitle || dicExperienceErrors.dtFromDate || dicExperienceErrors.dtToDate || dicExperienceErrors.decLastDrawnSalary) && !blnViewOnly ? (
+                <Stack spacing={0.5}>
+                  {dicExperienceErrors.strCompanyName ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicExperienceErrors.strCompanyName}</Typography> : null}
+                  {dicExperienceErrors.strJobTitle ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicExperienceErrors.strJobTitle}</Typography> : null}
+                  {dicExperienceErrors.dtFromDate ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicExperienceErrors.dtFromDate}</Typography> : null}
+                  {dicExperienceErrors.dtToDate ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicExperienceErrors.dtToDate}</Typography> : null}
+                  {dicExperienceErrors.decLastDrawnSalary ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicExperienceErrors.decLastDrawnSalary}</Typography> : null}
+                </Stack>
+              ) : null}
+            </Stack>
+          ) : null}
+
+          {strActiveTab === "qualification" ? (
+            <Stack spacing={2.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_qualification", "Qualification")}</Typography>
+                  <Typography sx={{ mt: 0.5, color: "#64748b" }}>
+                    {t("section_qualification_help", "Maintain academic background, certifications, and identify the highest qualification.")}
+                  </Typography>
+                </Box>
+                {!blnViewOnly ? (
+                  <Button
+                    className={styles.primaryButton}
+                    size="small"
+                    variant="contained"
+                    startIcon={<PostAddRoundedIcon />}
+                    onClick={handleAddQualificationClick}
+                    sx={{ borderRadius: "14px", px: 2, minHeight: 32, height: 32, py: 0 }}
+                  >
+                    {t("add_qualification", "Add Qualification")}
+                  </Button>
+                ) : null}
+              </Stack>
+              <TableContainer component={Paper} sx={{ borderRadius: "18px", border: "1px solid rgba(148,163,184,0.18)" }}>
+                <Table size="small" sx={{ minWidth: 1100 }}>
+                  <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_degree_name", "Degree Name")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_specialization", "Specialization")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_institution_name", "Institution Name")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_university_name", "University Name")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 130 }}>{t("field_year_of_passing", "Year Of Passing")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_grade_or_percentage", "Grade / Percentage")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("field_certification_number", "Certification Number")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, textAlign: "center" }}>{t("field_highest_qualification", "Highest Qualification")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, textAlign: "center" }}>{t("field_qualification_active", "Active")}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 150 }}>{t("actions", "Actions")}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {!blnViewOnly && blnAddingQualification ? (
+                      <TableRow sx={{ bgcolor: intEditingQualificationID ? "rgba(255,249,235,0.75)" : "#fcfcfd" }}>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={dicQualificationForm.strDegreeName}
+                            onChange={(objEvent) => updateQualificationField("strDegreeName", objEvent.target.value)}
+                            error={Boolean(dicQualificationErrors.strDegreeName)}
+                            placeholder={t("field_degree_name", "Degree Name")}
+                            fullWidth
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={dicQualificationForm.strInstitutionName}
+                            onChange={(objEvent) => updateQualificationField("strInstitutionName", objEvent.target.value)}
+                            error={Boolean(dicQualificationErrors.strInstitutionName)}
+                            placeholder={t("field_institution_name", "Institution Name")}
+                            fullWidth
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={dicQualificationForm.intYearOfPassing}
+                            onChange={(objEvent) => updateQualificationField("intYearOfPassing", objEvent.target.value.replace(/[^0-9]/g, ""))}
+                            error={Boolean(dicQualificationErrors.intYearOfPassing)}
+                            placeholder={t("field_year_of_passing", "Year Of Passing")}
+                            fullWidth
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
+                        </TableCell>
+                        <TableCell>
+                          <TextField size="small" value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Switch checked={dicQualificationForm.blnIsActive} onChange={(_, blnChecked) => updateQualificationField("blnIsActive", blnChecked)} />
+                        </TableCell>
+                        <TableCell>
+                          <Box className={styles.actionCell}>
+                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleQualificationSave} disabled={blnQualificationSaving} aria-label={blnQualificationSaving ? t("saving", "Saving...") : t("save", "Save")}>
+                              <SaveRoundedIcon fontSize="small" />
+                            </button>
+                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
+                              <CloseRoundedIcon fontSize="small" />
+                            </button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+
+                    {lstQualificationRecords.length === 0 && !blnAddingQualification ? (
+                      <TableRow>
+                        <TableCell colSpan={10} sx={{ py: 3 }}>
+                          <Typography sx={{ color: "#64748b", textAlign: "center" }}>{t("qualification_empty", "No qualification records added yet.")}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      lstQualificationRecords.map((objRecord) => (
+                        <TableRow key={objRecord.intID} hover sx={{ bgcolor: objRecord.blnIsActive ? "#fff" : "#f8fafc" }}>
+                          {intEditingQualificationID === objRecord.intID ? (
+                            <>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strDegreeName} onChange={(objEvent) => updateQualificationField("strDegreeName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strDegreeName)} placeholder={t("field_degree_name", "Degree Name")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strInstitutionName} onChange={(objEvent) => updateQualificationField("strInstitutionName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strInstitutionName)} placeholder={t("field_institution_name", "Institution Name")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.intYearOfPassing} onChange={(objEvent) => updateQualificationField("intYearOfPassing", objEvent.target.value.replace(/[^0-9]/g, ""))} error={Boolean(dicQualificationErrors.intYearOfPassing)} placeholder={t("field_year_of_passing", "Year Of Passing")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
+                              </TableCell>
+                              <TableCell>
+                                <TextField size="small" value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
+                              </TableCell>
+                              <TableCell align="center">
+                                <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} />
+                              </TableCell>
+                              <TableCell align="center">
+                                <Switch checked={dicQualificationForm.blnIsActive} onChange={(_, blnChecked) => updateQualificationField("blnIsActive", blnChecked)} />
+                              </TableCell>
+                              <TableCell>
+                                <Box className={styles.actionCell}>
+                                  <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleQualificationSave} disabled={blnQualificationSaving} aria-label={blnQualificationSaving ? t("saving", "Saving...") : t("save", "Save")}>
+                                    <SaveRoundedIcon fontSize="small" />
+                                  </button>
+                                  <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
+                                    <CloseRoundedIcon fontSize="small" />
+                                  </button>
+                                </Box>
+                              </TableCell>
+                            </>
+                          ) : (
+                            <>
+                              <TableCell>
+                                <Stack spacing={0.5}>
+                                  <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{objRecord.strDegreeName}</Typography>
+                                </Stack>
+                              </TableCell>
+                              <TableCell>{objRecord.strSpecialization || "-"}</TableCell>
+                              <TableCell>{objRecord.strInstitutionName}</TableCell>
+                              <TableCell>{objRecord.strUniversityName || "-"}</TableCell>
+                              <TableCell>{objRecord.intYearOfPassing}</TableCell>
+                              <TableCell>{objRecord.strGradeOrPercentage || "-"}</TableCell>
+                              <TableCell>{objRecord.strCertificationNumber || "-"}</TableCell>
+                              <TableCell align="center">{objRecord.blnIsHighestQualification ? t("yes", "Yes") : t("no", "No")}</TableCell>
+                              <TableCell align="center">{objRecord.blnIsActive ? t("yes", "Yes") : t("no", "No")}</TableCell>
+                              <TableCell>
+                                {!blnViewOnly ? (
+                                  <Box className={styles.actionCell}>
+                                    <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleQualificationEdit(objRecord)} aria-label={t("edit", "Edit")}>
+                                      <EditRoundedIcon fontSize="small" />
+                                    </button>
+                                    {objRecord.blnIsActive ? (
+                                      <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleQualificationDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
+                                        <DeleteRoundedIcon fontSize="small" />
+                                      </button>
+                                    ) : null}
+                                  </Box>
+                                ) : (
+                                  <Typography sx={{ color: "#64748b" }}>-</Typography>
+                                )}
+                              </TableCell>
+                            </>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {(dicQualificationErrors.strDegreeName || dicQualificationErrors.strInstitutionName || dicQualificationErrors.intYearOfPassing) && !blnViewOnly ? (
+                <Stack spacing={0.5}>
+                  {dicQualificationErrors.strDegreeName ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicQualificationErrors.strDegreeName}</Typography> : null}
+                  {dicQualificationErrors.strInstitutionName ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicQualificationErrors.strInstitutionName}</Typography> : null}
+                  {dicQualificationErrors.intYearOfPassing ? <Typography sx={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicQualificationErrors.intYearOfPassing}</Typography> : null}
+                </Stack>
+              ) : null}
+            </Stack>
+          ) : null}
+
+          {strActiveTab === "family" ? (
+            <FamilyDetailsTab
+              lstInitialRows={lstFamilyRecords}
+              blnViewOnly={blnViewOnly}
+              fnEnsureEmployeeRecordForTabSave={ensureEmployeeRecordForTabSave}
+              fnShowAlert={(strSeverity, strMessage) => openAlertDialog(strSeverity, strMessage)}
+              fnOnRowsChange={setLstFamilyRecords}
+              fnTranslate={t}
+            />
+          ) : null}
         </Box>
       </Paper>
 
@@ -706,64 +1479,53 @@ export default function EmployeeEditorScreen({
         fnOnClose={closeAlertDialog}
       />
 
-      {!blnViewOnly ? (
-        <Box
-          sx={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1200,
-            px: { xs: 2, md: 3 },
-            py: 1.5,
-            borderTop: "1px solid rgba(148,163,184,0.24)",
-            bgcolor: "rgba(255,255,255,0.96)",
-            backdropFilter: "blur(10px)",
-            boxShadow: "0 -10px 30px rgba(15,23,42,0.08)",
-          }}
-        >
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: "none",
-              mx: "auto",
-              display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: 1.25,
-              flexDirection: { xs: "column", sm: "row" },
-            }}
-          >
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push(strBackRoute)}
-              sx={{
-                minWidth: { xs: "100%", sm: 140 },
-                borderRadius: "14px",
-                px: 2.25,
-                order: { xs: 2, sm: 1 },
-              }}
-            >
-              {t("back_button", dicConstant.common.cancel)}
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<SaveRoundedIcon />}
-              onClick={getFooterActionConfig()?.fnOnClick}
-              disabled={getFooterActionConfig()?.blnDisabled}
-              sx={{
-                minWidth: { xs: "100%", sm: 180 },
-                borderRadius: "14px",
-                px: 2.5,
-                order: { xs: 1, sm: 2 },
-              }}
-            >
-              {getFooterActionConfig()?.strLabel ?? dicConstant.common.save}
-            </Button>
-          </Box>
-        </Box>
-      ) : null}
+      <Dialog
+        open={objExperienceDeleteDialog.blnOpen}
+        onClose={closeExperienceDeleteDialog}
+        onKeyDown={handleSingleDialogActionEnter}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{t("delete_experience_title", "Delete Experience")}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#475569" }}>
+            {objExperienceDeleteDialog.strCompanyName
+              ? `${objExperienceDeleteDialog.strCompanyName} will be marked inactive.`
+              : t("confirm_delete_experience", "This experience entry will be marked inactive.")}{" "}
+            {t("confirm_continue", "Continue?")}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeExperienceDeleteDialog}>{t("cancel", dicConstant.common.cancel)}</Button>
+          <Button onClick={handleExperienceDelete} variant="contained" color="error">
+            {t("delete", "Delete")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={objQualificationDeleteDialog.blnOpen}
+        onClose={closeQualificationDeleteDialog}
+        onKeyDown={handleSingleDialogActionEnter}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{t("delete_qualification_title", "Delete Qualification")}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#475569" }}>
+            {objQualificationDeleteDialog.strDegreeName
+              ? `${objQualificationDeleteDialog.strDegreeName} will be marked inactive.`
+              : t("confirm_delete_qualification", "This qualification entry will be marked inactive.")}{" "}
+            {t("confirm_continue", "Continue?")}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeQualificationDeleteDialog}>{t("cancel", dicConstant.common.cancel)}</Button>
+          <Button onClick={handleQualificationDelete} variant="contained" color="error">
+            {t("delete", "Delete")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -54,6 +54,28 @@ export const labelService = {
     }
   },
 
+  async getEmployeeDetailsLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
+    try {
+      const objResponse = await callAPI<ModuleLabelsResponse>(
+        null,
+        "labels/employee-details",
+        "MASTER_EMPLOYEE_LABELS",
+        {
+          method: "GET",
+          params: { language_id: intLanguageID },
+        }
+      );
+      return objResponse.Response;
+    } catch (objError) {
+      return {
+        module: "employee",
+        language: "en",
+        fallback_language: null,
+        labels: {}
+      };
+    }
+  },
+
   async getTaxRegimeLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
     try {
       const objResponse = await callAPI<ModuleLabelsResponse>(

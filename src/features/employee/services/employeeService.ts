@@ -4,9 +4,15 @@ import type {
   EmployeeBankFormValues,
   EmployeeBankRecord,
   EmployeeDetailRecord,
+  EmployeeFamilyDetailFormValues,
+  EmployeeFamilyDetailRecord,
+  EmployeeExperienceFormValues,
+  EmployeeExperienceRecord,
   EmployeeFormOptions,
   EmployeeFormValues,
   EmployeeListRecord,
+  EmployeeQualificationFormValues,
+  EmployeeQualificationRecord,
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
@@ -129,6 +135,127 @@ export const employeeService = {
       blnPtApplicable: dicValues.blnPtApplicable
     });
     return objResult.Data;
+  },
+
+  async getEmployeeExperiences(intEmployeeID: number): Promise<EmployeeExperienceRecord[]> {
+    const objResult = await masterApiService.getEmployeeExperiences(intEmployeeID);
+    return objResult.Data;
+  },
+
+  async createEmployeeExperience(intEmployeeID: number, dicValues: EmployeeExperienceFormValues): Promise<EmployeeExperienceRecord> {
+    const objResult = await masterApiService.createEmployeeExperience(intEmployeeID, {
+      strCompanyName: dicValues.strCompanyName.trim(),
+      strJobTitle: dicValues.strJobTitle.trim(),
+      dtFromDate: dicValues.dtFromDate,
+      dtToDate: dicValues.dtToDate || null,
+      decTotalYears: dicValues.decTotalYears.trim() ? Number(dicValues.decTotalYears) : null,
+      strResponsibilities: dicValues.strResponsibilities.trim() || null,
+      decLastDrawnSalary: dicValues.decLastDrawnSalary.trim() ? Number(dicValues.decLastDrawnSalary) : null,
+      strReasonForLeaving: dicValues.strReasonForLeaving.trim() || null,
+      blnIsActive: dicValues.blnIsActive
+    });
+    return objResult.Data;
+  },
+
+  async updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, dicValues: EmployeeExperienceFormValues): Promise<EmployeeExperienceRecord> {
+    const objResult = await masterApiService.updateEmployeeExperience(intEmployeeID, intExperienceID, {
+      strCompanyName: dicValues.strCompanyName.trim(),
+      strJobTitle: dicValues.strJobTitle.trim(),
+      dtFromDate: dicValues.dtFromDate,
+      dtToDate: dicValues.dtToDate || null,
+      decTotalYears: dicValues.decTotalYears.trim() ? Number(dicValues.decTotalYears) : null,
+      strResponsibilities: dicValues.strResponsibilities.trim() || null,
+      decLastDrawnSalary: dicValues.decLastDrawnSalary.trim() ? Number(dicValues.decLastDrawnSalary) : null,
+      strReasonForLeaving: dicValues.strReasonForLeaving.trim() || null,
+      blnIsActive: dicValues.blnIsActive
+    });
+    return objResult.Data;
+  },
+
+  async deleteEmployeeExperience(intEmployeeID: number, intExperienceID: number): Promise<EmployeeExperienceRecord> {
+    const objResult = await masterApiService.deleteEmployeeExperience(intEmployeeID, intExperienceID);
+    return objResult.Data;
+  },
+
+  async getEmployeeQualifications(intEmployeeID: number): Promise<EmployeeQualificationRecord[]> {
+    const objResult = await masterApiService.getEmployeeQualifications(intEmployeeID);
+    return objResult.Data;
+  },
+
+  async createEmployeeQualification(intEmployeeID: number, dicValues: EmployeeQualificationFormValues): Promise<EmployeeQualificationRecord> {
+    const objResult = await masterApiService.createEmployeeQualification(intEmployeeID, {
+      strDegreeName: dicValues.strDegreeName.trim(),
+      strSpecialization: dicValues.strSpecialization.trim() || null,
+      strInstitutionName: dicValues.strInstitutionName.trim(),
+      strUniversityName: dicValues.strUniversityName.trim() || null,
+      intYearOfPassing: Number(dicValues.intYearOfPassing),
+      strGradeOrPercentage: dicValues.strGradeOrPercentage.trim() || null,
+      strCertificationNumber: dicValues.strCertificationNumber.trim() || null,
+      blnIsHighestQualification: dicValues.blnIsHighestQualification,
+      blnIsActive: dicValues.blnIsActive
+    });
+    return objResult.Data;
+  },
+
+  async updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, dicValues: EmployeeQualificationFormValues): Promise<EmployeeQualificationRecord> {
+    const objResult = await masterApiService.updateEmployeeQualification(intEmployeeID, intQualificationID, {
+      strDegreeName: dicValues.strDegreeName.trim(),
+      strSpecialization: dicValues.strSpecialization.trim() || null,
+      strInstitutionName: dicValues.strInstitutionName.trim(),
+      strUniversityName: dicValues.strUniversityName.trim() || null,
+      intYearOfPassing: Number(dicValues.intYearOfPassing),
+      strGradeOrPercentage: dicValues.strGradeOrPercentage.trim() || null,
+      strCertificationNumber: dicValues.strCertificationNumber.trim() || null,
+      blnIsHighestQualification: dicValues.blnIsHighestQualification,
+      blnIsActive: dicValues.blnIsActive
+    });
+    return objResult.Data;
+  },
+
+  async deleteEmployeeQualification(intEmployeeID: number, intQualificationID: number): Promise<EmployeeQualificationRecord> {
+    const objResult = await masterApiService.deleteEmployeeQualification(intEmployeeID, intQualificationID);
+    return objResult.Data;
+  },
+
+  async getEmployeeFamilyDetails(intEmployeeID: number): Promise<EmployeeFamilyDetailRecord[]> {
+    const objResult = await masterApiService.getEmployeeFamilyDetails(intEmployeeID);
+    return objResult.Data;
+  },
+
+  async createEmployeeFamilyDetail(intEmployeeID: number, dicValues: EmployeeFamilyDetailFormValues): Promise<EmployeeFamilyDetailRecord> {
+    const objResult = await masterApiService.createEmployeeFamilyDetail(intEmployeeID, {
+      strName: dicValues.strName.trim(),
+      strRelationship: dicValues.strRelationship || null,
+      dtDateOfBirth: dicValues.dtDateOfBirth || null,
+      strGender: dicValues.strGender || null,
+      strContactNumber: dicValues.strContactNumber.trim() || null,
+      strOccupation: dicValues.strOccupation.trim() || null,
+      blnIsDependent: dicValues.blnIsDependent,
+      blnIsNominee: dicValues.blnIsNominee,
+      decNomineePercentage: dicValues.blnIsNominee && dicValues.decNomineePercentage.trim() ? Number(dicValues.decNomineePercentage) : null,
+      strAddress: dicValues.strAddress.trim() || null
+    });
+    return objResult.Data;
+  },
+
+  async updateEmployeeFamilyDetail(intFamilyID: number, dicValues: EmployeeFamilyDetailFormValues): Promise<EmployeeFamilyDetailRecord> {
+    const objResult = await masterApiService.updateEmployeeFamilyDetail(intFamilyID, {
+      strName: dicValues.strName.trim(),
+      strRelationship: dicValues.strRelationship || null,
+      dtDateOfBirth: dicValues.dtDateOfBirth || null,
+      strGender: dicValues.strGender || null,
+      strContactNumber: dicValues.strContactNumber.trim() || null,
+      strOccupation: dicValues.strOccupation.trim() || null,
+      blnIsDependent: dicValues.blnIsDependent,
+      blnIsNominee: dicValues.blnIsNominee,
+      decNomineePercentage: dicValues.blnIsNominee && dicValues.decNomineePercentage.trim() ? Number(dicValues.decNomineePercentage) : null,
+      strAddress: dicValues.strAddress.trim() || null
+    });
+    return objResult.Data;
+  },
+
+  deleteEmployeeFamilyDetail(intFamilyID: number) {
+    return masterApiService.deleteEmployeeFamilyDetail(intFamilyID);
   }
 };
 
