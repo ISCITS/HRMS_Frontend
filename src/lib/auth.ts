@@ -1,7 +1,27 @@
 import { appConfig } from "@/config";
+import { AuthStorageKey, AuthStoragePrefix } from "@/Common/enums/AppEnums";
 
 let blnSessionExpiryRedirectInProgress = false;
 const strLanguageChangedEventName = "hrms:language-changed";
+const strStorageKeyPrefix = AuthStoragePrefix.Hrms;
+
+function clearPrefixedStorage(objStorage: Storage | undefined) {
+  if (!objStorage) {
+    return;
+  }
+
+  const lstKeysToRemove: string[] = [];
+  for (let intIndex = 0; intIndex < objStorage.length; intIndex += 1) {
+    const strStorageKey = objStorage.key(intIndex);
+    if (strStorageKey?.startsWith(strStorageKeyPrefix)) {
+      lstKeysToRemove.push(strStorageKey);
+    }
+  }
+
+  lstKeysToRemove.forEach((strStorageKey) => {
+    objStorage.removeItem(strStorageKey);
+  });
+}
 
 /*
 Functional responsibility:
@@ -35,7 +55,7 @@ export const authHelpers = {
   },
   getAccessToken() {
     if (typeof window !== "undefined") {
-      const strSessionToken = window.localStorage.getItem("hrms_session_token");
+      const strSessionToken = window.localStorage.getItem(AuthStorageKey.SessionToken);
       if (strSessionToken?.trim()) {
         return strSessionToken;
       }
@@ -64,7 +84,7 @@ export const authHelpers = {
     }
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("hrms_session_token", strAccessToken);
+      window.localStorage.setItem(AuthStorageKey.SessionToken, strAccessToken);
     }
     document.cookie = `${this.cookieName}=${encodeURIComponent(strAccessToken)}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
     if (strTenantUUID) {
@@ -76,18 +96,18 @@ export const authHelpers = {
       return;
     }
 
-    window.localStorage.setItem("hrms_tenant_id", String(intTenantID));
+    window.localStorage.setItem(AuthStorageKey.TenantId, String(intTenantID));
     if (typeof intCompanyID === "number" && Number.isFinite(intCompanyID)) {
-      window.localStorage.setItem("hrms_company_id", String(intCompanyID));
+      window.localStorage.setItem(AuthStorageKey.CompanyId, String(intCompanyID));
     }
 
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
-      window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+      window.localStorage.setItem(AuthStorageKey.LanguageId, String(intLanguageID));
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID } }));
     }
 
     if (typeof intSecondaryLanguageID === "number" && Number.isFinite(intSecondaryLanguageID)) {
-      window.localStorage.setItem("hrms_secondary_language_id", String(intSecondaryLanguageID));
+      window.localStorage.setItem(AuthStorageKey.SecondaryLanguageId, String(intSecondaryLanguageID));
     }
   },
   getTenantID() {
@@ -95,7 +115,7 @@ export const authHelpers = {
       return null;
     }
 
-    const strTenantID = window.localStorage.getItem("hrms_tenant_id");
+    const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId);
     const intTenantID = Number(strTenantID);
     return Number.isFinite(intTenantID) && intTenantID > 0 ? intTenantID : null;
   },
@@ -104,7 +124,7 @@ export const authHelpers = {
       return null;
     }
 
-    const strCompanyID = window.localStorage.getItem("hrms_company_id");
+    const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId);
     const intCompanyID = Number(strCompanyID);
     return Number.isFinite(intCompanyID) && intCompanyID > 0 ? intCompanyID : null;
   },
@@ -114,7 +134,7 @@ export const authHelpers = {
     }
 
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
-      window.localStorage.setItem("hrms_language_id", String(intLanguageID));
+      window.localStorage.setItem(AuthStorageKey.LanguageId, String(intLanguageID));
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID } }));
     }
   },
@@ -123,7 +143,7 @@ export const authHelpers = {
       return null;
     }
 
-    const strLanguageID = window.localStorage.getItem("hrms_language_id");
+    const strLanguageID = window.localStorage.getItem(AuthStorageKey.LanguageId);
     const intLanguageID = Number(strLanguageID);
     return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
   },
@@ -132,9 +152,27 @@ export const authHelpers = {
       return null;
     }
 
-    const strLanguageID = window.localStorage.getItem("hrms_secondary_language_id");
+    const strLanguageID = window.localStorage.getItem(AuthStorageKey.SecondaryLanguageId);
     const intLanguageID = Number(strLanguageID);
     return Number.isFinite(intLanguageID) && intLanguageID > 0 ? intLanguageID : null;
+  },
+  async clearClientCache() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    clearPrefixedStorage(window.localStorage);
+    clearPrefixedStorage(window.sessionStorage);
+
+    if ("caches" in window) {
+      const lstCacheKeys = await window.caches.keys();
+      await Promise.all(lstCacheKeys.map((strCacheKey) => window.caches.delete(strCacheKey)));
+    }
+
+    if ("serviceWorker" in navigator) {
+      const lstServiceWorkerRegistrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(lstServiceWorkerRegistrations.map((objRegistration) => objRegistration.unregister()));
+    }
   },
   clearSession(blnPreserveTenantContext = false) {
     if (typeof document === "undefined") {
@@ -143,12 +181,10 @@ export const authHelpers = {
 
     const strTenantUUID = this.getTenantUUID();
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("hrms_session_token");
-      window.localStorage.removeItem("hrms_tenant_id");
-      window.localStorage.removeItem("hrms_company_id");
-      window.localStorage.removeItem("hrms_language_id");
-      window.localStorage.removeItem("hrms_secondary_language_id");
+      clearPrefixedStorage(window.localStorage);
+      clearPrefixedStorage(window.sessionStorage);
       window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
+      void this.clearClientCache();
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
     if (blnPreserveTenantContext && strTenantUUID) {

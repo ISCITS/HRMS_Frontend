@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import { masterApiService, type SalaryStructureApiRecord } from "@/services/master/MasterApiService";
 
 export function useSalaryStructures() {
@@ -12,18 +13,18 @@ export function useSalaryStructures() {
   const loadSalaryStructures = useCallback(async () => {
     setBlnLoading(true);
     setStrError("");
-    try {
-      const objResult = await masterApiService.getSalaryStructures();
-      setLstSalaryStructures(objResult.Data);
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load salary structures.");
-    } finally {
-      setBlnLoading(false);
-    }
+
+    await runFrontendAction({
+      fnAction: () => masterApiService.getSalaryStructures(),
+      fnOnSuccess: (objResult) => setLstSalaryStructures(objResult.Data),
+      fnOnError: (objError) => setStrError(objError.message),
+      fnFinally: () => setBlnLoading(false),
+      strFallbackMessage: "Unable to load salary structures.",
+    });
   }, []);
 
   useEffect(() => {
-    loadSalaryStructures().catch(() => undefined);
+    void loadSalaryStructures();
   }, [loadSalaryStructures]);
 
   return {

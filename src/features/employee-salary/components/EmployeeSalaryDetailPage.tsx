@@ -22,7 +22,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";

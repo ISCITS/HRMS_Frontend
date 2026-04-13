@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { getAccessTokenFromCookie, proxyMenu } from "@/app/api/auth/AuthProxy";
+import { getAccessTokenFromCookie, getAccessTokenFromRequest, proxyMenu } from "@/app/api/auth/AuthProxy";
 
-export async function GET() {
+async function handleMenu(objRequest: Request) {
   try {
-    const strAccessToken = await getAccessTokenFromCookie();
+    const strAccessToken = getAccessTokenFromRequest(objRequest) || await getAccessTokenFromCookie();
     if (!strAccessToken) {
       return NextResponse.json({ ResultCode: 0, Msg: "Unauthenticated.", Data: {} }, { status: 401 });
     }
-    const objResult = await proxyMenu(strAccessToken);
+    const objResult = await proxyMenu(strAccessToken, objRequest.headers);
     return NextResponse.json(objResult, { status: 200 });
   } catch (objError) {
     return NextResponse.json(
@@ -20,4 +20,12 @@ export async function GET() {
       { status: 401 }
     );
   }
+}
+
+export async function GET(objRequest: Request) {
+  return handleMenu(objRequest);
+}
+
+export async function POST(objRequest: Request) {
+  return handleMenu(objRequest);
 }

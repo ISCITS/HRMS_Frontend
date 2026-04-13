@@ -1,17 +1,15 @@
 "use client";
 
-import axios from "axios";
-
-import { authHelpers } from "@/lib/auth";
-import { axiosInstance } from "@/lib/axiosInstance";
+import {
+  ApiFieldKey,
+  ApiRequestMethod,
+  ApiRoutePrefix,
+  MasterApiResource,
+  MasterApiRouteSegment,
+  MasterMenuAction,
+} from "@/Common/enums/AppEnums";
+import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
-import { decryptPayload } from "@/lib/security/decryptPayload";
-
-type ApiEnvelope<TData> = {
-  ResultCode: number;
-  Msg: string;
-  Data: TData;
-};
 
 export type DepartmentApiRecord = {
   intID: number;
@@ -57,8 +55,13 @@ export type UserApiRecord = {
   intCompanyID: number | null;
   intEmployeeID?: number | null;
   strLoginName: string | null;
+  strLoginID?: string | null;
+  strLoginId?: string | null;
+  [ApiFieldKey.LoginId]?: string | null;
   strEmailAddress: string | null;
   strMobileNumber: string | null;
+  strPassword?: string | null;
+  password?: string | null;
   strAuthSource: "local" | "sso";
   blnIsSsoEnabled: boolean;
   blnMfaEnabled?: boolean;
@@ -266,6 +269,17 @@ export type PayrollProcessLogFormOptionsApiRecord = {
   lstEmployees: EmployeeLookupOptionApiRecord[];
   lstProcessStages: string[];
   lstProcessStatuses: string[];
+};
+
+export type VersionLogApiRecord = {
+  intID: number;
+  strVersionCode: string;
+  strVersionName: string;
+  dtReleaseDate: string | null;
+  strReleaseNotes: string | null;
+  blnIsActive: boolean;
+  dtAddedOn: string;
+  dtUpdatedOn: string;
 };
 
 export type EmployeeApiRecord = {
@@ -589,80 +603,55 @@ export type EmployeeSalarySummaryApiRecord = {
   intRevisionCount: number;
 };
 
+function buildApiPath(objResource: MasterApiResource, ...lstSegments: Array<string | number>) {
+  return [objResource, ...lstSegments.map(String)].join("/");
+}
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
-  strMethod: "GET" | "POST" | "PUT" | "DELETE";
+  strMethod: ApiRequestMethod;
   objBody?: unknown;
   objQueryParams?: Record<string, string | number | boolean | null | undefined>;
-  strMenuAction: string;
+  strMenuAction: MasterMenuAction;
 }): Promise<ApiEnvelope<TData>> {
-  // Master screens share the same encrypted API contract as the rest of the app,
-  // so this helper centralizes auth headers, CSRF menu action wiring, and response decryption.
-  const strAccessToken = authHelpers.getAccessToken();
-  const objHeaders: Record<string, string> = {};
-
-  if (strAccessToken) {
-    objHeaders.Authorization = `Bearer ${strAccessToken}`;
-  }
-
-  try {
-    const objResponse = await axiosInstance.request({
-      method: objOptions.strMethod,
-      url: `api/v1${objOptions.strPath}`,
-      data: objOptions.objBody,
-      params: objOptions.objQueryParams,
-      csrfMenuAction: objOptions.strMenuAction,
-      headers: objHeaders
-    });
-
-    const objRawPayload = objResponse.data as ApiEnvelope<TData> | { payload: string };
-    const objPayload = "payload" in objRawPayload
-      ? await decryptPayload<ApiEnvelope<TData>>(objRawPayload.payload)
-      : objRawPayload;
-
-    if (objPayload.ResultCode !== 1) {
-      throw new Error(objPayload.Msg ?? "Request failed.");
-    }
-
-    return objPayload;
-  } catch (objError) {
-    if (axios.isAxiosError(objError)) {
-      const objResponseData = objError.response?.data as ApiEnvelope<TData> | { payload?: string; Msg?: string } | undefined;
-      if (objResponseData?.payload) {
-        const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
-        throw new Error(objDecryptedPayload.Msg ?? "Request failed.");
-      }
-      throw new Error(objResponseData?.Msg ?? objError.message ?? "Request failed.");
-    }
-
-    throw objError;
-  }
+  // Master screens share one encrypted request path with common auth and error translation.
+  return requestEncryptedApi<TData>({
+    strPath: `${ApiRoutePrefix.ApiV1}${objOptions.strPath}`,
+    strMethod: objOptions.strMethod,
+    objBody: objOptions.objBody,
+    objQueryParams: objOptions.objQueryParams,
+    strMenuAction: objOptions.strMenuAction,
+    blnUseAuthHeader: true
+  });
 }
 
 export const masterApiService = {
   // Department CRUD and bulk actions.
   getDepartments() {
     return requestApi<DepartmentApiRecord[]>({
-      strPath: "/masters/departments",
-      strMethod: "GET",
-      strMenuAction: "MASTER_DEPARTMENT_LIST"
+      strPath: MasterApiResource.Departments,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.DepartmentList
     });
   },
 
   getDepartment(intID: number, intLanguageID?: number | null) {
     return requestApi<DepartmentApiRecord>({
-      strPath: `/masters/departments/${intID}`,
-      strMethod: "GET",
-      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_DEPARTMENT_LIST"
+      strPath: buildApiPath(MasterApiResource.Departments, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: {
+        intID,
+        ...(intLanguageID ? { intLanguageID } : {})
+      },
+      strMenuAction: MasterMenuAction.DepartmentList
     });
   },
 
   getDepartmentFormOptions() {
     return requestApi<DepartmentFormOptionsApiRecord>({
-      strPath: "/masters/departments/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_DEPARTMENT_LIST"
+      strPath: buildApiPath(MasterApiResource.Departments, MasterApiRouteSegment.FormOptions),
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.DepartmentList
     });
   },
 
@@ -676,10 +665,10 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/departments/translate",
-      strMethod: "POST",
+      strPath: buildApiPath(MasterApiResource.Departments, MasterApiRouteSegment.Translate),
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_DEPARTMENT_LIST"
+      strMenuAction: MasterMenuAction.DepartmentList
     });
   },
 
@@ -694,9 +683,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_DEPARTMENT_LIST"
+      strMenuAction: MasterMenuAction.DepartmentList
     });
   },
 
@@ -714,10 +703,10 @@ export const masterApiService = {
   }) {
     // Creates a new department record inside the current tenant/company scope on the backend.
     return requestApi<DepartmentApiRecord>({
-      strPath: "/masters/departments",
-      strMethod: "POST",
+      strPath: MasterApiResource.Departments,
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_DEPARTMENT_CREATE"
+      strMenuAction: MasterMenuAction.DepartmentCreate
     });
   },
 
@@ -735,30 +724,30 @@ export const masterApiService = {
   }) {
     // Updates an existing department by primary key.
     return requestApi<DepartmentApiRecord>({
-      strPath: `/masters/departments/${intID}`,
-      strMethod: "PUT",
+      strPath: buildApiPath(MasterApiResource.Departments, intID),
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_DEPARTMENT_UPDATE"
+      strMenuAction: MasterMenuAction.DepartmentUpdate
     });
   },
 
   bulkDepartmentStatus(lstIDs: number[], blnIsActive: boolean) {
     // Applies the same active/inactive flag to multiple selected departments.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/departments/bulk-status",
-      strMethod: "POST",
+      strPath: buildApiPath(MasterApiResource.Departments, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_DEPARTMENT_BULK_STATUS"
+      strMenuAction: MasterMenuAction.DepartmentBulkStatus
     });
   },
 
   bulkDepartmentDelete(lstIDs: number[]) {
     // Deletes multiple department records in one backend call.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/departments/bulk-delete",
-      strMethod: "POST",
+      strPath: buildApiPath(MasterApiResource.Departments, MasterApiRouteSegment.BulkDelete),
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_DEPARTMENT_BULK_DELETE"
+      strMenuAction: MasterMenuAction.DepartmentBulkDelete
     });
   },
 
@@ -766,26 +755,26 @@ export const masterApiService = {
   getDesignations() {
     // Fetches the designation list scoped by the logged-in tenant.
     return requestApi<DesignationApiRecord[]>({
-      strPath: "/masters/designations",
-      strMethod: "GET",
-      strMenuAction: "MASTER_DESIGNATION_LIST"
+      strPath: MasterApiResource.Designations,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.DesignationList
     });
   },
 
   getDesignation(intID: number, intLanguageID?: number | null) {
     return requestApi<DesignationApiRecord>({
       strPath: `/masters/designations/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_DESIGNATION_LIST"
+      strMenuAction: MasterMenuAction.DesignationList
     });
   },
 
   getDesignationFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
       strPath: "/masters/designations/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_DESIGNATION_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.DesignationList
     });
   },
 
@@ -800,9 +789,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/designations/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_DESIGNATION_LIST"
+      strMenuAction: MasterMenuAction.DesignationList
     });
   },
 
@@ -815,10 +804,10 @@ export const masterApiService = {
   }) {
     // Creates a new designation record.
     return requestApi<DesignationApiRecord>({
-      strPath: "/masters/designations",
-      strMethod: "POST",
+      strPath: MasterApiResource.Designations,
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_DESIGNATION_CREATE"
+      strMenuAction: MasterMenuAction.DesignationCreate
     });
   },
 
@@ -831,30 +820,30 @@ export const masterApiService = {
   }) {
     // Updates an existing designation by primary key.
     return requestApi<DesignationApiRecord>({
-      strPath: `/masters/designations/${intID}`,
-      strMethod: "PUT",
+      strPath: buildApiPath(MasterApiResource.Designations, intID),
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_DESIGNATION_UPDATE"
+      strMenuAction: MasterMenuAction.DesignationUpdate
     });
   },
 
   bulkDesignationStatus(lstIDs: number[], blnIsActive: boolean) {
     // Applies one status change to all selected designations.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/designations/bulk-status",
-      strMethod: "POST",
+      strPath: buildApiPath(MasterApiResource.Designations, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_DESIGNATION_BULK_STATUS"
+      strMenuAction: MasterMenuAction.DesignationBulkStatus
     });
   },
 
   bulkDesignationDelete(lstIDs: number[]) {
     // Deletes multiple designation records in one backend request.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/designations/bulk-delete",
-      strMethod: "POST",
+      strPath: buildApiPath(MasterApiResource.Designations, MasterApiRouteSegment.BulkDelete),
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_DESIGNATION_BULK_DELETE"
+      strMenuAction: MasterMenuAction.DesignationBulkDelete
     });
   },
 
@@ -863,25 +852,25 @@ export const masterApiService = {
     // Fetches the bank list scoped by the logged-in tenant.
     return requestApi<BankApiRecord[]>({
       strPath: "/masters/banks",
-      strMethod: "GET",
-      strMenuAction: "MASTER_BANK_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.BankList
     });
   },
 
   getBank(intID: number, intLanguageID?: number | null) {
     return requestApi<BankApiRecord>({
       strPath: `/masters/banks/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_BANK_LIST"
+      strMenuAction: MasterMenuAction.BankList
     });
   },
 
   getBankFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
       strPath: "/masters/banks/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_BANK_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.BankList
     });
   },
 
@@ -896,9 +885,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/banks/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_BANK_LIST"
+      strMenuAction: MasterMenuAction.BankList
     });
   },
 
@@ -912,9 +901,9 @@ export const masterApiService = {
     // Creates a new bank record.
     return requestApi<BankApiRecord>({
       strPath: "/masters/banks",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_BANK_CREATE"
+      strMenuAction: MasterMenuAction.BankCreate
     });
   },
 
@@ -928,9 +917,9 @@ export const masterApiService = {
     // Updates an existing bank by primary key.
     return requestApi<BankApiRecord>({
       strPath: `/masters/banks/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_BANK_UPDATE"
+      strMenuAction: MasterMenuAction.BankUpdate
     });
   },
 
@@ -938,9 +927,9 @@ export const masterApiService = {
     // Applies one status change to all selected banks.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/banks/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_BANK_BULK_STATUS"
+      strMenuAction: MasterMenuAction.BankBulkStatus
     });
   },
 
@@ -948,17 +937,17 @@ export const masterApiService = {
     // Deletes multiple bank records in one backend request.
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/banks/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_BANK_BULK_DELETE"
+      strMenuAction: MasterMenuAction.BankBulkDelete
     });
   },
 
   getEssDeclarationCategories() {
     return requestApi<EssDeclarationCategoryApiRecord[]>({
       strPath: "/masters/ess-declaration-categories",
-      strMethod: "GET",
-      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryList
     });
   },
 
@@ -974,9 +963,9 @@ export const masterApiService = {
   }) {
     return requestApi<EssDeclarationCategoryApiRecord>({
       strPath: "/masters/ess-declaration-categories",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_CREATE"
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryCreate
     });
   },
 
@@ -992,27 +981,27 @@ export const masterApiService = {
   }) {
     return requestApi<EssDeclarationCategoryApiRecord>({
       strPath: `/masters/ess-declaration-categories/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_UPDATE"
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryUpdate
     });
   },
 
   bulkEssDeclarationCategoryStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/ess-declaration-categories/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_BULK_STATUS"
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryBulkStatus
     });
   },
 
   bulkEssDeclarationCategoryDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/ess-declaration-categories/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_ESS_DECLARATION_CATEGORY_BULK_DELETE"
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryBulkDelete
     });
   },
 
@@ -1020,25 +1009,25 @@ export const masterApiService = {
   getCostCenters() {
     return requestApi<CostCenterApiRecord[]>({
       strPath: "/masters/cost-centers",
-      strMethod: "GET",
-      strMenuAction: "MASTER_COST_CENTER_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.CostCenterList
     });
   },
 
   getCostCenter(intID: number, intLanguageID?: number | null) {
     return requestApi<CostCenterApiRecord>({
       strPath: `/masters/cost-centers/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_COST_CENTER_LIST"
+      strMenuAction: MasterMenuAction.CostCenterList
     });
   },
 
   getCostCenterFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
       strPath: "/masters/cost-centers/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_COST_CENTER_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.CostCenterList
     });
   },
 
@@ -1053,9 +1042,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/cost-centers/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_COST_CENTER_LIST"
+      strMenuAction: MasterMenuAction.CostCenterList
     });
   },
 
@@ -1068,9 +1057,9 @@ export const masterApiService = {
   }) {
     return requestApi<CostCenterApiRecord>({
       strPath: "/masters/cost-centers",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_COST_CENTER_CREATE"
+      strMenuAction: MasterMenuAction.CostCenterCreate
     });
   },
 
@@ -1083,27 +1072,27 @@ export const masterApiService = {
   }) {
     return requestApi<CostCenterApiRecord>({
       strPath: `/masters/cost-centers/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_COST_CENTER_UPDATE"
+      strMenuAction: MasterMenuAction.CostCenterUpdate
     });
   },
 
   bulkCostCenterStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/cost-centers/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_COST_CENTER_BULK_STATUS"
+      strMenuAction: MasterMenuAction.CostCenterBulkStatus
     });
   },
 
   bulkCostCenterDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/cost-centers/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_COST_CENTER_BULK_DELETE"
+      strMenuAction: MasterMenuAction.CostCenterBulkDelete
     });
   },
 
@@ -1111,25 +1100,25 @@ export const masterApiService = {
   getGrades() {
     return requestApi<GradeApiRecord[]>({
       strPath: "/masters/grades",
-      strMethod: "GET",
-      strMenuAction: "MASTER_GRADE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.GradeList
     });
   },
 
   getGrade(intID: number, intLanguageID?: number | null) {
     return requestApi<GradeApiRecord>({
       strPath: `/masters/grades/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_GRADE_LIST"
+      strMenuAction: MasterMenuAction.GradeList
     });
   },
 
   getGradeFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
       strPath: "/masters/grades/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_GRADE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.GradeList
     });
   },
 
@@ -1144,9 +1133,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/grades/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_GRADE_LIST"
+      strMenuAction: MasterMenuAction.GradeList
     });
   },
 
@@ -1159,9 +1148,9 @@ export const masterApiService = {
   }) {
     return requestApi<GradeApiRecord>({
       strPath: "/masters/grades",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_GRADE_CREATE"
+      strMenuAction: MasterMenuAction.GradeCreate
     });
   },
 
@@ -1174,27 +1163,27 @@ export const masterApiService = {
   }) {
     return requestApi<GradeApiRecord>({
       strPath: `/masters/grades/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_GRADE_UPDATE"
+      strMenuAction: MasterMenuAction.GradeUpdate
     });
   },
 
   bulkGradeStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/grades/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_GRADE_BULK_STATUS"
+      strMenuAction: MasterMenuAction.GradeBulkStatus
     });
   },
 
   bulkGradeDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/grades/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_GRADE_BULK_DELETE"
+      strMenuAction: MasterMenuAction.GradeBulkDelete
     });
   },
 
@@ -1202,25 +1191,25 @@ export const masterApiService = {
   getLocations() {
     return requestApi<LocationApiRecord[]>({
       strPath: "/masters/locations",
-      strMethod: "GET",
-      strMenuAction: "MASTER_LOCATION_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.LocationList
     });
   },
 
   getLocation(intID: number, intLanguageID?: number | null) {
     return requestApi<LocationApiRecord>({
       strPath: `/masters/locations/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_LOCATION_LIST"
+      strMenuAction: MasterMenuAction.LocationList
     });
   },
 
   getLocationFormOptions() {
     return requestApi<LocationFormOptionsApiRecord>({
       strPath: "/masters/locations/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_LOCATION_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.LocationFormOptions
     });
   },
 
@@ -1235,9 +1224,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/locations/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_LOCATION_LIST"
+      strMenuAction: MasterMenuAction.LocationList
     });
   },
 
@@ -1252,9 +1241,9 @@ export const masterApiService = {
   }) {
     return requestApi<LocationApiRecord>({
       strPath: "/masters/locations",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_LOCATION_CREATE"
+      strMenuAction: MasterMenuAction.LocationCreate
     });
   },
 
@@ -1269,27 +1258,27 @@ export const masterApiService = {
   }) {
     return requestApi<LocationApiRecord>({
       strPath: `/masters/locations/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_LOCATION_UPDATE"
+      strMenuAction: MasterMenuAction.LocationUpdate
     });
   },
 
   bulkLocationStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/locations/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_LOCATION_BULK_STATUS"
+      strMenuAction: MasterMenuAction.LocationBulkStatus
     });
   },
 
   bulkLocationDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/locations/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_LOCATION_BULK_DELETE"
+      strMenuAction: MasterMenuAction.LocationBulkDelete
     });
   },
 
@@ -1297,21 +1286,22 @@ export const masterApiService = {
   getUsers() {
     return requestApi<UserApiRecord[]>({
       strPath: "/masters/users",
-      strMethod: "GET",
-      strMenuAction: "MASTER_USER_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.UserList
     });
   },
 
   getUserFormOptions() {
     return requestApi<UserFormOptionsApiRecord>({
       strPath: "/masters/users/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_USER_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.UserFormOptions
     });
   },
 
   createUser(objBody: {
     strLoginName: string;
+    strLoginID: string;
     strEmailAddress: string;
     strMobileNumber: string | null;
     strPassword: string | null;
@@ -1326,18 +1316,20 @@ export const masterApiService = {
   }) {
     const objEncryptedBody = {
       ...objBody,
+      login_id: objBody.strLoginID,
       strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
     };
     return requestApi<UserApiRecord>({
       strPath: "/masters/users",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objEncryptedBody,
-      strMenuAction: "MASTER_USER_CREATE"
+      strMenuAction: MasterMenuAction.UserCreate
     });
   },
 
   updateUser(intID: number, objBody: {
     strLoginName: string;
+    strLoginID: string;
     strEmailAddress: string;
     strMobileNumber: string | null;
     strPassword: string | null;
@@ -1352,56 +1344,57 @@ export const masterApiService = {
   }) {
     const objEncryptedBody = {
       ...objBody,
+      login_id: objBody.strLoginID,
       strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
     };
     return requestApi<UserApiRecord>({
       strPath: `/masters/users/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody: objEncryptedBody,
-      strMenuAction: "MASTER_USER_UPDATE"
+      strMenuAction: MasterMenuAction.UserUpdate
     });
   },
 
   bulkUserStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/users/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_USER_BULK_STATUS"
+      strMenuAction: MasterMenuAction.UserBulkStatus
     });
   },
 
   bulkUserDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/users/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_USER_BULK_DELETE"
+      strMenuAction: MasterMenuAction.UserBulkDelete
     });
   },
 
   getCountries() {
     return requestApi<CountryApiRecord[]>({
       strPath: "/masters/countries",
-      strMethod: "GET",
-      strMenuAction: "MASTER_COUNTRY_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.CountryList
     });
   },
 
   getCountry(intID: number, intLanguageID?: number | null) {
     return requestApi<CountryApiRecord>({
       strPath: `/masters/countries/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_COUNTRY_LIST"
+      strMenuAction: MasterMenuAction.CountryList
     });
   },
 
   getCountryFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
       strPath: "/masters/countries/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_COUNTRY_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.CountryList
     });
   },
 
@@ -1416,9 +1409,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/countries/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_COUNTRY_LIST"
+      strMenuAction: MasterMenuAction.CountryList
     });
   },
 
@@ -1433,9 +1426,9 @@ export const masterApiService = {
   }) {
     return requestApi<CountryApiRecord>({
       strPath: "/masters/countries",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_COUNTRY_CREATE"
+      strMenuAction: MasterMenuAction.CountryCreate
     });
   },
 
@@ -1450,53 +1443,53 @@ export const masterApiService = {
   }) {
     return requestApi<CountryApiRecord>({
       strPath: `/masters/countries/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_COUNTRY_UPDATE"
+      strMenuAction: MasterMenuAction.CountryUpdate
     });
   },
 
   bulkCountryStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/countries/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_COUNTRY_BULK_STATUS"
+      strMenuAction: MasterMenuAction.CountryBulkStatus
     });
   },
 
   bulkCountryDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/countries/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_COUNTRY_BULK_DELETE"
+      strMenuAction: MasterMenuAction.CountryBulkDelete
     });
   },
 
   getStates() {
     return requestApi<StateApiRecord[]>({
       strPath: "/masters/states",
-      strMethod: "GET",
-      strMenuAction: "MASTER_STATE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.StateList
     });
   },
 
   getState(intID: number, intLanguageID?: number | null) {
     return requestApi<StateApiRecord>({
       strPath: `/masters/states/${intID}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_STATE_LIST"
+      strMenuAction: MasterMenuAction.StateList
     });
   },
 
   getStateFormOptions(intLanguageID?: number | null) {
     return requestApi<StateFormOptionsApiRecord>({
       strPath: "/masters/states/form-options",
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_STATE_LIST"
+      strMenuAction: MasterMenuAction.StateList
     });
   },
 
@@ -1511,9 +1504,9 @@ export const masterApiService = {
       intTargetLanguageID: number;
     }>({
       strPath: "/masters/states/translate",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_STATE_LIST"
+      strMenuAction: MasterMenuAction.StateList
     });
   },
 
@@ -1527,9 +1520,9 @@ export const masterApiService = {
   }) {
     return requestApi<StateApiRecord>({
       strPath: "/masters/states",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_STATE_CREATE"
+      strMenuAction: MasterMenuAction.StateCreate
     });
   },
 
@@ -1543,35 +1536,35 @@ export const masterApiService = {
   }) {
     return requestApi<StateApiRecord>({
       strPath: `/masters/states/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_STATE_UPDATE"
+      strMenuAction: MasterMenuAction.StateUpdate
     });
   },
 
   bulkStateStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/states/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_STATE_BULK_STATUS"
+      strMenuAction: MasterMenuAction.StateBulkStatus
     });
   },
 
   bulkStateDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/states/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_STATE_BULK_DELETE"
+      strMenuAction: MasterMenuAction.StateBulkDelete
     });
   },
 
   getEmployees() {
     return requestApi<EmployeeApiRecord[]>({
       strPath: "/masters/employee",
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeList
     });
   },
 
@@ -1579,333 +1572,351 @@ export const masterApiService = {
     const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<EmployeeFormOptionsApiRecord>({
       strPath: "/masters/employee/form-options",
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
-      strMenuAction: "MASTER_EMPLOYEE_FORM_OPTIONS"
+      strMenuAction: MasterMenuAction.EmployeeFormOptions
     });
   },
 
   getEmployeeById(intID: number) {
     return requestApi<EmployeeDetailApiRecord>({
-      strPath: `/masters/employee/${intID}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_VIEW"
+      strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.EmployeeView
     });
   },
 
   createEmployee(objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: "/masters/employee",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_CREATE"
+      strMenuAction: MasterMenuAction.EmployeeCreate
     });
   },
 
   updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: `/masters/employee/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_UPDATE"
+      strMenuAction: MasterMenuAction.EmployeeUpdate
     });
   },
 
   bulkEmployeeStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/employee/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_EMPLOYEE_BULK_STATUS"
+      strMenuAction: MasterMenuAction.EmployeeBulkStatus
     });
   },
 
   bulkEmployeeDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/employee/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_EMPLOYEE_BULK_DELETE"
+      strMenuAction: MasterMenuAction.EmployeeBulkDelete
     });
   },
 
   getEmployeeAddress(intID: number) {
     return requestApi<EmployeeAddressApiRecord>({
-      strPath: `/masters/employee/${intID}/address`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_ADDRESS_VIEW"
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        MasterApiRouteSegment.Address,
+        MasterApiRouteSegment.Detail
+      ),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.EmployeeAddressView
     });
   },
 
   saveEmployeeAddress(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeAddressApiRecord>({
       strPath: `/masters/employee/${intID}/address`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_ADDRESS_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeAddressSave
     });
   },
 
   getEmployeeBankAccount(intID: number) {
     return requestApi<EmployeeBankApiRecord>({
-      strPath: `/masters/employee/${intID}/bank`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_BANK_VIEW"
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        MasterApiRouteSegment.Bank,
+        MasterApiRouteSegment.Detail
+      ),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.EmployeeBankView
     });
   },
 
   saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeBankApiRecord>({
       strPath: `/masters/employee/${intID}/bank`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_BANK_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeBankSave
     });
   },
 
   getEmployeeStatutory(intID: number) {
     return requestApi<EmployeeStatutoryApiRecord>({
-      strPath: `/masters/employee/${intID}/statutory`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_STATUTORY_VIEW"
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        MasterApiRouteSegment.Statutory,
+        MasterApiRouteSegment.Detail
+      ),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.EmployeeStatutoryView
     });
   },
 
   saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeStatutoryApiRecord>({
       strPath: `/masters/employee/${intID}/statutory`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_STATUTORY_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeStatutorySave
     });
   },
 
   getEmployeeExperiences(intID: number) {
     return requestApi<EmployeeExperienceApiRecord[]>({
       strPath: `/masters/employee/${intID}/experiences`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeExperienceList
     });
   },
 
   createEmployeeExperience(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: `/masters/employee/${intID}/experiences`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeExperienceSave
     });
   },
 
   updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeExperienceSave
     });
   },
 
   deleteEmployeeExperience(intEmployeeID: number, intExperienceID: number) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
-      strMethod: "DELETE",
-      strMenuAction: "MASTER_EMPLOYEE_EXPERIENCE_DELETE"
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: MasterMenuAction.EmployeeExperienceDelete
     });
   },
 
   getEmployeeQualifications(intID: number) {
     return requestApi<EmployeeQualificationApiRecord[]>({
       strPath: `/masters/employee/${intID}/qualifications`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeQualificationList
     });
   },
 
   createEmployeeQualification(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: `/masters/employee/${intID}/qualifications`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeQualificationSave
     });
   },
 
   updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeQualificationSave
     });
   },
 
   deleteEmployeeQualification(intEmployeeID: number, intQualificationID: number) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
-      strMethod: "DELETE",
-      strMenuAction: "MASTER_EMPLOYEE_QUALIFICATION_DELETE"
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: MasterMenuAction.EmployeeQualificationDelete
     });
   },
 
   getEmployeeFamilyDetails(intID: number) {
     return requestApi<EmployeeFamilyDetailApiRecord[]>({
       strPath: `/masters/employee/${intID}/family`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_EMPLOYEE_FAMILY_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeFamilyList
     });
   },
 
   createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: `/masters/employee/${intID}/family`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_FAMILY_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeFamilySave
     });
   },
 
   updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: `/masters/family/${intFamilyID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_EMPLOYEE_FAMILY_SAVE"
+      strMenuAction: MasterMenuAction.EmployeeFamilySave
     });
   },
 
   deleteEmployeeFamilyDetail(intFamilyID: number) {
     return requestApi<null>({
       strPath: `/masters/family/${intFamilyID}`,
-      strMethod: "DELETE",
-      strMenuAction: "MASTER_EMPLOYEE_FAMILY_DELETE"
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: MasterMenuAction.EmployeeFamilyDelete
     });
   },
   getSalaryComponents() {
     return requestApi<SalaryComponentApiRecord[]>({
       strPath: "/masters/salary-components",
-      strMethod: "GET",
-      strMenuAction: "MASTER_SALARY_COMPONENT_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.SalaryComponentList
     });
   },
 
   getSalaryComponent(intID: number) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: `/masters/salary-components/${intID}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_SALARY_COMPONENT_GET"
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.SalaryComponentGet
     });
   },
 
   getSalaryComponentFormOptions() {
     return requestApi<SalaryComponentFormOptionsApiRecord>({
       strPath: "/masters/salary-component-form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_SALARY_COMPONENT_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.SalaryComponentFormOptions
     });
   },
 
   createSalaryComponent(objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
       strPath: "/masters/salary-components",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_SALARY_COMPONENT_CREATE"
+      strMenuAction: MasterMenuAction.SalaryComponentCreate
     });
   },
 
   updateSalaryComponent(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
       strPath: `/masters/salary-components/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_SALARY_COMPONENT_UPDATE"
+      strMenuAction: MasterMenuAction.SalaryComponentUpdate
     });
   },
 
   setSalaryComponentStatus(intID: number, blnIsActive: boolean) {
     return requestApi<SalaryComponentApiRecord>({
       strPath: `/masters/salary-components/${intID}/status`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
-      strMenuAction: "MASTER_SALARY_COMPONENT_STATUS"
+      strMenuAction: MasterMenuAction.SalaryComponentStatus
     });
   },
 
   bulkSalaryComponentStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/salary-components/bulk-status",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
-      strMenuAction: "MASTER_SALARY_COMPONENT_STATUS"
+      strMenuAction: MasterMenuAction.SalaryComponentStatus
     });
   },
 
   deleteSalaryComponent(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: `/masters/salary-components/${intID}`,
-      strMethod: "DELETE",
-      strMenuAction: "MASTER_SALARY_COMPONENT_DELETE"
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: MasterMenuAction.SalaryComponentDelete
     });
   },
 
   bulkSalaryComponentDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: "/masters/salary-components/bulk-delete",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
-      strMenuAction: "MASTER_SALARY_COMPONENT_DELETE"
+      strMenuAction: MasterMenuAction.SalaryComponentDelete
     });
   },
 
   getPayrollCycles() {
     return requestApi<PayrollCycleApiRecord[]>({
       strPath: "/masters/payroll-cycles",
-      strMethod: "GET",
-      strMenuAction: "MASTER_PAYROLL_CYCLE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.PayrollCycleList
     });
   },
 
   getPayrollCycle(intID: number) {
     return requestApi<PayrollCycleApiRecord>({
-      strPath: `/masters/payroll-cycles/${intID}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_PAYROLL_CYCLE_GET"
+      strPath: buildApiPath(MasterApiResource.PayrollCycles, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.PayrollCycleGet
     });
   },
 
   getPayrollCycleFormOptions() {
     return requestApi<PayrollCycleFormOptionsApiRecord>({
       strPath: "/masters/payroll-cycles/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_PAYROLL_CYCLE_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.PayrollCycleFormOptions
     });
   },
 
   createPayrollCycle(objBody: Record<string, unknown>) {
     return requestApi<PayrollCycleApiRecord>({
       strPath: "/masters/payroll-cycles",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_PAYROLL_CYCLE_CREATE"
+      strMenuAction: MasterMenuAction.PayrollCycleCreate
     });
   },
 
   updatePayrollCycle(intID: number, objBody: Record<string, unknown>) {
     return requestApi<PayrollCycleApiRecord>({
       strPath: `/masters/payroll-cycles/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_PAYROLL_CYCLE_UPDATE"
+      strMenuAction: MasterMenuAction.PayrollCycleUpdate
     });
   },
 
   setPayrollCycleStatus(intID: number, blnIsActive: boolean) {
     return requestApi<PayrollCycleApiRecord>({
       strPath: `/masters/payroll-cycles/${intID}/status`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
-      strMenuAction: "MASTER_PAYROLL_CYCLE_STATUS"
+      strMenuAction: MasterMenuAction.PayrollCycleStatus
     });
   },
 
@@ -1935,202 +1946,286 @@ export const masterApiService = {
     const strQuery = objParams.toString();
     return requestApi<PayrollProcessLogApiRecord[]>({
       strPath: `/masters/payroll-process-logs${strQuery ? `?${strQuery}` : ""}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_PAYROLL_PROCESS_LOG_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.PayrollProcessLogList
     });
   },
 
   getPayrollProcessLogFormOptions() {
     return requestApi<PayrollProcessLogFormOptionsApiRecord>({
       strPath: "/masters/payroll-process-logs/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_PAYROLL_PROCESS_LOG_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.PayrollProcessLogFormOptions
+    });
+  },
+
+  getVersionLogs(objFilters?: {
+    strSearchName?: string | null;
+    strSearchCode?: string | null;
+    strStatus?: string | null;
+  }) {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchName) {
+      objParams.set("strSearchName", objFilters.strSearchName);
+    }
+    if (objFilters?.strSearchCode) {
+      objParams.set("strSearchCode", objFilters.strSearchCode);
+    }
+    if (objFilters?.strStatus) {
+      objParams.set("strStatus", objFilters.strStatus);
+    }
+    const strQuery = objParams.toString();
+    return requestApi<VersionLogApiRecord[]>({
+      strPath: `${MasterApiResource.VersionLogs}${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.VersionLogList
+    });
+  },
+
+  getVersionLog(intID: number) {
+    return requestApi<VersionLogApiRecord>({
+      strPath: buildApiPath(MasterApiResource.VersionLogs, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.VersionLogGet
+    });
+  },
+
+  createVersionLog(objBody: {
+    strVersionCode: string;
+    strVersionName: string;
+    dtReleaseDate: string | null;
+    strReleaseNotes: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<VersionLogApiRecord>({
+      strPath: MasterApiResource.VersionLogs,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.VersionLogCreate
+    });
+  },
+
+  updateVersionLog(intID: number, objBody: {
+    strVersionCode: string;
+    strVersionName: string;
+    dtReleaseDate: string | null;
+    strReleaseNotes: string | null;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<VersionLogApiRecord>({
+      strPath: buildApiPath(MasterApiResource.VersionLogs, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.VersionLogUpdate
+    });
+  },
+
+  setVersionLogStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<VersionLogApiRecord>({
+      strPath: buildApiPath(MasterApiResource.VersionLogs, intID, MasterApiRouteSegment.Status),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { blnIsActive },
+      strMenuAction: MasterMenuAction.VersionLogStatus
     });
   },
 
   getTaxRegimes() {
     return requestApi<TaxRegimeApiRecord[]>({
       strPath: "/masters/tax-regimes",
-      strMethod: "GET",
-      strMenuAction: "MASTER_TAX_REGIME_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.TaxRegimeList
     });
   },
 
   getTaxRegime(intID: number) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: `/masters/tax-regimes/${intID}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_TAX_REGIME_GET"
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
   getTaxRegimeFormOptions() {
     return requestApi<TaxRegimeFormOptionsApiRecord>({
       strPath: "/masters/tax-regimes/form-options",
-      strMethod: "GET",
-      strMenuAction: "MASTER_TAX_REGIME_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.TaxRegimeFormOptions
     });
   },
 
   createTaxRegime(objBody: Record<string, unknown>) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: "/masters/tax-regimes",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_TAX_REGIME_CREATE"
+      strMenuAction: MasterMenuAction.TaxRegimeCreate
     });
   },
 
   updateTaxRegime(intID: number, objBody: Record<string, unknown>) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: `/masters/tax-regimes/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_TAX_REGIME_UPDATE"
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 
   setTaxRegimeStatus(intID: number, blnIsActive: boolean) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: `/masters/tax-regimes/${intID}/status`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
-      strMenuAction: "MASTER_TAX_REGIME_STATUS"
+      strMenuAction: MasterMenuAction.TaxRegimeStatus
     });
   },
 
   getTaxSlabs(intTaxRegimeID: number) {
     return requestApi<TaxSlabSetApiRecord>({
-      strPath: `/masters/tax-regimes/${intTaxRegimeID}/slabs`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_TAX_SLAB_LIST"
+      strPath: buildApiPath(
+        MasterApiResource.TaxRegimes,
+        MasterApiRouteSegment.Slabs,
+        MasterApiRouteSegment.Detail
+      ),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxSlabList
     });
   },
 
   saveTaxSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
     return requestApi<TaxSlabSetApiRecord>({
       strPath: `/masters/tax-regimes/${intTaxRegimeID}/slabs`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_TAX_SLAB_SAVE"
+      strMenuAction: MasterMenuAction.TaxSlabSave
     });
   },
 
   getSalaryStructures() {
     return requestApi<SalaryStructureApiRecord[]>({
       strPath: "/masters/salary-structures",
-      strMethod: "GET",
-      strMenuAction: "MASTER_SALARY_STRUCTURE_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.SalaryStructureList
     });
   },
 
   getSalaryStructure(intID: number) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: `/masters/salary-structures/${intID}`,
-      strMethod: "GET",
-      strMenuAction: "MASTER_SALARY_STRUCTURE_GET"
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.SalaryStructureGet
     });
   },
 
   getSalaryStructureFormOptions(intLanguageID?: number | null) {
     return requestApi<SalaryStructureFormOptionsApiRecord>({
       strPath: "/masters/salary-structures/form-options",
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
-      strMenuAction: "MASTER_SALARY_STRUCTURE_FORM_OPTIONS"
+      strMenuAction: MasterMenuAction.SalaryStructureFormOptions
     });
   },
 
   createSalaryStructure(objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
       strPath: "/masters/salary-structures",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_SALARY_STRUCTURE_CREATE"
+      strMenuAction: MasterMenuAction.SalaryStructureCreate
     });
   },
 
   updateSalaryStructure(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
       strPath: `/masters/salary-structures/${intID}`,
-      strMethod: "PUT",
+      strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: "MASTER_SALARY_STRUCTURE_UPDATE"
+      strMenuAction: MasterMenuAction.SalaryStructureUpdate
     });
   },
 
   cloneSalaryStructure(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
       strPath: `/masters/salary-structures/${intID}/clone`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: "MASTER_SALARY_STRUCTURE_CLONE"
+      strMenuAction: MasterMenuAction.SalaryStructureClone
     });
   },
 
   setSalaryStructureStatus(intID: number, blnIsActive: boolean) {
     return requestApi<SalaryStructureApiRecord>({
       strPath: `/masters/salary-structures/${intID}/status`,
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
-      strMenuAction: "MASTER_SALARY_STRUCTURE_STATUS"
+      strMenuAction: MasterMenuAction.SalaryStructureStatus
     });
   },
 
   deleteSalaryStructure(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
       strPath: `/masters/salary-structures/${intID}`,
-      strMethod: "DELETE",
-      strMenuAction: "MASTER_SALARY_STRUCTURE_DELETE"
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: MasterMenuAction.SalaryStructureDelete
     });
   },
 
   getEmployeeSalaries() {
     return requestApi<EmployeeSalaryListApiRecord[]>({
       strPath: "/employee-salary",
-      strMethod: "GET",
-      strMenuAction: "EMPLOYEE_SALARY_LIST"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeSalaryList
     });
   },
 
   getEmployeeSalaryFormOptions() {
     return requestApi<EmployeeSalaryFormOptionsApiRecord>({
       strPath: "/employee-salary/form-options",
-      strMethod: "GET",
-      strMenuAction: "EMPLOYEE_SALARY_FORM_OPTIONS"
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeSalaryFormOptions
     });
   },
 
   getEmployeeSalaryDetail(intEmployeeID: number) {
     return requestApi<EmployeeSalaryDetailApiRecord>({
-      strPath: `/employee-salary/${intEmployeeID}`,
-      strMethod: "GET",
-      strMenuAction: "EMPLOYEE_SALARY_VIEW"
+      strPath: buildApiPath(MasterApiResource.EmployeeSalary, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intEmployeeID },
+      strMenuAction: MasterMenuAction.EmployeeSalaryView
     });
   },
 
   getEmployeeSalarySummary(intEmployeeID: number) {
     return requestApi<EmployeeSalarySummaryApiRecord>({
-      strPath: `/employee-salary/${intEmployeeID}/summary`,
-      strMethod: "GET",
-      strMenuAction: "EMPLOYEE_SALARY_SUMMARY"
+      strPath: buildApiPath(
+        MasterApiResource.EmployeeSalary,
+        MasterApiRouteSegment.Summary,
+        MasterApiRouteSegment.Detail
+      ),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intEmployeeID },
+      strMenuAction: MasterMenuAction.EmployeeSalarySummary
     });
   },
 
     createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
         strPath: `/employee-salary/${intEmployeeID}/revisions`,
-        strMethod: "POST",
+        strMethod: ApiRequestMethod.Post,
         objBody,
-        strMenuAction: "EMPLOYEE_SALARY_SAVE"
+        strMenuAction: MasterMenuAction.EmployeeSalarySave
       });
     },
 
     unassignEmployeeSalary(intEmployeeID: number) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
         strPath: `/employee-salary/${intEmployeeID}/unassign`,
-        strMethod: "POST",
-        strMenuAction: "EMPLOYEE_SALARY_SAVE"
+        strMethod: ApiRequestMethod.Post,
+        strMenuAction: MasterMenuAction.EmployeeSalarySave
       });
     }
   };

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import type { ActionRightsResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services/auth/AuthApiService";
 
@@ -18,6 +19,7 @@ export function useActionRights() {
     dicAllowedActions: {},
     dicAccessScopeByAction: {},
   });
+  
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState<string | null>(null);
 
@@ -27,29 +29,34 @@ export function useActionRights() {
     async function loadRights() {
       setBlnLoading(true);
       setStrError(null);
-      try {
-        const objResult = await authApiService.getActionRights();
-        if (!blnMounted) {
-          return;
-        }
-        setObjRights(objResult.Data);
-      } catch (objError) {
-        if (!blnMounted) {
-          return;
-        }
-        setStrError(objError instanceof Error ? objError.message : "Unable to load action rights.");
-        setObjRights({
-          dicAllowedActions: {},
-          dicAccessScopeByAction: {},
-        });
-      } finally {
-        if (blnMounted) {
-          setBlnLoading(false);
-        }
-      }
+      await runFrontendAction({
+        fnAction: () => authApiService.getActionRights(),
+        fnOnSuccess: (objResult) => {
+          if (!blnMounted) {
+            return;
+          }
+          setObjRights(objResult.Data);
+        },
+        fnOnError: (objError) => {
+          if (!blnMounted) {
+            return;
+          }
+          setStrError(objError.message);
+          setObjRights({
+            dicAllowedActions: {},
+            dicAccessScopeByAction: {},
+          });
+        },
+        fnFinally: () => {
+          if (blnMounted) {
+            setBlnLoading(false);
+          }
+        },
+        strFallbackMessage: "Unable to load action rights.",
+      });
     }
 
-    loadRights().catch(() => undefined);
+    void loadRights();
 
     return () => {
       blnMounted = false;

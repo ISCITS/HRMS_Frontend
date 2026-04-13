@@ -1,10 +1,9 @@
 "use client";
 
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 import type { DialogProps, ReactNode } from "react";
 
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 
 type CommonPayrollDialogProps = {
   blnOpen: boolean;
@@ -40,30 +39,23 @@ export default function CommonPayrollDialog({
   onDialogClose,
 }: CommonPayrollDialogProps) {
   return (
-    <Dialog
-      open={blnOpen}
-      onClose={onDialogClose ?? (() => onClose())}
-      onKeyDown={handleSingleDialogActionEnter}
-      fullWidth={fullWidth}
+    <CommonMasterDialog
+      blnOpen={blnOpen}
+      strTitle={strTitle}
+      nodeContent={nodeContent}
+      strSecondaryLabel={strSecondaryLabel}
+      onClose={onClose}
+      strPrimaryLabel={strPrimaryLabel}
+      onPrimaryAction={onPrimaryAction}
+      blnPrimaryDisabled={blnPrimaryDisabled}
+      blnHidePrimary={blnHidePrimary}
       maxWidth={maxWidth}
-      PaperProps={{ className: paperClassName, sx: paperSx }}
-    >
-      <DialogTitle>{strTitle}</DialogTitle>
-      <DialogContent dividers>{nodeContent}</DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button className={styles.secondaryButton} onClick={onClose}>
-          {strSecondaryLabel}
-        </Button>
-        {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button
-            className={styles.primaryButton}
-            onClick={onPrimaryAction}
-            disabled={blnPrimaryDisabled}
-          >
-            {strPrimaryLabel}
-          </Button>
-        ) : null}
-      </DialogActions>
-    </Dialog>
+      fullWidth={fullWidth}
+      paperClassName={paperClassName}
+      paperSx={paperSx}
+      onDialogClose={onDialogClose}
+      strSecondaryButtonClassName={styles.secondaryButton}
+      strPrimaryButtonClassName={styles.primaryButton}
+    />
   );
 }

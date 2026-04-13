@@ -3,7 +3,6 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
@@ -16,7 +15,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  InputAdornment,
   LinearProgress,
   MenuItem,
   Snackbar,
@@ -24,8 +22,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -41,6 +41,15 @@ type ConfirmDialogState = {
   strMessage: string;
   strConfirmLabel: string;
   fnOnConfirm: () => Promise<void>;
+};
+type UserGroupTableRow = {
+  intID: number;
+  select: ReactNode;
+  rowActions: ReactNode;
+  strGroupCode: string;
+  strGroupName: string;
+  strGroupDescription: string;
+  status: ReactNode;
 };
 
 const objEmptyForm: UserGroupFormPayload = {
@@ -69,7 +78,6 @@ export default function UserGroupMasterScreen() {
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
-  const [strSearch, setStrSearch] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState({ code: "", name: "", status: "All" as "All" | "Active" | "Inactive" });
   const [dicSearchApplied, setDicSearchApplied] = useState({ code: "", name: "", status: "All" as "All" | "Active" | "Inactive" });
   const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
@@ -94,9 +102,6 @@ export default function UserGroupMasterScreen() {
     clearButton: t("clear_button", "Clear"),
     cancelButton: t("cancel_button", "Cancel"),
     addButton: t("add_button", "Add User Group"),
-    exportExcelButton: t("export_excel_button", "Export Excel"),
-    exportPdfButton: t("export_pdf_button", "Export PDF"),
-    quickSearchPlaceholder: t("quick_search_placeholder", "Quick search"),
     accessUnavailableTitle: t("access_unavailable_title", "User group access is not available for your user group"),
     accessUnavailableMessage: t("access_unavailable_message", "Contact your administrator if you need user group visibility."),
     emptyTitle: t("empty_title", "No user groups found"),
@@ -125,8 +130,7 @@ export default function UserGroupMasterScreen() {
     confirmActivateLabel: t("confirm_activate_label", "Activate"),
     confirmDeactivateLabel: t("confirm_deactivate_label", "Deactivate"),
     confirmButton: t("confirm_button", "Confirm"),
-    exportTitle: t("export_title", "User Groups"),
-    exportFileName: t("export_file_name", "user_groups.csv"),
+    exportFileName: t("export_file_name", "user_groups"),
   };
 
   function openConfirmDialog(objDialog: ConfirmDialogState) {
@@ -141,19 +145,22 @@ export default function UserGroupMasterScreen() {
     if (!objConfirmDialog) {
       return;
     }
+
     setBlnSaving(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      setObjToast({
+
+    await runFrontendAction({
+      fnAction: objConfirmDialog.fnOnConfirm,
+      fnOnError: (objError) => setObjToast({
         open: true,
-        message: objError instanceof Error ? objError.message : dicLabels.statusUpdateError,
+        message: objError.message,
         severity: "error",
-      });
-    } finally {
-      setBlnSaving(false);
-      closeConfirmDialog();
-    }
+      }),
+      fnFinally: () => {
+        setBlnSaving(false);
+        closeConfirmDialog();
+      },
+      strFallbackMessage: dicLabels.statusUpdateError,
+    });
   }
 
   async function loadUserGroups() {
@@ -163,20 +170,23 @@ export default function UserGroupMasterScreen() {
       setBlnLoading(false);
       return;
     }
+
     setBlnLoading(true);
-    try {
-      const objResult = await securityApiService.listUserGroups();
-      setLstRecords(objResult.Data);
-      setLstSelectedIds([]);
-    } catch (objError) {
-      setObjToast({
+
+    await runFrontendAction({
+      fnAction: () => securityApiService.listUserGroups(),
+      fnOnSuccess: (objResult) => {
+        setLstRecords(objResult.Data);
+        setLstSelectedIds([]);
+      },
+      fnOnError: (objError) => setObjToast({
         open: true,
-        message: objError instanceof Error ? objError.message : dicLabels.errorLoad,
+        message: objError.message,
         severity: "error",
-      });
-    } finally {
-      setBlnLoading(false);
-    }
+      }),
+      fnFinally: () => setBlnLoading(false),
+      strFallbackMessage: dicLabels.errorLoad,
+    });
   }
 
   useEffect(() => {
@@ -189,7 +199,7 @@ export default function UserGroupMasterScreen() {
       setBlnLoading(false);
       return;
     }
-    loadUserGroups().catch(() => undefined);
+    void loadUserGroups();
   }, [blnRightsLoading]);
 
   const blnCanView = canViewAny();
@@ -212,18 +222,38 @@ export default function UserGroupMasterScreen() {
     });
   }, [dicSearchApplied, lstRecords]);
 
-  const lstVisibleRecords = useMemo(() => {
-    const strNeedle = strSearch.trim().toLowerCase();
-    if (!strNeedle) {
-      return lstFilteredRecords;
-    }
-    return lstFilteredRecords.filter((objRecord) =>
-      [objRecord.strGroupCode, objRecord.strGroupName, objRecord.strGroupDescription ?? ""].join(" ").toLowerCase().includes(strNeedle),
-    );
-  }, [lstFilteredRecords, strSearch]);
-
-  const blnAllVisibleSelected = lstVisibleRecords.length > 0 && lstVisibleRecords.every((objRecord) => lstSelectedIds.includes(objRecord.intID));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((intID) => lstVisibleRecords.some((objRecord) => objRecord.intID === intID));
+  const blnAllFilteredSelected = lstFilteredRecords.length > 0 && lstFilteredRecords.every((objRecord) => lstSelectedIds.includes(objRecord.intID));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((intID) => lstFilteredRecords.some((objRecord) => objRecord.intID === intID));
+  const lstTableRows = useMemo<UserGroupTableRow[]>(() => lstFilteredRecords.map((objRecord) => {
+    const blnSelected = lstSelectedIds.includes(objRecord.intID);
+    return {
+      intID: objRecord.intID,
+      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(objRecord.intID)} />,
+      rowActions: (
+        <Box className={styles.actionCell}>
+          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
+          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)}><EditOutlinedIcon fontSize="small" /></button> : null}
+          {blnCanChangeStatus ? <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleStatus(objRecord)}><ToggleOnRoundedIcon fontSize="small" /></button> : null}
+        </Box>
+      ),
+      strGroupCode: objRecord.strGroupCode,
+      strGroupName: objRecord.strGroupName,
+      strGroupDescription: objRecord.strGroupDescription || dicLabels.noDescription,
+      status: (
+        <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+          {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
+        </span>
+      ),
+    };
+  }), [blnCanChangeStatus, blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords, lstSelectedIds]);
+  const lstTableColumns = useMemo<CommonTableColumn<UserGroupTableRow>[]>(() => [
+    { field: "select", headerName: "", width: 64, sortable: false, filterable: false, exportable: false },
+    { field: "rowActions", headerName: dicLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
+    { field: "strGroupCode", headerName: dicLabels.tableCode },
+    { field: "strGroupName", headerName: dicLabels.tableName },
+    { field: "strGroupDescription", headerName: dicLabels.tableDescription },
+    { field: "status", headerName: dicLabels.tableIsActive, sortable: false, filterable: false },
+  ], [dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableIsActive, dicLabels.tableName]);
 
   function toggleSelection(intUserGroupID: number) {
     setLstSelectedIds((lstPrevious) =>
@@ -234,79 +264,11 @@ export default function UserGroupMasterScreen() {
   }
 
   function toggleSelectAll() {
-    if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((intID) => !lstVisibleRecords.some((objRecord) => objRecord.intID === intID)));
+    if (blnAllFilteredSelected) {
+      setLstSelectedIds((lstPrevious) => lstPrevious.filter((intID) => !lstFilteredRecords.some((objRecord) => objRecord.intID === intID)));
       return;
     }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleRecords.map((objRecord) => objRecord.intID)])]);
-  }
-
-  function downloadCsv() {
-    const lstHeaders = [dicLabels.tableCode, dicLabels.tableName, dicLabels.tableDescription, dicLabels.tableIsActive];
-    const lstRows = [
-      lstHeaders.join(","),
-      ...lstVisibleRecords.map((objRecord) =>
-        [
-          objRecord.strGroupCode,
-          objRecord.strGroupName,
-          objRecord.strGroupDescription ?? "",
-          objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive
-        ]
-          .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-          .join(","),
-      ),
-    ];
-    const objBlob = new Blob([lstRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const strUrl = URL.createObjectURL(objBlob);
-    const objLink = document.createElement("a");
-    objLink.href = strUrl;
-    objLink.download = dicLabels.exportFileName;
-    objLink.click();
-    URL.revokeObjectURL(strUrl);
-  }
-
-  function exportPdf() {
-    const objWindow = window.open("", "_blank", "width=1200,height=800");
-    if (!objWindow) {
-      return;
-    }
-    const strRows = lstVisibleRecords
-      .map(
-        (objRecord) => `
-          <tr>
-            <td>${objRecord.strGroupCode}</td>
-            <td>${objRecord.strGroupName}</td>
-            <td>${objRecord.strGroupDescription ?? ""}</td>
-            <td>${objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}</td>
-          </tr>
-        `,
-      )
-      .join("");
-    objWindow.document.write(`
-      <html>
-        <head>
-          <title>${dicLabels.exportTitle}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-            th { background: #e2e8f0; }
-          </style>
-        </head>
-        <body>
-          <h1>${dicLabels.exportTitle}</h1>
-          <table>
-            <thead>
-              <tr><th>${dicLabels.tableCode}</th><th>${dicLabels.tableName}</th><th>${dicLabels.tableDescription}</th><th>${dicLabels.tableIsActive}</th></tr>
-            </thead>
-            <tbody>${strRows}</tbody>
-          </table>
-        </body>
-      </html>
-    `);
-    objWindow.document.close();
-    objWindow.focus();
-    objWindow.print();
+    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFilteredRecords.map((objRecord) => objRecord.intID)])]);
   }
 
   function openDialog(strNextMode: FormMode, objRecord?: UserGroupRecord) {
@@ -330,54 +292,51 @@ export default function UserGroupMasterScreen() {
     }
 
     setBlnSaving(true);
-    try {
-      if (strMode === "add") {
-        const objResult = await securityApiService.createUserGroup({
-          ...objForm,
-          strGroupCode,
-          strGroupName,
-        });
-        const objCreatedRecord = objResult.Data;
-        if (lstRights.length > 0) {
-          await securityApiService.saveUserGroupRights(objCreatedRecord.intID, lstRights);
+    await runFrontendAction({
+      fnAction: async () => {
+        if (strMode === "add") {
+          const objResult = await securityApiService.createUserGroup({
+            ...objForm,
+            strGroupCode,
+            strGroupName,
+          });
+          const objCreatedRecord = objResult.Data;
+          if (lstRights.length > 0) {
+            await securityApiService.saveUserGroupRights(objCreatedRecord.intID, lstRights);
+          }
+          return "add";
         }
+
+        if (intEditingID) {
+          await securityApiService.updateUserGroup(intEditingID, {
+            ...objForm,
+            strGroupCode,
+            strGroupName,
+          });
+          await securityApiService.saveUserGroupRights(intEditingID, lstRights);
+        }
+
+        return "edit";
+      },
+      fnOnSuccess: async (strSavedMode) => {
         await loadUserGroups();
         setBlnDialogOpen(false);
         setIntEditingID(null);
         setObjForm({ ...objEmptyForm });
         setObjToast({
           open: true,
-          message: dicLabels.saveSuccess,
+          message: strSavedMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess,
           severity: "success",
         });
-        return;
-      }
-
-      if (intEditingID) {
-        await securityApiService.updateUserGroup(intEditingID, {
-          ...objForm,
-          strGroupCode,
-          strGroupName,
-        });
-        await securityApiService.saveUserGroupRights(intEditingID, lstRights);
-      }
-
-      await loadUserGroups();
-      setBlnDialogOpen(false);
-      setObjToast({
+      },
+      fnOnError: (objError) => setObjToast({
         open: true,
-        message: dicLabels.updateSuccess,
-        severity: "success",
-      });
-    } catch (objError) {
-      setObjToast({
-        open: true,
-        message: objError instanceof Error ? objError.message : dicLabels.errorSave,
+        message: objError.message,
         severity: "error",
-      });
-    } finally {
-      setBlnSaving(false);
-    }
+      }),
+      fnFinally: () => setBlnSaving(false),
+      strFallbackMessage: dicLabels.errorSave,
+    });
   }
 
   async function toggleStatus(objRecord: UserGroupRecord) {
@@ -452,7 +411,6 @@ export default function UserGroupMasterScreen() {
                 const dicEmpty = { code: "", name: "", status: "All" as const };
                 setDicSearchDraft(dicEmpty);
                 setDicSearchApplied(dicEmpty);
-                setStrSearch("");
               }}
             >
               {dicLabels.clearButton}
@@ -462,39 +420,6 @@ export default function UserGroupMasterScreen() {
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? (
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading}>
-                {dicLabels.addButton}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={downloadCsv} disabled={blnLoading || blnSaving || blnRightsLoading}>
-                {dicLabels.exportExcelButton}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportPdf} disabled={blnLoading || blnSaving || blnRightsLoading}>
-                {dicLabels.exportPdfButton}
-              </Button>
-            ) : null}
-          </Box>
-          <TextField
-            placeholder={dicLabels.quickSearchPlaceholder}
-            value={strSearch}
-            onChange={(objEvent) => setStrSearch(objEvent.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 260 } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon sx={{ color: "#64748b" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-
         <Box
           sx={{
             overflowX: "auto",
@@ -514,7 +439,7 @@ export default function UserGroupMasterScreen() {
                 <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
               </Stack>
             </Box>
-          ) : lstVisibleRecords.length === 0 ? (
+          ) : lstFilteredRecords.length === 0 ? (
             <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
               <Stack spacing={1} alignItems="center">
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
@@ -522,43 +447,25 @@ export default function UserGroupMasterScreen() {
               </Stack>
             </Box>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
-                  <th>{dicLabels.tableActions}</th>
-                  <th>{dicLabels.tableCode}</th>
-                  <th>{dicLabels.tableName}</th>
-                  <th>{dicLabels.tableDescription}</th>
-                  <th>{dicLabels.tableIsActive}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstVisibleRecords.map((objRecord) => {
-                  const blnSelected = lstSelectedIds.includes(objRecord.intID);
-                  return (
-                    <tr key={objRecord.intID} className={blnSelected ? styles.selectedRow : undefined}>
-                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(objRecord.intID)} /></td>
-                      <td>
-                        <Box className={styles.actionCell}>
-                          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
-                          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)}><EditOutlinedIcon fontSize="small" /></button> : null}
-                          {blnCanChangeStatus ? <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleStatus(objRecord)}><ToggleOnRoundedIcon fontSize="small" /></button> : null}
-                        </Box>
-                      </td>
-                      <td>{objRecord.strGroupCode}</td>
-                      <td>{objRecord.strGroupName}</td>
-                      <td>{objRecord.strGroupDescription || dicLabels.noDescription}</td>
-                      <td>
-                        <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                          {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <CommonTable
+              columns={lstTableColumns}
+              rows={lstTableRows}
+              rowIdField="intID"
+              emptyMessage={dicLabels.emptyMessage}
+              exportFileName={dicLabels.exportFileName}
+              showExportOptions={blnCanExport}
+              toolbarLeft={
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                  {blnCanAdd ? (
+                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading}>
+                      {dicLabels.addButton}
+                    </Button>
+                  ) : null}
+                  <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFilteredRecords.length === 0} />
+                </Box>
+              }
+              getRowSx={(objRow) => lstSelectedIds.includes(objRow.intID) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            />
           )}
         </Box>
       </Box>

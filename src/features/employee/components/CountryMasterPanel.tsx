@@ -1,41 +1,545 @@
 "use client";
+
+import type { ReactNode } from "react";
+
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, CircularProgress, InputAdornment, MenuItem, Pagination, Snackbar, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
-import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import { labelService } from "@/features/labels/services/labelService";
-import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import { authHelpers } from "@/lib/auth";
-import { type CountryApiRecord, masterApiService, type SimpleMasterFormOptionsApiRecord } from "@/services/master/MasterApiService";
-import { countryService, createEmptyCountryTextRow, createInitialCountryForm, toCountryFormValues, type CountryFormValues, type CountryTextFormValue } from "@/features/employee/services/countryService";
+import { type CountryApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
-type Status = "Active" | "Inactive"; type Mode = "add" | "edit" | "view"; type CountryRecord = { id: string; code: string; name: string; currencyCode: string; phoneCode: string; status: Status }; type SearchForm = { code: string; name: string; status: "All" | Status }; type ConfirmDialogState = { strTitle: string; strMessage: string; strConfirmLabel: string; fnOnConfirm: () => Promise<void> }; type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
-const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" }; const lstRowsPerPageOptions = [10,20,50]; const lstCountryModuleCodes=["COUNTRY","COUNTRIES"];
-const mapCountryRecord=(r:CountryApiRecord):CountryRecord=>({id:String(r.intID),code:r.strCountryCode,name:r.strCountryName,currencyCode:r.strCurrencyCode,phoneCode:r.strPhoneCode??"",status:r.blnIsActive?"Active":"Inactive"});
-function downloadCsv(n:string,rows:CountryRecord[]){const h=["Country Name","Country Code","Currency Code","Phone Code","Status"];const l=[h.join(","),...rows.map(r=>[r.name,r.code,r.currencyCode,r.phoneCode,r.status].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","))];const b=new Blob([l.join("\n")],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=n;a.click();URL.revokeObjectURL(u);} 
-function exportPdf(t:string,rows:CountryRecord[]){const w=window.open("","_blank","width=1200,height=800");if(!w)return;const s=rows.map(r=>`<tr><td>${r.name}</td><td>${r.code}</td><td>${r.currencyCode}</td><td>${r.phoneCode}</td><td>${r.status}</td></tr>`).join("");w.document.write(`<html><head><title>${t}</title><style>body{font-family:Arial,sans-serif;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#e2e8f0}</style></head><body><h1>${t}</h1><table><thead><tr><th>Country Name</th><th>Country Code</th><th>Currency</th><th>Phone Code</th><th>Status</th></tr></thead><tbody>${s}</tbody></table></body></html>`);w.document.close();w.focus();w.print();}
-export default function CountryMasterPanel(){const objRouter=useRouter();const {t}=useModuleLabels("country");const {blnLoading:blnRightsLoading,strError:strRightsError,canDoAny,canViewAny,isReadOnly}=useModuleActionAccess(lstCountryModuleCodes);const [lstCountries,setLstCountries]=useState<CountryRecord[]>([]);const [objFormOptions,setObjFormOptions]=useState<SimpleMasterFormOptionsApiRecord>({lstLanguages:[]});const [strMode,setStrMode]=useState<Mode>("add");const [blnDialogOpen,setBlnDialogOpen]=useState(false);const [strEditingId,setStrEditingId]=useState("");const [dicForm,setDicForm]=useState<CountryFormValues>(createInitialCountryForm());const [dicErrors,setDicErrors]=useState<Partial<Record<"code"|"name"|"currencyCode",string>>>({});const [dicTextTranslationLoading,setDicTextTranslationLoading]=useState<Record<string,boolean>>({});const [dicLastTranslatedSourceByRow,setDicLastTranslatedSourceByRow]=useState<Record<string,string>>({});const [dicSearchDraft,setDicSearchDraft]=useState<SearchForm>(dicEmptySearch);const [dicSearchApplied,setDicSearchApplied]=useState<SearchForm>(dicEmptySearch);const [lstSelectedIds,setLstSelectedIds]=useState<string[]>([]);const [blnLoading,setBlnLoading]=useState(true);const [blnSubmitting,setBlnSubmitting]=useState(false);const [intPage,setIntPage]=useState(1);const [intRowsPerPage,setIntRowsPerPage]=useState(10);const [objConfirmDialog,setObjConfirmDialog]=useState<ConfirmDialogState|null>(null);const [objToast,setObjToast]=useState<ToastState>({blnOpen:false,strMessage:"",strSeverity:"success"});const [dicRowLabelsByLanguageID,setDicRowLabelsByLanguageID]=useState<Record<number,Record<string,string>>>({});
-const dicCommonLabels={cancel:t("cancel"),clear:t("clear"),close:t("close"),exportExcel:t("export_excel"),exportPdf:t("export_pdf"),save:t("save"),search:t("search"),statusActive:t("status_active"),statusInactive:t("status_inactive"),rowsPerPage:t("rows_per_page"),paginationSeparator:t("pagination_separator"),loading:t("loading"),processing:t("processing")};const dicLabels={pageTitle:stripMasterTitle(t("page_title")),backButton:t("back_button"),addButton:t("add_button"),dialogAddTitle:t("dialog_add_title"),dialogEditTitle:t("dialog_edit_title"),dialogViewTitle:t("dialog_view_title"),searchNamePlaceholder:t("search_name_placeholder"),searchCodePlaceholder:t("search_code_placeholder"),searchStatusPlaceholder:t("search_status_placeholder"),tableName:t("table_name"),tableCode:t("table_code"),tableCurrency:t("table_currency"),tablePhoneCode:t("table_phone_code"),tableStatus:t("table_status"),tableActions:t("table_actions"),loadingRecords:t("loading_records"),emptyMessage:t("empty_message"),fieldName:t("field_name"),fieldCode:t("field_code"),fieldCurrencyCode:t("field_currency_code"),fieldPhoneCode:t("field_phone_code"),fieldIsActive:t("field_is_active","Is Active"),saving:t("saving","Saving..."),requestFailed:t("request_failed"),saveSuccess:t("save_success"),updateSuccess:t("update_success"),deleteSuccess:t("delete_success"),activateSuccess:t("activate_success"),deactivateSuccess:t("deactivate_success"),bulkActivateSuccess:t("bulk_activate_success"),bulkDeactivateSuccess:t("bulk_deactivate_success"),bulkDeleteSuccess:t("bulk_delete_success"),bulkRowsSelected:t("bulk_rows_selected"),bulkActivate:t("bulk_activate"),bulkDeactivate:t("bulk_deactivate"),bulkDelete:t("bulk_delete"),confirmButton:t("confirm_button"),confirmDeleteTitle:t("confirm_delete_title"),confirmDeleteMessage:t("confirm_delete_message"),confirmActivateTitle:t("confirm_activate_title"),confirmActivateMessage:t("confirm_activate_message"),confirmDeactivateTitle:t("confirm_deactivate_title"),confirmDeactivateMessage:t("confirm_deactivate_message"),confirmBulkDeleteTitle:t("confirm_bulk_delete_title"),confirmBulkDeleteMessage:t("confirm_bulk_delete_message"),confirmBulkActivateTitle:t("confirm_bulk_activate_title"),confirmBulkActivateMessage:t("confirm_bulk_activate_message"),confirmBulkDeactivateTitle:t("confirm_bulk_deactivate_title"),confirmBulkDeactivateMessage:t("confirm_bulk_deactivate_message"),validationCodeRequired:t("validation_code_required"),validationCodeFormat:t("validation_code_format"),validationNameRequired:t("validation_name_required"),validationNameMin:t("validation_name_min"),validationCurrencyRequired:t("validation_currency_required"),validationCurrencyFormat:t("validation_currency_format")};
-const blnCanView=canViewAny(),blnCanAdd=canDoAny("add"),blnCanEdit=canDoAny("edit"),blnCanDelete=canDoAny("delete"),blnCanExport=canDoAny("export"),blnReadOnly=isReadOnly(),blnCanChangeStatus=blnCanEdit; const intDefaultLanguageID=authHelpers.getLanguageID()??objFormOptions.lstLanguages[0]?.intID??1; const intSecondaryLanguageID=authHelpers.getSecondaryLanguageID()??objFormOptions.lstLanguages.find(d=>d.strCode?.toLowerCase()==="hi")?.intID??objFormOptions.lstLanguages.find(d=>d.intID!==intDefaultLanguageID)?.intID??intDefaultLanguageID;
-async function loadCountries(){if(!canViewAny()){setLstCountries([]);setLstSelectedIds([]);setBlnLoading(false);return;}setBlnLoading(true);try{const [res,opt]=await Promise.all([masterApiService.getCountries(),countryService.getCountryFormOptions()]);setLstCountries(res.Data.map(mapCountryRecord));setObjFormOptions(opt);setLstSelectedIds([]);setIntPage(1);}finally{setBlnLoading(false);}} useEffect(()=>{if(!blnRightsLoading){void loadCountries();}},[blnRightsLoading]); useEffect(()=>{void countryService.getCountryFormOptions().then(setObjFormOptions).catch(()=>undefined);},[]);
-const buildFixedLanguageRow=(id:number,name:string,code:string,rows:CountryTextFormValue[]):CountryTextFormValue=>{const lang=objFormOptions.lstLanguages.find(d=>d.intID===id);const ex=rows.find(d=>Number(d.intLanguageID)===id);return {...createEmptyCountryTextRow(),...ex,intLanguageID:id,strLanguageName:lang?.strLabel??ex?.strLanguageName??"",strCountryName:name,strCountryCode:code};}; const ensureTenantLanguageRows=(v:CountryFormValues)=>({...v,lstTexts:[buildFixedLanguageRow(intDefaultLanguageID,v.name,v.code,v.lstTexts),buildFixedLanguageRow(intSecondaryLanguageID,v.lstTexts.find(d=>Number(d.intLanguageID)===intSecondaryLanguageID)?.strCountryName??"",v.code,v.lstTexts)]}); const syncEnglishName=(name:string)=>setDicForm(p=>{const n=ensureTenantLanguageRows(p);return {...n,lstTexts:n.lstTexts.map((d,i)=>i===0?{...d,strCountryName:name}:d)};}); const syncCode=(code:string)=>setDicForm(p=>({...p,lstTexts:p.lstTexts.map(d=>({...d,strCountryCode:code}))})); const updateTextRow=(rowId:string,field:keyof CountryTextFormValue,value:string|number)=>setDicForm(p=>({...p,lstTexts:p.lstTexts.map(d=>d.strRowID!==rowId?d:field==="intLanguageID"?{...d,intLanguageID:Number(value),strLanguageName:objFormOptions.lstLanguages.find(o=>o.intID===Number(value))?.strLabel??""}:{...d,[field]:value})}));
-async function translateTextRow(rowId:string,languageId:number){const lang=objFormOptions.lstLanguages.find(d=>d.intID===languageId);const src=dicForm.name.trim();if(!lang||languageId===intDefaultLanguageID||!src)return;const row=dicForm.lstTexts.find(d=>d.strRowID===rowId);const last=(dicLastTranslatedSourceByRow[rowId]??"").trim();if(row?.strCountryName.trim()&&last===src)return;setDicTextTranslationLoading(p=>({...p,[rowId]:true}));try{const tr=await countryService.translateCountryText(src,intDefaultLanguageID,languageId);setDicForm(p=>({...p,lstTexts:p.lstTexts.map(d=>d.strRowID===rowId?{...d,intLanguageID:languageId,strLanguageName:lang.strLabel,strCountryName:tr}:d)}));setDicLastTranslatedSourceByRow(p=>({...p,[rowId]:src}));}catch(e){showToast(e instanceof Error?e.message:dicLabels.requestFailed,"error");}finally{setDicTextTranslationLoading(p=>({...p,[rowId]:false}));}}
-const handleTranslateClick=async()=>{const row=dicForm.lstTexts[1];if(!row)return;const id=Number(row.intLanguageID)||intSecondaryLanguageID;if(id&&id!==intDefaultLanguageID)await translateTextRow(row.strRowID,id);};
-useEffect(()=>{let mounted=true;const ids=Array.from(new Set(dicForm.lstTexts.map(d=>Number(d.intLanguageID)).filter(id=>Number.isFinite(id)&&id>0)));const load=ids.filter(id=>!dicRowLabelsByLanguageID[id]);if(load.length===0)return ()=>{mounted=false;};void Promise.all(load.map(async id=>({id,labels:(await labelService.getModuleLabels(id,"country")).labels??{}}))).then(res=>{if(!mounted)return;setDicRowLabelsByLanguageID(p=>{const n={...p};for(const r of res)n[r.id]=r.labels;return n;});});return ()=>{mounted=false;};},[dicForm.lstTexts,dicRowLabelsByLanguageID]); const getRowLabel=(id:number|"",k:string,f:string)=>{const n=Number(id);return !Number.isFinite(n)||n<=0?f:dicRowLabelsByLanguageID[n]?.[k]??f;};
-const lstFiltered=useMemo(()=>lstCountries.filter(r=>(!dicSearchApplied.code||r.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase()))&&(!dicSearchApplied.name||r.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase()))&&(dicSearchApplied.status==="All"||r.status===dicSearchApplied.status)),[dicSearchApplied,lstCountries]); const intPageCount=Math.max(1,Math.ceil(lstFiltered.length/intRowsPerPage)); const intCurrentPage=Math.min(intPage,intPageCount); const intStartIndex=(intCurrentPage-1)*intRowsPerPage; const lstVisible=lstFiltered.slice(intStartIndex,intStartIndex+intRowsPerPage); const blnAllVisibleSelected=lstVisible.length>0&&lstVisible.every(r=>lstSelectedIds.includes(r.id)); const blnSomeVisibleSelected=!blnAllVisibleSelected&&lstSelectedIds.some(id=>lstVisible.some(r=>r.id===id));
-async function ensureCountryFormOptionsLoaded(){if(objFormOptions.lstLanguages.length>0)return objFormOptions;const o=await countryService.getCountryFormOptions();setObjFormOptions(o);return o;} async function openDialog(nextMode:Mode,row?:CountryRecord){const opt=await ensureCountryFormOptionsLoaded();setStrMode(nextMode);setStrEditingId(row?.id??"");setDicErrors({});setDicLastTranslatedSourceByRow({}); if(!row){setDicForm(ensureTenantLanguageRows(createInitialCountryForm()));setBlnDialogOpen(true);return;} const detail=await countryService.getCountry(Number(row.id),intDefaultLanguageID);setDicForm(ensureTenantLanguageRows(toCountryFormValues(detail,opt)));setBlnDialogOpen(true);} const closeDialog=()=>setBlnDialogOpen(false); const showToast=(m:string,s:ToastState["strSeverity"]="success")=>setObjToast({blnOpen:true,strMessage:m,strSeverity:s}); const closeToast=()=>setObjToast(p=>({...p,blnOpen:false})); const openConfirmDialog=(d:ConfirmDialogState)=>setObjConfirmDialog(d); const closeConfirmDialog=()=>setObjConfirmDialog(null);
-async function executeConfirmedAction(){if(!objConfirmDialog)return;setBlnSubmitting(true);try{await objConfirmDialog.fnOnConfirm();}catch(e){showToast(e instanceof Error?e.message:dicLabels.requestFailed,"error");}finally{setBlnSubmitting(false);closeConfirmDialog();}} function validateForm(){const e:Partial<Record<"code"|"name"|"currencyCode",string>>={};const c=dicForm.code.trim().toUpperCase(),n=dicForm.name.trim(),cc=dicForm.currencyCode.trim().toUpperCase(); if(!c)e.code=dicLabels.validationCodeRequired; else if(!/^[A-Z]{2}$/.test(c))e.code=dicLabels.validationCodeFormat; if(!n)e.name=dicLabels.validationNameRequired; else if(n.length<2)e.name=dicLabels.validationNameMin; if(!cc)e.currencyCode=dicLabels.validationCurrencyRequired; else if(!/^[A-Z]{3}$/.test(cc))e.currencyCode=dicLabels.validationCurrencyFormat; setDicErrors(e); return Object.keys(e).length===0; }
-async function saveCountry(){if(!validateForm())return;setBlnSubmitting(true);try{if(strMode==="add")await countryService.createCountry(dicForm);else await countryService.updateCountry(Number(strEditingId),dicForm);await loadCountries();closeDialog();showToast(strMode==="add"?dicLabels.saveSuccess:dicLabels.updateSuccess);}catch(e){showToast(e instanceof Error?e.message:dicLabels.requestFailed,"error");}finally{setBlnSubmitting(false);}} const toggleSelection=(id:string)=>setLstSelectedIds(p=>p.includes(id)?p.filter(v=>v!==id):[...p,id]); const toggleSelectAll=()=>blnAllVisibleSelected?setLstSelectedIds(p=>p.filter(id=>!lstVisible.some(r=>r.id===id))):setLstSelectedIds(p=>[...new Set([...p,...lstVisible.map(r=>r.id)])]);
-const bulkUpdateStatus=(s:Status)=>openConfirmDialog({strTitle:s==="Active"?dicLabels.confirmBulkActivateTitle:dicLabels.confirmBulkDeactivateTitle,strMessage:(s==="Active"?dicLabels.confirmBulkActivateMessage:dicLabels.confirmBulkDeactivateMessage).replace("{count}",String(lstSelectedIds.length)).replace("{status}",s==="Active"?dicCommonLabels.statusActive.toLowerCase():dicCommonLabels.statusInactive.toLowerCase()),strConfirmLabel:s==="Active"?dicLabels.bulkActivate:dicLabels.bulkDeactivate,fnOnConfirm:async()=>{await masterApiService.bulkCountryStatus(lstSelectedIds.map(Number),s==="Active");await loadCountries();showToast(s==="Active"?dicLabels.bulkActivateSuccess:dicLabels.bulkDeactivateSuccess);}}); const bulkDelete=()=>openConfirmDialog({strTitle:dicLabels.confirmBulkDeleteTitle,strMessage:dicLabels.confirmBulkDeleteMessage.replace("{count}",String(lstSelectedIds.length)),strConfirmLabel:dicLabels.bulkDelete,fnOnConfirm:async()=>{await masterApiService.bulkCountryDelete(lstSelectedIds.map(Number));await loadCountries();showToast(dicLabels.bulkDeleteSuccess);}}); const deleteRecord=(id:string)=>openConfirmDialog({strTitle:dicLabels.confirmDeleteTitle,strMessage:dicLabels.confirmDeleteMessage,strConfirmLabel:t("delete"),fnOnConfirm:async()=>{await masterApiService.bulkCountryDelete([Number(id)]);await loadCountries();showToast(dicLabels.deleteSuccess);}}); const toggleStatus=(id:string)=>{const item=lstCountries.find(d=>d.id===id);if(!item)return;const next=item.status==="Active"?"Inactive":"Active";openConfirmDialog({strTitle:next==="Active"?dicLabels.confirmActivateTitle:dicLabels.confirmDeactivateTitle,strMessage:(next==="Active"?dicLabels.confirmActivateMessage:dicLabels.confirmDeactivateMessage).replace("{status}",next==="Active"?dicCommonLabels.statusActive.toLowerCase():dicCommonLabels.statusInactive.toLowerCase()),strConfirmLabel:next==="Active"?t("activate"):t("deactivate"),fnOnConfirm:async()=>{await masterApiService.bulkCountryStatus([Number(id)],next==="Active");await loadCountries();showToast(next==="Active"?dicLabels.activateSuccess:dicLabels.deactivateSuccess);}})};
-return <Box className={styles.page}><Box className={styles.topBar}><Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon/>} onClick={()=>objRouter.back()}>{dicLabels.backButton}</Button></Box><Box className={styles.controlsCard}>{strRightsError?<Typography sx={{mt:1,color:"#b45309",fontSize:"0.85rem"}}>{strRightsError}</Typography>:null}{!blnRightsLoading&&blnCanView&&blnReadOnly?<Typography sx={{mt:1,color:"#1d4ed8",fontSize:"0.85rem",fontWeight:700}}>{t("read_only_mode","You have view-only access for Country.")}</Typography>:null}<Box className={styles.searchRow}><TextField value={dicSearchDraft.name} onChange={e=>setDicSearchDraft(p=>({...p,name:e.target.value}))} placeholder={dicLabels.searchNamePlaceholder} fullWidth/><TextField value={dicSearchDraft.code} onChange={e=>setDicSearchDraft(p=>({...p,code:e.target.value.toUpperCase()}))} placeholder={dicLabels.searchCodePlaceholder} fullWidth/><TextField select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={e=>setDicSearchDraft(p=>({...p,status:e.target.value as SearchForm["status"]}))} fullWidth><MenuItem value="All">All</MenuItem><MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField><Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon/>} onClick={()=>{setDicSearchApplied(dicSearchDraft);setIntPage(1);}} disabled={blnLoading||blnSubmitting}>{dicCommonLabels.search}</Button></Box><Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon/>} onClick={()=>{setDicSearchDraft(dicEmptySearch);setDicSearchApplied(dicEmptySearch);setIntPage(1);}} disabled={blnLoading||blnSubmitting}>{dicCommonLabels.clear}</Button></Box></Box>{lstSelectedIds.length>0&&!blnReadOnly&&(blnCanChangeStatus||blnCanDelete)?<Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicLabels.bulkRowsSelected}</Typography>{blnCanChangeStatus?<Button className={styles.bulkActivate} onClick={()=>bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button>:null}{blnCanChangeStatus?<Button className={styles.bulkDeactivate} onClick={()=>bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button>:null}{blnCanDelete?<Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button>:null}</Box>:null}</Box><Box className={styles.tableCard}><Box sx={{display:"flex",justifyContent:"space-between",alignItems:{xs:"stretch",md:"center"},gap:1.25,flexWrap:"wrap",pb:1}}><Box sx={{display:"flex",gap:1,flexWrap:"wrap"}}>{blnCanAdd?<Button className={styles.primaryButton} startIcon={<AddRoundedIcon/>} onClick={()=>void openDialog("add")} disabled={blnLoading||blnSubmitting||blnRightsLoading}>{dicLabels.addButton}</Button>:null}{blnCanExport?<Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon/>} onClick={()=>downloadCsv("country-master.csv",lstFiltered)} disabled={blnLoading||blnSubmitting||blnRightsLoading}>{dicCommonLabels.exportExcel}</Button>:null}{blnCanExport?<Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon/>} onClick={()=>exportPdf(dicLabels.pageTitle,lstFiltered)} disabled={blnLoading||blnSubmitting||blnRightsLoading}>{dicCommonLabels.exportPdf}</Button>:null}</Box>{!blnLoading&&lstFiltered.length>0?<Box className={styles.paginationBar} sx={{p:0,justifyContent:{xs:"flex-start",md:"flex-end"}}}><Box className={styles.paginationInfo}><Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography><TextField select size="small" value={String(intRowsPerPage)} onChange={e=>{setIntRowsPerPage(Number(e.target.value));setIntPage(1);}} className={styles.rowsPerPageSelect}>{lstRowsPerPageOptions.map(o=><MenuItem key={o} value={String(o)}>{o}</MenuItem>)}</TextField><Typography className={styles.paginationRange}>{intStartIndex+1}-{Math.min(intStartIndex+intRowsPerPage,lstFiltered.length)} {dicCommonLabels.paginationSeparator} {lstFiltered.length}</Typography></Box><Pagination count={intPageCount} page={intCurrentPage} onChange={(_,p)=>setIntPage(p)} size="small" color="primary" showFirstButton showLastButton/></Box>:null}</Box>{blnRightsLoading||blnLoading?<Box className={styles.emptyState}><CircularProgress size={24}/><Typography sx={{mt:1}}>{dicLabels.loadingRecords}</Typography></Box>:!blnCanView?<Box className={styles.emptyState}><Typography sx={{fontWeight:800,color:"#0f172a"}}>Country access is not available for your user group.</Typography></Box>:<Box className={styles.tableWrap}><table className={styles.table}><thead><tr><th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll}/></th><th>{dicLabels.tableActions}</th><th>{dicLabels.tableName}</th><th>{dicLabels.tableCode}</th><th>{dicLabels.tableCurrency}</th><th>{dicLabels.tablePhoneCode}</th><th>{dicLabels.tableStatus}</th></tr></thead><tbody>{lstFiltered.length===0?<tr><td className={styles.emptyState} colSpan={7}>{dicLabels.emptyMessage}</td></tr>:lstVisible.map(r=>{const s=lstSelectedIds.includes(r.id);return <tr key={r.id} className={s?styles.selectedRow:undefined}><td><Checkbox checked={s} onChange={()=>toggleSelection(r.id)}/></td><td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={r.status==="Active"} onView={()=>void openDialog("view",r)} onEdit={()=>void openDialog("edit",r)} onDelete={()=>deleteRecord(r.id)} onToggle={()=>toggleStatus(r.id)}/></td><td>{r.name}</td><td>{r.code}</td><td>{r.currencyCode}</td><td>{r.phoneCode||"-"}</td><td><span className={`${styles.statusPill} ${r.status==="Active"?styles.statusActive:styles.statusInactive}`}>{r.status==="Active"?dicCommonLabels.statusActive:dicCommonLabels.statusInactive}</span></td></tr>;})}</tbody></table></Box>}</Box><CommonMasterDialog blnOpen={blnDialogOpen} onClose={closeDialog} strTitle={strMode==="add"?dicLabels.dialogAddTitle:strMode==="edit"?dicLabels.dialogEditTitle:dicLabels.dialogViewTitle} strSecondaryLabel={strMode==="view"?dicCommonLabels.close:dicCommonLabels.cancel} strPrimaryLabel={blnSubmitting?dicLabels.saving:dicCommonLabels.save} onPrimaryAction={saveCountry} blnPrimaryDisabled={blnSubmitting} blnHidePrimary={strMode==="view"} paperClassName={styles.dialogPaper} maxWidth="xl" paperSx={{width:"min(1220px, calc(100vw - 44px))",overflow:"hidden"}} contentSx={{overflowX:"hidden",overflowY:"visible"}} nodeContent={<Box sx={{display:"grid",gap:2,pt:0.5}}><Box sx={{display:"grid",gap:1.6,gridTemplateColumns:{xs:"1fr",md:"repeat(4, minmax(0, 1fr))"},alignItems:"start"}}><TextField label={`${dicLabels.fieldName} *`} value={dicForm.name} disabled={strMode==="view"} onChange={e=>{const v=e.target.value;setDicErrors(p=>({...p,name:undefined}));setDicForm(p=>({...p,name:v}));syncEnglishName(v);}} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth/><TextField label={`${dicLabels.fieldCode} *`} value={dicForm.code} disabled={strMode==="view"} onChange={e=>{const v=e.target.value.toUpperCase();setDicErrors(p=>({...p,code:undefined}));setDicForm(p=>({...p,code:v}));syncCode(v);}} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth/><TextField label={`${dicLabels.fieldCurrencyCode} *`} value={dicForm.currencyCode} disabled={strMode==="view"} onChange={e=>{const v=e.target.value.toUpperCase();setDicErrors(p=>({...p,currencyCode:undefined}));setDicForm(p=>({...p,currencyCode:v}));}} error={Boolean(dicErrors.currencyCode)} helperText={dicErrors.currencyCode} fullWidth/><TextField label={dicLabels.fieldPhoneCode} value={dicForm.phoneCode} disabled={strMode==="view"} onChange={e=>setDicForm(p=>({...p,phoneCode:e.target.value}))} fullWidth/></Box><Box sx={{display:"flex",justifyContent:"space-between",alignItems:{xs:"flex-start",md:"center"},gap:1.25,flexWrap:"wrap"}}><Box><Typography sx={{fontWeight:800,color:"#0f172a"}}>{t("multilingual_text","Multilingual Text")}</Typography><Typography sx={{color:"#64748b",fontSize:"0.86rem",mt:0.25}}>{t("multilingual_text_help","Add translated country names for supported languages.")}</Typography></Box><Box sx={{display:"flex",gap:1.1,alignItems:"center",ml:"auto"}}><Button variant="outlined" startIcon={<AddRoundedIcon/>} disabled>{t("add_language","Add Language")}</Button><Button variant="contained" onClick={()=>void handleTranslateClick()} disabled={strMode==="view"||blnSubmitting||dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID??""]} sx={{minWidth:108,borderRadius:"12px",background:"#2563eb",boxShadow:"none","&:hover":{background:"#1d4ed8",boxShadow:"none"}}}>{dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID??""]?<CircularProgress size={18} sx={{color:"#ffffff"}}/>:t("translate","Translate")}</Button></Box></Box><Box sx={{display:"grid",gap:1.2}}>{dicForm.lstTexts.map((d,i)=><Box key={d.strRowID} sx={{display:"grid",gap:1.2,gridTemplateColumns:{xs:"1fr",md:"minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)"},alignItems:"start",border:"1px solid rgba(203,213,225,0.8)",borderRadius:"16px",p:1.2,background:"#f8fafc"}}><TextField select label={getRowLabel(d.intLanguageID,"language",t("language","Language"))} value={d.intLanguageID} InputLabelProps={{shrink:true}} SelectProps={{displayEmpty:true,renderValue:v=>objFormOptions.lstLanguages.find(l=>l.intID===Number(v))?.strLabel??d.strLanguageName??""}} disabled fullWidth>{objFormOptions.lstLanguages.map(l=><MenuItem key={l.intID} value={l.intID}>{l.strLabel}</MenuItem>)}</TextField><TextField label={getRowLabel(d.intLanguageID,"field_name",dicLabels.fieldName)} value={d.strCountryName} onChange={e=>{const v=e.target.value;updateTextRow(d.strRowID,"strCountryName",v);if(i===0){setDicErrors(p=>({...p,name:undefined}));setDicForm(p=>({...p,name:v}));}}} disabled={strMode==="view"||i===0} InputProps={{endAdornment:dicTextTranslationLoading[d.strRowID]?<InputAdornment position="end"><CircularProgress size={18} sx={{color:"#2563eb"}}/></InputAdornment>:undefined}} fullWidth/><TextField label={getRowLabel(d.intLanguageID,"field_code",dicLabels.fieldCode)} value={d.strCountryCode} disabled fullWidth/></Box>)}</Box><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography><Switch checked={dicForm.status==="Active"} disabled={strMode==="view"} onChange={(_,c)=>setDicForm(p=>({...p,status:c?"Active":"Inactive"}))}/></Box></Box>}/><CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={objConfirmDialog?.strConfirmLabel??dicLabels.confirmButton} blnConfirmDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction}/><BlockingLoader blnOpen={blnLoading||blnRightsLoading||blnSubmitting} strLabel={blnLoading||blnRightsLoading?dicCommonLabels.loading:dicCommonLabels.processing} intZIndex={1400}/><Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{vertical:"top",horizontal:"right"}}><Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{width:"100%"}}>{objToast.strMessage}</Alert></Snackbar></Box>; }
+type Status = "Active" | "Inactive";
+type Mode = "add" | "edit" | "view";
+type CountryRecord = { id: string; code: string; name: string; currencyCode: string; phoneCode: string; status: Status };
+type CountryForm = { code: string; name: string; currencyCode: string; phoneCode: string; status: Status };
+type SearchForm = { code: string; name: string; status: "All" | Status };
+type ConfirmDialogState = { strTitle: string; strMessage: string; strConfirmLabel: string; fnOnConfirm: () => Promise<void> };
+type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
+type CountryTableRow = {
+  id: string;
+  select: ReactNode;
+  rowActions: ReactNode;
+  name: string;
+  code: string;
+  currencyCode: string;
+  phoneCode: string;
+  status: ReactNode;
+};
+
+const dicEmptyForm: CountryForm = { code: "", name: "", currencyCode: "", phoneCode: "", status: "Active" };
+const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const lstCountryModuleCodes = ["COUNTRY", "COUNTRIES"];
+
+function mapCountryRecord(dicRecord: CountryApiRecord): CountryRecord {
+  return {
+    id: String(dicRecord.intID),
+    code: dicRecord.strCountryCode,
+    name: dicRecord.strCountryName,
+    currencyCode: dicRecord.strCurrencyCode,
+    phoneCode: dicRecord.strPhoneCode ?? "",
+    status: dicRecord.blnIsActive ? "Active" : "Inactive",
+  };
+}
+
+export default function CountryMasterPanel() {
+  const objRouter = useRouter();
+  const { t } = useModuleLabels("country");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstCountryModuleCodes);
+  const [lstCountries, setLstCountries] = useState<CountryRecord[]>([]);
+  const [strMode, setStrMode] = useState<Mode>("add");
+  const [blnDialogOpen, setBlnDialogOpen] = useState(false);
+  const [strEditingId, setStrEditingId] = useState("");
+  const [dicForm, setDicForm] = useState<CountryForm>(dicEmptyForm);
+  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof CountryForm, string>>>({});
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
+  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
+  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnSubmitting, setBlnSubmitting] = useState(false);
+  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  const dicCommonLabels = {
+    cancel: t("cancel"),
+    clear: t("clear"),
+    save: t("save"),
+    search: t("search"),
+    update: t("update"),
+    statusActive: t("status_active"),
+    statusInactive: t("status_inactive"),
+    loading: t("loading"),
+    processing: t("processing"),
+  };
+
+  const dicModuleLabels = {
+    backButton: t("back_button"),
+    addButton: t("add_button"),
+    searchNamePlaceholder: t("search_name_placeholder"),
+    searchCodePlaceholder: t("search_code_placeholder"),
+    searchStatusPlaceholder: t("search_status_placeholder"),
+    tableName: t("table_name"),
+    tableCode: t("table_code"),
+    tableCurrency: t("table_currency"),
+    tablePhoneCode: t("table_phone_code"),
+    tableStatus: t("table_status"),
+    tableActions: t("table_actions"),
+    loadingRecords: t("loading_records"),
+    emptyMessage: t("empty_message"),
+    dialogAddTitle: t("dialog_add_title"),
+    dialogEditTitle: t("dialog_edit_title"),
+    dialogViewTitle: t("dialog_view_title"),
+    fieldName: t("field_name"),
+    fieldCode: t("field_code"),
+    fieldCurrencyCode: t("field_currency_code"),
+    fieldPhoneCode: t("field_phone_code"),
+    fieldStatus: t("field_status"),
+    saveSuccess: t("save_success"),
+    updateSuccess: t("update_success"),
+    deleteSuccess: t("delete_success"),
+    activateSuccess: t("activate_success"),
+    deactivateSuccess: t("deactivate_success"),
+    bulkActivateSuccess: t("bulk_activate_success"),
+    bulkDeactivateSuccess: t("bulk_deactivate_success"),
+    bulkDeleteSuccess: t("bulk_delete_success"),
+    requestFailed: t("request_failed"),
+    validationCodeRequired: t("validation_code_required"),
+    validationCodeFormat: t("validation_code_format"),
+    validationNameRequired: t("validation_name_required"),
+    validationNameMin: t("validation_name_min"),
+    validationCurrencyRequired: t("validation_currency_required"),
+    validationCurrencyFormat: t("validation_currency_format"),
+    bulkRowsSelected: t("bulk_rows_selected"),
+    bulkActivate: t("bulk_activate"),
+    bulkDeactivate: t("bulk_deactivate"),
+    bulkDelete: t("bulk_delete"),
+    confirmButton: t("confirm_button"),
+    confirmDeleteTitle: t("confirm_delete_title"),
+    confirmDeleteMessage: t("confirm_delete_message"),
+    confirmActivateTitle: t("confirm_activate_title"),
+    confirmActivateMessage: t("confirm_activate_message"),
+    confirmDeactivateTitle: t("confirm_deactivate_title"),
+    confirmDeactivateMessage: t("confirm_deactivate_message"),
+    confirmBulkDeleteTitle: t("confirm_bulk_delete_title"),
+    confirmBulkDeleteMessage: t("confirm_bulk_delete_message"),
+    confirmBulkActivateTitle: t("confirm_bulk_activate_title"),
+    confirmBulkActivateMessage: t("confirm_bulk_activate_message"),
+    confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
+    confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
+    close: t("close"),
+  };
+
+  const blnCanView = canViewAny();
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanExport = canDoAny("export");
+  const blnReadOnly = isReadOnly();
+  const blnCanChangeStatus = blnCanEdit;
+
+  async function loadCountries() {
+    if (!canViewAny()) {
+      setLstCountries([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
+
+    setBlnLoading(true);
+
+    await runFrontendAction({
+      fnAction: () => masterApiService.getCountries(),
+      fnOnSuccess: (objResult) => {
+        setLstCountries(objResult.Data.map(mapCountryRecord));
+        setLstSelectedIds([]);
+      },
+      fnOnError: (objError) => showToast(objError.message, "error"),
+      fnFinally: () => setBlnLoading(false),
+      strFallbackMessage: dicModuleLabels.requestFailed,
+    });
+  }
+
+  useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+    if (!canViewAny()) {
+      setLstCountries([]);
+      setLstSelectedIds([]);
+      setBlnLoading(false);
+      return;
+    }
+    void loadCountries();
+  }, [blnRightsLoading]);
+
+  function setFormField<TKey extends keyof CountryForm>(strField: TKey, objValue: CountryForm[TKey]) {
+    setDicForm((objPrevious) => ({ ...objPrevious, [strField]: objValue }));
+    setDicErrors((objPrevious) => objPrevious[strField] ? { ...objPrevious, [strField]: undefined } : objPrevious);
+  }
+
+  const lstFiltered = useMemo(() => lstCountries.filter((dicCountry) => {
+    const blnCodeMatch = !dicSearchApplied.code || dicCountry.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
+    const blnNameMatch = !dicSearchApplied.name || dicCountry.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const blnStatusMatch = dicSearchApplied.status === "All" || dicCountry.status === dicSearchApplied.status;
+    return blnCodeMatch && blnNameMatch && blnStatusMatch;
+  }), [dicSearchApplied, lstCountries]);
+
+  const blnAllFilteredSelected = lstFiltered.length > 0 && lstFiltered.every((dicCountry) => lstSelectedIds.includes(dicCountry.id));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((strId) => lstFiltered.some((dicCountry) => dicCountry.id === strId));
+
+  function toggleSelection(strId: string) {
+    setLstSelectedIds((lstPrevious) => lstPrevious.includes(strId)
+      ? lstPrevious.filter((strValue) => strValue !== strId)
+      : [...lstPrevious, strId]);
+  }
+
+  const lstTableRows = useMemo<CountryTableRow[]>(() => lstFiltered.map((dicCountry) => {
+    const blnSelected = lstSelectedIds.includes(dicCountry.id);
+    return {
+      id: dicCountry.id,
+      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCountry.id)} />,
+      rowActions: (
+        <CommonRowActions
+          blnCanView={blnCanView}
+          blnCanEdit={blnCanEdit}
+          blnCanDelete={blnCanDelete}
+          blnCanToggle={blnCanChangeStatus}
+          onView={() => openDialog("view", dicCountry)}
+          onEdit={() => openDialog("edit", dicCountry)}
+          onDelete={() => deleteRecord(dicCountry.id)}
+          onToggle={() => toggleStatus(dicCountry.id)}
+        />
+      ),
+      name: dicCountry.name,
+      code: dicCountry.code,
+      currencyCode: dicCountry.currencyCode,
+      phoneCode: dicCountry.phoneCode || "-",
+      status: (
+        <span className={`${styles.statusPill} ${dicCountry.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+          {dicCountry.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+        </span>
+      ),
+    };
+  }), [blnCanChangeStatus, blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFiltered, lstSelectedIds]);
+
+  const lstTableColumns = useMemo<CommonTableColumn<CountryTableRow>[]>(() => [
+    { field: "select", headerName: "", width: 64, sortable: false, filterable: false, exportable: false },
+    { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 150, sortable: false, filterable: false, exportable: false },
+    { field: "name", headerName: dicModuleLabels.tableName },
+    { field: "code", headerName: dicModuleLabels.tableCode },
+    { field: "currencyCode", headerName: dicModuleLabels.tableCurrency },
+    { field: "phoneCode", headerName: dicModuleLabels.tablePhoneCode },
+    { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
+  ], [dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus]);
+
+  function openDialog(strNextMode: Mode, dicCountry?: CountryRecord) {
+    setStrMode(strNextMode);
+    setStrEditingId(dicCountry?.id ?? "");
+    setDicErrors({});
+    setDicForm(dicCountry ? {
+      code: dicCountry.code,
+      name: dicCountry.name,
+      currencyCode: dicCountry.currencyCode,
+      phoneCode: dicCountry.phoneCode,
+      status: dicCountry.status,
+    } : dicEmptyForm);
+    setBlnDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setBlnDialogOpen(false);
+  }
+
+  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
+    setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function closeToast() {
+    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  function openConfirmDialog(objDialog: ConfirmDialogState) {
+    setObjConfirmDialog(objDialog);
+  }
+
+  function closeConfirmDialog() {
+    setObjConfirmDialog(null);
+  }
+
+  async function executeConfirmedAction() {
+    if (!objConfirmDialog) {
+      return;
+    }
+
+    setBlnSubmitting(true);
+
+    await runFrontendAction({
+      fnAction: objConfirmDialog.fnOnConfirm,
+      fnOnError: (objError) => showToast(objError.message, "error"),
+      fnFinally: () => {
+        setBlnSubmitting(false);
+        closeConfirmDialog();
+      },
+      strFallbackMessage: dicModuleLabels.requestFailed,
+    });
+  }
+
+  function validateForm() {
+    const dicNextErrors: Partial<Record<keyof CountryForm, string>> = {};
+    const strCode = dicForm.code.trim().toUpperCase();
+    const strName = dicForm.name.trim();
+    const strCurrencyCode = dicForm.currencyCode.trim().toUpperCase();
+
+    if (!strCode) {
+      dicNextErrors.code = dicModuleLabels.validationCodeRequired;
+    } else if (!/^[A-Z]{2}$/.test(strCode)) {
+      dicNextErrors.code = dicModuleLabels.validationCodeFormat;
+    }
+
+    if (!strName) {
+      dicNextErrors.name = dicModuleLabels.validationNameRequired;
+    } else if (strName.length < 2) {
+      dicNextErrors.name = dicModuleLabels.validationNameMin;
+    }
+
+    if (!strCurrencyCode) {
+      dicNextErrors.currencyCode = dicModuleLabels.validationCurrencyRequired;
+    } else if (!/^[A-Z]{3}$/.test(strCurrencyCode)) {
+      dicNextErrors.currencyCode = dicModuleLabels.validationCurrencyFormat;
+    }
+
+    setDicErrors(dicNextErrors);
+    return Object.keys(dicNextErrors).length === 0;
+  }
+
+  function saveCountry() {
+    if (!validateForm()) {
+      return;
+    }
+
+    const objBody = {
+      strCountryCode: dicForm.code.trim().toUpperCase(),
+      strCountryName: dicForm.name.trim(),
+      strCurrencyCode: dicForm.currencyCode.trim().toUpperCase(),
+      strPhoneCode: dicForm.phoneCode.trim() || null,
+      blnIsActive: dicForm.status === "Active",
+    };
+
+    setBlnSubmitting(true);
+
+    void runFrontendAction({
+      fnAction: () => strMode === "add" ? masterApiService.createCountry(objBody) : masterApiService.updateCountry(Number(strEditingId), objBody),
+      fnOnSuccess: async () => {
+        await loadCountries();
+        closeDialog();
+        showToast(strMode === "add" ? dicModuleLabels.saveSuccess : dicModuleLabels.updateSuccess);
+      },
+      fnOnError: (objError) => showToast(objError.message, "error"),
+      fnFinally: () => setBlnSubmitting(false),
+      strFallbackMessage: dicModuleLabels.requestFailed,
+    });
+  }
+
+  function toggleSelectAll() {
+    if (blnAllFilteredSelected) {
+      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstFiltered.some((dicCountry) => dicCountry.id === strId)));
+      return;
+    }
+    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFiltered.map((dicCountry) => dicCountry.id)])]);
+  }
+
+  function bulkUpdateStatus(strStatus: Status) {
+    openConfirmDialog({
+      strTitle: strStatus === "Active" ? dicModuleLabels.confirmBulkActivateTitle : dicModuleLabels.confirmBulkDeactivateTitle,
+      strMessage: (strStatus === "Active" ? dicModuleLabels.confirmBulkActivateMessage : dicModuleLabels.confirmBulkDeactivateMessage)
+        .replace("{count}", String(lstSelectedIds.length))
+        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strStatus === "Active" ? dicModuleLabels.bulkActivate : dicModuleLabels.bulkDeactivate,
+      fnOnConfirm: async () => {
+        await masterApiService.bulkCountryStatus(lstSelectedIds.map(Number), strStatus === "Active");
+        await loadCountries();
+        showToast(strStatus === "Active" ? dicModuleLabels.bulkActivateSuccess : dicModuleLabels.bulkDeactivateSuccess);
+      }
+    });
+  }
+
+  function bulkDelete() {
+    openConfirmDialog({
+      strTitle: dicModuleLabels.confirmBulkDeleteTitle,
+      strMessage: dicModuleLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: dicModuleLabels.bulkDelete,
+      fnOnConfirm: async () => {
+        await masterApiService.bulkCountryDelete(lstSelectedIds.map(Number));
+        await loadCountries();
+        showToast(dicModuleLabels.bulkDeleteSuccess);
+      }
+    });
+  }
+
+  function deleteRecord(strId: string) {
+    openConfirmDialog({
+      strTitle: dicModuleLabels.confirmDeleteTitle,
+      strMessage: dicModuleLabels.confirmDeleteMessage,
+      strConfirmLabel: t("delete"),
+      fnOnConfirm: async () => {
+        await masterApiService.bulkCountryDelete([Number(strId)]);
+        await loadCountries();
+        showToast(dicModuleLabels.deleteSuccess);
+      }
+    });
+  }
+
+  function toggleStatus(strId: string) {
+    const objItem = lstCountries.find((dicItem) => dicItem.id === strId);
+    if (!objItem) {
+      return;
+    }
+
+    const strNextStatus = objItem.status === "Active" ? "Inactive" : "Active";
+    openConfirmDialog({
+      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
+      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
+        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
+      strConfirmLabel: strNextStatus === "Active" ? t("activate") : t("deactivate"),
+      fnOnConfirm: async () => {
+        await masterApiService.bulkCountryStatus([Number(strId)], strNextStatus === "Active");
+        await loadCountries();
+        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
+      }
+    });
+  }
+
+  return (
+    <Box className={styles.page}>
+      <Box className={styles.topBar}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+          {dicModuleLabels.backButton}
+        </Button>
+      </Box>
+
+      <Box className={styles.controlsCard}>
+        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("read_only_mode", "You have view-only access for Country.")}
+          </Typography>
+        ) : null}
+
+        <Box className={styles.searchRow}>
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
+          <TextField select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem value="All">All</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          </TextField>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
+              {dicCommonLabels.search}
+            </Button>
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>
+              {dicCommonLabels.clear}
+            </Button>
+          </Box>
+        </Box>
+
+        {lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
+          <Box className={styles.bulkBar}>
+            <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
+            {blnCanChangeStatus ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
+          </Box>
+        ) : null}
+      </Box>
+
+      <Box className={styles.tableCard}>
+        {blnRightsLoading || blnLoading ? (
+          <Box className={styles.emptyState}>
+            <CircularProgress size={24} />
+            <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
+          </Box>
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Country access is not available for your user group.</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need country visibility.</Typography>
+          </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            emptyMessage={dicModuleLabels.emptyMessage}
+            exportFileName="country-master"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} />
+              </Box>
+            )}
+            getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
+      </Box>
+
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
+        strSecondaryLabel={strMode === "view" ? dicModuleLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        onPrimaryAction={saveCountry}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        nodeContent={(
+          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
+            <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => setFormField("name", objEvent.target.value)} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
+            <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => setFormField("code", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
+            <TextField label={`${dicModuleLabels.fieldCurrencyCode} *`} value={dicForm.currencyCode} disabled={strMode === "view"} onChange={(objEvent) => setFormField("currencyCode", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.currencyCode)} helperText={dicErrors.currencyCode} fullWidth />
+            <TextField label={dicModuleLabels.fieldPhoneCode} value={dicForm.phoneCode} disabled={strMode === "view"} onChange={(objEvent) => setFormField("phoneCode", objEvent.target.value)} fullWidth />
+            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} disabled={strMode === "view"} onChange={(objEvent) => setFormField("status", objEvent.target.value as Status)} fullWidth>
+              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+            </TextField>
+          </Box>
+        )}
+      />
+
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicModuleLabels.confirmButton}
+        blnConfirmDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction}
+      />
+
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+
+      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>
+          {objToast.strMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}

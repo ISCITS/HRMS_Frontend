@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import { authHelpers } from "@/lib/auth";
 import type { UserGroupFormPayload } from "@/models/SecurityModels";
 

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 
 import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
 import styles from "@/components/auth/AuthLoginExperience.module.css";
+import { LoginUiMessage } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
@@ -25,7 +26,7 @@ import type {
 } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
-import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData } from "@/services/auth/AuthApiService";
+import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData, resolveErrorMessage } from "@/services/auth/AuthApiService";
 
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
@@ -157,6 +158,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }, [intResendRemainingSeconds]);
 
   async function submitForm() {
+    if (!blnCanSubmitCurrentStep) {
+      return;
+    }
+
     setStrError("");
     setBlnSubmitting(true);
 
@@ -238,7 +243,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
       } else {
         setIntLockRemainingSeconds(0);
-        setStrError(objError instanceof Error ? objError.message : "Unable to sign in.");
+        setStrError(resolveErrorMessage(objError, LoginUiMessage.UnableToSignIn));
       }
     } finally {
       setBlnSubmitting(false);
@@ -299,7 +304,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
         setStrError(objError.message);
       } else {
-        setStrError(objError instanceof Error ? objError.message : "Unable to resend OTP.");
+        setStrError(resolveErrorMessage(objError, LoginUiMessage.UnableToResendOtp));
       }
     } finally {
       setBlnResendingOtp(false);
@@ -376,16 +381,18 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     );
   }
 
-  const blnCanSubmit =
+  const blnCanSubmitLoginStep =
     Boolean(strLoginID.trim()) &&
     Boolean(strPassword.trim()) &&
     !blnSubmitting &&
     intLockRemainingSeconds <= 0 &&
     !(strMode === "tenant" && blnTenantLoading);
+  const blnCanSubmitOtpStep = Boolean(strOtp.trim()) && !blnSubmitting;
+  const blnCanSubmitCurrentStep = blnOtpStep ? blnCanSubmitOtpStep : blnCanSubmitLoginStep;
 
   function handleLoginSubmit(objEvent: FormEvent<HTMLFormElement>) {
     objEvent.preventDefault();
-    if (!blnCanSubmit) {
+    if (!blnCanSubmitCurrentStep) {
       return;
     }
     submitForm().catch(() => undefined);
@@ -487,16 +494,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
 
               <Button
+                type="submit"
                 variant="contained"
                 size="large"
-                disabled={
-                  !strLoginID.trim() ||
-                  !strPassword.trim() ||
-                  blnSubmitting ||
-                  intLockRemainingSeconds > 0 ||
-                  (strMode === "tenant" && blnTenantLoading)
-                }
-                onClick={submitForm}
+                disabled={!blnCanSubmitCurrentStep}
                 sx={{
                   minHeight: 52,
                   borderRadius: "10px",

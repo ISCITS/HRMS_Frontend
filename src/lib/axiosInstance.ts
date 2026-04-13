@@ -1,4 +1,5 @@
 import axios, { AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import { AuthStorageKey, DefaultContextValue } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { authHelpers } from "@/lib/auth";
 import { generateCSRFToken } from "@/lib/csrfToken";
@@ -68,13 +69,13 @@ axiosInstance.interceptors.request.use(async (config) => {
   const blnSkipPayloadEncryption = headers.get("x-skip-payload-encryption") === "true";
 
   headers.set(apiConstants.csrfHeaderName, csrfToken);
-  if (typeof window !== "undefined") {
-    const strSessionToken = authHelpers.getAccessToken();
-    const strTenantID = window.localStorage.getItem("hrms_tenant_id") ?? "1";
-    const strCompanyID = window.localStorage.getItem("hrms_company_id") ?? "1";
-    if (strSessionToken) {
-      headers.set("Authorization", `Bearer ${strSessionToken}`);
-    }
+    if (typeof window !== "undefined") {
+      const strSessionToken = authHelpers.getAccessToken();
+      const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId) ?? DefaultContextValue.PrimaryId;
+      const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId) ?? DefaultContextValue.PrimaryId;
+      if (strSessionToken) {
+        headers.set("Authorization", `Bearer ${strSessionToken}`);
+      }
     headers.set("X-Tenant-Id", strTenantID);
     headers.set("X-Company-Id", strCompanyID);
   }

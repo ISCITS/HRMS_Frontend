@@ -22,8 +22,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
-import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";

@@ -1,23 +1,60 @@
 "use client";
 
+import { AuthStorageKey, DefaultContextValue } from "@/Common/enums/AppEnums";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
-import { callAPI } from "@/lib/apiClient";
+import { authHelpers } from "@/lib/auth";
+import { decryptPayload } from "@/lib/security/decryptPayload";
+
+function getLabelRequestHeaders() {
+  const strAccessToken = authHelpers.getAccessToken();
+  const strTenantID =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(AuthStorageKey.TenantId)?.trim() || DefaultContextValue.PrimaryId
+      : DefaultContextValue.PrimaryId;
+  const strCompanyID =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(AuthStorageKey.CompanyId)?.trim() || DefaultContextValue.PrimaryId
+      : DefaultContextValue.PrimaryId;
+
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...(strAccessToken ? { Authorization: `Bearer ${strAccessToken}`, "X-Access-Token": strAccessToken } : {}),
+    "X-Tenant-Id": strTenantID,
+    "X-Company-Id": strCompanyID
+  };
+}
+
+async function requestLabels(objPayload: { language_id: number; module_name: string }) {
+  const objResponse = await fetch("/api/labels", {
+    method: "POST",
+    headers: getLabelRequestHeaders(),
+    body: JSON.stringify(objPayload),
+    cache: "no-store"
+  });
+
+  const objRawResult = (await objResponse.json().catch(() => ({}))) as
+    | ModuleLabelsResponse
+    | { payload?: string; message?: string };
+  const objResult =
+    typeof objRawResult === "object" &&
+    objRawResult !== null &&
+    "payload" in objRawResult &&
+    typeof objRawResult.payload === "string"
+      ? await decryptPayload<ModuleLabelsResponse>(objRawResult.payload)
+      : objRawResult;
+
+  if (!objResponse.ok) {
+    throw new Error(("message" in objRawResult ? objRawResult.message : undefined) ?? "Unable to load labels.");
+  }
+
+  return objResult;
+}
 
 export const labelService = {
   async getLabels(intLanguageID: number, strModuleName: string): Promise<ModuleLabelsResponse> {
-    const objQueryPreview = { language_id: intLanguageID, module_name: strModuleName };
-
     try {
-      const objResponse = await callAPI<ModuleLabelsResponse>(
-        null,
-        "labels",
-        "MASTER_EMPLOYEE_LABELS",
-        {
-          method: "GET",
-          params: objQueryPreview,
-        }
-      );
-      return objResponse.Response;
+      return await requestLabels({ language_id: intLanguageID, module_name: strModuleName });
     } catch (objError) {
       return {
         module: strModuleName,
@@ -34,16 +71,7 @@ export const labelService = {
 
   async getPayrollCycleLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
     try {
-      const objResponse = await callAPI<ModuleLabelsResponse>(
-        null,
-        "labels/payroll-cycles",
-        "MASTER_EMPLOYEE_LABELS",
-        {
-          method: "GET",
-          params: { language_id: intLanguageID },
-        }
-      );
-      return objResponse.Response;
+      return await requestLabels({ language_id: intLanguageID, module_name: "payroll-cycles" });
     } catch (objError) {
       return {
         module: "payroll-cycles",
@@ -78,16 +106,7 @@ export const labelService = {
 
   async getTaxRegimeLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
     try {
-      const objResponse = await callAPI<ModuleLabelsResponse>(
-        null,
-        "labels/tax-regimes",
-        "MASTER_EMPLOYEE_LABELS",
-        {
-          method: "GET",
-          params: { language_id: intLanguageID },
-        }
-      );
-      return objResponse.Response;
+      return await requestLabels({ language_id: intLanguageID, module_name: "tax-regimes" });
     } catch (objError) {
       return {
         module: "tax-regimes",
@@ -100,16 +119,7 @@ export const labelService = {
 
   async getPayrollProcessLogLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
     try {
-      const objResponse = await callAPI<ModuleLabelsResponse>(
-        null,
-        "labels/payroll-process-logs",
-        "MASTER_EMPLOYEE_LABELS",
-        {
-          method: "GET",
-          params: { language_id: intLanguageID },
-        }
-      );
-      return objResponse.Response;
+      return await requestLabels({ language_id: intLanguageID, module_name: "payroll-process-logs" });
     } catch (objError) {
       return {
         module: "payroll-process-logs",

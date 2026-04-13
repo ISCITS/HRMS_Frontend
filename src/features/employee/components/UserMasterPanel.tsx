@@ -27,13 +27,14 @@ import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
-import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
+import type { NormalizedTenantAuthMode } from "@/models/AuthModels";
 import { authApiService } from "@/services/auth/AuthApiService";
 import { type UserApiRecord, type UserFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
@@ -49,8 +50,10 @@ type EmployeeOption = {
 type UserRecord = {
   id: string;
   loginName: string;
+  loginId: string;
   email: string;
   mobile: string;
+  password: string;
   authSource: "local" | "sso";
   ssoEnabled: boolean;
   mfaEnabled: boolean;
@@ -66,6 +69,7 @@ type UserRecord = {
 
 type UserForm = {
   loginName: string;
+  loginId: string;
   email: string;
   mobile: string;
   password: string;
@@ -101,6 +105,7 @@ type ToastState = {
 
 const dicEmptyForm: UserForm = {
   loginName: "",
+  loginId: "",
   email: "",
   mobile: "",
   password: "",
@@ -118,12 +123,40 @@ const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultUsers: UserRecord[] = [];
 const lstRowsPerPageOptions = [10, 20, 50];
 
+function normalizeTenantAuthMode(strAuthMode: string | null | undefined): NormalizedTenantAuthMode {
+  const strNormalizedMode = strAuthMode?.trim().toLowerCase();
+  switch (strNormalizedMode) {
+    case "local":
+      return "local";
+    case "sso":
+      return "sso";
+    case "otp":
+      return "otp";
+    case "otp_mandatory":
+    case "otp-mandatory":
+      return "otp_mandatory";
+    default:
+      return "unknown";
+  }
+}
+
+function getUserLoginId(dicRecord: UserApiRecord) {
+  return dicRecord.strLoginID ?? dicRecord.strLoginId ?? dicRecord.login_id ?? "";
+}
+
+function getUserPassword(dicRecord: UserApiRecord) {
+  return dicRecord.strPassword ?? dicRecord.password ?? "";
+}
+
 function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
+  const strPassword = getUserPassword(dicRecord);
   return {
     id: String(dicRecord.intID),
     loginName: dicRecord.strLoginName ?? "",
+    loginId: getUserLoginId(dicRecord),
     email: dicRecord.strEmailAddress ?? "",
     mobile: dicRecord.strMobileNumber ?? "",
+    password: strPassword,
     authSource: dicRecord.strAuthSource ?? "local",
     ssoEnabled: dicRecord.blnIsSsoEnabled,
     mfaEnabled: dicRecord.blnMfaEnabled ?? false,
@@ -230,6 +263,7 @@ export default function UserMasterPanel() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [intTenantLanguageID, setIntTenantLanguageID] = useState<number | null>(authHelpers.getLanguageID());
   const [blnTenantOtpEnabled, setBlnTenantOtpEnabled] = useState(false);
+  const [strTenantAuthMode, setStrTenantAuthMode] = useState<NormalizedTenantAuthMode>("unknown");
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
   const [blnConfirmPasswordVisible, setBlnConfirmPasswordVisible] = useState(false);
   const dicCommonLabels = {
@@ -273,6 +307,7 @@ export default function UserMasterPanel() {
     loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     fieldLoginName: t("field_login_name"),
+    fieldLoginId: t("field_login_id", "Login ID"),
     fieldEmail: t("field_email"),
     fieldMobile: t("field_mobile"),
     fieldPassword: t("field_password"),
@@ -300,12 +335,15 @@ export default function UserMasterPanel() {
     requestFailed: t("request_failed"),
     validationLoginNameRequired: t("validation_login_name_required"),
     validationLoginNameMin: t("validation_login_name_min"),
+    validationLoginIdRequired: t("validation_login_id_required", "Login ID is required."),
+    validationLoginIdAlphaNumeric: t("validation_login_id_alphanumeric", "Login ID must be alphanumeric."),
     validationEmailRequired: t("validation_email_required"),
     validationEmailInvalid: t("validation_email_invalid"),
     validationPasswordRequired: t("validation_password_required"),
     validationPasswordMin: t("validation_password_min"),
     validationConfirmPasswordRequired: t("validation_confirm_password_required", "Confirm password is required."),
     validationConfirmPasswordMismatch: t("validation_confirm_password_mismatch", "Password and confirm password must match."),
+    validationMobileRequired: t("validation_mobile_required", "Mobile number is required."),
     validationMobileInvalid: t("validation_mobile_invalid"),
     validationEmployeeRequired: t("validation_employee_required", "Employee is required."),
     validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
@@ -340,11 +378,12 @@ export default function UserMasterPanel() {
     setBlnLoading(true);
     try {
       const strTenantUUID = authHelpers.getTenantUUID();
-      const [objUsers, objOptions, objEmployees, objTenant] = await Promise.all([
+      const [objUsers, objOptions, objEmployees, objTenant, objTenantAuthDetails] = await Promise.all([
         masterApiService.getUsers(),
         masterApiService.getUserFormOptions(),
         masterApiService.getEmployees().catch(() => ({ Data: [] })),
         strTenantUUID ? authApiService.getTenant(strTenantUUID).catch(() => null) : Promise.resolve(null),
+        strTenantUUID ? authApiService.getTenantAuthDetails(strTenantUUID).catch(() => null) : Promise.resolve(null),
       ]);
       const intResolvedTenantLanguageID = authHelpers.getLanguageID();
       setLstUsers(objUsers.Data.map(mapUserRecord));
@@ -356,6 +395,7 @@ export default function UserMasterPanel() {
       })));
       setIntTenantLanguageID(intResolvedTenantLanguageID);
       setBlnTenantOtpEnabled((objTenant?.Data.lstAuthModes ?? []).some((strModeValue) => strModeValue.trim().toLowerCase() === "otp"));
+      setStrTenantAuthMode(normalizeTenantAuthMode(objTenantAuthDetails?.Data.auth_mode));
       setLstSelectedIds([]);
       setIntPage(1);
     } finally {
@@ -391,6 +431,7 @@ export default function UserMasterPanel() {
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
   const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
+  const blnShowOtpOnlyOption = blnTenantOtpEnabled && strTenantAuthMode === "otp";
 
   function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     setStrMode(strNextMode);
@@ -400,10 +441,11 @@ export default function UserMasterPanel() {
     setBlnConfirmPasswordVisible(false);
     setDicForm(dicUser ? {
       loginName: dicUser.loginName,
+      loginId: dicUser.loginId,
       email: dicUser.email,
       mobile: dicUser.mobile,
-      password: "",
-      confirmPassword: "",
+      password: dicUser.password,
+      confirmPassword: dicUser.password,
       ssoEnabled: dicUser.ssoEnabled,
       mfaEnabled: dicUser.mfaEnabled,
       loginAsEmployee: Boolean(dicUser.employeeID),
@@ -479,13 +521,22 @@ export default function UserMasterPanel() {
   function validateForm() {
     const dicNextErrors: Partial<Record<keyof UserForm, string>> = {};
     const strLoginName = dicForm.loginName.trim();
+    const strLoginId = dicForm.loginId.trim();
     const strEmail = dicForm.email.trim();
     const strMobile = dicForm.mobile.trim();
+    const strPassword = dicForm.password.trim();
+    const strConfirmPassword = dicForm.confirmPassword.trim();
 
     if (!strLoginName) {
       dicNextErrors.loginName = dicModuleLabels.validationLoginNameRequired;
     } else if (strLoginName.length < 3) {
       dicNextErrors.loginName = dicModuleLabels.validationLoginNameMin;
+    }
+
+    if (!strLoginId) {
+      dicNextErrors.loginId = dicModuleLabels.validationLoginIdRequired;
+    } else if (!/^[A-Za-z0-9]+$/.test(strLoginId)) {
+      dicNextErrors.loginId = dicModuleLabels.validationLoginIdAlphaNumeric;
     }
 
     if (!strEmail) {
@@ -494,19 +545,21 @@ export default function UserMasterPanel() {
       dicNextErrors.email = dicModuleLabels.validationEmailInvalid;
     }
 
-    if (!dicForm.password.trim()) {
+    if (!strPassword) {
       dicNextErrors.password = dicModuleLabels.validationPasswordRequired;
-    } else if (dicForm.password.trim() && dicForm.password.trim().length < 8) {
+    } else if (strPassword && strPassword.length < 8) {
       dicNextErrors.password = dicModuleLabels.validationPasswordMin;
     }
 
-    if (!dicForm.confirmPassword.trim()) {
+    if (!strConfirmPassword) {
       dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordRequired;
-    } else if (dicForm.password.trim() !== dicForm.confirmPassword.trim()) {
+    } else if (strPassword && strPassword !== strConfirmPassword) {
       dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordMismatch;
     }
 
-    if (strMobile && !/^[0-9+\-\s]+$/.test(strMobile)) {
+    if (!strMobile) {
+      dicNextErrors.mobile = dicModuleLabels.validationMobileRequired;
+    } else if (!/^[0-9+\-\s]+$/.test(strMobile)) {
       dicNextErrors.mobile = dicModuleLabels.validationMobileInvalid;
     }
 
@@ -529,12 +582,13 @@ export default function UserMasterPanel() {
 
     const objBody = {
       strLoginName: dicForm.loginName.trim(),
+      strLoginID: dicForm.loginId.trim(),
       strEmailAddress: dicForm.email.trim(),
       strMobileNumber: dicForm.mobile.trim() || null,
       strPassword: dicForm.password.trim() || null,
       strAuthSource: dicForm.ssoEnabled ? "sso" as const : "local" as const,
       blnIsSsoEnabled: dicForm.ssoEnabled,
-      blnMfaEnabled: blnTenantOtpEnabled ? dicForm.mfaEnabled : false,
+      blnMfaEnabled: blnShowOtpOnlyOption ? dicForm.mfaEnabled : false,
       strSsoLoginMapping: dicForm.ssoEnabled ? dicForm.ssoLoginMapping.trim() || null : null,
       intPreferredLanguageID: (intTenantLanguageID ?? dicForm.preferredLanguageID) || null,
       intEmployeeID: dicForm.loginAsEmployee ? Number(dicForm.employeeID) : null,
@@ -803,8 +857,17 @@ export default function UserMasterPanel() {
               gap: 2,
             }}
           >
+            <TextField
+              label={dicModuleLabels.fieldLoginId}
+              value={dicForm.loginId}
+              onChange={(objEvent) => setFormField("loginId", objEvent.target.value)}
+              error={Boolean(dicErrors.loginId)}
+              helperText={dicErrors.loginId}
+              disabled={strMode === "edit" || strMode === "view"}
+              fullWidth
+              required
+            />
             <TextField label={dicModuleLabels.fieldLoginName} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
-            <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
           </Box>
 
           <Box
@@ -814,16 +877,27 @@ export default function UserMasterPanel() {
               gap: 2,
             }}
           >
-            <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth />
+            <TextField label={dicModuleLabels.fieldEmail} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth required />
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
             <TextField
               label={dicModuleLabels.fieldPassword}
               type={blnPasswordVisible ? "text" : "password"}
               value={dicForm.password}
               onChange={(objEvent) => setFormField("password", objEvent.target.value)}
               error={Boolean(dicErrors.password)}
-              helperText={dicErrors.password}
+              helperText={dicErrors.password ?? (strMode === "edit" ? dicModuleLabels.helperPasswordOptional : undefined)}
               disabled={strMode === "view"}
               fullWidth
+              required
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -834,15 +908,6 @@ export default function UserMasterPanel() {
                 )
               }}
             />
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
             <TextField
               label={dicModuleLabels.fieldConfirmPassword}
               type={blnConfirmPasswordVisible ? "text" : "password"}
@@ -852,6 +917,7 @@ export default function UserMasterPanel() {
               helperText={dicErrors.confirmPassword}
               disabled={strMode === "view"}
               fullWidth
+              required
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -862,6 +928,15 @@ export default function UserMasterPanel() {
                 )
               }}
             />
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
             <TextField
               select
               label={dicModuleLabels.fieldUserGroup}
@@ -880,19 +955,6 @@ export default function UserMasterPanel() {
                 </MenuItem>
               ))}
             </TextField>
-          </Box>
-
-          {dicForm.ssoEnabled ? (
-            <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
-          ) : null}
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
             <TextField
               select
               label={dicModuleLabels.fieldPreferredLanguage}
@@ -907,11 +969,11 @@ export default function UserMasterPanel() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} onChange={(objEvent) => setFormField("status", objEvent.target.value as UserStatus)} disabled={strMode === "view"} fullWidth>
-              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
           </Box>
+
+          {dicForm.ssoEnabled ? (
+            <TextField label={dicModuleLabels.fieldSsoLoginMapping} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+          ) : null}
 
           <Box
             sx={{
@@ -960,7 +1022,7 @@ export default function UserMasterPanel() {
                   </MenuItem>
                 ))}
               </TextField>
-            ) : blnTenantOtpEnabled ? (
+            ) : blnShowOtpOnlyOption ? (
               <Box
                 sx={{
                   display: "flex",
@@ -981,10 +1043,12 @@ export default function UserMasterPanel() {
                 </Box>
                 <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view"} />
               </Box>
-            ) : null}
+            ) : (
+              <Box />
+            )}
           </Box>
 
-          {dicForm.loginAsEmployee && blnTenantOtpEnabled ? (
+          {dicForm.loginAsEmployee && blnShowOtpOnlyOption ? (
             <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
               <Box
                 sx={{
@@ -1008,6 +1072,11 @@ export default function UserMasterPanel() {
               </Box>
             </Box>
           ) : null}
+
+          <Box className={styles.switchRow}>
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
+            <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+          </Box>
         </Box>}
       />
 

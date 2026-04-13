@@ -1,6 +1,6 @@
 import { Button, Paper, Typography } from "@mui/material";
 import { ReactNode } from "react";
-import CommonDataGrid, { DataGridColumn } from "@/components/ui/CommonDataGrid";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import dicConstant from "@/constants/Constant.json";
 
 const leaveRequests = [
@@ -9,7 +9,7 @@ const leaveRequests = [
 ];
 
 export default function LeavePage() {
-  const columns: DataGridColumn<(typeof leaveRequests)[number] & { action: ReactNode }>[] = [
+  const columns: CommonTableColumn<(typeof leaveRequests)[number] & { action: ReactNode }>[] = [
     { field: "id", headerName: dicConstant.leave.grid.id },
     { field: "employee", headerName: dicConstant.leave.grid.employee },
     { field: "type", headerName: dicConstant.leave.grid.type },
@@ -32,7 +32,7 @@ export default function LeavePage() {
         {dicConstant.leave.pageTitle}
       </Typography>
       <Paper sx={{ p: 3 }}>
-        <CommonDataGrid
+        <CommonTable
           columns={columns}
           rows={rows}
           rowIdField="id"

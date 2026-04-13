@@ -1,11 +1,16 @@
 ﻿"use client";
 
-import axios from "axios";
-import { axiosInstance } from "@/lib/axiosInstance";
+import {
+  ApiRequestMethod,
+  ApiResultCode,
+  ApiRoutePrefix,
+  AuthStorageKey,
+  DefaultContextValue
+} from "@/Common/enums/AppEnums";
+import { ApiRequestError, requestEncryptedApi, resolveErrorMessage } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import { decryptPayload } from "@/lib/security/decryptPayload";
-import { apiConstants } from "@/config/constants";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import {
   GenericLoginRequest,
@@ -31,23 +36,8 @@ import {
   type VerifyOtpResponseData
 } from "@/models/AuthModels";
 
-type ApiEnvelope<TData> = {
-  ResultCode: number;
-  Msg: string;
-  Data: TData;
-};
-
-export class clsApiRequestError extends Error {
-  objData?: unknown;
-  intStatusCode?: number;
-
-  constructor(strMessage: string, objData?: unknown, intStatusCode?: number) {
-    super(strMessage);
-    this.name = "clsApiRequestError";
-    this.objData = objData;
-    this.intStatusCode = intStatusCode;
-  }
-}
+export class clsApiRequestError extends ApiRequestError {}
+export { resolveErrorMessage };
 
 export function isOtpChallengeData(objData: AuthLoginData): objData is AuthOtpChallengeData {
   return "blnRequiresOtp" in objData && objData.blnRequiresOtp === true;
@@ -66,52 +56,98 @@ export function isSsoMfaChallengeData(objData: SsoCallbackData): objData is SsoM
   return isGoogleMfaChallengeData(objData);
 }
 
-async function requestApi<TData>(objOptions: {
-  strPath: string;
-  strMethod: "GET" | "POST";
-  objBody?: unknown;
-  strMenuAction: string;
-  blnUseAuthHeader?: boolean;
-}): Promise<ApiEnvelope<TData>> {
-  const objHeaders: Record<string, string> = {};
+async function requestLocalEnvelope<TData>(strPath: string): Promise<ApiEnvelope<TData>> {
+  return requestLocalEnvelopeWithBody<TData>(strPath);
+}
 
-  if (objOptions.blnUseAuthHeader) {
-    const strAccessToken = authHelpers.getAccessToken();
-    if (!strAccessToken) {
-      throw new Error("Unauthorized");
-    }
-
-    objHeaders.Authorization = `Bearer ${strAccessToken}`;
+function getLocalProxyHeaders(strAccessToken: string) {
+  if (typeof window === "undefined") {
+    return {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(strAccessToken ? { Authorization: `Bearer ${strAccessToken}`, "X-Access-Token": strAccessToken } : {})
+    };
   }
 
-  try {
-    const objResponse = await axiosInstance.request({
-      method: objOptions.strMethod,
-      url: `${apiConstants.apiPrefix}/${objOptions.strPath}`,
-      data: objOptions.objBody,
-      csrfMenuAction: objOptions.strMenuAction,
-      headers: objHeaders
+  const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId)?.trim() || DefaultContextValue.PrimaryId;
+  const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId)?.trim() || DefaultContextValue.PrimaryId;
+
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...(strAccessToken ? { Authorization: `Bearer ${strAccessToken}`, "X-Access-Token": strAccessToken } : {}),
+    "X-Tenant-Id": strTenantID,
+    "X-Company-Id": strCompanyID
+  };
+}
+
+async function requestLocalEnvelopeWithBody<TData>(strPath: string, objBody?: unknown): Promise<ApiEnvelope<TData>> {
+  async function executeRequest() {
+    const strAccessToken = typeof window !== "undefined" ? authHelpers.getAccessToken() : "";
+    const objResponse = await fetch(strPath, {
+      method: "POST",
+      headers: getLocalProxyHeaders(strAccessToken),
+      cache: "no-store",
+      body: objBody === undefined ? undefined : JSON.stringify(objBody)
     });
 
-    const objRawPayload = objResponse.data as ApiEnvelope<TData> | { payload: string };
-    const objPayload = "payload" in objRawPayload
-      ? await decryptPayload<ApiEnvelope<TData>>(objRawPayload.payload)
-      : objRawPayload;
+    const objRawPayload = (await objResponse.json().catch(() => ({}))) as
+      | ApiEnvelope<TData>
+      | { payload?: string; message?: string; Msg?: string; Data?: unknown };
+    const objPayload =
+      typeof objRawPayload === "object" &&
+      objRawPayload !== null &&
+      "payload" in objRawPayload &&
+      typeof objRawPayload.payload === "string"
+        ? await decryptPayload<ApiEnvelope<TData>>(objRawPayload.payload)
+        : objRawPayload;
 
-    if (objPayload.ResultCode !== 1) {
-      throw new clsApiRequestError(objPayload.Msg ?? "Request failed.", objPayload.Data);
+    if (!objResponse.ok || objPayload.ResultCode !== ApiResultCode.Success) {
+      throw new clsApiRequestError(
+        objPayload.Msg ?? ("message" in objRawPayload ? objRawPayload.message : undefined) ?? "Request failed.",
+        "Data" in objPayload ? objPayload.Data : undefined,
+        objResponse.status
+      );
     }
 
     return objPayload;
-  } catch (objError) {
-    if (axios.isAxiosError(objError)) {
-      const objResponseData = objError.response?.data as ApiEnvelope<TData> | { payload?: string; Msg?: string } | undefined;
-      if (objResponseData?.payload) {
-        const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
-        throw new clsApiRequestError(objDecryptedPayload.Msg ?? "Request failed.", objDecryptedPayload.Data, objError.response?.status);
-      }
+  }
 
-      throw new clsApiRequestError(objResponseData?.Msg ?? objError.message ?? "Request failed.", undefined, objError.response?.status);
+  try {
+    return await executeRequest();
+  } catch (objError) {
+    if (
+      objError instanceof clsApiRequestError &&
+      objError.intStatusCode === 401 &&
+      typeof window !== "undefined" &&
+      authHelpers.getAccessToken()
+    ) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      return executeRequest();
+    }
+
+    throw objError;
+  }
+}
+
+async function requestApi<TData>(objOptions: {
+  strPath: string;
+  strMethod: ApiRequestMethod;
+  objBody?: unknown;
+  strMenuAction: string;
+  blnUseAuthHeader?: boolean;
+}) {
+  try {
+    return await requestEncryptedApi<TData>({
+      strPath: `${ApiRoutePrefix.ApiV1}/${objOptions.strPath}`,
+      strMethod: objOptions.strMethod,
+      objBody: objOptions.objBody,
+      strMenuAction: objOptions.strMenuAction,
+      blnUseAuthHeader: objOptions.blnUseAuthHeader
+    });
+  } catch (objError) {
+    if (objError instanceof ApiRequestError) {
+      throw new clsApiRequestError(objError.message, objError.objData, objError.intStatusCode);
     }
 
     throw objError;
@@ -129,29 +165,67 @@ function persistAuthenticatedSession(objAuthData: AuthSuccessData) {
   authHelpers.setLanguageID(objAuthData.objTenant.intLanguageID);
 }
 
+function deriveTenantAuthDetails(objTenant: TenantLookupData, objLabels?: ModuleLabelsResponse): TenantAuthDetails {
+  const lstNormalizedAuthModes = Array.isArray(objTenant.lstAuthModes)
+    ? objTenant.lstAuthModes.map((strMode) => String(strMode).trim().toLowerCase())
+    : [];
+  const blnSsoEnabled = objTenant.blnSsoEnabled || lstNormalizedAuthModes.includes("sso");
+  const strLoginMethod = lstNormalizedAuthModes.includes("login_id") ? "login_id" : "email_address";
+
+  return {
+    tenant_id: objTenant.intTenantID,
+    tenant_uuid: objTenant.strTenantUUID,
+    language_id: objTenant.intLanguageID ?? null,
+    is_active: true,
+    auth_mode: blnSsoEnabled ? "SSO" : "LOCAL",
+    login_method: blnSsoEnabled ? "sso" : strLoginMethod,
+    labels: objLabels?.labels ?? {}
+  };
+}
+
 export const authApiService = {
   async getTenant(strTenantUUID: string) {
     return requestApi<TenantLookupData>({
-      strPath: `auth/tenant/${strTenantUUID}`,
-      strMethod: "GET",
+      strPath: "auth/tenant",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strTenantUUID },
       strMenuAction: "AUTH_TENANT_LOOKUP"
     });
   },
 
   async getTenantAuthDetails(strTenantUUID: string) {
-    return requestApi<TenantAuthDetails>({
-      strPath: `tenant/${strTenantUUID}/auth-details`,
-      strMethod: "GET",
-      strMenuAction: "AUTH_TENANT_DETAILS"
-    });
+    try {
+      return await requestLocalEnvelopeWithBody<TenantAuthDetails>(
+        "/api/tenant/auth-details",
+        { strTenantUUID }
+      );
+    } catch (objError) {
+      if (!(objError instanceof clsApiRequestError) || ![400, 404, 422].includes(objError.intStatusCode)) {
+        throw objError;
+      }
+
+      const [objTenantResult, objLabelResult] = await Promise.all([
+        this.getTenant(strTenantUUID),
+        this.getLoginLabels(strTenantUUID).catch(() => ({
+          ResultCode: ApiResultCode.Success,
+          Msg: "Fallback login labels loaded.",
+          Data: { module: "login", language: "en", labels: {} }
+        }))
+      ]);
+
+      return {
+        ResultCode: ApiResultCode.Success,
+        Msg: "Tenant authentication details fetched successfully.",
+        Data: deriveTenantAuthDetails(objTenantResult.Data, objLabelResult.Data)
+      };
+    }
   },
 
   async getLoginLabels(strTenantUUID: string) {
-    return requestApi<ModuleLabelsResponse>({
-      strPath: `tenant/${strTenantUUID}/login-labels`,
-      strMethod: "GET",
-      strMenuAction: "AUTH_LOGIN_LABELS"
-    });
+    return requestLocalEnvelopeWithBody<ModuleLabelsResponse>(
+      "/api/tenant/login-labels",
+      { strTenantUUID }
+    );
   },
 
   async login(objPayload: LoginRequest) {
@@ -161,7 +235,7 @@ export const authApiService = {
     };
     const objResult = await requestApi<AuthLoginData>({
       strPath: "auth/login",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objRequestBody,
       strMenuAction: "AUTH_LOGIN"
     });
@@ -178,7 +252,7 @@ export const authApiService = {
     };
     const objResult = await requestApi<AuthLoginData>({
       strPath: "auth/login/generic",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objRequestBody,
       strMenuAction: "AUTH_GENERIC_LOGIN"
     });
@@ -191,7 +265,7 @@ export const authApiService = {
   async verifyOtp(objPayload: VerifyOtpRequest) {
     const objResult = await requestApi<VerifyOtpResponseData>({
       strPath: "auth/verify-otp",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "AUTH_VERIFY_OTP"
     });
@@ -204,7 +278,7 @@ export const authApiService = {
   async resendOtp(objPayload: ResendOtpRequest) {
     return requestApi<{ blnOtpResent: boolean }>({
       strPath: "auth/resend-otp",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "AUTH_RESEND_OTP"
     });
@@ -212,8 +286,9 @@ export const authApiService = {
 
   async getSsoRedirect(strTenantUUID: string) {
     return requestApi<SsoRedirectData>({
-      strPath: `auth/sso/redirect/${strTenantUUID}`,
-      strMethod: "GET",
+      strPath: "auth/sso/redirect",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strTenantUUID },
       strMenuAction: "AUTH_SSO_REDIRECT"
     });
   },
@@ -221,7 +296,7 @@ export const authApiService = {
   async completeSsoCallback(strSearchParams: string) {
     const objResult = await requestApi<SsoCallbackData>({
       strPath: `auth/sso/callback${strSearchParams ? `?${strSearchParams}` : ""}`,
-      strMethod: "GET",
+      strMethod: ApiRequestMethod.Get,
       strMenuAction: "AUTH_SSO_CALLBACK"
     });
     if (!isSsoMfaChallengeData(objResult.Data) && !isOtpChallengeData(objResult.Data)) {
@@ -233,7 +308,7 @@ export const authApiService = {
   async verifySsoMfaSetup(objPayload: SsoMfaVerifyRequest) {
     const objResult = await requestApi<SsoMfaSetupSuccessData>({
       strPath: "auth/sso/mfa/setup/verify",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "AUTH_SSO_MFA_SETUP_VERIFY"
     });
@@ -244,7 +319,7 @@ export const authApiService = {
   async verifySsoMfa(objPayload: SsoMfaVerifyRequest) {
     const objResult = await requestApi<SsoMfaLoginSuccessData>({
       strPath: "auth/sso/mfa/verify",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "AUTH_SSO_MFA_VERIFY"
     });
@@ -255,7 +330,7 @@ export const authApiService = {
   async verifySsoBackupCode(objPayload: SsoMfaBackupCodeVerifyRequest) {
     const objResult = await requestApi<SsoMfaLoginSuccessData>({
       strPath: "auth/sso/mfa/backup-code/verify",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "AUTH_SSO_MFA_BACKUP_CODE_VERIFY"
     });
@@ -264,39 +339,25 @@ export const authApiService = {
   },
 
   async getCurrentUser() {
-    return requestApi<CurrentUserContext>({
-      strPath: "auth/me",
-      strMethod: "GET",
-      strMenuAction: "AUTH_ME",
-      blnUseAuthHeader: true
-    });
+    return requestLocalEnvelope<CurrentUserContext>("/api/auth/me");
   },
 
   async getMenu() {
-    return requestApi<MenuResponse>({
-      strPath: "auth/menu",
-      strMethod: "GET",
-      strMenuAction: "AUTH_MENU",
-      blnUseAuthHeader: true
-    });
+    return requestLocalEnvelope<MenuResponse>("/api/auth/menu");
   },
 
   async getActionRights() {
-    return requestApi<ActionRightsResponse>({
-      strPath: "auth/action-rights",
-      strMethod: "GET",
-      strMenuAction: "AUTH_ACTION_RIGHTS",
-      blnUseAuthHeader: true
-    });
+    return requestLocalEnvelope<ActionRightsResponse>("/api/auth/action-rights");
   },
 
   async logout() {
     const objResult = await requestApi<{ blnLoggedOut: boolean }>({
       strPath: "auth/logout",
-      strMethod: "POST",
+      strMethod: ApiRequestMethod.Post,
       strMenuAction: "AUTH_LOGOUT",
       blnUseAuthHeader: true
     });
+    await authHelpers.clearClientCache();
     authHelpers.clearSession(true);
     return objResult;
   }

@@ -1,5 +1,5 @@
 import { Chip } from "@mui/material";
-import CommonDataGrid, { DataGridColumn } from "@/components/ui/CommonDataGrid";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import dicConstant from "@/constants/Constant.json";
 
 const records = [
@@ -18,10 +18,10 @@ export default function AttendanceTable() {
   - Uses local mock records (replace with API data later).
   
   Output:
-  - Renders attendance grid with filtering/sorting/pagination from CommonDataGrid.
+  - Renders attendance grid with filtering/sorting/pagination from CommonTable.
   
   Failure behavior:
-  - Empty record list is handled by CommonDataGrid empty-state row.
+  - Empty record list is handled by CommonTable empty-state row.
   */
   const lstRows = records.map((dicRecord) => ({
     ...dicRecord,
@@ -35,13 +35,13 @@ export default function AttendanceTable() {
     )
   }));
 
-  const columns: DataGridColumn<(typeof lstRows)[number]>[] = [
+  const columns: CommonTableColumn<(typeof lstRows)[number]>[] = [
     { field: "date", headerName: dicConstant.attendance.grid.date },
     { field: "status", headerName: dicConstant.attendance.grid.status, sortable: false, filterable: false },
     { field: "checkIn", headerName: dicConstant.attendance.grid.checkIn },
     { field: "checkOut", headerName: dicConstant.attendance.grid.checkOut }
   ];
 
-  return <CommonDataGrid columns={columns} rows={lstRows} rowIdField="date" withPaper={false} />;
+  return <CommonTable columns={columns} rows={lstRows} rowIdField="date" withPaper={false} />;
 }
 

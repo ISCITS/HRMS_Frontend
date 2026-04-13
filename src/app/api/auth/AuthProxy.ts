@@ -1,10 +1,14 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { DefaultContextValue } from "@/Common/enums/AppEnums";
 import { appConfig } from "@/config";
+import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
+import { generateCSRFToken } from "@/lib/csrfToken";
 import type {
   ApiEnvelope,
+  ActionRightsResponse,
   AuthSuccessData,
   CurrentUserContext,
   MenuResponse,
@@ -29,6 +33,15 @@ export function isAuthSuccessData(objData: unknown): objData is AuthSuccessData 
 export async function getAccessTokenFromCookie() {
   const objCookieStore = await getAuthCookieStore();
   return objCookieStore.get(appConfig.authCookieName)?.value ?? "";
+}
+
+export function getAccessTokenFromRequest(objRequest: Request) {
+  const strAuthorization = objRequest.headers.get("Authorization") ?? "";
+  if (strAuthorization.startsWith("Bearer ")) {
+    return strAuthorization.slice("Bearer ".length).trim();
+  }
+
+  return objRequest.headers.get("X-Access-Token")?.trim() ?? "";
 }
 
 export async function setAuthCookies(objResponse: NextResponse, objAuthData: AuthSuccessData) {
@@ -56,9 +69,10 @@ export async function clearAuthCookies(objResponse: NextResponse) {
 }
 
 export async function proxyTenantLookup(strTenantUUID: string) {
-  return callBackendApi<ApiEnvelope<TenantLookupData>>(`/api/v1/auth/tenant/${strTenantUUID}`, {
-    method: "GET",
-    cache: "no-store"
+  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/auth/tenant", {
+    method: "POST",
+    cache: "no-store",
+    objJsonBody: { strTenantUUID }
   });
 }
 
@@ -77,9 +91,10 @@ export async function proxyGenericLogin(objBody: unknown) {
 }
 
 export async function proxySsoRedirect(strTenantUUID: string) {
-  return callBackendApi<ApiEnvelope<SsoRedirectData>>(`/api/v1/auth/sso/redirect/${strTenantUUID}`, {
-    method: "GET",
-    cache: "no-store"
+  return callBackendApi<ApiEnvelope<SsoRedirectData>>("/api/v1/auth/sso/redirect", {
+    method: "POST",
+    cache: "no-store",
+    objJsonBody: { strTenantUUID }
   });
 }
 
@@ -90,23 +105,41 @@ export async function proxySsoCallback(strSearch: string) {
   });
 }
 
-export async function proxyCurrentUser(strAccessToken: string) {
+function buildProtectedProxyHeaders(strAccessToken: string, strMenuAction: string, objRequestHeaders?: Headers) {
+  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
+  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
+
+  return {
+    Authorization: `Bearer ${strAccessToken}`,
+    Origin: strFrontendOrigin,
+    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, strMenuAction),
+    "X-Tenant-Id": strTenantID,
+    "X-Company-Id": strCompanyID,
+  };
+}
+
+export async function proxyCurrentUser(strAccessToken: string, objRequestHeaders?: Headers) {
   return callBackendApi<ApiEnvelope<CurrentUserContext>>("/api/v1/auth/me", {
     method: "GET",
     cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${strAccessToken}`
-    }
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_ME", objRequestHeaders)
   });
 }
 
-export async function proxyMenu(strAccessToken: string) {
+export async function proxyMenu(strAccessToken: string, objRequestHeaders?: Headers) {
   return callBackendApi<ApiEnvelope<MenuResponse>>("/api/v1/auth/menu", {
     method: "GET",
     cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${strAccessToken}`
-    }
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_MENU", objRequestHeaders)
+  });
+}
+
+export async function proxyActionRights(strAccessToken: string, objRequestHeaders?: Headers) {
+  return callBackendApi<ApiEnvelope<ActionRightsResponse>>("/api/v1/auth/action-rights", {
+    method: "GET",
+    cache: "no-store",
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_ACTION_RIGHTS", objRequestHeaders)
   });
 }
 

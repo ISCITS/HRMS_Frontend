@@ -26,7 +26,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
+import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";

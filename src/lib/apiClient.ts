@@ -1,4 +1,5 @@
-import axios from "axios";
+import { ApiDefaultMessage, ApiRequestMethod } from "@/Common/enums/AppEnums";
+import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { apiConstants } from "@/config/constants";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import { generateCSRFToken } from "@/lib/csrfToken";
@@ -9,7 +10,7 @@ export type ApiClientResponse<TResponse> = {
 };
 
 export type ApiCallOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: ApiRequestMethod;
   params?: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -43,7 +44,7 @@ export async function callAPI<TResponse = unknown>(
 ): Promise<ApiClientResponse<TResponse>> {
 
   const csrfToken = generateCSRFToken(apiConstants.csrfSecretKey, menuAction);
-  const strMethod = options.method ?? "POST";
+  const strMethod = options.method ?? ApiRequestMethod.Post;
 
   const requestConfig: ApiRequestConfig = {
     method: strMethod,
@@ -51,7 +52,7 @@ export async function callAPI<TResponse = unknown>(
     // use dynamic endpoint
     url: toEndpoint(methodName),
 
-    data: strMethod === "GET" ? undefined : data,
+    data: strMethod === ApiRequestMethod.Get ? undefined : data,
     params: options.params,
 
     csrfMenuAction: menuAction,
@@ -68,18 +69,6 @@ export async function callAPI<TResponse = unknown>(
     };
 
   } catch (error) {
-
-    if (axios.isAxiosError(error)) {
-
-      const responseMessage =
-        (error.response?.data as { message?: string; Msg?: string } | undefined)?.Msg ??
-        (error.response?.data as { message?: string; Msg?: string } | undefined)?.message ??
-        error.message ??
-        "API request failed.";
-
-      throw new Error(responseMessage);
-    }
-
-    throw new Error("Unexpected API client error.");
+    throw await createApiRequestError(error, ApiDefaultMessage.UnexpectedClientError);
   }
 }

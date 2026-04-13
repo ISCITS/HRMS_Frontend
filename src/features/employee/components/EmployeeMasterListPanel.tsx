@@ -12,8 +12,8 @@ import { Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogC
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import AlertDialog from "@/components/common/AlertDialog";
-import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
+import AlertDialog from "@/Common/components/AlertDialog";
+import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";

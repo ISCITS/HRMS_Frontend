@@ -16,6 +16,10 @@ const dicRouteAliases: Record<string, string> = {
   "/master/usergroups": "/security/user-groups",
   "/master/user-groups": "/security/user-groups",
   "/security/user-groups": "/security/user-groups",
+  "/master/version-logs": "/version-logs",
+  "/masters/version-logs": "/version-logs",
+  "/version-log": "/version-logs",
+  "/version-logs": "/version-logs",
 };
 
 function normalizeRoute(strRoute?: string | null) {

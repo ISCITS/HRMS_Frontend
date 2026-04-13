@@ -1,0 +1,45 @@
+"use client";
+
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
+
+import { AlertDialogText } from "@/Common/enums/AppEnums";
+import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
+
+type AlertDialogProps = {
+  blnOpen: boolean;
+  strMessage: string;
+  strSeverity: "success" | "error";
+  strTitle?: string;
+  fnOnClose: () => void;
+};
+
+export default function AlertDialog({
+  blnOpen,
+  strMessage,
+  strSeverity,
+  strTitle,
+  fnOnClose,
+}: AlertDialogProps) {
+  return (
+    <Dialog open={blnOpen} onClose={fnOnClose} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
+      <DialogTitle>{strTitle ?? (strSeverity === "success" ? AlertDialogText.SuccessTitle : AlertDialogText.ErrorTitle)}</DialogTitle>
+      <DialogContent>
+        <Alert severity={strSeverity}>
+          {strMessage}
+        </Alert>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={fnOnClose} variant="contained">
+          {AlertDialogText.OkButton}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

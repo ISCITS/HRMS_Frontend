@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 
 export function useSalaryComponents() {
@@ -12,18 +13,18 @@ export function useSalaryComponents() {
   const loadSalaryComponents = useCallback(async () => {
     setBlnLoading(true);
     setStrError("");
-    try {
-      const objResult = await masterApiService.getSalaryComponents();
-      setLstSalaryComponents(objResult.Data);
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load salary components.");
-    } finally {
-      setBlnLoading(false);
-    }
+
+    await runFrontendAction({
+      fnAction: () => masterApiService.getSalaryComponents(),
+      fnOnSuccess: (objResult) => setLstSalaryComponents(objResult.Data),
+      fnOnError: (objError) => setStrError(objError.message),
+      fnFinally: () => setBlnLoading(false),
+      strFallbackMessage: "Unable to load salary components.",
+    });
   }, []);
 
   useEffect(() => {
-    loadSalaryComponents().catch(() => undefined);
+    void loadSalaryComponents();
   }, [loadSalaryComponents]);
 
   return {

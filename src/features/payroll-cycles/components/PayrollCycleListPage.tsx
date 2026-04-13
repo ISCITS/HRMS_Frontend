@@ -2,7 +2,6 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -10,7 +9,6 @@ import {
   Button,
   CircularProgress,
   MenuItem,
-  Pagination,
   Snackbar,
   Stack,
   TextField,
@@ -19,7 +17,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -47,89 +46,10 @@ type ToastState = {
 };
 
 const lstPayrollCycleModuleCodes = ["PAYROLL_CYCLE", "PAYROLL_CYCLES", "MASTER_PAYROLL_CYCLE"];
-const lstRowsPerPageOptions = [10, 20, 50];
 const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
 
 function formatCutoffDay(intCutoffDay: number | null) {
   return intCutoffDay ? `Day ${intCutoffDay}` : "-";
-}
-
-function downloadCsv(strFileName: string, lstRows: PayrollCycleListRecord[]) {
-  const lstHeaders = ["Cycle Code", "Cycle Name", "Payroll Group", "Period Type", "Cutoff Day", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.strCycleCode,
-        dicRow.strCycleName,
-        dicRow.strPayrollGroupName ?? "",
-        dicRow.strPeriodType,
-        formatCutoffDay(dicRow.intCutoffDay),
-        dicRow.blnIsActive ? "Active" : "Inactive"
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: PayrollCycleListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.strCycleCode}</td>
-      <td>${dicRow.strCycleName}</td>
-      <td>${dicRow.strPayrollGroupName ?? "-"}</td>
-      <td>${dicRow.strPeriodType}</td>
-      <td>${formatCutoffDay(dicRow.intCutoffDay)}</td>
-      <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Cycle Code</th>
-              <th>Cycle Name</th>
-              <th>Payroll Group</th>
-              <th>Period Type</th>
-              <th>Cutoff Day</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
 }
 
 export default function PayrollCycleListPage() {
@@ -141,22 +61,18 @@ export default function PayrollCycleListPage() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadPayrollCycles() {
     if (!canViewAny()) {
       setLstCycles([]);
-      setIntPage(1);
       setBlnLoading(false);
       return;
     }
     setBlnLoading(true);
     try {
       setLstCycles(await payrollCycleService.getPayrollCycles());
-      setIntPage(1);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : "Unable to load payroll cycles.", "error");
     } finally {
@@ -188,10 +104,52 @@ export default function PayrollCycleListPage() {
     });
   }, [dicSearchApplied, lstCycles]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        id: dicRow.intID,
+        action: (
+          <CommonRowActions
+            blnCanView={blnCanView}
+            blnCanEdit={blnCanEdit}
+            blnCanToggle={blnCanEdit}
+            blnToggleActive={dicRow.blnIsActive}
+            onView={() => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}?mode=view`)}
+            onEdit={blnCanEdit ? () => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}`) : undefined}
+            onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}
+          />
+        ),
+        strCycleCode: dicRow.strCycleCode,
+        strCycleName: dicRow.strCycleName,
+        strPayrollGroup: (
+          <Box>
+            <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strPayrollGroupName ?? "-"}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicRow.strPayrollGroupCode ?? "-"}</Typography>
+          </Box>
+        ),
+        strPeriodType: dicRow.strPeriodType,
+        strCutoffDay: formatCutoffDay(dicRow.intCutoffDay),
+        blnIsActive: (
+          <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+            {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
+          </span>
+        ),
+      })),
+    [blnCanEdit, blnCanView, lstFilteredRows, objRouter, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strCycleCode", headerName: t("cycle_code", "Cycle Code") },
+      { field: "strCycleName", headerName: t("cycle_name", "Cycle Name") },
+      { field: "strPayrollGroup", headerName: t("payroll_group", "Payroll Group"), sortable: false, filterable: false, width: 220 },
+      { field: "strPeriodType", headerName: t("period_type", "Period Type") },
+      { field: "strCutoffDay", headerName: t("cutoff_day", "Cutoff Day") },
+      { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
+    ],
+    [t]
+  );
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -276,7 +234,7 @@ export default function PayrollCycleListPage() {
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {t("search", "Search")}
             </Button>
           </Box>
@@ -287,7 +245,6 @@ export default function PayrollCycleListPage() {
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
-                setIntPage(1);
               }}
             >
               {t("clear", "Clear")}
@@ -300,103 +257,23 @@ export default function PayrollCycleListPage() {
 
       <Box className={styles.tableCard}>
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing payroll cycle request...")} />
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? (
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/cycles/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("add_payroll_cycle", "Add Payroll Cycle")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("payroll_cycles.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("payroll_cycles_title", "Payroll Cycles"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_pdf", "Export PDF")}
-              </Button>
-            ) : null}
-          </Box>
-
-          {!blnLoading && lstFilteredRows.length > 0 ? (
-            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-                <TextField
-                  select
-                  size="small"
-                  value={String(intRowsPerPage)}
-                  onChange={(objEvent) => {
-                    setIntRowsPerPage(Number(objEvent.target.value));
-                    setIntPage(1);
-                  }}
-                  className={styles.rowsPerPageSelect}
-                >
-                  {lstRowsPerPageOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                  ))}
-                </TextField>
-                <Typography className={styles.paginationRange}>
-                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} {t("pagination_separator", "of")} {lstFilteredRows.length}
-                </Typography>
-              </Box>
-              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-            </Box>
-          ) : null}
-        </Box>
-
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t("actions", "Actions")}</th>
-                <th>{t("cycle_code", "Cycle Code")}</th>
-                <th>{t("cycle_name", "Cycle Name")}</th>
-                <th>{t("payroll_group", "Payroll Group")}</th>
-                <th>{t("period_type", "Period Type")}</th>
-                <th>{t("cutoff_day", "Cutoff Day")}</th>
-                <th>{t("status", "Status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstFilteredRows.length === 0 ? (
-                <tr>
-                  <td className={styles.emptyState} colSpan={7}>{t("no_records", "No payroll cycles found.")}</td>
-                </tr>
-              ) : lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td>
-                      <CommonRowActions
-                        blnCanView={blnCanView}
-                        blnCanEdit={blnCanEdit}
-                        blnCanToggle={blnCanEdit}
-                        blnToggleActive={dicRow.blnIsActive}
-                        onView={() => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}?mode=view`)}
-                        onEdit={blnCanEdit ? () => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}`) : undefined}
-                        onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}
-                    />
-                  </td>
-                  <td>{dicRow.strCycleCode}</td>
-                  <td>{dicRow.strCycleName}</td>
-                  <td>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strPayrollGroupName ?? "-"}</Typography>
-                      <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicRow.strPayrollGroupCode ?? "-"}</Typography>
-                    </Box>
-                  </td>
-                  <td>{dicRow.strPeriodType}</td>
-                  <td>{formatCutoffDay(dicRow.intCutoffDay)}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                      {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          defaultPageSize={10}
+          pageSizeOptions={[10, 20, 50]}
+          exportFileName="payroll_cycles"
+          showExportOptions={blnCanExport}
+          showPaginationSummary
+          emptyMessage={t("no_records", "No payroll cycles found.")}
+          toolbarLeft={blnCanAdd ? (
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/cycles/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              {t("add_payroll_cycle", "Add Payroll Cycle")}
+            </Button>
+          ) : undefined}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
 
       <CommonConfirmDialog

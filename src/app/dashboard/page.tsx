@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import DashboardLanding from "@/components/dashboard/DashboardLanding";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
 export default function DashboardPage() {
-  const objRouter = useRouter();
   const [blnLoading, setBlnLoading] = useState(true);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse | null>(null);
+  const [strError, setStrError] = useState("");
 
   useEffect(() => {
     let blnMounted = true;
@@ -27,9 +25,9 @@ export default function DashboardPage() {
         setObjUserContext(objUserResult.Data);
         setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
-      .catch(() => {
+      .catch((objError: unknown) => {
         if (blnMounted) {
-          objRouter.replace(authHelpers.getLoginUrl());
+          setStrError(objError instanceof Error ? objError.message : "Unable to load dashboard.");
         }
       })
       .finally(() => {
@@ -41,9 +39,14 @@ export default function DashboardPage() {
     return () => {
       blnMounted = false;
     };
-  }, [objRouter]);
+  }, []);
 
   if (blnLoading || !objUserContext || !objMenu) {
+    if (!blnLoading && strError) {
+      return (
+        <div style={{ padding: "24px", color: "#b91c1c" }}>{strError}</div>
+      );
+    }
     return (
       <BlockingLoader blnOpen strLabel="Loading dashboard..." />
     );

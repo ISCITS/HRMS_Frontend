@@ -1,3 +1,4 @@
+import { ApiResultCode, AuthStorageKey, DefaultContextValue } from "@/Common/enums/AppEnums";
 import { appConfig } from "@/config";
 import { callAPI } from "@/services/apiService";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
@@ -41,15 +42,15 @@ export const authService = {
       "AUTH_LOGIN"
     );
     const dicResult = response.Response;
-    if (dicResult.ResultCode !== 1 || !dicResult.Data?.strSessionToken) {
+    if (dicResult.ResultCode !== ApiResultCode.Success || !dicResult.Data?.strSessionToken) {
       throw new Error(dicResult.Msg || "Login failed.");
     }
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("hrms_session_token", dicResult.Data.strSessionToken);
-      window.localStorage.setItem("hrms_user_id", String(dicResult.Data.intUserID));
-      window.localStorage.setItem("hrms_tenant_id", "1");
-      window.localStorage.setItem("hrms_company_id", "1");
-      document.cookie = `${appConfig.authCookieName}=1; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
+      window.localStorage.setItem(AuthStorageKey.SessionToken, dicResult.Data.strSessionToken);
+      window.localStorage.setItem(AuthStorageKey.UserId, String(dicResult.Data.intUserID));
+      window.localStorage.setItem(AuthStorageKey.TenantId, DefaultContextValue.PrimaryId);
+      window.localStorage.setItem(AuthStorageKey.CompanyId, DefaultContextValue.PrimaryId);
+      document.cookie = `${appConfig.authCookieName}=${DefaultContextValue.PrimaryId}; Path=/; Max-Age=${appConfig.authCookieMaxAgeSeconds}; SameSite=Lax`;
     }
     return dicResult;
   },
@@ -58,10 +59,16 @@ export const authService = {
     if (typeof document === "undefined") {
       return;
     }
-    window.localStorage.removeItem("hrms_session_token");
-    window.localStorage.removeItem("hrms_user_id");
-    window.localStorage.removeItem("hrms_tenant_id");
-    window.localStorage.removeItem("hrms_company_id");
+    void (async () => {
+      if ("caches" in window) {
+        const lstCacheKeys = await window.caches.keys();
+        await Promise.all(lstCacheKeys.map((strCacheKey) => window.caches.delete(strCacheKey)));
+      }
+    })();
+    window.localStorage.removeItem(AuthStorageKey.SessionToken);
+    window.localStorage.removeItem(AuthStorageKey.UserId);
+    window.localStorage.removeItem(AuthStorageKey.TenantId);
+    window.localStorage.removeItem(AuthStorageKey.CompanyId);
     document.cookie = `${appConfig.authCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
   }
 };

@@ -37,10 +37,11 @@ export type DataGridColumn<T extends Record<string, ReactNode>> = {
   exportable?: boolean;
 };
 
-type CommonDataGridProps<T extends Record<string, ReactNode>> = {
+export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  getRowSx?: (row: T) => SxProps<Theme>;
   rowIdField?: keyof T;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
@@ -57,6 +58,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  getRowSx,
   rowIdField,
   defaultPageSize = 5,
   pageSizeOptions = [5, 10, 25],
@@ -375,12 +377,15 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               <TableRow
                 key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
                 hover
-                sx={{
-                  "& td": {
-                    borderBottom: "1px solid",
-                    borderColor: "divider"
-                  }
-                }}
+                sx={[
+                  {
+                    "& td": {
+                      borderBottom: "1px solid",
+                      borderColor: "divider"
+                    }
+                  },
+                  getRowSx?.(row) ?? {}
+                ]}
               >
                 {orderedColumns.map((column) => (
                   <TableCell key={`${String(column.field)}-${index}`} align={column.align ?? "left"}>

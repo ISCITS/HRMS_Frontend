@@ -5,12 +5,12 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Pagination, Snackbar, Switch, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Box, Button, Checkbox, Chip, CircularProgress, MenuItem, Pagination, Paper, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/components/master/CommonConfirmDialog";
-import CommonMasterDialog from "@/components/master/CommonMasterDialog";
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -223,6 +223,7 @@ export default function EssDeclarationCategoryMasterPanel() {
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingId, setStrEditingId] = useState("");
   const [dicForm, setDicForm] = useState<EssDeclarationCategoryForm>(dicEmptyForm);
+  const [objProofDocument, setObjProofDocument] = useState<File | null>(null);
   const [dicErrors, setDicErrors] = useState<Partial<Record<keyof EssDeclarationCategoryForm, string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -441,6 +442,7 @@ export default function EssDeclarationCategoryMasterPanel() {
     setStrMode(strNextMode);
     setStrEditingId(dicCategory?.id ?? "");
     setDicErrors({});
+    setObjProofDocument(null);
     setDicForm(dicCategory ? {
       code: dicCategory.code,
       name: dicCategory.name,
@@ -456,6 +458,7 @@ export default function EssDeclarationCategoryMasterPanel() {
 
   function closeDialog() {
     setBlnDialogOpen(false);
+    setObjProofDocument(null);
   }
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
@@ -626,6 +629,283 @@ export default function EssDeclarationCategoryMasterPanel() {
     });
   }
 
+  const strDialogTitle = strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle;
+  const blnDialogReadOnly = strMode === "view";
+  const strProofDocumentName = objProofDocument?.name?.trim() || t("proof_document_empty", "No document selected");
+
+  function renderDialogSection(strTitle: string, strSubtitle: string, nodeContent: ReactNode) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: "16px",
+          border: "1px solid rgba(203,213,225,0.9)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.92) 100%)",
+          p: { xs: 1.35, md: 1.5 },
+        }}
+      >
+        <Stack spacing={0.35} sx={{ mb: 1.1 }}>
+          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.94rem" }}>{strTitle}</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{strSubtitle}</Typography>
+        </Stack>
+        {nodeContent}
+      </Paper>
+    );
+  }
+
+  function renderInfoRow(strLabel: string, strValue: string) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 1.25,
+          alignItems: "center",
+          py: 1.1,
+          borderBottom: "1px solid rgba(226,232,240,0.9)",
+        }}
+      >
+        <Typography sx={{ color: "#64748b", fontSize: "0.84rem", fontWeight: 600 }}>{strLabel}</Typography>
+        <Typography sx={{ color: "#0f172a", fontSize: "0.9rem", fontWeight: 700, textAlign: "right" }}>{strValue}</Typography>
+      </Box>
+    );
+  }
+
+  const nodeDialogContent = (
+    <Stack spacing={1.5} sx={{ pt: 0.25 }}>
+      {strSalaryComponentError && !blnDialogReadOnly ? <Alert severity="warning" variant="outlined">{strSalaryComponentError}</Alert> : null}
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.45fr) minmax(280px, 0.9fr)" }, gap: 1.5, alignItems: "start" }}>
+        <Stack spacing={1.5}>
+          {renderDialogSection(
+            t("section_core_details", "Core Details"),
+            t("section_core_details_help", "Define the primary declaration identity and limit information."),
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 1.25 }}>
+              <TextField
+                label={`${dicLabels.fieldCategoryCode} *`}
+                value={dicForm.code}
+                onChange={(objEvent) => {
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }));
+                }}
+                error={Boolean(dicErrors.code)}
+                helperText={dicErrors.code}
+                fullWidth
+                disabled={blnDialogReadOnly}
+                size="small"
+              />
+              <TextField
+                label={`${dicLabels.fieldCategoryName} *`}
+                value={dicForm.name}
+                onChange={(objEvent) => {
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }));
+                }}
+                error={Boolean(dicErrors.name)}
+                helperText={dicErrors.name}
+                fullWidth
+                disabled={blnDialogReadOnly}
+                size="small"
+              />
+              <TextField
+                label={`${dicLabels.fieldDeclarationKind} *`}
+                value={dicForm.declarationKind}
+                onChange={(objEvent) => {
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, declarationKind: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }));
+                }}
+                error={Boolean(dicErrors.declarationKind)}
+                helperText={dicErrors.declarationKind}
+                fullWidth
+                disabled={blnDialogReadOnly}
+                size="small"
+              />
+              <TextField
+                label={dicLabels.fieldMaxLimitAmount}
+                value={dicForm.maxLimitAmount}
+                onChange={(objEvent) => {
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, maxLimitAmount: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, maxLimitAmount: objEvent.target.value }));
+                }}
+                error={Boolean(dicErrors.maxLimitAmount)}
+                helperText={dicErrors.maxLimitAmount}
+                fullWidth
+                disabled={blnDialogReadOnly}
+                size="small"
+              />
+            </Box>,
+          )}
+
+          {renderDialogSection(
+            t("section_notes", "Description"),
+            t("section_notes_help", "Add explanatory text or internal policy guidance for this declaration."),
+            <Stack spacing={1}>
+              <TextField
+                label={dicLabels.fieldDescription}
+                value={dicForm.description}
+                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, description: objEvent.target.value }))}
+                fullWidth
+                multiline
+                minRows={4}
+                disabled={blnDialogReadOnly}
+                size="small"
+              />
+              <Box
+                className={styles.switchRow}
+                sx={{
+                  minHeight: 34,
+                  px: 0,
+                  py: 0,
+                  justifyContent: "flex-start",
+                  gap: 1,
+                }}
+              >
+                <Typography className={styles.switchLabel} sx={{ fontSize: "0.84rem" }}>
+                  {dicLabels.fieldIsActive}
+                </Typography>
+                <Switch
+                  size="small"
+                  checked={dicForm.status === "Active"}
+                  disabled={blnDialogReadOnly}
+                  onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+                />
+              </Box>
+            </Stack>,
+          )}
+        </Stack>
+
+        <Stack spacing={1.5}>
+          {renderDialogSection(
+            t("section_configuration", "Configuration"),
+            t("section_configuration_help", "Manage proof policy, record status, and component mapping from one place."),
+            <Stack spacing={1}>
+              <TextField
+                select
+                label={dicLabels.fieldLinkedSalaryComponent}
+                value={dicForm.linkedSalaryComponentId}
+                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, linkedSalaryComponentId: objEvent.target.value === "" ? "" : Number(objEvent.target.value) }))}
+                fullWidth
+                disabled={blnDialogReadOnly || blnLookupLoading}
+                size="small"
+              >
+                <MenuItem value="">{t("none_option", "None")}</MenuItem>
+                {dicSalaryComponentOptions.map((dicOption) => <MenuItem key={dicOption.intID} value={dicOption.intID}>{dicOption.strLabel}</MenuItem>)}
+              </TextField>
+
+              <Box
+                className={styles.switchRow}
+                sx={{
+                  px: 1,
+                  py: 0.15,
+                  minHeight: 40,
+                  borderRadius: "12px",
+                  border: "1px solid rgba(203,213,225,0.9)",
+                  background: "#fff",
+                  gap: 0.75,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700 }}>{dicLabels.fieldProofRequired}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.2 }}>{t("proof_required_help", "Turn on when document evidence is mandatory.")}</Typography>
+                </Box>
+                <Switch
+                  size="small"
+                  checked={dicForm.proofRequired}
+                  disabled={blnDialogReadOnly}
+                  onChange={(_, blnChecked) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, proofRequired: blnChecked }));
+                    if (!blnChecked) {
+                      setObjProofDocument(null);
+                    }
+                  }}
+                />
+              </Box>
+
+              {dicForm.proofRequired ? (
+                <Paper
+                  elevation={0}
+                sx={{
+                    p: 1,
+                    borderRadius: "12px",
+                    border: "1px dashed rgba(148,163,184,0.9)",
+                    background: "rgba(248,250,252,0.95)",
+                  }}
+                >
+                  <Stack spacing={0.75}>
+                    <Box>
+                      <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700 }}>
+                        {t("proof_document", "Proof Document")}
+                      </Typography>
+                      <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.2 }}>
+                        {t("proof_document_help", "Upload the supporting document placeholder for proof-based declarations.")}
+                      </Typography>
+                    </Box>
+                    {!blnDialogReadOnly ? (
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                        <Button
+                          variant="outlined"
+                          component="label"
+                          size="small"
+                          sx={{ borderRadius: "9px", alignSelf: { xs: "stretch", sm: "flex-start" } }}
+                        >
+                          {t("upload_document", "Upload Document")}
+                          <input
+                            type="file"
+                            hidden
+                            onChange={(objEvent) => setObjProofDocument(objEvent.target.files?.[0] ?? null)}
+                          />
+                        </Button>
+                        <Typography sx={{ color: "#334155", fontSize: "0.78rem", wordBreak: "break-word" }}>
+                          {strProofDocumentName}
+                        </Typography>
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ color: "#334155", fontSize: "0.78rem" }}>{strProofDocumentName}</Typography>
+                    )}
+                    <Typography sx={{ color: "#94a3b8", fontSize: "0.68rem", lineHeight: 1.2 }}>
+                      {t("proof_document_note", "This upload is currently captured in the UI only until attachment API support is wired into the save flow.")}
+                    </Typography>
+                  </Stack>
+                </Paper>
+              ) : null}
+            </Stack>,
+          )}
+
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: "16px",
+              border: "1px solid rgba(191,219,254,0.95)",
+              background: "linear-gradient(180deg, rgba(239,246,255,0.96) 0%, rgba(248,250,252,0.98) 100%)",
+              p: 1.35,
+            }}
+          >
+            <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.9rem", mb: 0.3 }}>
+              {t("section_live_summary", "Live Summary")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mb: 0.35 }}>
+              {t("section_live_summary_help", "Review the current declaration setup at a glance before saving.")}
+            </Typography>
+            <Box sx={{ mt: 0.75 }}>
+              {renderInfoRow(t("summary_code", "Category Code"), dicForm.code.trim() || t("summary_empty", "Not set"))}
+              {renderInfoRow(t("summary_kind", "Declaration Kind"), dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
+              {renderInfoRow(t("summary_limit", "Max Limit"), dicForm.maxLimitAmount.trim() || t("summary_unlimited", "Not specified"))}
+              {renderInfoRow(t("summary_proof", "Proof"), dicForm.proofRequired ? t("summary_required", "Required") : t("summary_optional", "Optional"))}
+              {renderInfoRow(
+                t("summary_component", "Salary Component"),
+                blnLookupLoading
+                  ? t("summary_loading", "Loading...")
+                  : dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? t("summary_none", "None"),
+              )}
+              {dicForm.proofRequired ? renderInfoRow(t("summary_document", "Document"), strProofDocumentName) : null}
+            </Box>
+          </Paper>
+        </Stack>
+      </Box>
+    </Stack>
+  );
+
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
@@ -730,7 +1010,42 @@ export default function EssDeclarationCategoryMasterPanel() {
           </Box>
         )}
       </Box>
-      <CommonMasterDialog blnOpen={blnDialogOpen} onClose={closeDialog} strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle} strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel} strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update} onPrimaryAction={saveCategory} blnPrimaryDisabled={blnSubmitting} blnHidePrimary={strMode === "view"} maxWidth="md" nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>{strSalaryComponentError && strMode !== "view" ? <Alert severity="warning" variant="outlined">{strSalaryComponentError}</Alert> : null}<Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}><TextField label={`${dicLabels.fieldCategoryCode} *`} value={dicForm.code} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth disabled={strMode === "view"} /><TextField label={`${dicLabels.fieldCategoryName} *`} value={dicForm.name} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth disabled={strMode === "view"} /></Box><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}><TextField label={`${dicLabels.fieldDeclarationKind} *`} value={dicForm.declarationKind} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, declarationKind: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value })); }} error={Boolean(dicErrors.declarationKind)} helperText={dicErrors.declarationKind} fullWidth disabled={strMode === "view"} /><TextField select label={dicLabels.fieldLinkedSalaryComponent} value={dicForm.linkedSalaryComponentId} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, linkedSalaryComponentId: objEvent.target.value === "" ? "" : Number(objEvent.target.value) }))} fullWidth disabled={strMode === "view" || blnLookupLoading}><MenuItem value="">{t("none_option", "None")}</MenuItem>{dicSalaryComponentOptions.map((dicOption) => <MenuItem key={dicOption.intID} value={dicOption.intID}>{dicOption.strLabel}</MenuItem>)}</TextField></Box><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}><TextField label={dicLabels.fieldMaxLimitAmount} value={dicForm.maxLimitAmount} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, maxLimitAmount: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, maxLimitAmount: objEvent.target.value })); }} error={Boolean(dicErrors.maxLimitAmount)} helperText={dicErrors.maxLimitAmount} fullWidth disabled={strMode === "view"} /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldProofRequired}</Typography><Switch checked={dicForm.proofRequired} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, proofRequired: blnChecked }))} /></Box></Box><TextField label={dicLabels.fieldDescription} value={dicForm.description} onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, description: objEvent.target.value }))} fullWidth multiline minRows={3} disabled={strMode === "view"} /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography><Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box></Box>} />
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen}
+        onClose={closeDialog}
+        strTitle={strDialogTitle}
+        strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        onPrimaryAction={saveCategory}
+        blnPrimaryDisabled={blnSubmitting}
+        blnHidePrimary={strMode === "view"}
+        maxWidth="lg"
+        paperClassName={styles.dialogPaper}
+        paperSx={{
+          width: "min(94vw, 1180px)",
+          maxWidth: "1180px",
+          maxHeight: "86vh",
+          overflow: "hidden",
+          "& .MuiDialogTitle-root": {
+            px: { xs: 2, md: 2.5 },
+            py: 1.5,
+            borderBottom: "1px solid #d9e6ef",
+            fontWeight: 800,
+          },
+          "& .MuiDialogContent-root": {
+            px: { xs: 1.5, md: 2.25 },
+            py: 1.5,
+          },
+          "& .MuiDialogActions-root": {
+            px: { xs: 2, md: 2.5 },
+            py: 1.25,
+            borderTop: "1px solid #d9e6ef",
+            background: "rgba(255,255,255,0.96)",
+          },
+        }}
+        contentSx={{ px: { xs: 1.5, md: 2.25 }, py: 1.5 }}
+        nodeContent={nodeDialogContent}
+      />
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm} blnConfirmDisabled={blnSubmitting} blnCancelDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction} />
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>

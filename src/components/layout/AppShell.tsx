@@ -127,6 +127,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
+  const [strBootstrapError, setStrBootstrapError] = useState("");
   const strHeaderModuleName = getHeaderModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
@@ -152,6 +153,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         if (!blnMounted) {
           return;
         }
+        setStrBootstrapError("");
         authHelpers.setTenantContext(
           objUserResult.Data.objTenant.intTenantID,
           undefined,
@@ -165,7 +167,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           if (isSessionExpiredError(objError)) {
             redirectToSessionExpired();
           } else {
-            objRouter.replace(authHelpers.getLoginUrl());
+            setStrBootstrapError(
+              objError instanceof Error ? objError.message : "Unable to prepare your workspace."
+            );
           }
         }
       })
@@ -184,7 +188,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setBlnLogoutDialogOpen(false);
     setBlnLoggingOut(true);
     await authApiService.logout().catch(() => undefined);
-    objRouter.replace(authHelpers.getLoginUrl());
+    window.location.replace(authHelpers.getLoginUrl());
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
@@ -307,6 +311,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Stack spacing={2} alignItems="center">
           <CircularProgress />
           <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
+        </Stack>
+      </Box>
+    );
+  }
+
+  if (strBootstrapError) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc", p: 3 }}>
+        <Stack spacing={1.5} alignItems="center">
+          <Typography sx={{ color: "#b91c1c", fontWeight: 700 }}>
+            {strBootstrapError}
+          </Typography>
+          <Button variant="contained" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </Stack>
       </Box>
     );

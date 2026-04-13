@@ -10,7 +10,7 @@ import {
   Typography
 } from "@mui/material";
 import { Dispatch, ReactNode, SetStateAction, useMemo, useRef, useState } from "react";
-import CommonDataGrid, { DataGridColumn } from "@/components/ui/CommonDataGrid";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import dicConstant from "@/constants/Constant.json";
 
 type DepartmentInlineStatus = "Active" | "Inactive";
@@ -350,7 +350,7 @@ export default function DepartmentMasterInlinePanel() {
     return lstRows;
   }, [lstDepartments, strEditingDepartmentId, dicEditValues, intIsAddingDepartment, dicNewValues, dicFieldErrors]);
 
-  const lstGridColumns: DataGridColumn<DepartmentInlineGridRow>[] = [
+  const lstGridColumns: CommonTableColumn<DepartmentInlineGridRow>[] = [
     { field: "id", headerName: dicConstant.departments.grid.id, sortable: false, filterable: false },
     { field: "code", headerName: dicConstant.departments.grid.code, sortable: false, filterable: false },
     { field: "name", headerName: dicConstant.departments.grid.name, sortable: false, filterable: false },
@@ -366,7 +366,7 @@ export default function DepartmentMasterInlinePanel() {
         {dicConstant.departments.inlinePageTitle}
       </Typography>
       <Paper sx={{ p: 3 }}>
-        <CommonDataGrid
+        <CommonTable
           columns={lstGridColumns}
           rows={lstGridRows}
           rowIdField="id"
