@@ -40,6 +40,15 @@ export type DesignationApiRecord = {
   strDesignationName: string;
   blnIsActive: boolean;
   intTenantID: number;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strDesignationName: string;
+  }>;
+};
+
+export type SimpleMasterFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
 };
 
 export type UserApiRecord = {
@@ -81,6 +90,11 @@ export type CountryApiRecord = {
   strCurrencyCode: string;
   strPhoneCode: string | null;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strCountryName: string;
+  }>;
 };
 
 export type StateApiRecord = {
@@ -89,6 +103,16 @@ export type StateApiRecord = {
   strStateCode: string;
   strStateName: string;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strStateName: string;
+  }>;
+};
+
+export type StateFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstCountries: EmployeeLookupOptionApiRecord[];
 };
 
 export type BankApiRecord = {
@@ -97,6 +121,11 @@ export type BankApiRecord = {
   strBankCode: string;
   strBankName: string;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strBankName: string;
+  }>;
 };
 
 export type EssDeclarationCategoryTextApiRecord = {
@@ -129,6 +158,11 @@ export type CostCenterApiRecord = {
   strCostCenterCode: string;
   strCostCenterName: string;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strCostCenterName: string;
+  }>;
 };
 
 export type GradeApiRecord = {
@@ -137,6 +171,11 @@ export type GradeApiRecord = {
   strGradeCode: string;
   strGradeName: string;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strGradeName: string;
+  }>;
 };
 
 export type LocationApiRecord = {
@@ -149,9 +188,15 @@ export type LocationApiRecord = {
   strStateName: string | null;
   strCityName: string | null;
   blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strLocationName: string;
+  }>;
 };
 
 export type LocationFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
   lstStates: EmployeeLookupOptionApiRecord[];
 };
 
@@ -638,6 +683,23 @@ export const masterApiService = {
     });
   },
 
+  translateMasterText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_DEPARTMENT_LIST"
+    });
+  },
+
   createDepartment(objBody: {
     strDepartmentCode: string;
     strDepartmentName: string;
@@ -710,7 +772,47 @@ export const masterApiService = {
     });
   },
 
-  createDesignation(objBody: { strDesignationCode: string; strDesignationName: string; blnIsActive: boolean }) {
+  getDesignation(intID: number, intLanguageID?: number | null) {
+    return requestApi<DesignationApiRecord>({
+      strPath: `/masters/designations/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_DESIGNATION_LIST"
+    });
+  },
+
+  getDesignationFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: "/masters/designations/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_DESIGNATION_LIST"
+    });
+  },
+
+  translateDesignationText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/designations/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_DESIGNATION_LIST"
+    });
+  },
+
+  createDesignation(objBody: {
+    strDesignationCode: string;
+    strDesignationName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strDesignationName: string }>;
+  }) {
     // Creates a new designation record.
     return requestApi<DesignationApiRecord>({
       strPath: "/masters/designations",
@@ -720,7 +822,13 @@ export const masterApiService = {
     });
   },
 
-  updateDesignation(intID: number, objBody: { strDesignationCode: string; strDesignationName: string; blnIsActive: boolean }) {
+  updateDesignation(intID: number, objBody: {
+    strDesignationCode: string;
+    strDesignationName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strDesignationName: string }>;
+  }) {
     // Updates an existing designation by primary key.
     return requestApi<DesignationApiRecord>({
       strPath: `/masters/designations/${intID}`,
@@ -760,7 +868,47 @@ export const masterApiService = {
     });
   },
 
-  createBank(objBody: { strBankCode: string; strBankName: string; blnIsActive: boolean }) {
+  getBank(intID: number, intLanguageID?: number | null) {
+    return requestApi<BankApiRecord>({
+      strPath: `/masters/banks/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_BANK_LIST"
+    });
+  },
+
+  getBankFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: "/masters/banks/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_BANK_LIST"
+    });
+  },
+
+  translateBankText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/banks/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_BANK_LIST"
+    });
+  },
+
+  createBank(objBody: {
+    strBankCode: string;
+    strBankName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strBankName: string }>;
+  }) {
     // Creates a new bank record.
     return requestApi<BankApiRecord>({
       strPath: "/masters/banks",
@@ -770,7 +918,13 @@ export const masterApiService = {
     });
   },
 
-  updateBank(intID: number, objBody: { strBankCode: string; strBankName: string; blnIsActive: boolean }) {
+  updateBank(intID: number, objBody: {
+    strBankCode: string;
+    strBankName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strBankName: string }>;
+  }) {
     // Updates an existing bank by primary key.
     return requestApi<BankApiRecord>({
       strPath: `/masters/banks/${intID}`,
@@ -871,7 +1025,47 @@ export const masterApiService = {
     });
   },
 
-  createCostCenter(objBody: { strCostCenterCode: string; strCostCenterName: string; blnIsActive: boolean }) {
+  getCostCenter(intID: number, intLanguageID?: number | null) {
+    return requestApi<CostCenterApiRecord>({
+      strPath: `/masters/cost-centers/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_COST_CENTER_LIST"
+    });
+  },
+
+  getCostCenterFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: "/masters/cost-centers/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_COST_CENTER_LIST"
+    });
+  },
+
+  translateCostCenterText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/cost-centers/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_COST_CENTER_LIST"
+    });
+  },
+
+  createCostCenter(objBody: {
+    strCostCenterCode: string;
+    strCostCenterName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strCostCenterName: string }>;
+  }) {
     return requestApi<CostCenterApiRecord>({
       strPath: "/masters/cost-centers",
       strMethod: "POST",
@@ -880,7 +1074,13 @@ export const masterApiService = {
     });
   },
 
-  updateCostCenter(intID: number, objBody: { strCostCenterCode: string; strCostCenterName: string; blnIsActive: boolean }) {
+  updateCostCenter(intID: number, objBody: {
+    strCostCenterCode: string;
+    strCostCenterName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strCostCenterName: string }>;
+  }) {
     return requestApi<CostCenterApiRecord>({
       strPath: `/masters/cost-centers/${intID}`,
       strMethod: "PUT",
@@ -916,7 +1116,47 @@ export const masterApiService = {
     });
   },
 
-  createGrade(objBody: { strGradeCode: string; strGradeName: string; blnIsActive: boolean }) {
+  getGrade(intID: number, intLanguageID?: number | null) {
+    return requestApi<GradeApiRecord>({
+      strPath: `/masters/grades/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_GRADE_LIST"
+    });
+  },
+
+  getGradeFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: "/masters/grades/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_GRADE_LIST"
+    });
+  },
+
+  translateGradeText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/grades/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_GRADE_LIST"
+    });
+  },
+
+  createGrade(objBody: {
+    strGradeCode: string;
+    strGradeName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strGradeName: string }>;
+  }) {
     return requestApi<GradeApiRecord>({
       strPath: "/masters/grades",
       strMethod: "POST",
@@ -925,7 +1165,13 @@ export const masterApiService = {
     });
   },
 
-  updateGrade(intID: number, objBody: { strGradeCode: string; strGradeName: string; blnIsActive: boolean }) {
+  updateGrade(intID: number, objBody: {
+    strGradeCode: string;
+    strGradeName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strGradeName: string }>;
+  }) {
     return requestApi<GradeApiRecord>({
       strPath: `/masters/grades/${intID}`,
       strMethod: "PUT",
@@ -961,6 +1207,15 @@ export const masterApiService = {
     });
   },
 
+  getLocation(intID: number, intLanguageID?: number | null) {
+    return requestApi<LocationApiRecord>({
+      strPath: `/masters/locations/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_LOCATION_LIST"
+    });
+  },
+
   getLocationFormOptions() {
     return requestApi<LocationFormOptionsApiRecord>({
       strPath: "/masters/locations/form-options",
@@ -969,7 +1224,32 @@ export const masterApiService = {
     });
   },
 
-  createLocation(objBody: { strLocationCode: string; strLocationName: string; intStateID: number | null; strCityName: string | null; blnIsActive: boolean }) {
+  translateLocationText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/locations/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_LOCATION_LIST"
+    });
+  },
+
+  createLocation(objBody: {
+    strLocationCode: string;
+    strLocationName: string;
+    intStateID: number | null;
+    strCityName: string | null;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strLocationName: string }>;
+  }) {
     return requestApi<LocationApiRecord>({
       strPath: "/masters/locations",
       strMethod: "POST",
@@ -978,7 +1258,15 @@ export const masterApiService = {
     });
   },
 
-  updateLocation(intID: number, objBody: { strLocationCode: string; strLocationName: string; intStateID: number | null; strCityName: string | null; blnIsActive: boolean }) {
+  updateLocation(intID: number, objBody: {
+    strLocationCode: string;
+    strLocationName: string;
+    intStateID: number | null;
+    strCityName: string | null;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strLocationName: string }>;
+  }) {
     return requestApi<LocationApiRecord>({
       strPath: `/masters/locations/${intID}`,
       strMethod: "PUT",
@@ -1100,12 +1388,48 @@ export const masterApiService = {
     });
   },
 
+  getCountry(intID: number, intLanguageID?: number | null) {
+    return requestApi<CountryApiRecord>({
+      strPath: `/masters/countries/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_COUNTRY_LIST"
+    });
+  },
+
+  getCountryFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: "/masters/countries/form-options",
+      strMethod: "GET",
+      strMenuAction: "MASTER_COUNTRY_LIST"
+    });
+  },
+
+  translateCountryText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/countries/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_COUNTRY_LIST"
+    });
+  },
+
   createCountry(objBody: {
     strCountryCode: string;
     strCountryName: string;
     strCurrencyCode: string;
     strPhoneCode: string | null;
     blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strCountryName: string }>;
   }) {
     return requestApi<CountryApiRecord>({
       strPath: "/masters/countries",
@@ -1121,6 +1445,8 @@ export const masterApiService = {
     strCurrencyCode: string;
     strPhoneCode: string | null;
     blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strCountryName: string }>;
   }) {
     return requestApi<CountryApiRecord>({
       strPath: `/masters/countries/${intID}`,
@@ -1156,11 +1482,48 @@ export const masterApiService = {
     });
   },
 
+  getState(intID: number, intLanguageID?: number | null) {
+    return requestApi<StateApiRecord>({
+      strPath: `/masters/states/${intID}`,
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_STATE_LIST"
+    });
+  },
+
+  getStateFormOptions(intLanguageID?: number | null) {
+    return requestApi<StateFormOptionsApiRecord>({
+      strPath: "/masters/states/form-options",
+      strMethod: "GET",
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: "MASTER_STATE_LIST"
+    });
+  },
+
+  translateStateText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: "/masters/states/translate",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "MASTER_STATE_LIST"
+    });
+  },
+
   createState(objBody: {
     intCountryID: number;
     strStateCode: string;
     strStateName: string;
     blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strStateName: string }>;
   }) {
     return requestApi<StateApiRecord>({
       strPath: "/masters/states",
@@ -1175,6 +1538,8 @@ export const masterApiService = {
     strStateCode: string;
     strStateName: string;
     blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strStateName: string }>;
   }) {
     return requestApi<StateApiRecord>({
       strPath: `/masters/states/${intID}`,

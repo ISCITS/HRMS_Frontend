@@ -89,20 +89,40 @@ export function toDepartmentFormValues(
 }
 
 function toPayload(dicValues: DepartmentFormValues) {
-  const intDefaultLanguageID = Number(dicValues.lstTexts[0]?.intLanguageID || 1);
+  const intDefaultLanguageID = Number(dicValues.lstTexts[0]?.intLanguageID || authHelpers.getLanguageID() || 1);
+  const dicPrimaryText = dicValues.lstTexts.find(
+    (dicText) =>
+      Number(dicText.intLanguageID) === intDefaultLanguageID &&
+      dicText.strDepartmentName.trim()
+  );
+  const strPrimaryDepartmentName =
+    dicPrimaryText?.strDepartmentName.trim() || dicValues.name.trim();
+  const dicTextsByLanguageID: Record<number, { intLanguageID: number; strDepartmentName: string; strDepartmentDescription: string | null }> = {};
+  for (const dicText of dicValues.lstTexts) {
+    const intLanguageID = Number(dicText.intLanguageID);
+    const strDepartmentName = dicText.strDepartmentName.trim();
+    if (!Number.isFinite(intLanguageID) || intLanguageID <= 0 || !strDepartmentName) {
+      continue;
+    }
+    dicTextsByLanguageID[intLanguageID] = {
+      intLanguageID,
+      strDepartmentName,
+      strDepartmentDescription: formatOptionalText(dicText.strDepartmentDescription),
+    };
+  }
+  dicTextsByLanguageID[intDefaultLanguageID] = {
+    intLanguageID: intDefaultLanguageID,
+    strDepartmentName: strPrimaryDepartmentName,
+    strDepartmentDescription:
+      dicTextsByLanguageID[intDefaultLanguageID]?.strDepartmentDescription ?? null,
+  };
   return {
     strDepartmentCode: dicValues.code.trim().toUpperCase(),
-    strDepartmentName: dicValues.name.trim(),
+    strDepartmentName: strPrimaryDepartmentName,
     strManagerName: "",
     blnIsActive: dicValues.status === "Active",
     intLanguageID: intDefaultLanguageID,
-    lstTexts: dicValues.lstTexts
-      .filter((dicText) => dicText.intLanguageID !== "" && dicText.strDepartmentName.trim())
-      .map((dicText) => ({
-        intLanguageID: Number(dicText.intLanguageID),
-        strDepartmentName: dicText.strDepartmentName.trim(),
-        strDepartmentDescription: formatOptionalText(dicText.strDepartmentDescription),
-      })),
+    lstTexts: Object.values(dicTextsByLanguageID),
   };
 }
 

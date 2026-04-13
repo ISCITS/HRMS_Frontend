@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  InputAdornment,
   MenuItem,
   Pagination,
   Snackbar,
@@ -28,21 +29,25 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import { DesignationApiRecord, masterApiService } from "@/services/master/MasterApiService";
+import { authHelpers } from "@/lib/auth";
+import { DesignationApiRecord, masterApiService, type SimpleMasterFormOptionsApiRecord } from "@/services/master/MasterApiService";
+import {
+  createEmptyDesignationTextRow,
+  createInitialDesignationForm,
+  designationService,
+  toDesignationFormValues,
+  type DesignationFormValues,
+  type DesignationTextFormValue,
+} from "@/features/employee/services/designationService";
 
 type DesignationStatus = "Active" | "Inactive";
 type DesignationMode = "add" | "edit" | "view";
 
 type DesignationRecord = {
   id: string;
-  code: string;
-  name: string;
-  status: DesignationStatus;
-};
-
-type DesignationForm = {
   code: string;
   name: string;
   status: DesignationStatus;
@@ -67,7 +72,7 @@ type ToastState = {
   strSeverity: "success" | "error";
 };
 
-const dicEmptyForm: DesignationForm = { code: "", name: "", status: "Active" };
+const dicEmptyForm = createInitialDesignationForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDesignations: DesignationRecord[] = [];
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -156,11 +161,14 @@ export default function DesignationMasterPanel() {
   const { t } = useModuleLabels("designation");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstDesignationModuleCodes);
   const [lstDesignations, setLstDesignations] = useState<DesignationRecord[]>(lstDefaultDesignations);
+  const [objFormOptions, setObjFormOptions] = useState<SimpleMasterFormOptionsApiRecord>({ lstLanguages: [] });
   const [strMode, setStrMode] = useState<DesignationMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingDesignationId, setStrEditingDesignationId] = useState("");
-  const [dicForm, setDicForm] = useState<DesignationForm>(dicEmptyForm);
-  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof DesignationForm, string>>>({});
+  const [dicForm, setDicForm] = useState<DesignationFormValues>(dicEmptyForm);
+  const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
@@ -170,6 +178,7 @@ export default function DesignationMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -290,6 +299,157 @@ export default function DesignationMasterPanel() {
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
+  const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID() ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
+    intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strDesignationName: string,
+    strDesignationCode: string,
+    lstExistingTexts: DesignationTextFormValue[],
+  ): DesignationTextFormValue {
+    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === intLanguageID);
+    const dicExistingText = lstExistingTexts.find((dicText) => Number(dicText.intLanguageID) === intLanguageID);
+    return {
+      ...createEmptyDesignationTextRow(),
+      ...dicExistingText,
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText?.strLanguageName ?? "",
+      strDesignationName,
+      strDesignationCode,
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: DesignationFormValues) {
+    const dicDefaultRow = buildFixedLanguageRow(
+      intDefaultLanguageID,
+      dicValues.name,
+      dicValues.code,
+      dicValues.lstTexts,
+    );
+    const dicSecondaryExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID,
+    );
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strDesignationName ?? "",
+      dicValues.code,
+      dicValues.lstTexts,
+    );
+    return {
+      ...dicValues,
+      lstTexts: [dicDefaultRow, dicSecondaryRow],
+    };
+  }
+
+  function syncEnglishDesignationName(strDesignationName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows(dicPrevious);
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0
+          ? { ...dicText, strDesignationName }
+          : dicText),
+      };
+    });
+  }
+
+  function syncDesignationCode(strDesignationCode: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => ({
+        ...dicText,
+        strDesignationCode,
+      })),
+    }));
+  }
+
+  function updateTextRow(
+    strRowID: string,
+    strField: keyof DesignationTextFormValue,
+    objValue: string | number,
+  ) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => {
+        if (dicText.strRowID !== strRowID) {
+          return dicText;
+        }
+        if (strField === "intLanguageID") {
+          const dicLanguage = objFormOptions.lstLanguages.find((dicOption) => dicOption.intID === Number(objValue));
+          return {
+            ...dicText,
+            intLanguageID: Number(objValue),
+            strLanguageName: dicLanguage?.strLabel ?? "",
+          };
+        }
+        return { ...dicText, [strField]: objValue };
+      }),
+    }));
+  }
+
+  async function translateTextRow(strRowID: string, intLanguageID: number) {
+    const dicSelectedLanguage = objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intLanguageID);
+    const strSourceDesignationName = dicForm.name.trim();
+
+    if (!dicSelectedLanguage || intLanguageID === intDefaultLanguageID || !strSourceDesignationName) {
+      return;
+    }
+
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    const strLastTranslatedSource = (dicLastTranslatedSourceByRow[strRowID] ?? "").trim();
+    const blnShouldTranslate =
+      !dicCurrentRow?.strDesignationName.trim() || strLastTranslatedSource !== strSourceDesignationName;
+
+    if (!blnShouldTranslate) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const strTranslatedName = await designationService.translateDesignationText(
+        strSourceDesignationName,
+        intDefaultLanguageID,
+        intLanguageID,
+      );
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? {
+              ...dicText,
+              intLanguageID,
+              strLanguageName: dicSelectedLanguage.strLabel,
+              strDesignationName: strTranslatedName,
+            }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({
+        ...dicPrevious,
+        [strRowID]: strSourceDesignationName,
+      }));
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicDesignationLabels.requestFailed, "error");
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    const intTargetLanguageID =
+      Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID;
+    if (!intTargetLanguageID || intTargetLanguageID === intDefaultLanguageID) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, intTargetLanguageID);
+  }
 
   // Filter draft values are only committed on Search/Clear to keep the grid interactions predictable.
   const lstFilteredDesignations = useMemo(() => lstDesignations.filter((dicDesignation) => {
@@ -306,17 +466,111 @@ export default function DesignationMasterPanel() {
   const blnAllVisibleSelected = lstVisibleDesignations.length > 0 && lstVisibleDesignations.every((dicDesignation) => lstSelectedIds.includes(dicDesignation.id));
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleDesignations.some((dicDesignation) => dicDesignation.id === strId));
 
+  useEffect(() => {
+    designationService.getDesignationFormOptions()
+      .then((dicOptions) => setObjFormOptions(dicOptions))
+      .catch(() => undefined);
+  }, []);
+
+  async function ensureDesignationFormOptionsLoaded() {
+    if (objFormOptions.lstLanguages.length > 0) {
+      return objFormOptions;
+    }
+    const dicOptions = await designationService.getDesignationFormOptions();
+    setObjFormOptions(dicOptions);
+    return dicOptions;
+  }
+
+  useEffect(() => {
+    let blnMounted = true;
+    const lstLanguageIDs = Array.from(
+      new Set(
+        dicForm.lstTexts
+          .map((dicText) => Number(dicText.intLanguageID))
+          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0),
+      ),
+    );
+    const lstLanguageIDsToLoad = lstLanguageIDs.filter(
+      (intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID],
+    );
+    if (lstLanguageIDsToLoad.length === 0) {
+      return () => {
+        blnMounted = false;
+      };
+    }
+
+    async function loadRowLabels() {
+      const lstResponses = await Promise.all(
+        lstLanguageIDsToLoad.map(async (intLanguageID) => {
+          const objResponse = await labelService.getModuleLabels(intLanguageID, "designation");
+          return {
+            intLanguageID,
+            dicLabels: objResponse.labels ?? {},
+          };
+        }),
+      );
+      if (!blnMounted) {
+        return;
+      }
+      setDicRowLabelsByLanguageID((dicPrevious) => {
+        const dicNext = { ...dicPrevious };
+        for (const { intLanguageID, dicLabels } of lstResponses) {
+          dicNext[intLanguageID] = dicLabels;
+        }
+        return dicNext;
+      });
+    }
+
+    loadRowLabels().catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
+
+  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
+    const intResolvedLanguageID = Number(intLanguageID);
+    if (Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0) {
+      const dicLabels = dicRowLabelsByLanguageID[intResolvedLanguageID];
+      if (dicLabels?.[strKey]) {
+        return dicLabels[strKey];
+      }
+    }
+    return strFallback;
+  }
+
+  useEffect(() => {
+    if (objFormOptions.lstLanguages.length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
+
   function openDialog(strNextMode: DesignationMode, dicDesignation?: DesignationRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
     setStrEditingDesignationId(dicDesignation?.id ?? "");
     setDicErrors({});
-    setDicForm(dicDesignation ? {
-      code: dicDesignation.code,
-      name: dicDesignation.name,
-      status: dicDesignation.status
-    } : dicEmptyForm);
-    setBlnDialogOpen(true);
+    setDicTextTranslationLoading({});
+    setDicLastTranslatedSourceByRow({});
+    setBlnSubmitting(true);
+    ensureDesignationFormOptionsLoaded()
+      .then((dicOptions) => {
+        if (!dicDesignation || strNextMode === "add") {
+          setDicForm(ensureTenantLanguageRows(createInitialDesignationForm()));
+          setBlnDialogOpen(true);
+          return;
+        }
+        return designationService.getDesignation(Number(dicDesignation.id)).then((dicRecord) => {
+          setDicForm(
+            ensureTenantLanguageRows(
+              toDesignationFormValues(dicRecord, dicOptions),
+            ),
+          );
+          setBlnDialogOpen(true);
+        });
+      })
+      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDesignationLabels.requestFailed, "error"))
+      .finally(() => setBlnSubmitting(false));
   }
 
   function closeDialog() {
@@ -362,7 +616,7 @@ export default function DesignationMasterPanel() {
 
   function validateForm() {
     // Client-side checks mirror the backend rules so duplicate code/name errors surface before submit.
-    const dicNextErrors: Partial<Record<keyof DesignationForm, string>> = {};
+    const dicNextErrors: Partial<Record<"code" | "name", string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
     const strName = dicForm.name.trim();
 
@@ -395,16 +649,15 @@ export default function DesignationMasterPanel() {
     if (!validateForm()) {
       return;
     }
-    // Tenant scoping is resolved on the backend; the screen only posts designation fields the user can edit.
-    const objBody = {
-      strDesignationCode: dicForm.code.trim().toUpperCase(),
-      strDesignationName: dicForm.name.trim(),
-      blnIsActive: dicForm.status === "Active"
-    };
+    const dicPayload = ensureTenantLanguageRows({
+      ...dicForm,
+      code: dicForm.code.trim().toUpperCase(),
+      name: dicForm.name.trim(),
+    });
 
     const objRequest = strMode === "add"
-      ? masterApiService.createDesignation(objBody)
-      : masterApiService.updateDesignation(Number(strEditingDesignationId), objBody);
+      ? designationService.createDesignation(dicPayload)
+      : designationService.updateDesignation(Number(strEditingDesignationId), dicPayload);
 
     setBlnSubmitting(true);
     objRequest
@@ -601,7 +854,7 @@ export default function DesignationMasterPanel() {
                 return (
                   <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} /></td>
-                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} onToggle={() => toggleDesignationStatus(dicDesignation.id)} /></td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicDesignation.status === "Active"} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} onToggle={() => toggleDesignationStatus(dicDesignation.id)} /></td>
                     <td>{dicDesignation.name}</td>
                     <td>{dicDesignation.code}</td>
                     <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -623,7 +876,162 @@ export default function DesignationMasterPanel() {
         onPrimaryAction={saveDesignation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}><TextField label={`${dicDesignationLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField label={`${dicDesignationLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography><Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box></Box>}
+        paperClassName={styles.dialogPaper}
+        maxWidth="xl"
+        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeContent={
+          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 1.6,
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                alignItems: "start",
+              }}
+            >
+              <TextField
+                label={`${dicDesignationLabels.fieldName} *`}
+                value={dicForm.name}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value;
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                  syncEnglishDesignationName(strValue);
+                }}
+                error={Boolean(dicErrors.name)}
+                helperText={dicErrors.name}
+                fullWidth
+              />
+              <TextField
+                label={`${dicDesignationLabels.fieldCode} *`}
+                value={dicForm.code}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value.toUpperCase();
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: strValue }));
+                  syncDesignationCode(strValue);
+                }}
+                error={Boolean(dicErrors.code)}
+                helperText={dicErrors.code}
+                fullWidth
+              />
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
+                  {t("multilingual_text_help", "Add translated designation names for supported languages.")}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
+                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                  {t("add_language", "Add Language")}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleTranslateClick()}
+                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+                  sx={{
+                    minWidth: 108,
+                    borderRadius: "12px",
+                    background: "#2563eb",
+                    boxShadow: "none",
+                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                  }}
+                >
+                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
+                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                  ) : (
+                    t("translate", "Translate")
+                  )}
+                </Button>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.map((dicText, intIndex) => (
+                <Box
+                  key={dicText.strRowID}
+                  sx={{
+                    display: "grid",
+                    gap: 1.2,
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
+                    },
+                    alignItems: "start",
+                    border: "1px solid rgba(203,213,225,0.8)",
+                    borderRadius: "16px",
+                    p: 1.2,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <TextField
+                    select
+                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
+                    value={dicText.intLanguageID}
+                    InputLabelProps={{ shrink: true }}
+                    SelectProps={{
+                      displayEmpty: true,
+                      renderValue: (objValue) => {
+                        const intSelectedLanguageID = Number(objValue);
+                        return (
+                          objFormOptions.lstLanguages.find(
+                            (dicLanguage) => dicLanguage.intID === intSelectedLanguageID,
+                          )?.strLabel ?? dicText.strLanguageName ?? ""
+                        );
+                      },
+                    }}
+                    disabled
+                    fullWidth
+                  >
+                    {objFormOptions.lstLanguages.map((dicLanguage) => (
+                      <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label={getRowLabel(dicText.intLanguageID, "field_name", dicDesignationLabels.fieldName)}
+                    value={dicText.strDesignationName}
+                    onChange={(objEvent) => {
+                      const strValue = objEvent.target.value;
+                      updateTextRow(dicText.strRowID, "strDesignationName", strValue);
+                      if (intIndex === 0) {
+                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                      }
+                    }}
+                    disabled={strMode === "view" || intIndex === 0}
+                    InputProps={{
+                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                        ? (
+                            <InputAdornment position="end">
+                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                            </InputAdornment>
+                          )
+                        : undefined,
+                    }}
+                    fullWidth
+                  />
+                  <TextField
+                    label={getRowLabel(dicText.intLanguageID, "field_code", dicDesignationLabels.fieldCode)}
+                    value={dicText.strDesignationCode}
+                    disabled
+                    fullWidth
+                  />
+                </Box>
+              ))}
+            </Box>
+
+            <Box className={styles.switchRow}>
+              <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
+              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            </Box>
+          </Box>
+        }
       />
 
       <CommonConfirmDialog

@@ -758,7 +758,7 @@ export default function UserMasterPanel() {
                       <Checkbox checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
                     </td>
                     <td>
-                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicUser)} onEdit={() => openDialog("edit", dicUser)} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
+                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => openDialog("view", dicUser)} onEdit={() => openDialog("edit", dicUser)} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
                     </td>
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>

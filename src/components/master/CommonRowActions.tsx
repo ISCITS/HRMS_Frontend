@@ -50,7 +50,11 @@ export default function CommonRowActions({
         </button>
       ) : null}
       {blnCanToggle && onToggle ? (
-        <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={onToggle}>
+        <button
+          className={`${styles.iconButton} ${styles.toggleIcon} ${blnToggleActive ? styles.toggleActiveIcon : styles.toggleInactiveIcon}`}
+          type="button"
+          onClick={onToggle}
+        >
           {blnToggleActive ? <ToggleOnRoundedIcon fontSize="small" /> : <ToggleOffRoundedIcon fontSize="small" />}
         </button>
       ) : null}

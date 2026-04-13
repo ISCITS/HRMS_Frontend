@@ -365,6 +365,7 @@ export default function TaxRegimeListPage() {
                         blnCanView={blnCanView}
                         blnCanEdit={blnCanEdit}
                         blnCanToggle={blnCanEdit}
+                        blnToggleActive={dicRow.blnIsActive}
                         onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
                         onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
                         onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}

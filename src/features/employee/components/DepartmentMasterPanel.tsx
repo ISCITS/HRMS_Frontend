@@ -30,6 +30,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { authHelpers } from "@/lib/auth";
@@ -190,6 +191,7 @@ export default function DepartmentMasterPanel() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
 
   const lstResolvedDepartmentModuleCodes = useMemo(() => {
     const lstDynamicMatches = Object.keys(objRights.dicAllowedActions ?? {}).filter((strModuleCode) => {
@@ -473,6 +475,61 @@ export default function DepartmentMasterPanel() {
       blnMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let blnMounted = true;
+    const lstLanguageIDs = Array.from(
+      new Set(
+        dicForm.lstTexts
+          .map((dicText) => Number(dicText.intLanguageID))
+          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0)
+      )
+    );
+    const lstLanguageIDsToLoad = lstLanguageIDs.filter((intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID]);
+    if (lstLanguageIDsToLoad.length === 0) {
+      return () => {
+        blnMounted = false;
+      };
+    }
+
+    async function loadRowLabels() {
+      const lstResponses = await Promise.all(
+        lstLanguageIDsToLoad.map(async (intLanguageID) => {
+          const objResponse = await labelService.getModuleLabels(intLanguageID, "department");
+          return {
+            intLanguageID,
+            dicLabels: objResponse.labels ?? {},
+          };
+        })
+      );
+      if (!blnMounted) {
+        return;
+      }
+      setDicRowLabelsByLanguageID((dicPrevious) => {
+        const dicNext = { ...dicPrevious };
+        for (const { intLanguageID, dicLabels } of lstResponses) {
+          dicNext[intLanguageID] = dicLabels;
+        }
+        return dicNext;
+      });
+    }
+
+    loadRowLabels().catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
+
+  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
+    const intResolvedLanguageID = Number(intLanguageID);
+    if (Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0) {
+      const dicLabels = dicRowLabelsByLanguageID[intResolvedLanguageID];
+      if (dicLabels?.[strKey]) {
+        return dicLabels[strKey];
+      }
+    }
+    return strFallback;
+  }
 
   useEffect(() => {
     if (objFormOptions.lstLanguages.length === 0) {
@@ -836,7 +893,7 @@ export default function DepartmentMasterPanel() {
                 return (
                   <tr key={dicDepartment.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} /></td>
-                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicDepartment)} onEdit={() => openDialog("edit", dicDepartment)} onDelete={() => deleteDepartment(dicDepartment.id)} onToggle={() => toggleDepartmentStatus(dicDepartment.id)} /></td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicDepartment.status === "Active"} onView={() => openDialog("view", dicDepartment)} onEdit={() => openDialog("edit", dicDepartment)} onDelete={() => deleteDepartment(dicDepartment.id)} onToggle={() => toggleDepartmentStatus(dicDepartment.id)} /></td>
                     <td>{dicDepartment.name}</td>
                     <td>{dicDepartment.code}</td>
                     <td><span className={`${styles.statusPill} ${dicDepartment.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDepartment.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -965,7 +1022,7 @@ export default function DepartmentMasterPanel() {
                 >
                   <TextField
                     select
-                    label={t("language", "Language")}
+                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
                     value={dicText.intLanguageID}
                     disabled
                     fullWidth
@@ -975,7 +1032,7 @@ export default function DepartmentMasterPanel() {
                     ))}
                   </TextField>
                   <TextField
-                    label={dicDepartmentLabels.fieldName}
+                    label={getRowLabel(dicText.intLanguageID, "field_name", dicDepartmentLabels.fieldName)}
                     value={dicText.strDepartmentName}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
@@ -998,7 +1055,7 @@ export default function DepartmentMasterPanel() {
                     fullWidth
                   />
                   <TextField
-                    label={dicDepartmentLabels.fieldCode}
+                    label={getRowLabel(dicText.intLanguageID, "field_code", dicDepartmentLabels.fieldCode)}
                     value={dicText.strDepartmentCode}
                     disabled
                     fullWidth
