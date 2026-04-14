@@ -942,7 +942,7 @@ export default function CostCenterMasterPanel() {
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
                     <CircularProgress size={18} sx={{ color: "#ffffff" }} />
                   ) : (
-                    t("translate", "Translate")
+                    t("translate", "AI Translate")
                   )}
                 </Button>
               </Box>

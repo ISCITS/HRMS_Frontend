@@ -6,7 +6,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, CircularProgress, InputAdornment, MenuItem, Snackbar, Switch, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -17,14 +17,16 @@ import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { countryService, createEmptyCountryTextRow, createInitialCountryForm, toCountryFormValues, type CountryFormValues, type CountryTextFormValue } from "@/features/employee/services/countryService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { labelService } from "@/features/labels/services/labelService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import { type CountryApiRecord, masterApiService } from "@/services/master/MasterApiService";
+import { authHelpers } from "@/lib/auth";
+import { type CountryApiRecord, type SimpleMasterFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type Status = "Active" | "Inactive";
 type Mode = "add" | "edit" | "view";
 type CountryRecord = { id: string; code: string; name: string; currencyCode: string; phoneCode: string; status: Status };
-type CountryForm = { code: string; name: string; currencyCode: string; phoneCode: string; status: Status };
 type SearchForm = { code: string; name: string; status: "All" | Status };
 type ConfirmDialogState = { strTitle: string; strMessage: string; strConfirmLabel: string; fnOnConfirm: () => Promise<void> };
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
@@ -39,7 +41,6 @@ type CountryTableRow = {
   status: ReactNode;
 };
 
-const dicEmptyForm: CountryForm = { code: "", name: "", currencyCode: "", phoneCode: "", status: "Active" };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstCountryModuleCodes = ["COUNTRY", "COUNTRIES"];
 
@@ -59,11 +60,15 @@ export default function CountryMasterPanel() {
   const { t } = useModuleLabels("country");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstCountryModuleCodes);
   const [lstCountries, setLstCountries] = useState<CountryRecord[]>([]);
+  const [objFormOptions, setObjFormOptions] = useState<SimpleMasterFormOptionsApiRecord>({ lstLanguages: [] });
   const [strMode, setStrMode] = useState<Mode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingId, setStrEditingId] = useState("");
-  const [dicForm, setDicForm] = useState<CountryForm>(dicEmptyForm);
-  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof CountryForm, string>>>({});
+  const [dicForm, setDicForm] = useState<CountryFormValues>(createInitialCountryForm());
+  const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name" | "currencyCode", string>>>({});
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
+  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
@@ -106,6 +111,7 @@ export default function CountryMasterPanel() {
     fieldCurrencyCode: t("field_currency_code"),
     fieldPhoneCode: t("field_phone_code"),
     fieldStatus: t("field_status"),
+    fieldIsActive: t("field_is_active", "Is Active"),
     saveSuccess: t("save_success"),
     updateSuccess: t("update_success"),
     deleteSuccess: t("delete_success"),
@@ -149,6 +155,114 @@ export default function CountryMasterPanel() {
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
 
+  const intDefaultLanguageID =
+    authHelpers.getLanguageID() ??
+    objFormOptions.lstLanguages[0]?.intID ??
+    1;
+
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID() ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
+    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
+    intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strCountryName: string,
+    strCountryCode: string,
+    lstExistingTexts: CountryTextFormValue[],
+  ): CountryTextFormValue {
+    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === intLanguageID);
+    const dicExistingText = lstExistingTexts.find((dicText) => Number(dicText.intLanguageID) === intLanguageID);
+    return {
+      ...createEmptyCountryTextRow(),
+      ...dicExistingText,
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText?.strLanguageName ?? "",
+      strCountryName,
+      strCountryCode,
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: CountryFormValues) {
+    const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.name, dicValues.code, dicValues.lstTexts);
+    const dicSecondaryExistingText = dicValues.lstTexts.find((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID);
+    const dicSecondaryRow = buildFixedLanguageRow(intSecondaryLanguageID, dicSecondaryExistingText?.strCountryName ?? "", dicValues.code, dicValues.lstTexts);
+    return { ...dicValues, lstTexts: [dicDefaultRow, dicSecondaryRow] };
+  }
+
+  function syncEnglishCountryName(strCountryName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows(dicPrevious);
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0 ? { ...dicText, strCountryName } : dicText),
+      };
+    });
+  }
+
+  function syncCountryCode(strCountryCode: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => ({ ...dicText, strCountryCode })),
+    }));
+  }
+
+  function updateTextRow(strRowID: string, strField: keyof CountryTextFormValue, objValue: string | number) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => {
+        if (dicText.strRowID !== strRowID) {
+          return dicText;
+        }
+        if (strField === "intLanguageID") {
+          const dicLanguage = objFormOptions.lstLanguages.find((dicOption) => dicOption.intID === Number(objValue));
+          return { ...dicText, intLanguageID: Number(objValue), strLanguageName: dicLanguage?.strLabel ?? "" };
+        }
+        return { ...dicText, [strField]: objValue };
+      }),
+    }));
+  }
+
+  async function translateTextRow(strRowID: string, intLanguageID: number) {
+    const dicSelectedLanguage = objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intLanguageID);
+    const strSourceCountryName = dicForm.name.trim();
+
+    if (!dicSelectedLanguage || intLanguageID === intDefaultLanguageID || !strSourceCountryName) {
+      return;
+    }
+
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    const strLastTranslatedSource = (dicLastTranslatedSourceByRow[strRowID] ?? "").trim();
+    if (dicCurrentRow?.strCountryName.trim() && strLastTranslatedSource === strSourceCountryName) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const strTranslatedName = await countryService.translateCountryText(strSourceCountryName, intDefaultLanguageID, intLanguageID);
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? { ...dicText, intLanguageID, strLanguageName: dicSelectedLanguage.strLabel, strCountryName: strTranslatedName }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({ ...dicPrevious, [strRowID]: strSourceCountryName }));
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error");
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
+  }
+
   async function loadCountries() {
     if (!canViewAny()) {
       setLstCountries([]);
@@ -172,21 +286,75 @@ export default function CountryMasterPanel() {
   }
 
   useEffect(() => {
-    if (blnRightsLoading) {
-      return;
-    }
-    if (!canViewAny()) {
-      setLstCountries([]);
-      setLstSelectedIds([]);
-      setBlnLoading(false);
-      return;
-    }
-    void loadCountries();
-  }, [blnRightsLoading]);
+    let blnMounted = true;
+    countryService.getCountryFormOptions()
+      .then((dicOptions) => {
+        if (blnMounted) {
+          setObjFormOptions(dicOptions);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, []);
 
-  function setFormField<TKey extends keyof CountryForm>(strField: TKey, objValue: CountryForm[TKey]) {
-    setDicForm((objPrevious) => ({ ...objPrevious, [strField]: objValue }));
-    setDicErrors((objPrevious) => objPrevious[strField] ? { ...objPrevious, [strField]: undefined } : objPrevious);
+  useEffect(() => {
+    if (objFormOptions.lstLanguages.length > 0) {
+      setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+    }
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
+
+  useEffect(() => {
+    let blnMounted = true;
+    const lstLanguageIDs = Array.from(
+      new Set(
+        dicForm.lstTexts
+          .map((dicText) => Number(dicText.intLanguageID))
+          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0),
+      ),
+    );
+    const lstLanguageIDsToLoad = lstLanguageIDs.filter((intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID]);
+    if (lstLanguageIDsToLoad.length === 0) {
+      return () => {
+        blnMounted = false;
+      };
+    }
+
+    void Promise.all(
+      lstLanguageIDsToLoad.map(async (intLanguageID) => ({
+        intLanguageID,
+        dicLabels: (await labelService.getModuleLabels(intLanguageID, "country")).labels ?? {},
+      })),
+    ).then((lstResponses) => {
+      if (!blnMounted) {
+        return;
+      }
+      setDicRowLabelsByLanguageID((dicPrevious) => {
+        const dicNext = { ...dicPrevious };
+        for (const { intLanguageID, dicLabels } of lstResponses) {
+          dicNext[intLanguageID] = dicLabels;
+        }
+        return dicNext;
+      });
+    });
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
+
+  useEffect(() => {
+    if (!blnRightsLoading) {
+      void loadCountries();
+    }
+  }, [blnRightsLoading, blnCanView]);
+
+  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
+    const intResolvedLanguageID = Number(intLanguageID);
+    return Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0
+      ? dicRowLabelsByLanguageID[intResolvedLanguageID]?.[strKey] ?? strFallback
+      : strFallback;
   }
 
   const lstFiltered = useMemo(() => lstCountries.filter((dicCountry) => {
@@ -216,8 +384,8 @@ export default function CountryMasterPanel() {
           blnCanEdit={blnCanEdit}
           blnCanDelete={blnCanDelete}
           blnCanToggle={blnCanChangeStatus}
-          onView={() => openDialog("view", dicCountry)}
-          onEdit={() => openDialog("edit", dicCountry)}
+          onView={() => void openDialog("view", dicCountry)}
+          onEdit={() => void openDialog("edit", dicCountry)}
           onDelete={() => deleteRecord(dicCountry.id)}
           onToggle={() => toggleStatus(dicCountry.id)}
         />
@@ -258,17 +426,29 @@ export default function CountryMasterPanel() {
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus, lstFiltered.length]);
 
-  function openDialog(strNextMode: Mode, dicCountry?: CountryRecord) {
+  async function ensureCountryFormOptionsLoaded() {
+    if (objFormOptions.lstLanguages.length > 0) {
+      return objFormOptions;
+    }
+    const dicOptions = await countryService.getCountryFormOptions();
+    setObjFormOptions(dicOptions);
+    return dicOptions;
+  }
+
+  async function openDialog(strNextMode: Mode, dicCountry?: CountryRecord) {
+    const dicOptions = await ensureCountryFormOptionsLoaded();
     setStrMode(strNextMode);
     setStrEditingId(dicCountry?.id ?? "");
     setDicErrors({});
-    setDicForm(dicCountry ? {
-      code: dicCountry.code,
-      name: dicCountry.name,
-      currencyCode: dicCountry.currencyCode,
-      phoneCode: dicCountry.phoneCode,
-      status: dicCountry.status,
-    } : dicEmptyForm);
+    setDicLastTranslatedSourceByRow({});
+    setDicTextTranslationLoading({});
+    if (!dicCountry) {
+      setDicForm(ensureTenantLanguageRows(createInitialCountryForm()));
+      setBlnDialogOpen(true);
+      return;
+    }
+    const dicCountryDetail = await countryService.getCountry(Number(dicCountry.id), intDefaultLanguageID);
+    setDicForm(ensureTenantLanguageRows(toCountryFormValues(dicCountryDetail, dicOptions)));
     setBlnDialogOpen(true);
   }
 
@@ -311,7 +491,7 @@ export default function CountryMasterPanel() {
   }
 
   function validateForm() {
-    const dicNextErrors: Partial<Record<keyof CountryForm, string>> = {};
+    const dicNextErrors: Partial<Record<"code" | "name" | "currencyCode", string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
     const strName = dicForm.name.trim();
     const strCurrencyCode = dicForm.currencyCode.trim().toUpperCase();
@@ -343,18 +523,10 @@ export default function CountryMasterPanel() {
       return;
     }
 
-    const objBody = {
-      strCountryCode: dicForm.code.trim().toUpperCase(),
-      strCountryName: dicForm.name.trim(),
-      strCurrencyCode: dicForm.currencyCode.trim().toUpperCase(),
-      strPhoneCode: dicForm.phoneCode.trim() || null,
-      blnIsActive: dicForm.status === "Active",
-    };
-
     setBlnSubmitting(true);
 
     void runFrontendAction({
-      fnAction: () => strMode === "add" ? masterApiService.createCountry(objBody) : masterApiService.updateCountry(Number(strEditingId), objBody),
+      fnAction: () => strMode === "add" ? countryService.createCountry(dicForm) : countryService.updateCountry(Number(strEditingId), dicForm),
       fnOnSuccess: async () => {
         await loadCountries();
         closeDialog();
@@ -505,7 +677,8 @@ export default function CountryMasterPanel() {
             showPaginationSummary
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
@@ -528,15 +701,151 @@ export default function CountryMasterPanel() {
         paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={(
-          <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-            <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => setFormField("name", objEvent.target.value)} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />
-            <TextField label={`${dicModuleLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => setFormField("code", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth />
-            <TextField label={`${dicModuleLabels.fieldCurrencyCode} *`} value={dicForm.currencyCode} disabled={strMode === "view"} onChange={(objEvent) => setFormField("currencyCode", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.currencyCode)} helperText={dicErrors.currencyCode} fullWidth />
-            <TextField label={dicModuleLabels.fieldPhoneCode} value={dicForm.phoneCode} disabled={strMode === "view"} onChange={(objEvent) => setFormField("phoneCode", objEvent.target.value)} fullWidth />
-            <TextField select label={dicModuleLabels.fieldStatus} value={dicForm.status} disabled={strMode === "view"} onChange={(objEvent) => setFormField("status", objEvent.target.value as Status)} fullWidth>
-              <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
-              <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
-            </TextField>
+          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+            <Box sx={{ display: "grid", gap: 1.6, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
+              <TextField
+                label={`${dicModuleLabels.fieldName} *`}
+                value={dicForm.name}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value;
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                  syncEnglishCountryName(strValue);
+                }}
+                error={Boolean(dicErrors.name)}
+                helperText={dicErrors.name}
+                fullWidth
+              />
+              <TextField
+                label={`${dicModuleLabels.fieldCode} *`}
+                value={dicForm.code}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value.toUpperCase();
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: strValue }));
+                  syncCountryCode(strValue);
+                }}
+                error={Boolean(dicErrors.code)}
+                helperText={dicErrors.code}
+                fullWidth
+              />
+              <TextField
+                label={`${dicModuleLabels.fieldCurrencyCode} *`}
+                value={dicForm.currencyCode}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value.toUpperCase();
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, currencyCode: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, currencyCode: strValue }));
+                }}
+                error={Boolean(dicErrors.currencyCode)}
+                helperText={dicErrors.currencyCode}
+                fullWidth
+              />
+              <TextField
+                label={dicModuleLabels.fieldPhoneCode}
+                value={dicForm.phoneCode}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, phoneCode: objEvent.target.value }))}
+                fullWidth
+              />
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
+                  {t("multilingual_text_help", "Add translated country names for supported languages.")}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
+                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                  {t("add_language", "Add Language")}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleTranslateClick()}
+                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+                  sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
+                >
+                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
+                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                  ) : (
+                    t("translate", "AI Translate")
+                  )}
+                </Button>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.map((dicText, intIndex) => (
+                <Box
+                  key={dicText.strRowID}
+                  sx={{
+                    display: "grid",
+                    gap: 1.2,
+                    gridTemplateColumns: { xs: "1fr", md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)" },
+                    alignItems: "start",
+                    border: "1px solid rgba(203,213,225,0.8)",
+                    borderRadius: "16px",
+                    p: 1.2,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <TextField
+                    select
+                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
+                    value={dicText.intLanguageID}
+                    InputLabelProps={{ shrink: true }}
+                    SelectProps={{
+                      displayEmpty: true,
+                      renderValue: (objValue) =>
+                        objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(objValue))?.strLabel ??
+                        dicText.strLanguageName ??
+                        "",
+                    }}
+                    disabled
+                    fullWidth
+                  >
+                    {objFormOptions.lstLanguages.map((dicLanguage) => (
+                      <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
+                    value={dicText.strCountryName}
+                    onChange={(objEvent) => {
+                      const strValue = objEvent.target.value;
+                      updateTextRow(dicText.strRowID, "strCountryName", strValue);
+                      if (intIndex === 0) {
+                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
+                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
+                      }
+                    }}
+                    disabled={strMode === "view" || intIndex === 0}
+                    InputProps={{
+                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                        ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                        : undefined,
+                    }}
+                    fullWidth
+                  />
+                  <TextField
+                    label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
+                    value={dicText.strCountryCode}
+                    disabled
+                    fullWidth
+                  />
+                </Box>
+              ))}
+            </Box>
+
+            <Box className={styles.switchRow}>
+              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
+              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            </Box>
           </Box>
         )}
       />
