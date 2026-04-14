@@ -235,14 +235,28 @@ export default function CountryMasterPanel() {
   }), [blnCanChangeStatus, blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFiltered, lstSelectedIds]);
 
   const lstTableColumns = useMemo<CommonTableColumn<CountryTableRow>[]>(() => [
-    { field: "select", headerName: "", width: 64, sortable: false, filterable: false, exportable: false },
+    {
+      field: "select",
+      headerName: (
+        <Checkbox
+          checked={blnAllFilteredSelected}
+          indeterminate={blnSomeFilteredSelected}
+          onChange={toggleSelectAll}
+          disabled={lstFiltered.length === 0}
+        />
+      ),
+      width: 64,
+      sortable: false,
+      filterable: false,
+      exportable: false
+    },
     { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 150, sortable: false, filterable: false, exportable: false },
     { field: "name", headerName: dicModuleLabels.tableName },
     { field: "code", headerName: dicModuleLabels.tableCode },
     { field: "currencyCode", headerName: dicModuleLabels.tableCurrency },
     { field: "phoneCode", headerName: dicModuleLabels.tablePhoneCode },
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus]);
+  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus, lstFiltered.length]);
 
   function openDialog(strNextMode: Mode, dicCountry?: CountryRecord) {
     setStrMode(strNextMode);
@@ -483,6 +497,8 @@ export default function CountryMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="country-master"
             showExportOptions={blnCanExport}
@@ -490,7 +506,6 @@ export default function CountryMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
-                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
@@ -508,6 +523,10 @@ export default function CountryMasterPanel() {
         onPrimaryAction={saveCountry}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
+        paperClassName={styles.dialogPaper}
+        maxWidth="xl"
+        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={(
           <Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
             <TextField label={`${dicModuleLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => setFormField("name", objEvent.target.value)} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth />

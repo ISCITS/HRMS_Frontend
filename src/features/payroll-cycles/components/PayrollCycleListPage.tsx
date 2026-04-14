@@ -1,6 +1,7 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -223,7 +224,13 @@ export default function PayrollCycleListPage() {
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Box className={styles.page}>
+      <Box className={styles.topBar}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+          {t("back_button", "Back")}
+        </Button>
+      </Box>
+
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <TextField label={t("cycle_code", "Cycle Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
@@ -293,6 +300,6 @@ export default function PayrollCycleListPage() {
           {objToast.strMessage}
         </Alert>
       </Snackbar>
-    </Stack>
+    </Box>
   );
 }

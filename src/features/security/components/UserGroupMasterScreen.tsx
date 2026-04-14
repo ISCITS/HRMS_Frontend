@@ -247,13 +247,27 @@ export default function UserGroupMasterScreen() {
     };
   }), [blnCanChangeStatus, blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords, lstSelectedIds]);
   const lstTableColumns = useMemo<CommonTableColumn<UserGroupTableRow>[]>(() => [
-    { field: "select", headerName: "", width: 64, sortable: false, filterable: false, exportable: false },
+    {
+      field: "select",
+      headerName: (
+        <Checkbox
+          checked={blnAllFilteredSelected}
+          indeterminate={blnSomeFilteredSelected}
+          onChange={toggleSelectAll}
+          disabled={lstFilteredRecords.length === 0}
+        />
+      ),
+      width: 64,
+      sortable: false,
+      filterable: false,
+      exportable: false
+    },
     { field: "rowActions", headerName: dicLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
     { field: "strGroupCode", headerName: dicLabels.tableCode },
     { field: "strGroupName", headerName: dicLabels.tableName },
     { field: "strGroupDescription", headerName: dicLabels.tableDescription },
     { field: "status", headerName: dicLabels.tableIsActive, sortable: false, filterable: false },
-  ], [dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableIsActive, dicLabels.tableName]);
+  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
 
   function toggleSelection(intUserGroupID: number) {
     setLstSelectedIds((lstPrevious) =>
@@ -461,7 +475,6 @@ export default function UserGroupMasterScreen() {
                       {dicLabels.addButton}
                     </Button>
                   ) : null}
-                  <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFilteredRecords.length === 0} />
                 </Box>
               }
               getRowSx={(objRow) => lstSelectedIds.includes(objRow.intID) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}

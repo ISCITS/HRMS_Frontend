@@ -103,6 +103,9 @@ function getHeaderModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/states")) {
     return "state";
   }
+  if (strLowerPath.startsWith("/version-logs")) {
+    return "version_log";
+  }
   if (strLowerPath.startsWith("/security/user-groups")) {
     return "user_group";
   }

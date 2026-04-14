@@ -1,13 +1,11 @@
 "use client";
 
-import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
-import SearchIcon from "@mui/icons-material/Search";
-import TableViewOutlinedIcon from "@mui/icons-material/TableViewOutlined";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import {
   Box,
   Button,
-  InputAdornment,
   MenuItem,
+  Pagination,
   Paper,
   SxProps,
   Stack,
@@ -15,7 +13,6 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TablePagination,
   TableRow,
   TableSortLabel,
   TextField,
@@ -24,12 +21,13 @@ import {
 } from "@mui/material";
 import { ReactNode, isValidElement, useEffect, useMemo, useState } from "react";
 import dicConstant from "@/constants/Constant.json";
+import styles from "@/components/master/MasterScreen.module.css";
 
 type CellAlign = "left" | "right" | "center";
 
 export type DataGridColumn<T extends Record<string, ReactNode>> = {
   field: keyof T;
-  headerName: string;
+  headerName: ReactNode;
   align?: CellAlign;
   width?: number;
   sortable?: boolean;
@@ -85,44 +83,39 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   - If data is empty after filtering, renders emptyMessage row (no exception thrown).
   - If PDF popup is blocked, export handler safely returns without crashing.
   */
-  const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<keyof T | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
   const orderedColumns = useMemo(() => {
-    const lstActionColumns = columns.filter((column) => String(column.field) === "action");
-    const lstOtherColumns = columns.filter((column) => String(column.field) !== "action");
-    return [...lstActionColumns, ...lstOtherColumns];
+    const getColumnPriority = (column: DataGridColumn<T>) => {
+      const strField = String(column.field);
+      if (strField === "select") {
+        return 0;
+      }
+      if (strField === "action" || strField === "rowActions") {
+        return 1;
+      }
+      return 2;
+    };
+
+    return [...columns].sort((objLeft, objRight) => getColumnPriority(objLeft) - getColumnPriority(objRight));
   }, [columns]);
+  const intMinimumTableWidth = useMemo(
+    () => orderedColumns.reduce((intTotal, column) => intTotal + (column.width ?? 160), 0),
+    [orderedColumns]
+  );
 
   const filteredAndSortedRows = useMemo(() => {
     /*
     Logical flow:
-    1) Apply text filtering on filterable columns.
-    2) Apply sorting on the selected sortable column.
+    Apply sorting on the selected sortable column.
     */
-    const searchableColumns = orderedColumns.filter((column) => column.filterable !== false);
-
-    const filtered = rows.filter((row) => {
-      if (!searchTerm.trim()) {
-        return true;
-      }
-      const strQuery = searchTerm.toLowerCase();
-      return searchableColumns.some((column) => {
-        const value = row[column.field];
-        if (typeof value === "string" || typeof value === "number") {
-          return String(value).toLowerCase().includes(strQuery);
-        }
-        return false;
-      });
-    });
-
     if (!sortBy) {
-      return filtered;
+      return rows;
     }
 
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...rows].sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
@@ -143,7 +136,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     });
 
     return sorted;
-  }, [orderedColumns, rows, searchTerm, sortBy, sortDirection]);
+  }, [rows, sortBy, sortDirection]);
 
   const handleSort = (field: keyof T, sortable: boolean | undefined) => {
     if (sortable === false) {
@@ -159,7 +152,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, sortBy, sortDirection, rowsPerPage]);
+  }, [sortBy, sortDirection, rowsPerPage]);
 
   const paginatedRows = useMemo(() => {
     /*
@@ -199,7 +192,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     Failure behavior:
     - If browser blocks download, no throw from this module.
     */
-    const strHeaders = exportColumns.map((column) => toCsvCell(column.headerName)).join(",");
+    const strHeaders = exportColumns.map((column) => toCsvCell(toText(column.headerName))).join(",");
     const strBody = filteredAndSortedRows
       .map((row) => exportColumns.map((column) => toCsvCell(toText(row[column.field]))).join(","))
       .join("\n");
@@ -221,7 +214,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     Failure behavior:
     - If popup blocked (window.open returns null), exits gracefully.
     */
-    const strHeaderHtml = exportColumns.map((column) => `<th>${column.headerName}</th>`).join("");
+    const strHeaderHtml = exportColumns.map((column) => `<th>${toText(column.headerName)}</th>`).join("");
     const strRowHtml = filteredAndSortedRows
       .map((row) => `<tr>${exportColumns.map((column) => `<td>${toText(row[column.field])}</td>`).join("")}</tr>`)
       .join("");
@@ -258,158 +251,174 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   };
 
   const table = (
-    <Stack spacing={2.5}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between">
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", sm: "auto" } }}>
+    <Stack spacing={2.5} sx={{ minHeight: 0, height: "100%" }}>
+      <Stack
+        direction={{ xs: "column", lg: "row" }}
+        spacing={1.5}
+        alignItems={{ lg: "center" }}
+        justifyContent="space-between"
+        sx={{ px: 1.5, pt: 1.25 }}
+      >
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
           <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
           {showExportOptions ? (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button variant="outlined" size="small" startIcon={<TableViewOutlinedIcon />} onClick={handleExportExcel}>
-                {dicConstant.commonDataGrid.exportExcel}
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
+                {dicConstant.common.exportExcel}
               </Button>
-              <Button variant="outlined" size="small" startIcon={<PictureAsPdfOutlinedIcon />} onClick={handleExportPdf}>
-                {dicConstant.commonDataGrid.exportPdf}
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
+                {dicConstant.common.exportPdf}
               </Button>
             </Stack>
           ) : null}
         </Stack>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: { xs: "100%", sm: "auto" } }}>
-          <TextField
-            placeholder={dicConstant.commonDataGrid.filterPlaceholder}
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            sx={{ minWidth: { xs: "100%", sm: 320 }, maxWidth: 420 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-                )
-              }}
+        {showPaginationSummary ? (
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            justifyContent={{ xs: "flex-start", lg: "flex-end" }}
+            sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
+          >
+            <Box className={styles.paginationInfo}>
+              <Typography className={styles.paginationLabel}>
+                {dicConstant.common.rowsPerPage}
+              </Typography>
+              <TextField
+                className={styles.rowsPerPageSelect}
+                select
+                size="small"
+                value={String(rowsPerPage)}
+                onChange={(event) => {
+                  setRowsPerPage(parseInt(event.target.value, 10));
+                  setPage(0);
+                }}
+                sx={{ width: 86 }}
+              >
+                {pageSizeOptions.map((intOption) => (
+                  <MenuItem key={intOption} value={String(intOption)}>
+                    {intOption}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Typography className={styles.paginationRange}>
+                {filteredAndSortedRows.length === 0
+                  ? `0 ${dicConstant.common.paginationSeparator} 0`
+                  : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${dicConstant.common.paginationSeparator} ${filteredAndSortedRows.length}`}
+              </Typography>
+            </Box>
+            <Pagination
+              className={styles.paginationBar}
+              count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
+              page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
+              onChange={(_, intNextPage) => setPage(intNextPage - 1)}
+              size="small"
+              color="primary"
+              showFirstButton
+              showLastButton
             />
-        </Stack>
+          </Stack>
+        ) : null}
       </Stack>
 
-      {showPaginationSummary ? (
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
-          alignItems={{ sm: "center" }}
-          justifyContent="space-between"
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowX: "auto",
+          overflowY: "auto",
+          scrollbarGutter: "stable",
+        }}
+      >
+        <Table
+          size="small"
+          stickyHeader
           sx={{
-            px: 0.25,
-            py: 0.5,
-            borderRadius: 2,
-            backgroundColor: "rgba(248,250,252,0.8)",
-            border: "1px solid",
-            borderColor: "divider"
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            minWidth: Math.max(intMinimumTableWidth, 980),
+            width: "100%"
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
-            <Typography sx={{ fontSize: "0.9rem", color: "text.secondary", fontWeight: 600 }}>
-              {dicConstant.common.rowsPerPage}
-            </Typography>
-            <TextField
-              select
-              size="small"
-              value={String(rowsPerPage)}
-              onChange={(event) => {
-                setRowsPerPage(parseInt(event.target.value, 10));
-                setPage(0);
-              }}
-              sx={{ width: 88 }}
-            >
-              {pageSizeOptions.map((intOption) => (
-                <MenuItem key={intOption} value={String(intOption)}>
-                  {intOption}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Typography sx={{ fontSize: "0.9rem", color: "text.secondary" }}>
-              {filteredAndSortedRows.length === 0
-                ? `0 ${dicConstant.common.paginationSeparator} 0`
-                : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${dicConstant.common.paginationSeparator} ${filteredAndSortedRows.length}`}
-            </Typography>
-          </Box>
-          <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
-            Page {filteredAndSortedRows.length === 0 ? 0 : page + 1} of {Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
-          </Typography>
-        </Stack>
-      ) : null}
-
-      <Table size="small" sx={{ borderCollapse: "separate", borderSpacing: 0 }}>
-        <TableHead>
-          <TableRow>
-            {orderedColumns.map((column) => (
-              <TableCell
-                key={String(column.field)}
-                align={column.align ?? "left"}
-                sx={{
-                  width: column.width,
-                  bgcolor: "background.default",
-                  color: "text.secondary",
-                  fontWeight: 600,
-                  borderBottom: "1px solid",
-                  borderColor: "divider"
-                }}
-              >
-                <TableSortLabel
-                  active={sortBy === column.field}
-                  direction={sortBy === column.field ? sortDirection : "asc"}
-                  onClick={() => handleSort(column.field, column.sortable)}
-                  hideSortIcon={column.sortable === false}
-                >
-                  {column.headerName}
-                </TableSortLabel>
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredAndSortedRows.length === 0 ? (
+          <TableHead>
             <TableRow>
-              <TableCell colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
-                {emptyMessage}
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginatedRows.map((row, index) => (
-              <TableRow
-                key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
-                hover
-                sx={[
-                  {
-                    "& td": {
+              {orderedColumns.map((column) => {
+                const strField = String(column.field);
+                const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
+                return (
+                  <TableCell
+                    key={String(column.field)}
+                    align={strAlign}
+                    sx={{
+                      width: column.width,
+                      bgcolor: "background.paper",
+                      color: "text.secondary",
+                      fontWeight: 600,
                       borderBottom: "1px solid",
-                      borderColor: "divider"
-                    }
-                  },
-                  getRowSx?.(row) ?? {}
-                ]}
-              >
-                {orderedColumns.map((column) => (
-                  <TableCell key={`${String(column.field)}-${index}`} align={column.align ?? "left"}>
-                    {row[column.field]}
+                      borderColor: "divider",
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle"
+                    }}
+                  >
+                    {column.sortable === false ? (
+                      <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
+                        {column.headerName}
+                      </Box>
+                    ) : (
+                      <TableSortLabel
+                        active={sortBy === column.field}
+                        direction={sortBy === column.field ? sortDirection : "asc"}
+                        onClick={() => handleSort(column.field, column.sortable)}
+                        hideSortIcon={false}
+                      >
+                        {column.headerName}
+                      </TableSortLabel>
+                    )}
                   </TableCell>
-                ))}
+                );
+              })}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredAndSortedRows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                  {emptyMessage}
+                </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              paginatedRows.map((row, index) => (
+                <TableRow
+                  key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
+                  hover
+                  sx={[
+                    {
+                      "& td": {
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                        verticalAlign: "middle",
+                        whiteSpace: "nowrap"
+                      }
+                    },
+                    getRowSx?.(row) ?? {}
+                  ]}
+                >
+                  {orderedColumns.map((column) => {
+                    const strField = String(column.field);
+                    const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
+                    return (
+                      <TableCell key={`${String(column.field)}-${index}`} align={strAlign}>
+                        {row[column.field]}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Box>
 
-      <TablePagination
-        component="div"
-        count={filteredAndSortedRows.length}
-        page={page}
-        onPageChange={(_, nextPage) => setPage(nextPage)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(event) => {
-          setRowsPerPage(parseInt(event.target.value, 10));
-        }}
-        rowsPerPageOptions={pageSizeOptions}
-        sx={{ borderTop: "1px solid", borderColor: "divider", pt: 0.5 }}
-      />
     </Stack>
   );
 
@@ -418,7 +427,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   }
 
   return (
-    <Paper sx={{ p: 3, ...sx }}>
+    <Paper sx={{ p: 3, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", ...sx }}>
       {table}
     </Paper>
   );

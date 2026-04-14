@@ -723,14 +723,37 @@ export default function DepartmentMasterPanel() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "select", headerName: "", sortable: false, filterable: false, exportable: false, width: 56 },
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={toggleSelectAll}
+            disabled={lstFilteredDepartments.length === 0}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56
+      },
       { field: "action", headerName: dicDepartmentLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "name", headerName: dicDepartmentLabels.tableName },
       { field: "code", headerName: dicDepartmentLabels.tableCode },
       { field: "status", headerName: dicDepartmentLabels.tableStatus, sortable: false, filterable: false, width: 130 },
       { field: "employeeCount", headerName: dicDepartmentLabels.tableEmployees },
     ],
-    [dicDepartmentLabels.tableActions, dicDepartmentLabels.tableCode, dicDepartmentLabels.tableEmployees, dicDepartmentLabels.tableName, dicDepartmentLabels.tableStatus]
+    [
+      blnAllFilteredSelected,
+      blnSomeFilteredSelected,
+      dicDepartmentLabels.tableActions,
+      dicDepartmentLabels.tableCode,
+      dicDepartmentLabels.tableEmployees,
+      dicDepartmentLabels.tableName,
+      dicDepartmentLabels.tableStatus,
+      lstFilteredDepartments.length
+    ]
   );
 
   return (
@@ -812,7 +835,6 @@ export default function DepartmentMasterPanel() {
                     {dicDepartmentLabels.addButton}
                   </Button>
                 ) : null}
-                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFilteredDepartments.length === 0} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}

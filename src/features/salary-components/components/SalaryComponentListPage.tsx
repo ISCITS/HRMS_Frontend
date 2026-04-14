@@ -259,7 +259,21 @@ export default function SalaryComponentListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "select", headerName: "", sortable: false, filterable: false, exportable: false, width: 56 },
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={toggleSelectAll}
+            disabled={lstFilteredRows.length === 0}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56
+      },
       { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strComponentCode", headerName: t("code", "Code") },
       { field: "strComponentName", headerName: t("component_name", "Component Name") },
@@ -275,7 +289,7 @@ export default function SalaryComponentListPage() {
       { field: "intDependencyCount", headerName: t("dependencies", "Dependencies") },
       { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
     ],
-    [t]
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length, t]
   );
 
   return (
@@ -380,7 +394,6 @@ export default function SalaryComponentListPage() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-components/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
-                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFilteredRows.length === 0} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}

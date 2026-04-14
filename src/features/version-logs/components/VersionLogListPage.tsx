@@ -1,6 +1,7 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -233,7 +234,13 @@ export default function VersionLogListPage() {
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Box className={styles.page}>
+      <Box className={styles.topBar}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+          {t("back_button", "Back")}
+        </Button>
+      </Box>
+
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <TextField
@@ -320,6 +327,6 @@ export default function VersionLogListPage() {
           {objToast.strMessage}
         </Alert>
       </Snackbar>
-    </Stack>
+    </Box>
   );
 }
