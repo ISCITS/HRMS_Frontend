@@ -232,6 +232,10 @@ export default function PayrollResultListPage() {
     intStartIndex,
     intStartIndex + intRowsPerPage
   );
+  const strRangeLabel =
+    lstFilteredRows.length === 0
+      ? `0 ${t("pagination_separator", "of")} 0`
+      : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
 
   async function openPreview(intResultID: number) {
     try {
@@ -347,7 +351,7 @@ export default function PayrollResultListPage() {
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("payroll-results.csv", lstFilteredRows)}
             >
-              {t("export_csv", "Export CSV")}
+              {t("export_excel", "Export Excel")}
             </Button>
             <Button
               className={styles.secondaryButton}
@@ -378,12 +382,16 @@ export default function PayrollResultListPage() {
                   </MenuItem>
                 ))}
               </TextField>
+              <Typography className={styles.paginationRange}>{strRangeLabel}</Typography>
             </Box>
             <Pagination
               count={intPageCount}
               page={intCurrentPage}
               onChange={(_, intValue) => setIntPage(intValue)}
               color="primary"
+              size="small"
+              showFirstButton
+              showLastButton
             />
           </Box>
         </Box>
@@ -393,6 +401,7 @@ export default function PayrollResultListPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
                 <th>{t("employee_code", "Employee Code")}</th>
                 <th>{t("employee_name", "Employee Name")}</th>
                 <th>{t("payroll_run", "Payroll Run")}</th>
@@ -402,7 +411,6 @@ export default function PayrollResultListPage() {
                 <th>{t("tax", "Tax")}</th>
                 <th>{t("net_pay", "Net Pay")}</th>
                 <th>{t("status", "Status")}</th>
-                <th>{t("actions", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -418,6 +426,14 @@ export default function PayrollResultListPage() {
               ) : (
                 lstVisibleRows.map((dicRow) => (
                   <tr key={dicRow.intID}>
+                    <td className={styles.actionsColumn}>
+                      <Box className={styles.actionCell}>
+                        <CommonRowActions
+                          blnCanView
+                          onView={() => openPreview(dicRow.intID).catch(() => undefined)}
+                        />
+                      </Box>
+                    </td>
                     <td>{dicRow.strEmployeeCode}</td>
                     <td>{dicRow.strEmployeeName}</td>
                     <td>{dicRow.strRunName}</td>
@@ -433,12 +449,6 @@ export default function PayrollResultListPage() {
                       >
                         {dicRow.strStatus}
                       </span>
-                    </td>
-                    <td>
-                      <CommonRowActions
-                        blnCanView
-                        onView={() => openPreview(dicRow.intID).catch(() => undefined)}
-                      />
                     </td>
                   </tr>
                 ))

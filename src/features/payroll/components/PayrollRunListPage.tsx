@@ -203,6 +203,10 @@ export default function PayrollRunListPage() {
     intStartIndex,
     intStartIndex + intRowsPerPage
   );
+  const strRangeLabel =
+    lstFilteredRows.length === 0
+      ? `0 ${t("pagination_separator", "of")} 0`
+      : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
 
   if (blnLoading) {
     return <BlockingLoader strLabel={t("loading_runs", "Loading payroll runs...")} />;
@@ -297,7 +301,7 @@ export default function PayrollRunListPage() {
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("payroll-runs.csv", lstFilteredRows)}
             >
-              {t("export_csv", "Export CSV")}
+              {t("export_excel", "Export Excel")}
             </Button>
             <Button
               className={styles.secondaryButton}
@@ -328,12 +332,16 @@ export default function PayrollRunListPage() {
                   </MenuItem>
                 ))}
               </TextField>
+              <Typography className={styles.paginationRange}>{strRangeLabel}</Typography>
             </Box>
             <Pagination
               count={intPageCount}
               page={intCurrentPage}
               onChange={(_, intValue) => setIntPage(intValue)}
               color="primary"
+              size="small"
+              showFirstButton
+              showLastButton
             />
           </Box>
         </Box>
@@ -343,6 +351,7 @@ export default function PayrollRunListPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
                 <th>{t("run_code", "Run Code")}</th>
                 <th>{t("run_name", "Run Name")}</th>
                 <th>{t("payroll_month", "Payroll Month")}</th>
@@ -350,7 +359,6 @@ export default function PayrollRunListPage() {
                 <th>{t("locked", "Locked")}</th>
                 <th>{t("inputs", "Inputs")}</th>
                 <th>{t("submitted", "Submitted")}</th>
-                <th>{t("actions", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -363,6 +371,14 @@ export default function PayrollRunListPage() {
               ) : null}
               {lstVisibleRows.map((dicRow) => (
                 <tr key={dicRow.intID}>
+                  <td className={styles.actionsColumn}>
+                    <Box className={styles.actionCell}>
+                      <CommonRowActions
+                        blnCanView
+                        onView={() => objRouter.push(`/payroll/runs/${dicRow.intID}`)}
+                      />
+                    </Box>
+                  </td>
                   <td>{dicRow.strRunCode}</td>
                   <td>{dicRow.strRunName}</td>
                   <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
@@ -377,12 +393,6 @@ export default function PayrollRunListPage() {
                   <td>{dicRow.blnIsLocked ? t("yes", "Yes") : t("no", "No")}</td>
                   <td>{dicRow.dicSummary.intInputCount}</td>
                   <td>{dicRow.dicSummary.intSubmittedCount}</td>
-                  <td>
-                    <CommonRowActions
-                      blnCanView
-                      onView={() => objRouter.push(`/payroll/runs/${dicRow.intID}`)}
-                    />
-                  </td>
                 </tr>
               ))}
             </tbody>

@@ -198,6 +198,10 @@ export default function StatutoryRuleListPage() {
   const intCurrentPage = Math.min(intPage, intPageCount);
   const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
   const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const strRangeLabel =
+    lstFilteredRows.length === 0
+      ? `0 ${t("pagination_separator", "of")} 0`
+      : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -297,7 +301,7 @@ export default function StatutoryRuleListPage() {
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("statutory-rules.csv", lstFilteredRows)}
             >
-              {t("export_excel", "Export CSV")}
+              {t("export_excel", "Export Excel")}
             </Button>
             <Button
               className={styles.secondaryButton}
@@ -328,8 +332,9 @@ export default function StatutoryRuleListPage() {
                   </MenuItem>
                 ))}
               </TextField>
+              <Typography className={styles.paginationRange}>{strRangeLabel}</Typography>
             </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" />
+            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
           </Box>
         </Box>
 
@@ -338,13 +343,13 @@ export default function StatutoryRuleListPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
                 <th>{t("rule_code", "Rule Code")}</th>
                 <th>{t("rule_name", "Rule")}</th>
                 <th>{t("scope", "Scope")}</th>
                 <th>{t("effective_from", "Effective From")}</th>
                 <th>{t("numeric_value", "Numeric Value")}</th>
                 <th>{t("status", "Status")}</th>
-                <th>{t("actions", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -357,6 +362,16 @@ export default function StatutoryRuleListPage() {
               ) : null}
               {lstVisibleRows.map((dicRow) => (
                 <tr key={dicRow.intID}>
+                  <td className={styles.actionsColumn}>
+                    <Box className={styles.actionCell}>
+                      <CommonRowActions
+                        blnCanView
+                        blnCanEdit
+                        onView={() => openPreview(dicRow.intID).catch(() => undefined)}
+                        onEdit={() => objRouter.push(`/payroll/statutory-rules/${dicRow.intID}/edit`)}
+                      />
+                    </Box>
+                  </td>
                   <td>{dicRow.strRuleCode}</td>
                   <td>{dicRow.strRuleLabel}</td>
                   <td>{dicRow.strScopeLabel}</td>
@@ -366,14 +381,6 @@ export default function StatutoryRuleListPage() {
                     <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
                       {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
                     </span>
-                  </td>
-                  <td>
-                    <CommonRowActions
-                      blnCanView
-                      blnCanEdit
-                      onView={() => openPreview(dicRow.intID).catch(() => undefined)}
-                      onEdit={() => objRouter.push(`/payroll/statutory-rules/${dicRow.intID}/edit`)}
-                    />
                   </td>
                 </tr>
               ))}

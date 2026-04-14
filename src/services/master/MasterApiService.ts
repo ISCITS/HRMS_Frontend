@@ -9,6 +9,7 @@ import {
   MasterMenuAction,
 } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
 
 export type DepartmentApiRecord = {
@@ -607,6 +608,11 @@ function buildApiPath(objResource: MasterApiResource, ...lstSegments: Array<stri
   return [objResource, ...lstSegments.map(String)].join("/");
 }
 
+function buildApiQueryPath(strPath: string, objParams: URLSearchParams) {
+  const strQuery = objParams.toString();
+  return strQuery ? `${strPath}?${strQuery}` : strPath;
+}
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: ApiRequestMethod;
@@ -682,7 +688,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/translate",
+      strPath: MasterApiResource.Translate,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.DepartmentList
@@ -763,7 +769,7 @@ export const masterApiService = {
 
   getDesignation(intID: number, intLanguageID?: number | null) {
     return requestApi<DesignationApiRecord>({
-      strPath: `/masters/designations/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Designations, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.DesignationList
@@ -772,7 +778,7 @@ export const masterApiService = {
 
   getDesignationFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
-      strPath: "/masters/designations/form-options",
+      strPath: buildApiPath(MasterApiResource.Designations, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.DesignationList
     });
@@ -788,7 +794,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/designations/translate",
+      strPath: buildApiPath(MasterApiResource.Designations, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.DesignationList
@@ -851,7 +857,7 @@ export const masterApiService = {
   getBanks() {
     // Fetches the bank list scoped by the logged-in tenant.
     return requestApi<BankApiRecord[]>({
-      strPath: "/masters/banks",
+      strPath: MasterApiResource.Banks,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.BankList
     });
@@ -859,7 +865,7 @@ export const masterApiService = {
 
   getBank(intID: number, intLanguageID?: number | null) {
     return requestApi<BankApiRecord>({
-      strPath: `/masters/banks/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Banks, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.BankList
@@ -868,7 +874,7 @@ export const masterApiService = {
 
   getBankFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
-      strPath: "/masters/banks/form-options",
+      strPath: buildApiPath(MasterApiResource.Banks, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.BankList
     });
@@ -884,7 +890,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/banks/translate",
+      strPath: buildApiPath(MasterApiResource.Banks, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.BankList
@@ -900,7 +906,7 @@ export const masterApiService = {
   }) {
     // Creates a new bank record.
     return requestApi<BankApiRecord>({
-      strPath: "/masters/banks",
+      strPath: MasterApiResource.Banks,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.BankCreate
@@ -916,7 +922,7 @@ export const masterApiService = {
   }) {
     // Updates an existing bank by primary key.
     return requestApi<BankApiRecord>({
-      strPath: `/masters/banks/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Banks, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.BankUpdate
@@ -926,7 +932,7 @@ export const masterApiService = {
   bulkBankStatus(lstIDs: number[], blnIsActive: boolean) {
     // Applies one status change to all selected banks.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/banks/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Banks, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.BankBulkStatus
@@ -936,7 +942,7 @@ export const masterApiService = {
   bulkBankDelete(lstIDs: number[]) {
     // Deletes multiple bank records in one backend request.
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/banks/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Banks, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.BankBulkDelete
@@ -945,7 +951,7 @@ export const masterApiService = {
 
   getEssDeclarationCategories() {
     return requestApi<EssDeclarationCategoryApiRecord[]>({
-      strPath: "/masters/ess-declaration-categories",
+      strPath: MasterApiResource.EssDeclarationCategories,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EssDeclarationCategoryList
     });
@@ -962,7 +968,7 @@ export const masterApiService = {
     blnIsActive: boolean;
   }) {
     return requestApi<EssDeclarationCategoryApiRecord>({
-      strPath: "/masters/ess-declaration-categories",
+      strPath: MasterApiResource.EssDeclarationCategories,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.EssDeclarationCategoryCreate
@@ -980,7 +986,7 @@ export const masterApiService = {
     blnIsActive: boolean;
   }) {
     return requestApi<EssDeclarationCategoryApiRecord>({
-      strPath: `/masters/ess-declaration-categories/${intID}`,
+      strPath: buildApiPath(MasterApiResource.EssDeclarationCategories, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EssDeclarationCategoryUpdate
@@ -989,7 +995,7 @@ export const masterApiService = {
 
   bulkEssDeclarationCategoryStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/ess-declaration-categories/bulk-status",
+      strPath: buildApiPath(MasterApiResource.EssDeclarationCategories, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.EssDeclarationCategoryBulkStatus
@@ -998,7 +1004,7 @@ export const masterApiService = {
 
   bulkEssDeclarationCategoryDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/ess-declaration-categories/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.EssDeclarationCategories, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.EssDeclarationCategoryBulkDelete
@@ -1008,7 +1014,7 @@ export const masterApiService = {
   // Cost Center CRUD and bulk actions.
   getCostCenters() {
     return requestApi<CostCenterApiRecord[]>({
-      strPath: "/masters/cost-centers",
+      strPath: MasterApiResource.CostCenters,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.CostCenterList
     });
@@ -1016,7 +1022,7 @@ export const masterApiService = {
 
   getCostCenter(intID: number, intLanguageID?: number | null) {
     return requestApi<CostCenterApiRecord>({
-      strPath: `/masters/cost-centers/${intID}`,
+      strPath: buildApiPath(MasterApiResource.CostCenters, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.CostCenterList
@@ -1025,7 +1031,7 @@ export const masterApiService = {
 
   getCostCenterFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
-      strPath: "/masters/cost-centers/form-options",
+      strPath: buildApiPath(MasterApiResource.CostCenters, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.CostCenterList
     });
@@ -1041,7 +1047,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/cost-centers/translate",
+      strPath: buildApiPath(MasterApiResource.CostCenters, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.CostCenterList
@@ -1056,7 +1062,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strCostCenterName: string }>;
   }) {
     return requestApi<CostCenterApiRecord>({
-      strPath: "/masters/cost-centers",
+      strPath: MasterApiResource.CostCenters,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.CostCenterCreate
@@ -1071,7 +1077,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strCostCenterName: string }>;
   }) {
     return requestApi<CostCenterApiRecord>({
-      strPath: `/masters/cost-centers/${intID}`,
+      strPath: buildApiPath(MasterApiResource.CostCenters, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.CostCenterUpdate
@@ -1080,7 +1086,7 @@ export const masterApiService = {
 
   bulkCostCenterStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/cost-centers/bulk-status",
+      strPath: buildApiPath(MasterApiResource.CostCenters, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.CostCenterBulkStatus
@@ -1089,7 +1095,7 @@ export const masterApiService = {
 
   bulkCostCenterDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/cost-centers/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.CostCenters, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.CostCenterBulkDelete
@@ -1099,7 +1105,7 @@ export const masterApiService = {
   // Grade CRUD and bulk actions.
   getGrades() {
     return requestApi<GradeApiRecord[]>({
-      strPath: "/masters/grades",
+      strPath: MasterApiResource.Grades,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.GradeList
     });
@@ -1107,7 +1113,7 @@ export const masterApiService = {
 
   getGrade(intID: number, intLanguageID?: number | null) {
     return requestApi<GradeApiRecord>({
-      strPath: `/masters/grades/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Grades, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.GradeList
@@ -1116,7 +1122,7 @@ export const masterApiService = {
 
   getGradeFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
-      strPath: "/masters/grades/form-options",
+      strPath: buildApiPath(MasterApiResource.Grades, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.GradeList
     });
@@ -1132,7 +1138,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/grades/translate",
+      strPath: buildApiPath(MasterApiResource.Grades, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.GradeList
@@ -1147,7 +1153,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strGradeName: string }>;
   }) {
     return requestApi<GradeApiRecord>({
-      strPath: "/masters/grades",
+      strPath: MasterApiResource.Grades,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.GradeCreate
@@ -1162,7 +1168,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strGradeName: string }>;
   }) {
     return requestApi<GradeApiRecord>({
-      strPath: `/masters/grades/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Grades, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.GradeUpdate
@@ -1171,7 +1177,7 @@ export const masterApiService = {
 
   bulkGradeStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/grades/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Grades, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.GradeBulkStatus
@@ -1180,7 +1186,7 @@ export const masterApiService = {
 
   bulkGradeDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/grades/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Grades, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.GradeBulkDelete
@@ -1190,7 +1196,7 @@ export const masterApiService = {
   // Location CRUD, lookup, and bulk actions.
   getLocations() {
     return requestApi<LocationApiRecord[]>({
-      strPath: "/masters/locations",
+      strPath: MasterApiResource.Locations,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.LocationList
     });
@@ -1198,7 +1204,7 @@ export const masterApiService = {
 
   getLocation(intID: number, intLanguageID?: number | null) {
     return requestApi<LocationApiRecord>({
-      strPath: `/masters/locations/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Locations, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.LocationList
@@ -1207,7 +1213,7 @@ export const masterApiService = {
 
   getLocationFormOptions() {
     return requestApi<LocationFormOptionsApiRecord>({
-      strPath: "/masters/locations/form-options",
+      strPath: buildApiPath(MasterApiResource.Locations, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.LocationFormOptions
     });
@@ -1223,7 +1229,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/locations/translate",
+      strPath: buildApiPath(MasterApiResource.Locations, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.LocationList
@@ -1240,7 +1246,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strLocationName: string }>;
   }) {
     return requestApi<LocationApiRecord>({
-      strPath: "/masters/locations",
+      strPath: MasterApiResource.Locations,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.LocationCreate
@@ -1257,7 +1263,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strLocationName: string }>;
   }) {
     return requestApi<LocationApiRecord>({
-      strPath: `/masters/locations/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Locations, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.LocationUpdate
@@ -1266,7 +1272,7 @@ export const masterApiService = {
 
   bulkLocationStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/locations/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Locations, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.LocationBulkStatus
@@ -1275,7 +1281,7 @@ export const masterApiService = {
 
   bulkLocationDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/locations/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Locations, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.LocationBulkDelete
@@ -1285,7 +1291,7 @@ export const masterApiService = {
   // User CRUD and bulk actions.
   getUsers() {
     return requestApi<UserApiRecord[]>({
-      strPath: "/masters/users",
+      strPath: MasterApiResource.Users,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.UserList
     });
@@ -1293,7 +1299,7 @@ export const masterApiService = {
 
   getUserFormOptions() {
     return requestApi<UserFormOptionsApiRecord>({
-      strPath: "/masters/users/form-options",
+      strPath: buildApiPath(MasterApiResource.Users, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.UserFormOptions
     });
@@ -1320,7 +1326,7 @@ export const masterApiService = {
       strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
     };
     return requestApi<UserApiRecord>({
-      strPath: "/masters/users",
+      strPath: MasterApiResource.Users,
       strMethod: ApiRequestMethod.Post,
       objBody: objEncryptedBody,
       strMenuAction: MasterMenuAction.UserCreate
@@ -1348,7 +1354,7 @@ export const masterApiService = {
       strPassword: objBody.strPassword ? encryptPassBase64(objBody.strPassword) : null,
     };
     return requestApi<UserApiRecord>({
-      strPath: `/masters/users/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Users, intID),
       strMethod: ApiRequestMethod.Put,
       objBody: objEncryptedBody,
       strMenuAction: MasterMenuAction.UserUpdate
@@ -1357,7 +1363,7 @@ export const masterApiService = {
 
   bulkUserStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/users/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Users, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.UserBulkStatus
@@ -1366,7 +1372,7 @@ export const masterApiService = {
 
   bulkUserDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/users/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Users, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.UserBulkDelete
@@ -1375,7 +1381,7 @@ export const masterApiService = {
 
   getCountries() {
     return requestApi<CountryApiRecord[]>({
-      strPath: "/masters/countries",
+      strPath: MasterApiResource.Countries,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.CountryList
     });
@@ -1383,7 +1389,7 @@ export const masterApiService = {
 
   getCountry(intID: number, intLanguageID?: number | null) {
     return requestApi<CountryApiRecord>({
-      strPath: `/masters/countries/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Countries, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.CountryList
@@ -1392,7 +1398,7 @@ export const masterApiService = {
 
   getCountryFormOptions() {
     return requestApi<SimpleMasterFormOptionsApiRecord>({
-      strPath: "/masters/countries/form-options",
+      strPath: buildApiPath(MasterApiResource.Countries, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.CountryList
     });
@@ -1408,7 +1414,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/countries/translate",
+      strPath: buildApiPath(MasterApiResource.Countries, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.CountryList
@@ -1425,7 +1431,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strCountryName: string }>;
   }) {
     return requestApi<CountryApiRecord>({
-      strPath: "/masters/countries",
+      strPath: MasterApiResource.Countries,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.CountryCreate
@@ -1442,7 +1448,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strCountryName: string }>;
   }) {
     return requestApi<CountryApiRecord>({
-      strPath: `/masters/countries/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Countries, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.CountryUpdate
@@ -1451,7 +1457,7 @@ export const masterApiService = {
 
   bulkCountryStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/countries/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Countries, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.CountryBulkStatus
@@ -1460,7 +1466,7 @@ export const masterApiService = {
 
   bulkCountryDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/countries/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Countries, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.CountryBulkDelete
@@ -1469,7 +1475,7 @@ export const masterApiService = {
 
   getStates() {
     return requestApi<StateApiRecord[]>({
-      strPath: "/masters/states",
+      strPath: MasterApiResource.States,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.StateList
     });
@@ -1477,7 +1483,7 @@ export const masterApiService = {
 
   getState(intID: number, intLanguageID?: number | null) {
     return requestApi<StateApiRecord>({
-      strPath: `/masters/states/${intID}`,
+      strPath: buildApiPath(MasterApiResource.States, intID),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.StateList
@@ -1486,7 +1492,7 @@ export const masterApiService = {
 
   getStateFormOptions(intLanguageID?: number | null) {
     return requestApi<StateFormOptionsApiRecord>({
-      strPath: "/masters/states/form-options",
+      strPath: buildApiPath(MasterApiResource.States, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.StateList
@@ -1503,7 +1509,7 @@ export const masterApiService = {
       intSourceLanguageID: number;
       intTargetLanguageID: number;
     }>({
-      strPath: "/masters/states/translate",
+      strPath: buildApiPath(MasterApiResource.States, MasterApiRouteSegment.Translate),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.StateList
@@ -1519,7 +1525,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strStateName: string }>;
   }) {
     return requestApi<StateApiRecord>({
-      strPath: "/masters/states",
+      strPath: MasterApiResource.States,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.StateCreate
@@ -1535,7 +1541,7 @@ export const masterApiService = {
     lstTexts: Array<{ intLanguageID: number; strStateName: string }>;
   }) {
     return requestApi<StateApiRecord>({
-      strPath: `/masters/states/${intID}`,
+      strPath: buildApiPath(MasterApiResource.States, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.StateUpdate
@@ -1544,7 +1550,7 @@ export const masterApiService = {
 
   bulkStateStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/states/bulk-status",
+      strPath: buildApiPath(MasterApiResource.States, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.StateBulkStatus
@@ -1553,7 +1559,7 @@ export const masterApiService = {
 
   bulkStateDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/states/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.States, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.StateBulkDelete
@@ -1562,7 +1568,7 @@ export const masterApiService = {
 
   getEmployees() {
     return requestApi<EmployeeApiRecord[]>({
-      strPath: "/masters/employee",
+      strPath: MasterApiResource.Employee,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeList
     });
@@ -1571,7 +1577,7 @@ export const masterApiService = {
   getEmployeeFormOptions(intLanguageID?: number | null) {
     const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<EmployeeFormOptionsApiRecord>({
-      strPath: "/masters/employee/form-options",
+      strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
       strMenuAction: MasterMenuAction.EmployeeFormOptions
@@ -1589,7 +1595,7 @@ export const masterApiService = {
 
   createEmployee(objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
     return requestApi<EmployeeDetailApiRecord>({
-      strPath: "/masters/employee",
+      strPath: MasterApiResource.Employee,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeCreate
@@ -1598,7 +1604,7 @@ export const masterApiService = {
 
   updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
     return requestApi<EmployeeDetailApiRecord>({
-      strPath: `/masters/employee/${intID}`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeUpdate
@@ -1607,7 +1613,7 @@ export const masterApiService = {
 
   bulkEmployeeStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/employee/bulk-status",
+      strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.EmployeeBulkStatus
@@ -1616,7 +1622,7 @@ export const masterApiService = {
 
   bulkEmployeeDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/employee/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.EmployeeBulkDelete
@@ -1638,7 +1644,7 @@ export const masterApiService = {
 
   saveEmployeeAddress(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeAddressApiRecord>({
-      strPath: `/masters/employee/${intID}/address`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Address),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeAddressSave
@@ -1660,7 +1666,7 @@ export const masterApiService = {
 
   saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeBankApiRecord>({
-      strPath: `/masters/employee/${intID}/bank`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Bank),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeBankSave
@@ -1682,7 +1688,7 @@ export const masterApiService = {
 
   saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeStatutoryApiRecord>({
-      strPath: `/masters/employee/${intID}/statutory`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Statutory),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeStatutorySave
@@ -1691,7 +1697,7 @@ export const masterApiService = {
 
   getEmployeeExperiences(intID: number) {
     return requestApi<EmployeeExperienceApiRecord[]>({
-      strPath: `/masters/employee/${intID}/experiences`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeExperienceList
     });
@@ -1699,7 +1705,7 @@ export const masterApiService = {
 
   createEmployeeExperience(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeExperienceApiRecord>({
-      strPath: `/masters/employee/${intID}/experiences`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeExperienceSave
@@ -1708,7 +1714,12 @@ export const masterApiService = {
 
   updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeExperienceApiRecord>({
-      strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        intEmployeeID,
+        MasterApiRouteSegment.Experiences,
+        intExperienceID
+      ),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeExperienceSave
@@ -1717,7 +1728,12 @@ export const masterApiService = {
 
   deleteEmployeeExperience(intEmployeeID: number, intExperienceID: number) {
     return requestApi<EmployeeExperienceApiRecord>({
-      strPath: `/masters/employee/${intEmployeeID}/experiences/${intExperienceID}`,
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        intEmployeeID,
+        MasterApiRouteSegment.Experiences,
+        intExperienceID
+      ),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.EmployeeExperienceDelete
     });
@@ -1725,7 +1741,7 @@ export const masterApiService = {
 
   getEmployeeQualifications(intID: number) {
     return requestApi<EmployeeQualificationApiRecord[]>({
-      strPath: `/masters/employee/${intID}/qualifications`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeQualificationList
     });
@@ -1733,7 +1749,7 @@ export const masterApiService = {
 
   createEmployeeQualification(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeQualificationApiRecord>({
-      strPath: `/masters/employee/${intID}/qualifications`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeQualificationSave
@@ -1742,7 +1758,12 @@ export const masterApiService = {
 
   updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeQualificationApiRecord>({
-      strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        intEmployeeID,
+        MasterApiRouteSegment.Qualifications,
+        intQualificationID
+      ),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeQualificationSave
@@ -1751,7 +1772,12 @@ export const masterApiService = {
 
   deleteEmployeeQualification(intEmployeeID: number, intQualificationID: number) {
     return requestApi<EmployeeQualificationApiRecord>({
-      strPath: `/masters/employee/${intEmployeeID}/qualifications/${intQualificationID}`,
+      strPath: buildApiPath(
+        MasterApiResource.Employee,
+        intEmployeeID,
+        MasterApiRouteSegment.Qualifications,
+        intQualificationID
+      ),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.EmployeeQualificationDelete
     });
@@ -1759,7 +1785,7 @@ export const masterApiService = {
 
   getEmployeeFamilyDetails(intID: number) {
     return requestApi<EmployeeFamilyDetailApiRecord[]>({
-      strPath: `/masters/employee/${intID}/family`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeFamilyList
     });
@@ -1767,7 +1793,7 @@ export const masterApiService = {
 
   createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
-      strPath: `/masters/employee/${intID}/family`,
+      strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeFamilySave
@@ -1776,7 +1802,7 @@ export const masterApiService = {
 
   updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
-      strPath: `/masters/family/${intFamilyID}`,
+      strPath: buildApiPath(MasterApiResource.Family, intFamilyID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.EmployeeFamilySave
@@ -1785,14 +1811,14 @@ export const masterApiService = {
 
   deleteEmployeeFamilyDetail(intFamilyID: number) {
     return requestApi<null>({
-      strPath: `/masters/family/${intFamilyID}`,
+      strPath: buildApiPath(MasterApiResource.Family, intFamilyID),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.EmployeeFamilyDelete
     });
   },
   getSalaryComponents() {
     return requestApi<SalaryComponentApiRecord[]>({
-      strPath: "/masters/salary-components",
+      strPath: MasterApiResource.SalaryComponents,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.SalaryComponentList
     });
@@ -1809,7 +1835,7 @@ export const masterApiService = {
 
   getSalaryComponentFormOptions() {
     return requestApi<SalaryComponentFormOptionsApiRecord>({
-      strPath: "/masters/salary-component-form-options",
+      strPath: MasterApiResource.SalaryComponentFormOptions,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.SalaryComponentFormOptions
     });
@@ -1817,7 +1843,7 @@ export const masterApiService = {
 
   createSalaryComponent(objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: "/masters/salary-components",
+      strPath: MasterApiResource.SalaryComponents,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.SalaryComponentCreate
@@ -1826,7 +1852,7 @@ export const masterApiService = {
 
   updateSalaryComponent(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: `/masters/salary-components/${intID}`,
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.SalaryComponentUpdate
@@ -1835,7 +1861,7 @@ export const masterApiService = {
 
   setSalaryComponentStatus(intID: number, blnIsActive: boolean) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: `/masters/salary-components/${intID}/status`,
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.SalaryComponentStatus
@@ -1844,7 +1870,7 @@ export const masterApiService = {
 
   bulkSalaryComponentStatus(lstIDs: number[], blnIsActive: boolean) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/salary-components/bulk-status",
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, MasterApiRouteSegment.BulkStatus),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs, blnIsActive },
       strMenuAction: MasterMenuAction.SalaryComponentStatus
@@ -1853,7 +1879,7 @@ export const masterApiService = {
 
   deleteSalaryComponent(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: `/masters/salary-components/${intID}`,
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.SalaryComponentDelete
     });
@@ -1861,7 +1887,7 @@ export const masterApiService = {
 
   bulkSalaryComponentDelete(lstIDs: number[]) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: "/masters/salary-components/bulk-delete",
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, MasterApiRouteSegment.BulkDelete),
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.SalaryComponentDelete
@@ -1870,7 +1896,7 @@ export const masterApiService = {
 
   getPayrollCycles() {
     return requestApi<PayrollCycleApiRecord[]>({
-      strPath: "/masters/payroll-cycles",
+      strPath: MasterApiResource.PayrollCycles,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.PayrollCycleList
     });
@@ -1887,7 +1913,7 @@ export const masterApiService = {
 
   getPayrollCycleFormOptions() {
     return requestApi<PayrollCycleFormOptionsApiRecord>({
-      strPath: "/masters/payroll-cycles/form-options",
+      strPath: buildApiPath(MasterApiResource.PayrollCycles, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.PayrollCycleFormOptions
     });
@@ -1895,7 +1921,7 @@ export const masterApiService = {
 
   createPayrollCycle(objBody: Record<string, unknown>) {
     return requestApi<PayrollCycleApiRecord>({
-      strPath: "/masters/payroll-cycles",
+      strPath: MasterApiResource.PayrollCycles,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.PayrollCycleCreate
@@ -1904,7 +1930,7 @@ export const masterApiService = {
 
   updatePayrollCycle(intID: number, objBody: Record<string, unknown>) {
     return requestApi<PayrollCycleApiRecord>({
-      strPath: `/masters/payroll-cycles/${intID}`,
+      strPath: buildApiPath(MasterApiResource.PayrollCycles, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.PayrollCycleUpdate
@@ -1913,7 +1939,7 @@ export const masterApiService = {
 
   setPayrollCycleStatus(intID: number, blnIsActive: boolean) {
     return requestApi<PayrollCycleApiRecord>({
-      strPath: `/masters/payroll-cycles/${intID}/status`,
+      strPath: buildApiPath(MasterApiResource.PayrollCycles, intID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.PayrollCycleStatus
@@ -1943,9 +1969,8 @@ export const masterApiService = {
     if (objFilters?.strSearchText) {
       objParams.set("strSearchText", objFilters.strSearchText);
     }
-    const strQuery = objParams.toString();
     return requestApi<PayrollProcessLogApiRecord[]>({
-      strPath: `/masters/payroll-process-logs${strQuery ? `?${strQuery}` : ""}`,
+      strPath: buildApiQueryPath(MasterApiResource.PayrollProcessLogs, objParams),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.PayrollProcessLogList
     });
@@ -1953,7 +1978,7 @@ export const masterApiService = {
 
   getPayrollProcessLogFormOptions() {
     return requestApi<PayrollProcessLogFormOptionsApiRecord>({
-      strPath: "/masters/payroll-process-logs/form-options",
+      strPath: buildApiPath(MasterApiResource.PayrollProcessLogs, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.PayrollProcessLogFormOptions
     });
@@ -1974,9 +1999,8 @@ export const masterApiService = {
     if (objFilters?.strStatus) {
       objParams.set("strStatus", objFilters.strStatus);
     }
-    const strQuery = objParams.toString();
     return requestApi<VersionLogApiRecord[]>({
-      strPath: `${MasterApiResource.VersionLogs}${strQuery ? `?${strQuery}` : ""}`,
+      strPath: buildApiQueryPath(MasterApiResource.VersionLogs, objParams),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.VersionLogList
     });
@@ -2032,7 +2056,7 @@ export const masterApiService = {
 
   getTaxRegimes() {
     return requestApi<TaxRegimeApiRecord[]>({
-      strPath: "/masters/tax-regimes",
+      strPath: MasterApiResource.TaxRegimes,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.TaxRegimeList
     });
@@ -2049,7 +2073,7 @@ export const masterApiService = {
 
   getTaxRegimeFormOptions() {
     return requestApi<TaxRegimeFormOptionsApiRecord>({
-      strPath: "/masters/tax-regimes/form-options",
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.TaxRegimeFormOptions
     });
@@ -2057,7 +2081,7 @@ export const masterApiService = {
 
   createTaxRegime(objBody: Record<string, unknown>) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: "/masters/tax-regimes",
+      strPath: MasterApiResource.TaxRegimes,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeCreate
@@ -2066,7 +2090,7 @@ export const masterApiService = {
 
   updateTaxRegime(intID: number, objBody: Record<string, unknown>) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: `/masters/tax-regimes/${intID}`,
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
@@ -2075,7 +2099,7 @@ export const masterApiService = {
 
   setTaxRegimeStatus(intID: number, blnIsActive: boolean) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: `/masters/tax-regimes/${intID}/status`,
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.TaxRegimeStatus
@@ -2097,7 +2121,7 @@ export const masterApiService = {
 
   saveTaxSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
     return requestApi<TaxSlabSetApiRecord>({
-      strPath: `/masters/tax-regimes/${intTaxRegimeID}/slabs`,
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, MasterApiRouteSegment.Slabs),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxSlabSave
@@ -2106,7 +2130,7 @@ export const masterApiService = {
 
   getSalaryStructures() {
     return requestApi<SalaryStructureApiRecord[]>({
-      strPath: "/masters/salary-structures",
+      strPath: MasterApiResource.SalaryStructures,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.SalaryStructureList
     });
@@ -2123,7 +2147,7 @@ export const masterApiService = {
 
   getSalaryStructureFormOptions(intLanguageID?: number | null) {
     return requestApi<SalaryStructureFormOptionsApiRecord>({
-      strPath: "/masters/salary-structures/form-options",
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.SalaryStructureFormOptions
@@ -2132,7 +2156,7 @@ export const masterApiService = {
 
   createSalaryStructure(objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: "/masters/salary-structures",
+      strPath: MasterApiResource.SalaryStructures,
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.SalaryStructureCreate
@@ -2141,7 +2165,7 @@ export const masterApiService = {
 
   updateSalaryStructure(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: `/masters/salary-structures/${intID}`,
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.SalaryStructureUpdate
@@ -2150,7 +2174,7 @@ export const masterApiService = {
 
   cloneSalaryStructure(intID: number, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: `/masters/salary-structures/${intID}/clone`,
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID, MasterApiRouteSegment.Clone),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.SalaryStructureClone
@@ -2159,7 +2183,7 @@ export const masterApiService = {
 
   setSalaryStructureStatus(intID: number, blnIsActive: boolean) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: `/masters/salary-structures/${intID}/status`,
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.SalaryStructureStatus
@@ -2168,7 +2192,7 @@ export const masterApiService = {
 
   deleteSalaryStructure(intID: number) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: `/masters/salary-structures/${intID}`,
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.SalaryStructureDelete
     });
@@ -2176,7 +2200,7 @@ export const masterApiService = {
 
   getEmployeeSalaries() {
     return requestApi<EmployeeSalaryListApiRecord[]>({
-      strPath: "/employee-salary",
+      strPath: MasterApiResource.EmployeeSalary,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeSalaryList
     });
@@ -2184,7 +2208,7 @@ export const masterApiService = {
 
   getEmployeeSalaryFormOptions() {
     return requestApi<EmployeeSalaryFormOptionsApiRecord>({
-      strPath: "/employee-salary/form-options",
+      strPath: buildApiPath(MasterApiResource.EmployeeSalary, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EmployeeSalaryFormOptions
     });
@@ -2214,7 +2238,7 @@ export const masterApiService = {
 
     createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
-        strPath: `/employee-salary/${intEmployeeID}/revisions`,
+        strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Revisions),
         strMethod: ApiRequestMethod.Post,
         objBody,
         strMenuAction: MasterMenuAction.EmployeeSalarySave
@@ -2223,7 +2247,7 @@ export const masterApiService = {
 
     unassignEmployeeSalary(intEmployeeID: number) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
-        strPath: `/employee-salary/${intEmployeeID}/unassign`,
+        strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Unassign),
         strMethod: ApiRequestMethod.Post,
         strMenuAction: MasterMenuAction.EmployeeSalarySave
       });

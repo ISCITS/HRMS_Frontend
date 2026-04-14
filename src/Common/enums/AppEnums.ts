@@ -57,6 +57,7 @@ export enum UiKeyboardKey {
 }
 
 export enum MasterApiResource {
+  Translate = "/masters/translate",
   Departments = "/masters/departments",
   Designations = "/masters/designations",
   Banks = "/masters/banks",
@@ -68,6 +69,7 @@ export enum MasterApiResource {
   Countries = "/masters/countries",
   States = "/masters/states",
   Employee = "/masters/employee",
+  Family = "/masters/family",
   SalaryComponents = "/masters/salary-components",
   SalaryComponentFormOptions = "/masters/salary-component-form-options",
   PayrollCycles = "/masters/payroll-cycles",
@@ -88,6 +90,9 @@ export enum MasterApiRouteSegment {
   Address = "address",
   Bank = "bank",
   Statutory = "statutory",
+  Experiences = "experiences",
+  Qualifications = "qualifications",
+  Family = "family",
   Slabs = "slabs",
   Clone = "clone",
   Summary = "summary",
