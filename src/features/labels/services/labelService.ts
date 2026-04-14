@@ -50,16 +50,7 @@ export const labelService = {
 
   async getEmployeeDetailsLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
     try {
-      const objResponse = await callAPI<ModuleLabelsResponse>(
-        null,
-        "labels/employee-details",
-        "MASTER_EMPLOYEE_LABELS",
-        {
-          method: "GET",
-          params: { language_id: intLanguageID },
-        }
-      );
-      return objResponse.Response;
+      return await requestLabels({ language_id: intLanguageID, module_name: "employee-details" });
     } catch (objError) {
       return {
         module: "employee",

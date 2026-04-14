@@ -28,6 +28,7 @@ export type EmployeeDetailRecord = {
   strTitle: string | null;
   strFirstName: string;
   strMiddleName: string | null;
+  blnIsWorker: boolean;
   strLastName: string | null;
   strFullName: string;
   dtDateOfBirth: string | null;
@@ -55,6 +56,7 @@ export type EmployeeFormValues = {
   strTitle: string;
   strFirstName: string;
   strMiddleName: string;
+  blnIsWorker: boolean;
   strLastName: string;
   dtDateOfBirth: string;
   dtDateOfJoining: string;

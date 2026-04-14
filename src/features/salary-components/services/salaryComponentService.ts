@@ -206,6 +206,15 @@ export const salaryComponentService = {
     return mapApiRecord(objResult.Data);
   },
 
+  async translateSalaryComponentText(strText: string, intSourceLanguageID: number, intTargetLanguageID: number) {
+    const objResult = await masterApiService.translateMasterText({
+      strText,
+      intSourceLanguageID,
+      intTargetLanguageID,
+    });
+    return objResult.Data.strTranslatedText;
+  },
+
   async setSalaryComponentStatus(intSalaryComponentID: number, blnIsActive: boolean): Promise<SalaryComponentDetailRecord> {
     const objResult = await masterApiService.setSalaryComponentStatus(intSalaryComponentID, blnIsActive);
     return mapApiRecord(objResult.Data);
