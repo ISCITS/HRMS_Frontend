@@ -3,14 +3,11 @@
 import {
   ApiRequestMethod,
   ApiResultCode,
-  ApiRoutePrefix,
-  AuthStorageKey,
-  DefaultContextValue
+  ApiRoutePrefix
 } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi, resolveErrorMessage } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
 import { encryptPassBase64 } from "@/lib/passwordEncryption";
-import { decryptPayload } from "@/lib/security/decryptPayload";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import {
   GenericLoginRequest,
@@ -54,80 +51,6 @@ export function isGoogleMfaChallengeData(objData: unknown): objData is GoogleMfa
 
 export function isSsoMfaChallengeData(objData: SsoCallbackData): objData is SsoMfaChallengeData {
   return isGoogleMfaChallengeData(objData);
-}
-
-async function requestLocalEnvelope<TData>(strPath: string): Promise<ApiEnvelope<TData>> {
-  return requestLocalEnvelopeWithBody<TData>(strPath);
-}
-
-function getLocalProxyHeaders(strAccessToken: string) {
-  if (typeof window === "undefined") {
-    return {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(strAccessToken ? { Authorization: `Bearer ${strAccessToken}`, "X-Access-Token": strAccessToken } : {})
-    };
-  }
-
-  const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId)?.trim() || DefaultContextValue.PrimaryId;
-  const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId)?.trim() || DefaultContextValue.PrimaryId;
-
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...(strAccessToken ? { Authorization: `Bearer ${strAccessToken}`, "X-Access-Token": strAccessToken } : {}),
-    "X-Tenant-Id": strTenantID,
-    "X-Company-Id": strCompanyID
-  };
-}
-
-async function requestLocalEnvelopeWithBody<TData>(strPath: string, objBody?: unknown): Promise<ApiEnvelope<TData>> {
-  async function executeRequest() {
-    const strAccessToken = typeof window !== "undefined" ? authHelpers.getAccessToken() : "";
-    const objResponse = await fetch(strPath, {
-      method: "POST",
-      headers: getLocalProxyHeaders(strAccessToken),
-      cache: "no-store",
-      body: objBody === undefined ? undefined : JSON.stringify(objBody)
-    });
-
-    const objRawPayload = (await objResponse.json().catch(() => ({}))) as
-      | ApiEnvelope<TData>
-      | { payload?: string; message?: string; Msg?: string; Data?: unknown };
-    const objPayload =
-      typeof objRawPayload === "object" &&
-      objRawPayload !== null &&
-      "payload" in objRawPayload &&
-      typeof objRawPayload.payload === "string"
-        ? await decryptPayload<ApiEnvelope<TData>>(objRawPayload.payload)
-        : objRawPayload;
-
-    if (!objResponse.ok || objPayload.ResultCode !== ApiResultCode.Success) {
-      throw new clsApiRequestError(
-        objPayload.Msg ?? ("message" in objRawPayload ? objRawPayload.message : undefined) ?? "Request failed.",
-        "Data" in objPayload ? objPayload.Data : undefined,
-        objResponse.status
-      );
-    }
-
-    return objPayload;
-  }
-
-  try {
-    return await executeRequest();
-  } catch (objError) {
-    if (
-      objError instanceof clsApiRequestError &&
-      objError.intStatusCode === 401 &&
-      typeof window !== "undefined" &&
-      authHelpers.getAccessToken()
-    ) {
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-      return executeRequest();
-    }
-
-    throw objError;
-  }
 }
 
 async function requestApi<TData>(objOptions: {
@@ -195,10 +118,11 @@ export const authApiService = {
 
   async getTenantAuthDetails(strTenantUUID: string) {
     try {
-      return await requestLocalEnvelopeWithBody<TenantAuthDetails>(
-        "/api/tenant/auth-details",
-        { strTenantUUID }
-      );
+      return await requestApi<TenantAuthDetails>({
+        strPath: `tenant/${encodeURIComponent(strTenantUUID)}/auth-details`,
+        strMethod: ApiRequestMethod.Get,
+        strMenuAction: "TENANT_AUTH_DETAILS_READ"
+      });
     } catch (objError) {
       if (!(objError instanceof clsApiRequestError) || ![400, 404, 422].includes(objError.intStatusCode)) {
         throw objError;
@@ -222,10 +146,11 @@ export const authApiService = {
   },
 
   async getLoginLabels(strTenantUUID: string) {
-    return requestLocalEnvelopeWithBody<ModuleLabelsResponse>(
-      "/api/tenant/login-labels",
-      { strTenantUUID }
-    );
+    return requestApi<ModuleLabelsResponse>({
+      strPath: `tenant/${encodeURIComponent(strTenantUUID)}/login-labels`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "TENANT_LOGIN_LABELS_READ"
+    });
   },
 
   async login(objPayload: LoginRequest) {
@@ -339,15 +264,30 @@ export const authApiService = {
   },
 
   async getCurrentUser() {
-    return requestLocalEnvelope<CurrentUserContext>("/api/auth/me");
+    return requestApi<CurrentUserContext>({
+      strPath: "auth/me",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "AUTH_ME",
+      blnUseAuthHeader: true
+    });
   },
 
   async getMenu() {
-    return requestLocalEnvelope<MenuResponse>("/api/auth/menu");
+    return requestApi<MenuResponse>({
+      strPath: "auth/menu",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "AUTH_MENU",
+      blnUseAuthHeader: true
+    });
   },
 
   async getActionRights() {
-    return requestLocalEnvelope<ActionRightsResponse>("/api/auth/action-rights");
+    return requestApi<ActionRightsResponse>({
+      strPath: "auth/action-rights",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "AUTH_ACTION_RIGHTS",
+      blnUseAuthHeader: true
+    });
   },
 
   async logout() {

@@ -41,6 +41,7 @@ function shouldRedirectToSessionExpired(objError: unknown) {
     /\/auth\/sso\/callback/i.test(strRequestUrl) ||
     /\/auth\/sso\/mfa\/(setup\/verify|verify|backup-code\/verify)$/i.test(strRequestUrl) ||
     /\/tenant\/[^/]+\/auth-details/i.test(strRequestUrl) ||
+    /\/tenant\/[^/]+\/login-labels/i.test(strRequestUrl) ||
     /\/auth\/tenant\//i.test(strRequestUrl);
 
   if (blnIsPublicAuthEndpoint) {

@@ -10,6 +10,7 @@ import type {
   ApiEnvelope,
   ActionRightsResponse,
   AuthSuccessData,
+  GoogleMfaChallengeData,
   CurrentUserContext,
   MenuResponse,
   SsoCallbackData,
@@ -85,6 +86,13 @@ export async function proxyTenantLogin(objBody: unknown) {
 
 export async function proxyGenericLogin(objBody: unknown) {
   return callBackendApi<ApiEnvelope<AuthSuccessData>>("/api/v1/auth/login/generic", {
+    method: "POST",
+    objJsonBody: objBody
+  });
+}
+
+export async function proxyVerifyOtp(objBody: unknown) {
+  return callBackendApi<ApiEnvelope<AuthSuccessData | GoogleMfaChallengeData>>("/api/v1/auth/verify-otp", {
     method: "POST",
     objJsonBody: objBody
   });
