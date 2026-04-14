@@ -73,7 +73,7 @@ async function requestApi<TData>(objOptions: {
       throw new clsApiRequestError(objError.message, objError.objData, objError.intStatusCode);
     }
 
-    throw objError;
+  throw objError;
   }
 }
 
