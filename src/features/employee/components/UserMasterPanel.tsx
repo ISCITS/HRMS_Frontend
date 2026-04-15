@@ -410,7 +410,24 @@ export default function UserMasterPanel() {
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
   const blnDisableOtpOnlyOption = objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false;
 
-  function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+  async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+    if (strNextMode === "add") {
+      setBlnLoading(true);
+      try {
+        const objDefaultOptions = await masterApiService.getUserFormOptions();
+        setObjFormOptions(objDefaultOptions.Data);
+      } finally {
+        setBlnLoading(false);
+      }
+    } else if (dicUser) {
+      setBlnLoading(true);
+      try {
+        const objScopedOptions = await masterApiService.getUserFormOptions(Number(dicUser.id));
+        setObjFormOptions(objScopedOptions.Data);
+      } finally {
+        setBlnLoading(false);
+      }
+    }
     setStrMode(strNextMode);
     setStrEditingUserId(dicUser?.id ?? "");
     setDicErrors({});
@@ -726,7 +743,7 @@ export default function UserMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null}
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null}
             {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button> : null}
             {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
@@ -792,7 +809,7 @@ export default function UserMasterPanel() {
                       <Checkbox checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
                     </td>
                     <td>
-                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => openDialog("view", dicUser)} onEdit={() => openDialog("edit", dicUser)} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
+                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => { void openDialog("view", dicUser); }} onEdit={() => { void openDialog("edit", dicUser); }} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
                     </td>
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>

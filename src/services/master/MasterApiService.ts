@@ -1313,10 +1313,11 @@ export const masterApiService = {
     });
   },
 
-  getUserFormOptions() {
+  getUserFormOptions(intUserID?: number) {
     return requestApi<UserFormOptionsApiRecord>({
       strPath: buildApiPath(MasterApiResource.Users, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intUserID ? { user_id: intUserID } : undefined,
       strMenuAction: MasterMenuAction.UserFormOptions
     });
   },
