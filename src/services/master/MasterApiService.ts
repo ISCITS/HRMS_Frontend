@@ -85,6 +85,19 @@ export type UserFormOptionApiRecord = {
 export type UserFormOptionsApiRecord = {
   lstLanguages: UserFormOptionApiRecord[];
   lstUserGroups: UserFormOptionApiRecord[];
+  objMfaPolicy?: {
+    strTenantMfaFlag?: string | null;
+    strTenantMfaType?: string | null;
+    blnUserMfaToggleVisible?: boolean;
+    blnUserMfaToggleDisabled?: boolean;
+    blnUserMfaDefaultEnabled?: boolean;
+  };
+  objSsoPolicy?: {
+    strTenantAuthMode?: string | null;
+    blnUserSsoToggleVisible?: boolean;
+    blnUserSsoToggleDisabled?: boolean;
+    blnUserSsoDefaultEnabled?: boolean;
+  };
 };
 
 export type CountryApiRecord = {
