@@ -5,10 +5,16 @@ import { getAccessTokenFromCookie, getAccessTokenFromRequest, proxyMenu } from "
 async function handleMenu(objRequest: Request) {
   try {
     const strAccessToken = getAccessTokenFromRequest(objRequest) || await getAccessTokenFromCookie();
+    const objUrl = new URL(objRequest.url);
+    const intLanguageID = Number(objUrl.searchParams.get("language_id") ?? "");
     if (!strAccessToken) {
       return NextResponse.json({ ResultCode: 0, Msg: "Unauthenticated.", Data: {} }, { status: 401 });
     }
-    const objResult = await proxyMenu(strAccessToken, objRequest.headers);
+    const objResult = await proxyMenu(
+      strAccessToken,
+      objRequest.headers,
+      Number.isFinite(intLanguageID) ? intLanguageID : undefined
+    );
     return NextResponse.json(objResult, { status: 200 });
   } catch (objError) {
     return NextResponse.json(

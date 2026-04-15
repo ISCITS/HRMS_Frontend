@@ -127,16 +127,32 @@ function buildProtectedProxyHeaders(strAccessToken: string, strMenuAction: strin
   };
 }
 
-export async function proxyCurrentUser(strAccessToken: string, objRequestHeaders?: Headers) {
-  return callBackendApi<ApiEnvelope<CurrentUserContext>>("/api/v1/auth/me", {
+export async function proxyCurrentUser(
+  strAccessToken: string,
+  objRequestHeaders?: Headers,
+  intLanguageID?: number | null
+) {
+  const strQuery = Number.isFinite(intLanguageID) && Number(intLanguageID) > 0
+    ? `?language_id=${encodeURIComponent(String(intLanguageID))}`
+    : "";
+
+  return callBackendApi<ApiEnvelope<CurrentUserContext>>(`/api/v1/auth/me${strQuery}`, {
     method: "GET",
     cache: "no-store",
     headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_ME", objRequestHeaders)
   });
 }
 
-export async function proxyMenu(strAccessToken: string, objRequestHeaders?: Headers) {
-  return callBackendApi<ApiEnvelope<MenuResponse>>("/api/v1/auth/menu", {
+export async function proxyMenu(
+  strAccessToken: string,
+  objRequestHeaders?: Headers,
+  intLanguageID?: number | null
+) {
+  const strQuery = Number.isFinite(intLanguageID) && Number(intLanguageID) > 0
+    ? `?language_id=${encodeURIComponent(String(intLanguageID))}`
+    : "";
+
+  return callBackendApi<ApiEnvelope<MenuResponse>>(`/api/v1/auth/menu${strQuery}`, {
     method: "GET",
     cache: "no-store",
     headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_MENU", objRequestHeaders)

@@ -17,11 +17,13 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SourceRoundedIcon from "@mui/icons-material/SourceRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import WorkspacesRoundedIcon from "@mui/icons-material/WorkspacesRounded";
-import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { authHelpers } from "@/lib/auth";
 import type { MenuItem } from "@/models/AuthModels";
 
 type DynamicMenuProps = {
@@ -99,6 +101,140 @@ function getMenuIcon(objItem: MenuItem) {
 
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
   const strPathname = usePathname();
+  const intLanguageID = authHelpers.getLanguageID();
+  const { t: tCommon } = useModuleLabels("common");
+  const { t: tDepartment } = useModuleLabels("department");
+  const { t: tDesignation } = useModuleLabels("designation");
+  const { t: tEmployee } = useModuleLabels("employee");
+  const { t: tState } = useModuleLabels("state");
+  const { t: tCountry } = useModuleLabels("country");
+  const { t: tBank } = useModuleLabels("bank");
+  const { t: tLocation } = useModuleLabels("location");
+  const { t: tGrade } = useModuleLabels("grade");
+  const { t: tCostCenter } = useModuleLabels("cost_center");
+  const { t: tUser } = useModuleLabels("user");
+  const { t: tUserGroup } = useModuleLabels("user_group");
+  const { t: tSalaryComponents } = useModuleLabels("salary-components");
+  const { t: tSalaryStructures } = useModuleLabels("salary-structures");
+  const { t: tPayrollCycles } = useModuleLabels("payroll-cycles");
+  const { t: tPayrollProcessLogs } = useModuleLabels("payroll-process-logs");
+  const { t: tTaxRegimes } = useModuleLabels("tax-regimes");
+
+  function resolveGroupFallbackLabel(strGroupKey: "masters" | "user_management" | "salary" | "payroll", strDefaultLabel: string) {
+    const strResolvedLabel = tCommon(strGroupKey, "");
+    if (strResolvedLabel.trim()) {
+      return strResolvedLabel;
+    }
+
+    if (intLanguageID === 2) {
+      const dicHindiFallbacks: Record<typeof strGroupKey, string> = {
+        masters: "मास्टर्स",
+        user_management: "यूज़र प्रबंधन",
+        salary: "वेतन",
+        payroll: "पेरोल",
+      };
+      return dicHindiFallbacks[strGroupKey];
+    }
+
+    return strDefaultLabel;
+  }
+
+  function resolveMenuLabel(objItem: MenuItem) {
+    const strRoute = (objItem.strRoute ?? "").toLowerCase();
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    const strModuleName = objItem.strModuleName.trim();
+
+    if (objItem.blnIsHome || strRoute === "/dashboard" || strModuleCode === "dashboard") {
+      return tCommon("dashboard", strModuleName || "Dashboard");
+    }
+
+    if (strModuleCode.includes("department") || strRoute.includes("/departments")) {
+      return tDepartment("page_title", strModuleName || "Department");
+    }
+
+    if (strModuleCode.includes("designation") || strRoute.includes("/designations")) {
+      return tDesignation("page_title", strModuleName || "Designation");
+    }
+
+    if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
+      return tEmployee("page_title", strModuleName || "Employee");
+    }
+
+    if (strModuleCode === "state" || strRoute.includes("/states")) {
+      return tState("page_title", strModuleName || "State");
+    }
+
+    if (strModuleCode === "country" || strRoute.includes("/countries")) {
+      return tCountry("page_title", strModuleName || "Country");
+    }
+
+    if (strModuleCode === "bank" || strRoute.includes("/banks")) {
+      return tBank("page_title", strModuleName || "Bank");
+    }
+
+    if (strModuleCode === "location" || strRoute.includes("/locations")) {
+      return tLocation("page_title", strModuleName || "Location");
+    }
+
+    if (strModuleCode === "grade" || strRoute.includes("/grades")) {
+      return tGrade("page_title", strModuleName || "Grade");
+    }
+
+    if (
+      strModuleCode.includes("cost_center") ||
+      strModuleCode.includes("costcenter") ||
+      strRoute.includes("/cost-centers")
+    ) {
+      return tCostCenter("page_title", strModuleName || "Cost Center");
+    }
+
+    if (strModuleCode.includes("user_group") || strRoute.includes("/security/user-groups")) {
+      return tUserGroup("page_title", strModuleName || "User Group");
+    }
+
+    if (strModuleCode === "user" || strRoute.includes("/users")) {
+      return tUser("page_title", strModuleName || "User");
+    }
+
+    if (strRoute.includes("/salary-components")) {
+      return tSalaryComponents("page_title", strModuleName || "Salary Components");
+    }
+
+    if (strRoute.includes("/salary-structures")) {
+      return tSalaryStructures("page_title", strModuleName || "Salary Structures");
+    }
+
+    if (strRoute.includes("/payroll-cycles")) {
+      return tPayrollCycles("page_title", strModuleName || "Payroll Cycles");
+    }
+
+    if (strRoute.includes("/payroll-process-logs")) {
+      return tPayrollProcessLogs("page_title", strModuleName || "Payroll Process Logs");
+    }
+
+    if (strRoute.includes("/tax-regimes")) {
+      return tTaxRegimes("page_title", strModuleName || "Tax Regimes");
+    }
+
+    if (strModuleCode.includes("masters")) {
+      return resolveGroupFallbackLabel("masters", strModuleName || "Masters");
+    }
+
+    if (strModuleCode.includes("payroll")) {
+      return resolveGroupFallbackLabel("payroll", strModuleName || "Payroll");
+    }
+
+    if (strModuleCode.includes("salary")) {
+      return resolveGroupFallbackLabel("salary", strModuleName || "Salary");
+    }
+
+    if (strModuleCode.includes("user_management") || strModuleCode.includes("usermanagement")) {
+      return resolveGroupFallbackLabel("user_management", strModuleName || "User Management");
+    }
+
+    return strModuleName;
+  }
+
   function hasActiveDescendant(objItem: MenuItem): boolean {
     return objItem.lstChildren.some(
       (objChild) => objChild.strRoute === strPathname || hasActiveDescendant(objChild),
@@ -176,7 +312,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
               {getMenuIcon(objItem)}
             </ListItemIcon>
             <ListItemText
-              primary={objItem.strModuleName}
+              primary={resolveMenuLabel(objItem)}
               primaryTypographyProps={{
                 fontWeight: 700,
                 color: "#0f172a",
@@ -209,7 +345,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
           {getMenuIcon(objItem)}
         </ListItemIcon>
         <ListItemText
-          primary={objItem.strModuleName}
+          primary={resolveMenuLabel(objItem)}
           primaryTypographyProps={{
             fontWeight: blnIsActive ? 700 : 600,
             color: intDepth === 0 ? "#0f172a" : "#334155",

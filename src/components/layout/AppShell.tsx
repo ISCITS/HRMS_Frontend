@@ -2,6 +2,7 @@
 
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
 import {
   AppBar,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   Drawer,
   IconButton,
+  ButtonBase,
   Menu,
   MenuItem,
   Paper,
@@ -32,11 +34,15 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
-import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
+import type { CurrentUserContext, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
 import { authApiService, clsApiRequestError } from "@/services";
 
 const intDrawerWidth = 308;
 const intTopBarHeight = 60;
+const strLanguageSwitchTokenKey = "hrms_language_switch_token";
+const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
+const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
+const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 
 function getPageTitle(strPathname: string) {
   if (!strPathname || strPathname === "/") {
@@ -119,6 +125,42 @@ function getHeaderModuleName(strPathname: string) {
   return "";
 }
 
+function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
+  return lstLanguageIDs.reduce<number[]>((lstResolvedLanguageIDs, intLanguageID) => {
+    if (!intLanguageID || lstResolvedLanguageIDs.includes(intLanguageID)) {
+      return lstResolvedLanguageIDs;
+    }
+
+    lstResolvedLanguageIDs.push(intLanguageID);
+    return lstResolvedLanguageIDs;
+  }, []);
+}
+
+function resolveLanguageDisplayLabel(
+  strNativeName: string | null | undefined,
+  intLanguageID: number,
+  strFallbackLabel?: string
+) {
+  const strResolvedNativeName = strNativeName?.trim();
+  if (strResolvedNativeName) {
+    return strResolvedNativeName;
+  }
+
+  if (strFallbackLabel?.trim()) {
+    return strFallbackLabel.trim();
+  }
+
+  if (intLanguageID === 1) {
+    return "English";
+  }
+
+  if (intLanguageID === 2) {
+    return "हिन्दी";
+  }
+
+  return `Language ${intLanguageID}`;
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
@@ -131,12 +173,128 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const [strBootstrapError, setStrBootstrapError] = useState("");
+  const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
+  const [objTenantLanguageDetails, setObjTenantLanguageDetails] = useState<TenantAuthDetails | null>(null);
+  const [dicLanguageLabelByID, setDicLanguageLabelByID] = useState<Record<number, string>>({});
+  const [strActiveLanguageSwitchToken, setStrActiveLanguageSwitchToken] = useState("");
+  const [intPendingLabelLoads, setIntPendingLabelLoads] = useState(0);
+  const [blnLanguageShellReady, setBlnLanguageShellReady] = useState(false);
   const strHeaderModuleName = getHeaderModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
+  const intCurrentLanguageID = authHelpers.getLanguageID();
+  const lstLanguageOptions = buildLanguageOptions(
+    objTenantLanguageDetails?.language_id ?? authHelpers.getLanguageID(),
+    objTenantLanguageDetails?.secondary_language_id ?? authHelpers.getSecondaryLanguageID()
+  ).map((intLanguageID) => ({
+    intLanguageID,
+    strLabel: resolveLanguageDisplayLabel(
+      intLanguageID === objTenantLanguageDetails?.language_id
+        ? objTenantLanguageDetails?.language_native_name
+        : objTenantLanguageDetails?.secondary_language_native_name,
+      intLanguageID,
+      dicLanguageLabelByID[intLanguageID]
+    )
+  }));
 
   function redirectToSessionExpired() {
     authHelpers.redirectToSessionExpired();
+  }
+
+  useEffect(() => {
+    function handleModuleLabelLoadStart(objEvent: Event) {
+      const strToken = (objEvent as CustomEvent<{ strToken?: string }>).detail?.strToken ?? "";
+      if (!strToken || strToken !== strActiveLanguageSwitchToken) {
+        return;
+      }
+      setIntPendingLabelLoads((intCurrentCount) => intCurrentCount + 1);
+    }
+
+    function handleModuleLabelLoadEnd(objEvent: Event) {
+      const strToken = (objEvent as CustomEvent<{ strToken?: string }>).detail?.strToken ?? "";
+      if (!strToken || strToken !== strActiveLanguageSwitchToken) {
+        return;
+      }
+      setIntPendingLabelLoads((intCurrentCount) => Math.max(0, intCurrentCount - 1));
+    }
+
+    window.addEventListener(strModuleLabelsLoadStartEventName, handleModuleLabelLoadStart as EventListener);
+    window.addEventListener(strModuleLabelsLoadEndEventName, handleModuleLabelLoadEnd as EventListener);
+    return () => {
+      window.removeEventListener(strModuleLabelsLoadStartEventName, handleModuleLabelLoadStart as EventListener);
+      window.removeEventListener(strModuleLabelsLoadEndEventName, handleModuleLabelLoadEnd as EventListener);
+    };
+  }, [strActiveLanguageSwitchToken]);
+
+  useEffect(() => {
+    if (!blnLanguageSwitching || !blnLanguageShellReady || intPendingLabelLoads > 0) {
+      return;
+    }
+
+    const intTimer = window.setTimeout(() => {
+      window.sessionStorage.removeItem(strLanguageSwitchTokenKey);
+      window.sessionStorage.removeItem(strLanguageSwitchLanguageKey);
+      setStrActiveLanguageSwitchToken("");
+      setBlnLanguageShellReady(false);
+      setBlnLanguageSwitching(false);
+    }, 80);
+
+    return () => window.clearTimeout(intTimer);
+  }, [blnLanguageShellReady, blnLanguageSwitching, intPendingLabelLoads]);
+
+  async function loadWorkspaceContext(intLanguageID?: number | null) {
+    const strTenantUUID = authHelpers.getTenantUUID();
+    const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
+    const lstRequests: [
+      ReturnType<typeof authApiService.getCurrentUser>,
+      ReturnType<typeof authApiService.getMenu>,
+      Promise<{ Data?: TenantAuthDetails }>
+    ] = [
+      authApiService.getCurrentUser(intResolvedLanguageID),
+      authApiService.getMenu(intResolvedLanguageID),
+      strTenantUUID
+        ? authApiService
+            .getTenantAuthDetails(strTenantUUID, intResolvedLanguageID)
+            .then((objResponse) => objResponse as { Data: TenantAuthDetails })
+            .catch(() => ({}))
+        : Promise.resolve({})
+    ];
+
+    const [objUserResult, objMenuResult, objTenantDetailsResult] = await Promise.all(lstRequests);
+    const objTenantDetails = objTenantDetailsResult.Data;
+
+    authHelpers.setTenantContext(
+      objUserResult.Data.objTenant.intTenantID,
+      undefined,
+      intResolvedLanguageID ?? objUserResult.Data.objTenant.intLanguageID ?? undefined,
+      objTenantDetails?.secondary_language_id ?? authHelpers.getSecondaryLanguageID() ?? undefined
+    );
+    setObjUserContext(objUserResult.Data);
+    setObjMenu(normalizeMenuResponse(objMenuResult.Data));
+    if (objTenantDetails) {
+      setObjTenantLanguageDetails(objTenantDetails);
+      setDicLanguageLabelByID((dicCurrentLabels) => ({
+        ...dicCurrentLabels,
+        ...(objTenantDetails.language_id
+          ? {
+              [objTenantDetails.language_id]: resolveLanguageDisplayLabel(
+                objTenantDetails.language_native_name,
+                objTenantDetails.language_id,
+                dicCurrentLabels[objTenantDetails.language_id]
+              )
+            }
+          : {}),
+        ...(objTenantDetails.secondary_language_id
+          ? {
+              [objTenantDetails.secondary_language_id]: resolveLanguageDisplayLabel(
+                objTenantDetails.secondary_language_native_name,
+                objTenantDetails.secondary_language_id,
+                dicCurrentLabels[objTenantDetails.secondary_language_id]
+              )
+            }
+          : {})
+      }));
+    }
   }
 
   useEffect(() => {
@@ -151,19 +309,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
       };
     }
 
-    Promise.all([authApiService.getCurrentUser(), authApiService.getMenu()])
-      .then(([objUserResult, objMenuResult]) => {
+    loadWorkspaceContext(authHelpers.getLanguageID())
+      .then(() => {
         if (!blnMounted) {
           return;
         }
         setStrBootstrapError("");
-        authHelpers.setTenantContext(
-          objUserResult.Data.objTenant.intTenantID,
-          undefined,
-          objUserResult.Data.objTenant.intLanguageID ?? undefined
-        );
-        setObjUserContext(objUserResult.Data);
-        setObjMenu(normalizeMenuResponse(objMenuResult.Data));
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
@@ -192,6 +343,47 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setBlnLoggingOut(true);
     await authApiService.logout().catch(() => undefined);
     window.location.replace(authHelpers.getLoginUrl());
+  }
+
+  async function switchWorkspaceLanguage(intRequestedLanguageID: number) {
+    if (
+      blnLanguageSwitching ||
+      !intRequestedLanguageID ||
+      intRequestedLanguageID === intCurrentLanguageID
+    ) {
+      return;
+    }
+
+    setBlnLanguageSwitching(true);
+    setBlnLanguageShellReady(false);
+    setIntPendingLabelLoads(0);
+    setStrBootstrapError("");
+    const strSwitchToken = `${intRequestedLanguageID}-${Date.now()}`;
+    setStrActiveLanguageSwitchToken(strSwitchToken);
+    window.sessionStorage.setItem(strLanguageSwitchTokenKey, strSwitchToken);
+    window.sessionStorage.setItem(strLanguageSwitchLanguageKey, String(intRequestedLanguageID));
+    try {
+      await loadWorkspaceContext(intRequestedLanguageID);
+      setBlnLanguageShellReady(true);
+    } catch (objError) {
+      if (isSessionExpiredError(objError)) {
+        window.sessionStorage.removeItem(strLanguageSwitchTokenKey);
+        window.sessionStorage.removeItem(strLanguageSwitchLanguageKey);
+        setStrActiveLanguageSwitchToken("");
+        setBlnLanguageShellReady(false);
+        setBlnLanguageSwitching(false);
+        redirectToSessionExpired();
+        return;
+      }
+      window.sessionStorage.removeItem(strLanguageSwitchTokenKey);
+      window.sessionStorage.removeItem(strLanguageSwitchLanguageKey);
+      setStrActiveLanguageSwitchToken("");
+      setBlnLanguageShellReady(false);
+      setBlnLanguageSwitching(false);
+    } finally {
+      // The loader is dismissed by the label-load completion effect so
+      // menu and screen labels appear together after the switch finishes.
+    }
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
@@ -346,6 +538,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       }}
     >
       <BlockingLoader blnOpen={blnLoggingOut} strLabel="Logging out..." intZIndex={1600} />
+      <BlockingLoader
+        blnOpen={blnLanguageSwitching}
+        strLabel={tCommon("switching_language", "Switching language...")}
+        intZIndex={1590}
+      />
       <Box
         sx={{
           width: blnDesktopSidebarOpen ? intDrawerWidth + 28 : 0,
@@ -389,6 +586,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           position="sticky"
           color="inherit"
           sx={{
+            position: "relative",
             borderRadius: "24px",
             mb: 1.5,
             px: { xs: 0.25, sm: 0.75 },
@@ -425,6 +623,83 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 {tCommon("app_title", "Human Resource Management System")}
               </Typography>
             </Box>
+
+            {lstLanguageOptions.length > 1 ? (
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 1,
+                  display: { xs: "none", md: "block" }
+                }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.25,
+                    px: 0.75,
+                    py: 0.55,
+                    borderRadius: "16px",
+                    backgroundColor: "rgba(255,255,255,0.96)",
+                    border: "1px solid #dbe3ee",
+                    boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)"
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: "999px",
+                      color: "#47658a"
+                    }}
+                  >
+                    {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
+                  </Box>
+                  {lstLanguageOptions.map((dicLanguageOption) => {
+                    const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
+                    return (
+                      <ButtonBase
+                        key={dicLanguageOption.intLanguageID}
+                        onClick={() => {
+                          void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
+                        }}
+                        disabled={blnLanguageSwitching || blnActive}
+                        sx={{
+                          px: 1.15,
+                          py: 0.75,
+                          minWidth: 44,
+                          borderRadius: "12px",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          color: blnActive ? "#ffffff" : "#52637a",
+                          backgroundColor: blnActive ? "#3f5f99" : "transparent",
+                          boxShadow: blnActive ? "0 8px 16px rgba(63, 95, 153, 0.22)" : "none",
+                          opacity: blnLanguageSwitching && !blnActive ? 0.72 : 1,
+                          transition: "background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease",
+                          "&:hover": blnActive
+                            ? {
+                                backgroundColor: "#3f5f99",
+                              }
+                            : {
+                                backgroundColor: "rgba(19, 42, 99, 0.08)",
+                                color: "#132a63",
+                              }
+                        }}
+                      >
+                        {dicLanguageOption.strLabel}
+                      </ButtonBase>
+                    );
+                  })}
+                </Paper>
+              </Box>
+            ) : null}
 
             <Box sx={{ flex: 1, minWidth: 0 }} />
 

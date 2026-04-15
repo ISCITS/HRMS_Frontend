@@ -6,6 +6,11 @@ import dicConstant from "@/constants/Constant.json";
 import { labelService } from "@/features/labels/services/labelService";
 import { authHelpers } from "@/lib/auth";
 
+const strLanguageSwitchTokenKey = "hrms_language_switch_token";
+const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
+const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
+const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
+
 const dicModuleConstantMap: Record<string, unknown> = {
   common: dicConstant.common,
   common_data_grid: dicConstant.commonDataGrid,
@@ -165,6 +170,25 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
       }
       setBlnLoadingLabels(true);
       setStrLabelError("");
+      const strSwitchToken = typeof window !== "undefined"
+        ? window.sessionStorage.getItem(strLanguageSwitchTokenKey)
+        : null;
+      const intSwitchLanguageID = typeof window !== "undefined"
+        ? Number(window.sessionStorage.getItem(strLanguageSwitchLanguageKey) ?? "")
+        : NaN;
+      const blnTrackLanguageSwitchLoad = Boolean(
+        strSwitchToken &&
+        Number.isFinite(intSwitchLanguageID) &&
+        intSwitchLanguageID === intLanguageID
+      );
+
+      if (blnTrackLanguageSwitchLoad && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(strModuleLabelsLoadStartEventName, {
+            detail: { strToken: strSwitchToken, strModuleName }
+          })
+        );
+      }
       try {
         const objResponse = await labelService.getModuleLabels(intLanguageID, strModuleName);
         if (!blnMounted) {
@@ -181,6 +205,13 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
           objError instanceof Error ? objError.message : strFallbackError || `Unable to load ${strModuleName} labels.`
         );
       } finally {
+        if (blnTrackLanguageSwitchLoad && typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(strModuleLabelsLoadEndEventName, {
+              detail: { strToken: strSwitchToken, strModuleName }
+            })
+          );
+        }
         if (blnMounted) {
           setBlnLoadingLabels(false);
         }

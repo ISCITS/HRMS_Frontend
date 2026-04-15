@@ -2,6 +2,7 @@
 
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -19,7 +20,6 @@ import type {
   AuthOtpChallengeData,
   GoogleMfaChallengeData,
   NormalizedTenantAuthMode,
-  NormalizedTenantLoginMethod,
   SsoMfaLoginSuccessData,
   SsoMfaSetupSuccessData,
   TenantAuthDetails
@@ -56,10 +56,47 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [intLockRemainingSeconds, setIntLockRemainingSeconds] = useState(0);
   const [intResendRemainingSeconds, setIntResendRemainingSeconds] = useState(0);
   const [dicLoginLabels, setDicLoginLabels] = useState<Record<string, string>>({});
+  const [intSelectedLanguageID, setIntSelectedLanguageID] = useState<number | null>(null);
+  const [intLoadedLanguageID, setIntLoadedLanguageID] = useState<number | null>(null);
+  const [dicLanguageLabelByID, setDicLanguageLabelByID] = useState<Record<number, string>>({});
+  const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
-  const strTenantLoginMethod = normalizeTenantLoginMethod(objTenantAuthDetails?.login_method);
-  const strIdentifierLabel = strTenantLoginMethod === "login_id" ? "Login ID" : "Email Address";
-  const strIdentifierPlaceholder = strTenantLoginMethod === "login_id" ? "Enter your login ID" : "Enter your email address";
+  const lstLanguageOptions = buildLanguageOptions(
+    objTenantAuthDetails?.language_id,
+    objTenantAuthDetails?.secondary_language_id
+  ).map((intLanguageID) => ({
+    intLanguageID,
+    strLabel: resolveLanguageToggleLabel(intLanguageID, dicLanguageLabelByID[intLanguageID])
+  }));
+
+  async function loadTenantLoginLabels(intRequestedLanguageID: number) {
+    if (!strTenantUUID) {
+      return;
+    }
+
+    setBlnLanguageSwitching(true);
+    try {
+      const objAuthDetailsResult = await authApiService.getTenantAuthDetails(
+        strTenantUUID,
+        intRequestedLanguageID
+      );
+      setDicLoginLabels(objAuthDetailsResult.Data.labels ?? {});
+      setIntSelectedLanguageID(intRequestedLanguageID);
+      setIntLoadedLanguageID(intRequestedLanguageID);
+      setDicLanguageLabelByID((dicCurrentLabels) => ({
+        ...dicCurrentLabels,
+        [intRequestedLanguageID]: resolveLanguageDisplayLabel(
+          intRequestedLanguageID === objAuthDetailsResult.Data.language_id
+            ? objAuthDetailsResult.Data.language_native_name
+            : objAuthDetailsResult.Data.secondary_language_native_name,
+          intRequestedLanguageID,
+          dicCurrentLabels[intRequestedLanguageID]
+        )
+      }));
+    } finally {
+      setBlnLanguageSwitching(false);
+    }
+  }
 
   useEffect(() => {
     if (strMode !== "tenant" || !strTenantUUID) {
@@ -82,12 +119,37 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
 
         setObjTenantAuthDetails(objAuthDetails);
+        const intResolvedLanguageID = objAuthDetails.language_id ?? null;
+        setIntSelectedLanguageID(intResolvedLanguageID);
+        setIntLoadedLanguageID(objAuthDetails.language_id ?? null);
         authHelpers.setTenantContext(
           objAuthDetails.tenant_id,
           undefined,
-          objAuthDetails.language_id ?? undefined
+          intResolvedLanguageID ?? undefined,
+          objAuthDetails.secondary_language_id ?? undefined
         );
         setDicLoginLabels(objAuthDetails.labels ?? {});
+        setDicLanguageLabelByID((dicCurrentLabels) => ({
+          ...dicCurrentLabels,
+          ...(objAuthDetails.language_id
+            ? {
+                [objAuthDetails.language_id]: resolveLanguageDisplayLabel(
+                  objAuthDetails.language_native_name,
+                  objAuthDetails.language_id,
+                  dicCurrentLabels[objAuthDetails.language_id]
+                )
+              }
+            : {}),
+          ...(objAuthDetails.secondary_language_id
+            ? {
+                [objAuthDetails.secondary_language_id]: resolveLanguageDisplayLabel(
+                  objAuthDetails.secondary_language_native_name,
+                  objAuthDetails.secondary_language_id,
+                  dicCurrentLabels[objAuthDetails.secondary_language_id]
+                )
+              }
+            : {})
+        }));
         if (strTenantModeRequiresSsoRedirect(objAuthDetails.auth_mode)) {
           setBlnSsoRedirecting(true);
           setStrSsoStatus(getLoginLabel("ssoRedirectStatus"));
@@ -108,6 +170,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setStrError(strMessage);
         }
         setObjTenantAuthDetails(null);
+        setIntSelectedLanguageID(null);
+        setIntLoadedLanguageID(null);
         setDicLoginLabels({});
       })
       .finally(() => {
@@ -411,6 +475,41 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
 
         <Box className={styles.formPanel}>
           <Box className={styles.formCard}>
+            {blnLanguageSwitching ? (
+              <Box className={styles.languageLoadingOverlay}>
+                <CircularProgress size={22} />
+              </Box>
+            ) : null}
+            {lstLanguageOptions.length > 1 ? (
+              <Box className={styles.languageSwitcherRow}>
+                <Box className={styles.languageSwitcher} role="tablist" aria-label="Login language switcher">
+                  <Box className={styles.languageSwitcherIcon}>
+                    {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
+                  </Box>
+                  {lstLanguageOptions.map((dicLanguageOption) => (
+                    <button
+                      key={dicLanguageOption.intLanguageID}
+                      type="button"
+                      className={`${styles.languageButton} ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? styles.languageButtonActive : ""}`}
+                      onClick={() => {
+                        if (dicLanguageOption.intLanguageID === intLoadedLanguageID) {
+                          setIntSelectedLanguageID(dicLanguageOption.intLanguageID);
+                          return;
+                        }
+
+                        loadTenantLoginLabels(dicLanguageOption.intLanguageID).catch(() => {
+                          setIntSelectedLanguageID(intLoadedLanguageID);
+                        });
+                      }}
+                      disabled={blnLanguageSwitching || intSelectedLanguageID === dicLanguageOption.intLanguageID}
+                      aria-pressed={intSelectedLanguageID === dicLanguageOption.intLanguageID}
+                    >
+                      {dicLanguageOption.strLabel}
+                    </button>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
             <Box className={styles.formIntro}>
               <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
               <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
@@ -426,10 +525,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
 
               <Box>
                 <Typography className={styles.fieldLabel}>
-                  {strMode === "tenant" ? strIdentifierLabel : getLoginLabel("loginIdLabel")}
+                  {getLoginLabel("loginIdLabel")}
                 </Typography>
                 <TextField
-                  placeholder={strMode === "tenant" ? strIdentifierPlaceholder : getLoginLabel("loginIdPlaceholder")}
+                  placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
                   fullWidth
@@ -541,6 +640,46 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
 }
 
+function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
+  return lstLanguageIDs.reduce<number[]>((lstResolvedLanguageIDs, intLanguageID) => {
+    if (!intLanguageID || lstResolvedLanguageIDs.includes(intLanguageID)) {
+      return lstResolvedLanguageIDs;
+    }
+
+    lstResolvedLanguageIDs.push(intLanguageID);
+    return lstResolvedLanguageIDs;
+  }, []);
+}
+
+function resolveLanguageDisplayLabel(
+  strNativeName: string | null | undefined,
+  intLanguageID: number,
+  strFallbackLabel?: string
+) {
+  const strResolvedNativeName = strNativeName?.trim();
+  if (strResolvedNativeName) {
+    return strResolvedNativeName;
+  }
+
+  if (strFallbackLabel?.trim()) {
+    return strFallbackLabel.trim();
+  }
+
+  if (intLanguageID === 1) {
+    return "English";
+  }
+
+  if (intLanguageID === 2) {
+    return "हिन्दी";
+  }
+
+  return `Language ${intLanguageID}`;
+}
+
+function resolveLanguageToggleLabel(intLanguageID: number, strLanguageLabel?: string) {
+  return resolveLanguageDisplayLabel(strLanguageLabel, intLanguageID);
+}
+
 function extractRemainingSeconds(objData: unknown): number {
   if (!objData || typeof objData !== "object" || !("remainingSeconds" in objData)) {
     return 0;
@@ -577,10 +716,6 @@ function normalizeTenantAuthMode(strAuthMode: string | null | undefined): Normal
     default:
       return "unknown";
   }
-}
-
-function normalizeTenantLoginMethod(strLoginMethod: string | null | undefined): NormalizedTenantLoginMethod {
-  return strLoginMethod?.trim().toLowerCase() === "login_id" ? "login_id" : "email_address";
 }
 
 function strTenantModeRequiresSsoRedirect(strAuthMode: string | null | undefined): boolean {
