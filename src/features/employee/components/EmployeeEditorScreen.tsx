@@ -471,10 +471,6 @@ export default function EmployeeEditorScreen({
   }
 
   async function ensureEmployeeRecordForTabSave() {
-    if (intResolvedEmployeeID) {
-      return intResolvedEmployeeID;
-    }
-
     const dicValidationErrors = validateCommonEmployeeFields();
     if (Object.keys(dicValidationErrors).length > 0) {
       setStrActiveTab("basicInfo");
@@ -501,10 +497,12 @@ export default function EmployeeEditorScreen({
       intLocationID: intDefaultLocationID,
     };
 
-    const dicSavedEmployee = await employeeService.createEmployee(dicDraftBasicForm);
+    const dicSavedEmployee = intResolvedEmployeeID
+      ? await employeeService.updateEmployee(intResolvedEmployeeID, dicDraftBasicForm)
+      : await employeeService.createEmployee(dicDraftBasicForm);
     setIntResolvedEmployeeID(dicSavedEmployee.intID);
     setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
-    if (strMode === "add") {
+    if (!intResolvedEmployeeID && strMode === "add") {
       objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
     }
     return dicSavedEmployee.intID;
@@ -552,6 +550,7 @@ export default function EmployeeEditorScreen({
         ? await employeeService.createEmployee(dicBasicForm)
         : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicBasicForm);
       setIntResolvedEmployeeID(dicSavedEmployee.intID);
+      setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
       openAlertDialog("success", strMode === "add" && intEmployeeID === undefined ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
       if (strMode === "add") {
         objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);

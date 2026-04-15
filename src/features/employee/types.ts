@@ -10,6 +10,7 @@ export type EmployeeListRecord = {
   intID: number;
   strEmployeeCode: string;
   strFullName: string;
+  blnIsWorker: boolean;
   strWorkEmail: string | null;
   strMobileNumber: string | null;
   strDepartmentName: string | null;

@@ -287,6 +287,7 @@ export type EmployeeApiRecord = {
   intID: number;
   strEmployeeCode: string;
   strFullName: string;
+  blnIsWorker: boolean;
   strWorkEmail: string | null;
   strMobileNumber: string | null;
   strDepartmentName: string | null;
@@ -433,6 +434,7 @@ export type SalaryComponentApiRecord = {
   strComponentCode: string;
   strComponentName: string;
   strComponentDescription?: string | null;
+  blnIsWages: boolean;
   strComponentCategory: string;
   strComponentGroup: string | null;
   strCalcMethod: string;

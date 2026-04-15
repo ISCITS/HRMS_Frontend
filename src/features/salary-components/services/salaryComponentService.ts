@@ -7,8 +7,11 @@ import type {
   SalaryComponentTextFormValue
 } from "@/features/salary-components/types";
 
+let intRowIDSequence = 0;
+
 function createRowID() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  intRowIDSequence += 1;
+  return `salary-component-text-row-${intRowIDSequence}`;
 }
 
 function formatOptionalText(strValue: string) {
@@ -44,6 +47,7 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     intID: dicRecord.intID,
     strComponentCode: dicRecord.strComponentCode,
     strComponentName: dicRecord.strComponentName,
+    blnIsWages: dicRecord.blnIsWages,
     strComponentDescription: dicRecord.strComponentDescription ?? null,
     strComponentCategory: dicRecord.strComponentCategory,
     strComponentGroup: dicRecord.strComponentGroup ?? null,
@@ -83,6 +87,7 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     strComponentCode: "",
     strComponentName: "",
     strComponentDescription: "",
+    blnIsWages: true,
     strComponentCategory: "",
     strComponentGroup: "",
     strCalcMethod: "fixed",
@@ -104,6 +109,7 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     strComponentCode: dicRecord.strComponentCode,
     strComponentName: dicRecord.strComponentName,
     strComponentDescription: dicRecord.strComponentDescription ?? "",
+    blnIsWages: dicRecord.blnIsWages,
     strComponentCategory: dicRecord.strComponentCategory,
     strComponentGroup: dicRecord.strComponentGroup ?? "",
     strCalcMethod: dicRecord.strCalcMethod,
@@ -133,6 +139,7 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
     strComponentDescription: formatOptionalText(dicValues.strComponentDescription),
+    blnIsWages: dicValues.blnIsWages,
     strComponentCategory: dicValues.strComponentCategory.trim(),
     strComponentGroup: formatOptionalText(dicValues.strComponentGroup),
     strCalcMethod: dicValues.strCalcMethod.trim(),
@@ -168,6 +175,7 @@ export const salaryComponentService = {
         intID: dicDetail.intID,
         strComponentCode: dicDetail.strComponentCode,
         strComponentName: dicDetail.strComponentName,
+        blnIsWages: dicDetail.blnIsWages,
         strComponentCategory: dicDetail.strComponentCategory,
         strComponentGroup: dicDetail.strComponentGroup,
         strCalcMethod: dicDetail.strCalcMethod,

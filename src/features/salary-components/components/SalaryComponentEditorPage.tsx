@@ -16,6 +16,8 @@ import {
   ListItemText,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Stack,
   Switch,
   TextField,
@@ -178,6 +180,23 @@ export default function SalaryComponentEditorPage({
     };
   }
 
+  function ensureUniqueTextRowIDs(lstTexts: SalaryComponentTextFormValue[]) {
+    const setUsedRowIDs = new Set<string>();
+    return lstTexts.map((dicText) => {
+      const strCandidateRowID = dicText.strRowID?.trim() || createEmptySalaryComponentTextRow().strRowID;
+      if (!setUsedRowIDs.has(strCandidateRowID)) {
+        setUsedRowIDs.add(strCandidateRowID);
+        return dicText;
+      }
+      const strNewRowID = createEmptySalaryComponentTextRow().strRowID;
+      setUsedRowIDs.add(strNewRowID);
+      return {
+        ...dicText,
+        strRowID: strNewRowID,
+      };
+    });
+  }
+
   function ensureTenantLanguageRows(dicValues: SalaryComponentFormValues) {
     const dicDefaultRow = buildFixedLanguageRow(
       intDefaultLanguageID,
@@ -194,9 +213,12 @@ export default function SalaryComponentEditorPage({
       dicSecondaryExistingText?.strComponentDescription ?? "",
       dicValues.lstTexts,
     );
+    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
+      ? [dicDefaultRow]
+      : [dicDefaultRow, dicSecondaryRow];
     return {
       ...dicValues,
-      lstTexts: [dicDefaultRow, dicSecondaryRow],
+      lstTexts: ensureUniqueTextRowIDs(lstRows),
     };
   }
 
@@ -459,7 +481,7 @@ export default function SalaryComponentEditorPage({
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>1. {t("basic_information", "Basic Information")}</Typography>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <TextField label={t("component_code", "Component Code")} value={dicForm.strComponentCode} onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
           <TextField
             label={t("component_name", "Component Name")}
@@ -467,7 +489,9 @@ export default function SalaryComponentEditorPage({
             onChange={(objEvent) => syncEnglishComponentText(objEvent.target.value, dicForm.strComponentDescription)}
             disabled={blnFieldDisabled}
             fullWidth
+            sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }}
           />
+
           <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             {lstCategoryOptions.map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
@@ -479,6 +503,30 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
+          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5, minHeight: 56 }}>
+            <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+              {t("wage_type", "Wage Type")}
+            </Typography>
+            <RadioGroup
+              row
+              value={dicForm.blnIsWages ? "wages" : "nonWages"}
+              onChange={(objEvent) => updateRootField("blnIsWages", objEvent.target.value === "wages")}
+              sx={{ flexWrap: "nowrap" }}
+            >
+              <FormControlLabel
+                value="wages"
+                control={<Radio disabled={blnFieldDisabled} />}
+                label={t("wages", "Wages")}
+                disabled={blnFieldDisabled}
+              />
+              <FormControlLabel
+                value="nonWages"
+                control={<Radio disabled={blnFieldDisabled} />}
+                label={t("non_wages", "Non Wages")}
+                disabled={blnFieldDisabled}
+              />
+            </RadioGroup>
+          </Box>
           <TextField
             label={t("description", "Description")}
             value={dicForm.strComponentDescription}

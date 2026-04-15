@@ -2,6 +2,7 @@ export type SalaryComponentListRecord = {
   intID: number;
   strComponentCode: string;
   strComponentName: string;
+  blnIsWages: boolean;
   strComponentCategory: string;
   strComponentGroup: string | null;
   strCalcMethod: string;
@@ -33,6 +34,7 @@ export type SalaryComponentFormValues = {
   strComponentCode: string;
   strComponentName: string;
   strComponentDescription: string;
+  blnIsWages: boolean;
   strComponentCategory: string;
   strComponentGroup: string;
   strCalcMethod: string;
