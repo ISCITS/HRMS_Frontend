@@ -12,6 +12,7 @@ import {
   Chip,
   CircularProgress,
   FormControlLabel,
+  InputAdornment,
   ListItemText,
   MenuItem,
   Paper,
@@ -32,6 +33,7 @@ import {
   salaryComponentService,
   toSalaryComponentFormValues
 } from "@/features/salary-components/services/salaryComponentService";
+import { authHelpers } from "@/lib/auth";
 import type {
   SalaryComponentFormOptions,
   SalaryComponentFormValues,
@@ -80,6 +82,8 @@ export default function SalaryComponentEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -149,6 +153,72 @@ export default function SalaryComponentEditorPage({
   }, [objFormOptions]);
   const lstCategoryOptions = objFormOptions?.lstComponentCategories ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroups ?? [];
+  const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID()
+    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
+    ?? intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strComponentName: string,
+    strComponentDescription: string,
+    lstExistingTexts: SalaryComponentTextFormValue[],
+  ) {
+    const dicExistingText = lstExistingTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intLanguageID
+    ) ?? createEmptySalaryComponentTextRow();
+    const dicLanguage = (objFormOptions?.lstLanguages ?? []).find((dicOption) => dicOption.intID === intLanguageID);
+    return {
+      ...dicExistingText,
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText.strLanguageName ?? "",
+      strComponentName,
+      strComponentDescription,
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: SalaryComponentFormValues) {
+    const dicDefaultRow = buildFixedLanguageRow(
+      intDefaultLanguageID,
+      dicValues.strComponentName,
+      dicValues.strComponentDescription,
+      dicValues.lstTexts,
+    );
+    const dicSecondaryExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
+    );
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strComponentName ?? "",
+      dicSecondaryExistingText?.strComponentDescription ?? "",
+      dicValues.lstTexts,
+    );
+    return {
+      ...dicValues,
+      lstTexts: [dicDefaultRow, dicSecondaryRow],
+    };
+  }
+
+  function syncEnglishComponentText(strComponentName: string, strComponentDescription: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows({
+        ...dicPrevious,
+        strComponentName,
+        strComponentDescription,
+      });
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0
+          ? {
+              ...dicText,
+              strComponentName,
+              strComponentDescription,
+            }
+          : dicText),
+      };
+    });
+  }
 
   function updateRootField<TKey extends keyof SalaryComponentFormValues>(strField: TKey, objValue: SalaryComponentFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
@@ -175,18 +245,89 @@ export default function SalaryComponentEditorPage({
   }
 
   function handleAddLanguageRow() {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstTexts: [...dicPrevious.lstTexts, createEmptySalaryComponentTextRow()]
-    }));
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }
 
   function handleRemoveLanguageRow(strRowID: string) {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
-      lstTexts: dicPrevious.lstTexts.length === 1 ? dicPrevious.lstTexts : dicPrevious.lstTexts.filter((dicText) => dicText.strRowID !== strRowID)
+      lstTexts: dicPrevious.lstTexts.filter((dicText) => dicText.strRowID !== strRowID)
     }));
   }
+
+  async function translateTextRow(strRowID: string, intLanguageID: number) {
+    const dicSelectedLanguage = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === intLanguageID);
+    const strSourceComponentName = dicForm.strComponentName.trim();
+    const strSourceComponentDescription = dicForm.strComponentDescription.trim();
+    const strSourceSignature = `${strSourceComponentName}||${strSourceComponentDescription}`;
+
+    if (!dicSelectedLanguage || intLanguageID === intDefaultLanguageID || !strSourceComponentName) {
+      return;
+    }
+
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    const strLastTranslatedSource = (dicLastTranslatedSourceByRow[strRowID] ?? "").trim();
+    const blnShouldTranslate =
+      !dicCurrentRow?.strComponentName.trim()
+      || strLastTranslatedSource !== strSourceSignature;
+
+    if (!blnShouldTranslate) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const [strTranslatedName, strTranslatedDescription] = await Promise.all([
+        salaryComponentService.translateSalaryComponentText(
+          strSourceComponentName,
+          intDefaultLanguageID,
+          intLanguageID,
+        ),
+        strSourceComponentDescription
+          ? salaryComponentService.translateSalaryComponentText(
+              strSourceComponentDescription,
+              intDefaultLanguageID,
+              intLanguageID,
+            )
+          : Promise.resolve(""),
+      ]);
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? {
+              ...dicText,
+              intLanguageID,
+              strLanguageName: dicSelectedLanguage.strLabel,
+              strComponentName: strTranslatedName,
+              strComponentDescription: strTranslatedDescription,
+            }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({
+        ...dicPrevious,
+        [strRowID]: strSourceSignature,
+      }));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("request_failed", "Translation request failed."));
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+  }
+
+  useEffect(() => {
+    if ((objFormOptions?.lstLanguages ?? []).length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
   async function handleSave() {
     if (!blnCanSave) {
@@ -320,7 +461,13 @@ export default function SalaryComponentEditorPage({
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>1. {t("basic_information", "Basic Information")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
           <TextField label={t("component_code", "Component Code")} value={dicForm.strComponentCode} onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
-          <TextField label={t("component_name", "Component Name")} value={dicForm.strComponentName} onChange={(objEvent) => updateRootField("strComponentName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+          <TextField
+            label={t("component_name", "Component Name")}
+            value={dicForm.strComponentName}
+            onChange={(objEvent) => syncEnglishComponentText(objEvent.target.value, dicForm.strComponentDescription)}
+            disabled={blnFieldDisabled}
+            fullWidth
+          />
           <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
             {lstCategoryOptions.map((strOption) => (
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
@@ -332,7 +479,16 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={strOption} value={strOption}>{strOption}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("description", "Description")} value={dicForm.strComponentDescription} onChange={(objEvent) => updateRootField("strComponentDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }} />
+          <TextField
+            label={t("description", "Description")}
+            value={dicForm.strComponentDescription}
+            onChange={(objEvent) => syncEnglishComponentText(dicForm.strComponentName, objEvent.target.value)}
+            disabled={blnFieldDisabled}
+            fullWidth
+            multiline
+            minRows={3}
+            sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }}
+          />
         </Box>
       </Paper>
 
@@ -385,21 +541,55 @@ export default function SalaryComponentEditorPage({
               {t("multilingual_text_help", "Add translated component names and descriptions for supported languages.")}
             </Typography>
           </Box>
-          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
-            {t("add_language", "Add Language")}
-          </Button>
+          <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
+            <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled sx={{ borderRadius: "12px" }}>
+              {t("add_language", "Add Language")}
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleTranslateClick()}
+              disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+              sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
+            >
+              {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
+                ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                : t("translate", "Translate")}
+            </Button>
+          </Box>
         </Stack>
         <Stack spacing={1.5}>
-          {dicForm.lstTexts.map((dicText) => (
+          {dicForm.lstTexts.map((dicText, intIndex) => (
             <Box key={dicText.strRowID} sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "220px 1fr 1.1fr auto" }, alignItems: "start", border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
-              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth>
+              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled fullWidth>
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
                   <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                 ))}
               </TextField>
-              <TextField label={t("component_name", "Component Name")} value={dicText.strComponentName} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
-              <TextField label={t("description", "Description")} value={dicText.strComponentDescription} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled={blnFieldDisabled} sx={{ minHeight: 54 }}>
+              <TextField
+                label={t("component_name", "Component Name")}
+                value={dicText.strComponentName}
+                onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)}
+                disabled={blnFieldDisabled || intIndex === 0}
+                InputProps={{
+                  endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    : undefined
+                }}
+                fullWidth
+              />
+              <TextField
+                label={t("description", "Description")}
+                value={dicText.strComponentDescription}
+                onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)}
+                disabled={blnFieldDisabled || intIndex === 0}
+                InputProps={{
+                  endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    : undefined
+                }}
+                fullWidth
+              />
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>

@@ -28,6 +28,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     strTitle: dicValues.strTitle || null,
     strFirstName: dicValues.strFirstName.trim(),
     strMiddleName: dicValues.strMiddleName.trim() || null,
+    blnIsWorker: dicValues.blnIsWorker,
     strLastName: dicValues.strLastName.trim() || null,
     dtDateOfBirth: dicValues.dtDateOfBirth || null,
     dtDateOfJoining: dicValues.dtDateOfJoining,
