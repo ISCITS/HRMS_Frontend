@@ -21,6 +21,12 @@ export type TenantAuthDetails = {
   tenant_id: number;
   tenant_uuid: string;
   language_id?: number | null;
+  secondary_language_id?: number | null;
+  active_language_id?: number | null;
+  language_code?: string | null;
+  secondary_language_code?: string | null;
+  language_native_name?: string | null;
+  secondary_language_native_name?: string | null;
   is_active: boolean;
   auth_mode: string;
   mfa_mode?: string | null;

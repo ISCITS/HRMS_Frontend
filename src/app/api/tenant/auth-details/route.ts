@@ -9,6 +9,8 @@ import type { TenantAuthDetails } from "@/models/AuthModels";
 type TenantRequestPayload = {
   strTenantUUID?: string;
   tenantUuid?: string;
+  languageId?: number;
+  language_id?: number;
 };
 
 function buildTenantProxyHeaders(objRequestHeaders?: Headers) {
@@ -24,7 +26,7 @@ function buildTenantProxyHeaders(objRequestHeaders?: Headers) {
   };
 }
 
-async function proxyTenantAuthDetails(strTenantUUID: string, objRequestHeaders?: Headers) {
+async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: number, objRequestHeaders?: Headers) {
   if (!strTenantUUID) {
     return NextResponse.json(
       {
@@ -37,8 +39,11 @@ async function proxyTenantAuthDetails(strTenantUUID: string, objRequestHeaders?:
   }
 
   try {
+    const strQuery = Number.isFinite(intLanguageID) && Number(intLanguageID) > 0
+      ? `?language_id=${encodeURIComponent(String(intLanguageID))}`
+      : "";
     const objResult = await callBackendApi<{ ResultCode: number; Msg: string; Data: TenantAuthDetails }>(
-      `/api/v1/tenant/${encodeURIComponent(strTenantUUID)}/auth-details`,
+      `/api/v1/tenant/${encodeURIComponent(strTenantUUID)}/auth-details${strQuery}`,
       {
         method: "GET",
         cache: "no-store",
@@ -59,10 +64,19 @@ async function proxyTenantAuthDetails(strTenantUUID: string, objRequestHeaders?:
 }
 
 export async function GET(request: NextRequest) {
-  return proxyTenantAuthDetails(request.nextUrl.searchParams.get("tenantUuid")?.trim() ?? "", request.headers);
+  const intLanguageID = Number(request.nextUrl.searchParams.get("languageId") ?? request.nextUrl.searchParams.get("language_id") ?? "");
+  return proxyTenantAuthDetails(
+    request.nextUrl.searchParams.get("tenantUuid")?.trim() ?? "",
+    Number.isFinite(intLanguageID) ? intLanguageID : undefined,
+    request.headers
+  );
 }
 
 export async function POST(request: Request) {
   const objBody = (await request.json().catch(() => ({} as TenantRequestPayload))) as TenantRequestPayload;
-  return proxyTenantAuthDetails((objBody.strTenantUUID ?? objBody.tenantUuid ?? "").trim(), request.headers);
+  return proxyTenantAuthDetails(
+    (objBody.strTenantUUID ?? objBody.tenantUuid ?? "").trim(),
+    objBody.languageId ?? objBody.language_id,
+    request.headers
+  );
 }

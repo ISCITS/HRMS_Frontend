@@ -57,6 +57,7 @@ async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: ApiRequestMethod;
   objBody?: unknown;
+  objQueryParams?: Record<string, string | number | boolean | null | undefined>;
   strMenuAction: string;
   blnUseAuthHeader?: boolean;
 }) {
@@ -65,6 +66,7 @@ async function requestApi<TData>(objOptions: {
       strPath: `${ApiRoutePrefix.ApiV1}/${objOptions.strPath}`,
       strMethod: objOptions.strMethod,
       objBody: objOptions.objBody,
+      objQueryParams: objOptions.objQueryParams,
       strMenuAction: objOptions.strMenuAction,
       blnUseAuthHeader: objOptions.blnUseAuthHeader
     });
@@ -73,7 +75,7 @@ async function requestApi<TData>(objOptions: {
       throw new clsApiRequestError(objError.message, objError.objData, objError.intStatusCode);
     }
 
-    throw objError;
+  throw objError;
   }
 }
 
@@ -116,11 +118,12 @@ export const authApiService = {
     });
   },
 
-  async getTenantAuthDetails(strTenantUUID: string) {
+  async getTenantAuthDetails(strTenantUUID: string, intLanguageID?: number | null) {
     try {
       return await requestApi<TenantAuthDetails>({
         strPath: `tenant/${encodeURIComponent(strTenantUUID)}/auth-details`,
         strMethod: ApiRequestMethod.Get,
+        objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
         strMenuAction: "TENANT_AUTH_DETAILS_READ"
       });
     } catch (objError) {
@@ -145,10 +148,11 @@ export const authApiService = {
     }
   },
 
-  async getLoginLabels(strTenantUUID: string) {
+  async getLoginLabels(strTenantUUID: string, intLanguageID?: number | null) {
     return requestApi<ModuleLabelsResponse>({
       strPath: `tenant/${encodeURIComponent(strTenantUUID)}/login-labels`,
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "TENANT_LOGIN_LABELS_READ"
     });
   },
@@ -263,19 +267,21 @@ export const authApiService = {
     return objResult;
   },
 
-  async getCurrentUser() {
+  async getCurrentUser(intLanguageID?: number | null) {
     return requestApi<CurrentUserContext>({
       strPath: "auth/me",
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "AUTH_ME",
       blnUseAuthHeader: true
     });
   },
 
-  async getMenu() {
+  async getMenu(intLanguageID?: number | null) {
     return requestApi<MenuResponse>({
       strPath: "auth/menu",
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "AUTH_MENU",
       blnUseAuthHeader: true
     });

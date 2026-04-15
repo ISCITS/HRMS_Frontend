@@ -5,10 +5,16 @@ import { getAccessTokenFromCookie, getAccessTokenFromRequest, proxyCurrentUser }
 async function handleCurrentUser(objRequest: Request) {
   try {
     const strAccessToken = getAccessTokenFromRequest(objRequest) || await getAccessTokenFromCookie();
+    const objUrl = new URL(objRequest.url);
+    const intLanguageID = Number(objUrl.searchParams.get("language_id") ?? "");
     if (!strAccessToken) {
       return NextResponse.json({ ResultCode: 0, Msg: "Unauthenticated.", Data: {} }, { status: 401 });
     }
-    const objResult = await proxyCurrentUser(strAccessToken, objRequest.headers);
+    const objResult = await proxyCurrentUser(
+      strAccessToken,
+      objRequest.headers,
+      Number.isFinite(intLanguageID) ? intLanguageID : undefined
+    );
     return NextResponse.json(objResult, { status: 200 });
   } catch (objError) {
     return NextResponse.json(
