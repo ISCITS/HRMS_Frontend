@@ -118,6 +118,8 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const { t: tSalaryStructures } = useModuleLabels("salary-structures");
   const { t: tPayrollCycles } = useModuleLabels("payroll-cycles");
   const { t: tPayrollProcessLogs } = useModuleLabels("payroll-process-logs");
+  const { t: tPayslips } = useModuleLabels("payslips");
+  const { t: tEmployeePayrollInput } = useModuleLabels("employee-payroll-input");
   const { t: tTaxRegimes } = useModuleLabels("tax-regimes");
 
   function resolveGroupFallbackLabel(strGroupKey: "masters" | "user_management" | "salary" | "payroll", strDefaultLabel: string) {
@@ -154,10 +156,6 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strModuleCode.includes("designation") || strRoute.includes("/designations")) {
       return tDesignation("page_title", strModuleName || "Designation");
-    }
-
-    if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
-      return tEmployee("page_title", strModuleName || "Employee");
     }
 
     if (strModuleCode === "state" || strRoute.includes("/states")) {
@@ -208,12 +206,37 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return tPayrollCycles("page_title", strModuleName || "Payroll Cycles");
     }
 
-    if (strRoute.includes("/payroll-process-logs")) {
+    if (
+      strRoute.includes("/payroll/employee-payroll-inputs") ||
+      strRoute.includes("/payroll/employee-payroll-input") ||
+      strRoute.includes("/payroll/inputs") ||
+      strModuleCode.includes("employee_payroll_input")
+    ) {
+      return tEmployeePayrollInput("page_title", strModuleName || "Employee Payroll Input");
+    }
+
+    if (
+      strRoute.includes("/payroll/payslips") ||
+      strRoute.includes("/payroll/results") ||
+      strModuleCode.includes("payroll_result") ||
+      strModuleCode.includes("payslip")
+    ) {
+      return tPayslips("page_title", strModuleName || "Payroll Results");
+    }
+
+    if (
+      strRoute.includes("/payroll-process-logs") ||
+      strRoute.includes("/payroll/process-log")
+    ) {
       return tPayrollProcessLogs("page_title", strModuleName || "Payroll Process Logs");
     }
 
     if (strRoute.includes("/tax-regimes")) {
       return tTaxRegimes("page_title", strModuleName || "Tax Regimes");
+    }
+
+    if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
+      return tEmployee("page_title", strModuleName || "Employee");
     }
 
     if (strModuleCode.includes("masters")) {
