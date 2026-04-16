@@ -120,7 +120,7 @@ export default function VersionLogEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intVersionLogID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intVersionLogID, strMode, t]);
 
   function updateField<TKey extends keyof VersionLogFormValues>(strField: TKey, objValue: VersionLogFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
@@ -150,7 +150,8 @@ export default function VersionLogEditorPage({
           : t("create_success", "Version log created successfully.")
       );
       if (strMode === "add") {
-        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}`);
+        const strNextMode = blnCanEdit ? "edit" : "view";
+        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}${strNextMode === "view" ? "?mode=view" : ""}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save version log."));

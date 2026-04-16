@@ -7,6 +7,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -22,6 +23,7 @@ import {
   Stack,
   Switch,
   Tab,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -33,9 +35,8 @@ import {
   Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 
-import AlertDialog from "@/components/common/AlertDialog";
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
@@ -370,7 +371,10 @@ export default function EmployeeEditorScreen({
     });
   }
 
-  function closeAlertDialog() {
+  function closeAlertDialog(_: Event | SyntheticEvent, strReason?: string) {
+    if (strReason === "clickaway") {
+      return;
+    }
     setObjAlertDialog((objPrevious) => ({ ...objPrevious, blnOpen: false }));
     window.requestAnimationFrame(() => {
       objLastFocusedFieldRef.current?.focus();
@@ -862,6 +866,13 @@ export default function EmployeeEditorScreen({
   }
 
   const objPageActionConfig = getFooterActionConfig();
+  const fnHandleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      objRouter.back();
+      return;
+    }
+    objRouter.push(strBackRoute);
+  };
 
   return (
     <Stack spacing={2.5} onFocusCapture={handleEditorFocusCapture}>
@@ -894,7 +905,7 @@ export default function EmployeeEditorScreen({
               className={styles.secondaryButton}
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push(strBackRoute)}
+              onClick={fnHandleBack}
               sx={{
                 height: 38,
                 minHeight: 38,
@@ -1497,13 +1508,21 @@ export default function EmployeeEditorScreen({
         </Box>
       </Paper>
 
-      <AlertDialog
-        blnOpen={objAlertDialog.blnOpen}
-        strMessage={objAlertDialog.strMessage}
-        strSeverity={objAlertDialog.strSeverity}
-        strTitle={objAlertDialog.strTitle}
-        fnOnClose={closeAlertDialog}
-      />
+      <Snackbar
+        open={objAlertDialog.blnOpen}
+        autoHideDuration={3500}
+        onClose={closeAlertDialog}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={closeAlertDialog}
+          severity={objAlertDialog.strSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {objAlertDialog.strMessage}
+        </Alert>
+      </Snackbar>
 
       <Dialog
         open={objExperienceDeleteDialog.blnOpen}
