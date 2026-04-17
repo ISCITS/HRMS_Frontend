@@ -25,7 +25,7 @@ import {
   Toolbar,
   Typography
 } from "@mui/material";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
@@ -43,6 +43,7 @@ const strLanguageSwitchTokenKey = "hrms_language_switch_token";
 const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
 const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
+const intLanguageSwitchSettledDelayMs = 900;
 
 function getPageTitle(strPathname: string) {
   if (!strPathname || strPathname === "/") {
@@ -179,6 +180,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [strActiveLanguageSwitchToken, setStrActiveLanguageSwitchToken] = useState("");
   const [intPendingLabelLoads, setIntPendingLabelLoads] = useState(0);
   const [blnLanguageShellReady, setBlnLanguageShellReady] = useState(false);
+  const [intLastLabelActivityAt, setIntLastLabelActivityAt] = useState(0);
+  const [intLastContentMutationAt, setIntLastContentMutationAt] = useState(0);
+  const objShellContentRef = useRef<HTMLDivElement | null>(null);
   const strHeaderModuleName = getHeaderModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
@@ -207,6 +211,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       if (!strToken || strToken !== strActiveLanguageSwitchToken) {
         return;
       }
+      setIntLastLabelActivityAt(Date.now());
       setIntPendingLabelLoads((intCurrentCount) => intCurrentCount + 1);
     }
 
@@ -215,6 +220,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       if (!strToken || strToken !== strActiveLanguageSwitchToken) {
         return;
       }
+      setIntLastLabelActivityAt(Date.now());
       setIntPendingLabelLoads((intCurrentCount) => Math.max(0, intCurrentCount - 1));
     }
 
@@ -231,16 +237,41 @@ export default function AppShell({ children }: { children: ReactNode }) {
       return;
     }
 
+    const intLastUiActivityAt = Math.max(intLastLabelActivityAt, intLastContentMutationAt);
+    const intSettledWaitMs = Math.max(
+      intLanguageSwitchSettledDelayMs - (Date.now() - intLastUiActivityAt),
+      0
+    );
     const intTimer = window.setTimeout(() => {
       window.sessionStorage.removeItem(strLanguageSwitchTokenKey);
       window.sessionStorage.removeItem(strLanguageSwitchLanguageKey);
       setStrActiveLanguageSwitchToken("");
       setBlnLanguageShellReady(false);
       setBlnLanguageSwitching(false);
-    }, 80);
+    }, intLastUiActivityAt > 0 ? intSettledWaitMs : intLanguageSwitchSettledDelayMs);
 
     return () => window.clearTimeout(intTimer);
-  }, [blnLanguageShellReady, blnLanguageSwitching, intPendingLabelLoads]);
+  }, [blnLanguageShellReady, blnLanguageSwitching, intLastContentMutationAt, intLastLabelActivityAt, intPendingLabelLoads]);
+
+  useEffect(() => {
+    if (!blnLanguageSwitching || !blnLanguageShellReady || !objShellContentRef.current) {
+      return;
+    }
+
+    const objObserver = new MutationObserver(() => {
+      setIntLastContentMutationAt(Date.now());
+    });
+
+    objObserver.observe(objShellContentRef.current, {
+      subtree: true,
+      childList: true,
+      characterData: true
+    });
+
+    return () => {
+      objObserver.disconnect();
+    };
+  }, [blnLanguageShellReady, blnLanguageSwitching]);
 
   async function loadWorkspaceContext(intLanguageID?: number | null) {
     const strTenantUUID = authHelpers.getTenantUUID();
@@ -357,11 +388,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setBlnLanguageSwitching(true);
     setBlnLanguageShellReady(false);
     setIntPendingLabelLoads(0);
+    setIntLastLabelActivityAt(Date.now());
+    setIntLastContentMutationAt(Date.now());
     setStrBootstrapError("");
     const strSwitchToken = `${intRequestedLanguageID}-${Date.now()}`;
     setStrActiveLanguageSwitchToken(strSwitchToken);
     window.sessionStorage.setItem(strLanguageSwitchTokenKey, strSwitchToken);
     window.sessionStorage.setItem(strLanguageSwitchLanguageKey, String(intRequestedLanguageID));
+    authHelpers.setLanguageID(intRequestedLanguageID);
     try {
       await loadWorkspaceContext(intRequestedLanguageID);
       setBlnLanguageShellReady(true);
@@ -380,6 +414,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
       setStrActiveLanguageSwitchToken("");
       setBlnLanguageShellReady(false);
       setBlnLanguageSwitching(false);
+      // Keep the requested language selected even when tenant-specific label or
+      // menu refresh fails, so the shell can still fall back to local/default
+      // translations instead of appearing stuck on the previous language.
+      authHelpers.setLanguageID(intRequestedLanguageID);
     } finally {
       // The loader is dismissed by the label-load completion effect so
       // menu and screen labels appear together after the switch finishes.
@@ -528,6 +566,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <Box
+      ref={objShellContentRef}
       sx={{
         display: "flex",
         height: "100vh",
