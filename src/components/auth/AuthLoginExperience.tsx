@@ -59,6 +59,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [intSelectedLanguageID, setIntSelectedLanguageID] = useState<number | null>(null);
   const [intLoadedLanguageID, setIntLoadedLanguageID] = useState<number | null>(null);
   const [dicLanguageLabelByID, setDicLanguageLabelByID] = useState<Record<number, string>>({});
+  const [dicLoginLabelsByLanguageID, setDicLoginLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
   const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
   const lstLanguageOptions = buildLanguageOptions(
@@ -75,24 +76,42 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     }
 
     setBlnLanguageSwitching(true);
+    setStrError("");
     try {
-      const objAuthDetailsResult = await authApiService.getTenantAuthDetails(
+      const objLabelsResult = await authApiService.getLoginLabels(
         strTenantUUID,
         intRequestedLanguageID
       );
-      setDicLoginLabels(objAuthDetailsResult.Data.labels ?? {});
+      const dicResolvedLabels = objLabelsResult.Data.labels ?? {};
+      setDicLoginLabels(dicResolvedLabels);
+      setDicLoginLabelsByLanguageID((dicCurrentLabels) => ({
+        ...dicCurrentLabels,
+        [intRequestedLanguageID]: dicResolvedLabels
+      }));
       setIntSelectedLanguageID(intRequestedLanguageID);
       setIntLoadedLanguageID(intRequestedLanguageID);
-      setDicLanguageLabelByID((dicCurrentLabels) => ({
-        ...dicCurrentLabels,
-        [intRequestedLanguageID]: resolveLanguageDisplayLabel(
-          intRequestedLanguageID === objAuthDetailsResult.Data.language_id
-            ? objAuthDetailsResult.Data.language_native_name
-            : objAuthDetailsResult.Data.secondary_language_native_name,
-          intRequestedLanguageID,
-          dicCurrentLabels[intRequestedLanguageID]
-        )
-      }));
+      authHelpers.setLanguageID(intRequestedLanguageID);
+    } catch (objError) {
+      const dicCachedLabels = dicLoginLabelsByLanguageID[intRequestedLanguageID];
+      if (dicCachedLabels && Object.keys(dicCachedLabels).length > 0) {
+        setDicLoginLabels(dicCachedLabels);
+        setIntSelectedLanguageID(intRequestedLanguageID);
+        setIntLoadedLanguageID(intRequestedLanguageID);
+        authHelpers.setLanguageID(intRequestedLanguageID);
+        return;
+      }
+
+      // Match the existing tenant 1/2 experience by falling back to built-in
+      // English copy when the server-side label endpoint fails.
+      if (intRequestedLanguageID === 1) {
+        setDicLoginLabels({});
+        setIntSelectedLanguageID(1);
+        setIntLoadedLanguageID(1);
+        authHelpers.setLanguageID(1);
+        return;
+      }
+
+      throw objError;
     } finally {
       setBlnLanguageSwitching(false);
     }
@@ -104,6 +123,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     }
 
     let blnActive = true;
+    authHelpers.clearStoredSessionState();
     setBlnTenantLoading(true);
 
     authApiService
@@ -129,6 +149,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           objAuthDetails.secondary_language_id ?? undefined
         );
         setDicLoginLabels(objAuthDetails.labels ?? {});
+        setDicLoginLabelsByLanguageID(
+          intResolvedLanguageID
+            ? { [intResolvedLanguageID]: objAuthDetails.labels ?? {} }
+            : {}
+        );
         setDicLanguageLabelByID((dicCurrentLabels) => ({
           ...dicCurrentLabels,
           ...(objAuthDetails.language_id
@@ -169,10 +194,12 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         } else {
           setStrError(strMessage);
         }
+        authHelpers.clearStoredSessionState();
         setObjTenantAuthDetails(null);
         setIntSelectedLanguageID(null);
         setIntLoadedLanguageID(null);
         setDicLoginLabels({});
+        setDicLoginLabelsByLanguageID({});
       })
       .finally(() => {
         if (blnActive) {
@@ -498,6 +525,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                         }
 
                         loadTenantLoginLabels(dicLanguageOption.intLanguageID).catch(() => {
+                          setStrError("Unable to switch language.");
                           setIntSelectedLanguageID(intLoadedLanguageID);
                         });
                       }}

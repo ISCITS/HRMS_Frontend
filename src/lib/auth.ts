@@ -174,6 +174,15 @@ export const authHelpers = {
       await Promise.all(lstServiceWorkerRegistrations.map((objRegistration) => objRegistration.unregister()));
     }
   },
+  clearStoredSessionState() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    clearPrefixedStorage(window.localStorage);
+    clearPrefixedStorage(window.sessionStorage);
+    window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
+  },
   clearSession(blnPreserveTenantContext = false) {
     if (typeof document === "undefined") {
       return;
@@ -181,9 +190,7 @@ export const authHelpers = {
 
     const strTenantUUID = this.getTenantUUID();
     if (typeof window !== "undefined") {
-      clearPrefixedStorage(window.localStorage);
-      clearPrefixedStorage(window.sessionStorage);
-      window.dispatchEvent(new CustomEvent(strLanguageChangedEventName, { detail: { intLanguageID: null } }));
+      this.clearStoredSessionState();
       void this.clearClientCache();
     }
     document.cookie = `${this.cookieName}=; Path=/; Max-Age=0; SameSite=Lax`;

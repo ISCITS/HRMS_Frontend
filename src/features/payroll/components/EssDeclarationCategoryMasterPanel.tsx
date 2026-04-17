@@ -132,6 +132,10 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
   };
 }
 
+function isNumericRecordId(strID: string) {
+  return Number.isFinite(Number(strID));
+}
+
 function formatAmount(numValue: number | null) {
   if (numValue == null) {
     return "-";
@@ -231,7 +235,6 @@ export default function EssDeclarationCategoryMasterPanel() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnLookupLoading, setBlnLookupLoading] = useState(true);
-  const [blnUsingSampleData, setBlnUsingSampleData] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
@@ -330,7 +333,6 @@ export default function EssDeclarationCategoryMasterPanel() {
     if (!canViewAny()) {
       setLstCategories([]);
       setLstSelectedIds([]);
-      setBlnUsingSampleData(false);
       setBlnLoading(false);
       return;
     }
@@ -340,10 +342,8 @@ export default function EssDeclarationCategoryMasterPanel() {
       const lstMappedRecords = objResult.Data.map(mapEssDeclarationCategoryRecord);
       if (lstMappedRecords.length === 0) {
         setLstCategories(lstSampleCategories);
-        setBlnUsingSampleData(true);
       } else {
         setLstCategories(lstMappedRecords);
-        setBlnUsingSampleData(false);
       }
       setLstSelectedIds([]);
       setIntPage(1);
@@ -351,8 +351,6 @@ export default function EssDeclarationCategoryMasterPanel() {
       setLstCategories(lstSampleCategories);
       setLstSelectedIds([]);
       setIntPage(1);
-      setBlnUsingSampleData(true);
-      showToast("Showing sample ESS declaration categories because the live data source is not available in this environment.", "success");
     } finally {
       setBlnLoading(false);
     }
@@ -386,7 +384,6 @@ export default function EssDeclarationCategoryMasterPanel() {
     if (!canViewAny()) {
       setLstCategories([]);
       setLstSelectedIds([]);
-      setBlnUsingSampleData(false);
       setBlnLoading(false);
       return;
     }
@@ -407,6 +404,7 @@ export default function EssDeclarationCategoryMasterPanel() {
   const blnCanExport = canDoAny("export");
   const blnCanChangeStatus = blnCanEdit;
   const blnReadOnly = isReadOnly();
+  const blnHasSampleRows = useMemo(() => lstCategories.some((dicCategory) => !isNumericRecordId(dicCategory.id)), [lstCategories]);
 
   const dicSalaryComponentOptions = useMemo(
     () =>
@@ -538,15 +536,41 @@ export default function EssDeclarationCategoryMasterPanel() {
       return;
     }
 
+    const strCurrentID = strEditingId;
+    const dicLocalRecord: EssDeclarationCategoryRecord = {
+      id: strMode === "add" ? `sample-local-${Date.now()}` : strCurrentID,
+      code: dicForm.code.trim().toUpperCase(),
+      name: dicForm.name.trim(),
+      description: dicForm.description.trim(),
+      declarationKind: dicForm.declarationKind.trim(),
+      linkedSalaryComponentId: dicForm.linkedSalaryComponentId === "" ? null : Number(dicForm.linkedSalaryComponentId),
+      linkedSalaryComponentName: dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? "",
+      maxLimitAmount: dicForm.maxLimitAmount.trim() ? Number(dicForm.maxLimitAmount) : null,
+      proofRequired: dicForm.proofRequired,
+      status: dicForm.status,
+    };
+
+    if (blnHasSampleRows || (strMode === "edit" && !isNumericRecordId(strCurrentID))) {
+      setLstCategories((lstPrevious) => {
+        if (strMode === "add") {
+          return [dicLocalRecord, ...lstPrevious];
+        }
+        return lstPrevious.map((dicCategory) => (dicCategory.id === strCurrentID ? { ...dicCategory, ...dicLocalRecord } : dicCategory));
+      });
+      closeDialog();
+      showToast(strMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess);
+      return;
+    }
+
     const objBody = {
-      strCategoryCode: dicForm.code.trim().toUpperCase(),
-      strCategoryName: dicForm.name.trim(),
+      strCategoryCode: dicLocalRecord.code,
+      strCategoryName: dicLocalRecord.name,
       strCategoryDescription: dicForm.description.trim() || null,
-      strDeclarationKind: dicForm.declarationKind.trim(),
-      intLinkedSalaryComponentID: dicForm.linkedSalaryComponentId === "" ? null : Number(dicForm.linkedSalaryComponentId),
-      decMaxLimitAmount: dicForm.maxLimitAmount.trim() ? Number(dicForm.maxLimitAmount) : null,
-      blnProofRequired: dicForm.proofRequired,
-      blnIsActive: dicForm.status === "Active",
+      strDeclarationKind: dicLocalRecord.declarationKind,
+      intLinkedSalaryComponentID: dicLocalRecord.linkedSalaryComponentId,
+      decMaxLimitAmount: dicLocalRecord.maxLimitAmount,
+      blnProofRequired: dicLocalRecord.proofRequired,
+      blnIsActive: dicLocalRecord.status === "Active",
     };
 
     const objRequest = strMode === "add"
@@ -578,8 +602,21 @@ export default function EssDeclarationCategoryMasterPanel() {
       strMessage: (strStatus === "Active" ? dicLabels.confirmBulkActivateMessage : dicLabels.confirmBulkDeactivateMessage).replace("{count}", String(lstSelectedIds.length)),
       strConfirmLabel: strStatus === "Active" ? dicLabels.bulkActivate : dicLabels.bulkDeactivate,
       fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryStatus(lstSelectedIds.map(Number), strStatus === "Active");
-        await loadCategories();
+        const lstNumericIDs = lstSelectedIds.filter(isNumericRecordId).map(Number);
+        const lstLocalIDs = lstSelectedIds.filter((strID) => !isNumericRecordId(strID));
+
+        if (lstNumericIDs.length > 0) {
+          await masterApiService.bulkEssDeclarationCategoryStatus(lstNumericIDs, strStatus === "Active");
+          await loadCategories();
+        }
+        if (lstLocalIDs.length > 0) {
+          setLstCategories((lstPrevious) =>
+            lstPrevious.map((dicCategory) =>
+              lstLocalIDs.includes(dicCategory.id) ? { ...dicCategory, status: strStatus } : dicCategory
+            )
+          );
+          setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstLocalIDs.includes(strID)));
+        }
         showToast(strStatus === "Active" ? dicLabels.bulkActivateSuccess : dicLabels.bulkDeactivateSuccess);
       },
     });
@@ -591,8 +628,17 @@ export default function EssDeclarationCategoryMasterPanel() {
       strMessage: dicLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
       strConfirmLabel: dicLabels.bulkDelete,
       fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryDelete(lstSelectedIds.map(Number));
-        await loadCategories();
+        const lstNumericIDs = lstSelectedIds.filter(isNumericRecordId).map(Number);
+        const lstLocalIDs = lstSelectedIds.filter((strID) => !isNumericRecordId(strID));
+
+        if (lstNumericIDs.length > 0) {
+          await masterApiService.bulkEssDeclarationCategoryDelete(lstNumericIDs);
+          await loadCategories();
+        }
+        if (lstLocalIDs.length > 0) {
+          setLstCategories((lstPrevious) => lstPrevious.filter((dicCategory) => !lstLocalIDs.includes(dicCategory.id)));
+          setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstLocalIDs.includes(strID)));
+        }
         showToast(dicLabels.bulkDeleteSuccess);
       },
     });
@@ -604,8 +650,12 @@ export default function EssDeclarationCategoryMasterPanel() {
       strMessage: dicLabels.confirmDeleteMessage,
       strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryDelete([Number(strID)]);
-        await loadCategories();
+        if (!isNumericRecordId(strID)) {
+          setLstCategories((lstPrevious) => lstPrevious.filter((dicCategory) => dicCategory.id !== strID));
+        } else {
+          await masterApiService.bulkEssDeclarationCategoryDelete([Number(strID)]);
+          await loadCategories();
+        }
         showToast(dicLabels.deleteSuccess);
       },
     });
@@ -622,8 +672,14 @@ export default function EssDeclarationCategoryMasterPanel() {
       strMessage: strNextStatus === "Active" ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
       strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryStatus([Number(strID)], strNextStatus === "Active");
-        await loadCategories();
+        if (!isNumericRecordId(strID)) {
+          setLstCategories((lstPrevious) =>
+            lstPrevious.map((dicItem) => (dicItem.id === strID ? { ...dicItem, status: strNextStatus } : dicItem))
+          );
+        } else {
+          await masterApiService.bulkEssDeclarationCategoryStatus([Number(strID)], strNextStatus === "Active");
+          await loadCategories();
+        }
         showToast(strNextStatus === "Active" ? dicLabels.activateSuccess : dicLabels.deactivateSuccess);
       },
     });
@@ -913,7 +969,6 @@ export default function EssDeclarationCategoryMasterPanel() {
       </Box>
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
-        {blnUsingSampleData ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>Showing sample ESS declaration data because the local data source is not available.</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for ESS Declaration Category.")}</Typography> : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />

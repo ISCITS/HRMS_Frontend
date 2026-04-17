@@ -34,8 +34,6 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
-import type { NormalizedTenantAuthMode } from "@/models/AuthModels";
-import { authApiService } from "@/services/auth/AuthApiService";
 import { type UserApiRecord, type UserFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type UserStatus = "Active" | "Inactive";
@@ -122,23 +120,6 @@ const dicEmptyForm: UserForm = {
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultUsers: UserRecord[] = [];
 const lstRowsPerPageOptions = [10, 20, 50];
-
-function normalizeTenantAuthMode(strAuthMode: string | null | undefined): NormalizedTenantAuthMode {
-  const strNormalizedMode = strAuthMode?.trim().toLowerCase();
-  switch (strNormalizedMode) {
-    case "local":
-      return "local";
-    case "sso":
-      return "sso";
-    case "otp":
-      return "otp";
-    case "otp_mandatory":
-    case "otp-mandatory":
-      return "otp_mandatory";
-    default:
-      return "unknown";
-  }
-}
 
 function getUserLoginId(dicRecord: UserApiRecord) {
   return dicRecord.strLoginID ?? dicRecord.strLoginId ?? dicRecord.login_id ?? "";
@@ -262,8 +243,6 @@ export default function UserMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [intTenantLanguageID, setIntTenantLanguageID] = useState<number | null>(authHelpers.getLanguageID());
-  const [blnTenantOtpEnabled, setBlnTenantOtpEnabled] = useState(false);
-  const [strTenantAuthMode, setStrTenantAuthMode] = useState<NormalizedTenantAuthMode>("unknown");
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
   const [blnConfirmPasswordVisible, setBlnConfirmPasswordVisible] = useState(false);
   const dicCommonLabels = {
@@ -377,13 +356,10 @@ export default function UserMasterPanel() {
     }
     setBlnLoading(true);
     try {
-      const strTenantUUID = authHelpers.getTenantUUID();
-      const [objUsers, objOptions, objEmployees, objTenant, objTenantAuthDetails] = await Promise.all([
+      const [objUsers, objOptions, objEmployees] = await Promise.all([
         masterApiService.getUsers(),
         masterApiService.getUserFormOptions(),
         masterApiService.getEmployees().catch(() => ({ Data: [] })),
-        strTenantUUID ? authApiService.getTenant(strTenantUUID).catch(() => null) : Promise.resolve(null),
-        strTenantUUID ? authApiService.getTenantAuthDetails(strTenantUUID).catch(() => null) : Promise.resolve(null),
       ]);
       const intResolvedTenantLanguageID = authHelpers.getLanguageID();
       setLstUsers(objUsers.Data.map(mapUserRecord));
@@ -394,8 +370,6 @@ export default function UserMasterPanel() {
         strCode: dicEmployee.strEmployeeCode,
       })));
       setIntTenantLanguageID(intResolvedTenantLanguageID);
-      setBlnTenantOtpEnabled((objTenant?.Data.lstAuthModes ?? []).some((strModeValue) => strModeValue.trim().toLowerCase() === "otp"));
-      setStrTenantAuthMode(normalizeTenantAuthMode(objTenantAuthDetails?.Data.auth_mode));
       setLstSelectedIds([]);
       setIntPage(1);
     } finally {
@@ -431,9 +405,29 @@ export default function UserMasterPanel() {
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
   const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
-  const blnShowOtpOnlyOption = blnTenantOtpEnabled && strTenantAuthMode === "otp";
+  const blnShowOtpOnlyOption =
+    (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
+    && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
+  const blnDisableOtpOnlyOption = objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false;
 
-  function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+  async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+    if (strNextMode === "add") {
+      setBlnLoading(true);
+      try {
+        const objDefaultOptions = await masterApiService.getUserFormOptions();
+        setObjFormOptions(objDefaultOptions.Data);
+      } finally {
+        setBlnLoading(false);
+      }
+    } else if (dicUser) {
+      setBlnLoading(true);
+      try {
+        const objScopedOptions = await masterApiService.getUserFormOptions(Number(dicUser.id));
+        setObjFormOptions(objScopedOptions.Data);
+      } finally {
+        setBlnLoading(false);
+      }
+    }
     setStrMode(strNextMode);
     setStrEditingUserId(dicUser?.id ?? "");
     setDicErrors({});
@@ -444,8 +438,8 @@ export default function UserMasterPanel() {
       loginId: dicUser.loginId,
       email: dicUser.email,
       mobile: dicUser.mobile,
-      password: dicUser.password,
-      confirmPassword: dicUser.password,
+      password: "",
+      confirmPassword: "",
       ssoEnabled: dicUser.ssoEnabled,
       mfaEnabled: dicUser.mfaEnabled,
       loginAsEmployee: Boolean(dicUser.employeeID),
@@ -456,6 +450,7 @@ export default function UserMasterPanel() {
       status: dicUser.status
     } : {
       ...dicEmptyForm,
+      mfaEnabled: objFormOptions.objMfaPolicy?.blnUserMfaDefaultEnabled ?? false,
       preferredLanguageID: intTenantLanguageID ?? "",
     });
     setBlnDialogOpen(true);
@@ -545,16 +540,18 @@ export default function UserMasterPanel() {
       dicNextErrors.email = dicModuleLabels.validationEmailInvalid;
     }
 
-    if (!strPassword) {
-      dicNextErrors.password = dicModuleLabels.validationPasswordRequired;
-    } else if (strPassword && strPassword.length < 8) {
-      dicNextErrors.password = dicModuleLabels.validationPasswordMin;
-    }
+    if (strMode === "add") {
+      if (!strPassword) {
+        dicNextErrors.password = dicModuleLabels.validationPasswordRequired;
+      } else if (strPassword.length < 8) {
+        dicNextErrors.password = dicModuleLabels.validationPasswordMin;
+      }
 
-    if (!strConfirmPassword) {
-      dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordRequired;
-    } else if (strPassword && strPassword !== strConfirmPassword) {
-      dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordMismatch;
+      if (!strConfirmPassword) {
+        dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordRequired;
+      } else if (strPassword !== strConfirmPassword) {
+        dicNextErrors.confirmPassword = dicModuleLabels.validationConfirmPasswordMismatch;
+      }
     }
 
     if (!strMobile) {
@@ -588,7 +585,7 @@ export default function UserMasterPanel() {
       strPassword: dicForm.password.trim() || null,
       strAuthSource: dicForm.ssoEnabled ? "sso" as const : "local" as const,
       blnIsSsoEnabled: dicForm.ssoEnabled,
-      blnMfaEnabled: blnShowOtpOnlyOption ? dicForm.mfaEnabled : false,
+      blnMfaEnabled: blnShowOtpOnlyOption ? dicForm.mfaEnabled : undefined,
       strSsoLoginMapping: dicForm.ssoEnabled ? dicForm.ssoLoginMapping.trim() || null : null,
       intPreferredLanguageID: (intTenantLanguageID ?? dicForm.preferredLanguageID) || null,
       intEmployeeID: dicForm.loginAsEmployee ? Number(dicForm.employeeID) : null,
@@ -746,7 +743,7 @@ export default function UserMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null}
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null}
             {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button> : null}
             {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
@@ -812,7 +809,7 @@ export default function UserMasterPanel() {
                       <Checkbox checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
                     </td>
                     <td>
-                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => openDialog("view", dicUser)} onEdit={() => openDialog("edit", dicUser)} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
+                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => { void openDialog("view", dicUser); }} onEdit={() => { void openDialog("edit", dicUser); }} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
                     </td>
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>
@@ -863,7 +860,7 @@ export default function UserMasterPanel() {
               onChange={(objEvent) => setFormField("loginId", objEvent.target.value)}
               error={Boolean(dicErrors.loginId)}
               helperText={dicErrors.loginId}
-              disabled={strMode === "edit" || strMode === "view"}
+              disabled={strMode === "view"}
               fullWidth
               required
             />
@@ -881,54 +878,56 @@ export default function UserMasterPanel() {
             <TextField label={dicModuleLabels.fieldMobile} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth required />
           </Box>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
-            <TextField
-              label={dicModuleLabels.fieldPassword}
-              type={blnPasswordVisible ? "text" : "password"}
-              value={dicForm.password}
-              onChange={(objEvent) => setFormField("password", objEvent.target.value)}
-              error={Boolean(dicErrors.password)}
-              helperText={dicErrors.password ?? (strMode === "edit" ? dicModuleLabels.helperPasswordOptional : undefined)}
-              disabled={strMode === "view"}
-              fullWidth
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
-                      {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                )
+          {strMode === "add" ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
               }}
-            />
-            <TextField
-              label={dicModuleLabels.fieldConfirmPassword}
-              type={blnConfirmPasswordVisible ? "text" : "password"}
-              value={dicForm.confirmPassword}
-              onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
-              error={Boolean(dicErrors.confirmPassword)}
-              helperText={dicErrors.confirmPassword}
-              disabled={strMode === "view"}
-              fullWidth
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
-                      {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Box>
+            >
+              <TextField
+                label={dicModuleLabels.fieldPassword}
+                type={blnPasswordVisible ? "text" : "password"}
+                value={dicForm.password}
+                onChange={(objEvent) => setFormField("password", objEvent.target.value)}
+                error={Boolean(dicErrors.password)}
+                helperText={dicErrors.password}
+                disabled={strMode === "view"}
+                fullWidth
+                required
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                        {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+              <TextField
+                label={dicModuleLabels.fieldConfirmPassword}
+                type={blnConfirmPasswordVisible ? "text" : "password"}
+                value={dicForm.confirmPassword}
+                onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
+                error={Boolean(dicErrors.confirmPassword)}
+                helperText={dicErrors.confirmPassword}
+                disabled={strMode === "view"}
+                fullWidth
+                required
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                        {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
+          ) : null}
 
           <Box
             sx={{
@@ -1041,7 +1040,7 @@ export default function UserMasterPanel() {
                     {dicModuleLabels.helperEnableOtpOnly}
                   </Typography>
                 </Box>
-                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view"} />
+                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             ) : (
               <Box />
@@ -1068,7 +1067,7 @@ export default function UserMasterPanel() {
                     {dicModuleLabels.helperEnableOtpOnly}
                   </Typography>
                 </Box>
-                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view"} />
+                <Switch checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             </Box>
           ) : null}
