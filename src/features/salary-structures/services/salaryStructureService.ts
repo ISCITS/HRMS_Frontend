@@ -15,8 +15,11 @@ import type {
   SalaryStructureTextFormValue
 } from "@/features/salary-structures/types";
 
+let intRowIDSequence = 0;
+
 function createRowID() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  intRowIDSequence += 1;
+  return `salary-structure-row-${intRowIDSequence}`;
 }
 
 function formatOptionalText(strValue: string) {
@@ -270,6 +273,15 @@ export const salaryStructureService = {
   async updateSalaryStructure(intSalaryStructureID: number, dicValues: SalaryStructureFormValues): Promise<SalaryStructureDetailRecord> {
     const objResult = await masterApiService.updateSalaryStructure(intSalaryStructureID, toFormPayload(dicValues));
     return mapApiRecord(objResult.Data);
+  },
+
+  async translateSalaryStructureText(strText: string, intSourceLanguageID: number, intTargetLanguageID: number) {
+    const objResult = await masterApiService.translateMasterText({
+      strText,
+      intSourceLanguageID,
+      intTargetLanguageID,
+    });
+    return objResult.Data.strTranslatedText;
   },
 
   async cloneSalaryStructure(intSalaryStructureID: number, dicValues: SalaryStructureCloneValues): Promise<SalaryStructureDetailRecord> {

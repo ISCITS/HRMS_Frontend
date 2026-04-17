@@ -10,6 +10,7 @@ import {
   Button,
   CircularProgress,
   FormControlLabel,
+  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -30,6 +31,7 @@ import {
   salaryStructureService,
   toSalaryStructureFormValues
 } from "@/features/salary-structures/services/salaryStructureService";
+import { authHelpers } from "@/lib/auth";
 import type {
   SalaryStructureFormOptions,
   SalaryStructureFormValues,
@@ -72,6 +74,8 @@ export default function SalaryStructureEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -142,6 +146,93 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
+  const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID()
+    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
+    ?? intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strStructureName: string,
+    strStructureDescription: string,
+    lstExistingTexts: SalaryStructureTextFormValue[],
+  ) {
+    const dicExistingText = lstExistingTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intLanguageID
+    ) ?? createEmptyTextRow();
+    const dicLanguage = (objFormOptions?.lstLanguages ?? []).find((dicOption) => dicOption.intID === intLanguageID);
+    return {
+      ...dicExistingText,
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText.strLanguageName ?? "",
+      strStructureName,
+      strStructureDescription,
+    };
+  }
+
+  function ensureUniqueTextRowIDs(lstTexts: SalaryStructureTextFormValue[]) {
+    const setUsedRowIDs = new Set<string>();
+    return lstTexts.map((dicText) => {
+      const strCandidateRowID = dicText.strRowID?.trim() || createEmptyTextRow().strRowID;
+      if (!setUsedRowIDs.has(strCandidateRowID)) {
+        setUsedRowIDs.add(strCandidateRowID);
+        return dicText;
+      }
+      const strNewRowID = createEmptyTextRow().strRowID;
+      setUsedRowIDs.add(strNewRowID);
+      return {
+        ...dicText,
+        strRowID: strNewRowID,
+      };
+    });
+  }
+
+  function ensureTenantLanguageRows(dicValues: SalaryStructureFormValues) {
+    const dicDefaultExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intDefaultLanguageID
+    );
+    const dicDefaultRow = buildFixedLanguageRow(
+      intDefaultLanguageID,
+      dicValues.strStructureName,
+      dicDefaultExistingText?.strStructureDescription ?? dicValues.lstTexts[0]?.strStructureDescription ?? "",
+      dicValues.lstTexts,
+    );
+    const dicSecondaryExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
+    );
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strStructureName ?? "",
+      dicSecondaryExistingText?.strStructureDescription ?? "",
+      dicValues.lstTexts,
+    );
+    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
+      ? [dicDefaultRow]
+      : [dicDefaultRow, dicSecondaryRow];
+    return {
+      ...dicValues,
+      lstTexts: ensureUniqueTextRowIDs(lstRows),
+    };
+  }
+
+  function syncDefaultStructureText(strStructureName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows({
+        ...dicPrevious,
+        strStructureName,
+      });
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0
+          ? {
+              ...dicText,
+              strStructureName,
+            }
+          : dicText),
+      };
+    });
+  }
 
   function updateRootField<TKey extends keyof SalaryStructureFormValues>(strField: TKey, objValue: SalaryStructureFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
@@ -215,18 +306,93 @@ export default function SalaryStructureEditorPage({
   }
 
   function handleAddLanguageRow() {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstTexts: [...dicPrevious.lstTexts, createEmptyTextRow()]
-    }));
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }
 
   function handleRemoveLanguageRow(strRowID: string) {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
-      lstTexts: dicPrevious.lstTexts.length === 1 ? dicPrevious.lstTexts : dicPrevious.lstTexts.filter((dicText) => dicText.strRowID !== strRowID)
+      lstTexts: dicPrevious.lstTexts.filter((dicText) => dicText.strRowID !== strRowID)
     }));
   }
+
+  async function translateTextRow(strRowID: string, intLanguageID: number) {
+    const dicSelectedLanguage = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === intLanguageID);
+    const strSourceStructureName = dicForm.strStructureName.trim();
+    const strSourceStructureDescription = (
+      dicForm.lstTexts.find((dicText) => Number(dicText.intLanguageID) === intDefaultLanguageID)?.strStructureDescription
+      ?? dicForm.lstTexts[0]?.strStructureDescription
+      ?? ""
+    ).trim();
+    const strSourceSignature = `${strSourceStructureName}||${strSourceStructureDescription}`;
+
+    if (!dicSelectedLanguage || intLanguageID === intDefaultLanguageID || !strSourceStructureName) {
+      return;
+    }
+
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    const strLastTranslatedSource = (dicLastTranslatedSourceByRow[strRowID] ?? "").trim();
+    const blnShouldTranslate =
+      !dicCurrentRow?.strStructureName.trim()
+      || strLastTranslatedSource !== strSourceSignature;
+
+    if (!blnShouldTranslate) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const [strTranslatedName, strTranslatedDescription] = await Promise.all([
+        salaryStructureService.translateSalaryStructureText(
+          strSourceStructureName,
+          intDefaultLanguageID,
+          intLanguageID,
+        ),
+        strSourceStructureDescription
+          ? salaryStructureService.translateSalaryStructureText(
+              strSourceStructureDescription,
+              intDefaultLanguageID,
+              intLanguageID,
+            )
+          : Promise.resolve(""),
+      ]);
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? {
+              ...dicText,
+              intLanguageID,
+              strLanguageName: dicSelectedLanguage.strLabel,
+              strStructureName: strTranslatedName,
+              strStructureDescription: strTranslatedDescription,
+            }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({
+        ...dicPrevious,
+        [strRowID]: strSourceSignature,
+      }));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("request_failed", "Translation request failed."));
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+  }
+
+  useEffect(() => {
+    if ((objFormOptions?.lstLanguages ?? []).length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
   function handleAddLineRow() {
     setDicForm((dicPrevious) => ({
@@ -394,7 +560,7 @@ export default function SalaryStructureEditorPage({
           <TextField
             label={t("structure_name", "Structure Name")}
             value={dicForm.strStructureName}
-            onChange={(objEvent) => updateRootField("strStructureName", objEvent.target.value)}
+            onChange={(objEvent) => syncDefaultStructureText(objEvent.target.value)}
             disabled={blnFieldDisabled}
             fullWidth
           />
@@ -462,12 +628,24 @@ export default function SalaryStructureEditorPage({
               )}
             </Typography>
           </Box>
-          <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
-            {t("add_language", "Add Language")}
-          </Button>
+          <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
+            <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled sx={{ borderRadius: "12px" }}>
+              {t("add_language", "Add Language")}
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleTranslateClick()}
+              disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+              sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
+            >
+              {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
+                ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                : t("translate", "Translate")}
+            </Button>
+          </Box>
         </Stack>
         <Stack spacing={1.5}>
-          {dicForm.lstTexts.map((dicText) => (
+          {dicForm.lstTexts.map((dicText, intIndex) => (
             <Box
               key={dicText.strRowID}
               sx={{
@@ -486,7 +664,7 @@ export default function SalaryStructureEditorPage({
                 label={t("language", "Language")}
                 value={dicText.intLanguageID}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))}
-                disabled={blnFieldDisabled}
+                disabled
                 fullWidth
               >
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
@@ -497,7 +675,12 @@ export default function SalaryStructureEditorPage({
                 label={t("structure_name", "Structure Name")}
                 value={dicText.strStructureName}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureName", objEvent.target.value)}
-                disabled={blnFieldDisabled}
+                disabled={blnFieldDisabled || intIndex === 0}
+                InputProps={{
+                  endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    : undefined
+                }}
                 fullWidth
               />
               <TextField
@@ -505,9 +688,14 @@ export default function SalaryStructureEditorPage({
                 value={dicText.strStructureDescription}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureDescription", objEvent.target.value)}
                 disabled={blnFieldDisabled}
+                InputProps={{
+                  endAdornment: dicTextTranslationLoading[dicText.strRowID]
+                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    : undefined
+                }}
                 fullWidth
               />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled={blnFieldDisabled} sx={{ minHeight: 54 }}>
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>
