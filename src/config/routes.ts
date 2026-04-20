@@ -11,5 +11,10 @@ export const appRoutes = {
   attendance: "/attendance",
   leave: "/leave",
   payroll: "/payroll",
-  reports: "/reports"
+  reports: "/reports",
+  tenantAdminBase: "/HRMS/Administrator",
+  tenantAdminLogin: "/HRMS/Administrator/login",
+  tenantAdminDashboard: "/HRMS/Administrator/dashboard",
+  tenantAdminTenants: "/HRMS/Administrator/tenants",
+  tenantAdminOnboarding: "/HRMS/Administrator/onboarding"
 } as const;

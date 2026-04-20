@@ -32,6 +32,15 @@ const dicRouteAliases: Record<string, string> = {
   "/version-logs": "/version-logs",
 };
 
+const objTenantOnboardingMenuItem: MenuItem = {
+  strModuleCode: "TENANT_ONBOARDING",
+  strModuleName: "Tenant Onboarding",
+  strRoute: "/settings/tenants/onboarding",
+  lstPermissionCodes: [],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 function normalizeRoute(strRoute?: string | null) {
   if (!strRoute) {
     return null;
@@ -57,6 +66,57 @@ function normalizeMenuItem(objItem: MenuItem): MenuItem {
     strRoute: blnIsContainerOnly ? null : strNormalizedRoute,
     lstChildren: objItem.lstChildren.map(normalizeMenuItem),
   };
+}
+
+function hasRoute(lstMenuItems: MenuItem[], strRoute: string): boolean {
+  return lstMenuItems.some(
+    (objItem) =>
+      objItem.strRoute === strRoute ||
+      hasRoute(objItem.lstChildren, strRoute),
+  );
+}
+
+function injectTenantOnboardingMenu(lstMenuItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstMenuItems, objTenantOnboardingMenuItem.strRoute ?? "")) {
+    return lstMenuItems;
+  }
+
+  const intSettingsIndex = lstMenuItems.findIndex(
+    (objItem) => {
+      const strCode = objItem.strModuleCode.trim().toLowerCase();
+      const strName = objItem.strModuleName.trim().toLowerCase();
+      return strCode === "settings" || strName === "settings";
+    },
+  );
+
+  if (intSettingsIndex >= 0) {
+    return lstMenuItems.map((objItem, intIndex) => {
+      if (intIndex !== intSettingsIndex) {
+        return objItem;
+      }
+
+      if (hasRoute(objItem.lstChildren, objTenantOnboardingMenuItem.strRoute ?? "")) {
+        return objItem;
+      }
+
+      return {
+        ...objItem,
+        lstChildren: [...objItem.lstChildren, objTenantOnboardingMenuItem],
+      };
+    });
+  }
+
+  return [
+    ...lstMenuItems,
+    {
+      strModuleCode: "SETTINGS",
+      strModuleName: "Settings",
+      strRoute: null,
+      lstPermissionCodes: [],
+      blnIsHome: false,
+      lstChildren: [objTenantOnboardingMenuItem],
+    },
+  ];
 }
 
 function getFirstNavigableRoute(lstMenuItems: MenuItem[]): string | null {
@@ -85,7 +145,7 @@ export function getPostLoginRoute(strPreferredRoute?: string | null) {
 }
 
 export function normalizeMenuResponse(objMenu: MenuResponse): MenuResponse {
-  const lstMenuItems = objMenu.lstMenuItems.map(normalizeMenuItem);
+  const lstMenuItems = injectTenantOnboardingMenu(objMenu.lstMenuItems.map(normalizeMenuItem));
   const strHomeRoute =
     getPostLoginRoute(objMenu.strHomeRoute) ??
     getFirstNavigableRoute(lstMenuItems) ??

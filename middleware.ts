@@ -2,34 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { appRoutes } from "@/config";
 import { authHelpers } from "@/lib/auth";
 
-// Enforces route-level authentication using a lightweight auth cookie.
 export function middleware(req: NextRequest) {
-  /*
-  Functional responsibility:
-  - Guard application routes so unauthenticated users cannot access protected pages.
-
-  Inputs:
-  - NextRequest with pathname and cookies.
-
-  Output:
-  - NextResponse.next() for allowed requests or redirect response for blocked paths.
-
-  Failure behavior:
-  - Missing or invalid auth cookie is treated as unauthenticated and redirected to /login.
-  */
   const strPathname = req.nextUrl.pathname;
   const strAuthCookie = req.cookies.get(authHelpers.cookieName)?.value ?? "";
   const strTenantUUID = req.cookies.get(authHelpers.tenantCookieName)?.value?.trim() ?? "";
   const intIsAuthenticated = authHelpers.isAuthenticated(strAuthCookie) ? 1 : 0;
 
-  // Skips auth checks for static assets from /public or files with extensions.
   const intIsStaticAsset = strPathname.includes(".") ? 1 : 0;
   if (intIsStaticAsset === 1) {
     return NextResponse.next();
   }
 
-  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup", "/session-expired"];
+  const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup", "/session-expired", appRoutes.tenantAdminLogin];
   const blnIsTenantLoginRoute = strPathname.startsWith(`${appRoutes.login}/`);
+  const blnIsAdminRoute = strPathname === appRoutes.tenantAdminBase || strPathname.startsWith(`${appRoutes.tenantAdminBase}/`);
   const intIsPublicRoute =
     lstPublicRoutes.includes(strPathname) ||
     blnIsTenantLoginRoute ||
@@ -37,6 +23,13 @@ export function middleware(req: NextRequest) {
     strPathname.startsWith("/sso/callback")
       ? 1
       : 0;
+
+  if (intIsAuthenticated === 0 && blnIsAdminRoute && strPathname !== appRoutes.tenantAdminLogin) {
+    const dicLoginUrl = req.nextUrl.clone();
+    dicLoginUrl.pathname = appRoutes.tenantAdminLogin;
+    dicLoginUrl.searchParams.set("redirect", strPathname);
+    return NextResponse.redirect(dicLoginUrl);
+  }
 
   if (intIsAuthenticated === 0 && intIsPublicRoute === 0) {
     const dicLoginUrl = req.nextUrl.clone();
@@ -51,6 +44,12 @@ export function middleware(req: NextRequest) {
     const dicLoginUrl = req.nextUrl.clone();
     dicLoginUrl.pathname = strTenantUUID ? `${appRoutes.login}/${strTenantUUID}` : "/session-expired";
     return NextResponse.redirect(dicLoginUrl);
+  }
+
+  if (intIsAuthenticated === 1 && strPathname === appRoutes.tenantAdminLogin) {
+    const dicDashboardUrl = req.nextUrl.clone();
+    dicDashboardUrl.pathname = appRoutes.tenantAdminDashboard;
+    return NextResponse.redirect(dicDashboardUrl);
   }
 
   if (

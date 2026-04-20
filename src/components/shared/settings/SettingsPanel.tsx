@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Button, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
+import Link from "next/link";
 import dicConstant from "@/constants/Constant.json";
 
 // Renders settings toggles.
@@ -34,6 +35,9 @@ export default function SettingsPanel() {
       </Stack>
       <Button variant="contained" sx={{ alignSelf: "flex-start" }}>
         {dicConstant.settings.saveButton}
+      </Button>
+      <Button component={Link} href="/settings/tenants/onboarding" variant="outlined" sx={{ alignSelf: "flex-start" }}>
+        Open Tenant Onboarding
       </Button>
     </Stack>
   );

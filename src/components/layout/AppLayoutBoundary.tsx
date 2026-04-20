@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 
 const publicRoutes = ["/", "/home", "/login", "/register", "/forgot-password", "/session-expired"];
-const publicPrefixes = ["/t", "/sso/callback"];
+const publicPrefixes = ["/t", "/sso/callback", "/HRMS/Administrator"];
 
 /*
 Functional responsibility:
