@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
@@ -32,6 +32,14 @@ const lstSortOptions = [
 ];
 
 export default function TenantManagementPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TenantManagementPageContent />
+    </Suspense>
+  );
+}
+
+function TenantManagementPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [strSearch, setStrSearch] = useState(searchParams.get("search") ?? "");

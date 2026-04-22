@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
@@ -16,6 +16,14 @@ import {
 import { tenantAdministrationService } from "@/services";
 
 export default function TenantAdminLoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TenantAdminLoginPageContent />
+    </Suspense>
+  );
+}
+
+function TenantAdminLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [strLoginID, setStrLoginID] = useState("");
