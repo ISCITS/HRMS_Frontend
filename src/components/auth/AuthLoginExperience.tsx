@@ -20,6 +20,7 @@ import type {
   AuthOtpChallengeData,
   GoogleMfaChallengeData,
   NormalizedTenantAuthMode,
+  NormalizedTenantLoginMethod,
   SsoMfaLoginSuccessData,
   SsoMfaSetupSuccessData,
   TenantAuthDetails
@@ -62,6 +63,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [dicLoginLabelsByLanguageID, setDicLoginLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
   const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
+  const strResolvedLoginIdentity = resolveLoginIdentity(strMode, objTenantAuthDetails);
   const lstLanguageOptions = buildLanguageOptions(
     objTenantAuthDetails?.language_id,
     objTenantAuthDetails?.secondary_language_id
@@ -253,6 +255,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       return;
     }
 
+    if (!objGoogleMfaChallenge && !objOtpChallenge) {
+      const strIdentityValidationError = validateLoginIdentifier(strLoginID, strResolvedLoginIdentity);
+      if (strIdentityValidationError) {
+        setStrError(strIdentityValidationError);
+        return;
+      }
+    }
+
     setStrError("");
     setBlnSubmitting(true);
 
@@ -410,6 +420,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     !strError;
   const strLockCountdown = intLockRemainingSeconds > 0 ? formatDuration(intLockRemainingSeconds) : null;
   const blnOtpStep = Boolean(objOtpChallenge);
+  const strIdentityValidationError = validateLoginIdentifier(strLoginID, strResolvedLoginIdentity);
 
   if (blnShowTenantTransition) {
     return (
@@ -475,6 +486,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const blnCanSubmitLoginStep =
     Boolean(strLoginID.trim()) &&
     Boolean(strPassword.trim()) &&
+    !strIdentityValidationError &&
     !blnSubmitting &&
     intLockRemainingSeconds <= 0 &&
     !(strMode === "tenant" && blnTenantLoading);
@@ -558,9 +570,16 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 <TextField
                   placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
-                  onChange={(objEvent) => setStrLoginID(objEvent.target.value)}
+                  onChange={(objEvent) => {
+                    setStrLoginID(objEvent.target.value);
+                    if (strError) {
+                      setStrError("");
+                    }
+                  }}
                   fullWidth
                   disabled={blnOtpStep}
+                  error={Boolean(strIdentityValidationError)}
+                  helperText={strIdentityValidationError ?? " "}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -663,6 +682,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   );
 
   function getLoginLabel(strKey: LoginLabelKey): string {
+    if (strKey === "loginIdLabel") {
+      return strResolvedLoginIdentity === "login_id" ? "Login ID" : "Work Email";
+    }
+
+    if (strKey === "loginIdPlaceholder") {
+      return strResolvedLoginIdentity === "login_id" ? "Enter your login ID" : "Enter your work email";
+    }
+
     const strServerKey = dicLoginServerKeyMap[strKey];
     return dicLoginLabels[strKey] ?? (strServerKey ? dicLoginLabels[strServerKey] : undefined) ?? dicLoginFallbacks[strKey];
   }
@@ -744,6 +771,62 @@ function normalizeTenantAuthMode(strAuthMode: string | null | undefined): Normal
     default:
       return "unknown";
   }
+}
+
+function normalizeTenantLoginMethod(strLoginMethod: string | null | undefined): NormalizedTenantLoginMethod | null {
+  const strNormalizedMethod = strLoginMethod?.trim().toLowerCase();
+  if (strNormalizedMethod === "email_address" || strNormalizedMethod === "email") {
+    return "email_address";
+  }
+
+  if (strNormalizedMethod === "login_id" || strNormalizedMethod === "loginid" || strNormalizedMethod === "login-id") {
+    return "login_id";
+  }
+
+  return null;
+}
+
+function resolveLoginIdentity(
+  strMode: "generic" | "tenant",
+  objTenantAuthDetails: TenantAuthDetails | null
+): NormalizedTenantLoginMethod {
+  if (strMode !== "tenant") {
+    return "email_address";
+  }
+
+  const strByMethod = normalizeTenantLoginMethod(objTenantAuthDetails?.login_method);
+  if (strByMethod) {
+    return strByMethod;
+  }
+
+  const strAuthMode = objTenantAuthDetails?.auth_mode?.trim().toLowerCase() ?? "";
+  if (strAuthMode.includes("login_id") || strAuthMode.includes("loginid") || strAuthMode.includes("login-id")) {
+    return "login_id";
+  }
+
+  if (strAuthMode.includes("email")) {
+    return "email_address";
+  }
+
+  return "email_address";
+}
+
+function validateLoginIdentifier(strLoginID: string, strLoginMethod: NormalizedTenantLoginMethod): string | null {
+  const strCandidate = strLoginID.trim();
+  if (!strCandidate) {
+    return null;
+  }
+
+  if (strLoginMethod === "login_id") {
+    return strCandidate.includes("@")
+      ? "Use Login ID only. Email is not allowed for this tenant."
+      : null;
+  }
+
+  const strEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return strEmailPattern.test(strCandidate)
+    ? null
+    : "Use Work Email only. Login ID is not allowed for this tenant.";
 }
 
 function strTenantModeRequiresSsoRedirect(strAuthMode: string | null | undefined): boolean {

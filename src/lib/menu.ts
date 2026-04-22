@@ -32,15 +32,6 @@ const dicRouteAliases: Record<string, string> = {
   "/version-logs": "/version-logs",
 };
 
-const objTenantOnboardingMenuItem: MenuItem = {
-  strModuleCode: "TENANT_ONBOARDING",
-  strModuleName: "Tenant Onboarding",
-  strRoute: "/settings/tenants/onboarding",
-  lstPermissionCodes: [],
-  blnIsHome: false,
-  lstChildren: [],
-};
-
 function normalizeRoute(strRoute?: string | null) {
   if (!strRoute) {
     return null;
@@ -76,47 +67,38 @@ function hasRoute(lstMenuItems: MenuItem[], strRoute: string): boolean {
   );
 }
 
-function injectTenantOnboardingMenu(lstMenuItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstMenuItems, objTenantOnboardingMenuItem.strRoute ?? "")) {
-    return lstMenuItems;
+function shouldHideMenuItem(objItem: MenuItem): boolean {
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  const strRoute = (normalizeRoute(objItem.strRoute) ?? "").trim().toLowerCase();
+
+  if (strModuleCode === "settings" || strModuleName === "settings") {
+    return true;
   }
 
-  const intSettingsIndex = lstMenuItems.findIndex(
-    (objItem) => {
-      const strCode = objItem.strModuleCode.trim().toLowerCase();
-      const strName = objItem.strModuleName.trim().toLowerCase();
-      return strCode === "settings" || strName === "settings";
-    },
+  if (strModuleCode.includes("tenant_onboarding") || strModuleName.includes("tenant onboarding")) {
+    return true;
+  }
+
+  return (
+    strRoute === "/settings" ||
+    strRoute.startsWith("/settings/") ||
+    strRoute.includes("/tenants/onboarding")
   );
+}
 
-  if (intSettingsIndex >= 0) {
-    return lstMenuItems.map((objItem, intIndex) => {
-      if (intIndex !== intSettingsIndex) {
-        return objItem;
-      }
+function filterHiddenMenuItems(lstMenuItems: MenuItem[]): MenuItem[] {
+  return lstMenuItems.reduce<MenuItem[]>((lstFilteredItems, objItem) => {
+    if (shouldHideMenuItem(objItem)) {
+      return lstFilteredItems;
+    }
 
-      if (hasRoute(objItem.lstChildren, objTenantOnboardingMenuItem.strRoute ?? "")) {
-        return objItem;
-      }
-
-      return {
-        ...objItem,
-        lstChildren: [...objItem.lstChildren, objTenantOnboardingMenuItem],
-      };
+    lstFilteredItems.push({
+      ...objItem,
+      lstChildren: filterHiddenMenuItems(objItem.lstChildren),
     });
-  }
-
-  return [
-    ...lstMenuItems,
-    {
-      strModuleCode: "SETTINGS",
-      strModuleName: "Settings",
-      strRoute: null,
-      lstPermissionCodes: [],
-      blnIsHome: false,
-      lstChildren: [objTenantOnboardingMenuItem],
-    },
-  ];
+    return lstFilteredItems;
+  }, []);
 }
 
 function getFirstNavigableRoute(lstMenuItems: MenuItem[]): string | null {
@@ -145,9 +127,10 @@ export function getPostLoginRoute(strPreferredRoute?: string | null) {
 }
 
 export function normalizeMenuResponse(objMenu: MenuResponse): MenuResponse {
-  const lstMenuItems = injectTenantOnboardingMenu(objMenu.lstMenuItems.map(normalizeMenuItem));
+  const lstMenuItems = filterHiddenMenuItems(objMenu.lstMenuItems.map(normalizeMenuItem));
+  const strPreferredHomeRoute = getPostLoginRoute(objMenu.strHomeRoute);
   const strHomeRoute =
-    getPostLoginRoute(objMenu.strHomeRoute) ??
+    (strPreferredHomeRoute && hasRoute(lstMenuItems, strPreferredHomeRoute) ? strPreferredHomeRoute : null) ??
     getFirstNavigableRoute(lstMenuItems) ??
     "/dashboard";
 
