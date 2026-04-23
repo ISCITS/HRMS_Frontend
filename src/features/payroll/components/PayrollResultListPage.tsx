@@ -21,6 +21,7 @@ import CommonRowActions from "@/components/master/CommonRowActions";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import type {
@@ -174,6 +175,13 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
 export default function PayrollResultListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
+  const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
+    useModuleActionAccess([
+      "PAYSLIPS",
+      "PAYROLL_RESULTS",
+      "PAYROLL_RESULT",
+      "PAYROLL_PAYSLIPS",
+    ]);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -203,8 +211,19 @@ export default function PayrollResultListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
+    if (!canViewAny()) {
+      setLstResults([]);
+      setStrError("");
+      setBlnLoading(false);
+      return;
+    }
+
     loadResults().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading]);
 
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
@@ -251,7 +270,7 @@ export default function PayrollResultListPage() {
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <BlockingLoader strLabel={t("loading_results", "Loading payroll results...")} />
     );
@@ -344,22 +363,35 @@ export default function PayrollResultListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
+        {!canViewAny() ? (
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            {t(
+              "access_denied",
+              "Payroll result view access is not available for your user group."
+            )}
+          </Alert>
+        ) : null}
+
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => downloadCsv("payroll-results.csv", lstFilteredRows)}
-            >
-              {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => exportPdf("Payroll Results", lstFilteredRows)}
-            >
-              {t("export_pdf", "Export PDF")}
-            </Button>
+            {canDoAny("export") ? (
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<DownloadRoundedIcon />}
+                onClick={() => downloadCsv("payroll-results.csv", lstFilteredRows)}
+              >
+                {t("export_excel", "Export Excel")}
+              </Button>
+            ) : null}
+            {canDoAny("export") ? (
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<DownloadRoundedIcon />}
+                onClick={() => exportPdf("Payroll Results", lstFilteredRows)}
+              >
+                {t("export_pdf", "Export PDF")}
+              </Button>
+            ) : null}
           </Box>
 
           <Box className={styles.paginationBar} sx={{ p: 0 }}>
