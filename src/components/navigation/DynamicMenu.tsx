@@ -99,6 +99,15 @@ function getMenuIcon(objItem: MenuItem) {
   return <WorkspacesRoundedIcon sx={objMenuIconSx} />;
 }
 
+function getLastBreadcrumbSegment(strValue: string) {
+  const lstSegments = strValue
+    .split("/")
+    .map((strSegment) => strSegment.trim())
+    .filter(Boolean);
+
+  return lstSegments.at(-1) ?? strValue.trim();
+}
+
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
   const strPathname = usePathname();
   const intLanguageID = authHelpers.getLanguageID();
@@ -121,6 +130,11 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const { t: tPayslips } = useModuleLabels("payslips");
   const { t: tEmployeePayrollInput } = useModuleLabels("employee-payroll-input");
   const { t: tTaxRegimes } = useModuleLabels("tax-regimes");
+  const { t: tStatutoryRules } = useModuleLabels("statutory-rules");
+
+  function preferResolvedLabel(strResolvedLabel: string, strMenuName: string, strFallback: string) {
+    return strResolvedLabel.trim() || strMenuName.trim() || strFallback;
+  }
 
   function resolveGroupFallbackLabel(strGroupKey: "masters" | "user_management" | "salary" | "payroll", strDefaultLabel: string) {
     const strResolvedLabel = tCommon(strGroupKey, "");
@@ -202,8 +216,15 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return tSalaryStructures("page_title", strModuleName || "Salary Structures");
     }
 
-    if (strRoute.includes("/payroll-cycles")) {
-      return tPayrollCycles("page_title", strModuleName || "Payroll Cycles");
+    if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/runs")) {
+      return preferResolvedLabel(
+        tPayrollCycles(
+          "page_title",
+          getLastBreadcrumbSegment(tPayrollCycles("breadcrumbs", "Payroll / Payroll Runs"))
+        ),
+        strModuleName,
+        "Payroll Runs"
+      );
     }
 
     if (
@@ -212,7 +233,16 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       strRoute.includes("/payroll/inputs") ||
       strModuleCode.includes("employee_payroll_input")
     ) {
-      return tEmployeePayrollInput("page_title", strModuleName || "Employee Payroll Input");
+      return preferResolvedLabel(
+        tEmployeePayrollInput(
+          "page_title",
+          getLastBreadcrumbSegment(
+            tEmployeePayrollInput("breadcrumbs", "Payroll / Employee Payroll Input")
+          )
+        ),
+        strModuleName,
+        "Employee Payroll Input"
+      );
     }
 
     if (
@@ -221,7 +251,27 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       strModuleCode.includes("payroll_result") ||
       strModuleCode.includes("payslip")
     ) {
-      return tPayslips("page_title", strModuleName || "Payroll Results");
+      return preferResolvedLabel(
+        tPayslips(
+          "page_title",
+          getLastBreadcrumbSegment(tPayslips("breadcrumbs", "Payroll / Payroll Results"))
+        ),
+        strModuleName,
+        "Payroll Results"
+      );
+    }
+
+    if (strRoute.includes("/payroll/statutory-rules")) {
+      return preferResolvedLabel(
+        tStatutoryRules(
+          "page_title",
+          getLastBreadcrumbSegment(
+            tStatutoryRules("breadcrumbs", "Payroll / Statutory Rules")
+          )
+        ),
+        strModuleName,
+        "Statutory Rules"
+      );
     }
 
     if (
@@ -232,7 +282,11 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     }
 
     if (strRoute.includes("/tax-regimes")) {
-      return tTaxRegimes("page_title", strModuleName || "Tax Regimes");
+      return preferResolvedLabel(
+        tTaxRegimes("tax_regimes_title", "Tax Regimes"),
+        strModuleName,
+        "Tax Regimes"
+      );
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {

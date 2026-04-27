@@ -22,6 +22,7 @@ import {
 import { ReactNode, isValidElement, useEffect, useMemo, useState } from "react";
 import dicConstant from "@/constants/Constant.json";
 import styles from "@/components/master/MasterScreen.module.css";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 
 type CellAlign = "left" | "right" | "center";
 
@@ -67,6 +68,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   withPaper = true,
   sx
 }: CommonDataGridProps<T>) {
+  const { t } = useModuleLabels("common_data_grid");
   /*
   Functional responsibility:
   - Render a reusable table with client-side filter, sort, pagination, and optional exports.
@@ -87,6 +89,11 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
+  const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
+  const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
+  const strRowsPerPageLabel = t("rows_per_page", dicConstant.common.rowsPerPage);
+  const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
+  const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
   const orderedColumns = useMemo(() => {
     const getColumnPriority = (column: DataGridColumn<T>) => {
       const strField = String(column.field);
@@ -264,10 +271,10 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           {showExportOptions ? (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
-                {dicConstant.common.exportExcel}
+                {strExportExcelLabel}
               </Button>
               <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
-                {dicConstant.common.exportPdf}
+                {strExportPdfLabel}
               </Button>
             </Stack>
           ) : null}
@@ -282,7 +289,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           >
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>
-                {dicConstant.common.rowsPerPage}
+                {strRowsPerPageLabel}
               </Typography>
               <TextField
                 className={styles.rowsPerPageSelect}
@@ -303,8 +310,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               </TextField>
               <Typography className={styles.paginationRange}>
                 {filteredAndSortedRows.length === 0
-                  ? `0 ${dicConstant.common.paginationSeparator} 0`
-                  : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${dicConstant.common.paginationSeparator} ${filteredAndSortedRows.length}`}
+                  ? `0 ${strPaginationSeparator} 0`
+                  : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${strPaginationSeparator} ${filteredAndSortedRows.length}`}
               </Typography>
             </Box>
             <Pagination
@@ -383,7 +390,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             {filteredAndSortedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
-                  {emptyMessage}
+                  {strResolvedEmptyMessage}
                 </TableCell>
               </TableRow>
             ) : (

@@ -139,6 +139,27 @@ export default function EmployeePayrollInputEditorPage({
   const blnFormLocked =
     blnSaving || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
 
+  function translateStatus(strStatus: string | null | undefined) {
+    switch (strStatus) {
+      case "Draft":
+        return t("status_draft", "Draft");
+      case "Submitted":
+        return t("status_submitted", "Submitted");
+      case "Locked":
+        return t("status_locked", "Locked");
+      case "Open":
+        return t("status_open", "Open");
+      case "Approved":
+        return t("status_approved", "Approved");
+      case "Processed":
+        return t("status_processed", "Processed");
+      case "Closed":
+        return t("status_closed", "Closed");
+      default:
+        return strStatus ?? "";
+    }
+  }
+
   function updateField<TKey extends keyof EmployeePayrollInputFormValues>(
     strField: TKey,
     objValue: EmployeePayrollInputFormValues[TKey]
@@ -328,8 +349,8 @@ export default function EmployeePayrollInputEditorPage({
         <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr" }, mt: 1.25 }}>
           <TextField label={t("employee_code", "Employee Code")} value={dicSelectedEmployee?.strCode ?? ""} InputProps={{ readOnly: true }} fullWidth />
           <TextField label={t("payroll_month", "Payroll Month")} value={dicSelectedRun?.dtPayrollMonth ?? ""} InputProps={{ readOnly: true }} fullWidth />
-          <TextField label={t("run_status", "Run Status")} value={dicSelectedRun?.strStatus ?? ""} InputProps={{ readOnly: true }} fullWidth />
-          <TextField label={t("run_locked", "Run Locked")} value={dicSelectedRun?.blnIsLocked ? "Yes" : "No"} InputProps={{ readOnly: true }} fullWidth />
+          <TextField label={t("run_status", "Run Status")} value={translateStatus(dicSelectedRun?.strStatus)} InputProps={{ readOnly: true }} fullWidth />
+          <TextField label={t("run_locked", "Run Locked")} value={dicSelectedRun ? (dicSelectedRun.blnIsLocked ? t("yes", "Yes") : t("no", "No")) : ""} InputProps={{ readOnly: true }} fullWidth />
         </Box>
       </Box>
 

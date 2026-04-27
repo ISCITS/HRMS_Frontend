@@ -31,6 +31,7 @@ import { usePathname, useRouter } from "next/navigation";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
@@ -83,47 +84,92 @@ function getCommonPageTitle(strPathname: string, tCommon: (strKey: string, strFa
   return getPageTitle(strPathname);
 }
 
-function getHeaderModuleName(strPathname: string) {
+function getLastBreadcrumbSegment(strValue: string) {
+  const lstSegments = strValue
+    .split("/")
+    .map((strSegment) => strSegment.trim())
+    .filter(Boolean);
+
+  return lstSegments.at(-1) ?? strValue.trim();
+}
+
+function getLocalizedHeaderTitle(
+  strPathname: string,
+  strHeaderModuleName: string,
+  tHeader: (strKey: string, strFallback?: string) => string,
+  tCommon: (strKey: string, strFallback?: string) => string
+) {
   const strLowerPath = (strPathname || "").toLowerCase();
 
-  if (strLowerPath.startsWith("/departments")) {
-    return "department";
-  }
-  if (strLowerPath.startsWith("/designations")) {
-    return "designation";
-  }
-  if (strLowerPath.startsWith("/banks")) {
-    return "bank";
-  }
-  if (strLowerPath.startsWith("/cost-centers")) {
-    return "cost_center";
-  }
-  if (strLowerPath.startsWith("/grades")) {
-    return "grade";
-  }
-  if (strLowerPath.startsWith("/locations")) {
-    return "location";
-  }
-  if (strLowerPath.startsWith("/countries")) {
-    return "country";
-  }
-  if (strLowerPath.startsWith("/states")) {
-    return "state";
-  }
-  if (strLowerPath.startsWith("/version-logs")) {
-    return "version_log";
-  }
-  if (strLowerPath.startsWith("/security/user-groups")) {
-    return "user_group";
-  }
-  if (strLowerPath.startsWith("/users")) {
-    return "user";
-  }
-  if (strLowerPath.startsWith("/employees")) {
-    return "employee";
+  if (!strHeaderModuleName) {
+    return getCommonPageTitle(strPathname, tCommon);
   }
 
-  return "";
+  if (strHeaderModuleName === "employee-payroll-input") {
+    if (strLowerPath.endsWith("/new")) {
+      return tHeader("add_title", "Create Employee Payroll Input");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("edit_title", "Edit Employee Payroll Input");
+    }
+    return stripMasterTitle(
+      tHeader(
+        "page_title",
+        getLastBreadcrumbSegment(
+          tHeader("breadcrumbs", "Payroll / Employee Payroll Input")
+        )
+      )
+    );
+  }
+
+  if (strHeaderModuleName === "payroll-runs") {
+    if (strLowerPath.endsWith("/new")) {
+      return tHeader("add_title", "Create Payroll Run");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("edit_title", "Edit Payroll Run");
+    }
+    return stripMasterTitle(
+      tHeader(
+        "page_title",
+        getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payroll Runs"))
+      )
+    );
+  }
+
+  if (strHeaderModuleName === "payslips") {
+    return stripMasterTitle(
+      tHeader(
+        "page_title",
+        getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payroll Results"))
+      )
+    );
+  }
+
+  if (strHeaderModuleName === "payroll-process-logs") {
+    return stripMasterTitle(tHeader("page_title", "Payroll Process Logs"));
+  }
+
+  if (strHeaderModuleName === "statutory-rules") {
+    if (strLowerPath.endsWith("/new")) {
+      return tHeader("add_title", "Create Statutory Rule");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("edit_title", "Edit Statutory Rule");
+    }
+    return stripMasterTitle(
+      tHeader(
+        "page_title",
+        getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Statutory Rules"))
+      )
+    );
+  }
+
+  if (strHeaderModuleName === "tax-regimes") {
+    return tHeader("tax_regimes_title", "Tax Regimes");
+  }
+
+  return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
 }
 
 function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
@@ -183,7 +229,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [intLastLabelActivityAt, setIntLastLabelActivityAt] = useState(0);
   const [intLastContentMutationAt, setIntLastContentMutationAt] = useState(0);
   const objShellContentRef = useRef<HTMLDivElement | null>(null);
-  const strHeaderModuleName = getHeaderModuleName(strPathname);
+  const strHeaderModuleName = resolveRouteModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
   const intCurrentLanguageID = authHelpers.getLanguageID();
@@ -426,9 +472,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
-  const strPageTitle = strHeaderModuleName
-    ? stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)))
-    : getCommonPageTitle(strPathname, tCommon);
+  const strPageTitle = getLocalizedHeaderTitle(
+    strPathname,
+    strHeaderModuleName,
+    tHeader,
+    tCommon
+  );
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
