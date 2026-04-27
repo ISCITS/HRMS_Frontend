@@ -455,6 +455,9 @@ export type SalaryComponentApiRecord = {
   strRoundingRule: string | null;
   strDefaultPeriodicity: string;
   strTaxTreatment: string | null;
+  blnIncludeInPF: boolean;
+  blnIncludeInESIC: boolean;
+  blnIncludeInGratuity: boolean;
   blnDeclarationRequired: boolean;
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;

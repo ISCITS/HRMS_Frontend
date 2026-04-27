@@ -66,6 +66,7 @@ export type PayrollRunSummary = {
 
 export type PayrollRunRecord = {
   intID: number;
+  intPayrollCycleID: number;
   strRunCode: string;
   strRunName: string;
   dtPayrollMonth: string;

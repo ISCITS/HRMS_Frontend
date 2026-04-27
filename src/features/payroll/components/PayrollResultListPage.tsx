@@ -178,9 +178,13 @@ export default function PayrollResultListPage() {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
     useModuleActionAccess([
       "PAYSLIPS",
+      "PAYSLIP",
       "PAYROLL_RESULTS",
       "PAYROLL_RESULT",
       "PAYROLL_PAYSLIPS",
+      "PAYROLL_PAYSLIP",
+      "MY_PAYSLIPS",
+      "MY_PAYSLIP",
     ]);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -192,6 +196,8 @@ export default function PayrollResultListPage() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objPreviewRecord, setObjPreviewRecord] =
     useState<PayrollResultDetailRecord | null>(null);
+  const blnCanAccessResults =
+    canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     setBlnLoading(true);
@@ -212,13 +218,6 @@ export default function PayrollResultListPage() {
 
   useEffect(() => {
     if (blnRightsLoading) {
-      return;
-    }
-
-    if (!canViewAny()) {
-      setLstResults([]);
-      setStrError("");
-      setBlnLoading(false);
       return;
     }
 
@@ -363,7 +362,7 @@ export default function PayrollResultListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!canViewAny() ? (
+        {!blnCanAccessResults && !strError ? (
           <Alert severity="warning" sx={{ mb: 1.5 }}>
             {t(
               "access_denied",
