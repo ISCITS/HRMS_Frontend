@@ -1,12 +1,14 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
   Button,
   FormControlLabel,
   MenuItem,
+  Paper,
   Stack,
   Switch,
   TextField,
@@ -15,7 +17,6 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -151,159 +152,151 @@ export default function StatutoryRuleEditorPage({
     return <BlockingLoader strLabel={t("loading_rule", "Loading statutory rule...")} />;
   }
 
-  const nodeEditorContent = (
-    <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+  return (
+    <Stack spacing={2.5} className={styles.page}>
+      <Paper
+        sx={{
+          borderRadius: "28px",
+          p: { xs: 2, md: 3 },
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f8fbff 0%, #fef7ed 55%, #f8fafc 100%)",
+        }}
+      >
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+            <Box>
+              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+                {strMode === "edit"
+                  ? t("edit_title", "Edit Statutory Rule")
+                  : t("add_title", "Create Statutory Rule")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+                {t("subtitle", "Maintain statutory logic in a dedicated workspace instead of opening the form in a popup.")}
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<ArrowBackRoundedIcon />}
+                onClick={() => objRouter.push("/payroll/statutory-rules")}
+                disabled={blnSaving}
+              >
+                {t("back_to_list", "Back to List")}
+              </Button>
+              <Button
+                className={styles.primaryButton}
+                startIcon={<SaveRoundedIcon />}
+                onClick={saveRule}
+                disabled={blnSaving}
+              >
+                {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+              </Button>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
+
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
-      <Stack spacing={0.5}>
-        <Typography className={styles.title}>
-          {strMode === "edit"
-            ? t("edit_title", "Edit Statutory Rule")
-            : t("add_title", "Create Statutory Rule")}
-        </Typography>
-      </Stack>
-
-      <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
-        <TextField
-          label={t("rule_code", "Rule Code")}
-          value={dicForm.strRuleCode}
-          onChange={(objEvent) => updateField("strRuleCode", objEvent.target.value)}
-          placeholder="pf_employee_rate"
-          disabled={blnSaving}
-          fullWidth
-        />
-        <TextField
-          select
-          label={t("scope", "Scope")}
-          value={dicForm.strScopeType}
-          onChange={(objEvent) => updateField("strScopeType", objEvent.target.value as StatutoryRuleFormValues["strScopeType"])}
-          disabled={blnSaving}
-          fullWidth
-        >
-          <MenuItem value="tenant">{t("scope_tenant", "Tenant-wide")}</MenuItem>
-          <MenuItem value="company">{t("scope_company", "Company-specific")}</MenuItem>
-        </TextField>
-        <TextField
-          type="date"
-          label={t("effective_from", "Effective From")}
-          value={dicForm.dtEffectiveFrom}
-          onChange={(objEvent) => updateField("dtEffectiveFrom", objEvent.target.value)}
-          disabled={blnSaving}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-        />
-        <TextField
-          label={t("numeric_value", "Numeric Value")}
-          value={dicForm.strRuleValue}
-          onChange={(objEvent) => updateField("strRuleValue", objEvent.target.value)}
-          placeholder="12.00"
-          disabled={blnSaving}
-          fullWidth
-        />
-      </Box>
-
-      <Box
+      <Paper
         sx={{
-          border: "1px solid #d9e6ef",
-          borderRadius: 2,
-          backgroundColor: "#f8fafc",
-          p: 1.5,
+          borderRadius: "24px",
+          p: { xs: 2, md: 3 },
+          border: "1px solid rgba(187, 213, 232, 0.7)",
+          boxShadow: "var(--app-shadow-soft)",
         }}
       >
-        <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 0.5 }}>
-          {t("advanced_json_config", "Advanced JSON Configuration")}
-        </Typography>
-        <Typography sx={{ color: "#64748b", fontSize: "0.88rem", mb: 1 }}>
-          {t(
-            "advanced_json_help",
-            "Use this section only for rule-specific structured settings such as slabs, caps, or state-wise breakdowns."
-          )}
-        </Typography>
-        <TextField
-          multiline
-          minRows={6}
-          maxRows={10}
-          value={dicForm.strRuleConfig}
-          onChange={(objEvent) => updateField("strRuleConfig", objEvent.target.value)}
-          placeholder={`{\n  "cap": 15000,\n  "rounding": "nearest"\n}`}
-          disabled={blnSaving}
-          fullWidth
-        />
-      </Box>
+        <Stack spacing={2.5}>
+          <Box>
+            <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>
+              {t("basic_information", "Basic Information")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.5 }}>
+              {t("basic_information_help", "Configure the rule metadata, effectivity date, and optional JSON payload in a full-page form.")}
+            </Typography>
+          </Box>
 
-      <FormControlLabel
-        control={
-          <Switch
-            checked={dicForm.blnIsActive}
-            onChange={(_, blnChecked) => updateField("blnIsActive", blnChecked)}
-            disabled={blnSaving}
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+            <TextField
+              label={t("rule_code", "Rule Code")}
+              value={dicForm.strRuleCode}
+              onChange={(objEvent) => updateField("strRuleCode", objEvent.target.value)}
+              placeholder="pf_employee_rate"
+              disabled={blnSaving}
+              fullWidth
+            />
+            <TextField
+              select
+              label={t("scope", "Scope")}
+              value={dicForm.strScopeType}
+              onChange={(objEvent) => updateField("strScopeType", objEvent.target.value as StatutoryRuleFormValues["strScopeType"])}
+              disabled={blnSaving}
+              fullWidth
+            >
+              <MenuItem value="tenant">{t("scope_tenant", "Tenant-wide")}</MenuItem>
+              <MenuItem value="company">{t("scope_company", "Company-specific")}</MenuItem>
+            </TextField>
+            <TextField
+              type="date"
+              label={t("effective_from", "Effective From")}
+              value={dicForm.dtEffectiveFrom}
+              onChange={(objEvent) => updateField("dtEffectiveFrom", objEvent.target.value)}
+              disabled={blnSaving}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              label={t("numeric_value", "Numeric Value")}
+              value={dicForm.strRuleValue}
+              onChange={(objEvent) => updateField("strRuleValue", objEvent.target.value)}
+              placeholder="12.00"
+              disabled={blnSaving}
+              fullWidth
+            />
+          </Box>
+
+          <Box
+            sx={{
+              border: "1px solid #d9e6ef",
+              borderRadius: 2,
+              backgroundColor: "#f8fafc",
+              p: 2,
+            }}
+          >
+            <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 0.5 }}>
+              {t("advanced_json_config", "Advanced JSON Configuration")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.88rem", mb: 1 }}>
+              {t(
+                "advanced_json_help",
+                "Use this section only for rule-specific structured settings such as slabs, caps, or state-wise breakdowns."
+              )}
+            </Typography>
+            <TextField
+              multiline
+              minRows={8}
+              maxRows={14}
+              value={dicForm.strRuleConfig}
+              onChange={(objEvent) => updateField("strRuleConfig", objEvent.target.value)}
+              placeholder={`{\n  "cap": 15000,\n  "rounding": "nearest"\n}`}
+              disabled={blnSaving}
+              fullWidth
+            />
+          </Box>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={dicForm.blnIsActive}
+                onChange={(_, blnChecked) => updateField("blnIsActive", blnChecked)}
+                disabled={blnSaving}
+              />
+            }
+            label={t("status_active", "Active")}
           />
-        }
-        label={t("status_active", "Active")}
-      />
+        </Stack>
+      </Paper>
     </Stack>
-  );
-
-  return (
-    <Box className={styles.page}>
-      <Typography className={styles.breadcrumbs}>
-        {t("breadcrumbs_editor", "Payroll / Statutory Rules / Editor")}
-      </Typography>
-      <Box className={styles.topBar}>
-        <Button
-          className={styles.secondaryButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push("/payroll/statutory-rules")}
-        >
-          {t("back_to_list", "Back to List")}
-        </Button>
-      </Box>
-
-      <CommonPayrollDialog
-        blnOpen
-        onClose={() => objRouter.push("/payroll/statutory-rules")}
-        onDialogClose={blnSaving ? undefined : () => objRouter.push("/payroll/statutory-rules")}
-        strTitle={
-          strMode === "edit"
-            ? t("edit_title", "Edit Statutory Rule")
-            : t("add_title", "Create Statutory Rule")
-        }
-        strSecondaryLabel={tCommon("cancel", "Cancel")}
-        strPrimaryLabel={blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-        onPrimaryAction={saveRule}
-        blnPrimaryDisabled={blnSaving}
-        nodeContent={nodeEditorContent}
-        paperClassName=""
-        maxWidth="lg"
-        paperSx={{
-          width: "min(92vw, 1120px)",
-          maxWidth: "1120px",
-          maxHeight: "82vh",
-          borderRadius: 2,
-          overflow: "hidden",
-          background:
-            "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
-          "& .MuiDialogTitle-root": {
-            px: 3,
-            py: 2,
-            borderBottom: "1px solid #d9e6ef",
-            fontWeight: 800,
-          },
-          "& .MuiDialogContent-root": {
-            px: 3,
-            py: 2,
-          },
-          "& .MuiDialogActions-root": {
-            px: 3,
-            py: 2,
-            borderTop: "1px solid #d9e6ef",
-            background: "rgba(255,255,255,0.96)",
-            position: "sticky",
-            bottom: 0,
-          },
-        }}
-      />
-    </Box>
   );
 }

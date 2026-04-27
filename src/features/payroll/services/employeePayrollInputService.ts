@@ -10,6 +10,24 @@ import type {
 
 type EmployeePayrollInputApiRecord = EmployeePayrollInputDetailRecord;
 
+function normalizeLineType(
+  strValue: string | null | undefined
+): EmployeePayrollInputFormLine["strLineType"] {
+  const strNormalizedValue = (strValue ?? "").trim().toLowerCase();
+  if (strNormalizedValue === "earning") {
+    return "addition";
+  }
+  if (
+    strNormalizedValue === "addition" ||
+    strNormalizedValue === "deduction" ||
+    strNormalizedValue === "arrear" ||
+    strNormalizedValue === "recovery"
+  ) {
+    return strNormalizedValue;
+  }
+  return "addition";
+}
+
 function getTodayDateSeed() {
   return Date.now();
 }
@@ -42,7 +60,7 @@ function mapLineForForm(dicLine: EmployeePayrollInputDetailRecord["lstLines"][nu
   return {
     intTempID: dicLine.intID || getTodayDateSeed() + intIndex,
     intSalaryComponentID: dicLine.intSalaryComponentID,
-    strLineType: dicLine.strLineType,
+    strLineType: normalizeLineType(dicLine.strLineType),
     strAmount: String(dicLine.decAmount ?? ""),
     strRemarks: dicLine.strRemarks ?? "",
   };
@@ -59,7 +77,7 @@ function toPayload(dicValues: EmployeePayrollInputFormValues) {
     blnIsLocked: dicValues.blnIsLocked,
     lstLines: dicValues.lstLines.map((dicLine) => ({
       intSalaryComponentID: Number(dicLine.intSalaryComponentID),
-      strLineType: dicLine.strLineType,
+      strLineType: normalizeLineType(dicLine.strLineType),
       decAmount: Number(dicLine.strAmount),
       strRemarks: dicLine.strRemarks.trim() || null,
     })),
@@ -124,7 +142,7 @@ export const employeePayrollInputService = {
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<EmployeePayrollInputListRecord[]>({
-      strPath: `/payroll/employee-payroll-inputs${strQuery ? `?${strQuery}` : ""}`,
+      strPath: `/payroll/inputs${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_LIST",
     });
@@ -133,7 +151,7 @@ export const employeePayrollInputService = {
 
   async getFormOptions(): Promise<EmployeePayrollInputFormOptions> {
     const objResult = await requestApi<EmployeePayrollInputFormOptions>({
-      strPath: "/payroll/employee-payroll-inputs/form-options",
+      strPath: "/payroll/inputs/form-options",
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_FORM_OPTIONS",
     });
@@ -144,7 +162,7 @@ export const employeePayrollInputService = {
     intInputID: number
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `/payroll/employee-payroll-inputs/${intInputID}`,
+      strPath: `/payroll/inputs/${intInputID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_VIEW",
     });
@@ -155,7 +173,7 @@ export const employeePayrollInputService = {
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: "/payroll/employee-payroll-inputs",
+      strPath: "/payroll/inputs",
       strMethod: "POST",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_CREATE",
@@ -168,7 +186,7 @@ export const employeePayrollInputService = {
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `/payroll/employee-payroll-inputs/${intInputID}`,
+      strPath: `/payroll/inputs/${intInputID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",

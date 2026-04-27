@@ -3,12 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
   Button,
   FormControlLabel,
   MenuItem,
+  Paper,
   Stack,
   Switch,
   TextField,
@@ -17,7 +19,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -34,7 +35,7 @@ import type {
 } from "@/features/payroll/types";
 
 type EmployeePayrollInputEditorPageProps = {
-  strMode: "add" | "edit";
+  strMode: "add" | "edit" | "view";
   intInputID?: number;
 };
 
@@ -50,6 +51,14 @@ function formatAmount(decValue: number) {
 function parseAmount(strValue: string) {
   const decValue = Number(strValue);
   return Number.isFinite(decValue) ? decValue : 0;
+}
+
+function parseSelectNumber(strValue: string): number | "" {
+  if (!strValue) {
+    return "";
+  }
+  const intValue = Number(strValue);
+  return Number.isFinite(intValue) ? intValue : "";
 }
 
 export default function EmployeePayrollInputEditorPage({
@@ -69,6 +78,7 @@ export default function EmployeePayrollInputEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const blnReadOnly = strMode === "view";
 
   useEffect(() => {
     let blnMounted = true;
@@ -79,7 +89,7 @@ export default function EmployeePayrollInputEditorPage({
       try {
         const [dicOptions, dicInput] = await Promise.all([
           employeePayrollInputService.getFormOptions(),
-          strMode === "edit" && intInputID
+          (strMode === "edit" || strMode === "view") && intInputID
             ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
             : Promise.resolve(null),
         ]);
@@ -137,7 +147,7 @@ export default function EmployeePayrollInputEditorPage({
   );
 
   const blnFormLocked =
-    blnSaving || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
+    blnSaving || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
 
   function translateStatus(strStatus: string | null | undefined) {
     switch (strStatus) {
@@ -249,7 +259,7 @@ export default function EmployeePayrollInputEditorPage({
     setStrError("");
     setStrSuccess("");
     try {
-      if (strMode === "edit" && intInputID) {
+      if ((strMode === "edit" || strMode === "view") && intInputID) {
         await employeePayrollInputService.updateEmployeePayrollInput(
           intInputID,
           dicForm
@@ -289,28 +299,68 @@ export default function EmployeePayrollInputEditorPage({
     );
   }
 
-  const nodeEditorContent = (
-    <Stack spacing={1.5} sx={{ pt: 0.5 }}>
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-
-      <Stack spacing={0.5}>
-        <Typography className={styles.title}>
-          {strMode === "edit"
-            ? t("edit_title", "Edit Employee Payroll Input")
-            : t("add_title", "Create Employee Payroll Input")}
-        </Typography>
-      </Stack>
-
-      <Box
+  return (
+    <Stack
+      spacing={2.5}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+        minHeight: "100%",
+        height: "auto",
+        overflowX: "hidden",
+        overflowY: "visible",
+        pb: 3,
+      }}
+    >
+      <Paper
         sx={{
-          border: "1px solid #d9e6ef",
-          borderRadius: 2,
-          p: 1.5,
-          background:
-            "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)",
+          borderRadius: "28px",
+          p: { xs: 2, md: 3 },
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f8fbff 0%, #eef6ff 45%, #f8fafc 100%)",
         }}
       >
+        <Stack spacing={2}>
+          <Box>
+            <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+              {strMode === "view"
+                ? t("view_title", "View Employee Payroll Input")
+                : strMode === "edit"
+                ? t("edit_title", "Edit Employee Payroll Input")
+                : t("add_title", "Create Employee Payroll Input")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+              {t("subtitle", "Move employee payroll input maintenance out of popup mode and into a dedicated full screen.")}
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
+              disabled={blnSaving}
+            >
+              {t("back_to_list", "Back to List")}
+            </Button>
+            <Button
+              className={styles.primaryButton}
+              startIcon={<SaveRoundedIcon />}
+              onClick={saveRecord}
+              disabled={blnSaving || (blnFormLocked && strMode === "edit")}
+              sx={{ display: blnReadOnly ? "none" : undefined }}
+            >
+              {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+      {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
+
+      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, background: "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
           {t("section_employee_run", "1. Employee and Run Details")}
         </Typography>
@@ -319,7 +369,7 @@ export default function EmployeePayrollInputEditorPage({
             select
             label={t("employee", "Employee")}
             value={dicForm.intEmployeeID}
-            onChange={(objEvent) => updateField("intEmployeeID", Number(objEvent.target.value))}
+            onChange={(objEvent) => updateField("intEmployeeID", parseSelectNumber(objEvent.target.value))}
             disabled={blnFormLocked}
             fullWidth
           >
@@ -334,7 +384,7 @@ export default function EmployeePayrollInputEditorPage({
             select
             label={t("payroll_run", "Payroll Run")}
             value={dicForm.intPayrollRunID}
-            onChange={(objEvent) => updateField("intPayrollRunID", Number(objEvent.target.value))}
+            onChange={(objEvent) => updateField("intPayrollRunID", parseSelectNumber(objEvent.target.value))}
             disabled={blnFormLocked}
             fullWidth
           >
@@ -352,9 +402,9 @@ export default function EmployeePayrollInputEditorPage({
           <TextField label={t("run_status", "Run Status")} value={translateStatus(dicSelectedRun?.strStatus)} InputProps={{ readOnly: true }} fullWidth />
           <TextField label={t("run_locked", "Run Locked")} value={dicSelectedRun ? (dicSelectedRun.blnIsLocked ? t("yes", "Yes") : t("no", "No")) : ""} InputProps={{ readOnly: true }} fullWidth />
         </Box>
-      </Box>
+      </Paper>
 
-      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
           {t("section_attendance", "2. Attendance / LWP / LOP")}
         </Typography>
@@ -362,19 +412,16 @@ export default function EmployeePayrollInputEditorPage({
           <TextField label={t("lwp_days", "LWP Days")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
           <TextField label={t("lop_days", "LOP Days")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
         </Box>
-      </Box>
+      </Paper>
 
-      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
           <Box>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("section_lines", "3. Input Lines")}
             </Typography>
             <Typography sx={{ color: "#64748b", mt: 0.25 }}>
-              {t(
-                "line_help",
-                "Capture additions, deductions, arrears, and recoveries at salary component level."
-              )}
+              {t("line_help", "Capture additions, deductions, arrears, and recoveries at salary component level.")}
             </Typography>
           </Box>
           <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked}>
@@ -397,7 +444,13 @@ export default function EmployeePayrollInputEditorPage({
               {dicForm.lstLines.map((dicLine) => (
                 <tr key={dicLine.intTempID}>
                   <td>
-                    <TextField select value={dicLine.intSalaryComponentID} onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", Number(objEvent.target.value))} disabled={blnFormLocked} fullWidth>
+                    <TextField
+                      select
+                      value={dicLine.intSalaryComponentID}
+                      onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", parseSelectNumber(objEvent.target.value))}
+                      disabled={blnFormLocked}
+                      fullWidth
+                    >
                       <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
                       {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
                         <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
@@ -433,16 +486,12 @@ export default function EmployeePayrollInputEditorPage({
         </Box>
 
         <Box sx={{ mt: 1, display: "flex", justifyContent: "flex-end", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-          <Typography sx={{ color: "#64748b" }}>
-            {t("total_lines", "Total Input Value")}
-          </Typography>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-            {formatAmount(decTotalLines)}
-          </Typography>
+          <Typography sx={{ color: "#64748b" }}>{t("total_lines", "Total Input Value")}</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatAmount(decTotalLines)}</Typography>
         </Box>
-      </Box>
+      </Paper>
 
-      <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, p: 1.5, backgroundColor: "#ffffff" }}>
+      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
           {t("section_remarks_status", "4. Remarks / Status")}
         </Typography>
@@ -468,69 +517,7 @@ export default function EmployeePayrollInputEditorPage({
           }
           label={t("lock_record", "Lock this payroll input")}
         />
-      </Box>
+      </Paper>
     </Stack>
-  );
-
-  return (
-    <Box className={styles.page}>
-      <Typography className={styles.breadcrumbs}>
-        {t("breadcrumbs_editor", "Payroll / Employee Payroll Input / Editor")}
-      </Typography>
-      <Box className={styles.topBar}>
-        <Button
-          className={styles.secondaryButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
-        >
-          {t("back_to_list", "Back to List")}
-        </Button>
-      </Box>
-
-      <CommonPayrollDialog
-        blnOpen
-        onClose={() => objRouter.push("/payroll/employee-payroll-inputs")}
-        onDialogClose={blnSaving ? undefined : () => objRouter.push("/payroll/employee-payroll-inputs")}
-        strTitle={
-          strMode === "edit"
-            ? t("edit_title", "Edit Employee Payroll Input")
-            : t("add_title", "Create Employee Payroll Input")
-        }
-        strSecondaryLabel={tCommon("cancel", "Cancel")}
-        strPrimaryLabel={blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-        onPrimaryAction={saveRecord}
-        blnPrimaryDisabled={blnSaving || (blnFormLocked && strMode === "edit")}
-        nodeContent={nodeEditorContent}
-        paperClassName=""
-        maxWidth="lg"
-        paperSx={{
-          width: "min(92vw, 1180px)",
-          maxWidth: "1180px",
-          maxHeight: "82vh",
-          borderRadius: 2,
-          overflow: "hidden",
-          background:
-            "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
-          "& .MuiDialogTitle-root": {
-            px: 3,
-            py: 2,
-            borderBottom: "1px solid #d9e6ef",
-            fontWeight: 800,
-          },
-          "& .MuiDialogContent-root": {
-            px: 3,
-            py: 2,
-          },
-          "& .MuiDialogActions-root": {
-            px: 3,
-            py: 2,
-            borderTop: "1px solid #d9e6ef",
-            background: "rgba(255,255,255,0.96)",
-            position: "sticky",
-            bottom: 0,
-          },
-        }}
-      />
-    </Box>
   );
 }

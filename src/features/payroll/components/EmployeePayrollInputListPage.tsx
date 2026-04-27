@@ -20,13 +20,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonRowActions from "@/components/master/CommonRowActions";
-import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import type {
-  EmployeePayrollInputDetailRecord,
   EmployeePayrollInputListRecord,
 } from "@/features/payroll/types";
 
@@ -177,8 +175,6 @@ export default function EmployeePayrollInputListPage() {
     useState<SearchForm>(dicEmptySearch);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
-  const [objPreviewRecord, setObjPreviewRecord] =
-    useState<EmployeePayrollInputDetailRecord | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({
     blnOpen: false,
     strMessage: "",
@@ -246,24 +242,14 @@ export default function EmployeePayrollInputListPage() {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
   }
 
-  async function openPreview(intInputID: number) {
-    try {
-      setObjPreviewRecord(
-        await employeePayrollInputService.getEmployeePayrollInputById(intInputID)
-      );
-    } catch (objError) {
-      showToast(
-        objError instanceof Error
-          ? objError.message
-          : "Unable to load employee payroll input.",
-        "error"
-      );
-    }
+  function navigateToFullScreen(strPath: string) {
+    window.location.assign(strPath);
   }
 
   if (blnLoading) {
     return (
       <BlockingLoader
+        blnOpen
         strLabel={t(
           "loading_employee_payroll_inputs",
           "Loading employee payroll inputs..."
@@ -363,7 +349,7 @@ export default function EmployeePayrollInputListPage() {
             <Button
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
-              onClick={() => objRouter.push("/payroll/employee-payroll-inputs/new")}
+              onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
             >
               {t("add_button", "Add Payroll Input")}
             </Button>
@@ -454,9 +440,13 @@ export default function EmployeePayrollInputListPage() {
                       <CommonRowActions
                         blnCanView
                         blnCanEdit={!dicRow.blnIsLocked}
-                        onView={() => openPreview(dicRow.intID).catch(() => undefined)}
+                        onView={() =>
+                          navigateToFullScreen(
+                            `/payroll/employee-payroll-inputs/${dicRow.intID}/edit?mode=view`
+                          )
+                        }
                         onEdit={() =>
-                          objRouter.push(
+                          navigateToFullScreen(
                             `/payroll/employee-payroll-inputs/${dicRow.intID}/edit`
                           )
                         }
@@ -487,94 +477,6 @@ export default function EmployeePayrollInputListPage() {
         </Box>
 
       </Box>
-
-      <CommonPayrollDialog
-        blnOpen={Boolean(objPreviewRecord)}
-        onClose={() => setObjPreviewRecord(null)}
-        strTitle={objPreviewRecord?.strEmployeeName ?? t("preview_title", "Payroll Input")}
-        strSecondaryLabel={t("close", "Close")}
-        blnHidePrimary
-        nodeContent={
-          objPreviewRecord ? (
-            <Stack spacing={2}>
-              <Box>
-                <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                  {t("employee", "Employee")}
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {objPreviewRecord.strEmployeeName} ({objPreviewRecord.strEmployeeCode})
-                </Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                  {t("payroll_run", "Payroll Run")}
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {objPreviewRecord.strRunName} ({objPreviewRecord.strRunCode})
-                </Typography>
-              </Box>
-              <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: "1fr 1fr" }}>
-                <Box>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                    {t("lwp_days", "LWP")}
-                  </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {formatNumber(objPreviewRecord.decLwpDays)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                    {t("lop_days", "LOP")}
-                  </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {formatNumber(objPreviewRecord.decLopDays)}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box>
-                <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                  {t("remarks", "Remarks")}
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {objPreviewRecord.strRemarks || "-"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 0.75 }}>
-                  {t("input_lines", "Input Lines")}
-                </Typography>
-                <Box sx={{ border: "1px solid #d9e6ef", borderRadius: 2, overflow: "hidden" }}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>{t("component", "Component")}</th>
-                        <th>{t("line_type", "Line Type")}</th>
-                        <th>{t("amount", "Amount")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {objPreviewRecord.lstLines.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className={styles.emptyState}>
-                            {t("no_lines", "No payroll input lines recorded.")}
-                          </td>
-                        </tr>
-                      ) : null}
-                      {objPreviewRecord.lstLines.map((dicLine) => (
-                        <tr key={dicLine.intID}>
-                          <td>{dicLine.strComponentName || dicLine.strComponentCode}</td>
-                          <td>{dicLine.strLineType}</td>
-                          <td>{formatNumber(dicLine.decAmount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Box>
-              </Box>
-            </Stack>
-          ) : null
-        }
-      />
 
       <Snackbar
         open={objToast.blnOpen}
