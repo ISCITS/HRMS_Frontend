@@ -5,10 +5,8 @@ import {
   Alert,
   Box,
   Button,
-  FormControlLabel,
   MenuItem,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -138,17 +136,6 @@ export default function PayrollRunEditorPage() {
           <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
         </TextField>
       </Box>
-
-      <FormControlLabel
-        control={
-          <Switch
-            checked={dicForm.blnIsLocked}
-            onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
-            disabled={blnSaving}
-          />
-        }
-        label={t("locked", "Locked")}
-      />
     </Stack>
   );
 
