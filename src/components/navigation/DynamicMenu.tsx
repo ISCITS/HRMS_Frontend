@@ -4,6 +4,7 @@ import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -13,6 +14,7 @@ import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SourceRoundedIcon from "@mui/icons-material/SourceRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -76,6 +78,14 @@ function getMenuIcon(objItem: MenuItem) {
     return <PaymentsRoundedIcon sx={objMenuIconSx} />;
   }
 
+  if (strLookupKey.includes("reimbursement") || strLookupKey.includes("claim")) {
+    return <ReceiptLongRoundedIcon sx={objMenuIconSx} />;
+  }
+
+  if (strLookupKey.includes("calendar")) {
+    return <CalendarMonthRoundedIcon sx={objMenuIconSx} />;
+  }
+
   if (strLookupKey.includes("employee") || strLookupKey.includes("user")) {
     return <Groups2RoundedIcon sx={objMenuIconSx} />;
   }
@@ -106,6 +116,32 @@ function getLastBreadcrumbSegment(strValue: string) {
     .filter(Boolean);
 
   return lstSegments.at(-1) ?? strValue.trim();
+}
+
+function resolveMenuRoute(objItem: MenuItem): string | null {
+  const strRoute = objItem.strRoute?.trim() ?? "";
+  if (!strRoute) {
+    return null;
+  }
+
+  const strNormalizedRoute = strRoute.startsWith("/") ? strRoute : `/${strRoute}`;
+  const strLowerRoute = strNormalizedRoute.toLowerCase();
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  const blnIsEssDeclarationModule =
+    (strModuleCode.includes("ess_declaration") && !strModuleCode.includes("category")) ||
+    strModuleName.includes("ess declaration");
+  const blnIsMyTaxDeclarationModule = strModuleName.includes("my tax");
+
+  if (
+    blnIsEssDeclarationModule &&
+    !blnIsMyTaxDeclarationModule &&
+    strLowerRoute === "/ess/my-tax-declarations"
+  ) {
+    return "/salary/ess-declarations";
+  }
+
+  return strNormalizedRoute;
 }
 
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
@@ -314,7 +350,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   function hasActiveDescendant(objItem: MenuItem): boolean {
     return objItem.lstChildren.some(
-      (objChild) => objChild.strRoute === strPathname || hasActiveDescendant(objChild),
+      (objChild) => resolveMenuRoute(objChild) === strPathname || hasActiveDescendant(objChild),
     );
   }
 
@@ -376,7 +412,8 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   }
 
   function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
-    const blnIsActive = objItem.strRoute === strPathname;
+    const strRoute = resolveMenuRoute(objItem);
+    const blnIsActive = strRoute === strPathname;
     const blnHasChildren = objItem.lstChildren.length > 0;
     const blnHasActiveChild = hasActiveDescendant(objItem);
     const blnExpanded = dicExpandedMenus[objItem.strModuleCode] ?? blnHasActiveChild;
@@ -412,9 +449,9 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     return (
       <ListItemButton
-        key={objItem.strRoute ?? objItem.strModuleCode}
+        key={strRoute ?? objItem.strModuleCode}
         component={Link}
-        href={objItem.strRoute ?? "#"}
+        href={strRoute ?? "#"}
         onClick={onNavigate}
         sx={getButtonStyles(blnIsActive, intDepth)}
       >

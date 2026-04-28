@@ -78,6 +78,11 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstRowsPerPageOptions = [10, 20, 50];
 const lstModuleCodes = ["ESS_DECLARATION_CATEGORY", "ESS_DECLARATION_CATEGORIES", "ESS_DECLARATIONS"];
+
+type EssDeclarationCategoryMasterPanelProps = {
+  strEntityLabel?: string;
+  strEntityLabelPlural?: string;
+};
 const lstSampleCategories: EssDeclarationCategoryRecord[] = [
   {
     id: "sample-1",
@@ -216,7 +221,10 @@ function exportPdf(strTitle: string, lstRows: EssDeclarationCategoryRecord[]) {
   objWindow.print();
 }
 
-export default function EssDeclarationCategoryMasterPanel() {
+export default function EssDeclarationCategoryMasterPanel({
+  strEntityLabel = "ESS Declaration Category",
+  strEntityLabelPlural = "ESS Declaration Categories",
+}: EssDeclarationCategoryMasterPanelProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("ess_declaration_category");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstModuleCodes);
@@ -264,7 +272,7 @@ export default function EssDeclarationCategoryMasterPanel() {
   };
 
   const dicLabels = {
-    addButton: t("add_button", "Add ESS Declaration Category"),
+    addButton: t("add_button", `Add ${strEntityLabel}`),
     backButton: t("back_button", "Back"),
     bulkActivate: t("bulk_activate", "Bulk Activate"),
     bulkActivateSuccess: t("bulk_activate_success", "Selected ESS declaration categories were activated successfully."),
@@ -288,12 +296,12 @@ export default function EssDeclarationCategoryMasterPanel() {
     confirmDeleteTitle: t("confirm_delete_title", "Delete ESS Declaration Category"),
     deactivateSuccess: t("deactivate_success", "ESS declaration category deactivated successfully."),
     deleteSuccess: t("delete_success", "ESS declaration category deleted successfully."),
-    dialogAddTitle: t("dialog_add_title", "Add ESS Declaration Category"),
-    dialogEditTitle: t("dialog_edit_title", "Edit ESS Declaration Category"),
-    dialogViewTitle: t("dialog_view_title", "View ESS Declaration Category"),
-    emptyMessage: t("empty_message", "No ESS declaration categories found."),
+    dialogAddTitle: t("dialog_add_title", `Add ${strEntityLabel}`),
+    dialogEditTitle: t("dialog_edit_title", `Edit ${strEntityLabel}`),
+    dialogViewTitle: t("dialog_view_title", `View ${strEntityLabel}`),
+    emptyMessage: t("empty_message", `No ${strEntityLabelPlural.toLowerCase()} found.`),
     exportFileName: t("export_file_name", "ess-declaration-categories.csv"),
-    exportTitle: stripMasterTitle(t("export_title", "ESS Declaration Categories")),
+    exportTitle: stripMasterTitle(t("export_title", strEntityLabelPlural)),
     fieldCategoryCode: t("field_category_code", "Category Code"),
     fieldCategoryName: t("field_category_name", "Category Name"),
     fieldDeclarationKind: t("field_declaration_kind", "Declaration Kind"),
@@ -303,7 +311,7 @@ export default function EssDeclarationCategoryMasterPanel() {
     fieldMaxLimitAmount: t("field_max_limit_amount", "Max Limit Amount"),
     fieldProofRequired: t("field_proof_required", "Proof Required"),
     loadingRecords: t("loading_records", "Loading ESS declaration categories..."),
-    pageTitle: stripMasterTitle(t("page_title", "ESS Declaration Category Master")),
+    pageTitle: stripMasterTitle(t("page_title", strEntityLabelPlural)),
     requestFailed: t("request_failed", "Unable to complete the request."),
     saveSuccess: t("save_success", "ESS declaration category saved successfully."),
     activateSuccess: t("activate_success", "ESS declaration category activated successfully."),
@@ -969,7 +977,7 @@ export default function EssDeclarationCategoryMasterPanel() {
       </Box>
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
-        {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for ESS Declaration Category.")}</Typography> : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
@@ -1022,7 +1030,7 @@ export default function EssDeclarationCategoryMasterPanel() {
           </Box>
         ) : !blnCanView ? (
           <Box className={styles.emptyState}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "ESS declaration category access is not available for your user group.")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", `${strEntityLabel} access is not available for your user group.`)}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need this master visibility.")}</Typography>
           </Box>
         ) : (

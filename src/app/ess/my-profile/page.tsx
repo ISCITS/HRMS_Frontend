@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { authApiService } from "@/services";
 
 function formatDate(strDate: string | null) {
@@ -69,7 +69,6 @@ export default function EssMyProfilePage() {
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [objAddress, setObjAddress] = useState<EmployeeAddressRecord | null>(null);
-  const [objBank, setObjBank] = useState<EmployeeBankRecord | null>(null);
   const [objStatutory, setObjStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -96,7 +95,6 @@ export default function EssMyProfilePage() {
           employeeService.getFormOptions(),
           Promise.allSettled([
             employeeService.getEmployeeAddress(intCurrentEmployeeID),
-            employeeService.getEmployeeBankAccount(intCurrentEmployeeID),
             employeeService.getEmployeeStatutory(intCurrentEmployeeID)
           ])
         ]);
@@ -113,11 +111,7 @@ export default function EssMyProfilePage() {
         }
 
         if (lstProfileDetails[1].status === "fulfilled") {
-          setObjBank(lstProfileDetails[1].value);
-        }
-
-        if (lstProfileDetails[2].status === "fulfilled") {
-          setObjStatutory(lstProfileDetails[2].value);
+          setObjStatutory(lstProfileDetails[1].value);
         }
       } catch (objError: unknown) {
         if (blnMounted) {
@@ -313,13 +307,9 @@ export default function EssMyProfilePage() {
 
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
           <AccountBalanceRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>Bank & Statutory</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>Statutory</Typography>
         </Stack>
         <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="Bank" strValue={resolveLookupLabel(objFormOptions?.lstBanks, objBank?.intBankID ?? null)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="Account Holder" strValue={objBank?.strAccountHolderName || "Not available"} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="Account Number" strValue={objBank?.strAccountNumberMasked || objBank?.strAccountNumber || "Not available"} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="IFSC" strValue={objBank?.strIfscCode || "Not available"} /></Grid>
           <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="PAN" strValue={objStatutory?.strPanNumber || "Not available"} /></Grid>
           <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="UAN" strValue={objStatutory?.strUanNumber || "Not available"} /></Grid>
           <Grid item xs={12} sm={6} md={4}><ProfileField strLabel="ESI Number" strValue={objStatutory?.strEsiNumber || "Not available"} /></Grid>
