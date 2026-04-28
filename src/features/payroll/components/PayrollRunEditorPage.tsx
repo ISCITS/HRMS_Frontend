@@ -6,9 +6,11 @@ import {
   Alert,
   Box,
   Button,
+  FormControlLabel,
   MenuItem,
   Paper,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -202,48 +204,6 @@ export default function PayrollRunEditorPage() {
           />
         </Stack>
       </Paper>
-        <TextField
-          label={t("run_code", "Run Code")}
-          value={dicForm.strRunCode}
-          onChange={(objEvent) => updateField("strRunCode", objEvent.target.value)}
-          disabled={blnSaving}
-          fullWidth
-        />
-        <TextField
-          label={t("run_name", "Run Name")}
-          value={dicForm.strRunName}
-          onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
-          disabled={blnSaving}
-          fullWidth
-        />
-        <TextField
-          type="date"
-          label={t("payroll_month", "Payroll Month")}
-          value={dicForm.dtPayrollMonth}
-          onChange={(objEvent) =>
-            updateField("dtPayrollMonth", objEvent.target.value)
-          }
-          InputLabelProps={{ shrink: true }}
-          disabled={blnSaving}
-          fullWidth
-        />
-        <TextField
-          select
-          label={t("status", "Status")}
-          value={dicForm.strRunStatus}
-          onChange={(objEvent) =>
-            updateField("strRunStatus", objEvent.target.value as PayrollRunFormValues["strRunStatus"])
-          }
-          disabled={blnSaving}
-          fullWidth
-        >
-          <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
-          <MenuItem value="Submitted">{t("status_submitted", "Submitted")}</MenuItem>
-          <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
-          <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
-          <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
-        </TextField>
-      </Box>
     </Stack>
   );
 }
