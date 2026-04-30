@@ -62,6 +62,56 @@ export type PayrollRunSummary = {
   intLockedCount: number;
   decTotalLwpDays: number;
   decTotalLopDays: number;
+  intProcessedCount: number;
+  intValidationErrorCount: number;
+  intValidationWarningCount: number;
+};
+
+export type PayrollValidationResultRecord = {
+  intID?: number;
+  intEmployeeID: number | null;
+  strValidationCode: string;
+  strValidationLevel: string;
+  strValidationMessage: string;
+  blnIsBlocking: boolean;
+  blnIsResolved?: boolean;
+  strEntityName?: string | null;
+  intEntityID?: number | null;
+};
+
+export type PayrollValidationSummary = {
+  strStatus: string;
+  intEmployeesChecked: number;
+  intBlockingErrorCount: number;
+  intWarningCount: number;
+  intMissingSalaryCount: number;
+  intStatutoryGapCount: number;
+  intMissingTaxProfileCount: number;
+  intMissingBankAccountCount: number;
+  strFinancialYearCode: string | null;
+  intRuleSetID: number | null;
+  strRuleSetCode: string | null;
+  decNonWageCapPercent: number | null;
+  lstIssues: PayrollValidationResultRecord[];
+};
+
+export type PayrollProcessSummary = {
+  strStatus: string;
+  dicValidationSummary?: PayrollValidationSummary;
+  intEmployeesInScope?: number;
+  intProcessedEmployeeCount: number;
+  intFailedEmployeeCount: number;
+  decGrossTotal?: number;
+  decDeductionTotal?: number;
+  decTaxTotal?: number;
+  decNetPayTotal?: number;
+  decEmployerContributionTotal?: number;
+  intReprocessAuditID?: number;
+  lstExceptions: {
+    intEmployeeID: number;
+    strEmployeeCode: string;
+    strMessage: string;
+  }[];
 };
 
 export type PayrollRunRecord = {
@@ -72,6 +122,18 @@ export type PayrollRunRecord = {
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
+  intEmployeeCount: number;
+  intProcessedEmployeeCount: number;
+  intFailedEmployeeCount: number;
+  decGrossPayTotal: number;
+  decDeductionTotal: number;
+  decTaxTotal: number;
+  decNetPayTotal: number;
+  decEmployerContributionTotal: number;
+  decNonWageCapPercent: number | null;
+  strFinancialYearCode: string | null;
+  strValidationStatus: string | null;
+  intReprocessCount: number;
   dicSummary: PayrollRunSummary;
 };
 
@@ -80,6 +142,9 @@ export type PayrollRunListRecord = PayrollRunRecord;
 export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtAddedOn: string | null;
   dtLastModifiedOn: string | null;
+  dtLastExecutedOn: string | null;
+  dtClosedOn: string | null;
+  lstValidationResults: PayrollValidationResultRecord[];
 };
 
 export type PayrollRunFormValues = {
@@ -158,6 +223,9 @@ export type PayrollResultLineRecord = {
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;
+  strSourceType?: string | null;
+  blnIsWages?: boolean | null;
+  blnIncludeInRemuneration?: boolean | null;
   strRemarks: string | null;
 };
 
@@ -175,6 +243,17 @@ export type PayrollResultRecord = {
   decDeductionAmount: number;
   decTaxAmount: number;
   decNetPayAmount: number;
+  decRemunerationAmount: number;
+  decActualWagesAmount: number;
+  decActualNonWagesAmount: number;
+  decAllowedNonWagesAmount: number;
+  decExcessNonWagesAmount: number;
+  decDeemedWagesAmount: number;
+  decComplianceWageBaseAmount: number;
+  decEmployerContributionTotal: number;
+  decTaxableIncomeMonthly: number;
+  decPaidDays: number | null;
+  decLopDays: number | null;
   strRemarks: string | null;
 };
 

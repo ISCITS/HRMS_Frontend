@@ -4,7 +4,9 @@ import type {
   PayrollRunDetailRecord,
   PayrollRunFormValues,
   PayrollRunListRecord,
+  PayrollProcessSummary,
   PayrollRunStatus,
+  PayrollValidationSummary,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
@@ -94,6 +96,50 @@ export const payrollRunService = {
       strMethod: "PUT",
       objBody: { strRunStatus, blnIsLocked },
       strMenuAction: "PAYROLL_RUN_UPDATE_STATUS",
+    });
+    return objResult.Data;
+  },
+
+  async validatePayrollRun(intRunID: number): Promise<PayrollValidationSummary> {
+    const objResult = await requestApi<PayrollValidationSummary>({
+      strPath: `/payroll/runs/${intRunID}/validate`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_VALIDATE",
+    });
+    return objResult.Data;
+  },
+
+  async processPayrollRun(intRunID: number): Promise<PayrollProcessSummary> {
+    const objResult = await requestApi<PayrollProcessSummary>({
+      strPath: `/payroll/runs/${intRunID}/process`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_PROCESS",
+    });
+    return objResult.Data;
+  },
+
+  async reprocessPayrollRun(
+    intRunID: number,
+    strReason: string,
+    lstEmployeeIDs?: number[]
+  ): Promise<PayrollProcessSummary> {
+    const objResult = await requestApi<PayrollProcessSummary>({
+      strPath: `/payroll/runs/${intRunID}/reprocess`,
+      strMethod: "POST",
+      objBody: {
+        strReason,
+        lstEmployeeIDs: lstEmployeeIDs?.length ? lstEmployeeIDs : undefined,
+      },
+      strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  async closePayrollRun(intRunID: number): Promise<PayrollRunDetailRecord> {
+    const objResult = await requestApi<PayrollRunDetailRecord>({
+      strPath: `/payroll/runs/${intRunID}/close`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_CLOSE",
     });
     return objResult.Data;
   },

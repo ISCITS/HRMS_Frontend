@@ -187,8 +187,6 @@ export default function PayrollRunEditorPage() {
               <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
               <MenuItem value="Submitted">{t("status_submitted", "Submitted")}</MenuItem>
               <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
-              <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
-              <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
             </TextField>
           </Box>
 
