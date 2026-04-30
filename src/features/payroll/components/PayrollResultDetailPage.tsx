@@ -1,15 +1,21 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
-import type { PayrollResultDetailRecord } from "@/features/payroll/types";
+import { payslipService } from "@/features/payroll/services/payslipService";
+import type { PayrollResultDetailRecord, PayslipPreviewRecord } from "@/features/payroll/types";
+import { openPayslipHtml } from "@/features/payroll/utils/payslipDocument";
 
 type PayrollResultDetailPageProps = {
   intResultID: number;
@@ -77,8 +83,11 @@ export default function PayrollResultDetailPage({
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
+  const [objPayslip, setObjPayslip] = useState<PayslipPreviewRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  const [strSuccess, setStrSuccess] = useState("");
 
   useEffect(() => {
     let blnMounted = true;
@@ -130,6 +139,73 @@ export default function PayrollResultDetailPage({
     );
   }
 
+  async function loadPayslipPreview() {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicPayslip = await payslipService.getPayslipPreview(
+        objResult.intPayrollRunID,
+        objResult.intEmployeeID
+      );
+      setObjPayslip(dicPayslip);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to load payslip preview."
+      );
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function generatePayslip() {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicPayslip = await payslipService.generatePayslip(
+        objResult.intPayrollRunID,
+        objResult.intEmployeeID
+      );
+      setObjPayslip(dicPayslip);
+      setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
+      return dicPayslip;
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to generate payslip."
+      );
+      return null;
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function ensureGeneratedPayslip() {
+    if (objPayslip?.intPayslipID) {
+      return objPayslip;
+    }
+    return generatePayslip();
+  }
+
+  async function openGeneratedPayslip(blnPrint: boolean) {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    try {
+      const dicPayslip = await ensureGeneratedPayslip();
+      if (!dicPayslip?.intPayslipID) {
+        return;
+      }
+      const strHtml = await payslipService.getDownloadHtml(dicPayslip.intPayslipID);
+      openPayslipHtml(strHtml, blnPrint);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to open payslip document."
+      );
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
   return (
     <Box className={styles.page} sx={{ overflowY: "auto", height: "auto" }}>
       <Typography className={styles.breadcrumbs}>
@@ -144,6 +220,40 @@ export default function PayrollResultDetailPage({
         >
           {t("back_to_list", "Back to List")}
         </Button>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={loadPayslipPreview}
+            disabled={blnPayslipLoading}
+          >
+            {t("preview_payslip", "Preview Payslip")}
+          </Button>
+          <Button
+            className={styles.primaryButton}
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={generatePayslip}
+            disabled={blnPayslipLoading}
+          >
+            {t("generate_payslip", "Generate")}
+          </Button>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<DownloadRoundedIcon />}
+            onClick={() => openGeneratedPayslip(false)}
+            disabled={blnPayslipLoading}
+          >
+            {t("download_payslip", "Download")}
+          </Button>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<PrintRoundedIcon />}
+            onClick={() => openGeneratedPayslip(true)}
+            disabled={blnPayslipLoading}
+          >
+            {t("print_payslip", "Print")}
+          </Button>
+        </Stack>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -187,6 +297,10 @@ export default function PayrollResultDetailPage({
 
       <Box className={styles.tableCard} sx={{ p: 2, gap: 2 }}>
         {strError ? <Alert severity="error">{strError}</Alert> : null}
+        {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+        {blnPayslipLoading ? (
+          <Alert severity="info">{t("payslip_loading", "Preparing payslip...")}</Alert>
+        ) : null}
 
         <Box
           sx={{
@@ -295,6 +409,22 @@ export default function PayrollResultDetailPage({
             </table>
           </Box>
         </Box>
+
+        {objPayslip ? (
+          <Box
+            sx={{
+              border: "1px solid #d9e6ef",
+              borderRadius: 3,
+              background: "#fff",
+              p: 2,
+            }}
+          >
+            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+              {t("payslip_preview", "Payslip Preview")}
+            </Typography>
+            <PayslipPreviewContent objPayslip={objPayslip} />
+          </Box>
+        ) : null}
       </Box>
     </Box>
   );

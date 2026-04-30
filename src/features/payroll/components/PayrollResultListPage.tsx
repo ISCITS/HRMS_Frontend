@@ -177,6 +177,8 @@ export default function PayrollResultListPage() {
   const { t } = useModuleLabels("payslips");
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
     useModuleActionAccess([
+      "EMPLOYEE_PAYROLL_RESULTS",
+      "EMPLOYEE_PAYROLL_RESULT",
       "PAYSLIPS",
       "PAYSLIP",
       "PAYROLL_RESULTS",

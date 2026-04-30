@@ -1,15 +1,22 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FactCheckRoundedIcon from "@mui/icons-material/FactCheckRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   MenuItem,
   Stack,
   Switch,
@@ -21,14 +28,19 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
+import { payslipService } from "@/features/payroll/services/payslipService";
 import type {
+  PayslipPreviewRecord,
+  PayslipRunListRecord,
   PayrollRunDetailRecord,
   PayrollProcessSummary,
   PayrollValidationSummary,
   PayrollRunStatus,
 } from "@/features/payroll/types";
+import { openPayslipHtml } from "@/features/payroll/utils/payslipDocument";
 
 type PayrollRunDetailPageProps = {
   intRunID: number;
@@ -118,6 +130,11 @@ export default function PayrollRunDetailPage({
     useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] =
     useState<PayrollProcessSummary | null>(null);
+  const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
+  const [objPayslipPreview, setObjPayslipPreview] =
+    useState<PayslipPreviewRecord | null>(null);
+  const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
+  const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
 
   async function loadRun(blnShowLoader = true) {
     if (blnShowLoader) {
@@ -129,6 +146,11 @@ export default function PayrollRunDetailPage({
       setObjRun(dicRun);
       setStrRunStatus(dicRun.strRunStatus);
       setBlnIsLocked(dicRun.blnIsLocked);
+      if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
+        setLstPayslips(await payslipService.getRunPayslips(intRunID));
+      } else {
+        setLstPayslips([]);
+      }
     } catch (objError) {
       setStrError(
         objError instanceof Error ? objError.message : "Unable to load payroll run."
@@ -252,6 +274,100 @@ export default function PayrollRunDetailPage({
     }
   }
 
+  async function reloadPayslips() {
+    if (!objRun || !["Processed", "Closed"].includes(objRun.strRunStatus)) {
+      setLstPayslips([]);
+      return;
+    }
+    setLstPayslips(await payslipService.getRunPayslips(intRunID));
+  }
+
+  async function generateAllPayslips() {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicSummary = await payslipService.generateAll(intRunID);
+      setStrSuccess(
+        t(
+          "payslip_generate_all_success",
+          `${dicSummary.intGeneratedCount} payslips generated successfully.`
+        )
+      );
+      await reloadPayslips();
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to generate payslips."
+      );
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function generatePayslip(dicRow: PayslipRunListRecord) {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicPayslip = await payslipService.generatePayslip(
+        intRunID,
+        dicRow.intEmployeeID
+      );
+      setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
+      await reloadPayslips();
+      return dicPayslip;
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to generate payslip."
+      );
+      return null;
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function viewPayslip(dicRow: PayslipRunListRecord) {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    try {
+      const dicPayslip = await payslipService.getPayslipPreview(
+        intRunID,
+        dicRow.intEmployeeID
+      );
+      setObjPayslipPreview(dicPayslip);
+      setBlnPayslipDialogOpen(true);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to load payslip preview."
+      );
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean) {
+    setBlnPayslipLoading(true);
+    setStrError("");
+    try {
+      let intPayslipID = dicRow.intPayslipID;
+      if (!intPayslipID) {
+        const dicPayslip = await generatePayslip(dicRow);
+        intPayslipID = dicPayslip?.intPayslipID ?? null;
+      }
+      if (!intPayslipID) {
+        return;
+      }
+      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      openPayslipHtml(strHtml, blnPrint);
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error ? objError.message : "Unable to open payslip document."
+      );
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
   if (blnLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_run", "Loading payroll run...")} />;
   }
@@ -284,6 +400,18 @@ export default function PayrollRunDetailPage({
             onClick={() => objRouter.push("/payroll/results")}
           >
             {t("view_results", "Results")}
+          </Button>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={generateAllPayslips}
+            disabled={
+              blnSaving ||
+              blnPayslipLoading ||
+              !["Processed", "Closed"].includes(objRun.strRunStatus)
+            }
+          >
+            {t("generate_payslips", "Generate Payslips")}
           </Button>
           <Button
             className={styles.secondaryButton}
@@ -353,6 +481,9 @@ export default function PayrollRunDetailPage({
       <Box className={styles.tableCard} sx={{ p: 2, gap: 2 }}>
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+        {blnPayslipLoading ? (
+          <Alert severity="info">{t("payslip_preparing", "Preparing payslips...")}</Alert>
+        ) : null}
 
         <Box
           sx={{
@@ -508,7 +639,122 @@ export default function PayrollRunDetailPage({
             ) : null}
           </Box>
         ) : null}
+
+        {["Processed", "Closed"].includes(objRun.strRunStatus) ? (
+          <Box
+            sx={{
+              border: "1px solid #d9e6ef",
+              borderRadius: 3,
+              background: "#fff",
+              p: 2,
+            }}
+          >
+            <Box className={styles.controlsHeader} sx={{ mb: 1.5 }}>
+              <Typography sx={{ color: "#173b63", fontWeight: 800 }}>
+                {t("payslip_panel", "Payslips")}
+              </Typography>
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<ReceiptLongRoundedIcon />}
+                onClick={generateAllPayslips}
+                disabled={blnPayslipLoading}
+              >
+                {t("generate_all", "Generate All")}
+              </Button>
+            </Box>
+            <Box className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>{t("employee", "Employee")}</th>
+                    <th>{t("payslip_no", "Payslip No.")}</th>
+                    <th>{t("net_pay", "Net Pay")}</th>
+                    <th>{t("status", "Status")}</th>
+                    <th>{t("generated_on", "Generated On")}</th>
+                    <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lstPayslips.length ? (
+                    lstPayslips.map((dicRow) => (
+                      <tr key={`${dicRow.intPayrollRunID}-${dicRow.intEmployeeID}`}>
+                        <td>
+                          {dicRow.strEmployeeName}
+                          <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>
+                            {dicRow.strEmployeeCode}
+                          </Typography>
+                        </td>
+                        <td>{dicRow.strPayslipNumber || "-"}</td>
+                        <td>{formatCurrency(dicRow.decNetPay)}</td>
+                        <td>{dicRow.strPayslipStatus}</td>
+                        <td>{formatDateTime(dicRow.dtGeneratedOn)}</td>
+                        <td>
+                          <Stack direction="row" spacing={1} justifyContent="center">
+                            <Button
+                              className={styles.secondaryButton}
+                              onClick={() => viewPayslip(dicRow)}
+                              disabled={blnPayslipLoading}
+                            >
+                              {t("view", "View")}
+                            </Button>
+                            <Button
+                              className={styles.secondaryButton}
+                              onClick={() => generatePayslip(dicRow)}
+                              disabled={blnPayslipLoading}
+                            >
+                              {t("generate", "Generate")}
+                            </Button>
+                            <Button
+                              className={styles.secondaryButton}
+                              startIcon={<DownloadRoundedIcon />}
+                              onClick={() => openPayslipDocument(dicRow, false)}
+                              disabled={blnPayslipLoading}
+                            >
+                              {t("download", "Download")}
+                            </Button>
+                            <Button
+                              className={styles.secondaryButton}
+                              startIcon={<PrintRoundedIcon />}
+                              onClick={() => openPayslipDocument(dicRow, true)}
+                              disabled={blnPayslipLoading}
+                            >
+                              {t("print", "Print")}
+                            </Button>
+                          </Stack>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className={styles.emptyState}>
+                        {t("payslip_empty", "No processed payroll results are available for payslip generation.")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        ) : null}
       </Box>
+      <Dialog
+        open={blnPayslipDialogOpen}
+        onClose={() => setBlnPayslipDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
+          {t("payslip_preview", "Payslip Preview")}
+          <IconButton onClick={() => setBlnPayslipDialogOpen(false)}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {objPayslipPreview ? (
+            <PayslipPreviewContent objPayslip={objPayslipPreview} />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

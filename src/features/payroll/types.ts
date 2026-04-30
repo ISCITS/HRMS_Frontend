@@ -262,3 +262,107 @@ export type PayrollResultListRecord = PayrollResultRecord;
 export type PayrollResultDetailRecord = PayrollResultRecord & {
   lstLines: PayrollResultLineRecord[];
 };
+
+export type PayslipLineRecord = {
+  strGroupCode: string;
+  strSectionLabel: string;
+  strLineType: string | null;
+  strLineCode: string | null;
+  strLineLabel: string;
+  intDisplayOrder: number;
+  decAmount: number;
+  decBasisAmount: number | null;
+  decEmployerAmount: number | null;
+  strSourceType: string | null;
+  blnIsEmployerContribution: boolean;
+  objLineMeta?: Record<string, unknown> | null;
+  strRemarks: string | null;
+};
+
+export type PayslipPreviewRecord = {
+  intPayslipID: number | null;
+  strPayslipNumber: string | null;
+  strPayslipStatus: string;
+  blnGenerated: boolean;
+  dtGeneratedOn: string | null;
+  dicCompany: {
+    strCompanyName: string;
+    strCompanyCode: string | null;
+    strCompanyAddress: string | null;
+    strCompanyPan: string | null;
+    strCompanyTan: string | null;
+    strLogoUrl: string | null;
+  };
+  dicRun: {
+    strRunCode: string;
+    strRunName: string;
+    strRunStatus: string;
+    dtPayrollMonth: string;
+    strPayrollMonthLabel: string;
+    dtPeriodStartDate: string | null;
+    dtPeriodEndDate: string | null;
+  };
+  dicEmployee: {
+    strEmployeeCode: string;
+    strEmployeeName: string;
+    strDepartmentName: string | null;
+    strDesignationName: string | null;
+    strLocationName: string | null;
+    dtDateOfJoining: string | null;
+    strPanNumber: string | null;
+    strUanNumber: string | null;
+    strEsiNumber: string | null;
+    strPfNumber: string | null;
+    strBankName: string | null;
+    strBankAccountMasked: string | null;
+  };
+  dicAttendance: {
+    decPayableDays: number;
+    decPaidDays: number;
+    decLopDays: number;
+    decLwpDays: number;
+    decCalendarDays: number;
+  };
+  lstEarnings: PayslipLineRecord[];
+  lstDeductions: PayslipLineRecord[];
+  lstInformation: PayslipLineRecord[];
+  lstEmployerContributions: PayslipLineRecord[];
+  dicTotals: {
+    decGrossEarnings: number;
+    decTotalDeductions: number;
+    decNetPay: number;
+    decEmployerContributionTotal: number;
+    strNetPayInWords: string;
+  };
+  objTemplateSettings: Record<string, unknown>;
+  strRemarks: string | null;
+};
+
+export type PayslipRunListRecord = {
+  intPayslipID: number | null;
+  intPayrollRunID: number;
+  intEmployeeID: number;
+  strPayslipNumber: string | null;
+  strPayslipStatus: string;
+  blnGenerated: boolean;
+  dtGeneratedOn: string | null;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  decGrossEarnings: number;
+  decTotalDeductions: number;
+  decNetPay: number;
+};
+
+export type PayslipGenerateAllSummary = {
+  intGeneratedCount: number;
+  lstPayslips: {
+    intPayslipID: number | null;
+    strPayslipNumber: string | null;
+    strEmployeeCode: string | null;
+    strEmployeeName: string | null;
+    strPayslipStatus: string | null;
+  }[];
+};
