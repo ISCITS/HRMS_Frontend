@@ -32,6 +32,7 @@ import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
   EmployeeSalaryHistoryRecord,
+  EmployeeSalaryOverrideFormValue,
   EmployeeSalaryRevisionFormValues
 } from "@/features/employee-salary/types";
 
@@ -99,6 +100,40 @@ type HistoryGridRow = {
   strReason: string;
 };
 
+type OverrideSourceLine = {
+  intSalaryComponentID: number;
+  strComponentCode?: string | null;
+  strComponentName?: string | null;
+  blnAllowManualOverride: boolean;
+};
+
+function buildOverrideRows(
+  lstSourceLines: OverrideSourceLine[],
+  lstExistingOverrides: EmployeeSalaryOverrideFormValue[] = [],
+  fnTranslate?: (strKey: string, strFallback: string) => string
+): EmployeeSalaryOverrideFormValue[] {
+  const dicExistingOverrideByComponentID = new Map(
+    lstExistingOverrides.map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
+  );
+
+  return lstSourceLines.map((dicLine) => {
+    const dicExistingOverride = dicExistingOverrideByComponentID.get(dicLine.intSalaryComponentID);
+    const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
+    return {
+      intSalaryComponentID: dicLine.intSalaryComponentID,
+      strComponentName:
+        dicLine.strComponentName ??
+        dicLine.strComponentCode ??
+        `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
+      blnAllowManualOverride: dicLine.blnAllowManualOverride,
+      decAmountMonthly: dicReusableOverride?.decAmountMonthly ?? "",
+      decAmountAnnual: dicReusableOverride?.decAmountAnnual ?? "",
+      decPercentageValue: dicReusableOverride?.decPercentageValue ?? "",
+      strRemarks: dicReusableOverride?.strRemarks ?? ""
+    };
+  });
+}
+
 function buildRevisionForm(
   objDetail: EmployeeSalaryDetailRecord | null,
   fnTranslate?: (strKey: string, strFallback: string) => string
@@ -107,18 +142,7 @@ function buildRevisionForm(
     intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
     dtEffectiveFrom: getTodayDateString(),
     strRevisionReason: "",
-    lstOverrides: (objDetail?.lstComponentLines ?? []).map((dicLine) => ({
-      intSalaryComponentID: dicLine.intSalaryComponentID,
-      strComponentName:
-        dicLine.strComponentName ??
-        dicLine.strComponentCode ??
-        `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
-      blnAllowManualOverride: dicLine.blnAllowManualOverride,
-      decAmountMonthly: "",
-      decAmountAnnual: "",
-      decPercentageValue: "",
-      strRemarks: ""
-    }))
+    lstOverrides: buildOverrideRows(objDetail?.lstComponentLines ?? [], [], fnTranslate)
   };
 }
 
@@ -235,6 +259,38 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const intResolvedHistoryPage = Math.min(intHistoryPage, intHistoryPageCount);
   const intHistoryStartIndex = (intResolvedHistoryPage - 1) * intHistoryRowsPerPage;
   const lstVisibleHistoryRows = lstHistoryRows.slice(intHistoryStartIndex, intHistoryStartIndex + intHistoryRowsPerPage);
+
+  function handleSalaryStructureChange(strSalaryStructureID: string) {
+    const intSalaryStructureID = strSalaryStructureID ? Number(strSalaryStructureID) : "";
+    setDicRevisionForm((dicPrev) => {
+      if (intSalaryStructureID === "") {
+        return {
+          ...dicPrev,
+          intSalaryStructureID,
+          lstOverrides: []
+        };
+      }
+
+      const dicSelectedStructure = objFormOptions?.lstSalaryStructures.find(
+        (dicStructure) => dicStructure.intID === intSalaryStructureID
+      );
+      const lstStructureComponents = dicSelectedStructure?.lstComponents ?? [];
+      const lstFallbackCurrentLines =
+        intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID
+          ? objDetail?.lstComponentLines ?? []
+          : [];
+
+      return {
+        ...dicPrev,
+        intSalaryStructureID,
+        lstOverrides: buildOverrideRows(
+          lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
+          dicPrev.lstOverrides,
+          t
+        )
+      };
+    });
+  }
 
   async function handleSaveRevision() {
     if (dicRevisionForm.intSalaryStructureID === "") {
@@ -643,10 +699,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 select
                 label={t("employee_salary_structure_field", "Salary structure")}
                 value={dicRevisionForm.intSalaryStructureID}
-                onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                  ...dicPrev,
-                  intSalaryStructureID: objEvent.target.value ? Number(objEvent.target.value) : ""
-                }))}
+                onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
               >
                 <MenuItem value="">{t("employee_salary_select", "Select")}</MenuItem>
                 {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
