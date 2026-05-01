@@ -76,6 +76,25 @@ function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function addDaysToDateString(strDate: string, intDays: number) {
+  const [intYear, intMonth, intDay] = strDate.split("-").map(Number);
+  if (!intYear || !intMonth || !intDay) {
+    return getTodayDateString();
+  }
+  const dtValue = new Date(intYear, intMonth - 1, intDay);
+  dtValue.setDate(dtValue.getDate() + intDays);
+  return [
+    dtValue.getFullYear(),
+    String(dtValue.getMonth() + 1).padStart(2, "0"),
+    String(dtValue.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function getRevisionMinEffectiveDate(objDetail: EmployeeSalaryDetailRecord | null) {
+  const strCurrentEffectiveFrom = objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom;
+  return strCurrentEffectiveFrom ? addDaysToDateString(strCurrentEffectiveFrom, 1) : getTodayDateString();
+}
+
 type ComponentGridRow = {
   intEmployeeSalaryComponentID: number;
   strComponentName: string;
@@ -140,7 +159,7 @@ function buildRevisionForm(
 ): EmployeeSalaryRevisionFormValues {
   return {
     intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
-    dtEffectiveFrom: getTodayDateString(),
+    dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail),
     strRevisionReason: "",
     lstOverrides: buildOverrideRows(objDetail?.lstComponentLines ?? [], [], fnTranslate)
   };
@@ -259,6 +278,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const intResolvedHistoryPage = Math.min(intHistoryPage, intHistoryPageCount);
   const intHistoryStartIndex = (intResolvedHistoryPage - 1) * intHistoryRowsPerPage;
   const lstVisibleHistoryRows = lstHistoryRows.slice(intHistoryStartIndex, intHistoryStartIndex + intHistoryRowsPerPage);
+  const strMinRevisionEffectiveDate = getRevisionMinEffectiveDate(objDetail);
 
   function handleSalaryStructureChange(strSalaryStructureID: string) {
     const intSalaryStructureID = strSalaryStructureID ? Number(strSalaryStructureID) : "";
@@ -299,6 +319,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     }
     if (!dicRevisionForm.dtEffectiveFrom) {
       setStrError(t("employee_salary_effective_from_required", "Effective from date is required."));
+      return;
+    }
+    if (dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
+      setStrError(
+        t(
+          "employee_salary_effective_from_after_current_required",
+          `Effective from date must be on or after ${formatDate(strMinRevisionEffectiveDate)}.`
+        )
+      );
       return;
     }
     setBlnSaving(true);
@@ -714,6 +743,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 value={dicRevisionForm.dtEffectiveFrom}
                 onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: strMinRevisionEffectiveDate }}
               />
             </Box>
             <TextField

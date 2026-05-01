@@ -571,15 +571,15 @@ export default function SalaryComponentEditorPage({
           <FormControlLabel control={<Switch checked={dicForm.blnAllowManualOverride} onChange={(objEvent) => updateRootField("blnAllowManualOverride", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("allow_manual_override", "Allow manual override")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("active_component", "Active component")} />
         </Stack>
-      </Paper>
-
-      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("declaration_proof", "Declaration / Proof")}</Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 1.5 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1.5 }}>
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInPF} onChange={(objEvent) => updateRootField("blnIncludeInPF", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_pf", "Include In PF")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInESIC} onChange={(objEvent) => updateRootField("blnIncludeInESIC", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_esic", "Include In ESIC")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInGratuity} onChange={(objEvent) => updateRootField("blnIncludeInGratuity", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_gratuity", "Include In Gratuity")} />
         </Stack>
+      </Paper>
+
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("declaration_proof", "Declaration / Proof")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("declaration_required", "Declaration required")} />
           <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("proof_required", "Proof required")} />
