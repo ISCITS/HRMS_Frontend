@@ -40,7 +40,11 @@ import type {
   PayrollValidationSummary,
   PayrollRunStatus,
 } from "@/features/payroll/types";
-import { openPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+import {
+  buildPayslipFileName,
+  downloadPayslipHtml,
+  printPayslipHtml,
+} from "@/features/payroll/utils/payslipDocument";
 
 type PayrollRunDetailPageProps = {
   intRunID: number;
@@ -358,10 +362,17 @@ export default function PayrollRunDetailPage({
         return;
       }
       const strHtml = await payslipService.getDownloadHtml(intPayslipID);
-      openPayslipHtml(strHtml, blnPrint);
+      if (blnPrint) {
+        printPayslipHtml(strHtml);
+      } else {
+        downloadPayslipHtml(
+          strHtml,
+          buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode)
+        );
+      }
     } catch (objError) {
       setStrError(
-        objError instanceof Error ? objError.message : "Unable to open payslip document."
+        objError instanceof Error ? objError.message : "Unable to download payslip document."
       );
     } finally {
       setBlnPayslipLoading(false);
@@ -381,7 +392,16 @@ export default function PayrollRunDetailPage({
   }
 
   return (
-    <Box className={styles.page} sx={{ overflowY: "auto", height: "auto" }}>
+    <Box
+      className={styles.page}
+      sx={{
+        minHeight: "100%",
+        height: "auto",
+        overflowX: "hidden",
+        overflowY: "visible",
+        pb: 3,
+      }}
+    >
       <Typography className={styles.breadcrumbs}>
         {t("breadcrumbs_detail", "Payroll / Payroll Runs / Detail")}
       </Typography>
@@ -394,25 +414,6 @@ export default function PayrollRunDetailPage({
           {t("back_to_list", "Back to List")}
         </Button>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <Button
-            className={styles.secondaryButton}
-            startIcon={<ReceiptLongRoundedIcon />}
-            onClick={() => objRouter.push("/payroll/results")}
-          >
-            {t("view_results", "Results")}
-          </Button>
-          <Button
-            className={styles.secondaryButton}
-            startIcon={<ReceiptLongRoundedIcon />}
-            onClick={generateAllPayslips}
-            disabled={
-              blnSaving ||
-              blnPayslipLoading ||
-              !["Processed", "Closed"].includes(objRun.strRunStatus)
-            }
-          >
-            {t("generate_payslips", "Generate Payslips")}
-          </Button>
           <Button
             className={styles.secondaryButton}
             startIcon={<FactCheckRoundedIcon />}
@@ -436,6 +437,25 @@ export default function PayrollRunDetailPage({
             disabled={blnSaving || objRun.strRunStatus !== "Processed"}
           >
             {t("reprocess", "Reprocess")}
+          </Button>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={generateAllPayslips}
+            disabled={
+              blnSaving ||
+              blnPayslipLoading ||
+              !["Processed", "Closed"].includes(objRun.strRunStatus)
+            }
+          >
+            {t("generate_payslips", "Generate Payslips")}
+          </Button>
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={() => objRouter.push("/payroll/results")}
+          >
+            {t("view_results", "Results")}
           </Button>
           <Button
             className={styles.secondaryButton}
@@ -478,7 +498,15 @@ export default function PayrollRunDetailPage({
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ p: 2, gap: 2 }}>
+        <Box
+          className={styles.tableCard}
+          sx={{
+            flex: "0 0 auto",
+            gap: 2,
+            overflow: "visible",
+            p: 2,
+          }}
+        >
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
         {blnPayslipLoading ? (

@@ -82,7 +82,17 @@ export default function PayrollRunEditorPage() {
   }
 
   return (
-    <Stack spacing={2.5} className={styles.page}>
+    <Stack
+      spacing={2.5}
+      className={styles.page}
+      sx={{
+        minHeight: "100%",
+        height: "auto",
+        overflowX: "hidden",
+        overflowY: "visible",
+        pb: 3,
+      }}
+    >
       <Paper
         sx={{
           borderRadius: "28px",

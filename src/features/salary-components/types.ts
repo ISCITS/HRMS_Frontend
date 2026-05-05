@@ -12,6 +12,13 @@ export type SalaryComponentListRecord = {
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
+  blnIncludeInRemuneration: boolean;
+  blnIncludeInTaxableIncome: boolean;
+  blnIncludeInPayslip: boolean;
+  strPayslipSection: string | null;
+  intDisplayOrder: number;
+  blnIsEmployerContribution: boolean;
+  blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;
@@ -48,6 +55,13 @@ export type SalaryComponentFormValues = {
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
+  blnIncludeInRemuneration: boolean;
+  blnIncludeInTaxableIncome: boolean;
+  blnIncludeInPayslip: boolean;
+  strPayslipSection: string;
+  strDisplayOrder: string;
+  blnIsEmployerContribution: boolean;
+  blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;

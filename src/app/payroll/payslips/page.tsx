@@ -1,6 +1,6 @@
-import PayrollResultListPage from "@/features/payroll/components/PayrollResultListPage";
+import PayslipListPage from "@/features/payroll/components/PayslipListPage";
 
-export default function PayrollResultsPage() {
-  return <PayrollResultListPage />;
+export default function PayslipsPage() {
+  return <PayslipListPage />;
 }
 

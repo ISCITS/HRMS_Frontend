@@ -23,6 +23,7 @@ export const payrollResultService = {
     strSearchEmployee?: string;
     strSearchRun?: string;
     strStatus?: string;
+    blnGeneratedPayslipsOnly?: boolean;
   }): Promise<PayrollResultListRecord[]> {
     const objParams = new URLSearchParams();
     if (objFilters?.strSearchEmployee?.trim()) {
@@ -33,6 +34,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
       objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.blnGeneratedPayslipsOnly) {
+      objParams.set("blnGeneratedPayslipsOnly", "true");
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<PayrollResultListRecord[]>({

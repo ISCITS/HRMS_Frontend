@@ -209,7 +209,7 @@ export default function PayrollRunListPage() {
       : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
 
   if (blnLoading) {
-    return <BlockingLoader strLabel={t("loading_runs", "Loading payroll runs...")} />;
+    return <BlockingLoader blnOpen strLabel={t("loading_runs", "Loading payroll runs...")} />;
   }
 
   return (

@@ -139,6 +139,12 @@ function getLocalizedHeaderTitle(
 
   if (strHeaderModuleName === "payslips") {
     return stripMasterTitle(
+      tHeader("page_title", getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payslips")))
+    );
+  }
+
+  if (strHeaderModuleName === "payroll-results") {
+    return stripMasterTitle(
       tHeader(
         "page_title",
         getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payroll Results"))

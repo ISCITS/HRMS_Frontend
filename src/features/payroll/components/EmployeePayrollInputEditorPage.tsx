@@ -291,6 +291,7 @@ export default function EmployeePayrollInputEditorPage({
   if (blnLoading) {
     return (
       <BlockingLoader
+        blnOpen
         strLabel={t(
           "loading_employee_payroll_input",
           "Loading employee payroll input..."

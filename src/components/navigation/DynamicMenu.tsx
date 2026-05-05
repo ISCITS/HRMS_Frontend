@@ -141,7 +141,79 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     return "/salary/ess-declarations";
   }
 
+  if (
+    strLowerRoute === "/payroll/results" &&
+    (strModuleCode.includes("payslip") || strModuleName.includes("payslip"))
+  ) {
+    return "/payroll/payslips";
+  }
+
+  if (
+    strLowerRoute === "/payroll/payslips" &&
+    (strModuleCode.includes("payroll_result") || strModuleName.includes("payroll result"))
+  ) {
+    return "/payroll/results";
+  }
+
   return strNormalizedRoute;
+}
+
+function hasRoute(lstItems: MenuItem[], strRoute: string): boolean {
+  return lstItems.some((objItem) => {
+    const strResolvedRoute = resolveMenuRoute(objItem);
+    return strResolvedRoute === strRoute || hasRoute(objItem.lstChildren, strRoute);
+  });
+}
+
+function isPayrollMenuBranch(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.toLowerCase();
+  const strModuleName = objItem.strModuleName.toLowerCase();
+  return (
+    strRoute.startsWith("/payroll/") ||
+    strModuleCode.includes("payroll") ||
+    strModuleName.includes("payroll") ||
+    objItem.lstChildren.some(isPayrollMenuBranch)
+  );
+}
+
+function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/payroll/payslips")) {
+    return lstItems;
+  }
+
+  let blnInserted = false;
+  const lstUpdatedItems = lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedPayslipMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isPayrollMenuBranch(objItem) &&
+      hasRoute(lstChildren, "/payroll/results") &&
+      !hasRoute(lstChildren, "/payroll/payslips");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [
+        ...lstChildren,
+        {
+          strModuleCode: "PAYSLIPS",
+          strModuleName: "Payslips",
+          strRoute: "/payroll/payslips",
+          lstPermissionCodes: ["PAYSLIP_LIST"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    };
+  });
+
+  return lstUpdatedItems;
 }
 
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
@@ -164,6 +236,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const { t: tPayrollCycles } = useModuleLabels("payroll-cycles");
   const { t: tPayrollProcessLogs } = useModuleLabels("payroll-process-logs");
   const { t: tPayslips } = useModuleLabels("payslips");
+  const { t: tPayrollResults } = useModuleLabels("payroll-results");
   const { t: tEmployeePayrollInput } = useModuleLabels("employee-payroll-input");
   const { t: tTaxRegimes } = useModuleLabels("tax-regimes");
   const { t: tStatutoryRules } = useModuleLabels("statutory-rules");
@@ -281,19 +354,19 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
-    if (
-      strRoute.includes("/payroll/payslips") ||
-      strRoute.includes("/payroll/results") ||
-      strModuleCode.includes("payroll_result") ||
-      strModuleCode.includes("payslip")
-    ) {
+    if (strRoute.includes("/payroll/results") || strModuleCode.includes("payroll_result")) {
       return preferResolvedLabel(
-        tPayslips(
-          "page_title",
-          getLastBreadcrumbSegment(tPayslips("breadcrumbs", "Payroll / Payroll Results"))
-        ),
+        tPayrollResults("page_title", "Payroll Results"),
         strModuleName,
         "Payroll Results"
+      );
+    }
+
+    if (strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
+      return preferResolvedLabel(
+        tPayslips("payslips_title", "Payslips"),
+        strModuleName,
+        "Payslips"
       );
     }
 
@@ -370,17 +443,21 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   }
 
   const dicDefaultExpanded = useMemo(
-    () => collectExpandableDefaults(lstMenuItems),
+    () => collectExpandableDefaults(appendGeneratedPayslipMenu(lstMenuItems)),
     [lstMenuItems, strPathname],
+  );
+  const lstRenderedMenuItems = useMemo(
+    () => appendGeneratedPayslipMenu(lstMenuItems),
+    [lstMenuItems],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
 
   useEffect(() => {
     setDicExpandedMenus((dicPrevious) => ({
       ...dicPrevious,
-      ...collectExpandableDefaults(lstMenuItems),
+      ...collectExpandableDefaults(lstRenderedMenuItems),
     }));
-  }, [lstMenuItems, strPathname]);
+  }, [lstRenderedMenuItems, strPathname]);
 
   function toggleMenu(strModuleCode: string) {
     setDicExpandedMenus((dicPrevious) => ({
@@ -472,7 +549,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   return (
     <List sx={{ mt: 0 }}>
-      {lstMenuItems.map((objItem) => renderMenuItem(objItem))}
+      {lstRenderedMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );
 }

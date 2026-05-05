@@ -149,7 +149,7 @@ export default function StatutoryRuleEditorPage({
   }
 
   if (blnLoading) {
-    return <BlockingLoader strLabel={t("loading_rule", "Loading statutory rule...")} />;
+    return <BlockingLoader blnOpen strLabel={t("loading_rule", "Loading statutory rule...")} />;
   }
 
   return (

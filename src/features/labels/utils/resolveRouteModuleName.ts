@@ -47,11 +47,11 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "employee-payroll-input";
   }
-  if (
-    strLowerPath.startsWith("/payroll/payslips") ||
-    strLowerPath.startsWith("/payroll/results")
-  ) {
+  if (strLowerPath.startsWith("/payroll/payslips")) {
     return "payslips";
+  }
+  if (strLowerPath.startsWith("/payroll/results")) {
+    return "payroll-results";
   }
   if (
     strLowerPath.startsWith("/payroll/process-log") ||

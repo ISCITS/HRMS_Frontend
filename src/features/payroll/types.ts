@@ -232,6 +232,7 @@ export type PayrollResultLineRecord = {
 export type PayrollResultRecord = {
   intID: number;
   intPayrollRunID: number;
+  intEmployeePayrollInputID: number | null;
   strRunCode: string;
   strRunName: string;
   dtPayrollMonth: string | null;
@@ -254,6 +255,11 @@ export type PayrollResultRecord = {
   decTaxableIncomeMonthly: number;
   decPaidDays: number | null;
   decLopDays: number | null;
+  intPayslipID: number | null;
+  strPayslipNumber: string | null;
+  strPayslipStatus: string | null;
+  blnPayslipGenerated: boolean;
+  dtPayslipGeneratedOn: string | null;
   strRemarks: string | null;
 };
 

@@ -15,10 +15,15 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import type { PayrollResultDetailRecord, PayslipPreviewRecord } from "@/features/payroll/types";
-import { openPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+import {
+  buildPayslipFileName,
+  downloadPayslipHtml,
+  printPayslipHtml,
+} from "@/features/payroll/utils/payslipDocument";
 
 type PayrollResultDetailPageProps = {
   intResultID: number;
+  blnPayslipScreen?: boolean;
 };
 
 function formatMonth(strDate: string | null) {
@@ -79,6 +84,7 @@ function SummaryCard({
 
 export default function PayrollResultDetailPage({
   intResultID,
+  blnPayslipScreen = false,
 }: PayrollResultDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
@@ -125,7 +131,7 @@ export default function PayrollResultDetailPage({
 
   if (blnLoading) {
     return (
-      <BlockingLoader strLabel={t("loading_result", "Loading payroll result...")} />
+      <BlockingLoader blnOpen strLabel={t("loading_result", "Loading payroll result...")} />
     );
   }
 
@@ -138,6 +144,7 @@ export default function PayrollResultDetailPage({
       </Box>
     );
   }
+  const objCurrentResult = objResult;
 
   async function loadPayslipPreview() {
     setBlnPayslipLoading(true);
@@ -145,8 +152,8 @@ export default function PayrollResultDetailPage({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.getPayslipPreview(
-        objResult.intPayrollRunID,
-        objResult.intEmployeeID
+        objCurrentResult.intPayrollRunID,
+        objCurrentResult.intEmployeeID
       );
       setObjPayslip(dicPayslip);
     } catch (objError) {
@@ -164,8 +171,8 @@ export default function PayrollResultDetailPage({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.generatePayslip(
-        objResult.intPayrollRunID,
-        objResult.intEmployeeID
+        objCurrentResult.intPayrollRunID,
+        objCurrentResult.intEmployeeID
       );
       setObjPayslip(dicPayslip);
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
@@ -196,10 +203,21 @@ export default function PayrollResultDetailPage({
         return;
       }
       const strHtml = await payslipService.getDownloadHtml(dicPayslip.intPayslipID);
-      openPayslipHtml(strHtml, blnPrint);
+      if (blnPrint) {
+        printPayslipHtml(strHtml);
+      } else {
+        downloadPayslipHtml(
+          strHtml,
+          buildPayslipFileName(
+            "payslip",
+            dicPayslip.strPayslipNumber,
+            objCurrentResult.strEmployeeCode
+          )
+        );
+      }
     } catch (objError) {
       setStrError(
-        objError instanceof Error ? objError.message : "Unable to open payslip document."
+        objError instanceof Error ? objError.message : "Unable to download payslip document."
       );
     } finally {
       setBlnPayslipLoading(false);
@@ -209,51 +227,55 @@ export default function PayrollResultDetailPage({
   return (
     <Box className={styles.page} sx={{ overflowY: "auto", height: "auto" }}>
       <Typography className={styles.breadcrumbs}>
-        {t("breadcrumbs_detail", "Payroll / Payroll Results / Detail")}
+        {blnPayslipScreen
+          ? t("payslip_breadcrumbs_detail", "Payroll / Payslips / Detail")
+          : t("breadcrumbs_detail", "Payroll / Payroll Results / Detail")}
       </Typography>
 
       <Box className={styles.topBar}>
         <Button
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push("/payroll/payslips")}
+          onClick={() => objRouter.push(blnPayslipScreen ? "/payroll/payslips" : "/payroll/results")}
         >
           {t("back_to_list", "Back to List")}
         </Button>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <Button
-            className={styles.secondaryButton}
-            startIcon={<ReceiptLongRoundedIcon />}
-            onClick={loadPayslipPreview}
-            disabled={blnPayslipLoading}
-          >
-            {t("preview_payslip", "Preview Payslip")}
-          </Button>
-          <Button
-            className={styles.primaryButton}
-            startIcon={<ReceiptLongRoundedIcon />}
-            onClick={generatePayslip}
-            disabled={blnPayslipLoading}
-          >
-            {t("generate_payslip", "Generate")}
-          </Button>
-          <Button
-            className={styles.secondaryButton}
-            startIcon={<DownloadRoundedIcon />}
-            onClick={() => openGeneratedPayslip(false)}
-            disabled={blnPayslipLoading}
-          >
-            {t("download_payslip", "Download")}
-          </Button>
-          <Button
-            className={styles.secondaryButton}
-            startIcon={<PrintRoundedIcon />}
-            onClick={() => openGeneratedPayslip(true)}
-            disabled={blnPayslipLoading}
-          >
-            {t("print_payslip", "Print")}
-          </Button>
-        </Stack>
+        {blnPayslipScreen ? (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<ReceiptLongRoundedIcon />}
+              onClick={loadPayslipPreview}
+              disabled={blnPayslipLoading}
+            >
+              {t("preview_payslip", "Preview Payslip")}
+            </Button>
+            <Button
+              className={styles.primaryButton}
+              startIcon={<ReceiptLongRoundedIcon />}
+              onClick={generatePayslip}
+              disabled={blnPayslipLoading}
+            >
+              {t("generate_payslip", "Generate")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<DownloadRoundedIcon />}
+              onClick={() => openGeneratedPayslip(false)}
+              disabled={blnPayslipLoading}
+            >
+              {t("download_payslip", "Download")}
+            </Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<PrintRoundedIcon />}
+              onClick={() => openGeneratedPayslip(true)}
+              disabled={blnPayslipLoading}
+            >
+              {t("print_payslip", "Print")}
+            </Button>
+          </Stack>
+        ) : null}
       </Box>
 
       <Box className={styles.controlsCard}>

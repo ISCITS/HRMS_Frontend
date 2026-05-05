@@ -10,5 +10,5 @@ export default async function PayrollResultDetailRoute({
   params,
 }: PayrollResultDetailRouteProps) {
   const { intResultID } = await params;
-  return <PayrollResultDetailPage intResultID={Number(intResultID)} />;
+  return <PayrollResultDetailPage intResultID={Number(intResultID)} blnPayslipScreen />;
 }
