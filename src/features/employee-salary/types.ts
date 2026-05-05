@@ -21,6 +21,17 @@ export type EmployeeSalaryOption = {
   strCode?: string;
   strCurrencyCode?: string;
   dtEffectiveFrom?: string;
+  lstComponents?: EmployeeSalaryStructureComponentOption[];
+};
+
+export type EmployeeSalaryStructureComponentOption = {
+  intSalaryComponentID: number;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  strComponentCategory: string | null;
+  strValueSource: string;
+  blnAllowManualOverride: boolean;
+  intLineOrder: number;
 };
 
 export type EmployeeSalaryFormOptions = {

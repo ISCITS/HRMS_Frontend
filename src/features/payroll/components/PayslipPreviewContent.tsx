@@ -94,6 +94,7 @@ export default function PayslipPreviewContent({
   const dicEmployee = objPayslip.dicEmployee;
   const dicRun = objPayslip.dicRun;
   const dicCompany = objPayslip.dicCompany;
+  const dicTax = objPayslip.dicTax;
   const dicTotals = objPayslip.dicTotals;
 
   return (
@@ -159,6 +160,7 @@ export default function PayslipPreviewContent({
           <Stack spacing={0.8}>
             <DetailRow strLabel="Run" strValue={dicRun.strRunName} />
             <DetailRow strLabel="PAN" strValue={dicEmployee.strPanNumber} />
+            <DetailRow strLabel="Tax Regime" strValue={dicTax?.strRegimeUsed} />
             <DetailRow strLabel="UAN" strValue={dicEmployee.strUanNumber} />
             <DetailRow strLabel="ESI" strValue={dicEmployee.strEsiNumber} />
             <DetailRow strLabel="Bank" strValue={dicEmployee.strBankName} />

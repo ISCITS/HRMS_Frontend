@@ -577,13 +577,13 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("payroll_payslip_flags", "Payroll / Payslip Flags")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 1.5 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1.5 }}>
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInPF} onChange={(objEvent) => updateRootField("blnIncludeInPF", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_pf", "Include In PF")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInESIC} onChange={(objEvent) => updateRootField("blnIncludeInESIC", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_esic", "Include In ESIC")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInGratuity} onChange={(objEvent) => updateRootField("blnIncludeInGratuity", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_gratuity", "Include In Gratuity")} />
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 1.5 }}>
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInRemuneration} onChange={(objEvent) => updateRootField("blnIncludeInRemuneration", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_remuneration", "Include In Remuneration")} />
-          <FormControlLabel control={<Switch checked={dicForm.blnIncludeInTaxableIncome} onChange={(objEvent) => updateRootField("blnIncludeInTaxableIncome", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_taxable_income", "Include In Taxable Income")} />
           <FormControlLabel control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("include_in_payslip", "Include In Payslip")} />
         </Stack>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mb: 1.5 }}>
@@ -600,9 +600,11 @@ export default function SalaryComponentEditorPage({
           </Box>
         </Box>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("declaration_proof", "Declaration / Proof")}</Typography>
+      </Paper>
+
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("declaration_proof", "Declaration / Proof")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("declaration_required", "Declaration required")} />
-          <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("proof_required", "Proof required")} />
         </Stack>
       </Paper>
 

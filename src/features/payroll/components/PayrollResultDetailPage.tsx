@@ -328,7 +328,7 @@ export default function PayrollResultDetailPage({
           sx={{
             display: "grid",
             gap: 1.5,
-            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" },
           }}
         >
           <Box
@@ -346,6 +346,24 @@ export default function PayrollResultDetailPage({
               <Typography>{t("employee_code", "Employee Code")}: {objResult.strEmployeeCode}</Typography>
               <Typography>{t("employee_name", "Employee Name")}: {objResult.strEmployeeName}</Typography>
               <Typography>{t("status", "Status")}: {objResult.strStatus}</Typography>
+            </Stack>
+          </Box>
+
+          <Box
+            sx={{
+              border: "1px solid #d9e6ef",
+              borderRadius: 3,
+              background: "#fff",
+              p: 2,
+            }}
+          >
+            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+              {t("tax_summary", "Tax Summary")}
+            </Typography>
+            <Stack spacing={1}>
+              <Typography>{t("tax_regime", "Tax Regime")}: {objResult.strRegimeUsed || "-"}</Typography>
+              <Typography>{t("taxable_income", "Taxable Income")}: {formatCurrency(objResult.decTaxableIncome)}</Typography>
+              <Typography>{t("annual_tax", "Annual Tax")}: {formatCurrency(objResult.decAnnualTaxAmount)}</Typography>
             </Stack>
           </Box>
 

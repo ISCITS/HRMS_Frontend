@@ -32,6 +32,7 @@ import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
   EmployeeSalaryHistoryRecord,
+  EmployeeSalaryOverrideFormValue,
   EmployeeSalaryRevisionFormValues
 } from "@/features/employee-salary/types";
 
@@ -75,6 +76,25 @@ function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function addDaysToDateString(strDate: string, intDays: number) {
+  const [intYear, intMonth, intDay] = strDate.split("-").map(Number);
+  if (!intYear || !intMonth || !intDay) {
+    return getTodayDateString();
+  }
+  const dtValue = new Date(intYear, intMonth - 1, intDay);
+  dtValue.setDate(dtValue.getDate() + intDays);
+  return [
+    dtValue.getFullYear(),
+    String(dtValue.getMonth() + 1).padStart(2, "0"),
+    String(dtValue.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function getRevisionMinEffectiveDate(objDetail: EmployeeSalaryDetailRecord | null) {
+  const strCurrentEffectiveFrom = objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom;
+  return strCurrentEffectiveFrom ? addDaysToDateString(strCurrentEffectiveFrom, 1) : getTodayDateString();
+}
+
 type ComponentGridRow = {
   intEmployeeSalaryComponentID: number;
   strComponentName: string;
@@ -99,26 +119,49 @@ type HistoryGridRow = {
   strReason: string;
 };
 
-function buildRevisionForm(
-  objDetail: EmployeeSalaryDetailRecord | null,
+type OverrideSourceLine = {
+  intSalaryComponentID: number;
+  strComponentCode?: string | null;
+  strComponentName?: string | null;
+  blnAllowManualOverride: boolean;
+};
+
+function buildOverrideRows(
+  lstSourceLines: OverrideSourceLine[],
+  lstExistingOverrides: EmployeeSalaryOverrideFormValue[] = [],
   fnTranslate?: (strKey: string, strFallback: string) => string
-): EmployeeSalaryRevisionFormValues {
-  return {
-    intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
-    dtEffectiveFrom: getTodayDateString(),
-    strRevisionReason: "",
-    lstOverrides: (objDetail?.lstComponentLines ?? []).map((dicLine) => ({
+): EmployeeSalaryOverrideFormValue[] {
+  const dicExistingOverrideByComponentID = new Map(
+    lstExistingOverrides.map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
+  );
+
+  return lstSourceLines.map((dicLine) => {
+    const dicExistingOverride = dicExistingOverrideByComponentID.get(dicLine.intSalaryComponentID);
+    const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
+    return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
       strComponentName:
         dicLine.strComponentName ??
         dicLine.strComponentCode ??
         `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
       blnAllowManualOverride: dicLine.blnAllowManualOverride,
-      decAmountMonthly: "",
-      decAmountAnnual: "",
-      decPercentageValue: "",
-      strRemarks: ""
-    }))
+      decAmountMonthly: dicReusableOverride?.decAmountMonthly ?? "",
+      decAmountAnnual: dicReusableOverride?.decAmountAnnual ?? "",
+      decPercentageValue: dicReusableOverride?.decPercentageValue ?? "",
+      strRemarks: dicReusableOverride?.strRemarks ?? ""
+    };
+  });
+}
+
+function buildRevisionForm(
+  objDetail: EmployeeSalaryDetailRecord | null,
+  fnTranslate?: (strKey: string, strFallback: string) => string
+): EmployeeSalaryRevisionFormValues {
+  return {
+    intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
+    dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail),
+    strRevisionReason: "",
+    lstOverrides: buildOverrideRows(objDetail?.lstComponentLines ?? [], [], fnTranslate)
   };
 }
 
@@ -235,6 +278,39 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const intResolvedHistoryPage = Math.min(intHistoryPage, intHistoryPageCount);
   const intHistoryStartIndex = (intResolvedHistoryPage - 1) * intHistoryRowsPerPage;
   const lstVisibleHistoryRows = lstHistoryRows.slice(intHistoryStartIndex, intHistoryStartIndex + intHistoryRowsPerPage);
+  const strMinRevisionEffectiveDate = getRevisionMinEffectiveDate(objDetail);
+
+  function handleSalaryStructureChange(strSalaryStructureID: string) {
+    const intSalaryStructureID = strSalaryStructureID ? Number(strSalaryStructureID) : "";
+    setDicRevisionForm((dicPrev) => {
+      if (intSalaryStructureID === "") {
+        return {
+          ...dicPrev,
+          intSalaryStructureID,
+          lstOverrides: []
+        };
+      }
+
+      const dicSelectedStructure = objFormOptions?.lstSalaryStructures.find(
+        (dicStructure) => dicStructure.intID === intSalaryStructureID
+      );
+      const lstStructureComponents = dicSelectedStructure?.lstComponents ?? [];
+      const lstFallbackCurrentLines =
+        intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID
+          ? objDetail?.lstComponentLines ?? []
+          : [];
+
+      return {
+        ...dicPrev,
+        intSalaryStructureID,
+        lstOverrides: buildOverrideRows(
+          lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
+          dicPrev.lstOverrides,
+          t
+        )
+      };
+    });
+  }
 
   async function handleSaveRevision() {
     if (dicRevisionForm.intSalaryStructureID === "") {
@@ -243,6 +319,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     }
     if (!dicRevisionForm.dtEffectiveFrom) {
       setStrError(t("employee_salary_effective_from_required", "Effective from date is required."));
+      return;
+    }
+    if (dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
+      setStrError(
+        t(
+          "employee_salary_effective_from_after_current_required",
+          `Effective from date must be on or after ${formatDate(strMinRevisionEffectiveDate)}.`
+        )
+      );
       return;
     }
     setBlnSaving(true);
@@ -643,10 +728,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 select
                 label={t("employee_salary_structure_field", "Salary structure")}
                 value={dicRevisionForm.intSalaryStructureID}
-                onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                  ...dicPrev,
-                  intSalaryStructureID: objEvent.target.value ? Number(objEvent.target.value) : ""
-                }))}
+                onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
               >
                 <MenuItem value="">{t("employee_salary_select", "Select")}</MenuItem>
                 {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
@@ -661,6 +743,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 value={dicRevisionForm.dtEffectiveFrom}
                 onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: strMinRevisionEffectiveDate }}
               />
             </Box>
             <TextField

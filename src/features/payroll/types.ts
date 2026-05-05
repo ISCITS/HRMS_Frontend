@@ -244,6 +244,18 @@ export type PayrollResultRecord = {
   decDeductionAmount: number;
   decTaxAmount: number;
   decNetPayAmount: number;
+  strRegimeUsed: string | null;
+  decTaxableIncome: number;
+  decAnnualTaxAmount: number;
+  decMonthlyTds: number;
+  dicTaxSummary?: {
+    strRegimeUsed: string | null;
+    decTaxableIncome: number;
+    decAnnualTaxAmount: number;
+    decMonthlyTds: number;
+    decProjectedTaxableIncome: number;
+    intRemainingMonths: number | null;
+  };
   decRemunerationAmount: number;
   decActualWagesAmount: number;
   decActualNonWagesAmount: number;
@@ -333,6 +345,14 @@ export type PayslipPreviewRecord = {
   lstDeductions: PayslipLineRecord[];
   lstInformation: PayslipLineRecord[];
   lstEmployerContributions: PayslipLineRecord[];
+  dicTax?: {
+    strRegimeUsed: string | null;
+    decTaxableIncome: number;
+    decAnnualTaxAmount: number;
+    decCurrentMonthTds: number;
+    decTotalTaxLiability: number;
+    intRemainingMonths: number | null;
+  };
   dicTotals: {
     decGrossEarnings: number;
     decTotalDeductions: number;
