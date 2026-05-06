@@ -17,7 +17,7 @@ export default function SessionExpiredClient() {
   }, []);
 
   function handleLoginAgain() {
-    objRouter.push(strTenantUUID ? `/login/${encodeURIComponent(strTenantUUID)}` : "/session-expired");
+    objRouter.push(authHelpers.getLoginUrl(strTenantUUID || undefined));
   }
 
   return (

@@ -70,7 +70,7 @@ export const authHelpers = {
     const strResolvedTenantUUID = (strTenantUUID || this.getTenantUUID()).trim();
     return strResolvedTenantUUID
       ? `/login/${encodeURIComponent(strResolvedTenantUUID)}`
-      : "/session-expired";
+      : "/login";
   },
   getSessionExpiredUrl() {
     const strTenantUUID = this.getTenantUUID();

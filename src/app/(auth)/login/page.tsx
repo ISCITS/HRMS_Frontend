@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import AuthLoginExperience from "@/components/auth/AuthLoginExperience";
 import { appConfig, appRoutes } from "@/config";
 
 type LoginPageProps = {
@@ -14,5 +15,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const objCookieStore = await cookies();
   const strTenantUUID = strTenantHint || objCookieStore.get(appConfig.tenantCookieName)?.value?.trim() || "";
 
-  redirect(strTenantUUID ? `${appRoutes.login}/${encodeURIComponent(strTenantUUID)}` : "/session-expired");
+  if (strTenantUUID) {
+    redirect(`${appRoutes.login}/${encodeURIComponent(strTenantUUID)}`);
+  }
+
+  return <AuthLoginExperience strMode="generic" />;
 }

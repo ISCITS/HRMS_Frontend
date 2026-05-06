@@ -11,6 +11,6 @@ export default async function RootPage() {
       ? appRoutes.dashboard
       : strTenantUUID
         ? `${appRoutes.login}/${encodeURIComponent(strTenantUUID)}`
-        : "/session-expired"
+        : appRoutes.login
   );
 }
