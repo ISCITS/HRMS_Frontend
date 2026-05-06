@@ -2,6 +2,7 @@
   ResultCode: number;
   Msg: string;
   Data: TData;
+  RequestId?: string;
 };
 
 export type TenantLookupData = {

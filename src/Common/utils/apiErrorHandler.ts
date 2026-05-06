@@ -9,20 +9,36 @@ export type ApiEnvelope<TData> = {
   ResultCode: number;
   Msg: string;
   Data: TData;
+  RequestId?: string;
 };
 
 type ApiPayloadResponse<TData> = ApiEnvelope<TData> | { payload: string };
-type ApiErrorResponse<TData> = ApiEnvelope<TData> | { payload?: string; Msg?: string; message?: string };
+type ApiErrorResponse<TData> = ApiEnvelope<TData> | { payload?: string; Msg?: string; message?: string; RequestId?: string };
+
+function buildRequestIdAwareMessage(strMessage: string, strRequestId?: string) {
+  const strResolvedMessage = strMessage.trim() || ApiDefaultMessage.RequestFailed;
+  if (!strRequestId?.trim()) {
+    return strResolvedMessage;
+  }
+
+  if (strResolvedMessage.toLowerCase().includes("x-request-id")) {
+    return strResolvedMessage;
+  }
+
+  return `${strResolvedMessage} Kindly refer the X-Request-Id ${strRequestId.trim()}`;
+}
 
 export class ApiRequestError extends Error {
   objData?: unknown;
   intStatusCode?: number;
+  strRequestId?: string;
 
-  constructor(strMessage: string, objData?: unknown, intStatusCode?: number) {
-    super(strMessage);
+  constructor(strMessage: string, objData?: unknown, intStatusCode?: number, strRequestId?: string) {
+    super(buildRequestIdAwareMessage(strMessage, strRequestId));
     this.name = "ApiRequestError";
     this.objData = objData;
     this.intStatusCode = intStatusCode;
+    this.strRequestId = strRequestId;
   }
 }
 
@@ -49,7 +65,12 @@ async function unwrapApiPayload<TData>(objRawPayload: ApiPayloadResponse<TData>)
     : objRawPayload;
 
   if (objPayload.ResultCode !== ApiResultCode.Success) {
-    throw new ApiRequestError(objPayload.Msg ?? ApiDefaultMessage.RequestFailed, objPayload.Data);
+    throw new ApiRequestError(
+      objPayload.Msg ?? ApiDefaultMessage.RequestFailed,
+      objPayload.Data,
+      undefined,
+      objPayload.RequestId,
+    );
   }
 
   return objPayload;
@@ -61,6 +82,7 @@ export async function createApiRequestError<TData>(
 ): Promise<ApiRequestError> {
   if (axios.isAxiosError(objError)) {
     const objResponseData = objError.response?.data as ApiErrorResponse<TData> | undefined;
+    const strRequestId = objResponseData?.RequestId ?? objError.response?.headers?.["x-request-id"];
 
     if (objResponseData?.payload) {
       const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
@@ -68,6 +90,7 @@ export async function createApiRequestError<TData>(
         objDecryptedPayload.Msg ?? strFallbackMessage,
         objDecryptedPayload.Data,
         objError.response?.status,
+        objDecryptedPayload.RequestId ?? strRequestId,
       );
     }
 
@@ -75,6 +98,7 @@ export async function createApiRequestError<TData>(
       objResponseData?.Msg ?? objResponseData?.message ?? objError.message ?? strFallbackMessage,
       undefined,
       objError.response?.status,
+      strRequestId,
     );
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { proxyTenantLookup } from "@/app/api/auth/AuthProxy";
 
 export async function POST(request: Request) {
@@ -13,7 +14,8 @@ export async function POST(request: Request) {
       {
         ResultCode: 0,
         Msg: objError instanceof Error ? objError.message : "Unable to resolve tenant.",
-        Data: {}
+        Data: {},
+        RequestId: objError instanceof ApiRequestError ? objError.strRequestId : undefined,
       },
       { status: 404 }
     );

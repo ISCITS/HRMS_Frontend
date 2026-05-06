@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DefaultContextValue } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
@@ -56,7 +57,8 @@ async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: num
       {
         ResultCode: 0,
         Msg: objError instanceof Error ? objError.message : "Unable to load tenant authentication details.",
-        Data: {}
+        Data: {},
+        RequestId: objError instanceof ApiRequestError ? objError.strRequestId : undefined,
       },
       { status: 400 }
     );

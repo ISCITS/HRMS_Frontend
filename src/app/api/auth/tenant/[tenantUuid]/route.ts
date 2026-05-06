@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { proxyTenantLookup } from "@/app/api/auth/AuthProxy";
 
 export async function GET(_: Request, { params }: { params: Promise<{ tenantUuid: string }> }) {
@@ -12,7 +13,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ tenantUuid
       {
         ResultCode: 0,
         Msg: objError instanceof Error ? objError.message : "Unable to resolve tenant.",
-        Data: {}
+        Data: {},
+        RequestId: objError instanceof ApiRequestError ? objError.strRequestId : undefined,
       },
       { status: 404 }
     );

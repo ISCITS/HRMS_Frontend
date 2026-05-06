@@ -1,4 +1,5 @@
 import { appConfig } from "@/config";
+import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 
 type RequestInitWithJson = RequestInit & {
   objJsonBody?: unknown;
@@ -24,10 +25,20 @@ export async function callBackendApi<TResponse>(
     body: objJsonBody !== undefined ? JSON.stringify(objJsonBody) : objRest.body
   });
 
-  const objPayload = (await objResponse.json().catch(() => ({}))) as TResponse & { Msg?: string; message?: string };
+  const objPayload = (await objResponse.json().catch(() => ({}))) as TResponse & {
+    Msg?: string;
+    message?: string;
+    Data?: unknown;
+    RequestId?: string;
+  };
   if (!objResponse.ok) {
     const strMessage = objPayload.Msg ?? objPayload.message ?? "Request failed.";
-    throw new Error(strMessage);
+    throw new ApiRequestError(
+      strMessage,
+      objPayload.Data,
+      objResponse.status,
+      objPayload.RequestId ?? objResponse.headers.get("x-request-id") ?? undefined,
+    );
   }
   return objPayload;
 }

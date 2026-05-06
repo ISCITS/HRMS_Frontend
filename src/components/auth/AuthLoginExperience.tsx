@@ -6,10 +6,11 @@ import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import AlertDialog from "@/components/common/AlertDialog";
 import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
 import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { LoginUiMessage } from "@/Common/enums/AppEnums";
@@ -43,6 +44,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [strGoogleCode, setStrGoogleCode] = useState("");
   const [strBackupCode, setStrBackupCode] = useState("");
   const [strError, setStrError] = useState("");
+  const [blnErrorDialogOpen, setBlnErrorDialogOpen] = useState(false);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnResendingOtp, setBlnResendingOtp] = useState(false);
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
@@ -72,13 +74,28 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     strLabel: resolveLanguageToggleLabel(intLanguageID, dicLanguageLabelByID[intLanguageID])
   }));
 
+  function showErrorDialog(strMessage: string) {
+    const strResolvedMessage = strMessage.trim();
+    if (!strResolvedMessage) {
+      return;
+    }
+
+    setStrError(strResolvedMessage);
+    setBlnErrorDialogOpen(true);
+  }
+
+  function clearErrorState() {
+    setStrError("");
+    setBlnErrorDialogOpen(false);
+  }
+
   async function loadTenantLoginLabels(intRequestedLanguageID: number) {
     if (!strTenantUUID) {
       return;
     }
 
     setBlnLanguageSwitching(true);
-    setStrError("");
+    clearErrorState();
     try {
       const objLabelsResult = await authApiService.getLoginLabels(
         strTenantUUID,
@@ -192,9 +209,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
         const strMessage = objError.message || enMessages.auth.invalidTenant;
         if (strMessage.toLowerCase().includes("inactive")) {
-          setStrError(enMessages.auth.inactiveTenant);
+          showErrorDialog(enMessages.auth.inactiveTenant);
         } else {
-          setStrError(strMessage);
+          showErrorDialog(strMessage);
         }
         authHelpers.clearStoredSessionState();
         setObjTenantAuthDetails(null);
@@ -263,7 +280,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       }
     }
 
-    setStrError("");
+    clearErrorState();
     setBlnSubmitting(true);
 
     try {
@@ -337,14 +354,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         const intRemainingSeconds = extractRemainingSeconds(objError.objData);
         if (intRemainingSeconds > 0) {
           setIntLockRemainingSeconds(intRemainingSeconds);
-          setStrError(`Account locked. Try again in ${formatDuration(intRemainingSeconds)}`);
+          showErrorDialog(`Account locked. Try again in ${formatDuration(intRemainingSeconds)}`);
         } else {
           setIntLockRemainingSeconds(0);
-          setStrError(objError.message);
+          showErrorDialog(objError.message);
         }
       } else {
         setIntLockRemainingSeconds(0);
-        setStrError(resolveErrorMessage(objError, LoginUiMessage.UnableToSignIn));
+        showErrorDialog(resolveErrorMessage(objError, LoginUiMessage.UnableToSignIn));
       }
     } finally {
       setBlnSubmitting(false);
@@ -389,7 +406,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       return;
     }
 
-    setStrError("");
+    clearErrorState();
     setBlnResendingOtp(true);
     try {
       await authApiService.resendOtp({
@@ -403,9 +420,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         if (intRemainingSeconds > 0) {
           setIntResendRemainingSeconds(intRemainingSeconds);
         }
-        setStrError(objError.message);
+        showErrorDialog(objError.message);
       } else {
-        setStrError(resolveErrorMessage(objError, LoginUiMessage.UnableToResendOtp));
+        showErrorDialog(resolveErrorMessage(objError, LoginUiMessage.UnableToResendOtp));
       }
     } finally {
       setBlnResendingOtp(false);
@@ -537,7 +554,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                         }
 
                         loadTenantLoginLabels(dicLanguageOption.intLanguageID).catch(() => {
-                          setStrError("Unable to switch language.");
+                          showErrorDialog("Unable to switch language.");
                           setIntSelectedLanguageID(intLoadedLanguageID);
                         });
                       }}
@@ -557,12 +574,6 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             <Typography className={styles.title}>{blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}</Typography>
 
             <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
-              {strError ? (
-                <Alert severity="error">
-                  {strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
-                </Alert>
-              ) : null}
-
               <Box>
                 <Typography className={styles.fieldLabel}>
                   {getLoginLabel("loginIdLabel")}
@@ -573,7 +584,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   onChange={(objEvent) => {
                     setStrLoginID(objEvent.target.value);
                     if (strError) {
-                      setStrError("");
+                      clearErrorState();
                     }
                   }}
                   fullWidth
@@ -678,6 +689,12 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           </Box>
         </Box>
       </Box>
+      <AlertDialog
+        blnOpen={blnErrorDialogOpen}
+        strMessage={strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
+        strSeverity="error"
+        fnOnClose={clearErrorState}
+      />
     </Box>
   );
 
