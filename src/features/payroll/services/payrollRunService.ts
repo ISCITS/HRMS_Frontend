@@ -2,6 +2,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
   PayrollRunDetailRecord,
+  PayrollRunFormOptions,
   PayrollRunFormValues,
   PayrollRunListRecord,
   PayrollProcessSummary,
@@ -26,8 +27,11 @@ async function requestApi<TData>(objOptions: {
 
 export function createInitialPayrollRunForm(): PayrollRunFormValues {
   return {
+    intPayrollCycleID: "",
     strRunCode: "",
     strRunName: "",
+    strScopeType: "All",
+    intScopedEmployeeID: "",
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
     strRunStatus: "Open",
     blnIsLocked: false,
@@ -36,8 +40,14 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
 
 function toPayload(dicValues: PayrollRunFormValues) {
   return {
+    intPayrollCycleID: dicValues.intPayrollCycleID || undefined,
     strRunCode: dicValues.strRunCode.trim(),
     strRunName: dicValues.strRunName.trim(),
+    strScopeType: dicValues.strScopeType,
+    intScopedEmployeeID:
+      dicValues.strScopeType === "SelectedEmployee"
+        ? Number(dicValues.intScopedEmployeeID)
+        : null,
     dtPayrollMonth: dicValues.dtPayrollMonth,
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,
@@ -45,6 +55,15 @@ function toPayload(dicValues: PayrollRunFormValues) {
 }
 
 export const payrollRunService = {
+  async getFormOptions(): Promise<PayrollRunFormOptions> {
+    const objResult = await requestApi<PayrollRunFormOptions>({
+      strPath: "/payroll/runs/form-options",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
+    });
+    return objResult.Data;
+  },
+
   async getPayrollRuns(objFilters?: {
     strSearch?: string;
     strStatus?: string;
@@ -89,30 +108,46 @@ export const payrollRunService = {
   async updatePayrollRunStatus(
     intRunID: number,
     strRunStatus: PayrollRunStatus,
-    blnIsLocked: boolean
+    blnIsLocked: boolean,
+    strScopeType?: PayrollRunFormValues["strScopeType"],
+    intScopedEmployeeID?: number | ""
   ): Promise<PayrollRunDetailRecord> {
     const objResult = await requestApi<PayrollRunDetailRecord>({
       strPath: `/payroll/runs/${intRunID}/status`,
       strMethod: "PUT",
-      objBody: { strRunStatus, blnIsLocked },
+      objBody: {
+        strRunStatus,
+        blnIsLocked,
+        strScopeType,
+        intScopedEmployeeID:
+          strScopeType === "SelectedEmployee" ? Number(intScopedEmployeeID) : null,
+      },
       strMenuAction: "PAYROLL_RUN_UPDATE_STATUS",
     });
     return objResult.Data;
   },
 
-  async validatePayrollRun(intRunID: number): Promise<PayrollValidationSummary> {
+  async validatePayrollRun(
+    intRunID: number,
+    lstEmployeeIDs?: number[]
+  ): Promise<PayrollValidationSummary> {
     const objResult = await requestApi<PayrollValidationSummary>({
       strPath: `/payroll/runs/${intRunID}/validate`,
       strMethod: "POST",
+      objBody: lstEmployeeIDs?.length ? { lstEmployeeIDs } : undefined,
       strMenuAction: "PAYROLL_RUN_VALIDATE",
     });
     return objResult.Data;
   },
 
-  async processPayrollRun(intRunID: number): Promise<PayrollProcessSummary> {
+  async processPayrollRun(
+    intRunID: number,
+    lstEmployeeIDs?: number[]
+  ): Promise<PayrollProcessSummary> {
     const objResult = await requestApi<PayrollProcessSummary>({
       strPath: `/payroll/runs/${intRunID}/process`,
       strMethod: "POST",
+      objBody: lstEmployeeIDs?.length ? { lstEmployeeIDs } : undefined,
       strMenuAction: "PAYROLL_RUN_PROCESS",
     });
     return objResult.Data;

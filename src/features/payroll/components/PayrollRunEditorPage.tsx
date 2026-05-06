@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -23,7 +23,7 @@ import {
   createInitialPayrollRunForm,
   payrollRunService,
 } from "@/features/payroll/services/payrollRunService";
-import type { PayrollRunFormValues } from "@/features/payroll/types";
+import type { PayrollRunFormOptions, PayrollRunFormValues } from "@/features/payroll/types";
 
 export default function PayrollRunEditorPage() {
   const objRouter = useRouter();
@@ -32,6 +32,8 @@ export default function PayrollRunEditorPage() {
   const [dicForm, setDicForm] = useState<PayrollRunFormValues>(
     createInitialPayrollRunForm()
   );
+  const [objOptions, setObjOptions] = useState<PayrollRunFormOptions | null>(null);
+  const [blnLoadingOptions, setBlnLoadingOptions] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
@@ -44,6 +46,9 @@ export default function PayrollRunEditorPage() {
   }
 
   function validateForm() {
+    if (!dicForm.intPayrollCycleID) {
+      return t("payroll_cycle_required", "Payroll cycle is required.");
+    }
     if (!dicForm.strRunCode.trim()) {
       return t("run_code_required", "Run code is required.");
     }
@@ -53,8 +58,49 @@ export default function PayrollRunEditorPage() {
     if (!dicForm.dtPayrollMonth) {
       return t("payroll_month_required", "Payroll month is required.");
     }
+    if (dicForm.strScopeType === "SelectedEmployee" && !dicForm.intScopedEmployeeID) {
+      return t("scoped_employee_required", "Employee is required for selected employee payroll run.");
+    }
     return "";
   }
+
+  useEffect(() => {
+    let blnMounted = true;
+    setBlnLoadingOptions(true);
+    payrollRunService
+      .getFormOptions()
+      .then((dicOptions) => {
+        if (!blnMounted) {
+          return;
+        }
+        setObjOptions(dicOptions);
+        const intMonthlyCycleID =
+          dicOptions.lstPayrollCycles.find(
+            (dicCycle) => dicCycle.strCode === "MONTHLY_APR_01"
+          )?.intID ?? dicOptions.lstPayrollCycles[0]?.intID ?? "";
+        setDicForm((dicPrevious) => ({
+          ...dicPrevious,
+          intPayrollCycleID: intMonthlyCycleID,
+        }));
+      })
+      .catch((objError) => {
+        if (blnMounted) {
+          setStrError(
+            objError instanceof Error
+              ? objError.message
+              : "Unable to load payroll run options."
+          );
+        }
+      })
+      .finally(() => {
+        if (blnMounted) {
+          setBlnLoadingOptions(false);
+        }
+      });
+    return () => {
+      blnMounted = false;
+    };
+  }, []);
 
   async function saveRun() {
     const strValidationError = validateForm();
@@ -162,6 +208,26 @@ export default function PayrollRunEditorPage() {
             }}
           >
             <TextField
+              select
+              label={t("payroll_cycle", "Payroll Cycle")}
+              value={dicForm.intPayrollCycleID}
+              onChange={(objEvent) =>
+                updateField(
+                  "intPayrollCycleID",
+                  objEvent.target.value ? Number(objEvent.target.value) : ""
+                )
+              }
+              disabled={blnSaving || blnLoadingOptions}
+              fullWidth
+            >
+              <MenuItem value="">{t("select_payroll_cycle", "Select payroll cycle")}</MenuItem>
+              {(objOptions?.lstPayrollCycles ?? []).map((dicCycle) => (
+                <MenuItem key={dicCycle.intID} value={dicCycle.intID}>
+                  {dicCycle.strCode} - {dicCycle.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
               label={t("run_code", "Run Code")}
               value={dicForm.strRunCode}
               onChange={(objEvent) => updateField("strRunCode", objEvent.target.value)}
@@ -175,6 +241,46 @@ export default function PayrollRunEditorPage() {
               disabled={blnSaving}
               fullWidth
             />
+            <TextField
+              select
+              label={t("run_scope", "Run Scope")}
+              value={dicForm.strScopeType}
+              onChange={(objEvent) =>
+                setDicForm((dicPrevious) => ({
+                  ...dicPrevious,
+                  strScopeType: objEvent.target.value as PayrollRunFormValues["strScopeType"],
+                  intScopedEmployeeID:
+                    objEvent.target.value === "SelectedEmployee"
+                      ? dicPrevious.intScopedEmployeeID
+                      : "",
+                }))
+              }
+              disabled={blnSaving}
+              fullWidth
+            >
+              <MenuItem value="All">{t("scope_all", "All employees")}</MenuItem>
+              <MenuItem value="SelectedEmployee">{t("scope_selected_employee", "Selected employee")}</MenuItem>
+            </TextField>
+            <TextField
+              select
+              label={t("scope_employee", "Employee")}
+              value={dicForm.intScopedEmployeeID}
+              onChange={(objEvent) =>
+                updateField(
+                  "intScopedEmployeeID",
+                  objEvent.target.value ? Number(objEvent.target.value) : ""
+                )
+              }
+              disabled={blnSaving || dicForm.strScopeType !== "SelectedEmployee"}
+              fullWidth
+            >
+              <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
+              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
+                <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
+                  {dicEmployee.strCode} - {dicEmployee.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               type="date"
               label={t("payroll_month", "Payroll Month")}

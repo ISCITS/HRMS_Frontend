@@ -30,14 +30,17 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import type {
+  EmployeePayrollInputFormOptions,
   PayslipPreviewRecord,
   PayslipRunListRecord,
   PayrollRunDetailRecord,
   PayrollProcessSummary,
   PayrollValidationSummary,
+  PayrollRunScopeType,
   PayrollRunStatus,
 } from "@/features/payroll/types";
 import {
@@ -130,10 +133,14 @@ export default function PayrollRunDetailPage({
   const [strSuccess, setStrSuccess] = useState("");
   const [strRunStatus, setStrRunStatus] = useState<PayrollRunStatus>("Open");
   const [blnIsLocked, setBlnIsLocked] = useState(false);
+  const [strScopeType, setStrScopeType] = useState<PayrollRunScopeType>("All");
+  const [intScopedEmployeeID, setIntScopedEmployeeID] = useState<number | "">("");
   const [objValidationSummary, setObjValidationSummary] =
     useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] =
     useState<PayrollProcessSummary | null>(null);
+  const [objInputOptions, setObjInputOptions] =
+    useState<EmployeePayrollInputFormOptions | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
   const [objPayslipPreview, setObjPayslipPreview] =
     useState<PayslipPreviewRecord | null>(null);
@@ -150,6 +157,8 @@ export default function PayrollRunDetailPage({
       setObjRun(dicRun);
       setStrRunStatus(dicRun.strRunStatus);
       setBlnIsLocked(dicRun.blnIsLocked);
+      setStrScopeType(dicRun.strScopeType ?? "All");
+      setIntScopedEmployeeID(dicRun.intScopedEmployeeID ?? "");
       if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
         setLstPayslips(await payslipService.getRunPayslips(intRunID));
       } else {
@@ -170,7 +179,26 @@ export default function PayrollRunDetailPage({
     loadRun().catch(() => undefined);
   }, [intRunID]);
 
+  useEffect(() => {
+    let blnMounted = true;
+    employeePayrollInputService
+      .getFormOptions()
+      .then((dicOptions) => {
+        if (blnMounted) {
+          setObjInputOptions(dicOptions);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, []);
+
   async function saveStatus() {
+    if (strScopeType === "SelectedEmployee" && !intScopedEmployeeID) {
+      setStrError(t("scoped_employee_required", "Employee is required for selected employee payroll run."));
+      return;
+    }
     setBlnSaving(true);
     setStrError("");
     setStrSuccess("");
@@ -178,7 +206,9 @@ export default function PayrollRunDetailPage({
       const dicRun = await payrollRunService.updatePayrollRunStatus(
         intRunID,
         strRunStatus,
-        blnIsLocked
+        blnIsLocked,
+        strScopeType,
+        intScopedEmployeeID
       );
       setObjRun(dicRun);
       setStrSuccess(t("status_update_success", "Payroll run status updated successfully."));
@@ -220,7 +250,17 @@ export default function PayrollRunDetailPage({
       const dicSummary = await payrollRunService.processPayrollRun(intRunID);
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
-      setStrSuccess(t("process_complete", "Payroll processing completed."));
+      if (dicSummary.strStatus === "ValidationFailed") {
+        const intBlockingCount = dicSummary.dicValidationSummary?.intBlockingErrorCount ?? 0;
+        setStrError(
+          t(
+            "process_validation_failed",
+            `Payroll processing blocked by ${intBlockingCount} validation error(s). Resolve the validation messages below and process again.`
+          )
+        );
+      } else {
+        setStrSuccess(t("process_complete", "Payroll processing completed."));
+      }
       await loadRun(false);
     } catch (objError) {
       setStrError(
@@ -393,13 +433,14 @@ export default function PayrollRunDetailPage({
 
   return (
     <Box
-      className={styles.page}
+      className={`${styles.page} ${styles.detailPage}`}
       sx={{
-        minHeight: "100%",
-        height: "auto",
+        minHeight: 0,
+        height: "100%",
         overflowX: "hidden",
-        overflowY: "visible",
+        overflowY: "hidden",
         pb: 3,
+        pr: 0.5,
       }}
     >
       <Typography className={styles.breadcrumbs}>
@@ -489,6 +530,14 @@ export default function PayrollRunDetailPage({
         >
           <SummaryCard strLabel={t("run_code", "Run Code")} strValue={objRun.strRunCode} />
           <SummaryCard strLabel={t("payroll_month", "Payroll Month")} strValue={formatMonth(objRun.dtPayrollMonth)} />
+          <SummaryCard
+            strLabel={t("run_scope", "Run Scope")}
+            strValue={
+              objRun.strScopeType === "SelectedEmployee"
+                ? `${t("scope_selected_employee", "Selected employee")} #${objRun.intScopedEmployeeID ?? "-"}`
+                : t("scope_all", "All employees")
+            }
+          />
           <SummaryCard strLabel={t("employees", "Employees")} strValue={String(objRun.intEmployeeCount || objRun.dicSummary.intInputCount)} />
           <SummaryCard strLabel={t("processed", "Processed")} strValue={String(objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount)} />
           <SummaryCard strLabel={t("gross_total", "Gross Total")} strValue={formatCurrency(objRun.decGrossPayTotal)} />
@@ -499,12 +548,9 @@ export default function PayrollRunDetailPage({
       </Box>
 
         <Box
-          className={styles.tableCard}
+          className={`${styles.tableCard} ${styles.detailScrollCard}`}
           sx={{
-            flex: "0 0 auto",
             gap: 2,
-            overflow: "visible",
-            p: 2,
           }}
         >
         {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -553,6 +599,45 @@ export default function PayrollRunDetailPage({
               {t("status_title", "Status Update")}
             </Typography>
             <Stack spacing={1.5}>
+              <TextField
+                select
+                label={t("run_scope", "Run Scope")}
+                value={strScopeType}
+                onChange={(objEvent) => {
+                  const strNextScope = objEvent.target.value as PayrollRunScopeType;
+                  setStrScopeType(strNextScope);
+                  if (strNextScope === "All") {
+                    setIntScopedEmployeeID("");
+                  }
+                }}
+                disabled={["Processed", "Closed"].includes(objRun.strRunStatus)}
+                fullWidth
+              >
+                <MenuItem value="All">{t("scope_all", "All employees")}</MenuItem>
+                <MenuItem value="SelectedEmployee">{t("scope_selected_employee", "Selected employee")}</MenuItem>
+              </TextField>
+              <TextField
+                select
+                label={t("scope_employee", "Employee")}
+                value={intScopedEmployeeID}
+                onChange={(objEvent) =>
+                  setIntScopedEmployeeID(
+                    objEvent.target.value ? Number(objEvent.target.value) : ""
+                  )
+                }
+                disabled={
+                  strScopeType !== "SelectedEmployee" ||
+                  ["Processed", "Closed"].includes(objRun.strRunStatus)
+                }
+                fullWidth
+              >
+                <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
+                {(objInputOptions?.lstEmployees ?? []).map((dicEmployee) => (
+                  <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
+                    {dicEmployee.strCode} - {dicEmployee.strLabel}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 select
                 label={t("status", "Status")}
@@ -617,7 +702,7 @@ export default function PayrollRunDetailPage({
             <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
               {t("validation_panel", "Validation")}
             </Typography>
-            <Box className={styles.tableWrap}>
+            <Box className={styles.tableWrap} sx={{ maxHeight: "none", overflowY: "visible" }}>
               <table className={styles.table}>
                 <thead>
                   <tr>

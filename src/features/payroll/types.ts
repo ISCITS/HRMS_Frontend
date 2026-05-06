@@ -48,6 +48,8 @@ export type PayrollRunOption = PayrollSelectOption & {
   blnIsLocked: boolean;
 };
 
+export type PayrollRunScopeType = "All" | "SelectedEmployee";
+
 export type PayrollRunStatus =
   | "Open"
   | "Submitted"
@@ -119,6 +121,8 @@ export type PayrollRunRecord = {
   intPayrollCycleID: number;
   strRunCode: string;
   strRunName: string;
+  strScopeType: PayrollRunScopeType;
+  intScopedEmployeeID: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
@@ -148,11 +152,24 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
 };
 
 export type PayrollRunFormValues = {
+  intPayrollCycleID: number | "";
   strRunCode: string;
   strRunName: string;
+  strScopeType: PayrollRunScopeType;
+  intScopedEmployeeID: number | "";
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
+};
+
+export type PayrollRunFormOptions = {
+  lstPayrollCycles: Array<{
+    intID: number;
+    strLabel: string;
+    strCode: string;
+    strPeriodType: string;
+  }>;
+  lstEmployees: PayrollSelectOption[];
 };
 
 export type EmployeePayrollInputLineRecord = {
