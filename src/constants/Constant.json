@@ -172,6 +172,7 @@
             "panNumber": "PAN Number",
             "uanNumber": "UAN Number",
             "esiNumber": "ESI Number",
+            "pfNumber": "PF Number",
             "taxRegimeCode": "Tax Regime"
         },
         "grid": {
@@ -207,7 +208,8 @@
             "countryRequired": "Country is required.",
             "bankRequired": "Bank is required.",
             "accountHolderRequired": "Account Holder Name is required.",
-            "accountNumberRequired": "Account Number is required."
+            "accountNumberRequired": "Account Number is required.",
+            "pfNumberRequired": "PF Number is required when PF Applicable is on."
         }
     },
     "leave": {

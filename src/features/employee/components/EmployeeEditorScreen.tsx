@@ -135,6 +135,7 @@ export default function EmployeeEditorScreen({
   const [dicBasicErrors, setDicBasicErrors] = useState<Partial<Record<keyof EmployeeFormValues, string>>>({});
   const [dicAddressErrors, setDicAddressErrors] = useState<Partial<Record<keyof EmployeeAddressFormValues, string>>>({});
   const [dicBankErrors, setDicBankErrors] = useState<Partial<Record<keyof EmployeeBankFormValues, string>>>({});
+  const [dicStatutoryErrors, setDicStatutoryErrors] = useState<Partial<Record<keyof EmployeeStatutoryFormValues, string>>>({});
   const [dicExperienceErrors, setDicExperienceErrors] = useState<Partial<Record<keyof EmployeeExperienceFormValues, string>>>({});
   const [dicQualificationErrors, setDicQualificationErrors] = useState<Partial<Record<keyof EmployeeQualificationFormValues, string>>>({});
   const [blnAddingExperience, setBlnAddingExperience] = useState(false);
@@ -338,6 +339,7 @@ export default function EmployeeEditorScreen({
   }
 
   function updateStatutoryField<TKey extends keyof EmployeeStatutoryFormValues>(strField: TKey, objValue: EmployeeStatutoryFormValues[TKey]) {
+    setDicStatutoryErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined }));
     setDicStatutoryForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
@@ -405,6 +407,15 @@ export default function EmployeeEditorScreen({
       dicNextErrors.strAccountNumber = t("validation_account_number_required", dicConstant.employeeMaster.validation.accountNumberRequired);
     }
     setDicBankErrors(dicNextErrors);
+    return dicNextErrors;
+  }
+
+  function validateStatutoryForm() {
+    const dicNextErrors: Partial<Record<keyof EmployeeStatutoryFormValues, string>> = {};
+    if (dicStatutoryForm.blnPfApplicable && !dicStatutoryForm.strPfNumber.trim()) {
+      dicNextErrors.strPfNumber = t("validation_pf_number_required", dicConstant.employeeMaster.validation.pfNumberRequired);
+    }
+    setDicStatutoryErrors(dicNextErrors);
     return dicNextErrors;
   }
 
@@ -621,11 +632,16 @@ export default function EmployeeEditorScreen({
     if (blnViewOnly) {
       return;
     }
+    const dicValidationErrors = validateStatutoryForm();
+    if (Object.keys(dicValidationErrors).length > 0) {
+      return;
+    }
     setBlnStatutorySaving(true);
     try {
       const intEmployeeIDToSave = await ensureEmployeeRecordForTabSave();
       const dicRecord = await employeeService.saveEmployeeStatutory(intEmployeeIDToSave, dicStatutoryForm);
       setDicStatutoryForm(toEmployeeStatutoryFormValues(dicRecord));
+      setDicStatutoryErrors({});
       openAlertDialog("success", t("statutory_save_success", dicConstant.employeeMaster.statutorySaveSuccess));
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_statutory", "Unable to save employee statutory details."));
@@ -1100,8 +1116,33 @@ export default function EmployeeEditorScreen({
                 <TextField label={t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber)} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPfApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPfApplicable", blnChecked)} disabled={blnViewOnly} />} label={t("field_pf_applicable", "PF Applicable")} />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={dicStatutoryForm.blnPfApplicable}
+                        onChange={(_, blnChecked) => {
+                          updateStatutoryField("blnPfApplicable", blnChecked);
+                          if (!blnChecked) {
+                            updateStatutoryField("strPfNumber", "");
+                          }
+                        }}
+                        disabled={blnViewOnly}
+                      />
+                    }
+                    label={t("field_pf_applicable", "PF Applicable")}
+                  />
                 </Box>
+                {dicStatutoryForm.blnPfApplicable ? (
+                  <TextField
+                    label={renderRequiredLabel(t("field_pf_number", dicConstant.employeeMaster.fields.pfNumber))}
+                    value={dicStatutoryForm.strPfNumber}
+                    onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())}
+                    error={Boolean(dicStatutoryErrors.strPfNumber)}
+                    helperText={dicStatutoryErrors.strPfNumber}
+                    disabled={blnViewOnly}
+                    fullWidth
+                  />
+                ) : null}
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
                   <FormControlLabel control={<Switch checked={dicStatutoryForm.blnEsiApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnEsiApplicable", blnChecked)} disabled={blnViewOnly} />} label={t("field_esi_applicable", "ESI Applicable")} />
                 </Box>

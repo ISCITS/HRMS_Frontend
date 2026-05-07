@@ -130,6 +130,7 @@ export const employeeService = {
       strPanNumber: dicValues.strPanNumber.trim() || null,
       strUanNumber: dicValues.strUanNumber.trim() || null,
       strEsiNumber: dicValues.strEsiNumber.trim() || null,
+      strPfNumber: dicValues.blnPfApplicable ? dicValues.strPfNumber.trim() || null : null,
       strTaxRegimeCode: dicValues.strTaxRegimeCode.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
