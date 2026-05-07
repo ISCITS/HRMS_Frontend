@@ -149,6 +149,7 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtLastExecutedOn: string | null;
   dtClosedOn: string | null;
   lstValidationResults: PayrollValidationResultRecord[];
+  lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
 };
 
 export type PayrollRunFormValues = {

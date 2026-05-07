@@ -82,6 +82,10 @@ function formatCurrency(decValue: number) {
   }).format(decValue || 0);
 }
 
+function getDeductionLineLabel(dicLine: { strComponentName?: string; strComponentCode?: string; strLineType?: string }) {
+  return dicLine.strComponentName || dicLine.strComponentCode || dicLine.strLineType || "-";
+}
+
 function getStatusPillSx(strStatus: string) {
   const dicToneByStatus: Record<string, { background: string; color: string }> = {
     Open: { background: "#2563eb", color: "#fff" },

@@ -594,6 +594,7 @@ export default function SalaryComponentEditorPage({
           </TextField>
           <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth />
         </Box>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("declaration_proof", "Declaration / Proof")}</Typography>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>

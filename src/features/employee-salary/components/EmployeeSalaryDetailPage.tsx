@@ -91,8 +91,10 @@ function addDaysToDateString(strDate: string, intDays: number) {
 }
 
 function getRevisionMinEffectiveDate(objDetail: EmployeeSalaryDetailRecord | null) {
-  const strCurrentEffectiveFrom = objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom;
-  return strCurrentEffectiveFrom ? addDaysToDateString(strCurrentEffectiveFrom, 1) : getTodayDateString();
+  const strCurrentEffectiveFrom = objDetail?.objAssignedStructure
+    ? objDetail.objCurrentSalarySnapshot?.dtEffectiveFrom
+    : null;
+  return strCurrentEffectiveFrom ? addDaysToDateString(strCurrentEffectiveFrom, 1) : "";
 }
 
 type ComponentGridRow = {
@@ -124,7 +126,19 @@ type OverrideSourceLine = {
   strComponentCode?: string | null;
   strComponentName?: string | null;
   blnAllowManualOverride: boolean;
+  decAmountMonthly?: number | null;
+  decAmountAnnual?: number | null;
+  decFixedAmount?: number | null;
+  decPercentageValue?: number | null;
 };
+
+function formatOptionalDefaultValue(objValue: number | string | null | undefined) {
+  if (objValue === null || typeof objValue === "undefined" || objValue === "") {
+    return "";
+  }
+  const decValue = Number(objValue);
+  return Number.isFinite(decValue) ? String(decValue) : "";
+}
 
 function buildOverrideRows(
   lstSourceLines: OverrideSourceLine[],
@@ -138,6 +152,14 @@ function buildOverrideRows(
   return lstSourceLines.map((dicLine) => {
     const dicExistingOverride = dicExistingOverrideByComponentID.get(dicLine.intSalaryComponentID);
     const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
+    const decDefaultMonthly = dicLine.decAmountMonthly ?? dicLine.decFixedAmount;
+    const strDefaultMonthly = formatOptionalDefaultValue(
+      decDefaultMonthly
+    );
+    const strDefaultAnnual = formatOptionalDefaultValue(
+      dicLine.decAmountAnnual ??
+        (decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : null)
+    );
     return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
       strComponentName:
@@ -148,6 +170,9 @@ function buildOverrideRows(
       decAmountMonthly: dicReusableOverride?.decAmountMonthly ?? "",
       decAmountAnnual: dicReusableOverride?.decAmountAnnual ?? "",
       decPercentageValue: dicReusableOverride?.decPercentageValue ?? "",
+      strDefaultMonthly,
+      strDefaultAnnual,
+      strDefaultPercentage: formatOptionalDefaultValue(dicLine.decPercentageValue),
       strRemarks: dicReusableOverride?.strRemarks ?? ""
     };
   });
@@ -159,7 +184,7 @@ function buildRevisionForm(
 ): EmployeeSalaryRevisionFormValues {
   return {
     intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
-    dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail),
+    dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail) || getTodayDateString(),
     strRevisionReason: "",
     lstOverrides: buildOverrideRows(objDetail?.lstComponentLines ?? [], [], fnTranslate)
   };
@@ -321,7 +346,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setStrError(t("employee_salary_effective_from_required", "Effective from date is required."));
       return;
     }
-    if (dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
+    if (strMinRevisionEffectiveDate && dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
       setStrError(
         t(
           "employee_salary_effective_from_after_current_required",
@@ -371,6 +396,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     } finally {
       setBlnSaving(false);
     }
+  }
+
+  function handleOpenRevisionDialog() {
+    setStrError("");
+    setStrSuccess("");
+    setBlnDialogOpen(true);
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -493,7 +524,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     <Button
                       variant="contained"
                       startIcon={<HistoryRoundedIcon />}
-                      onClick={() => setBlnDialogOpen(true)}
+                      onClick={handleOpenRevisionDialog}
                       sx={{
                         borderRadius: "14px",
                         height: 40,
@@ -743,7 +774,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 value={dicRevisionForm.dtEffectiveFrom}
                 onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: strMinRevisionEffectiveDate }}
               />
             </Box>
             <TextField
@@ -780,6 +810,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     <TextField
                       label={t("employee_salary_monthly", "Monthly")}
                       value={dicOverride.decAmountMonthly}
+                      placeholder={dicOverride.strDefaultMonthly}
+                      helperText={
+                        dicOverride.strDefaultMonthly
+                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultMonthly}`
+                          : undefined
+                      }
                       disabled={!dicOverride.blnAllowManualOverride}
                       onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                         ...dicPrev,
@@ -789,6 +825,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     <TextField
                       label={t("employee_salary_annual", "Annual")}
                       value={dicOverride.decAmountAnnual}
+                      placeholder={dicOverride.strDefaultAnnual}
+                      helperText={
+                        dicOverride.strDefaultAnnual
+                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultAnnual}`
+                          : undefined
+                      }
                       disabled={!dicOverride.blnAllowManualOverride}
                       onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                         ...dicPrev,
@@ -798,6 +840,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     <TextField
                       label={t("employee_salary_percentage_value", "% Value")}
                       value={dicOverride.decPercentageValue}
+                      placeholder={dicOverride.strDefaultPercentage}
+                      helperText={
+                        dicOverride.strDefaultPercentage
+                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultPercentage}`
+                          : undefined
+                      }
                       disabled={!dicOverride.blnAllowManualOverride}
                       onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                         ...dicPrev,
