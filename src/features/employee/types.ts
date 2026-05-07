@@ -145,6 +145,7 @@ export type EmployeeStatutoryRecord = {
   strPanNumber: string | null;
   strUanNumber: string | null;
   strEsiNumber: string | null;
+  strPfNumber: string | null;
   strTaxRegimeCode: string | null;
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
@@ -155,6 +156,7 @@ export type EmployeeStatutoryFormValues = {
   strPanNumber: string;
   strUanNumber: string;
   strEsiNumber: string;
+  strPfNumber: string;
   strTaxRegimeCode: string;
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;

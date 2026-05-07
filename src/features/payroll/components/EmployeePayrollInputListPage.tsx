@@ -351,7 +351,7 @@ export default function EmployeePayrollInputListPage() {
               startIcon={<AddRoundedIcon />}
               onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
             >
-              {t("add_button", "Add Payroll Input")}
+              {t("employee_payroll_input_add_button", "Add Payroll Input")}
             </Button>
             <Button
               className={styles.secondaryButton}
