@@ -386,7 +386,7 @@ export default function EmployeeMasterListPanel() {
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanAdd ? (
               <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("add_button", dicConstant.employeeMaster.addButton)}
+                {t("emp_add_button", dicConstant.employeeMaster.addButton)}
               </Button>
             ) : null}
             {blnCanExport ? (
