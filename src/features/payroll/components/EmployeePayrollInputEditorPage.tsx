@@ -323,36 +323,45 @@ export default function EmployeePayrollInputEditorPage({
         }}
       >
         <Stack spacing={2}>
-          <Box>
-            <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-              {strMode === "view"
-                ? t("view_title", "View Employee Payroll Input")
-                : strMode === "edit"
-                ? t("edit_title", "Edit Employee Payroll Input")
-                : t("add_title", "Create Employee Payroll Input")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-              {t("subtitle", "Move employee payroll input maintenance out of popup mode and into a dedicated full screen.")}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
-              disabled={blnSaving}
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+            <Box>
+              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+                {strMode === "view"
+                  ? t("view_title", "View Employee Payroll Input")
+                  : strMode === "edit"
+                  ? t("edit_title", "Edit Employee Payroll Input")
+                  : t("add_title", "Create Employee Payroll Input")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+                {t("subtitle", "Move employee payroll input maintenance out of popup mode and into a dedicated full screen.")}
+              </Typography>
+            </Box>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.25}
+              sx={{
+                alignItems: { xs: "stretch", sm: "center" },
+                alignSelf: { md: "flex-start" },
+              }}
             >
-              {t("back_to_list", "Back to List")}
-            </Button>
-            <Button
-              className={styles.primaryButton}
-              startIcon={<SaveRoundedIcon />}
-              onClick={saveRecord}
-              disabled={blnSaving || (blnFormLocked && strMode === "edit")}
-              sx={{ display: blnReadOnly ? "none" : undefined }}
-            >
-              {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-            </Button>
+              <Button
+                className={styles.secondaryButton}
+                startIcon={<ArrowBackRoundedIcon />}
+                onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
+                disabled={blnSaving}
+              >
+                {t("back_to_list", "Back to List")}
+              </Button>
+              <Button
+                className={styles.primaryButton}
+                startIcon={<SaveRoundedIcon />}
+                onClick={saveRecord}
+                disabled={blnSaving || (blnFormLocked && strMode === "edit")}
+                sx={{ display: blnReadOnly ? "none" : undefined }}
+              >
+                {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
       </Paper>
@@ -361,11 +370,11 @@ export default function EmployeePayrollInputEditorPage({
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
 
-      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, background: "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
           {t("section_employee_run", "1. Employee and Run Details")}
         </Typography>
-        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
           <TextField
             select
             label={t("employee", "Employee")}
@@ -397,7 +406,7 @@ export default function EmployeePayrollInputEditorPage({
             ))}
           </TextField>
         </Box>
-        <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr" }, mt: 1.25 }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr" }, mt: 2 }}>
           <TextField label={t("employee_code", "Employee Code")} value={dicSelectedEmployee?.strCode ?? ""} InputProps={{ readOnly: true }} fullWidth />
           <TextField label={t("payroll_month", "Payroll Month")} value={dicSelectedRun?.dtPayrollMonth ?? ""} InputProps={{ readOnly: true }} fullWidth />
           <TextField label={t("run_status", "Run Status")} value={translateStatus(dicSelectedRun?.strStatus)} InputProps={{ readOnly: true }} fullWidth />
@@ -405,18 +414,18 @@ export default function EmployeePayrollInputEditorPage({
         </Box>
       </Paper>
 
-      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
           {t("section_attendance", "2. Attendance / LWP / LOP")}
         </Typography>
-        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
           <TextField label={t("lwp_days", "LWP Days")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
           <TextField label={t("lop_days", "LOP Days")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
         </Box>
       </Paper>
 
-      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mb: 1.5, flexWrap: "wrap" }}>
           <Box>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("section_lines", "3. Input Lines")}
@@ -492,11 +501,11 @@ export default function EmployeePayrollInputEditorPage({
         </Box>
       </Paper>
 
-      <Paper sx={{ border: "1px solid #d9e6ef", borderRadius: 3, p: { xs: 2, md: 3 }, backgroundColor: "#ffffff" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
           {t("section_remarks_status", "4. Remarks / Status")}
         </Typography>
-        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
           <TextField select label={t("status", "Status")} value={dicForm.strStatus} onChange={(objEvent) => updateField("strStatus", objEvent.target.value as EmployeePayrollInputFormValues["strStatus"])} disabled={blnFormLocked} fullWidth>
             {(objOptions?.lstStatuses ?? []).map((dicStatus) => (
               <MenuItem key={dicStatus.strCode} value={dicStatus.strCode}>

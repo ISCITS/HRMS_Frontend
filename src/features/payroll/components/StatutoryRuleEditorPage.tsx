@@ -153,7 +153,19 @@ export default function StatutoryRuleEditorPage({
   }
 
   return (
-    <Stack spacing={2.5} className={styles.page}>
+    <Stack
+      spacing={2.5}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+        minHeight: "100%",
+        height: "auto",
+        overflowX: "hidden",
+        overflowY: "visible",
+        pb: 3,
+      }}
+    >
       <Paper
         sx={{
           borderRadius: "28px",
@@ -174,7 +186,14 @@ export default function StatutoryRuleEditorPage({
                 {t("subtitle", "Maintain statutory logic in a dedicated workspace instead of opening the form in a popup.")}
               </Typography>
             </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.25}
+              sx={{
+                alignItems: { xs: "stretch", sm: "center" },
+                alignSelf: { md: "flex-start" },
+              }}
+            >
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}

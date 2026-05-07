@@ -103,19 +103,30 @@ function SummaryCard({
   return (
     <Box
       sx={{
-        border: "1px solid #d9e6ef",
-        borderRadius: 3,
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
-        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.05)",
-        p: 2,
+        p: 1.5,
       }}
     >
-      <Typography sx={{ color: "#64748b", fontSize: "0.84rem", mb: 0.6 }}>
+      <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
         {strLabel}
       </Typography>
-      <Typography sx={{ color: "#0f172a", fontSize: "1.45rem", fontWeight: 800 }}>
+      <Typography sx={{ color: "#0f172a", fontWeight: 700 }}>
         {strValue}
       </Typography>
+    </Box>
+  );
+}
+
+function DetailValue({
+  strLabel,
+  strValue,
+}: {
+  strLabel: string;
+  strValue: string | number;
+}) {
+  return (
+    <Box>
+      <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{strLabel}</Typography>
+      <Typography sx={{ color: "#0f172a", fontWeight: 700 }}>{strValue}</Typography>
     </Box>
   );
 }
@@ -431,21 +442,34 @@ export default function PayrollRunDetailPage({
     );
   }
 
+  const objSectionCardSx = {
+    background: "#ffffff",
+    border: "1px solid rgba(148,163,184,0.18)",
+    borderRadius: "24px",
+    boxShadow: "none",
+    p: 2.5,
+  };
+
+  const objSectionTitleSx = {
+    color: "#0f172a",
+    fontWeight: 800,
+    mb: 1.5,
+  };
+
   return (
     <Box
-      className={`${styles.page} ${styles.detailPage}`}
       sx={{
-        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2.5,
         height: "100%",
+        minHeight: 0,
         overflowX: "hidden",
-        overflowY: "hidden",
+        overflowY: "auto",
         pb: 3,
         pr: 0.5,
       }}
     >
-      <Typography className={styles.breadcrumbs}>
-        {t("breadcrumbs_detail", "Payroll / Payroll Runs / Detail")}
-      </Typography>
       <Box className={styles.topBar}>
         <Button
           className={styles.secondaryButton}
@@ -513,9 +537,19 @@ export default function PayrollRunDetailPage({
         </Stack>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box
+        className={styles.controlsCard}
+        sx={{
+          border: "1px solid rgba(148,163,184,0.18)",
+          borderRadius: "28px",
+          boxShadow: "none",
+          p: { xs: 2, md: 3 },
+        }}
+      >
         <Box className={styles.controlsHeader}>
-          <Typography className={styles.title}>{objRun.strRunName}</Typography>
+          <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+            {objRun.strRunName}
+          </Typography>
           <span className={styles.statusPill} style={getStatusPillSx(objRun.strRunStatus)}>
             {objRun.strRunStatus}
           </span>
@@ -547,12 +581,16 @@ export default function PayrollRunDetailPage({
         </Box>
       </Box>
 
-        <Box
-          className={`${styles.tableCard} ${styles.detailScrollCard}`}
-          sx={{
-            gap: 2,
-          }}
-        >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          flex: "0 0 auto",
+          gap: 2.5,
+          minHeight: 0,
+          overflow: "visible",
+        }}
+      >
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
         {blnPayslipLoading ? (
@@ -566,36 +604,22 @@ export default function PayrollRunDetailPage({
             gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
           }}
         >
-          <Box
-            sx={{
-              border: "1px solid #d9e6ef",
-              borderRadius: 3,
-              background: "#fff",
-              p: 2,
-            }}
-          >
-            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          <Box sx={objSectionCardSx}>
+            <Typography sx={objSectionTitleSx}>
               {t("summary_title", "Run Summary")}
             </Typography>
-            <Stack spacing={1}>
-              <Typography>{t("draft_count", "Draft Inputs")}: {objRun.dicSummary.intDraftCount}</Typography>
-              <Typography>{t("submitted_count", "Submitted Inputs")}: {objRun.dicSummary.intSubmittedCount}</Typography>
-              <Typography>{t("total_lwp", "Total LWP Days")}: {objRun.dicSummary.decTotalLwpDays}</Typography>
-              <Typography>{t("total_lop", "Total LOP Days")}: {objRun.dicSummary.decTotalLopDays}</Typography>
-              <Typography>{t("validation_errors", "Validation Errors")}: {objRun.dicSummary.intValidationErrorCount}</Typography>
-              <Typography>{t("validation_warnings", "Validation Warnings")}: {objRun.dicSummary.intValidationWarningCount}</Typography>
-            </Stack>
+            <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+              <DetailValue strLabel={t("draft_count", "Draft Inputs")} strValue={objRun.dicSummary.intDraftCount} />
+              <DetailValue strLabel={t("submitted_count", "Submitted Inputs")} strValue={objRun.dicSummary.intSubmittedCount} />
+              <DetailValue strLabel={t("total_lwp", "Total LWP Days")} strValue={objRun.dicSummary.decTotalLwpDays} />
+              <DetailValue strLabel={t("total_lop", "Total LOP Days")} strValue={objRun.dicSummary.decTotalLopDays} />
+              <DetailValue strLabel={t("validation_errors", "Validation Errors")} strValue={objRun.dicSummary.intValidationErrorCount} />
+              <DetailValue strLabel={t("validation_warnings", "Validation Warnings")} strValue={objRun.dicSummary.intValidationWarningCount} />
+            </Box>
           </Box>
 
-          <Box
-            sx={{
-              border: "1px solid #d9e6ef",
-              borderRadius: 3,
-              background: "#fff",
-              p: 2,
-            }}
-          >
-            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          <Box sx={objSectionCardSx}>
+            <Typography sx={objSectionTitleSx}>
               {t("status_title", "Status Update")}
             </Typography>
             <Stack spacing={1.5}>
@@ -664,6 +688,7 @@ export default function PayrollRunDetailPage({
                 className={styles.primaryButton}
                 onClick={saveStatus}
                 disabled={blnSaving}
+                sx={{ alignSelf: "flex-end" }}
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button>
@@ -671,35 +696,21 @@ export default function PayrollRunDetailPage({
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            border: "1px solid #d9e6ef",
-            borderRadius: 3,
-            background: "#fff",
-            p: 2,
-          }}
-        >
-          <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+        <Box sx={objSectionCardSx}>
+          <Typography sx={objSectionTitleSx}>
             {t("meta_title", "Run Timeline")}
           </Typography>
-          <Stack spacing={1}>
-            <Typography>{t("created_on", "Created On")}: {formatDateTime(objRun.dtAddedOn)}</Typography>
-            <Typography>{t("modified_on", "Last Modified On")}: {formatDateTime(objRun.dtLastModifiedOn)}</Typography>
-            <Typography>{t("last_executed_on", "Last Executed On")}: {formatDateTime(objRun.dtLastExecutedOn)}</Typography>
-            <Typography>{t("closed_on", "Closed On")}: {formatDateTime(objRun.dtClosedOn)}</Typography>
-          </Stack>
+          <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" } }}>
+            <DetailValue strLabel={t("created_on", "Created On")} strValue={formatDateTime(objRun.dtAddedOn)} />
+            <DetailValue strLabel={t("modified_on", "Last Modified On")} strValue={formatDateTime(objRun.dtLastModifiedOn)} />
+            <DetailValue strLabel={t("last_executed_on", "Last Executed On")} strValue={formatDateTime(objRun.dtLastExecutedOn)} />
+            <DetailValue strLabel={t("closed_on", "Closed On")} strValue={formatDateTime(objRun.dtClosedOn)} />
+          </Box>
         </Box>
 
         {(objValidationSummary || objRun.lstValidationResults.length > 0) ? (
-          <Box
-            sx={{
-              border: "1px solid #d9e6ef",
-              borderRadius: 3,
-              background: "#fff",
-              p: 2,
-            }}
-          >
-            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          <Box sx={objSectionCardSx}>
+            <Typography sx={objSectionTitleSx}>
               {t("validation_panel", "Validation")}
             </Typography>
             <Box className={styles.tableWrap} sx={{ maxHeight: "none", overflowY: "visible" }}>
@@ -728,23 +739,16 @@ export default function PayrollRunDetailPage({
         ) : null}
 
         {objProcessSummary ? (
-          <Box
-            sx={{
-              border: "1px solid #d9e6ef",
-              borderRadius: 3,
-              background: "#fff",
-              p: 2,
-            }}
-          >
-            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          <Box sx={objSectionCardSx}>
+            <Typography sx={objSectionTitleSx}>
               {t("process_summary", "Processing Summary")}
             </Typography>
-            <Stack spacing={1}>
-              <Typography>{t("status", "Status")}: {objProcessSummary.strStatus}</Typography>
-              <Typography>{t("processed", "Processed")}: {objProcessSummary.intProcessedEmployeeCount}</Typography>
-              <Typography>{t("failed", "Failed")}: {objProcessSummary.intFailedEmployeeCount}</Typography>
-              <Typography>{t("net_total", "Net Pay")}: {formatCurrency(objProcessSummary.decNetPayTotal || 0)}</Typography>
-            </Stack>
+            <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" } }}>
+              <DetailValue strLabel={t("status", "Status")} strValue={objProcessSummary.strStatus} />
+              <DetailValue strLabel={t("processed", "Processed")} strValue={objProcessSummary.intProcessedEmployeeCount} />
+              <DetailValue strLabel={t("failed", "Failed")} strValue={objProcessSummary.intFailedEmployeeCount} />
+              <DetailValue strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objProcessSummary.decNetPayTotal || 0)} />
+            </Box>
             {objProcessSummary.lstExceptions.length ? (
               <Alert severity="warning" sx={{ mt: 1.5 }}>
                 {objProcessSummary.lstExceptions.map((dicException) => dicException.strMessage).join(" | ")}
@@ -754,16 +758,9 @@ export default function PayrollRunDetailPage({
         ) : null}
 
         {["Processed", "Closed"].includes(objRun.strRunStatus) ? (
-          <Box
-            sx={{
-              border: "1px solid #d9e6ef",
-              borderRadius: 3,
-              background: "#fff",
-              p: 2,
-            }}
-          >
+          <Box sx={objSectionCardSx}>
             <Box className={styles.controlsHeader} sx={{ mb: 1.5 }}>
-              <Typography sx={{ color: "#173b63", fontWeight: 800 }}>
+              <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>
                 {t("payslip_panel", "Payslips")}
               </Typography>
               <Button

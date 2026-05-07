@@ -17,7 +17,8 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import masterStyles from "@/components/master/MasterScreen.module.css";
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   createInitialPayrollRunForm,
@@ -130,7 +131,7 @@ export default function PayrollRunEditorPage() {
   return (
     <Stack
       spacing={2.5}
-      className={styles.page}
+      className={payrollStyles.page}
       sx={{
         minHeight: "100%",
         height: "auto",
@@ -157,9 +158,16 @@ export default function PayrollRunEditorPage() {
                 {t("subtitle", "Open payroll run creation in a dedicated screen instead of a modal dialog.")}
               </Typography>
             </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.25}
+              sx={{
+                alignItems: { xs: "stretch", sm: "center" },
+                alignSelf: { md: "flex-start" },
+              }}
+            >
               <Button
-                className={styles.secondaryButton}
+                className={masterStyles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/runs")}
                 disabled={blnSaving}
@@ -167,7 +175,7 @@ export default function PayrollRunEditorPage() {
                 {t("back_to_list", "Back to List")}
               </Button>
               <Button
-                className={styles.primaryButton}
+                className={masterStyles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRun}
                 disabled={blnSaving}
