@@ -82,6 +82,10 @@ function formatCurrency(decValue: number) {
   }).format(decValue || 0);
 }
 
+function getDeductionLineLabel(dicLine: { strComponentName?: string; strComponentCode?: string; strLineType?: string }) {
+  return dicLine.strComponentName || dicLine.strComponentCode || dicLine.strLineType || "-";
+}
+
 function getStatusPillSx(strStatus: string) {
   const dicToneByStatus: Record<string, { background: string; color: string }> = {
     Open: { background: "#2563eb", color: "#fff" },
@@ -670,6 +674,88 @@ export default function PayrollRunDetailPage({
             </Stack>
           </Box>
         </Box>
+
+        {(objRun.lstProcessedResults?.length ?? 0) > 0 ? (
+          <Box
+            sx={{
+              border: "1px solid #d9e6ef",
+              borderRadius: 3,
+              background: "#fff",
+              p: 2,
+            }}
+          >
+            <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+              {t("process_summary", "Processing Summary")}
+            </Typography>
+            <Box sx={{ overflowX: "auto" }}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>{t("employee", "Employee")}</th>
+                    <th>{t("gross_total", "Gross Total")}</th>
+                    <th>{t("deduction_total", "Deductions")}</th>
+                    <th>{t("tax_total", "Tax")}</th>
+                    <th>{t("net_total", "Net Pay")}</th>
+                    <th>{t("tax_regime", "Tax Regime")}</th>
+                    <th>{t("taxable_income", "Taxable Income")}</th>
+                    <th>{t("annual_tax", "Annual Tax")}</th>
+                    <th>{t("employer_contributions", "Employer Contributions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(objRun.lstProcessedResults ?? []).map((dicResult) => (
+                    <tr key={dicResult.intID}>
+                      <td>{dicResult.strEmployeeCode} - {dicResult.strEmployeeName}</td>
+                      <td>{formatCurrency(dicResult.decGrossAmount)}</td>
+                      <td>{formatCurrency(dicResult.decDeductionAmount)}</td>
+                      <td>{formatCurrency(dicResult.decTaxAmount)}</td>
+                      <td>{formatCurrency(dicResult.decNetPayAmount)}</td>
+                      <td>{dicResult.strRegimeUsed || "-"}</td>
+                      <td>{formatCurrency(dicResult.decTaxableIncome)}</td>
+                      <td>{formatCurrency(dicResult.decAnnualTaxAmount)}</td>
+                      <td>{formatCurrency(dicResult.decEmployerContributionTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+            {(objRun.lstProcessedResults ?? []).map((dicResult) => {
+              const lstDeductionLines = (dicResult.lstLines ?? []).filter((dicLine) =>
+                ["deduction", "statutory", "tax"].includes((dicLine.strLineType || "").toLowerCase())
+              );
+              if (lstDeductionLines.length === 0) {
+                return null;
+              }
+              return (
+                <Box key={`${dicResult.intID}-deductions`} sx={{ mt: 2 }}>
+                  <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1 }}>
+                    {dicResult.strEmployeeCode} {t("deductions", "Deductions")}
+                  </Typography>
+                  <Box sx={{ overflowX: "auto" }}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>{t("component", "Component")}</th>
+                          <th>{t("line_type", "Line Type")}</th>
+                          <th>{t("amount", "Amount")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lstDeductionLines.map((dicLine) => (
+                          <tr key={dicLine.intID}>
+                            <td>{getDeductionLineLabel(dicLine)}</td>
+                            <td>{dicLine.strLineType}</td>
+                            <td>{formatCurrency(dicLine.decAmount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : null}
 
         <Box
           sx={{

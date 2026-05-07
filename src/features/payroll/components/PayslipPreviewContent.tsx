@@ -2,6 +2,7 @@
 
 import { Box, Stack, Typography } from "@mui/material";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { PayslipLineRecord, PayslipPreviewRecord } from "@/features/payroll/types";
 
@@ -49,9 +50,15 @@ function DetailRow({
 function LineTable({
   strTitle,
   lstLines,
+  strComponentLabel,
+  strAmountLabel,
+  strNoLinesLabel,
 }: {
   strTitle: string;
   lstLines: PayslipLineRecord[];
+  strComponentLabel: string;
+  strAmountLabel: string;
+  strNoLinesLabel: string;
 }) {
   return (
     <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
@@ -62,8 +69,8 @@ function LineTable({
         <table className={styles.table} style={{ minWidth: 420 }}>
           <thead>
             <tr>
-              <th>Component</th>
-              <th style={{ textAlign: "right" }}>Amount</th>
+              <th>{strComponentLabel}</th>
+              <th style={{ textAlign: "right" }}>{strAmountLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +84,7 @@ function LineTable({
             ) : (
               <tr>
                 <td colSpan={2} className={styles.emptyState}>
-                  No lines
+                  {strNoLinesLabel}
                 </td>
               </tr>
             )}
@@ -91,11 +98,17 @@ function LineTable({
 export default function PayslipPreviewContent({
   objPayslip,
 }: PayslipPreviewContentProps) {
+  const { t } = useModuleLabels("payslips");
   const dicEmployee = objPayslip.dicEmployee;
   const dicRun = objPayslip.dicRun;
   const dicCompany = objPayslip.dicCompany;
   const dicTax = objPayslip.dicTax;
   const dicTotals = objPayslip.dicTotals;
+  const dicLineTableLabels = {
+    strComponentLabel: t("component", "Component"),
+    strAmountLabel: t("amount", "Amount"),
+    strNoLinesLabel: t("no_lines", "No lines"),
+  };
 
   return (
     <Box sx={{ background: "#f8fbff", border: "1px solid #d9e6ef", p: 2 }}>
@@ -120,13 +133,13 @@ export default function PayslipPreviewContent({
         </Box>
         <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
           <Typography sx={{ color: "#172033", fontSize: "1.1rem", fontWeight: 900 }}>
-            Payslip
+            {t("payslip", "Payslip")}
           </Typography>
           <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
             {dicRun.strPayrollMonthLabel}
           </Typography>
           <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
-            {objPayslip.strPayslipNumber || "Preview"}
+            {objPayslip.strPayslipNumber || t("preview", "Preview")}
           </Typography>
         </Box>
       </Box>
@@ -141,30 +154,30 @@ export default function PayslipPreviewContent({
       >
         <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
           <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
-            Employee
+            {t("employee", "Employee")}
           </Typography>
           <Stack spacing={0.8}>
-            <DetailRow strLabel="Code" strValue={dicEmployee.strEmployeeCode} />
-            <DetailRow strLabel="Name" strValue={dicEmployee.strEmployeeName} />
-            <DetailRow strLabel="Department" strValue={dicEmployee.strDepartmentName} />
-            <DetailRow strLabel="Designation" strValue={dicEmployee.strDesignationName} />
-            <DetailRow strLabel="Location" strValue={dicEmployee.strLocationName} />
-            <DetailRow strLabel="DOJ" strValue={formatDate(dicEmployee.dtDateOfJoining)} />
+            <DetailRow strLabel={t("code", "Code")} strValue={dicEmployee.strEmployeeCode} />
+            <DetailRow strLabel={t("name", "Name")} strValue={dicEmployee.strEmployeeName} />
+            <DetailRow strLabel={t("department", "Department")} strValue={dicEmployee.strDepartmentName} />
+            <DetailRow strLabel={t("designation", "Designation")} strValue={dicEmployee.strDesignationName} />
+            <DetailRow strLabel={t("location", "Location")} strValue={dicEmployee.strLocationName} />
+            <DetailRow strLabel={t("doj", "DOJ")} strValue={formatDate(dicEmployee.dtDateOfJoining)} />
           </Stack>
         </Box>
 
         <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
           <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
-            Payroll
+            {t("payroll", "Payroll")}
           </Typography>
           <Stack spacing={0.8}>
-            <DetailRow strLabel="Run" strValue={dicRun.strRunName} />
-            <DetailRow strLabel="PAN" strValue={dicEmployee.strPanNumber} />
-            <DetailRow strLabel="Tax Regime" strValue={dicTax?.strRegimeUsed} />
-            <DetailRow strLabel="UAN" strValue={dicEmployee.strUanNumber} />
-            <DetailRow strLabel="ESI" strValue={dicEmployee.strEsiNumber} />
-            <DetailRow strLabel="Bank" strValue={dicEmployee.strBankName} />
-            <DetailRow strLabel="Account" strValue={dicEmployee.strBankAccountMasked} />
+            <DetailRow strLabel={t("run", "Run")} strValue={dicRun.strRunName} />
+            <DetailRow strLabel={t("pan", "PAN")} strValue={dicEmployee.strPanNumber} />
+            <DetailRow strLabel={t("tax_regime", "Tax Regime")} strValue={dicTax?.strRegimeUsed} />
+            <DetailRow strLabel={t("uan", "UAN")} strValue={dicEmployee.strUanNumber} />
+            <DetailRow strLabel={t("esi", "ESI")} strValue={dicEmployee.strEsiNumber} />
+            <DetailRow strLabel={t("bank", "Bank")} strValue={dicEmployee.strBankName} />
+            <DetailRow strLabel={t("account", "Account")} strValue={dicEmployee.strBankAccountMasked} />
           </Stack>
         </Box>
       </Box>
@@ -177,19 +190,20 @@ export default function PayslipPreviewContent({
           mt: 2,
         }}
       >
-        <LineTable strTitle="Earnings" lstLines={objPayslip.lstEarnings} />
-        <LineTable strTitle="Deductions" lstLines={objPayslip.lstDeductions} />
+        <LineTable strTitle={t("earnings", "Earnings")} lstLines={objPayslip.lstEarnings} {...dicLineTableLabels} />
+        <LineTable strTitle={t("deductions", "Deductions")} lstLines={objPayslip.lstDeductions} {...dicLineTableLabels} />
       </Box>
 
       <Box sx={{ mt: 2 }}>
-        <LineTable strTitle="Information" lstLines={objPayslip.lstInformation} />
+        <LineTable strTitle={t("information", "Information")} lstLines={objPayslip.lstInformation} {...dicLineTableLabels} />
       </Box>
 
       {objPayslip.lstEmployerContributions.length ? (
         <Box sx={{ mt: 2 }}>
           <LineTable
-            strTitle="Employer Contributions"
+            strTitle={t("employer_contributions", "Employer Contributions")}
             lstLines={objPayslip.lstEmployerContributions}
+            {...dicLineTableLabels}
           />
         </Box>
       ) : null}
@@ -202,9 +216,9 @@ export default function PayslipPreviewContent({
             gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
           }}
         >
-          <DetailRow strLabel="Gross" strValue={formatCurrency(dicTotals.decGrossEarnings)} />
-          <DetailRow strLabel="Deductions" strValue={formatCurrency(dicTotals.decTotalDeductions)} />
-          <DetailRow strLabel="Net Pay" strValue={formatCurrency(dicTotals.decNetPay)} />
+          <DetailRow strLabel={t("gross", "Gross")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
+          <DetailRow strLabel={t("deductions", "Deductions")} strValue={formatCurrency(dicTotals.decTotalDeductions)} />
+          <DetailRow strLabel={t("net_pay", "Net Pay")} strValue={formatCurrency(dicTotals.decNetPay)} />
         </Box>
         <Typography sx={{ color: "#475569", fontSize: "0.88rem", mt: 1.5 }}>
           {dicTotals.strNetPayInWords}

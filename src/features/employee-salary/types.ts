@@ -30,6 +30,9 @@ export type EmployeeSalaryStructureComponentOption = {
   strComponentName: string | null;
   strComponentCategory: string | null;
   strValueSource: string;
+  decFixedAmount?: number | null;
+  decPercentageValue?: number | null;
+  strFormulaExpression?: string | null;
   blnAllowManualOverride: boolean;
   intLineOrder: number;
 };
@@ -107,6 +110,9 @@ export type EmployeeSalaryOverrideFormValue = {
   decAmountMonthly: string;
   decAmountAnnual: string;
   decPercentageValue: string;
+  strDefaultMonthly: string;
+  strDefaultAnnual: string;
+  strDefaultPercentage: string;
   strRemarks: string;
 };
 
