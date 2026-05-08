@@ -119,10 +119,10 @@ export default function SalaryStructureEditorPage({
             ...dicPrevious,
             lstTexts: dicPrevious.lstTexts.map((dicText, intIndex) => intIndex === 0
               ? {
-                  ...dicText,
-                  intLanguageID: intEnglishID,
-                  strLanguageName: objOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intEnglishID)?.strLabel ?? ""
-                }
+                ...dicText,
+                intLanguageID: intEnglishID,
+                strLanguageName: objOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intEnglishID)?.strLabel ?? ""
+              }
               : dicText)
           }));
         }
@@ -226,9 +226,9 @@ export default function SalaryStructureEditorPage({
         ...dicNext,
         lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0
           ? {
-              ...dicText,
-              strStructureName,
-            }
+            ...dicText,
+            strStructureName,
+          }
           : dicText),
       };
     });
@@ -350,22 +350,22 @@ export default function SalaryStructureEditorPage({
         ),
         strSourceStructureDescription
           ? salaryStructureService.translateSalaryStructureText(
-              strSourceStructureDescription,
-              intDefaultLanguageID,
-              intLanguageID,
-            )
+            strSourceStructureDescription,
+            intDefaultLanguageID,
+            intLanguageID,
+          )
           : Promise.resolve(""),
       ]);
       setDicForm((dicPrevious) => ({
         ...dicPrevious,
         lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
           ? {
-              ...dicText,
-              intLanguageID,
-              strLanguageName: dicSelectedLanguage.strLabel,
-              strStructureName: strTranslatedName,
-              strStructureDescription: strTranslatedDescription,
-            }
+            ...dicText,
+            intLanguageID,
+            strLanguageName: dicSelectedLanguage.strLabel,
+            strStructureName: strTranslatedName,
+            strStructureDescription: strTranslatedDescription,
+          }
           : dicText),
       }));
       setDicLastTranslatedSourceByRow((dicPrevious) => ({
@@ -492,7 +492,7 @@ export default function SalaryStructureEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                variant="outlined"
+                className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/salary-structures")}
                 sx={{
@@ -500,9 +500,11 @@ export default function SalaryStructureEditorPage({
                   height: 38,
                   minHeight: 38,
                   py: 0,
-                  px: 1.5,
+                  px: 2.25,
+                  minWidth: 100,
                   fontSize: "0.9rem",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
@@ -514,7 +516,7 @@ export default function SalaryStructureEditorPage({
                 {t("back_button", "Back")}
               </Button>
               <Button
-                variant="contained"
+                className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
                 disabled={!blnCanSave || blnSaving}
@@ -523,9 +525,11 @@ export default function SalaryStructureEditorPage({
                   height: 38,
                   minHeight: 38,
                   py: 0,
-                  px: 1.75,
+                  px: 2.25,
+                  minWidth: 100,
                   fontSize: "0.9rem",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
@@ -629,18 +633,17 @@ export default function SalaryStructureEditorPage({
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-            <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled sx={{ borderRadius: "12px" }}>
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled>
               {t("add_language", "Add Language")}
             </Button>
             <Button
-              variant="contained"
+              className={styles.primaryButton}
               onClick={() => void handleTranslateClick()}
               disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-              sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
                 ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                : t("translate", "Translate")}
+                : t("translate", "AI Translate")}
             </Button>
           </Box>
         </Stack>
@@ -716,7 +719,25 @@ export default function SalaryStructureEditorPage({
               )}
             </Typography>
           </Box>
-          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={handleAddLineRow} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
+          <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
+            onClick={handleAddLineRow} disabled={blnFieldDisabled}
+            sx={{
+              borderRadius: "14px",
+              height: 38,
+              minHeight: 38,
+              py: 0,
+              px: 2.25,
+              minWidth: 100,
+              fontSize: "0.9rem",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              "& .MuiButton-startIcon": {
+                mr: 0.75,
+                "& svg": {
+                  fontSize: "1rem"
+                }
+              }
+            }}>
             {t("add_line", "Add Line")}
           </Button>
         </Stack>

@@ -36,6 +36,10 @@ type TaxRegimeEditorPageProps = {
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
 
+function getDefaultEffectiveFromYear(objOptions: TaxRegimeFormOptions, strCurrentValue: string) {
+  return strCurrentValue || objOptions.strDefaultEffectiveFromYear || objOptions.lstFinancialYears[0] || "";
+}
+
 export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegimeEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
@@ -86,7 +90,8 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         } else {
           setDicForm((dicPrevious) => ({
             ...dicPrevious,
-            strCountryCode: objOptions.lstCountries[0]?.strCode ?? dicPrevious.strCountryCode
+            strCountryCode: objOptions.lstCountries[0]?.strCode ?? dicPrevious.strCountryCode,
+            strEffectiveFromYear: getDefaultEffectiveFromYear(objOptions, dicPrevious.strEffectiveFromYear)
           }));
         }
       } catch (objError) {
@@ -110,16 +115,32 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
     return new Map((objFormOptions?.lstCountries ?? []).map((dicOption) => [dicOption.strCode ?? String(dicOption.intID), dicOption]));
   }, [objFormOptions]);
 
+  const lstEffectiveYearOptions = useMemo(() => {
+    const lstOptions = [...(objFormOptions?.lstFinancialYears ?? [])];
+    if (dicForm.strEffectiveFromYear && !lstOptions.includes(dicForm.strEffectiveFromYear)) {
+      lstOptions.unshift(dicForm.strEffectiveFromYear);
+    }
+    return lstOptions;
+  }, [dicForm.strEffectiveFromYear, objFormOptions]);
+
   function updateField<TKey extends keyof TaxRegimeFormValues>(strField: TKey, objValue: TaxRegimeFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateDefaultRegime(blnIsDefaultRegime: boolean) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      blnIsDefaultRegime,
+      blnAllowEmployeeOptOut: blnIsDefaultRegime ? dicPrevious.blnAllowEmployeeOptOut : false
+    }));
   }
 
   async function handleSave() {
     if (!blnCanSave) {
       return;
     }
-    if (!dicForm.strRegimeCode.trim() || !dicForm.strRegimeName.trim() || !dicForm.strCountryCode.trim()) {
-      setStrError(t("validation_required_fields", "Regime code, regime name, and country are required."));
+    if (!dicForm.strRegimeCode.trim() || !dicForm.strRegimeName.trim() || !dicForm.strCountryCode.trim() || !dicForm.strEffectiveFromYear.trim()) {
+      setStrError(t("validation_required_fields", "Regime code, regime name, country, and effective from year are required."));
       return;
     }
     setBlnSaving(true);
@@ -212,9 +233,15 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
               </Typography>
             </Paper>
             <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_scope", "Future-ready")}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("effective_from_year", "Effective From Year")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {t("scope_copy", "Regime header stays reusable across financial-year slab revisions")}
+                {dicForm.strEffectiveFromYear ? `FY ${dicForm.strEffectiveFromYear}` : t("not_selected", "Not selected")}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("default_regime", "Default Regime")}</Typography>
+              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
+                {dicForm.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
               </Typography>
             </Paper>
           </Stack>
@@ -279,7 +306,31 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
               ))}
             </TextField>
 
-            <Box sx={{ display: "flex", alignItems: "center" }}>
+            <TextField
+              label={t("effective_from_year", "Effective From Year")}
+              select
+              value={dicForm.strEffectiveFromYear}
+              onChange={(objEvent) => updateField("strEffectiveFromYear", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              fullWidth
+              required
+            >
+              {lstEffectiveYearOptions.map((strFinancialYearCode) => (
+                <MenuItem key={strFinancialYearCode} value={strFinancialYearCode}>
+                  {`FY ${strFinancialYearCode}`}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
+              <FormControlLabel
+                control={<Switch checked={dicForm.blnIsDefaultRegime} onChange={(objEvent) => updateDefaultRegime(objEvent.target.checked)} disabled={blnFieldDisabled} />}
+                label={t("set_as_default_regime", "Set as Default Regime")}
+              />
+              <FormControlLabel
+                control={<Switch checked={dicForm.blnAllowEmployeeOptOut} onChange={(objEvent) => updateField("blnAllowEmployeeOptOut", objEvent.target.checked)} disabled={blnFieldDisabled || !dicForm.blnIsDefaultRegime} />}
+                label={t("allow_employee_opt_out", "Allow Employee Opt-Out")}
+              />
               <FormControlLabel
                 control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}

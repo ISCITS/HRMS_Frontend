@@ -158,7 +158,7 @@ function buildOverrideRows(
     );
     const strDefaultAnnual = formatOptionalDefaultValue(
       dicLine.decAmountAnnual ??
-        (decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : null)
+      (decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : null)
     );
     return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
@@ -463,21 +463,23 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                variant="outlined"
+                className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/employee-salary")}
                 sx={{
                   borderRadius: "14px",
-                  height: 40,
-                  minHeight: 40,
+                  height: 38,
+                  minHeight: 38,
                   py: 0,
-                  px: 1.75,
-                  fontSize: "0.92rem",
-                  lineHeight: 1.1,
+                  px: 2.25,
+                  minWidth: 100,
+                  fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
-                      fontSize: "1.05rem"
+                      fontSize: "1rem"
                     }
                   }
                 }}
@@ -488,9 +490,27 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <>
                   {blnCanUnassignSalary ? (
                     <Button
+                      className={styles.secondaryButton}
                       variant="outlined"
                       color="warning"
                       startIcon={<RemoveCircleOutlineRoundedIcon />}
+                      sx={{
+                        borderRadius: "14px",
+                        height: 38,
+                        minHeight: 38,
+                        py: 0,
+                        px: 2.25,
+                        minWidth: 100,
+                        fontSize: "0.9rem",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                        "& .MuiButton-startIcon": {
+                          mr: 0.75,
+                          "& svg": {
+                            fontSize: "1rem"
+                          }
+                        }
+                      }}
                       onClick={() =>
                         setObjConfirmDialog({
                           strTitle: t("employee_salary_unassign_title", "Unassign Salary"),
@@ -501,42 +521,29 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                           strConfirmLabel: t("employee_salary_unassign_button", "Unassign Salary")
                         })
                       }
-                      sx={{
-                        borderRadius: "14px",
-                        height: 40,
-                        minHeight: 40,
-                        py: 0,
-                        px: 1.75,
-                        fontSize: "0.92rem",
-                        lineHeight: 1.1,
-                        "& .MuiButton-startIcon": {
-                          mr: 0.75,
-                          "& svg": {
-                            fontSize: "1.05rem"
-                          }
-                        }
-                      }}
                     >
                       {t("employee_salary_unassign_button", "Unassign Salary")}
                     </Button>
                   ) : null}
                   {blnCanOpenAssignRevise ? (
                     <Button
-                      variant="contained"
+                      className={styles.primaryButton}
                       startIcon={<HistoryRoundedIcon />}
                       onClick={handleOpenRevisionDialog}
                       sx={{
                         borderRadius: "14px",
-                        height: 40,
-                        minHeight: 40,
+                        height: 38,
+                        minHeight: 38,
                         py: 0,
-                        px: 2,
-                        fontSize: "0.92rem",
-                        lineHeight: 1.1,
+                        px: 2.25,
+                        minWidth: 100,
+                        fontSize: "0.9rem",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
                         "& .MuiButton-startIcon": {
                           mr: 0.75,
                           "& svg": {
-                            fontSize: "1.05rem"
+                            fontSize: "1rem"
                           }
                         }
                       }}
@@ -867,10 +874,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Paper>
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-              <Button variant="outlined" onClick={() => setBlnDialogOpen(false)} disabled={blnSaving} sx={{ borderRadius: "14px" }}>
+              <Button className={styles.secondaryButton} onClick={() => setBlnDialogOpen(false)} disabled={blnSaving}>
                 {t("employee_salary_cancel_button", "Cancel")}
               </Button>
-              <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={handleSaveRevision} disabled={blnSaving} sx={{ borderRadius: "14px" }}>
+              <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSaveRevision} disabled={blnSaving}>
                 {blnSaving
                   ? t("employee_salary_saving", "Saving...")
                   : t("employee_salary_save_revision", "Save Revision")}

@@ -9,6 +9,9 @@ export type TaxRegimeListRecord = {
   strRegimeCode: string;
   strRegimeName: string;
   strCountryCode: string;
+  blnIsDefaultRegime: boolean;
+  blnAllowEmployeeOptOut: boolean;
+  strEffectiveFromYear: string;
   blnIsActive: boolean;
   intSlabCount: number;
 };
@@ -19,12 +22,16 @@ export type TaxRegimeFormValues = {
   strRegimeCode: string;
   strRegimeName: string;
   strCountryCode: string;
+  blnIsDefaultRegime: boolean;
+  blnAllowEmployeeOptOut: boolean;
+  strEffectiveFromYear: string;
   blnIsActive: boolean;
 };
 
 export type TaxRegimeFormOptions = {
   lstCountries: TaxRegimeOption[];
   lstFinancialYears: string[];
+  strDefaultEffectiveFromYear: string;
 };
 
 export type TaxSlabLineFormValue = {

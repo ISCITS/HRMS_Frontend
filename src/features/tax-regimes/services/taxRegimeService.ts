@@ -32,6 +32,9 @@ function mapTaxRegimeApiRecord(dicRecord: TaxRegimeApiRecord): TaxRegimeDetailRe
     strRegimeCode: dicRecord.strRegimeCode,
     strRegimeName: dicRecord.strRegimeName,
     strCountryCode: dicRecord.strCountryCode,
+    blnIsDefaultRegime: dicRecord.blnIsDefaultRegime ?? false,
+    blnAllowEmployeeOptOut: dicRecord.blnAllowEmployeeOptOut ?? false,
+    strEffectiveFromYear: dicRecord.strEffectiveFromYear ?? "",
     blnIsActive: dicRecord.blnIsActive,
     intSlabCount: dicRecord.intSlabCount ?? 0
   };
@@ -70,6 +73,9 @@ function toTaxRegimePayload(dicValues: TaxRegimeFormValues) {
     strRegimeCode: dicValues.strRegimeCode.trim().toUpperCase(),
     strRegimeName: dicValues.strRegimeName.trim(),
     strCountryCode: dicValues.strCountryCode.trim().toUpperCase(),
+    blnIsDefaultRegime: dicValues.blnIsDefaultRegime,
+    blnAllowEmployeeOptOut: dicValues.blnIsDefaultRegime ? dicValues.blnAllowEmployeeOptOut : false,
+    strEffectiveFromYear: dicValues.strEffectiveFromYear.trim(),
     blnIsActive: dicValues.blnIsActive
   };
 }
@@ -92,6 +98,9 @@ export function createInitialTaxRegimeForm(): TaxRegimeFormValues {
     strRegimeCode: "",
     strRegimeName: "",
     strCountryCode: "IN",
+    blnIsDefaultRegime: false,
+    blnAllowEmployeeOptOut: false,
+    strEffectiveFromYear: "",
     blnIsActive: true
   };
 }
@@ -101,6 +110,9 @@ export function toTaxRegimeFormValues(dicRecord: TaxRegimeDetailRecord): TaxRegi
     strRegimeCode: dicRecord.strRegimeCode,
     strRegimeName: dicRecord.strRegimeName,
     strCountryCode: dicRecord.strCountryCode,
+    blnIsDefaultRegime: dicRecord.blnIsDefaultRegime,
+    blnAllowEmployeeOptOut: dicRecord.blnAllowEmployeeOptOut,
+    strEffectiveFromYear: dicRecord.strEffectiveFromYear,
     blnIsActive: dicRecord.blnIsActive
   };
 }
