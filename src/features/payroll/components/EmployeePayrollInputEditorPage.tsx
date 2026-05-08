@@ -325,7 +325,6 @@ export default function EmployeePayrollInputEditorPage({
         }}
       >
         <Stack spacing={2}>
-<<<<<<< Updated upstream
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
@@ -346,31 +345,11 @@ export default function EmployeePayrollInputEditorPage({
                 alignItems: { xs: "stretch", sm: "center" },
                 alignSelf: { md: "flex-start" },
               }}
-=======
-          <Box>
-            <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-              {strMode === "view"
-                ? t("view_title", "View Employee Payroll Input")
-                : strMode === "edit"
-                ? t("edit_title", "Edit Employee Payroll Input")
-                : t("add_title", "Create Employee Payroll Input")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-              {t("subtitle", "Move employee payroll input maintenance out of popup mode and into a dedicated full screen.")}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push(strBackRoute || "/payroll/employee-payroll-inputs")}
-              disabled={blnSaving}
->>>>>>> Stashed changes
             >
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/payroll/employee-payroll-inputs")}
+                onClick={() => objRouter.push(strBackRoute || "/payroll/employee-payroll-inputs")}
                 disabled={blnSaving}
               >
                 {t("back_to_list", "Back to List")}

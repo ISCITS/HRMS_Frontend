@@ -277,8 +277,6 @@ export default function PayrollResultDetailPage({
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pb: 3, pr: 0.5 }}>
-
-<<<<<<< Updated upstream
       <Paper
         sx={{
           borderRadius: "28px",
@@ -344,57 +342,18 @@ export default function PayrollResultDetailPage({
               <Button
                 className={styles.secondaryButton}
                 variant="outlined"
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push(blnPayslipScreen ? "/payroll/payslips" : "/payroll/results")}
+                  startIcon={<ArrowBackRoundedIcon />}
+                onClick={() =>
+                  objRouter.push(
+                    strBackRoute ||
+                      (blnPayslipScreen ? "/payroll/payslips" : "/payroll/results")
+                  )
+                }
                 sx={objActionButtonSx}
               >
                 {t("back_to_list", "Back to List")}
               </Button>
             </Stack>
-=======
-      <Box className={styles.topBar}>
-        <Button
-          className={styles.secondaryButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push(strBackRoute || (blnPayslipScreen ? "/payroll/payslips" : "/payroll/results"))}
-        >
-          {t("back_to_list", "Back to List")}
-        </Button>
-        {blnPayslipScreen ? (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ReceiptLongRoundedIcon />}
-              onClick={loadPayslipPreview}
-              disabled={blnPayslipLoading}
-            >
-              {t("preview_payslip", "Preview Payslip")}
-            </Button>
-            <Button
-              className={styles.primaryButton}
-              startIcon={<ReceiptLongRoundedIcon />}
-              onClick={generatePayslip}
-              disabled={blnPayslipLoading}
-            >
-              {t("generate_payslip", "Generate")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => openGeneratedPayslip(false)}
-              disabled={blnPayslipLoading}
-            >
-              {t("download_payslip", "Download")}
-            </Button>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<PrintRoundedIcon />}
-              onClick={() => openGeneratedPayslip(true)}
-              disabled={blnPayslipLoading}
-            >
-              {t("print_payslip", "Print")}
-            </Button>
->>>>>>> Stashed changes
           </Stack>
           <Box
             sx={{
