@@ -257,6 +257,14 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("country", "Country")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strCountryCode}</Typography>
             </Paper>
+            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("effective_from_year", "Effective From Year")}</Typography>
+              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strEffectiveFromYear ? `FY ${objRegime.strEffectiveFromYear}` : "-"}</Typography>
+            </Paper>
+            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("default_regime", "Default Regime")}</Typography>
+              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}</Typography>
+            </Paper>
           </Stack>
         </Stack>
       </Paper>
@@ -275,7 +283,26 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
               {t("slab_lines_help", "Keep financial year specific slabs in ascending order. Use an empty Slab To Amount to mark the open-ended last slab for that year.")}
             </Typography>
           </Box>
-          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={handleAddLine} disabled={blnFieldDisabled} sx={{ borderRadius: "12px" }}>
+          <Button
+            className={styles.primaryButton}
+            startIcon={<AddRoundedIcon />}
+            onClick={handleAddLine}
+            disabled={blnFieldDisabled}
+            sx={{
+              height: 38,
+              minHeight: 38,
+              py: 0,
+              px: 1.75,
+              fontSize: "0.9rem",
+              whiteSpace: "nowrap",
+              "& .MuiButton-startIcon": {
+                mr: 0.75,
+                "& svg": {
+                  fontSize: "1rem"
+                }
+              }
+            }}
+          >
             {t("add_slab_line", "Add Slab Line")}
           </Button>
         </Stack>

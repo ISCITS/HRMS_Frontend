@@ -52,7 +52,7 @@ const lstRowsPerPageOptions = [10, 20, 50];
 const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
 
 function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[]) {
-  const lstHeaders = ["Regime Code", "Regime Name", "Country", "Slabs", "Status"];
+  const lstHeaders = ["Regime Code", "Regime Name", "Country", "Effective From Year", "Default Regime", "Employee Opt-Out", "Slabs", "Status"];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
@@ -60,6 +60,9 @@ function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[]) {
         dicRow.strRegimeCode,
         dicRow.strRegimeName,
         dicRow.strCountryCode,
+        dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : "",
+        dicRow.blnIsDefaultRegime ? "Yes" : "No",
+        dicRow.blnAllowEmployeeOptOut ? "Yes" : "No",
         dicRow.intSlabCount,
         dicRow.blnIsActive ? "Active" : "Inactive"
       ]
@@ -87,6 +90,9 @@ function exportPdf(strTitle: string, lstRows: TaxRegimeListRecord[]) {
       <td>${dicRow.strRegimeCode}</td>
       <td>${dicRow.strRegimeName}</td>
       <td>${dicRow.strCountryCode}</td>
+      <td>${dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : ""}</td>
+      <td>${dicRow.blnIsDefaultRegime ? "Yes" : "No"}</td>
+      <td>${dicRow.blnAllowEmployeeOptOut ? "Yes" : "No"}</td>
       <td>${dicRow.intSlabCount}</td>
       <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
     </tr>
@@ -112,6 +118,9 @@ function exportPdf(strTitle: string, lstRows: TaxRegimeListRecord[]) {
               <th>Regime Code</th>
               <th>Regime Name</th>
               <th>Country</th>
+              <th>Effective From Year</th>
+              <th>Default Regime</th>
+              <th>Employee Opt-Out</th>
               <th>Slabs</th>
               <th>Status</th>
             </tr>
@@ -348,6 +357,9 @@ export default function TaxRegimeListPage() {
                 <th>{t("regime_code", "Regime Code")}</th>
                 <th>{t("regime_name", "Regime Name")}</th>
                 <th>{t("country", "Country")}</th>
+                <th>{t("effective_from_year", "Effective From Year")}</th>
+                <th>{t("default_regime", "Default Regime")}</th>
+                <th>{t("employee_opt_out", "Employee Opt-Out")}</th>
                 <th>{t("slabs", "Slabs")}</th>
                 <th>{t("status", "Status")}</th>
               </tr>
@@ -355,7 +367,7 @@ export default function TaxRegimeListPage() {
             <tbody>
               {lstFilteredRows.length === 0 ? (
                 <tr>
-                  <td className={styles.emptyState} colSpan={6}>{t("no_records", "No tax regimes found.")}</td>
+                  <td className={styles.emptyState} colSpan={9}>{t("no_records", "No tax regimes found.")}</td>
                 </tr>
               ) : lstVisibleRows.map((dicRow) => (
                 <tr key={dicRow.intID}>
@@ -395,6 +407,13 @@ export default function TaxRegimeListPage() {
                     </Box>
                   </td>
                   <td>{dicRow.strCountryCode}</td>
+                  <td>{dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : "-"}</td>
+                  <td>
+                    <span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>
+                      {dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
+                    </span>
+                  </td>
+                  <td>{dicRow.blnAllowEmployeeOptOut ? t("yes", "Yes") : t("no", "No")}</td>
                   <td>{dicRow.intSlabCount}</td>
                   <td>
                     <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>

@@ -240,6 +240,9 @@ export type TaxRegimeApiRecord = {
   strRegimeCode: string;
   strRegimeName: string;
   strCountryCode: string;
+  blnIsDefaultRegime: boolean;
+  blnAllowEmployeeOptOut: boolean;
+  strEffectiveFromYear: string;
   blnIsActive: boolean;
   intSlabCount: number;
 };
@@ -257,6 +260,7 @@ export type TaxSlabApiRecord = {
 export type TaxRegimeFormOptionsApiRecord = {
   lstCountries: EmployeeLookupOptionApiRecord[];
   lstFinancialYears: string[];
+  strDefaultEffectiveFromYear: string;
 };
 
 export type TaxSlabSetApiRecord = {

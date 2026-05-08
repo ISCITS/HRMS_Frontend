@@ -423,19 +423,21 @@ export default function SalaryComponentEditorPage({
                 )}
               </Typography>
             </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
               <Button
-                variant="outlined"
+                className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/salary-components")}
-                sx={{
+                 sx={{
                   borderRadius: "14px",
                   height: 38,
                   minHeight: 38,
                   py: 0,
-                  px: 1.5,
+                  px: 2.25,
+                  minWidth: 100,
                   fontSize: "0.9rem",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {
@@ -443,15 +445,16 @@ export default function SalaryComponentEditorPage({
                     }
                   }
                 }}
+
               >
                 {t("back_button", "Back")}
               </Button>
               <Button
-                variant="contained"
+                className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
                 disabled={!blnCanSave || blnSaving}
-                sx={{
+                 sx={{
                   borderRadius: "14px",
                   height: 38,
                   minHeight: 38,
@@ -468,6 +471,7 @@ export default function SalaryComponentEditorPage({
                     }
                   }
                 }}
+
               >
                 {blnSaving ? t("saving", "Saving...") : t("save_component", "Save Component")}
               </Button>
@@ -610,18 +614,17 @@ export default function SalaryComponentEditorPage({
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-            <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled sx={{ borderRadius: "12px" }}>
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled>
               {t("add_language", "Add Language")}
             </Button>
             <Button
-              variant="contained"
+              className={styles.primaryButton}
               onClick={() => void handleTranslateClick()}
               disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-              sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
                 ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                : t("translate", "Translate")}
+                : t("translate", "AI Translate")}
             </Button>
           </Box>
         </Stack>

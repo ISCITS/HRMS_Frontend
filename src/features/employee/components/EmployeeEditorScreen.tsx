@@ -923,13 +923,15 @@ export default function EmployeeEditorScreen({
               startIcon={<ArrowBackRoundedIcon />}
               onClick={fnHandleBack}
               sx={{
+                borderRadius: "14px",
                 height: 38,
                 minHeight: 38,
-                minWidth: { xs: "100%", sm: 140 },
                 py: 0,
-                px: 1.5,
+                px: 2.25,
+                minWidth: 108,
                 fontSize: "0.9rem",
                 whiteSpace: "nowrap",
+                flexShrink: 0,
                 "& .MuiButton-startIcon": {
                   mr: 0.75,
                   "& svg": {
@@ -948,13 +950,15 @@ export default function EmployeeEditorScreen({
                 onClick={objPageActionConfig.fnOnClick}
                 disabled={objPageActionConfig.blnDisabled}
                 sx={{
+                  borderRadius: "14px",
                   height: 38,
                   minHeight: 38,
-                  minWidth: { xs: "100%", sm: 180 },
                   py: 0,
-                  px: 1.75,
+                  px: 2.25,
+                  minWidth: 108,
                   fontSize: "0.9rem",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                   "& .MuiButton-startIcon": {
                     mr: 0.75,
                     "& svg": {

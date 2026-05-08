@@ -19,6 +19,7 @@ import type {
   FamilyGender,
   FamilyRelationship
 } from "@/features/employee/types";
+import styles from "@/components/master/MasterScreen.module.css";
 
 type FamilyFormProps = {
   blnOpen: boolean;
@@ -148,8 +149,8 @@ export default function FamilyForm({
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={fnOnClose}>{t("cancel", "Cancel")}</Button>
-        <Button onClick={fnOnSubmit} variant="contained" disabled={blnSaving}>
+        <Button className={styles.secondaryButton} onClick={fnOnClose}>{t("cancel", "Cancel")}</Button>
+        <Button className={styles.primaryButton} onClick={fnOnSubmit} disabled={blnSaving}>
           {blnSaving ? t("saving", "Saving...") : strMode === "edit" ? t("update", "Update") : t("save", "Save")}
         </Button>
       </DialogActions>
