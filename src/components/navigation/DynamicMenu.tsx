@@ -128,17 +128,31 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   const strLowerRoute = strNormalizedRoute.toLowerCase();
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
-  const blnIsEssDeclarationModule =
-    (strModuleCode.includes("ess_declaration") && !strModuleCode.includes("category")) ||
-    strModuleName.includes("ess declaration");
-  const blnIsMyTaxDeclarationModule = strModuleName.includes("my tax");
+  const blnIsMyPayslipMenu =
+    strModuleCode.includes("my_payslip") ||
+    strModuleCode.includes("my-payslip") ||
+    strModuleName.includes("my payslip");
 
   if (
-    blnIsEssDeclarationModule &&
-    !blnIsMyTaxDeclarationModule &&
-    strLowerRoute === "/ess/my-tax-declarations"
+    strLowerRoute.startsWith("/ess/my-payslip") ||
+    strLowerRoute.startsWith("/ess/my-payslips") ||
+    blnIsMyPayslipMenu
   ) {
-    return "/salary/ess-declarations";
+    const lstSegments = strNormalizedRoute.split("/").filter(Boolean);
+    const strLastSegment = lstSegments.at(-1) ?? "";
+    const blnDetailRoute = /^\d+$/.test(strLastSegment);
+    return blnDetailRoute ? `/ess/my-payslips/${strLastSegment}` : "/ess/my-payslips";
+  }
+
+  if (
+    strModuleCode.includes("payslip") ||
+    strModuleName.includes("payslip") ||
+    strLowerRoute.includes("payslip")
+  ) {
+    const lstSegments = strNormalizedRoute.split("/").filter(Boolean);
+    const strLastSegment = lstSegments.at(-1) ?? "";
+    const blnDetailRoute = /^\d+$/.test(strLastSegment);
+    return blnDetailRoute ? `/payroll/payslips/${strLastSegment}` : "/payroll/payslips";
   }
 
   if (
@@ -153,6 +167,18 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     (strModuleCode.includes("payroll_result") || strModuleName.includes("payroll result"))
   ) {
     return "/payroll/results";
+  }
+
+  if (
+    strLowerRoute === "/payslips" ||
+    strLowerRoute === "/payroll/payslip" ||
+    strLowerRoute.startsWith("/payslips/") ||
+    strLowerRoute.startsWith("/payroll/payslip/")
+  ) {
+    const lstSegments = strNormalizedRoute.split("/").filter(Boolean);
+    const strLastSegment = lstSegments.at(-1) ?? "";
+    const blnDetailRoute = /^\d+$/.test(strLastSegment);
+    return blnDetailRoute ? `/payroll/payslips/${strLastSegment}` : "/payroll/payslips";
   }
 
   return strNormalizedRoute;
@@ -323,6 +349,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strRoute.includes("/salary-structures")) {
       return tSalaryStructures("page_title", strModuleName || "Salary Structures");
+    }
+
+    if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+      return "IT Declaration";
     }
 
     if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/runs")) {

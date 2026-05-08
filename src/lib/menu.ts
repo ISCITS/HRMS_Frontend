@@ -47,35 +47,8 @@ function normalizeRoute(strRoute?: string | null) {
   return strNormalized;
 }
 
-function resolveEssDeclarationRoute(objItem: MenuItem, strRoute: string | null) {
-  if (!strRoute) {
-    return strRoute;
-  }
-
-  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
-  const strModuleName = objItem.strModuleName.trim().toLowerCase();
-  const strLowerRoute = strRoute.trim().toLowerCase();
-  const blnIsEssDeclarationModule =
-    (strModuleCode.includes("ess_declaration") && !strModuleCode.includes("category")) ||
-    strModuleName.includes("ess declaration");
-  const blnIsMyTaxDeclarationModule = strModuleName.includes("my tax");
-
-  if (
-    blnIsEssDeclarationModule &&
-    !blnIsMyTaxDeclarationModule &&
-    strLowerRoute === "/ess/my-tax-declarations"
-  ) {
-    return "/salary/ess-declarations";
-  }
-
-  return strRoute;
-}
-
 function normalizeMenuItem(objItem: MenuItem): MenuItem {
-  const strNormalizedRoute = resolveEssDeclarationRoute(
-    objItem,
-    normalizeRoute(objItem.strRoute),
-  );
+  const strNormalizedRoute = normalizeRoute(objItem.strRoute);
   const blnIsContainerOnly =
     objItem.lstChildren.length > 0 && strNormalizedRoute === "/user-management";
 

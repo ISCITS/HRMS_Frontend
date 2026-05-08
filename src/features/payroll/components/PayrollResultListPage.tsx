@@ -27,6 +27,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
+import { authApiService } from "@/services";
 import type {
   PayrollResultDetailRecord,
   PayrollResultListRecord,
@@ -39,6 +40,8 @@ import {
 
 type PayrollResultListPageProps = {
   blnPayslipScreen?: boolean;
+  blnSelfOnly?: boolean;
+  blnEssMode?: boolean;
 };
 
 type SearchForm = {
@@ -200,6 +203,8 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
 
 export default function PayrollResultListPage({
   blnPayslipScreen = false,
+  blnSelfOnly = false,
+  blnEssMode = false,
 }: PayrollResultListPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
@@ -227,8 +232,10 @@ export default function PayrollResultListPage({
   const [objPreviewRecord, setObjPreviewRecord] =
     useState<PayrollResultDetailRecord | null>(null);
   const [intPayslipActionID, setIntPayslipActionID] = useState<number | null>(null);
+  const [intSelfEmployeeID, setIntSelfEmployeeID] = useState<number | null>(null);
   const blnCanAccessResults =
     canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
+  const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     setBlnLoading(true);
@@ -258,13 +265,30 @@ export default function PayrollResultListPage({
       return;
     }
 
-    loadResults().catch(() => undefined);
-  }, [blnPayslipScreen, blnRightsLoading]);
+    if (!blnSelfOnly) {
+      loadResults().catch(() => undefined);
+      return;
+    }
+
+    authApiService
+      .getCurrentUser()
+      .then((objUserResult) => {
+        const intResolvedEmployeeID = objUserResult.Data.objUser.intEmployeeID ?? null;
+        setIntSelfEmployeeID(intResolvedEmployeeID);
+      })
+      .catch(() => {
+        setIntSelfEmployeeID(null);
+      })
+      .finally(() => {
+        loadResults().catch(() => undefined);
+      });
+  }, [blnPayslipScreen, blnRightsLoading, blnSelfOnly]);
 
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
     const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
     return lstResults.filter((dicRow) => {
+      const blnSelfMatch = !blnSelfOnly || (intSelfEmployeeID !== null && dicRow.intEmployeeID === intSelfEmployeeID);
       const blnEmployeeMatch =
         !strEmployeeSearch ||
         dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
@@ -278,9 +302,9 @@ export default function PayrollResultListPage({
         (blnPayslipScreen
           ? dicRow.strPayslipStatus === dicSearchApplied.strStatus
           : dicRow.strStatus === dicSearchApplied.strStatus);
-      return blnEmployeeMatch && blnRunMatch && blnStatusMatch;
+      return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch;
     });
-  }, [blnPayslipScreen, dicSearchApplied, lstResults]);
+  }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults]);
 
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -374,20 +398,22 @@ export default function PayrollResultListPage({
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography className={styles.title}>
-              {blnPayslipScreen
-                ? t("payslips_title", "Payslips")
-                : t("payroll_results_title", "Payroll Results")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-              {blnPayslipScreen
-                ? t("payslips_help_generated", "View, download, print, or revise generated employee payslips.")
-                : t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
-            </Typography>
+        {!blnEssMode ? (
+          <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
+            <Box>
+              <Typography className={styles.title}>
+                {blnPayslipScreen
+                  ? t("payslips_title", "Payslips")
+                  : t("payroll_results_title", "Payroll Results")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.4 }}>
+                {blnPayslipScreen
+                  ? t("payslips_help_generated", "View, download, print, or revise generated employee payslips.")
+                  : t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
+        ) : null}
         <Box className={styles.searchRow}>
           <TextField
             value={dicSearchDraft.strSearchEmployee}
@@ -584,15 +610,21 @@ export default function PayrollResultListPage({
                           onView={() =>
                             objRouter.push(
                               blnPayslipScreen
-                                ? `/payroll/payslips/${dicRow.intID}`
+                                ? (blnEssMode
+                                    ? `/payroll/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                                    : `/payroll/payslips/${dicRow.intID}`)
                                 : `/payroll/results/${dicRow.intID}`
                             )
                           }
                           onEdit={() =>
                             objRouter.push(
                               dicRow.intEmployeePayrollInputID
-                                ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`
-                                : `/payroll/results/${dicRow.intID}`
+                                ? (blnEssMode
+                                    ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit?backRoute=${strEssBackRoute}`
+                                    : `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`)
+                                : (blnEssMode
+                                    ? `/payroll/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                                    : `/payroll/results/${dicRow.intID}`)
                             )
                           }
                         />

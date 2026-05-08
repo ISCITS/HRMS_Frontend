@@ -65,6 +65,12 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/tax-regimes") || strLowerPath.startsWith("/tax-regimes")) {
     return "tax-regimes";
   }
+  if (
+    strLowerPath.startsWith("/salary/it-declaration") ||
+    strLowerPath.startsWith("/salary/ess-declarations")
+  ) {
+    return "it-declaration";
+  }
 
   return "";
 }

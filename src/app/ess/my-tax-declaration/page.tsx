@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function EssMyTaxDeclarationsRedirectPage() {
+export default function EssMyTaxDeclarationRedirectPage() {
   redirect("/salary/it-declaration");
 }

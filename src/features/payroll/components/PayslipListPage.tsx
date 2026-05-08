@@ -2,6 +2,11 @@
 
 import PayrollResultListPage from "@/features/payroll/components/PayrollResultListPage";
 
-export default function PayslipListPage() {
-  return <PayrollResultListPage blnPayslipScreen />;
+type PayslipListPageProps = {
+  blnSelfOnly?: boolean;
+  blnEssMode?: boolean;
+};
+
+export default function PayslipListPage({ blnSelfOnly = false, blnEssMode = false }: PayslipListPageProps) {
+  return <PayrollResultListPage blnPayslipScreen blnSelfOnly={blnSelfOnly} blnEssMode={blnEssMode} />;
 }

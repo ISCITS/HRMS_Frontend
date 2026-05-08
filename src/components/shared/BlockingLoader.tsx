@@ -19,7 +19,7 @@ export default function BlockingLoader({
       sx={{
         backgroundColor: "rgba(15, 23, 42, 0.34)",
         backdropFilter: "blur(4px)",
-        zIndex: intZIndex,
+        zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
       }}
     >
       <Stack

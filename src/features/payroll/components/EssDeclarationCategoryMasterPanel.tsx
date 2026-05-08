@@ -77,51 +77,18 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
 };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstRowsPerPageOptions = [10, 20, 50];
-const lstModuleCodes = ["ESS_DECLARATION_CATEGORY", "ESS_DECLARATION_CATEGORIES", "ESS_DECLARATIONS"];
+const lstModuleCodes = [
+  "TAX_DECLARATION_COMPONENT",
+  "MY_TAX_DECLARATIONS",
+  "ESS_DECLARATION_CATEGORY",
+  "ESS_DECLARATION_CATEGORIES",
+  "ESS_DECLARATIONS",
+];
 
 type EssDeclarationCategoryMasterPanelProps = {
   strEntityLabel?: string;
   strEntityLabelPlural?: string;
 };
-const lstSampleCategories: EssDeclarationCategoryRecord[] = [
-  {
-    id: "sample-1",
-    code: "80C",
-    name: "Investments under 80C",
-    description: "Sample declaration category for PPF, ELSS, LIC, and similar tax-saving investments.",
-    declarationKind: "Investment",
-    linkedSalaryComponentId: null,
-    linkedSalaryComponentName: "",
-    maxLimitAmount: 150000,
-    proofRequired: true,
-    status: "Active",
-  },
-  {
-    id: "sample-2",
-    code: "HRA",
-    name: "House Rent Allowance",
-    description: "Sample declaration category for rent proof and HRA exemption.",
-    declarationKind: "Exemption",
-    linkedSalaryComponentId: null,
-    linkedSalaryComponentName: "",
-    maxLimitAmount: null,
-    proofRequired: true,
-    status: "Active",
-  },
-  {
-    id: "sample-3",
-    code: "LTA",
-    name: "Leave Travel Allowance",
-    description: "Sample declaration category for LTA travel reimbursement claims.",
-    declarationKind: "Reimbursement",
-    linkedSalaryComponentId: null,
-    linkedSalaryComponentName: "",
-    maxLimitAmount: 50000,
-    proofRequired: true,
-    status: "Inactive",
-  },
-];
-
 function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRecord): EssDeclarationCategoryRecord {
   return {
     id: String(dicRecord.intID),
@@ -135,10 +102,6 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
     proofRequired: dicRecord.blnProofRequired,
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
   };
-}
-
-function isNumericRecordId(strID: string) {
-  return Number.isFinite(Number(strID));
 }
 
 function formatAmount(numValue: number | null) {
@@ -348,15 +311,12 @@ export default function EssDeclarationCategoryMasterPanel({
     try {
       const objResult = await masterApiService.getEssDeclarationCategories();
       const lstMappedRecords = objResult.Data.map(mapEssDeclarationCategoryRecord);
-      if (lstMappedRecords.length === 0) {
-        setLstCategories(lstSampleCategories);
-      } else {
-        setLstCategories(lstMappedRecords);
-      }
+      setLstCategories(lstMappedRecords);
       setLstSelectedIds([]);
       setIntPage(1);
     } catch (objError) {
-      setLstCategories(lstSampleCategories);
+      showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
+      setLstCategories([]);
       setLstSelectedIds([]);
       setIntPage(1);
     } finally {
@@ -412,8 +372,6 @@ export default function EssDeclarationCategoryMasterPanel({
   const blnCanExport = canDoAny("export");
   const blnCanChangeStatus = blnCanEdit;
   const blnReadOnly = isReadOnly();
-  const blnHasSampleRows = useMemo(() => lstCategories.some((dicCategory) => !isNumericRecordId(dicCategory.id)), [lstCategories]);
-
   const dicSalaryComponentOptions = useMemo(
     () =>
       lstSalaryComponents
@@ -544,9 +502,8 @@ export default function EssDeclarationCategoryMasterPanel({
       return;
     }
 
-    const strCurrentID = strEditingId;
     const dicLocalRecord: EssDeclarationCategoryRecord = {
-      id: strMode === "add" ? `sample-local-${Date.now()}` : strCurrentID,
+      id: strEditingId,
       code: dicForm.code.trim().toUpperCase(),
       name: dicForm.name.trim(),
       description: dicForm.description.trim(),
@@ -557,18 +514,6 @@ export default function EssDeclarationCategoryMasterPanel({
       proofRequired: dicForm.proofRequired,
       status: dicForm.status,
     };
-
-    if (blnHasSampleRows || (strMode === "edit" && !isNumericRecordId(strCurrentID))) {
-      setLstCategories((lstPrevious) => {
-        if (strMode === "add") {
-          return [dicLocalRecord, ...lstPrevious];
-        }
-        return lstPrevious.map((dicCategory) => (dicCategory.id === strCurrentID ? { ...dicCategory, ...dicLocalRecord } : dicCategory));
-      });
-      closeDialog();
-      showToast(strMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess);
-      return;
-    }
 
     const objBody = {
       strCategoryCode: dicLocalRecord.code,
@@ -610,21 +555,9 @@ export default function EssDeclarationCategoryMasterPanel({
       strMessage: (strStatus === "Active" ? dicLabels.confirmBulkActivateMessage : dicLabels.confirmBulkDeactivateMessage).replace("{count}", String(lstSelectedIds.length)),
       strConfirmLabel: strStatus === "Active" ? dicLabels.bulkActivate : dicLabels.bulkDeactivate,
       fnOnConfirm: async () => {
-        const lstNumericIDs = lstSelectedIds.filter(isNumericRecordId).map(Number);
-        const lstLocalIDs = lstSelectedIds.filter((strID) => !isNumericRecordId(strID));
-
-        if (lstNumericIDs.length > 0) {
-          await masterApiService.bulkEssDeclarationCategoryStatus(lstNumericIDs, strStatus === "Active");
-          await loadCategories();
-        }
-        if (lstLocalIDs.length > 0) {
-          setLstCategories((lstPrevious) =>
-            lstPrevious.map((dicCategory) =>
-              lstLocalIDs.includes(dicCategory.id) ? { ...dicCategory, status: strStatus } : dicCategory
-            )
-          );
-          setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstLocalIDs.includes(strID)));
-        }
+        const lstNumericIDs = lstSelectedIds.map(Number);
+        await masterApiService.bulkEssDeclarationCategoryStatus(lstNumericIDs, strStatus === "Active");
+        await loadCategories();
         showToast(strStatus === "Active" ? dicLabels.bulkActivateSuccess : dicLabels.bulkDeactivateSuccess);
       },
     });
@@ -636,17 +569,9 @@ export default function EssDeclarationCategoryMasterPanel({
       strMessage: dicLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
       strConfirmLabel: dicLabels.bulkDelete,
       fnOnConfirm: async () => {
-        const lstNumericIDs = lstSelectedIds.filter(isNumericRecordId).map(Number);
-        const lstLocalIDs = lstSelectedIds.filter((strID) => !isNumericRecordId(strID));
-
-        if (lstNumericIDs.length > 0) {
-          await masterApiService.bulkEssDeclarationCategoryDelete(lstNumericIDs);
-          await loadCategories();
-        }
-        if (lstLocalIDs.length > 0) {
-          setLstCategories((lstPrevious) => lstPrevious.filter((dicCategory) => !lstLocalIDs.includes(dicCategory.id)));
-          setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstLocalIDs.includes(strID)));
-        }
+        const lstNumericIDs = lstSelectedIds.map(Number);
+        await masterApiService.bulkEssDeclarationCategoryDelete(lstNumericIDs);
+        await loadCategories();
         showToast(dicLabels.bulkDeleteSuccess);
       },
     });
@@ -658,12 +583,8 @@ export default function EssDeclarationCategoryMasterPanel({
       strMessage: dicLabels.confirmDeleteMessage,
       strConfirmLabel: dicCommonLabels.delete,
       fnOnConfirm: async () => {
-        if (!isNumericRecordId(strID)) {
-          setLstCategories((lstPrevious) => lstPrevious.filter((dicCategory) => dicCategory.id !== strID));
-        } else {
-          await masterApiService.bulkEssDeclarationCategoryDelete([Number(strID)]);
-          await loadCategories();
-        }
+        await masterApiService.bulkEssDeclarationCategoryDelete([Number(strID)]);
+        await loadCategories();
         showToast(dicLabels.deleteSuccess);
       },
     });
@@ -680,14 +601,8 @@ export default function EssDeclarationCategoryMasterPanel({
       strMessage: strNextStatus === "Active" ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
       strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
       fnOnConfirm: async () => {
-        if (!isNumericRecordId(strID)) {
-          setLstCategories((lstPrevious) =>
-            lstPrevious.map((dicItem) => (dicItem.id === strID ? { ...dicItem, status: strNextStatus } : dicItem))
-          );
-        } else {
-          await masterApiService.bulkEssDeclarationCategoryStatus([Number(strID)], strNextStatus === "Active");
-          await loadCategories();
-        }
+        await masterApiService.bulkEssDeclarationCategoryStatus([Number(strID)], strNextStatus === "Active");
+        await loadCategories();
         showToast(strNextStatus === "Active" ? dicLabels.activateSuccess : dicLabels.deactivateSuccess);
       },
     });

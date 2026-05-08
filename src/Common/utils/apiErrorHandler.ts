@@ -15,8 +15,10 @@ export type ApiEnvelope<TData> = {
 type ApiPayloadResponse<TData> = ApiEnvelope<TData> | { payload: string };
 type ApiErrorResponse<TData> = ApiEnvelope<TData> | { payload?: string; Msg?: string; message?: string; RequestId?: string };
 
-function buildRequestIdAwareMessage(strMessage: string, strRequestId?: string) {
-  const strResolvedMessage = strMessage.trim() || ApiDefaultMessage.RequestFailed;
+function buildRequestIdAwareMessage(strMessage: unknown, strRequestId?: string) {
+  const strResolvedMessage = typeof strMessage === "string"
+    ? (strMessage.trim() || ApiDefaultMessage.RequestFailed)
+    : ApiDefaultMessage.RequestFailed;
   if (!strRequestId?.trim()) {
     return strResolvedMessage;
   }
@@ -33,7 +35,7 @@ export class ApiRequestError extends Error {
   intStatusCode?: number;
   strRequestId?: string;
 
-  constructor(strMessage: string, objData?: unknown, intStatusCode?: number, strRequestId?: string) {
+  constructor(strMessage: unknown, objData?: unknown, intStatusCode?: number, strRequestId?: string) {
     super(buildRequestIdAwareMessage(strMessage, strRequestId));
     this.name = "ApiRequestError";
     this.objData = objData;

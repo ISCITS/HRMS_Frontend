@@ -175,6 +175,10 @@ function getLocalizedHeaderTitle(
     return tHeader("tax_regimes_title", "Tax Regimes");
   }
 
+  if (strHeaderModuleName === "it-declaration") {
+    return "IT Declaration";
+  }
+
   return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
 }
 

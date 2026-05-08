@@ -6,6 +6,7 @@ type PayrollEmployeePayrollInputEditPageProps = {
   }>;
   searchParams?: Promise<{
     mode?: string;
+    backRoute?: string;
   }>;
 };
 
@@ -20,6 +21,7 @@ export default async function PayrollEmployeePayrollInputEditPage({
     <EmployeePayrollInputEditorPage
       strMode={strMode}
       intInputID={Number(intInputID)}
+      strBackRoute={objSearchParams?.backRoute}
     />
   );
 }
