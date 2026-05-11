@@ -70,6 +70,33 @@ function getStatusTextColor(strStatus: DeclarationRow["strStatus"]) {
   return "#b91c1c";
 }
 
+function getDeclarationRowKey(objRow: DeclarationRow) {
+  return `${objRow.strSection.trim().toLowerCase()}|${objRow.strDescription.trim().toLowerCase()}`;
+}
+
+function dedupeDeclarationRows(lstInputRows: DeclarationRow[]) {
+  const dicByCompositeKey = new Map<string, DeclarationRow>();
+  for (const objRow of lstInputRows) {
+    const strKey = getDeclarationRowKey(objRow);
+    const objExisting = dicByCompositeKey.get(strKey);
+    if (!objExisting) {
+      dicByCompositeKey.set(strKey, objRow);
+      continue;
+    }
+
+    const blnExistingHasItemId = objExisting.intItemID != null;
+    const blnCurrentHasItemId = objRow.intItemID != null;
+    const blnPickCurrent =
+      (!blnExistingHasItemId && blnCurrentHasItemId) ||
+      objRow.decDeclaredAmount > objExisting.decDeclaredAmount;
+
+    if (blnPickCurrent) {
+      dicByCompositeKey.set(strKey, objRow);
+    }
+  }
+  return Array.from(dicByCompositeKey.values());
+}
+
 function formatApiErrorForUi(objError: unknown, strFallback: string) {
   const strRawMessage =
     objError instanceof Error
@@ -181,8 +208,13 @@ export default function SalaryEssDeclarationsPage() {
     decSavings: 0,
     strRecommendedRegime: "Old Regime" as Regime,
   });
+  const [objRegimeConfig, setObjRegimeConfig] = useState({
+    strDefaultRegime: "Old Regime" as Regime,
+    blnAllowEmployeeOptOut: true,
+  });
 
   const blnLocked = strFlowStatus === "SUBMITTED";
+  const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnHasAnyFilled = useMemo(() => lstRows.some((objRow) => objRow.decDeclaredAmount > 0), [lstRows]);
   const decDeclaredTotal = useMemo(() => lstRows.reduce((decTotal, objRow) => decTotal + objRow.decDeclaredAmount, 0), [lstRows]);
@@ -211,15 +243,17 @@ export default function SalaryEssDeclarationsPage() {
     setStrLastUpdated(objData.strLastUpdated || getDateLabel());
     setLstRows(
       objData.lstItems?.length
-        ? objData.lstItems.map((objItem) => ({
-            intItemID: objItem.intItemID,
-            strSection: objItem.strSection,
-            strDescription: objItem.strDescription,
-            strMaxLimit: objItem.strMaxLimit,
-            decDeclaredAmount: objItem.decDeclaredAmount,
-            strInvestmentName: objItem.strInvestmentName,
-            strStatus: objItem.strStatus,
-          }))
+        ? dedupeDeclarationRows(
+            objData.lstItems.map((objItem) => ({
+              intItemID: objItem.intItemID,
+              strSection: objItem.strSection,
+              strDescription: objItem.strDescription,
+              strMaxLimit: objItem.strMaxLimit,
+              decDeclaredAmount: objItem.decDeclaredAmount,
+              strInvestmentName: objItem.strInvestmentName,
+              strStatus: objItem.strStatus,
+            }))
+          )
         : []
     );
     setObjTaxSummary({
@@ -230,6 +264,10 @@ export default function SalaryEssDeclarationsPage() {
       decNewTax: objData.objSummary?.decNewTax ?? 0,
       decSavings: objData.objSummary?.decSavings ?? 0,
       strRecommendedRegime: (objData.objSummary?.strRecommendedRegime ?? "Old Regime") as Regime,
+    });
+    setObjRegimeConfig({
+      strDefaultRegime: (objData.objRegimeConfig?.strDefaultRegime ?? "Old Regime") as Regime,
+      blnAllowEmployeeOptOut: objData.objRegimeConfig?.blnAllowEmployeeOptOut ?? true,
     });
     setDicDirtyRows({});
     setBlnRegimeDirty(false);
@@ -270,9 +308,11 @@ export default function SalaryEssDeclarationsPage() {
             strMenuAction,
             blnUseAuthHeader: true,
           });
-          return (objCategoryResult.Data ?? [])
-            .filter((objCategory) => objCategory.blnIsActive)
-            .map(mapCategoryToRow);
+          return dedupeDeclarationRows(
+            (objCategoryResult.Data ?? [])
+              .filter((objCategory) => objCategory.blnIsActive)
+              .map(mapCategoryToRow)
+          );
         } catch (objError) {
           objLastError = objError;
         }
@@ -518,7 +558,7 @@ export default function SalaryEssDeclarationsPage() {
               <RadioGroup
                 row
                 value={strSelectedRegime || "Old Regime"}
-                disabled={blnLocked}
+                disabled={blnRegimeSwitchDisabled}
                 onChange={(objEvent) => { setStrSelectedRegime(objEvent.target.value as Regime); setBlnRegimeDirty(true); }}
                 sx={{
                   mr: { md: 0.5 },
@@ -550,6 +590,11 @@ export default function SalaryEssDeclarationsPage() {
               control={<Checkbox size="small" checked={blnDeclarationConfirm} onChange={(objEvent) => { const blnChecked = objEvent.target.checked; setBlnDeclarationConfirm(blnChecked); if (blnChecked && strWarning === "Please check confirmation checkbox before final submit.") { setStrWarning(""); } }} sx={{ color: "rgba(239,252,255,0.95)", "&.Mui-checked": { color: "#ffffff" } }} />}
               label={<Typography sx={{ fontSize: "0.76rem" }}>I confirm details are correct (required before final submit).</Typography>}
             />
+            {!objRegimeConfig.blnAllowEmployeeOptOut ? (
+              <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
+                Regime is locked by policy. Default regime: {objRegimeConfig.strDefaultRegime}
+              </Typography>
+            ) : null}
           </Stack>
         </Stack>
       </Paper>
@@ -594,7 +639,7 @@ export default function SalaryEssDeclarationsPage() {
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>Your Declarations (Linked from My Tax Declaration Master)</Typography>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>Your Declarations</Typography>
               <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked}>Refresh Amounts</Button>
             </Stack>
             <TableContainer sx={{ maxHeight: intDeclarationTableMaxHeight, overflowY: "auto", borderRadius: "8px", border: "1px solid #e2e8f0" }}>

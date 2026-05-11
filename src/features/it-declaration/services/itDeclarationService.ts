@@ -36,6 +36,10 @@ export type ItDeclarationDto = {
   strLastUpdated: string;
   lstItems: ItDeclarationItemDto[];
   objSummary: ItDeclarationSummaryDto;
+  objRegimeConfig?: {
+    strDefaultRegime: ItDeclarationRegime;
+    blnAllowEmployeeOptOut: boolean;
+  };
 };
 
 async function requestApi<TData>(objOptions: {
