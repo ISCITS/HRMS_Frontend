@@ -7,8 +7,12 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  InputLabel,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
   Paper,
+  Select,
   Snackbar,
   Stack,
   Step,
@@ -79,6 +83,7 @@ type TenantOnboardingFormState = {
     intDbPort: string;
     strDbUserName: string;
     strDbPassword: string;
+    lstModuleIDs: number[];
     blnIsPrimary: boolean;
     blnIsActive: boolean;
   };
@@ -146,6 +151,7 @@ const dicEmptyForm: TenantOnboardingFormState = {
     intDbPort: "5432",
     strDbUserName: "",
     strDbPassword: "",
+    lstModuleIDs: [],
     blnIsPrimary: true,
     blnIsActive: true,
   },
@@ -515,6 +521,37 @@ export default function TenantOnboardingPage() {
           <TextField label="DB Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
           <TextField type="password" label="DB Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"]} fullWidth />
         </Box>
+        <Box>
+          <InputLabel id="tenant-onboarding-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
+          <Select
+            labelId="tenant-onboarding-modules-label"
+            multiple
+            value={objForm.datastore.lstModuleIDs.map(String)}
+            onChange={(objEvent) => {
+              const lstSelectedValues = objEvent.target.value as string[];
+              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
+            }}
+            input={<OutlinedInput />}
+            renderValue={(lstSelectedValues) => {
+              const lstResolvedValues = lstSelectedValues as string[];
+              const lstLabels = lstResolvedValues
+                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
+                .filter(Boolean);
+              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
+            }}
+            fullWidth
+          >
+            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
+              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
+              return (
+                <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>
+                  <Checkbox checked={blnChecked} />
+                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </Box>
         <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} />} label="Datastore active" />
       </Stack>
     );
@@ -587,6 +624,7 @@ function buildRequestPayload(
       intDbPort: Number(objForm.datastore.intDbPort),
       strDbUserName: objForm.datastore.strDbUserName.trim(),
       strDbPassword: objForm.datastore.strDbPassword,
+      lstModuleIDs: objForm.datastore.lstModuleIDs,
       blnIsPrimary: objForm.datastore.blnIsPrimary,
       blnIsActive: objForm.datastore.blnIsActive,
     },

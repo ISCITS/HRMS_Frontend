@@ -15,6 +15,7 @@ export type TenantOnboardingFormOptions = {
   lstAuthModeTypes: TenantOnboardingLookupOption[];
   lstMfaFlags: TenantOnboardingLookupOption[];
   lstMfaTypes: TenantOnboardingLookupOption[];
+  lstModules: TenantOnboardingLookupOption[];
   lstIsolationModes: TenantOnboardingStaticOption[];
   lstSsoProviderTypes: TenantOnboardingStaticOption[];
   lstDatastoreTypes: TenantOnboardingStaticOption[];
@@ -54,6 +55,7 @@ export type TenantDatastorePayload = {
   intDbPort: number;
   strDbUserName: string;
   strDbPassword: string;
+  lstModuleIDs: number[];
   blnIsPrimary: boolean;
   blnIsActive: boolean;
 };
@@ -82,6 +84,7 @@ export type TenantOnboardingResponse = {
   strTenantUUID: string;
   strTenantCode: string;
   strTenantName: string;
+  lstModuleIDs: number[];
   intAuthModeConfigID: number;
   intDatastoreID: number;
   intSsoIdentityProviderID: number | null;

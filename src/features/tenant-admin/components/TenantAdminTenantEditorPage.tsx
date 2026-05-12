@@ -7,8 +7,12 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  InputLabel,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
   Paper,
+  Select,
   Snackbar,
   Stack,
   Step,
@@ -83,6 +87,7 @@ type TenantEditorFormState = {
     intDbPort: string;
     strDbUserName: string;
     strDbPassword: string;
+    lstModuleIDs: number[];
     blnIsPrimary: boolean;
     blnIsActive: boolean;
   };
@@ -150,6 +155,7 @@ const dicEmptyForm: TenantEditorFormState = {
     intDbPort: "5432",
     strDbUserName: "",
     strDbPassword: "",
+    lstModuleIDs: [],
     blnIsPrimary: true,
     blnIsActive: true,
   },
@@ -261,6 +267,7 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
         intDbPort: String(objPayload.objForm.objDatastore.intDbPort),
         strDbUserName: objPayload.objForm.objDatastore.strDbUserName,
         strDbPassword: "",
+        lstModuleIDs: objPayload.objForm.objDatastore.lstModuleIDs ?? [],
         blnIsPrimary: objPayload.objForm.objDatastore.blnIsPrimary,
         blnIsActive: objPayload.objForm.objDatastore.blnIsActive,
       },
@@ -504,6 +511,37 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           <TextField label="DB Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
           <TextField type="password" label="DB Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"] ?? (objSecrets.blnDbPasswordConfigured ? "Leave blank to keep the current DB password." : "")} fullWidth />
         </Box>
+        <Box>
+          <InputLabel id="tenant-editor-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
+          <Select
+            labelId="tenant-editor-modules-label"
+            multiple
+            value={objForm.datastore.lstModuleIDs.map(String)}
+            onChange={(objEvent) => {
+              const lstSelectedValues = objEvent.target.value as string[];
+              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
+            }}
+            input={<OutlinedInput />}
+            renderValue={(lstSelectedValues) => {
+              const lstResolvedValues = lstSelectedValues as string[];
+              const lstLabels = lstResolvedValues
+                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
+                .filter(Boolean);
+              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
+            }}
+            fullWidth
+          >
+            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
+              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
+              return (
+                <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>
+                  <Checkbox checked={blnChecked} />
+                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </Box>
         <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} />} label="Datastore active" />
       </Stack>
     );
@@ -647,6 +685,7 @@ function buildUpdatePayload(
       intDbPort: Number(objForm.datastore.intDbPort),
       strDbUserName: objForm.datastore.strDbUserName.trim(),
       strDbPassword: toNullableText(objForm.datastore.strDbPassword),
+      lstModuleIDs: objForm.datastore.lstModuleIDs,
       blnIsPrimary: objForm.datastore.blnIsPrimary,
       blnIsActive: objForm.datastore.blnIsActive,
     },
