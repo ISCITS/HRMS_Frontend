@@ -15,6 +15,28 @@ export type ItDeclarationItemDto = {
   decDeclaredAmount: number;
   strInvestmentName: string;
   strStatus: "Completed" | "In Progress" | "Not Started";
+  objProof?: {
+    intProofID: number;
+    strFileName: string;
+    strFilePath: string;
+    strMimeType: string;
+    intFileSizeBytes: number;
+    strVerificationStatus: string;
+  } | null;
+};
+
+export type ItDeclarationProofPreviewDto = {
+  intProofID: number;
+  strFileName: string;
+  strMimeType: string;
+  strBase64Content: string;
+  intFileSizeBytes: number;
+};
+
+export type ItDeclarationInvestmentOptionDto = {
+  strOptionCode: string;
+  strOptionName: string;
+  strSectionCode: string;
 };
 
 export type ItDeclarationSummaryDto = {
@@ -104,6 +126,60 @@ export const itDeclarationService = {
       strMenuAction: "ESS_IT_DECLARATION_UPDATE",
     });
     return objResult.Data;
+  },
+
+  async uploadItemProof(
+    intDeclarationID: number,
+    intItemID: number,
+    objFile: File,
+    strDocumentType = "investment_proof"
+  ): Promise<ItDeclarationDto> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    objFormData.append("strDocumentType", strDocumentType);
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/ess/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objFormData,
+      strMenuAction: "ESS_IT_DECLARATION_UPDATE",
+    });
+    return objResult.Data;
+  },
+
+  async previewItemProof(
+    intDeclarationID: number,
+    intItemID: number
+  ): Promise<ItDeclarationProofPreviewDto> {
+    const objResult = await requestApi<ItDeclarationProofPreviewDto>({
+      strPath: `/ess/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "ESS_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async deleteItemProof(
+    intDeclarationID: number,
+    intItemID: number
+  ): Promise<ItDeclarationDto | null> {
+    const objResult = await requestApi<ItDeclarationDto | null>({
+      strPath: `/ess/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "ESS_IT_DECLARATION_UPDATE",
+    });
+    return objResult.Data;
+  },
+
+  async listInvestmentOptions(
+    strSectionCode: string
+  ): Promise<ItDeclarationInvestmentOptionDto[]> {
+    const objResult = await requestApi<ItDeclarationInvestmentOptionDto[]>({
+      strPath: "/ess/it-declaration/investment-options",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { section_code: strSectionCode },
+      strMenuAction: "ESS_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? [];
   },
 
   async compareTax(intDeclarationID: number): Promise<ItDeclarationDto> {

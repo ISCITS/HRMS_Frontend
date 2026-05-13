@@ -90,18 +90,53 @@ type EssDeclarationCategoryMasterPanelProps = {
   strEntityLabelPlural?: string;
 };
 function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRecord): EssDeclarationCategoryRecord {
+  const objRecord = dicRecord as unknown as Record<string, unknown>;
+  const intID = objRecord.intID ?? objRecord.intId ?? objRecord.id;
+  const strCategoryCode = objRecord.strCategoryCode ?? objRecord.strCode ?? objRecord.category_code;
+  const strCategoryName = objRecord.strCategoryName ?? objRecord.strName ?? objRecord.category_name;
+  const strCategoryDescription = objRecord.strCategoryDescription ?? objRecord.strDescription ?? objRecord.category_description;
+  const strDeclarationKind = objRecord.strDeclarationKind ?? objRecord.strKind ?? objRecord.declaration_kind;
+  const intLinkedSalaryComponentID = objRecord.intLinkedSalaryComponentID ?? objRecord.intSalaryComponentID ?? objRecord.linked_salary_component_id;
+  const strLinkedSalaryComponentName = objRecord.strLinkedSalaryComponentName ?? objRecord.strSalaryComponentName ?? objRecord.linked_salary_component_name;
+  const decMaxLimitAmount = objRecord.decMaxLimitAmount ?? objRecord.decMaxLimit ?? objRecord.max_limit_amount;
+  const blnProofRequired = objRecord.blnProofRequired ?? objRecord.blnIsProofRequired ?? objRecord.proof_required;
+  const blnIsActive = objRecord.blnIsActive ?? objRecord.is_active ?? true;
+
   return {
-    id: String(dicRecord.intID),
-    code: dicRecord.strCategoryCode,
-    name: dicRecord.strCategoryName,
-    description: dicRecord.strCategoryDescription ?? "",
-    declarationKind: dicRecord.strDeclarationKind,
-    linkedSalaryComponentId: dicRecord.intLinkedSalaryComponentID ?? null,
-    linkedSalaryComponentName: dicRecord.strLinkedSalaryComponentName ?? "",
-    maxLimitAmount: dicRecord.decMaxLimitAmount ?? null,
-    proofRequired: dicRecord.blnProofRequired,
-    status: dicRecord.blnIsActive ? "Active" : "Inactive",
+    id: String(intID ?? ""),
+    code: String(strCategoryCode ?? ""),
+    name: String(strCategoryName ?? ""),
+    description: String(strCategoryDescription ?? ""),
+    declarationKind: String(strDeclarationKind ?? ""),
+    linkedSalaryComponentId: typeof intLinkedSalaryComponentID === "number" ? intLinkedSalaryComponentID : null,
+    linkedSalaryComponentName: String(strLinkedSalaryComponentName ?? ""),
+    maxLimitAmount: typeof decMaxLimitAmount === "number" ? decMaxLimitAmount : null,
+    proofRequired: Boolean(blnProofRequired),
+    status: Boolean(blnIsActive) ? "Active" : "Inactive",
   };
+}
+
+function resolveCategoryRows(objData: unknown) {
+  if (Array.isArray(objData)) {
+    return objData;
+  }
+  if (!objData || typeof objData !== "object") {
+    return [];
+  }
+  const objValue = objData as Record<string, unknown>;
+  if (Array.isArray(objValue.lstCategories)) {
+    return objValue.lstCategories;
+  }
+  if (Array.isArray(objValue.lstRecords)) {
+    return objValue.lstRecords;
+  }
+  if (Array.isArray(objValue.items)) {
+    return objValue.items;
+  }
+  if (Array.isArray(objValue.Data)) {
+    return objValue.Data;
+  }
+  return [];
 }
 
 function formatAmount(numValue: number | null) {
@@ -198,18 +233,18 @@ export default function EssDeclarationCategoryMasterPanel({
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingId, setStrEditingId] = useState("");
   const [dicForm, setDicForm] = useState<EssDeclarationCategoryForm>(dicEmptyForm);
-  const [objProofDocument, setObjProofDocument] = useState<File | null>(null);
   const [dicErrors, setDicErrors] = useState<Partial<Record<keyof EssDeclarationCategoryForm, string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [blnLookupLoading, setBlnLookupLoading] = useState(true);
+  const [blnLookupLoading, setBlnLookupLoading] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [strLoadDiagnostics, setStrLoadDiagnostics] = useState("");
 
   const dicCommonLabels = {
     activate: t("activate", "Activate"),
@@ -300,8 +335,11 @@ export default function EssDeclarationCategoryMasterPanel({
     validationNameRequired: t("validation_name_required", "Category name is required."),
   };
 
+  const blnHasMutatingRights = canDoAny("add") || canDoAny("edit") || canDoAny("delete") || canDoAny("export");
+  const blnCanView = canViewAny() || blnHasMutatingRights;
+
   async function loadCategories() {
-    if (!canViewAny()) {
+    if (!blnCanView) {
       setLstCategories([]);
       setLstSelectedIds([]);
       setBlnLoading(false);
@@ -309,16 +347,68 @@ export default function EssDeclarationCategoryMasterPanel({
     }
     setBlnLoading(true);
     try {
-      const objResult = await masterApiService.getEssDeclarationCategories();
-      const lstMappedRecords = objResult.Data.map(mapEssDeclarationCategoryRecord);
+      const lstActionFallbacks = [
+        "MASTER_ESS_DECLARATION_CATEGORY_LIST",
+        "MASTER_TAX_DECLARATION_COMPONENT_LIST",
+        "TAX_DECLARATION_COMPONENT_LIST",
+        "TAX_DECLARATION_COMPONENT_VIEW",
+        "ESS_IT_DECLARATION_VIEW",
+      ];
+      let lstRawRecords: unknown[] = [];
+      let strSource = "ess-declaration-categories";
+      const lstAttemptNotes: string[] = [];
+      let strLastAccessError = "";
+
+      for (const strAction of lstActionFallbacks) {
+        try {
+          const objResult = await masterApiService.getEssDeclarationCategoriesWithAction(strAction);
+          lstRawRecords = resolveCategoryRows(objResult.Data as unknown);
+          lstAttemptNotes.push(`${strAction}:${lstRawRecords.length}`);
+          if (lstRawRecords.length > 0) {
+            strSource = `ess-declaration-categories (${strAction})`;
+            break;
+          }
+        } catch (objError) {
+          const strMessage = objError instanceof Error ? objError.message : "request failed";
+          lstAttemptNotes.push(`${strAction}:ERR`);
+          if (strMessage.toLowerCase().includes("access is not available")) {
+            strLastAccessError = strMessage;
+            continue;
+          }
+          throw objError;
+        }
+      }
+
+      if (lstRawRecords.length === 0) {
+        try {
+          const objFallbackResult = await masterApiService.getTaxDeclarationComponents();
+          lstRawRecords = resolveCategoryRows(objFallbackResult.Data as unknown);
+          strSource = "tax-declaration-components";
+        } catch (objError) {
+          if (strLastAccessError) {
+            throw new Error(strLastAccessError);
+          }
+          throw objError;
+        }
+      }
+      const lstMappedRecords = lstRawRecords
+        .map((objRecord, intIndex) => {
+          const dicMapped = mapEssDeclarationCategoryRecord(objRecord as EssDeclarationCategoryApiRecord);
+          if (!dicMapped.id) {
+            dicMapped.id = `auto-${intIndex + 1}`;
+          }
+          return dicMapped;
+        });
       setLstCategories(lstMappedRecords);
       setLstSelectedIds([]);
       setIntPage(1);
+      setStrLoadDiagnostics(`Loaded ${lstMappedRecords.length} row(s) from ${strSource}. Attempts: ${lstAttemptNotes.join(", ")}`);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
       setLstCategories([]);
       setLstSelectedIds([]);
       setIntPage(1);
+      setStrLoadDiagnostics(`Load failed: ${objError instanceof Error ? objError.message : "unknown error"}`);
     } finally {
       setBlnLoading(false);
     }
@@ -349,14 +439,14 @@ export default function EssDeclarationCategoryMasterPanel({
     if (blnRightsLoading) {
       return;
     }
-    if (!canViewAny()) {
+    if (!blnCanView) {
       setLstCategories([]);
       setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
     loadCategories().catch(() => undefined);
-  }, [blnRightsLoading]);
+  }, [blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     if (!blnDialogOpen || strMode === "view") {
@@ -365,7 +455,6 @@ export default function EssDeclarationCategoryMasterPanel({
     ensureSalaryComponentOptions().catch(() => undefined);
   }, [blnDialogOpen, strMode]);
 
-  const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanDelete = canDoAny("delete");
@@ -406,7 +495,6 @@ export default function EssDeclarationCategoryMasterPanel({
     setStrMode(strNextMode);
     setStrEditingId(dicCategory?.id ?? "");
     setDicErrors({});
-    setObjProofDocument(null);
     setDicForm(dicCategory ? {
       code: dicCategory.code,
       name: dicCategory.name,
@@ -422,7 +510,6 @@ export default function EssDeclarationCategoryMasterPanel({
 
   function closeDialog() {
     setBlnDialogOpen(false);
-    setObjProofDocument(null);
   }
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
@@ -610,8 +697,6 @@ export default function EssDeclarationCategoryMasterPanel({
 
   const strDialogTitle = strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle;
   const blnDialogReadOnly = strMode === "view";
-  const strProofDocumentName = objProofDocument?.name?.trim() || t("proof_document_empty", "No document selected");
-
   function renderDialogSection(strTitle: string, strSubtitle: string, nodeContent: ReactNode) {
     return (
       <Paper
@@ -792,62 +877,9 @@ export default function EssDeclarationCategoryMasterPanel({
                   size="small"
                   checked={dicForm.proofRequired}
                   disabled={blnDialogReadOnly}
-                  onChange={(_, blnChecked) => {
-                    setDicForm((dicPrevious) => ({ ...dicPrevious, proofRequired: blnChecked }));
-                    if (!blnChecked) {
-                      setObjProofDocument(null);
-                    }
-                  }}
+                  onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, proofRequired: blnChecked }))}
                 />
               </Box>
-
-              {dicForm.proofRequired ? (
-                <Paper
-                  elevation={0}
-                sx={{
-                    p: 1,
-                    borderRadius: "12px",
-                    border: "1px dashed rgba(148,163,184,0.9)",
-                    background: "rgba(248,250,252,0.95)",
-                  }}
-                >
-                  <Stack spacing={0.75}>
-                    <Box>
-                      <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700 }}>
-                        {t("proof_document", "Proof Document")}
-                      </Typography>
-                      <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.2 }}>
-                        {t("proof_document_help", "Upload the supporting document placeholder for proof-based declarations.")}
-                      </Typography>
-                    </Box>
-                    {!blnDialogReadOnly ? (
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                        <Button
-                          variant="outlined"
-                          component="label"
-                          size="small"
-                          sx={{ borderRadius: "9px", alignSelf: { xs: "stretch", sm: "flex-start" } }}
-                        >
-                          {t("upload_document", "Upload Document")}
-                          <input
-                            type="file"
-                            hidden
-                            onChange={(objEvent) => setObjProofDocument(objEvent.target.files?.[0] ?? null)}
-                          />
-                        </Button>
-                        <Typography sx={{ color: "#334155", fontSize: "0.78rem", wordBreak: "break-word" }}>
-                          {strProofDocumentName}
-                        </Typography>
-                      </Stack>
-                    ) : (
-                      <Typography sx={{ color: "#334155", fontSize: "0.78rem" }}>{strProofDocumentName}</Typography>
-                    )}
-                    <Typography sx={{ color: "#94a3b8", fontSize: "0.68rem", lineHeight: 1.2 }}>
-                      {t("proof_document_note", "This upload is currently captured in the UI only until attachment API support is wired into the save flow.")}
-                    </Typography>
-                  </Stack>
-                </Paper>
-              ) : null}
             </Stack>,
           )}
 
@@ -877,7 +909,6 @@ export default function EssDeclarationCategoryMasterPanel({
                   ? t("summary_loading", "Loading...")
                   : dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? t("summary_none", "None"),
               )}
-              {dicForm.proofRequired ? renderInfoRow(t("summary_document", "Document"), strProofDocumentName) : null}
             </Box>
           </Paper>
         </Stack>
@@ -893,6 +924,7 @@ export default function EssDeclarationCategoryMasterPanel({
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
+        {strLoadDiagnostics ? <Typography sx={{ mt: 1, color: "#334155", fontSize: "0.78rem" }}>{strLoadDiagnostics}</Typography> : null}
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />

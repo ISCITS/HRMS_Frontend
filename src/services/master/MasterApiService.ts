@@ -660,7 +660,7 @@ async function requestApi<TData>(objOptions: {
   strMethod: ApiRequestMethod;
   objBody?: unknown;
   objQueryParams?: Record<string, string | number | boolean | null | undefined>;
-  strMenuAction: MasterMenuAction;
+  strMenuAction: MasterMenuAction | string;
 }): Promise<ApiEnvelope<TData>> {
   // Master screens share one encrypted request path with common auth and error translation.
   return requestEncryptedApi<TData>({
@@ -994,6 +994,22 @@ export const masterApiService = {
   getEssDeclarationCategories() {
     return requestApi<EssDeclarationCategoryApiRecord[]>({
       strPath: MasterApiResource.EssDeclarationCategories,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryList
+    });
+  },
+
+  getEssDeclarationCategoriesWithAction(strMenuAction: string) {
+    return requestApi<EssDeclarationCategoryApiRecord[] | { lstRecords?: EssDeclarationCategoryApiRecord[]; lstCategories?: EssDeclarationCategoryApiRecord[]; items?: EssDeclarationCategoryApiRecord[] }>({
+      strPath: MasterApiResource.EssDeclarationCategories,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction
+    });
+  },
+
+  getTaxDeclarationComponents() {
+    return requestApi<EssDeclarationCategoryApiRecord[] | { lstRecords?: EssDeclarationCategoryApiRecord[]; lstCategories?: EssDeclarationCategoryApiRecord[]; items?: EssDeclarationCategoryApiRecord[] }>({
+      strPath: "/masters/tax-declaration-components",
       strMethod: ApiRequestMethod.Get,
       strMenuAction: MasterMenuAction.EssDeclarationCategoryList
     });
