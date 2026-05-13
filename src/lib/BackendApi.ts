@@ -1,5 +1,6 @@
 import { appConfig } from "@/config";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { decryptPayload } from "@/lib/security/decryptPayload";
 
 type RequestInitWithJson = RequestInit & {
   objJsonBody?: unknown;
@@ -25,7 +26,25 @@ export async function callBackendApi<TResponse>(
     body: objJsonBody !== undefined ? JSON.stringify(objJsonBody) : objRest.body
   });
 
-  const objPayload = (await objResponse.json().catch(() => ({}))) as TResponse & {
+  const objRawPayload = (await objResponse.json().catch(() => ({}))) as
+    | (TResponse & {
+        Msg?: string;
+        message?: string;
+        Data?: unknown;
+        RequestId?: string;
+      })
+    | { payload?: string };
+
+  const objPayload = "payload" in objRawPayload && typeof objRawPayload.payload === "string"
+    ? await decryptPayload<
+        TResponse & {
+          Msg?: string;
+          message?: string;
+          Data?: unknown;
+          RequestId?: string;
+        }
+      >(objRawPayload.payload)
+    : objRawPayload as TResponse & {
     Msg?: string;
     message?: string;
     Data?: unknown;

@@ -10,10 +10,13 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const objSearchParams = (await searchParams) ?? {};
-  const objTenantParam = objSearchParams.tenant;
+  const objTenantParam = objSearchParams.tenant ?? objSearchParams.tenantUuid ?? objSearchParams.tenantUUID;
   const strTenantHint = (Array.isArray(objTenantParam) ? objTenantParam[0] : objTenantParam)?.trim() ?? "";
   const objCookieStore = await cookies();
-  const strTenantUUID = strTenantHint || objCookieStore.get(appConfig.tenantCookieName)?.value?.trim() || "";
+  const strTenantUUID =
+    strTenantHint ||
+    objCookieStore.get(appConfig.tenantCookieName)?.value?.trim() ||
+    appConfig.defaultTenantUuid.trim();
 
   if (strTenantUUID) {
     redirect(`${appRoutes.login}/${encodeURIComponent(strTenantUUID)}`);

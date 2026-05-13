@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
@@ -9,7 +9,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+ 
 import AlertDialog from "@/components/common/AlertDialog";
 import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
 import styles from "@/components/auth/AuthLoginExperience.module.css";
@@ -29,13 +29,13 @@ import type {
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData, resolveErrorMessage } from "@/services/auth/AuthApiService";
-
+ 
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
   strTenantUUID?: string;
   strTenantHint?: string;
 };
-
+ 
 export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLoginExperienceProps) {
   const objRouter = useRouter();
   const [strLoginID, setStrLoginID] = useState("");
@@ -73,27 +73,27 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     intLanguageID,
     strLabel: resolveLanguageToggleLabel(intLanguageID, dicLanguageLabelByID[intLanguageID])
   }));
-
+ 
   function showErrorDialog(strMessage: string) {
     const strResolvedMessage = strMessage.trim();
     if (!strResolvedMessage) {
       return;
     }
-
+ 
     setStrError(strResolvedMessage);
     setBlnErrorDialogOpen(true);
   }
-
+ 
   function clearErrorState() {
     setStrError("");
     setBlnErrorDialogOpen(false);
   }
-
+ 
   async function loadTenantLoginLabels(intRequestedLanguageID: number) {
     if (!strTenantUUID) {
       return;
     }
-
+ 
     setBlnLanguageSwitching(true);
     clearErrorState();
     try {
@@ -119,7 +119,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         authHelpers.setLanguageID(intRequestedLanguageID);
         return;
       }
-
+ 
       // Match the existing tenant 1/2 experience by falling back to built-in
       // English copy when the server-side label endpoint fails.
       if (intRequestedLanguageID === 1) {
@@ -129,34 +129,34 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         authHelpers.setLanguageID(1);
         return;
       }
-
+ 
       throw objError;
     } finally {
       setBlnLanguageSwitching(false);
     }
   }
-
+ 
   useEffect(() => {
     if (strMode !== "tenant" || !strTenantUUID) {
       return;
     }
-
+ 
     let blnActive = true;
     authHelpers.clearStoredSessionState();
     setBlnTenantLoading(true);
-
+ 
     authApiService
       .getTenantAuthDetails(strTenantUUID)
       .then((objAuthDetailsResult) => {
         if (!blnActive) {
           return;
         }
-
+ 
         const objAuthDetails = objAuthDetailsResult.Data;
         if (!isTenantAuthDetails(objAuthDetails)) {
           throw new Error(getLoginLabel("tenantUnavailable"));
         }
-
+ 
         setObjTenantAuthDetails(objAuthDetails);
         const intResolvedLanguageID = objAuthDetails.language_id ?? null;
         setIntSelectedLanguageID(intResolvedLanguageID);
@@ -225,17 +225,17 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnTenantLoading(false);
         }
       });
-
+ 
     return () => {
       blnActive = false;
     };
   }, [strMode, strTenantUUID]);
-
+ 
   useEffect(() => {
     if (intLockRemainingSeconds <= 0) {
       return;
     }
-
+ 
     const intTimer = window.setInterval(() => {
       setIntLockRemainingSeconds((intCurrentSeconds) => {
         if (intCurrentSeconds <= 1) {
@@ -245,15 +245,15 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         return intCurrentSeconds - 1;
       });
     }, 1000);
-
+ 
     return () => window.clearInterval(intTimer);
   }, [intLockRemainingSeconds]);
-
+ 
   useEffect(() => {
     if (intResendRemainingSeconds <= 0) {
       return;
     }
-
+ 
     const intTimer = window.setInterval(() => {
       setIntResendRemainingSeconds((intCurrentSeconds) => {
         if (intCurrentSeconds <= 1) {
@@ -263,15 +263,15 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         return intCurrentSeconds - 1;
       });
     }, 1000);
-
+ 
     return () => window.clearInterval(intTimer);
   }, [intResendRemainingSeconds]);
-
+ 
   async function submitForm() {
     if (!blnCanSubmitCurrentStep) {
       return;
     }
-
+ 
     if (!objGoogleMfaChallenge && !objOtpChallenge) {
       const strIdentityValidationError = validateLoginIdentifier(strLoginID, strResolvedLoginIdentity);
       if (strIdentityValidationError) {
@@ -279,16 +279,16 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         return;
       }
     }
-
+ 
     clearErrorState();
     setBlnSubmitting(true);
-
+ 
     try {
       if (objGoogleMfaChallenge) {
         await handleGoogleMfaVerification();
         return;
       }
-
+ 
       if (objOtpChallenge) {
         const objResult = await authApiService.verifyOtp({
           intUserID: objOtpChallenge.intUserID,
@@ -307,7 +307,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
-
+ 
       if (strMode === "tenant" && strTenantUUID) {
         const objResult = await authApiService.login({
           strTenantUUID,
@@ -330,7 +330,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
-
+ 
       const objResult = await authApiService.genericLogin({
         strEmailAddress: strLoginID,
         strPassword
@@ -367,12 +367,12 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       setBlnSubmitting(false);
     }
   }
-
+ 
   async function handleGoogleMfaVerification() {
     if (!objGoogleMfaChallenge?.strPreAuthToken) {
       return;
     }
-
+ 
     if (blnUseBackupCode) {
       const objResult: { Data: SsoMfaLoginSuccessData } = await authApiService.verifySsoBackupCode({
         strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
@@ -381,7 +381,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
-
+ 
     if (objGoogleMfaChallenge.blnMfaSetupRequired) {
       const objResult: { Data: SsoMfaSetupSuccessData } = await authApiService.verifySsoMfaSetup({
         strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
@@ -392,7 +392,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
-
+ 
     const objResult: { Data: SsoMfaLoginSuccessData } = await authApiService.verifySsoMfa({
       strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
       strCode: strGoogleCode
@@ -400,12 +400,12 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     setObjGoogleMfaChallenge(null);
     objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
   }
-
+ 
   async function resendOtp() {
     if (!objOtpChallenge) {
       return;
     }
-
+ 
     clearErrorState();
     setBlnResendingOtp(true);
     try {
@@ -428,7 +428,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       setBlnResendingOtp(false);
     }
   }
-
+ 
   const strTitle = strMode === "tenant" ? getLoginLabel("tenantTitle") : enMessages.auth.genericTitle;
   const strSubtitle = strMode === "tenant" ? getLoginLabel("tenantSubtitle") : enMessages.auth.genericSubtitle;
   const blnShowTenantTransition =
@@ -438,7 +438,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const strLockCountdown = intLockRemainingSeconds > 0 ? formatDuration(intLockRemainingSeconds) : null;
   const blnOtpStep = Boolean(objOtpChallenge);
   const strIdentityValidationError = validateLoginIdentifier(strLoginID, strResolvedLoginIdentity);
-
+ 
   if (blnShowTenantTransition) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 3, background: "#f8fafc" }}>
@@ -479,7 +479,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       </Box>
     );
   }
-
+ 
   if (objGoogleMfaChallenge) {
     return (
       <GoogleMfaChallengeView
@@ -499,7 +499,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       />
     );
   }
-
+ 
   const blnCanSubmitLoginStep =
     Boolean(strLoginID.trim()) &&
     Boolean(strPassword.trim()) &&
@@ -509,7 +509,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     !(strMode === "tenant" && blnTenantLoading);
   const blnCanSubmitOtpStep = Boolean(strOtp.trim()) && !blnSubmitting;
   const blnCanSubmitCurrentStep = blnOtpStep ? blnCanSubmitOtpStep : blnCanSubmitLoginStep;
-
+ 
   function handleLoginSubmit(objEvent: FormEvent<HTMLFormElement>) {
     objEvent.preventDefault();
     if (!blnCanSubmitCurrentStep) {
@@ -517,7 +517,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     }
     submitForm().catch(() => undefined);
   }
-
+ 
   return (
     <Box className={styles.pageRoot}>
       <Box className={styles.shell}>
@@ -528,7 +528,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             </Box>
           </Box>
         </Box>
-
+ 
         <Box className={styles.formPanel}>
           <Box className={styles.formCard}>
             {blnLanguageSwitching ? (
@@ -552,7 +552,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                           setIntSelectedLanguageID(dicLanguageOption.intLanguageID);
                           return;
                         }
-
+ 
                         loadTenantLoginLabels(dicLanguageOption.intLanguageID).catch(() => {
                           showErrorDialog("Unable to switch language.");
                           setIntSelectedLanguageID(intLoadedLanguageID);
@@ -572,7 +572,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
             </Box>
             <Typography className={styles.title}>{blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}</Typography>
-
+ 
             <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
               <Box>
                 <Typography className={styles.fieldLabel}>
@@ -600,7 +600,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   }}
                 />
               </Box>
-
+ 
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
@@ -626,7 +626,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   }}
                 />
               </Box>
-
+ 
               {blnOtpStep ? (
                 <Box>
                   <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
@@ -641,7 +641,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   </Typography>
                 </Box>
               ) : null}
-
+ 
               {!blnOtpStep ? (
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
                   <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
@@ -649,7 +649,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   </Typography>
                 </Box>
               ) : null}
-
+ 
               <Button
                 type="submit"
                 variant="contained"
@@ -665,7 +665,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               >
                 {blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}
               </Button>
-
+ 
               {blnOtpStep ? (
                 <Button
                   variant="text"
@@ -679,7 +679,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                       : getLoginLabel("resendOtpButton")}
                 </Button>
               ) : null}
-
+ 
               <Box className={styles.helperLinks}>
                 <Typography variant="body2" sx={{ color: "#64748b" }}>
                   {blnOtpStep ? getLoginLabel("otpContinueMessage") : strMode === "tenant" ? strTitle : strSubtitle}
@@ -697,32 +697,32 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       />
     </Box>
   );
-
+ 
   function getLoginLabel(strKey: LoginLabelKey): string {
     if (strKey === "loginIdLabel") {
       return strResolvedLoginIdentity === "login_id" ? "Login ID" : "Work Email";
     }
-
+ 
     if (strKey === "loginIdPlaceholder") {
       return strResolvedLoginIdentity === "login_id" ? "Enter your login ID" : "Enter your work email";
     }
-
+ 
     const strServerKey = dicLoginServerKeyMap[strKey];
     return dicLoginLabels[strKey] ?? (strServerKey ? dicLoginLabels[strServerKey] : undefined) ?? dicLoginFallbacks[strKey];
   }
 }
-
+ 
 function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
   return lstLanguageIDs.reduce<number[]>((lstResolvedLanguageIDs, intLanguageID) => {
     if (!intLanguageID || lstResolvedLanguageIDs.includes(intLanguageID)) {
       return lstResolvedLanguageIDs;
     }
-
+ 
     lstResolvedLanguageIDs.push(intLanguageID);
     return lstResolvedLanguageIDs;
   }, []);
 }
-
+ 
 function resolveLanguageDisplayLabel(
   strNativeName: string | null | undefined,
   intLanguageID: number,
@@ -732,47 +732,47 @@ function resolveLanguageDisplayLabel(
   if (strResolvedNativeName) {
     return strResolvedNativeName;
   }
-
+ 
   if (strFallbackLabel?.trim()) {
     return strFallbackLabel.trim();
   }
-
+ 
   if (intLanguageID === 1) {
     return "English";
   }
-
+ 
   if (intLanguageID === 2) {
     return "हिन्दी";
   }
-
+ 
   return `Language ${intLanguageID}`;
 }
-
+ 
 function resolveLanguageToggleLabel(intLanguageID: number, strLanguageLabel?: string) {
   return resolveLanguageDisplayLabel(strLanguageLabel, intLanguageID);
 }
-
+ 
 function extractRemainingSeconds(objData: unknown): number {
   if (!objData || typeof objData !== "object" || !("remainingSeconds" in objData)) {
     return 0;
   }
-
+ 
   const objRemainingSeconds = (objData as { remainingSeconds?: unknown }).remainingSeconds;
   return typeof objRemainingSeconds === "number" && objRemainingSeconds > 0 ? Math.floor(objRemainingSeconds) : 0;
 }
-
+ 
 function isTenantAuthDetails(objData: unknown): objData is TenantAuthDetails {
   if (!objData || typeof objData !== "object") {
     return false;
   }
-
+ 
   const objTenantAuthDetails = objData as Partial<TenantAuthDetails>;
   return typeof objTenantAuthDetails.tenant_id === "number" &&
     typeof objTenantAuthDetails.tenant_uuid === "string" &&
     typeof objTenantAuthDetails.auth_mode === "string" &&
     objTenantAuthDetails.auth_mode.trim().length > 0;
 }
-
+ 
 function normalizeTenantAuthMode(strAuthMode: string | null | undefined): NormalizedTenantAuthMode {
   const strNormalizedMode = strAuthMode?.trim().toLowerCase();
   switch (strNormalizedMode) {
@@ -789,20 +789,20 @@ function normalizeTenantAuthMode(strAuthMode: string | null | undefined): Normal
       return "unknown";
   }
 }
-
+ 
 function normalizeTenantLoginMethod(strLoginMethod: string | null | undefined): NormalizedTenantLoginMethod | null {
   const strNormalizedMethod = strLoginMethod?.trim().toLowerCase();
   if (strNormalizedMethod === "email_address" || strNormalizedMethod === "email") {
     return "email_address";
   }
-
+ 
   if (strNormalizedMethod === "login_id" || strNormalizedMethod === "loginid" || strNormalizedMethod === "login-id") {
     return "login_id";
   }
-
+ 
   return null;
 }
-
+ 
 function resolveLoginIdentity(
   strMode: "generic" | "tenant",
   objTenantAuthDetails: TenantAuthDetails | null
@@ -810,52 +810,52 @@ function resolveLoginIdentity(
   if (strMode !== "tenant") {
     return "email_address";
   }
-
+ 
   const strByMethod = normalizeTenantLoginMethod(objTenantAuthDetails?.login_method);
   if (strByMethod) {
     return strByMethod;
   }
-
+ 
   const strAuthMode = objTenantAuthDetails?.auth_mode?.trim().toLowerCase() ?? "";
   if (strAuthMode.includes("login_id") || strAuthMode.includes("loginid") || strAuthMode.includes("login-id")) {
     return "login_id";
   }
-
+ 
   if (strAuthMode.includes("email")) {
     return "email_address";
   }
-
+ 
   return "email_address";
 }
-
+ 
 function validateLoginIdentifier(strLoginID: string, strLoginMethod: NormalizedTenantLoginMethod): string | null {
   const strCandidate = strLoginID.trim();
   if (!strCandidate) {
     return null;
   }
-
+ 
   if (strLoginMethod === "login_id") {
     return strCandidate.includes("@")
       ? "Use Login ID only. Email is not allowed for this tenant."
       : null;
   }
-
+ 
   const strEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return strEmailPattern.test(strCandidate)
     ? null
     : "Use Work Email only. Login ID is not allowed for this tenant.";
 }
-
+ 
 function strTenantModeRequiresSsoRedirect(strAuthMode: string | null | undefined): boolean {
   return normalizeTenantAuthMode(strAuthMode) === "sso";
 }
-
+ 
 function formatDuration(intSeconds: number): string {
   const intMinutes = Math.floor(intSeconds / 60);
   const intRemainingSeconds = intSeconds % 60;
   return `${String(intMinutes).padStart(2, "0")}:${String(intRemainingSeconds).padStart(2, "0")}`;
 }
-
+ 
 type LoginLabelKey =
   | "forgotPassword"
   | "heroImageAlt"
@@ -882,7 +882,7 @@ type LoginLabelKey =
   | "verifyingWorkspaceStatus"
   | "welcomeSubtitle"
   | "welcomeTitle";
-
+ 
 const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   forgotPassword: "Forgot Password?",
   heroImageAlt: "HRMS login visual",
@@ -910,7 +910,7 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   welcomeSubtitle: "Human Resource Management System",
   welcomeTitle: "Welcome to HRMS",
 };
-
+ 
 const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   forgotPassword: "forgot_password",
   heroImageAlt: "hero_image_alt",
@@ -938,3 +938,5 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   welcomeSubtitle: "welcome_subtitle",
   welcomeTitle: "welcome_title",
 };
+ 
+ 

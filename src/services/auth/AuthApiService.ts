@@ -2,8 +2,7 @@
 
 import {
   ApiRequestMethod,
-  ApiResultCode,
-  ApiRoutePrefix
+  ApiResultCode
 } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi, resolveErrorMessage } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
@@ -62,8 +61,13 @@ async function requestApi<TData>(objOptions: {
   blnUseAuthHeader?: boolean;
 }) {
   try {
+    const strBffPath = `/api/${objOptions.strPath}`;
+    const strSameOriginPath = typeof window !== "undefined"
+      ? `${window.location.origin}${strBffPath}`
+      : strBffPath;
+
     return await requestEncryptedApi<TData>({
-      strPath: `${ApiRoutePrefix.ApiV1}/${objOptions.strPath}`,
+      strPath: strSameOriginPath,
       strMethod: objOptions.strMethod,
       objBody: objOptions.objBody,
       objQueryParams: objOptions.objQueryParams,
@@ -126,13 +130,16 @@ export const authApiService = {
   async getTenantAuthDetails(strTenantUUID: string, intLanguageID?: number | null) {
     try {
       return await requestApi<TenantAuthDetails>({
-        strPath: `tenant/${encodeURIComponent(strTenantUUID)}/auth-details`,
+        strPath: "tenant/auth-details",
         strMethod: ApiRequestMethod.Get,
-        objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+        objQueryParams: {
+          tenantUuid: strTenantUUID,
+          ...(intLanguageID ? { language_id: intLanguageID } : {})
+        },
         strMenuAction: "TENANT_AUTH_DETAILS_READ"
       });
     } catch (objError) {
-      if (!(objError instanceof clsApiRequestError) || ![400, 404, 422].includes(objError.intStatusCode)) {
+      if (!(objError instanceof clsApiRequestError) || ![400, 404, 422].includes(objError.intStatusCode ?? 0)) {
         throw objError;
       }
 
@@ -141,7 +148,7 @@ export const authApiService = {
         this.getLoginLabels(strTenantUUID).catch(() => ({
           ResultCode: ApiResultCode.Success,
           Msg: "Fallback login labels loaded.",
-          Data: { module: "login", language: "en", labels: {} }
+          Data: { module: "login", language: "en", fallback_language: null, labels: {} }
         }))
       ]);
 
@@ -155,9 +162,12 @@ export const authApiService = {
 
   async getLoginLabels(strTenantUUID: string, intLanguageID?: number | null) {
     return requestApi<ModuleLabelsResponse>({
-      strPath: `tenant/${encodeURIComponent(strTenantUUID)}/login-labels`,
+      strPath: "tenant/login-labels",
       strMethod: ApiRequestMethod.Get,
-      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      objQueryParams: {
+        tenantUuid: strTenantUUID,
+        ...(intLanguageID ? { language_id: intLanguageID } : {})
+      },
       strMenuAction: "TENANT_LOGIN_LABELS_READ"
     });
   },

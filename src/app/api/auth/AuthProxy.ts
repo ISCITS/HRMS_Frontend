@@ -69,32 +69,56 @@ export async function clearAuthCookies(objResponse: NextResponse) {
   objResponse.cookies.set(appConfig.tenantCookieName, "", { path: "/", maxAge: 0 });
 }
 
+function buildPublicProxyHeaders(strMenuAction: string) {
+  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+
+  return {
+    Origin: strFrontendOrigin,
+    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, strMenuAction),
+    "X-Tenant-Id": DefaultContextValue.PrimaryId,
+    "X-Company-Id": DefaultContextValue.PrimaryId,
+  };
+}
+
 export async function proxyTenantLookup(strTenantUUID: string) {
   return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/auth/tenant", {
     method: "POST",
     cache: "no-store",
-    objJsonBody: { strTenantUUID }
+    objJsonBody: { strTenantUUID },
+    headers: buildPublicProxyHeaders("AUTH_TENANT_LOOKUP")
+  });
+}
+
+export async function proxyTenantLookupPayload(objBody: unknown) {
+  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/auth/tenant", {
+    method: "POST",
+    cache: "no-store",
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_TENANT_LOOKUP")
   });
 }
 
 export async function proxyTenantLogin(objBody: unknown) {
   return callBackendApi<ApiEnvelope<AuthSuccessData>>("/api/v1/auth/login", {
     method: "POST",
-    objJsonBody: objBody
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_LOGIN")
   });
 }
 
 export async function proxyGenericLogin(objBody: unknown) {
   return callBackendApi<ApiEnvelope<AuthSuccessData>>("/api/v1/auth/login/generic", {
     method: "POST",
-    objJsonBody: objBody
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_GENERIC_LOGIN")
   });
 }
 
 export async function proxyVerifyOtp(objBody: unknown) {
   return callBackendApi<ApiEnvelope<AuthSuccessData | GoogleMfaChallengeData>>("/api/v1/auth/verify-otp", {
     method: "POST",
-    objJsonBody: objBody
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_VERIFY_OTP")
   });
 }
 
@@ -102,7 +126,8 @@ export async function proxySsoRedirect(strTenantUUID: string) {
   return callBackendApi<ApiEnvelope<SsoRedirectData>>("/api/v1/auth/sso/redirect", {
     method: "POST",
     cache: "no-store",
-    objJsonBody: { strTenantUUID }
+    objJsonBody: { strTenantUUID },
+    headers: buildPublicProxyHeaders("AUTH_SSO_REDIRECT")
   });
 }
 
