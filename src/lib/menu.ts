@@ -30,6 +30,14 @@ const dicRouteAliases: Record<string, string> = {
   "/masters/version_log": "/version-logs",
   "/version-log": "/version-logs",
   "/version-logs": "/version-logs",
+  "/report/payroll-register": "/reports/payroll-register",
+  "/reports/payroll-register": "/reports/payroll-register",
+  "/report/payroll_register": "/reports/payroll-register",
+  "/reports/payroll_register": "/reports/payroll-register",
+  "/report/bank-file": "/reports/bank-file",
+  "/reports/bank-file": "/reports/bank-file",
+  "/report/bank_file": "/reports/bank-file",
+  "/reports/bank_file": "/reports/bank-file",
 };
 
 function normalizeRoute(strRoute?: string | null) {

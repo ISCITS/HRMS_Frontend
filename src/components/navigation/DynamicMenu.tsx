@@ -242,6 +242,62 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
   return lstUpdatedItems;
 }
 
+function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
+  return (
+    hasRoute(lstItems, "/payroll/results") ||
+    hasRoute(lstItems, "/payroll/payslips") ||
+    lstItems.some((objItem) => {
+      const strModuleCode = objItem.strModuleCode.toLowerCase();
+      const strModuleName = objItem.strModuleName.toLowerCase();
+      return (
+        strModuleCode.includes("payroll_result") ||
+        strModuleCode.includes("employee_payroll_result") ||
+        strModuleName.includes("payroll result") ||
+        hasPayrollResultAccess(objItem.lstChildren)
+      );
+    })
+  );
+}
+
+function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/reports/payroll-register") || hasRoute(lstItems, "/reports/bank-file")) {
+    return lstItems;
+  }
+
+  if (!hasPayrollResultAccess(lstItems)) {
+    return lstItems;
+  }
+
+  return [
+    ...lstItems,
+    {
+      strModuleCode: "REPORTS",
+      strModuleName: "Reports",
+      strRoute: null,
+      lstPermissionCodes: [],
+      blnIsHome: false,
+      lstChildren: [
+        {
+          strModuleCode: "PAYROLL_REGISTER",
+          strModuleName: "Payroll Register",
+          strRoute: "/reports/payroll-register",
+          lstPermissionCodes: ["PAYROLL_REGISTER_VIEW", "PAYROLL_REGISTER_EXPORT"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+        {
+          strModuleCode: "BANK_FILE",
+          strModuleName: "Bank File",
+          strRoute: "/reports/bank-file",
+          lstPermissionCodes: ["BANK_FILE_VIEW", "BANK_FILE_EXPORT"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    },
+  ];
+}
+
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
   const strPathname = usePathname();
   const intLanguageID = authHelpers.getLanguageID();
@@ -271,7 +327,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     return strResolvedLabel.trim() || strMenuName.trim() || strFallback;
   }
 
-  function resolveGroupFallbackLabel(strGroupKey: "masters" | "user_management" | "salary" | "payroll", strDefaultLabel: string) {
+  function resolveGroupFallbackLabel(strGroupKey: "masters" | "user_management" | "salary" | "payroll" | "reports", strDefaultLabel: string) {
     const strResolvedLabel = tCommon(strGroupKey, "");
     if (strResolvedLabel.trim()) {
       return strResolvedLabel;
@@ -283,6 +339,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
         user_management: "यूज़र प्रबंधन",
         salary: "वेतन",
         payroll: "पेरोल",
+        reports: "रिपोर्ट्स",
       };
       return dicHindiFallbacks[strGroupKey];
     }
@@ -428,6 +485,14 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
+    if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {
+      return strModuleName || "Payroll Register";
+    }
+
+    if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
+      return strModuleName || "Bank File";
+    }
+
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
       return tEmployee("page_title", strModuleName || "Employee");
     }
@@ -438,6 +503,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strModuleCode.includes("payroll")) {
       return resolveGroupFallbackLabel("payroll", strModuleName || "Payroll");
+    }
+
+    if (strModuleCode.includes("reports") || strModuleCode === "report") {
+      return resolveGroupFallbackLabel("reports", strModuleName || "Reports");
     }
 
     if (strModuleCode.includes("salary")) {
@@ -473,11 +542,11 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   }
 
   const dicDefaultExpanded = useMemo(
-    () => collectExpandableDefaults(appendGeneratedPayslipMenu(lstMenuItems)),
+    () => collectExpandableDefaults(appendGeneratedReportsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
     [lstMenuItems, strPathname],
   );
   const lstRenderedMenuItems = useMemo(
-    () => appendGeneratedPayslipMenu(lstMenuItems),
+    () => appendGeneratedReportsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
     [lstMenuItems],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
