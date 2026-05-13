@@ -1,21 +1,31 @@
 "use client";
 
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import {
+  Autocomplete,
   Alert,
   Box,
   Button,
   Checkbox,
+  Chip,
+  CircularProgress,
+  Fade,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
+  Snackbar,
   Grid,
   Paper,
   Radio,
@@ -46,18 +56,67 @@ type DeclarationRow = {
   intItemID?: number | null;
   strSection: string;
   strDescription: string;
-  strMaxLimit: string;
+  strMaxLimitDisplay: string;
+  decMaxEligibleAmount?: number | null;
+  blnProofRequired?: boolean;
   decDeclaredAmount: number;
   strInvestmentName: string;
-  strStatus: "Completed" | "In Progress" | "Not Started";
+  strStatus: "Completed" | "Proof Pending" | "In Progress" | "Not Started";
+  strEligibilityNote?: string;
+  objProof?: {
+    intProofID: number;
+    strFileName: string;
+    strFilePath: string;
+    strMimeType: string;
+    intFileSizeBytes: number;
+    strVerificationStatus: string;
+  } | null;
 };
 
 const lstStepper = ["Select Tax Regime", "Enter Declarations", "Compare Tax", "Final Submit"];
 const strFinancialYearCode = "2025-2026";
 const intDeclarationTableMaxHeight = 420;
+const dicInvestmentOptionsFallbackBySection: Record<string, string[]> = {
+  "80C": ["Employee Provident Fund (EPF)", "Public Provident Fund (PPF)", "ELSS", "Life Insurance Premium", "NSC", "5-Year Tax Saving FD", "Tuition Fees", "Principal Repayment (Home Loan)"],
+  "80CCD(1B)": ["Employee NPS Contribution"],
+  "80CCD(2)": ["Employer NPS Contribution"],
+  "80CCD": ["NPS Contribution", "Employer NPS Contribution", "Employee NPS Contribution"],
+  "80D": ["Medical Insurance - Self & Family", "Medical Insurance - Parents", "Preventive Health Checkup"],
+  "24B": ["Housing Loan Interest"],
+  "80E": ["Education Loan Interest"],
+  "80G": ["Donation"],
+  "80TTA": ["Savings Interest"],
+  "80TTB": ["Interest on Deposits (Senior Citizen)"],
+  "80EE": ["Home Loan Interest (First-time Buyer)"],
+  "80EEA": ["Affordable Housing Loan Interest"],
+  "80EEB": ["Electric Vehicle Loan Interest"],
+};
+
+function getFallbackInvestmentOptions(strSection: string) {
+  const strNormalized = (strSection || "").trim().toUpperCase();
+  const lstExact = dicInvestmentOptionsFallbackBySection[strNormalized];
+  if (lstExact) return lstExact;
+  const strSanitized = strNormalized.replace(/\s+/g, "");
+  const lstSanitizedExact = dicInvestmentOptionsFallbackBySection[strSanitized];
+  if (lstSanitizedExact) return lstSanitizedExact;
+  const objPrefixEntry = Object.entries(dicInvestmentOptionsFallbackBySection).find(([strKey]) => strNormalized.startsWith(strKey));
+  if (objPrefixEntry) return objPrefixEntry[1];
+  const objSanitizedPrefixEntry = Object.entries(dicInvestmentOptionsFallbackBySection).find(([strKey]) => strSanitized.startsWith(strKey.replace(/\s+/g, "")));
+  if (objSanitizedPrefixEntry) return objSanitizedPrefixEntry[1];
+  if (strNormalized.startsWith("80")) return ["Section-specific investment"];
+  if (strNormalized.startsWith("24")) return ["Loan/Property related declaration"];
+  if (strNormalized) return [`Section ${strNormalized} declaration`];
+  return objPrefixEntry ? objPrefixEntry[1] : [];
+}
 
 function formatCurrency(decValue: number) {
   return `INR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(decValue || 0)}`;
+}
+
+function formatAmountInput(strValue: string) {
+  const strDigits = strValue.replace(/[^\d]/g, "");
+  if (!strDigits) return "";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(strDigits));
 }
 
 function getDateLabel() {
@@ -66,12 +125,56 @@ function getDateLabel() {
 
 function getStatusTextColor(strStatus: DeclarationRow["strStatus"]) {
   if (strStatus === "Completed") return "#15803d";
+  if (strStatus === "Proof Pending") return "#b45309";
   if (strStatus === "In Progress") return "#c2410c";
-  return "#b91c1c";
+  return "#6b7280";
+}
+
+function resolveRowStatus(objRow: DeclarationRow) {
+  if (objRow.decDeclaredAmount > 0 && objRow.blnProofRequired && !objRow.objProof) return "Proof Pending" as const;
+  if (objRow.decDeclaredAmount > 0) return "Completed" as const;
+  if (objRow.strInvestmentName.trim()) return "In Progress" as const;
+  return "Not Started" as const;
+}
+
+function parseMaxLimit(strMaxLimit: string) {
+  if (!strMaxLimit || strMaxLimit === "-") return null;
+  const strDigits = strMaxLimit.replace(/[^0-9.]/g, "");
+  const decParsed = Number(strDigits);
+  return Number.isFinite(decParsed) ? decParsed : null;
+}
+
+function getGroupName(objRow: DeclarationRow) {
+  const strCode = objRow.strSection.toUpperCase();
+  if (["24B", "80EE", "80EEA", "80EEB"].some((strPrefix) => strCode.startsWith(strPrefix))) {
+    return "Loans & Property";
+  }
+  if (["80C", "80CCD", "80D", "80DD", "80DDB", "80G", "80TTA", "80TTB"].some((strPrefix) => strCode.startsWith(strPrefix))) {
+    return "Deductions";
+  }
+  return "Other Exemptions";
+}
+
+function resolvePreviewMimeType(strMimeType: string, strFileName: string) {
+  const strNormalizedMime = (strMimeType || "").toLowerCase().trim();
+  if (strNormalizedMime && strNormalizedMime !== "application/octet-stream") {
+    return strNormalizedMime;
+  }
+
+  const strLowerFileName = (strFileName || "").toLowerCase();
+  if (strLowerFileName.endsWith(".png")) return "image/png";
+  if (strLowerFileName.endsWith(".jpg") || strLowerFileName.endsWith(".jpeg")) return "image/jpeg";
+  if (strLowerFileName.endsWith(".gif")) return "image/gif";
+  if (strLowerFileName.endsWith(".webp")) return "image/webp";
+  if (strLowerFileName.endsWith(".svg")) return "image/svg+xml";
+  if (strLowerFileName.endsWith(".pdf")) return "application/pdf";
+  if (strLowerFileName.endsWith(".txt")) return "text/plain";
+  if (strLowerFileName.endsWith(".json")) return "application/json";
+  return "application/octet-stream";
 }
 
 function getDeclarationRowKey(objRow: DeclarationRow) {
-  return `${objRow.strSection.trim().toLowerCase()}|${objRow.strDescription.trim().toLowerCase()}`;
+  return objRow.strSection.trim().toLowerCase();
 }
 
 function dedupeDeclarationRows(lstInputRows: DeclarationRow[]) {
@@ -86,15 +189,39 @@ function dedupeDeclarationRows(lstInputRows: DeclarationRow[]) {
 
     const blnExistingHasItemId = objExisting.intItemID != null;
     const blnCurrentHasItemId = objRow.intItemID != null;
+    const blnExistingHasLimit = objExisting.strMaxLimitDisplay !== "-";
+    const blnCurrentHasLimit = objRow.strMaxLimitDisplay !== "-";
     const blnPickCurrent =
-      (!blnExistingHasItemId && blnCurrentHasItemId) ||
-      objRow.decDeclaredAmount > objExisting.decDeclaredAmount;
+      objRow.decDeclaredAmount > objExisting.decDeclaredAmount ||
+      (objRow.decDeclaredAmount === objExisting.decDeclaredAmount && !blnExistingHasLimit && blnCurrentHasLimit) ||
+      (objRow.decDeclaredAmount === objExisting.decDeclaredAmount && blnExistingHasLimit === blnCurrentHasLimit && !blnExistingHasItemId && blnCurrentHasItemId);
 
     if (blnPickCurrent) {
       dicByCompositeKey.set(strKey, objRow);
     }
   }
   return Array.from(dicByCompositeKey.values());
+}
+
+function mergeSectionRules(lstBaseRows: DeclarationRow[], lstRuleRows: DeclarationRow[]) {
+  if (lstRuleRows.length === 0) return lstBaseRows;
+  const dicRuleBySection = new Map<string, DeclarationRow>();
+  for (const objRuleRow of lstRuleRows) {
+    dicRuleBySection.set(objRuleRow.strSection.trim().toUpperCase(), objRuleRow);
+  }
+  return lstBaseRows.map((objRow) => {
+    const objRule = dicRuleBySection.get(objRow.strSection.trim().toUpperCase());
+    if (!objRule) return { ...objRow, strStatus: resolveRowStatus(objRow) };
+    const decConfigured = objRule.decMaxEligibleAmount ?? parseMaxLimit(objRule.strMaxLimitDisplay);
+    const objMerged: DeclarationRow = {
+      ...objRow,
+      decMaxEligibleAmount: decConfigured ?? null,
+      blnProofRequired: objRule.blnProofRequired ?? objRow.blnProofRequired,
+      strMaxLimitDisplay:
+        decConfigured != null ? formatCurrency(decConfigured) : objRow.strMaxLimitDisplay,
+    };
+    return { ...objMerged, strStatus: resolveRowStatus(objMerged) };
+  });
 }
 
 function formatApiErrorForUi(objError: unknown, strFallback: string) {
@@ -173,12 +300,18 @@ function FlowNode({ strLabel, intStep, blnActive }: { strLabel: string; intStep:
 export default function SalaryEssDeclarationsPage() {
   const [intDeclarationID, setIntDeclarationID] = useState<number | null>(null);
   const [strFlowStatus, setStrFlowStatus] = useState<FlowStatus>("NOT_STARTED");
+  const [strDeclarationStatus, setStrDeclarationStatus] = useState<ItDeclarationDto["strDeclarationStatus"]>("draft");
   const [strSelectedRegime, setStrSelectedRegime] = useState<Regime | "">("");
   const [lstRows, setLstRows] = useState<DeclarationRow[]>([]);
   const [strLastUpdated, setStrLastUpdated] = useState(getDateLabel());
   const [blnDraftSaved, setBlnDraftSaved] = useState(false);
+  const [strSuccessToast, setStrSuccessToast] = useState("");
   const [strError, setStrError] = useState("");
   const [strWarning, setStrWarning] = useState("");
+  const [blnRetryRefresh, setBlnRetryRefresh] = useState(false);
+  const [strRecentlyUpdatedKey, setStrRecentlyUpdatedKey] = useState("");
+  const [blnCompared, setBlnCompared] = useState(false);
+  const [blnSummaryFromApi, setBlnSummaryFromApi] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strSavingLabel, setStrSavingLabel] = useState("Saving...");
@@ -195,10 +328,18 @@ export default function SalaryEssDeclarationsPage() {
   const [blnCompareModalOpen, setBlnCompareModalOpen] = useState(false);
   const [blnSubmitModalOpen, setBlnSubmitModalOpen] = useState(false);
   const [blnDeclarationConfirm, setBlnDeclarationConfirm] = useState(false);
+  const [blnSubmitModalLoading, setBlnSubmitModalLoading] = useState(false);
+  const [blnDismissDraftSavedAlert, setBlnDismissDraftSavedAlert] = useState(false);
+  const [blnDismissUnsavedAlert, setBlnDismissUnsavedAlert] = useState(false);
+  const [blnDismissWarningAlert, setBlnDismissWarningAlert] = useState(false);
+  const [blnDismissErrorAlert, setBlnDismissErrorAlert] = useState(false);
 
   const [objEditRow, setObjEditRow] = useState<DeclarationRow | null>(null);
   const [strInvestmentNameInput, setStrInvestmentNameInput] = useState("");
   const [strAmountInput, setStrAmountInput] = useState("");
+  const [blnModalSaving, setBlnModalSaving] = useState(false);
+  const [lstInvestmentOptionsForRow, setLstInvestmentOptionsForRow] = useState<string[]>([]);
+  const [objProofFileInput, setObjProofFileInput] = useState<File | null>(null);
   const [objTaxSummary, setObjTaxSummary] = useState({
     decGrossSalary: 0,
     decExemptions: 0,
@@ -213,46 +354,139 @@ export default function SalaryEssDeclarationsPage() {
     blnAllowEmployeeOptOut: true,
   });
 
-  const blnLocked = strFlowStatus === "SUBMITTED";
+  const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
+  const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
   const blnHasAnyFilled = useMemo(() => lstRows.some((objRow) => objRow.decDeclaredAmount > 0), [lstRows]);
-  const decDeclaredTotal = useMemo(() => lstRows.reduce((decTotal, objRow) => decTotal + objRow.decDeclaredAmount, 0), [lstRows]);
-  const decTaxableIncome = objTaxSummary.decTaxableIncome;
-  const decOldTax = objTaxSummary.decOldTax;
-  const decNewTax = objTaxSummary.decNewTax;
-  const decSavings = objTaxSummary.decSavings;
-  const decGrossSalary = Math.max(0, objTaxSummary.decGrossSalary || 0);
-  const decExemptionsRaw = Math.max(0, objTaxSummary.decExemptions || 0);
-  const decDisplayExemptions = decGrossSalary > 0 ? Math.min(decExemptionsRaw, decGrossSalary) : decExemptionsRaw;
-  const decDisplayTaxableOld = decGrossSalary > 0 ? Math.max(0, decGrossSalary - decDisplayExemptions) : Math.max(0, decTaxableIncome);
-  const decDisplayTaxableNew = decGrossSalary;
-  const blnSummaryNormalized = decGrossSalary > 0 && decExemptionsRaw > decGrossSalary;
-  const strRecommendedRegime: Regime = objTaxSummary.strRecommendedRegime;
+  const decDeclaredTotal = useMemo(
+    () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
+    [lstRows]
+  );
+  const blnUseSummaryAsTruth = useMemo(
+    () =>
+      Boolean(
+        blnSummaryFromApi &&
+        Number.isFinite(objTaxSummary.decOldTax) &&
+        Number.isFinite(objTaxSummary.decNewTax)
+      ),
+    [blnSummaryFromApi, objTaxSummary]
+  );
+  const objDerivedCalc = useMemo(() => {
+    const decGross = Math.max(0, objTaxSummary.decGrossSalary || 0);
+    let blnRuleBasedFallback = false;
+    const decEligibleExemptionsFallback = lstRows.reduce((decTotal, objRow) => {
+      const decAmount = Math.max(0, objRow.decDeclaredAmount || 0);
+      const decConfiguredLimit = objRow.decMaxEligibleAmount ?? parseMaxLimit(objRow.strMaxLimitDisplay);
+      if (decConfiguredLimit != null && Number.isFinite(decConfiguredLimit)) {
+        return decTotal + Math.min(decAmount, Math.max(0, decConfiguredLimit));
+      }
+      blnRuleBasedFallback = true;
+      return decTotal;
+    }, 0);
+
+    if (blnUseSummaryAsTruth) {
+      const decOld = Math.max(0, objTaxSummary.decOldTax || 0);
+      const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
+      const decSavingsAbs = Math.abs(decOld - decNew);
+      const strRecommended = decOld === decNew ? "Either Regime" : decOld < decNew ? "Old Regime" : "New Regime";
+      return {
+        blnPreviewOnly: false,
+        blnRuleBasedFallback: false,
+        decGrossSalary: decGross,
+        decExemptions: Math.max(0, objTaxSummary.decExemptions || 0),
+        decTaxableOld: Math.max(0, objTaxSummary.decTaxableIncome || 0),
+        decTaxableNew: Math.max(0, decGross),
+        decOldTax: decOld,
+        decNewTax: decNew,
+        decSavings: decSavingsAbs,
+        strRecommendedRegime: strRecommended as Regime | "Either Regime",
+      };
+    }
+
+    const decExemptionsCapped = decGross > 0 ? Math.min(decEligibleExemptionsFallback, decGross) : decEligibleExemptionsFallback;
+    const decTaxableOld = Math.max(0, decGross - decExemptionsCapped);
+    const decTaxableNew = Math.max(0, decGross);
+    const decOld = Math.max(0, objTaxSummary.decOldTax || 0);
+    const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
+    const decSavingsAbs = Math.abs(decOld - decNew);
+    const strRecommended = decOld === decNew ? "Either Regime" : decOld < decNew ? "Old Regime" : "New Regime";
+    return {
+      blnPreviewOnly: true,
+      blnRuleBasedFallback,
+      decGrossSalary: decGross,
+      decExemptions: decExemptionsCapped,
+      decTaxableOld,
+      decTaxableNew,
+      decOldTax: decOld,
+      decNewTax: decNew,
+      decSavings: decSavingsAbs,
+      strRecommendedRegime: strRecommended as Regime | "Either Regime",
+    };
+  }, [blnUseSummaryAsTruth, objTaxSummary, lstRows]);
+  const strRecommendedRegimeSelectable: Regime =
+    objDerivedCalc.strRecommendedRegime === "New Regime" ? "New Regime" : "Old Regime";
   const intActiveStep = useMemo(() => {
     if (strFlowStatus === "NOT_STARTED") return 0;
     if (strFlowStatus === "REGIME_SELECTED") return 1;
-    if (strFlowStatus === "IN_PROGRESS") return 2;
+    if (strFlowStatus === "IN_PROGRESS" && !blnCompared) return 1;
+    if (strFlowStatus === "IN_PROGRESS" && blnCompared) return 2;
     return 3;
-  }, [strFlowStatus]);
+  }, [strFlowStatus, blnCompared]);
+  const decAmountInputValue = Number((strAmountInput || "").replace(/[^\d.]/g, "") || 0);
+  const decAmountMaxInput = 99_99_99_999;
+  const decActiveMaxLimit = objEditRow ? (objEditRow.decMaxEligibleAmount ?? parseMaxLimit(objEditRow.strMaxLimitDisplay)) : null;
+  const strAmountInputError = useMemo(() => {
+    if (!objEditRow) return "";
+    if (strAmountInput.trim() === "") return "Amount is required.";
+    if (!Number.isFinite(decAmountInputValue)) return "Amount is invalid.";
+    if (decAmountInputValue < 0) return "Amount cannot be negative.";
+    if (decAmountInputValue > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+    return "";
+  }, [objEditRow, strAmountInput, decAmountInputValue, decActiveMaxLimit]);
+  const strEligibleCapHelper =
+    decActiveMaxLimit != null && decAmountInputValue > decActiveMaxLimit
+      ? `Eligible amount capped at ${formatCurrency(decActiveMaxLimit)}.`
+      : "";
+  const blnSaveEditDisabled = Boolean(strAmountInputError);
+  const blnModalDirty = useMemo(() => {
+    if (!objEditRow) return false;
+    const strCurrentAmount = formatAmountInput(String(Math.max(0, objEditRow.decDeclaredAmount || 0)));
+    return (
+      strInvestmentNameInput.trim() !== (objEditRow.strInvestmentName || "").trim() ||
+      strAmountInput.trim() !== strCurrentAmount.trim() ||
+      Boolean(objProofFileInput)
+    );
+  }, [objEditRow, strInvestmentNameInput, strAmountInput, objProofFileInput]);
 
   function hydrateFromApi(objData: ItDeclarationDto) {
+    const blnHasSummary =
+      objData.objSummary != null &&
+      Number.isFinite(objData.objSummary.decOldTax) &&
+      Number.isFinite(objData.objSummary.decNewTax);
+    setBlnSummaryFromApi(blnHasSummary);
     setIntDeclarationID(objData.intDeclarationID ?? null);
     setStrFlowStatus(objData.strFlowStatus as FlowStatus);
+    setStrDeclarationStatus(objData.strDeclarationStatus ?? "draft");
     setStrSelectedRegime((objData.strSelectedRegime || "") as Regime | "");
     setStrLastUpdated(objData.strLastUpdated || getDateLabel());
     setLstRows(
       objData.lstItems?.length
         ? dedupeDeclarationRows(
-            objData.lstItems.map((objItem) => ({
-              intItemID: objItem.intItemID,
-              strSection: objItem.strSection,
-              strDescription: objItem.strDescription,
-              strMaxLimit: objItem.strMaxLimit,
-              decDeclaredAmount: objItem.decDeclaredAmount,
-              strInvestmentName: objItem.strInvestmentName,
-              strStatus: objItem.strStatus,
-            }))
+            objData.lstItems.map((objItem) => {
+              const objRow: DeclarationRow = {
+                intItemID: objItem.intItemID,
+                strSection: objItem.strSection,
+                strDescription: objItem.strDescription,
+                strMaxLimitDisplay: objItem.strMaxLimit,
+                decMaxEligibleAmount: parseMaxLimit(objItem.strMaxLimit),
+                decDeclaredAmount: objItem.decDeclaredAmount,
+                strInvestmentName: objItem.strInvestmentName,
+                strStatus: objItem.strStatus,
+                objProof: objItem.objProof ?? null,
+              };
+              return { ...objRow, strStatus: resolveRowStatus(objRow) };
+            })
           )
         : []
     );
@@ -271,16 +505,19 @@ export default function SalaryEssDeclarationsPage() {
     });
     setDicDirtyRows({});
     setBlnRegimeDirty(false);
+    setBlnCompared(objData.strFlowStatus === "SUBMITTED");
   }
 
   function mapCategoryToRow(objCategory: EssDeclarationCategoryApiRecord): DeclarationRow {
     const strDescription = objCategory.strCategoryDescription?.trim() || objCategory.strCategoryName;
-    const strMaxLimit = objCategory.decMaxLimitAmount == null ? "-" : formatCurrency(objCategory.decMaxLimitAmount);
+    const strMaxLimitDisplay = objCategory.decMaxLimitAmount == null ? "-" : formatCurrency(objCategory.decMaxLimitAmount);
     return {
       intItemID: null,
       strSection: objCategory.strCategoryCode,
       strDescription,
-      strMaxLimit,
+      strMaxLimitDisplay,
+      decMaxEligibleAmount: objCategory.decMaxLimitAmount ?? null,
+      blnProofRequired: objCategory.blnProofRequired,
       decDeclaredAmount: 0,
       strInvestmentName: "",
       strStatus: "Not Started",
@@ -329,12 +566,15 @@ export default function SalaryEssDeclarationsPage() {
     setBlnLoading(true);
     setStrError("");
     setStrWarning("");
+    setBlnRetryRefresh(false);
     try {
       const objData = await itDeclarationService.getDeclaration(strFinancialYearCode);
       hydrateFromApi(objData);
+      const lstMasterRows = await loadRowsFromCategoryMaster().catch(() => []);
       if (!objData.lstItems?.length) {
-        const lstMasterRows = await loadRowsFromCategoryMaster();
-        setLstRows(lstMasterRows);
+        setLstRows(lstMasterRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) })));
+      } else if (lstMasterRows.length > 0) {
+        setLstRows((lstCurrentRows) => mergeSectionRules(lstCurrentRows, lstMasterRows));
       }
     } catch (objError) {
       const strApiError = formatApiErrorForUi(objError, "Unable to load IT declaration.");
@@ -342,6 +582,7 @@ export default function SalaryEssDeclarationsPage() {
       try {
         const lstMasterRows = await loadRowsFromCategoryMaster();
         setLstRows(lstMasterRows);
+        setBlnSummaryFromApi(false);
         if (lstMasterRows.length > 0) {
           setStrWarning(
             blnItDeclarationRouteMissing
@@ -349,11 +590,13 @@ export default function SalaryEssDeclarationsPage() {
               : `${strApiError} Loaded declaration sections from Tax Declaration Component master.`
           );
         } else {
-          setStrError(strApiError);
+          setStrError("Unable to refresh declaration summary. Please try again.");
+          setBlnRetryRefresh(true);
         }
       } catch {
         setLstRows([]);
-        setStrError(strApiError);
+        setStrError("Unable to refresh declaration summary. Please try again.");
+        setBlnRetryRefresh(true);
       }
     } finally {
       setBlnLoading(false);
@@ -366,9 +609,33 @@ export default function SalaryEssDeclarationsPage() {
 
   useEffect(() => {
     if (!blnDraftSaved) return;
+    setBlnDismissDraftSavedAlert(false);
     const intTimer = window.setTimeout(() => setBlnDraftSaved(false), 1500);
     return () => window.clearTimeout(intTimer);
   }, [blnDraftSaved]);
+
+  useEffect(() => {
+    if (!(blnRegimeDirty || Object.keys(dicDirtyRows).length > 0)) return;
+    setBlnDismissUnsavedAlert(false);
+  }, [blnRegimeDirty, dicDirtyRows]);
+
+  useEffect(() => {
+    if (!strWarning) return;
+    setBlnDismissWarningAlert(false);
+    const intTimer = window.setTimeout(() => setBlnDismissWarningAlert(true), 4500);
+    return () => window.clearTimeout(intTimer);
+  }, [strWarning]);
+
+  useEffect(() => {
+    if (!strError) return;
+    setBlnDismissErrorAlert(false);
+  }, [strError]);
+
+  useEffect(() => {
+    if (!strRecentlyUpdatedKey) return;
+    const intTimer = window.setTimeout(() => setStrRecentlyUpdatedKey(""), 1800);
+    return () => window.clearTimeout(intTimer);
+  }, [strRecentlyUpdatedKey]);
 
   async function runCompareAndOpenModal() {
     if (blnLocked) return;
@@ -380,6 +647,7 @@ export default function SalaryEssDeclarationsPage() {
       if (!intResolvedDeclarationID) return;
       const objData = await itDeclarationService.compareTax(intResolvedDeclarationID);
       hydrateFromApi(objData);
+      setBlnCompared(true);
       setBlnCompareModalOpen(true);
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, "Unable to compare tax."));
@@ -406,58 +674,233 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   function openRegimeModal() {
-    setStrRegimeDraft((strSelectedRegime || strRecommendedRegime || "Old Regime") as Regime);
+    setStrRegimeDraft((strSelectedRegime || strRecommendedRegimeSelectable || "Old Regime") as Regime);
     setBlnRegimeModalOpen(true);
   }
 
   function openEditModal(objRow: DeclarationRow) {
-    if (blnLocked) return;
-    if (!blnStarted) {
+    if (!blnStarted && !blnLocked) {
       openRegimeModal();
       return;
     }
     setObjEditRow(objRow);
     setStrInvestmentNameInput(objRow.strInvestmentName);
-    setStrAmountInput(objRow.decDeclaredAmount ? String(objRow.decDeclaredAmount) : "");
+    setStrAmountInput(objRow.decDeclaredAmount ? formatAmountInput(String(objRow.decDeclaredAmount)) : "");
+    setObjProofFileInput(null);
+    const lstFallbackOptions = getFallbackInvestmentOptions(objRow.strSection);
+    const lstLocalHints = [objRow.strDescription?.trim(), objRow.strInvestmentName?.trim()]
+      .filter((strValue): strValue is string => Boolean(strValue && strValue !== "-"));
+    const lstSeedOptions = Array.from(new Set([...lstFallbackOptions, ...lstLocalHints]));
+    setLstInvestmentOptionsForRow(lstSeedOptions);
+    void (async () => {
+      try {
+        const lstOptions = await itDeclarationService.listInvestmentOptions(objRow.strSection);
+        const lstApiOptions = lstOptions
+          .map((objOption) => objOption.strOptionName?.trim() || objOption.strOptionCode?.trim())
+          .filter((strValue): strValue is string => Boolean(strValue));
+        const lstMerged = Array.from(new Set([...lstSeedOptions, ...lstApiOptions]));
+        setLstInvestmentOptionsForRow(lstMerged);
+      } catch {
+        setLstInvestmentOptionsForRow(lstSeedOptions);
+      }
+    })();
+  }
+
+  function closeEditModal() {
+    setObjEditRow(null);
+    setObjProofFileInput(null);
+    setLstInvestmentOptionsForRow([]);
+  }
+
+  async function ensureDeclarationAndSaveSingleItem(objPayload: {
+    intItemID?: number | null;
+    strSection: string;
+    strInvestmentName: string;
+    decDeclaredAmount: number;
+  }) {
+    const strRegimeToSave = (strSelectedRegime || strRecommendedRegimeSelectable || "Old Regime") as Regime;
+    let intResolvedDeclarationID = intDeclarationID;
+    let objLatestData: ItDeclarationDto | null = null;
+
+    if (!intResolvedDeclarationID) {
+      objLatestData = await itDeclarationService.startDeclaration(strFinancialYearCode, strRegimeToSave);
+      intResolvedDeclarationID = objLatestData.intDeclarationID ?? null;
+    } else if (blnRegimeDirty) {
+      objLatestData = await itDeclarationService.changeRegime(intResolvedDeclarationID, strRegimeToSave);
+    }
+
+    if (!intResolvedDeclarationID) {
+      throw new Error("Unable to resolve declaration ID for proof upload.");
+    }
+
+    objLatestData = await itDeclarationService.saveItem(intResolvedDeclarationID, objPayload);
+    hydrateFromApi(objLatestData);
+
+    const objSavedItem = objLatestData.lstItems?.find((objItem) =>
+      objPayload.intItemID != null
+        ? objItem.intItemID === objPayload.intItemID
+        : objItem.strSection === objPayload.strSection
+    );
+
+    return {
+      intDeclarationID: intResolvedDeclarationID,
+      intItemID: objSavedItem?.intItemID ?? null,
+    };
   }
 
   async function saveDeclarationEdit() {
     if (!objEditRow) return;
-    const decAmount = Math.max(0, Number(strAmountInput || 0));
-    const strInvestmentName = strInvestmentNameInput.trim();
-    const strDirtyKey = objEditRow.intItemID != null ? `id-${objEditRow.intItemID}` : `${objEditRow.strSection}-${objEditRow.strDescription}`;
-    setLstRows((lstCurrentRows) =>
-      lstCurrentRows.map((objRow) =>
-        (objRow.intItemID != null && objEditRow.intItemID != null && objRow.intItemID === objEditRow.intItemID) ||
-        (objRow.intItemID == null && objEditRow.intItemID == null && objRow.strSection === objEditRow.strSection && objRow.strDescription === objEditRow.strDescription)
-          ? {
-              ...objRow,
-              strInvestmentName,
-              decDeclaredAmount: decAmount,
-              strStatus: decAmount > 0 ? "Completed" : "Not Started",
-            }
-          : objRow
-      )
-    );
-    setDicDirtyRows((dicCurrentRows) => ({
-      ...dicCurrentRows,
-      [strDirtyKey]: {
-        intItemID: objEditRow.intItemID,
-        strSection: objEditRow.strSection,
-        strInvestmentName,
-        decDeclaredAmount: decAmount,
-      },
-    }));
-    setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : "IN_PROGRESS"));
-    setStrLastUpdated(getDateLabel());
-    setObjEditRow(null);
-    setBlnDraftSaved(true);
+    if (strAmountInputError) return;
+    setBlnModalSaving(true);
+    try {
+      const decAmount = Math.max(0, Number((strAmountInput || "").replace(/[^\d.]/g, "") || 0));
+      const strInvestmentName = strInvestmentNameInput.trim();
+      const strDirtyKey = objEditRow.intItemID != null ? `id-${objEditRow.intItemID}` : `${objEditRow.strSection}-${objEditRow.strDescription}`;
+      setLstRows((lstCurrentRows) =>
+        lstCurrentRows.map((objRow) =>
+          (objRow.intItemID != null && objEditRow.intItemID != null && objRow.intItemID === objEditRow.intItemID) ||
+          (objRow.intItemID == null && objEditRow.intItemID == null && objRow.strSection === objEditRow.strSection && objRow.strDescription === objEditRow.strDescription)
+            ? (() => {
+                const objUpdatedRow: DeclarationRow = {
+                ...objRow,
+                strInvestmentName,
+                decDeclaredAmount: decAmount,
+                strEligibilityNote:
+                  objRow.decMaxEligibleAmount != null && decAmount > objRow.decMaxEligibleAmount
+                    ? `Eligible amount capped at ${formatCurrency(objRow.decMaxEligibleAmount)}.`
+                    : "",
+              };
+                return {
+                  ...objUpdatedRow,
+                  strStatus: resolveRowStatus(objUpdatedRow),
+                };
+              })()
+            : objRow
+        )
+      );
+      setDicDirtyRows((dicCurrentRows) => ({
+        ...dicCurrentRows,
+        [strDirtyKey]: {
+          intItemID: objEditRow.intItemID,
+          strSection: objEditRow.strSection,
+          strInvestmentName,
+          decDeclaredAmount: decAmount,
+        },
+      }));
+      setStrRecentlyUpdatedKey(strDirtyKey);
+
+      if (objProofFileInput) {
+        try {
+          setStrSavingLabel("Uploading proof...");
+          setBlnSaving(true);
+          const objPersisted = await ensureDeclarationAndSaveSingleItem({
+            intItemID: objEditRow.intItemID,
+            strSection: objEditRow.strSection,
+            strInvestmentName,
+            decDeclaredAmount: decAmount,
+          });
+          if (objPersisted.intItemID) {
+            const objData = await itDeclarationService.uploadItemProof(objPersisted.intDeclarationID, objPersisted.intItemID, objProofFileInput);
+            hydrateFromApi(objData);
+          }
+        } catch (objError) {
+          setStrError(formatApiErrorForUi(objError, "Unable to upload declaration proof."));
+        } finally {
+          setBlnSaving(false);
+          setStrSavingLabel("Saving...");
+        }
+      }
+
+      setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : "IN_PROGRESS"));
+      setBlnCompared(false);
+      setStrLastUpdated(getDateLabel());
+      setObjEditRow(null);
+      setObjProofFileInput(null);
+      setBlnDraftSaved(true);
+      setStrSuccessToast("Declaration item saved successfully.");
+    } finally {
+      setBlnModalSaving(false);
+    }
+  }
+
+  async function previewDeclarationProof() {
+    if (!objEditRow?.intItemID || !intDeclarationID) return;
+    setBlnSaving(true);
+    setBlnSubmitModalLoading(true);
+    setStrSavingLabel("Loading proof...");
+    try {
+      const objPreview = await itDeclarationService.previewItemProof(intDeclarationID, objEditRow.intItemID);
+      const strBase64 = objPreview.strBase64Content;
+      const strMimeType = resolvePreviewMimeType(objPreview.strMimeType, objPreview.strFileName);
+      const setPreviewableMimePrefixes = ["image/", "text/"];
+      const setPreviewableExactMimes = new Set([
+        "application/pdf",
+        "application/json",
+      ]);
+      const blnCanPreviewInline =
+        setPreviewableMimePrefixes.some((strPrefix) => strMimeType.startsWith(strPrefix)) ||
+        setPreviewableExactMimes.has(strMimeType);
+      const strBinary = atob(strBase64);
+      const uintBytes = new Uint8Array(strBinary.length);
+      for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
+        uintBytes[intIndex] = strBinary.charCodeAt(intIndex);
+      }
+      const objBlob = new Blob([uintBytes], { type: strMimeType });
+      const strObjectUrl = URL.createObjectURL(objBlob);
+      if (blnCanPreviewInline) {
+        const objNewTab = window.open(strObjectUrl, "_blank", "noopener,noreferrer");
+        if (!objNewTab) {
+          const objLink = document.createElement("a");
+          objLink.href = strObjectUrl;
+          objLink.download = objPreview.strFileName || "proof";
+          document.body.appendChild(objLink);
+          objLink.click();
+          document.body.removeChild(objLink);
+          setStrWarning("Popup was blocked. File downloaded instead.");
+        }
+      } else {
+        const objLink = document.createElement("a");
+        objLink.href = strObjectUrl;
+        objLink.download = objPreview.strFileName || "proof";
+        document.body.appendChild(objLink);
+        objLink.click();
+        document.body.removeChild(objLink);
+        setStrWarning("This file type cannot be previewed in browser. File downloaded instead.");
+      }
+      window.setTimeout(() => URL.revokeObjectURL(strObjectUrl), 60_000);
+    } catch (objError) {
+      setStrError(formatApiErrorForUi(objError, "Unable to preview declaration proof."));
+    } finally {
+      setBlnSaving(false);
+      setBlnSubmitModalLoading(false);
+      setStrSavingLabel("Saving...");
+    }
+  }
+
+  async function deleteDeclarationProof() {
+    if (!objEditRow?.intItemID || !intDeclarationID) return;
+    setBlnSaving(true);
+    setStrSavingLabel("Deleting proof...");
+    try {
+      const objData = await itDeclarationService.deleteItemProof(intDeclarationID, objEditRow.intItemID);
+      if (objData) {
+        hydrateFromApi(objData);
+      }
+      setObjEditRow((objCurrent) => (objCurrent ? { ...objCurrent, objProof: null } : objCurrent));
+      setObjProofFileInput(null);
+    } catch (objError) {
+      setStrError(formatApiErrorForUi(objError, "Unable to delete declaration proof."));
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Saving...");
+    }
   }
 
   async function confirmRegime() {
     setStrSelectedRegime(strRegimeDraft);
     setBlnRegimeDirty(true);
     setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : strCurrentStatus));
+    setBlnCompared(false);
     setStrLastUpdated(getDateLabel());
     setBlnRegimeModalOpen(false);
   }
@@ -478,6 +921,7 @@ export default function SalaryEssDeclarationsPage() {
       hydrateFromApi(objData);
       setBlnSubmitModalOpen(false);
       setBlnDraftSaved(true);
+      setStrSuccessToast("Declaration submitted successfully.");
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, "Unable to submit declaration."));
     } finally {
@@ -496,6 +940,7 @@ export default function SalaryEssDeclarationsPage() {
       hydrateFromApi(objData);
       setBlnDeclarationConfirm(false);
       setBlnDraftSaved(true);
+      setStrSuccessToast("Declaration withdrawn successfully.");
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, "Unable to withdraw declaration."));
     } finally {
@@ -509,7 +954,7 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   async function persistDraftToDb() {
-    const strRegimeToSave = (strSelectedRegime || strRecommendedRegime || "Old Regime") as Regime;
+    const strRegimeToSave = (strSelectedRegime || strRecommendedRegimeSelectable || "Old Regime") as Regime;
     const lstPendingRows = Object.values(dicDirtyRows);
     let intResolvedDeclarationID = intDeclarationID;
     let objLatestData: ItDeclarationDto | null = null;
@@ -554,11 +999,10 @@ export default function SalaryEssDeclarationsPage() {
             </Box>
           </Stack>
           <Stack spacing={0.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
-            <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+            <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
               <RadioGroup
                 row
                 value={strSelectedRegime || "Old Regime"}
-                disabled={blnRegimeSwitchDisabled}
                 onChange={(objEvent) => { setStrSelectedRegime(objEvent.target.value as Regime); setBlnRegimeDirty(true); }}
                 sx={{
                   mr: { md: 0.5 },
@@ -567,14 +1011,14 @@ export default function SalaryEssDeclarationsPage() {
                   "& .Mui-checked": { color: "#ffffff !important" },
                 }}
               >
-                <FormControlLabel value="Old Regime" control={<Radio size="small" />} label={`Old Regime${strRecommendedRegime === "Old Regime" ? " (Recommended)" : ""}`} />
-                <FormControlLabel value="New Regime" control={<Radio size="small" />} label="New Regime" />
+                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`Old Regime${objDerivedCalc.strRecommendedRegime === "Old Regime" ? " (Recommended)" : ""}`} />
+                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label="New Regime" />
               </RadioGroup>
               <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" } }}>
                 Save Draft
               </Button>
-              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0e7490", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0b5f75" } }}>
-                Compare Tax
+              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0e7490", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0b5f75" } }}>
+                {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
               </Button>
               <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" } }}>
                 Submit Declaration
@@ -585,11 +1029,6 @@ export default function SalaryEssDeclarationsPage() {
                 </Button>
               ) : null}
             </Stack>
-            <FormControlLabel
-              sx={{ m: 0, mt: -0.2, "& .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.95)" } }}
-              control={<Checkbox size="small" checked={blnDeclarationConfirm} onChange={(objEvent) => { const blnChecked = objEvent.target.checked; setBlnDeclarationConfirm(blnChecked); if (blnChecked && strWarning === "Please check confirmation checkbox before final submit.") { setStrWarning(""); } }} sx={{ color: "rgba(239,252,255,0.95)", "&.Mui-checked": { color: "#ffffff" } }} />}
-              label={<Typography sx={{ fontSize: "0.76rem" }}>I confirm details are correct (required before final submit).</Typography>}
-            />
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (
               <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
                 Regime is locked by policy. Default regime: {objRegimeConfig.strDefaultRegime}
@@ -599,28 +1038,87 @@ export default function SalaryEssDeclarationsPage() {
         </Stack>
       </Paper>
 
-      <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ borderRadius: "8px", border: "1px solid rgba(251,146,60,0.35)", backgroundColor: "rgba(255,237,213,0.62)", py: 0.05, "& .MuiAlert-message": { fontSize: "0.8rem" } }}>
+      <Alert
+        severity="warning"
+        icon={<WarningAmberRoundedIcon />}
+        sx={{ borderRadius: "8px", border: "1px solid rgba(251,146,60,0.35)", backgroundColor: "rgba(255,237,213,0.62)", py: 0.05, "& .MuiAlert-message": { fontSize: "0.8rem" } }}
+      >
         If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.
       </Alert>
 
-      {blnDraftSaved ? <Alert severity="success" sx={{ borderRadius: "8px", py: 0.1 }}>Draft saved</Alert> : null}
-      {strWarning ? <Alert severity="warning" sx={{ borderRadius: "8px", py: 0.1 }}>{strWarning}</Alert> : null}
-      {blnSummaryNormalized ? (
-        <Alert severity="info" sx={{ borderRadius: "8px", py: 0.1 }}>
-          Tax summary was normalized for display because exemptions exceeded gross salary.
-        </Alert>
+      {blnDraftSaved && !blnDismissDraftSavedAlert ? (
+        <Fade in={!blnDismissDraftSavedAlert}>
+          <Alert
+            severity="success"
+            sx={{ borderRadius: "8px", py: 0.1 }}
+            action={
+              <IconButton size="small" color="inherit" onClick={() => setBlnDismissDraftSavedAlert(true)}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            }
+          >
+            Draft saved
+          </Alert>
+        </Fade>
       ) : null}
-      {strError ? <Alert severity="error" sx={{ borderRadius: "8px", py: 0.1 }}>{strError}</Alert> : null}
+      {!blnDraftSaved && (blnRegimeDirty || Object.keys(dicDirtyRows).length > 0) && !blnDismissUnsavedAlert ? (
+        <Fade in={!blnDismissUnsavedAlert}>
+          <Alert
+            severity="info"
+            sx={{ borderRadius: "8px", py: 0.1 }}
+            action={
+              <IconButton size="small" color="inherit" onClick={() => setBlnDismissUnsavedAlert(true)}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            }
+          >
+            Unsaved changes
+          </Alert>
+        </Fade>
+      ) : null}
+      {strWarning && !blnDismissWarningAlert ? (
+        <Fade in={!blnDismissWarningAlert}>
+          <Alert
+            severity="warning"
+            sx={{ borderRadius: "8px", py: 0.1 }}
+            action={
+              <IconButton size="small" color="inherit" onClick={() => setBlnDismissWarningAlert(true)}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            }
+          >
+            {strWarning}
+          </Alert>
+        </Fade>
+      ) : null}
+      {strError && !blnDismissErrorAlert ? (
+        <Fade in={!blnDismissErrorAlert}>
+          <Alert
+            severity="error"
+            sx={{ borderRadius: "8px", py: 0.1 }}
+            action={
+              <Stack direction="row" spacing={0.4} alignItems="center">
+                {blnRetryRefresh ? <Button color="inherit" size="small" onClick={() => void loadDeclaration()}>Retry</Button> : null}
+                <IconButton size="small" color="inherit" onClick={() => setBlnDismissErrorAlert(true)}>
+                  <CloseRoundedIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            }
+          >
+            {strError}
+          </Alert>
+        </Fade>
+      ) : null}
 
       <Grid container spacing={0.8}>
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard strLabel="Declaration Status" strValue={strFlowStatus === "SUBMITTED" ? "Submitted" : blnHasAnyFilled ? "Draft" : "Not Started"} strSubValue={`Last updated: ${strLastUpdated}`} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Selected Regime" strValue={strSelectedRegime || "Old Regime"} strSubValue={strRecommendedRegime === "Old Regime" ? "Recommended" : ""} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel="Selected Regime" strValue={strSelectedRegime || "Old Regime"} strSubValue={objDerivedCalc.strRecommendedRegime === "Either Regime" ? "Either regime works" : objDerivedCalc.strRecommendedRegime === "Old Regime" ? "Recommended" : ""} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Estimated Tax Saving" strValue={formatCurrency(decSavings)} strSubValue="(Old vs New Regime)" objIcon={<SavingsOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel="Estimated Tax Saving" strValue={formatCurrency(objDerivedCalc.decSavings)} strSubValue={objDerivedCalc.blnPreviewOnly ? "Estimated preview only" : "(Old vs New Regime)"} objIcon={<SavingsOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard strLabel="Last Updated" strValue={strLastUpdated} strSubValue="By You" objIcon={<CalendarTodayOutlinedIcon sx={{ fontSize: 18 }} />} />
@@ -634,7 +1132,6 @@ export default function SalaryEssDeclarationsPage() {
           ))}
         </Stack>
       </Paper>
-
       <Grid container spacing={0.8}>
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
@@ -661,16 +1158,66 @@ export default function SalaryEssDeclarationsPage() {
                         No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.
                       </TableCell>
                     </TableRow>
-                  ) : lstRows.map((objRow, intIndex) => (
-                    <TableRow key={objRow.intItemID ?? `${objRow.strSection}-${intIndex}`} hover sx={{ height: 56 }}>
-                      <TableCell sx={{ fontWeight: 700 }}>{objRow.strSection}</TableCell>
-                      <TableCell>{objRow.strDescription}</TableCell>
-                      <TableCell>{formatCurrency(objRow.decDeclaredAmount)}</TableCell>
-                      <TableCell>{objRow.strMaxLimit}</TableCell>
-                      <TableCell><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: getStatusTextColor(objRow.strStatus) }}>{objRow.strStatus}</Typography></TableCell>
-                      <TableCell align="right"><Button variant="text" size="small" sx={{ fontSize: "0.76rem", fontWeight: 700 }} disabled={blnLocked} onClick={() => openEditModal(objRow)}>{objRow.decDeclaredAmount > 0 ? "View / Edit" : blnStarted ? "Add" : "Start"}</Button></TableCell>
-                    </TableRow>
-                  ))}
+                  ) : (() => {
+                    const dicGroups = new Map<string, DeclarationRow[]>();
+                    for (const objRow of lstRows) {
+                      const strGroupName = getGroupName(objRow);
+                      const lstGroupRows = dicGroups.get(strGroupName) ?? [];
+                      lstGroupRows.push(objRow);
+                      dicGroups.set(strGroupName, lstGroupRows);
+                    }
+                    return Array.from(dicGroups.entries()).flatMap(([strGroupName, lstGroupRows]) => [
+                      <TableRow key={`grp-${strGroupName}`} sx={{ backgroundColor: "#f8fafc" }}>
+                        <TableCell colSpan={6} sx={{ fontWeight: 800, color: "#334155", fontSize: "0.78rem" }}>{strGroupName}</TableCell>
+                      </TableRow>,
+                      ...lstGroupRows.map((objRow, intIndex) => {
+                        const strRowKey = objRow.intItemID != null ? `id-${objRow.intItemID}` : `${objRow.strSection}-${objRow.strDescription}`;
+                        return (
+                          <TableRow
+                            key={objRow.intItemID ?? `${objRow.strSection}-${intIndex}`}
+                            hover
+                            sx={{
+                              height: 56,
+                              backgroundColor: strRecentlyUpdatedKey === strRowKey ? "rgba(16,185,129,0.12)" : undefined,
+                              transition: "background-color 0.8s ease",
+                            }}
+                          >
+                            <TableCell sx={{ fontWeight: 700 }}>{objRow.strSection}</TableCell>
+                            <TableCell>{objRow.strDescription}</TableCell>
+                            <TableCell>
+                              <Typography sx={{ fontSize: "0.85rem" }}>{formatCurrency(objRow.decDeclaredAmount)}</Typography>
+                              {objRow.strEligibilityNote ? <Typography sx={{ fontSize: "0.72rem", color: "#b45309" }}>{objRow.strEligibilityNote}</Typography> : null}
+                            </TableCell>
+                            <TableCell>{objRow.strMaxLimitDisplay}</TableCell>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                label={objRow.strStatus}
+                                sx={{
+                                  fontWeight: 700,
+                                  color: objRow.strStatus === "Completed" ? "#166534" : objRow.strStatus === "Proof Pending" ? "#9a3412" : objRow.strStatus === "In Progress" ? "#9a3412" : "#475569",
+                                  backgroundColor: objRow.strStatus === "Completed" ? "#dcfce7" : objRow.strStatus === "Proof Pending" ? "#ffedd5" : objRow.strStatus === "In Progress" ? "#ffedd5" : "#e2e8f0",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Button
+                                variant="text"
+                                size="small"
+                                sx={{ fontSize: "0.76rem", fontWeight: 700 }}
+                                disabled={blnLocked ? objRow.decDeclaredAmount <= 0 : false}
+                                onClick={() => openEditModal(objRow)}
+                              >
+                                {blnLocked
+                                  ? (objRow.decDeclaredAmount > 0 ? "View" : "-")
+                                  : (objRow.decDeclaredAmount > 0 ? "View / Edit" : blnStarted ? "Add" : "Start")}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }),
+                    ]);
+                  })()}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -681,18 +1228,20 @@ export default function SalaryEssDeclarationsPage() {
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%" }}>
             <Typography sx={{ fontWeight: 800, mb: 1, fontSize: "0.95rem" }}>Tax Summary (Live)</Typography>
             <Stack spacing={0.72}>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem" }}>Gross Salary</Typography><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{formatCurrency(decGrossSalary)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem" }}>Total Exemptions</Typography><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{formatCurrency(decDisplayExemptions || decDeclaredTotal)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem" }}>Taxable Income (Old)</Typography><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{formatCurrency(decDisplayTaxableOld)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem" }}>Taxable Income (New)</Typography><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{formatCurrency(decDisplayTaxableNew)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Gross Salary</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Total Exemptions</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Taxable Income (Old)</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableOld)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Taxable Income (New)</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableNew)}</Typography></Stack>
               <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (Old)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(decOldTax)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (New)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(decNewTax)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (Old)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(objDerivedCalc.decOldTax)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (New)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(objDerivedCalc.decNewTax)}</Typography></Stack>
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>Estimated preview only</Typography> : null}
+              {objDerivedCalc.blnPreviewOnly && objDerivedCalc.blnRuleBasedFallback ? <Typography sx={{ fontSize: "0.73rem", color: "#94a3b8" }}>Some sections require backend rule-based calculation.</Typography> : null}
             </Stack>
             <Paper sx={{ mt: 1, p: 1, borderRadius: "8px", border: "1px solid #bde3cb", backgroundColor: "#f0fdf4" }}>
-              <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "#166534" }}>Recommended Regime</Typography>
-              <Typography sx={{ fontSize: "0.9rem", fontWeight: 800, color: "#166534" }}>{strRecommendedRegime}</Typography>
-              <Typography sx={{ fontSize: "0.76rem", color: "#166534", mt: 0.2 }}>Estimated Tax Saving: {formatCurrency(decSavings)}</Typography>
+              <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, color: "#166534" }}>Recommended Regime</Typography>
+              <Typography sx={{ fontSize: "1rem", fontWeight: 900, color: "#14532d" }}>{objDerivedCalc.strRecommendedRegime}</Typography>
+              <Typography sx={{ fontSize: "0.8rem", color: "#166534", mt: 0.2, fontWeight: 700 }}>Estimated Tax Saving: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
             </Paper>
           </Paper>
         </Grid>
@@ -712,48 +1261,256 @@ export default function SalaryEssDeclarationsPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(objEditRow)} onClose={() => setObjEditRow(null)} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(objEditRow)} onClose={closeEditModal} maxWidth="md" fullWidth>
         <DialogTitle>Edit Declaration ({objEditRow?.strSection})</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
-          <Stack spacing={1.2}>
-            <TextField label="Investment name" size="small" value={strInvestmentNameInput} onChange={(objEvent) => setStrInvestmentNameInput(objEvent.target.value)} fullWidth />
-            <TextField label="Amount input" size="small" type="number" value={strAmountInput} onChange={(objEvent) => setStrAmountInput(objEvent.target.value)} fullWidth />
+          <Stack spacing={1.35}>
+            <Autocomplete
+              freeSolo
+              options={lstInvestmentOptionsForRow}
+              value={strInvestmentNameInput}
+              onInputChange={(_, strValue) => setStrInvestmentNameInput(strValue)}
+              readOnly={blnLocked}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Investment name"
+                  size="small"
+                  InputProps={{ ...params.InputProps, readOnly: blnLocked }}
+                  fullWidth
+                  helperText={lstInvestmentOptionsForRow.length > 0 ? "Select or search common investments for this section." : "Enter investment name."}
+                />
+              )}
+            />
+            <TextField
+              label="Amount input"
+              size="small"
+              inputMode="numeric"
+              value={strAmountInput}
+              onChange={(objEvent) => setStrAmountInput(formatAmountInput(objEvent.target.value))}
+              error={Boolean(strAmountInputError)}
+              helperText={strAmountInputError || strEligibleCapHelper || " "}
+              InputProps={{ readOnly: blnLocked }}
+              fullWidth
+            />
+            {decActiveMaxLimit != null ? (
+              <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: -0.5 }}>
+                Max allowed under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
+              </Typography>
+            ) : null}
+            {objEditRow?.objProof && !objProofFileInput ? (
+              <Stack spacing={0.8}>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<VisibilityOutlinedIcon />}
+                    sx={{ borderColor: "#0f766e", color: "#0f766e", "&:hover": { borderColor: "#115e59", backgroundColor: "rgba(15,118,110,0.08)" } }}
+                    onClick={() => void previewDeclarationProof()}
+                  >
+                    Preview
+                  </Button>
+                  {!blnLocked ? (
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      size="small"
+                      startIcon={<UploadFileRoundedIcon />}
+                      sx={{ borderColor: "#2563eb", color: "#2563eb", "&:hover": { borderColor: "#1d4ed8", backgroundColor: "rgba(37,99,235,0.08)" } }}
+                    >
+                      Replace
+                      <input
+                        hidden
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.pdf,.txt,.xlsx,.xls,.ppt,.pptx,.doc,.docx"
+                        onChange={(objEvent) => {
+                          const objFile = objEvent.target.files?.[0] ?? null;
+                          setObjProofFileInput(objFile);
+                        }}
+                      />
+                    </Button>
+                  ) : null}
+                  {!blnLocked ? (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<DeleteOutlineRoundedIcon />}
+                      sx={{ borderColor: "#cbd5e1", color: "#475569", "&:hover": { borderColor: "#94a3b8", backgroundColor: "#f8fafc" } }}
+                      onClick={() => void deleteDeclarationProof()}
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
+                </Stack>
+                <Box
+                  sx={{
+                    border: "1px dashed #99f6e4",
+                    backgroundColor: "#f0fdfa",
+                    borderRadius: "10px",
+                    px: 1,
+                    py: 0.7,
+                  }}
+                >
+                  <Typography sx={{ color: "#115e59", fontSize: "0.78rem", fontWeight: 700 }}>
+                    Uploaded proof
+                  </Typography>
+                  <Typography sx={{ color: "#134e4a", fontSize: "0.8rem", wordBreak: "break-word" }}>
+                    {objEditRow.objProof.strFileName}
+                  </Typography>
+                </Box>
+              </Stack>
+            ) : !blnLocked ? (
+              <Button component="label" variant="outlined" size="small" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: "dashed", borderWidth: "1.5px", color: "#1d4ed8", borderColor: "#93c5fd" }}>
+                Upload Proof
+                <input
+                  hidden
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.pdf,.txt,.xlsx,.xls,.ppt,.pptx,.doc,.docx"
+                  onChange={(objEvent) => {
+                    const objFile = objEvent.target.files?.[0] ?? null;
+                    setObjProofFileInput(objFile);
+                  }}
+                />
+              </Button>
+            ) : null}
+            <Typography sx={{ color: "#64748b", fontSize: "0.74rem", mt: -0.2 }}>
+              Supported types: PNG, JPG, PDF, TXT, XLS/XLSX, PPT/PPTX, DOC/DOCX. Max size: 10 MB.
+            </Typography>
+            {(!objEditRow?.objProof || objProofFileInput) && (
+              <Typography sx={{ color: "#475569", fontSize: "0.8rem" }}>
+                {objProofFileInput ? (
+                  <Box component="span" sx={{ color: "#1d4ed8", fontWeight: 700 }}>
+                    Selected: {objProofFileInput.name}
+                  </Box>
+                ) : (
+                  "No proof uploaded"
+                )}
+              </Typography>
+            )}
             <Typography sx={{ color: "#475569", fontSize: "0.86rem" }}>Total amount: {formatCurrency(Math.max(0, Number(strAmountInput || 0)))}</Typography>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setObjEditRow(null)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void saveDeclarationEdit()}>Save</Button>
+          <Button onClick={closeEditModal}>{blnLocked ? "Close" : "Cancel"}</Button>
+          {!blnLocked ? (
+            <Button variant="contained" onClick={() => void saveDeclarationEdit()} disabled={blnSaveEditDisabled || blnModalSaving}>
+              {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : "Save"}
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
 
       <Dialog open={blnCompareModalOpen} onClose={() => setBlnCompareModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Compare Tax</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
-          <Stack spacing={1}>
-            <Typography>Taxable Income (Old): {formatCurrency(decDisplayTaxableOld)}</Typography>
-            <Typography>Taxable Income (New): {formatCurrency(decDisplayTaxableNew)}</Typography>
-            <Typography>Old Regime Estimated Tax: {formatCurrency(decOldTax)}</Typography>
-            <Typography>New Regime Estimated Tax: {formatCurrency(decNewTax)}</Typography>
-            <Alert severity="info" sx={{ borderRadius: "10px" }}>You save {formatCurrency(decSavings)} with {strRecommendedRegime}</Alert>
+          <Stack spacing={1.1}>
+            <TableContainer sx={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <Table size="small">
+                <TableHead sx={{ backgroundColor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Metric</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Old Regime</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>New Regime</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Taxable Income</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decTaxableOld)}</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decTaxableNew)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Estimated Tax</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "#166534" : "#0f172a", backgroundColor: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "rgba(220,252,231,0.62)" : undefined }}>
+                      {formatCurrency(objDerivedCalc.decOldTax)}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: objDerivedCalc.strRecommendedRegime === "New Regime" ? "#166534" : "#0f172a", backgroundColor: objDerivedCalc.strRecommendedRegime === "New Regime" ? "rgba(220,252,231,0.62)" : undefined }}>
+                      {formatCurrency(objDerivedCalc.decNewTax)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Paper sx={{ p: 1, borderRadius: "8px", border: "1px solid #bde3cb", backgroundColor: "#f0fdf4" }}>
+              <Typography sx={{ color: "#166534", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Recommended Regime
+              </Typography>
+              <Typography sx={{ color: "#14532d", fontSize: "1rem", fontWeight: 900 }}>{objDerivedCalc.strRecommendedRegime}</Typography>
+            </Paper>
+            <Alert severity="info" sx={{ borderRadius: "10px" }}>
+              <Typography sx={{ fontWeight: 800 }}>Estimated Savings: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
+              <Typography sx={{ fontSize: "0.8rem", mt: 0.2 }}>
+                {objDerivedCalc.strRecommendedRegime === "Either Regime" ? "Both regimes currently result in the same estimated tax." : `${objDerivedCalc.strRecommendedRegime} is recommended because it gives the lower estimated tax based on your current declaration entries.`}
+              </Typography>
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.76rem", mt: 0.35 }}>Estimated preview only</Typography> : null}
+            </Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnCompareModalOpen(false)}>Close</Button>
-          <Button variant="contained" onClick={() => setBlnCompareModalOpen(false)}>Proceed</Button>
+          <Button onClick={() => setBlnCompareModalOpen(false)}>Back</Button>
+          <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>Continue to Submit</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={blnSubmitModalOpen} onClose={() => setBlnSubmitModalOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Submit Declaration</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
-          <Typography>Are you sure you want to submit? Editing will be locked.</Typography>
+          <Stack spacing={1}>
+            <Paper sx={{ p: 0.9, borderRadius: "8px", border: "1px solid #dbe3ef", backgroundColor: "#f8fafc" }}>
+              <Typography sx={{ fontWeight: 800, fontSize: "0.83rem", color: "#0f172a", mb: 0.4 }}>Declaration Summary</Typography>
+              <Stack spacing={0.35}>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Selected Regime</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{strSelectedRegime || strRecommendedRegimeSelectable}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Total Declared Amount</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(decDeclaredTotal)}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Estimated Savings</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(objDerivedCalc.decSavings)}</Typography></Stack>
+              </Stack>
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.72rem", color: "#64748b", mt: 0.5 }}>Estimated preview only</Typography> : null}
+            </Paper>
+            <Alert severity="warning" sx={{ borderRadius: "8px" }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.82rem" }}>After submission:</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>Editing will be locked.</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>Selected regime cannot be changed.</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>Uploaded proofs cannot be modified.</Typography>
+            </Alert>
+            <Typography sx={{ fontSize: "0.83rem", color: "#334155" }}>
+              Please confirm that your declaration details and uploaded proofs are final and accurate before submitting.
+            </Typography>
+            <FormControlLabel
+              sx={{ m: 0, alignItems: "flex-start" }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={blnDeclarationConfirm}
+                  onChange={(objEvent) => {
+                    const blnChecked = objEvent.target.checked;
+                    setBlnDeclarationConfirm(blnChecked);
+                    if (blnChecked && strWarning.includes("confirmation checkbox")) {
+                      setStrWarning("");
+                    }
+                  }}
+                />
+              }
+              label={<Typography sx={{ fontSize: "0.8rem" }}>I confirm details are correct (required before final submit).</Typography>}
+            />
+            {!blnDeclarationConfirm ? (
+              <Typography sx={{ fontSize: "0.75rem", color: "#b45309", mt: -0.3 }}>
+                Please check this confirmation before submitting.
+              </Typography>
+            ) : null}
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBlnSubmitModalOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void submitDeclaration()}>Submit</Button>
+          <Button variant="contained" onClick={() => void submitDeclaration()} disabled={blnSubmitModalLoading}>
+            {blnSubmitModalLoading ? <CircularProgress size={16} color="inherit" /> : "Confirm & Submit"}
+          </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={Boolean(strSuccessToast)} autoHideDuration={2000} onClose={() => setStrSuccessToast("")} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+        <Alert onClose={() => setStrSuccessToast("")} severity="success" sx={{ width: "100%" }}>
+          {strSuccessToast}
+        </Alert>
+      </Snackbar>
 
     </Stack>
   );
