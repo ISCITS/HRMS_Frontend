@@ -68,6 +68,10 @@ axiosInstance.interceptors.request.use(async (config) => {
   const menuAction = dicConfig.csrfMenuAction ?? "GLOBAL_ACTION";
   const csrfToken = dicConfig.csrfToken ?? generateCSRFToken(apiConstants.csrfSecretKey, menuAction);
   const blnSkipPayloadEncryption = headers.get("x-skip-payload-encryption") === "true";
+  const strRequestUrl = String(dicConfig.url ?? "");
+  const blnLoginEndpoint =
+    /\/api\/auth\/login(?:\/generic)?$/i.test(strRequestUrl) ||
+    /\/auth\/login(?:\/generic)?$/i.test(strRequestUrl);
 
   headers.set(apiConstants.csrfHeaderName, csrfToken);
     if (typeof window !== "undefined") {
@@ -89,6 +93,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 
   if (
     !blnSkipPayloadEncryption &&
+    !blnLoginEndpoint &&
     isPayloadEncryptionMethod(dicConfig.method) &&
     isEncryptablePayload(dicConfig.data)
   ) {
