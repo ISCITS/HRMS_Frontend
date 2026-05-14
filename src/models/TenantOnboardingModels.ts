@@ -49,6 +49,7 @@ export type TenantEmailIdentityProviderPayload = {
 
 export type TenantDatastorePayload = {
   strStoreType: string;
+  strDatabaseType?: string;
   strDatabaseName: string;
   strSchemaName: string | null;
   strDbHost: string;
@@ -56,8 +57,18 @@ export type TenantDatastorePayload = {
   strDbUserName: string;
   strDbPassword: string;
   lstModuleIDs: number[];
+  blnUseExistingDatabase?: boolean;
   blnIsPrimary: boolean;
   blnIsActive: boolean;
+};
+
+export type TenantInitialAdminUserPayload = {
+  strFullName: string;
+  strLoginID: string;
+  strEmailAddress: string;
+  strMobileNumber: string | null;
+  strPassword: string;
+  strConfirmPassword: string;
 };
 
 export type TenantOnboardingRequest = {
@@ -79,6 +90,10 @@ export type TenantOnboardingRequest = {
   objDatastore: TenantDatastorePayload;
 };
 
+export type TenantExistingDatabaseOnboardingRequest = TenantOnboardingRequest & {
+  objInitialAdminUser: TenantInitialAdminUserPayload;
+};
+
 export type TenantOnboardingResponse = {
   intTenantID: number;
   strTenantUUID: string;
@@ -91,7 +106,31 @@ export type TenantOnboardingResponse = {
   intEmailIdentityProviderID: number | null;
 };
 
+export type TenantExistingDatabaseOnboardingResponse = TenantOnboardingResponse & {
+  intInitialAdminUserID: number;
+  intAdminUserGroupID: number;
+  strInitialAdminLoginID: string;
+};
+
 export type TenantCodeAvailabilityResponse = {
   blnAvailable: boolean;
+};
+
+export type TenantDatabaseValidationRequest = {
+  objDatastore: TenantDatastorePayload;
+};
+
+export type TenantDatabaseConnectionValidationResponse = {
+  blnCanConnect: boolean;
+  strDatabaseName: string;
+  strDatabaseType: string;
+};
+
+export type TenantDatabaseSchemaValidationResponse = {
+  blnIsValid: boolean;
+  lstMissingTables: string[];
+  lstRequiredTables: string[];
+  blnAdminGroupCandidateFound: boolean;
+  strAdminGroupValidationMessage: string | null;
 };
 

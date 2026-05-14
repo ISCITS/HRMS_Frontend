@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type {
+  TenantExistingDatabaseOnboardingRequest,
   TenantOnboardingFormOptions,
   TenantOnboardingRequest,
   TenantOnboardingResponse,
@@ -77,6 +78,7 @@ type TenantOnboardingFormState = {
   };
   datastore: {
     strStoreType: string;
+    strDatabaseType: string;
     strDatabaseName: string;
     strSchemaName: string;
     strDbHost: string;
@@ -84,8 +86,17 @@ type TenantOnboardingFormState = {
     strDbUserName: string;
     strDbPassword: string;
     lstModuleIDs: number[];
+    blnUseExistingDatabase: boolean;
     blnIsPrimary: boolean;
     blnIsActive: boolean;
+  };
+  initialAdmin: {
+    strFullName: string;
+    strLoginID: string;
+    strEmailAddress: string;
+    strMobileNumber: string;
+    strPassword: string;
+    strConfirmPassword: string;
   };
 };
 
@@ -145,6 +156,7 @@ const dicEmptyForm: TenantOnboardingFormState = {
   },
   datastore: {
     strStoreType: "hrms",
+    strDatabaseType: "postgresql",
     strDatabaseName: "",
     strSchemaName: "public",
     strDbHost: "",
@@ -152,8 +164,17 @@ const dicEmptyForm: TenantOnboardingFormState = {
     strDbUserName: "",
     strDbPassword: "",
     lstModuleIDs: [],
+    blnUseExistingDatabase: false,
     blnIsPrimary: true,
     blnIsActive: true,
+  },
+  initialAdmin: {
+    strFullName: "",
+    strLoginID: "",
+    strEmailAddress: "",
+    strMobileNumber: "",
+    strPassword: "",
+    strConfirmPassword: "",
   },
 };
 
@@ -169,6 +190,8 @@ export default function TenantOnboardingPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnCheckingCode, setBlnCheckingCode] = useState(false);
+  const [blnValidatingDatabase, setBlnValidatingDatabase] = useState(false);
+  const [strDatabaseValidationStatus, setStrDatabaseValidationStatus] = useState("");
 
   useEffect(() => {
     let blnActive = true;
@@ -271,6 +294,7 @@ export default function TenantOnboardingPage() {
       return dicNext;
     });
     setStrError("");
+    setStrDatabaseValidationStatus("");
     setObjForm((dicPrevious) => {
       const dicNext = structuredClone(dicPrevious) as TenantOnboardingFormState;
       const lstSegments = strPath.split(".");
@@ -327,10 +351,13 @@ export default function TenantOnboardingPage() {
     setBlnSubmitting(true);
     try {
       const objPayload = buildRequestPayload(objForm, { blnShowMfaType, blnShowSsoSection, blnShowEmailProviderSection });
-      const objResult = await tenantOnboardingService.createTenant(objPayload);
+      const objResult = objForm.datastore.blnUseExistingDatabase
+        ? await tenantOnboardingService.createTenantUsingExistingDatabase(buildExistingDatabaseRequestPayload(objPayload, objForm))
+        : await tenantOnboardingService.createTenant(objPayload);
       setObjCreatedTenant(objResult.Data);
       setObjForm(dicEmptyForm);
       setDicErrors({});
+      setStrDatabaseValidationStatus("");
       setIntActiveStep(0);
       setObjToast({ blnOpen: true, strMessage: `Tenant ${objResult.Data.strTenantCode} created successfully.`, strSeverity: "success" });
       objRouter.push("/HRMS/Administrator/tenants");
@@ -510,17 +537,39 @@ export default function TenantOnboardingPage() {
     return (
       <Stack spacing={2.25}>
         <Typography variant="h6">Datastore Configuration</Typography>
+        <FormControlLabel
+          control={<Checkbox checked={objForm.datastore.blnUseExistingDatabase} onChange={(_, blnChecked) => setField("datastore.blnUseExistingDatabase", blnChecked)} />}
+          label="Use Existing Database"
+        />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
           <TextField select label="Datastore Type *" value={objForm.datastore.strStoreType} onChange={(e) => setField("datastore.strStoreType", e.target.value)} fullWidth>
             {(objFormOptions?.lstDatastoreTypes ?? []).map((dicOption) => <MenuItem key={dicOption.strCode} value={dicOption.strCode}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
+          <TextField select label="Database Type *" value={objForm.datastore.strDatabaseType} onChange={(e) => setField("datastore.strDatabaseType", e.target.value)} fullWidth>
+            <MenuItem value="postgresql">PostgreSQL</MenuItem>
+          </TextField>
           <TextField label="Database Name *" value={objForm.datastore.strDatabaseName} onChange={(e) => setField("datastore.strDatabaseName", e.target.value)} error={Boolean(dicErrors["datastore.strDatabaseName"])} helperText={dicErrors["datastore.strDatabaseName"]} fullWidth />
-          <TextField label="Schema Name" value={objForm.datastore.strSchemaName} onChange={(e) => setField("datastore.strSchemaName", e.target.value)} fullWidth />
-          <TextField label="Host *" value={objForm.datastore.strDbHost} onChange={(e) => setField("datastore.strDbHost", e.target.value)} error={Boolean(dicErrors["datastore.strDbHost"])} helperText={dicErrors["datastore.strDbHost"]} fullWidth />
+          <TextField label="Schema Name" value={objForm.datastore.strSchemaName} onChange={(e) => setField("datastore.strSchemaName", e.target.value)} error={Boolean(dicErrors["datastore.strSchemaName"])} helperText={dicErrors["datastore.strSchemaName"]} fullWidth />
+          <TextField label="Database Host / Server *" value={objForm.datastore.strDbHost} onChange={(e) => setField("datastore.strDbHost", e.target.value)} error={Boolean(dicErrors["datastore.strDbHost"])} helperText={dicErrors["datastore.strDbHost"]} fullWidth />
           <TextField label="Port *" value={objForm.datastore.intDbPort} onChange={(e) => setField("datastore.intDbPort", e.target.value.replace(/\D/g, ""))} error={Boolean(dicErrors["datastore.intDbPort"])} helperText={dicErrors["datastore.intDbPort"]} fullWidth />
-          <TextField label="DB Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
-          <TextField type="password" label="DB Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"]} fullWidth />
+          <TextField label="Database Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
+          <TextField type="password" label="Database Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"]} fullWidth />
         </Box>
+        {objForm.datastore.blnUseExistingDatabase ? (
+          <Stack spacing={2}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button
+                variant="outlined"
+                onClick={handleValidateExistingDatabase}
+                disabled={blnValidatingDatabase}
+                startIcon={blnValidatingDatabase ? <CircularProgress color="inherit" size={16} /> : undefined}
+              >
+                Validate Database
+              </Button>
+            </Box>
+            {strDatabaseValidationStatus ? <Alert severity="success">{strDatabaseValidationStatus}</Alert> : null}
+          </Stack>
+        ) : null}
         <Box>
           <InputLabel id="tenant-onboarding-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
           <Select
@@ -553,8 +602,52 @@ export default function TenantOnboardingPage() {
           </Select>
         </Box>
         <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} />} label="Datastore active" />
+        {objForm.datastore.blnUseExistingDatabase ? renderInitialAdminSection() : null}
       </Stack>
     );
+  }
+
+  function renderInitialAdminSection() {
+    return (
+      <Paper variant="outlined" sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" fontWeight={700}>Initial Admin User</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+            <TextField label="Full Name *" value={objForm.initialAdmin.strFullName} onChange={(e) => setField("initialAdmin.strFullName", e.target.value)} error={Boolean(dicErrors["initialAdmin.strFullName"])} helperText={dicErrors["initialAdmin.strFullName"]} fullWidth />
+            <TextField label="Login ID / Username *" value={objForm.initialAdmin.strLoginID} onChange={(e) => setField("initialAdmin.strLoginID", e.target.value)} error={Boolean(dicErrors["initialAdmin.strLoginID"])} helperText={dicErrors["initialAdmin.strLoginID"]} fullWidth />
+            <TextField label="Email *" value={objForm.initialAdmin.strEmailAddress} onChange={(e) => setField("initialAdmin.strEmailAddress", e.target.value)} error={Boolean(dicErrors["initialAdmin.strEmailAddress"])} helperText={dicErrors["initialAdmin.strEmailAddress"]} fullWidth />
+            <TextField label="Mobile Number" value={objForm.initialAdmin.strMobileNumber} onChange={(e) => setField("initialAdmin.strMobileNumber", e.target.value)} error={Boolean(dicErrors["initialAdmin.strMobileNumber"])} helperText={dicErrors["initialAdmin.strMobileNumber"]} fullWidth />
+            <TextField type="password" label="Password *" value={objForm.initialAdmin.strPassword} onChange={(e) => setField("initialAdmin.strPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strPassword"])} helperText={dicErrors["initialAdmin.strPassword"]} fullWidth />
+            <TextField type="password" label="Confirm Password *" value={objForm.initialAdmin.strConfirmPassword} onChange={(e) => setField("initialAdmin.strConfirmPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strConfirmPassword"])} helperText={dicErrors["initialAdmin.strConfirmPassword"]} fullWidth />
+          </Box>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  async function handleValidateExistingDatabase() {
+    const dicStepErrors = validateStep(2, objForm, { blnShowMfaType, blnShowSsoSection, blnShowEmailProviderSection });
+    const dicDatabaseErrors = Object.fromEntries(Object.entries(dicStepErrors).filter(([strKey]) => strKey.startsWith("datastore.")));
+    if (Object.keys(dicDatabaseErrors).length > 0) {
+      setDicErrors((dicPrevious) => ({ ...dicPrevious, ...dicDatabaseErrors }));
+      return;
+    }
+
+    setBlnValidatingDatabase(true);
+    try {
+      const objValidationPayload = { objDatastore: buildDatastorePayload(objForm) };
+      await tenantOnboardingService.validateDatabaseConnection(objValidationPayload);
+      const objSchemaResult = await tenantOnboardingService.validateDatabaseSchema(objValidationPayload);
+      if (!objSchemaResult.Data.blnIsValid) {
+        const strMissingTables = objSchemaResult.Data.lstMissingTables.join(", ");
+        throw new Error(strMissingTables ? `Missing tables: ${strMissingTables}` : objSchemaResult.Data.strAdminGroupValidationMessage ?? "Database schema validation failed.");
+      }
+      setStrDatabaseValidationStatus("Database connection, required tables, and Admin group candidate validated.");
+    } catch (objError) {
+      setObjToast({ blnOpen: true, strMessage: objError instanceof Error ? objError.message : "Unable to validate database.", strSeverity: "error" });
+    } finally {
+      setBlnValidatingDatabase(false);
+    }
   }
 }
 
@@ -616,17 +709,40 @@ function buildRequestPayload(
       intSmtpPort: objForm.auth.email.intSmtpPort.trim() ? Number(objForm.auth.email.intSmtpPort) : null,
       strSmtpBccEmail: toNullableText(objForm.auth.email.strSmtpBccEmail),
     } : null,
-    objDatastore: {
-      strStoreType: objForm.datastore.strStoreType.trim(),
-      strDatabaseName: objForm.datastore.strDatabaseName.trim(),
-      strSchemaName: toNullableText(objForm.datastore.strSchemaName),
-      strDbHost: objForm.datastore.strDbHost.trim(),
-      intDbPort: Number(objForm.datastore.intDbPort),
-      strDbUserName: objForm.datastore.strDbUserName.trim(),
-      strDbPassword: objForm.datastore.strDbPassword,
-      lstModuleIDs: objForm.datastore.lstModuleIDs,
-      blnIsPrimary: objForm.datastore.blnIsPrimary,
-      blnIsActive: objForm.datastore.blnIsActive,
+    objDatastore: buildDatastorePayload(objForm),
+  };
+}
+
+function buildDatastorePayload(objForm: TenantOnboardingFormState) {
+  return {
+    strStoreType: objForm.datastore.strStoreType.trim(),
+    strDatabaseType: objForm.datastore.strDatabaseType.trim(),
+    strDatabaseName: objForm.datastore.strDatabaseName.trim(),
+    strSchemaName: toNullableText(objForm.datastore.strSchemaName),
+    strDbHost: objForm.datastore.strDbHost.trim(),
+    intDbPort: Number(objForm.datastore.intDbPort),
+    strDbUserName: objForm.datastore.strDbUserName.trim(),
+    strDbPassword: objForm.datastore.strDbPassword,
+    lstModuleIDs: objForm.datastore.lstModuleIDs,
+    blnUseExistingDatabase: objForm.datastore.blnUseExistingDatabase,
+    blnIsPrimary: objForm.datastore.blnIsPrimary,
+    blnIsActive: objForm.datastore.blnIsActive,
+  };
+}
+
+function buildExistingDatabaseRequestPayload(
+  objPayload: TenantOnboardingRequest,
+  objForm: TenantOnboardingFormState,
+): TenantExistingDatabaseOnboardingRequest {
+  return {
+    ...objPayload,
+    objInitialAdminUser: {
+      strFullName: objForm.initialAdmin.strFullName.trim(),
+      strLoginID: objForm.initialAdmin.strLoginID.trim(),
+      strEmailAddress: objForm.initialAdmin.strEmailAddress.trim(),
+      strMobileNumber: toNullableText(objForm.initialAdmin.strMobileNumber),
+      strPassword: objForm.initialAdmin.strPassword,
+      strConfirmPassword: objForm.initialAdmin.strConfirmPassword,
     },
   };
 }
@@ -667,12 +783,25 @@ function validateStep(
     }
   }
   if (intStep === 2) {
+    if (objForm.datastore.strDatabaseType !== "postgresql") dicErrors["datastore.strDatabaseType"] = "PostgreSQL is required.";
     if (!objForm.datastore.strDatabaseName.trim()) dicErrors["datastore.strDatabaseName"] = "Database name is required.";
+    if (objForm.datastore.strSchemaName.trim() && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(objForm.datastore.strSchemaName.trim())) dicErrors["datastore.strSchemaName"] = "Schema name is invalid.";
     if (!objForm.datastore.strDbHost.trim()) dicErrors["datastore.strDbHost"] = "Database host is required.";
     if (!objForm.datastore.intDbPort.trim()) dicErrors["datastore.intDbPort"] = "Database port is required.";
     else if (Number(objForm.datastore.intDbPort) <= 0) dicErrors["datastore.intDbPort"] = "Database port must be greater than 0.";
     if (!objForm.datastore.strDbUserName.trim()) dicErrors["datastore.strDbUserName"] = "Database username is required.";
     if (!objForm.datastore.strDbPassword.trim()) dicErrors["datastore.strDbPassword"] = "Database password is required.";
+    if (objForm.datastore.blnUseExistingDatabase) {
+      if (!objForm.initialAdmin.strFullName.trim()) dicErrors["initialAdmin.strFullName"] = "Full name is required.";
+      if (!objForm.initialAdmin.strLoginID.trim()) dicErrors["initialAdmin.strLoginID"] = "Login ID is required.";
+      if (!objForm.initialAdmin.strEmailAddress.trim()) dicErrors["initialAdmin.strEmailAddress"] = "Email is required.";
+      else if (!isValidEmail(objForm.initialAdmin.strEmailAddress)) dicErrors["initialAdmin.strEmailAddress"] = "Enter a valid email.";
+      if (objForm.initialAdmin.strMobileNumber.trim() && !/^[0-9+\-\s]+$/.test(objForm.initialAdmin.strMobileNumber.trim())) dicErrors["initialAdmin.strMobileNumber"] = "Mobile number can contain digits, spaces, +, or -.";
+      if (!objForm.initialAdmin.strPassword.trim()) dicErrors["initialAdmin.strPassword"] = "Password is required.";
+      else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(objForm.initialAdmin.strPassword)) dicErrors["initialAdmin.strPassword"] = "Use at least 8 characters with letters and numbers.";
+      if (!objForm.initialAdmin.strConfirmPassword.trim()) dicErrors["initialAdmin.strConfirmPassword"] = "Confirm password is required.";
+      else if (objForm.initialAdmin.strPassword !== objForm.initialAdmin.strConfirmPassword) dicErrors["initialAdmin.strConfirmPassword"] = "Passwords must match.";
+    }
   }
   return dicErrors;
 }

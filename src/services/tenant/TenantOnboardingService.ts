@@ -7,6 +7,11 @@ import { axiosInstance } from "@/lib/axiosInstance";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import type {
   TenantCodeAvailabilityResponse,
+  TenantDatabaseConnectionValidationResponse,
+  TenantDatabaseSchemaValidationResponse,
+  TenantDatabaseValidationRequest,
+  TenantExistingDatabaseOnboardingRequest,
+  TenantExistingDatabaseOnboardingResponse,
   TenantOnboardingFormOptions,
   TenantOnboardingRequest,
   TenantOnboardingResponse,
@@ -90,6 +95,33 @@ export const tenantOnboardingService = {
       strMethod: "POST",
       objBody,
       strMenuAction: "TENANT_ONBOARDING_CREATE",
+    });
+  },
+
+  validateDatabaseConnection(objBody: TenantDatabaseValidationRequest) {
+    return requestApi<TenantDatabaseConnectionValidationResponse>({
+      strPath: "/tenants/onboarding/validate-db-connection",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "TENANT_ONBOARDING_VALIDATE_DB_CONNECTION",
+    });
+  },
+
+  validateDatabaseSchema(objBody: TenantDatabaseValidationRequest) {
+    return requestApi<TenantDatabaseSchemaValidationResponse>({
+      strPath: "/tenants/onboarding/validate-db-schema",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "TENANT_ONBOARDING_VALIDATE_DB_SCHEMA",
+    });
+  },
+
+  createTenantUsingExistingDatabase(objBody: TenantExistingDatabaseOnboardingRequest) {
+    return requestApi<TenantExistingDatabaseOnboardingResponse>({
+      strPath: "/tenants/onboarding/existing-database",
+      strMethod: "POST",
+      objBody,
+      strMenuAction: "TENANT_ONBOARDING_EXISTING_DATABASE_CREATE",
     });
   },
 };
