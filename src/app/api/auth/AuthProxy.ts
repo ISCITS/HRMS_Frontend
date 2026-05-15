@@ -6,6 +6,7 @@ import { appConfig } from "@/config";
 import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
 import { generateCSRFToken } from "@/lib/csrfToken";
+import { getServerAppOrigin, getServerCsrfSecretKey, shouldUseSecureAuthCookies } from "@/lib/serverSecurity";
 import type {
   ApiEnvelope,
   ActionRightsResponse,
@@ -47,20 +48,21 @@ export function getAccessTokenFromRequest(objRequest: Request) {
 
 export async function setAuthCookies(objResponse: NextResponse, objAuthData: AuthSuccessData) {
   const intMaxAgeSeconds = appConfig.authCookieMaxAgeSeconds;
+  const blnSecureCookie = shouldUseSecureAuthCookies();
 
   objResponse.cookies.set(appConfig.authCookieName, objAuthData.objToken.strAccessToken, {
     httpOnly: true,
     path: "/",
     maxAge: intMaxAgeSeconds,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: blnSecureCookie
   });
   objResponse.cookies.set(appConfig.tenantCookieName, objAuthData.objTenant.strTenantUUID, {
     httpOnly: false,
     path: "/",
     maxAge: intMaxAgeSeconds,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: blnSecureCookie
   });
 }
 
@@ -70,11 +72,11 @@ export async function clearAuthCookies(objResponse: NextResponse) {
 }
 
 function buildPublicProxyHeaders(strMenuAction: string) {
-  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+  const strFrontendOrigin = getServerAppOrigin();
 
   return {
     Origin: strFrontendOrigin,
-    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, strMenuAction),
+    [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), strMenuAction),
     "X-Tenant-Id": DefaultContextValue.PrimaryId,
     "X-Company-Id": DefaultContextValue.PrimaryId,
   };
@@ -139,14 +141,14 @@ export async function proxySsoCallback(strSearch: string) {
 }
 
 function buildProtectedProxyHeaders(strAccessToken: string, strMenuAction: string, objRequestHeaders?: Headers) {
-  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+  const strFrontendOrigin = getServerAppOrigin();
   const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
   const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
 
   return {
     Authorization: `Bearer ${strAccessToken}`,
     Origin: strFrontendOrigin,
-    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, strMenuAction),
+    [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), strMenuAction),
     "X-Tenant-Id": strTenantID,
     "X-Company-Id": strCompanyID,
   };

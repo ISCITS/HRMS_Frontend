@@ -10,12 +10,17 @@ export async function callBackendApi<TResponse>(
   strPath: string,
   objInit: RequestInitWithJson = {}
 ): Promise<TResponse> {
-  if (!appConfig.apiBaseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
+  const strApiBaseUrl =
+    typeof window === "undefined"
+      ? process.env.BACKEND_API_BASE_URL?.trim() || appConfig.apiBaseUrl
+      : appConfig.apiBaseUrl;
+
+  if (!strApiBaseUrl) {
+    throw new Error("BACKEND_API_BASE_URL or NEXT_PUBLIC_API_BASE_URL is not configured.");
   }
 
   const { objJsonBody, headers, ...objRest } = objInit;
-  const strUrl = `${appConfig.apiBaseUrl.replace(/\/$/, "")}${strPath.startsWith("/") ? strPath : `/${strPath}`}`;
+  const strUrl = `${strApiBaseUrl.replace(/\/$/, "")}${strPath.startsWith("/") ? strPath : `/${strPath}`}`;
   const objResponse = await fetch(strUrl, {
     ...objRest,
     headers: {

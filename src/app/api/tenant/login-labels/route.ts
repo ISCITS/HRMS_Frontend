@@ -5,6 +5,7 @@ import { DefaultContextValue } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
 import { generateCSRFToken } from "@/lib/csrfToken";
+import { getServerAppOrigin, getServerCsrfSecretKey } from "@/lib/serverSecurity";
 
 type TenantRequestPayload = {
   strTenantUUID?: string;
@@ -16,11 +17,11 @@ type TenantRequestPayload = {
 function buildTenantProxyHeaders(objRequestHeaders?: Headers) {
   const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
   const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
-  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+  const strFrontendOrigin = getServerAppOrigin();
 
   return {
     Origin: strFrontendOrigin,
-    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, "TENANT_LOGIN_LABELS_READ"),
+    [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), "TENANT_LOGIN_LABELS_READ"),
     "X-Tenant-Id": strTenantID,
     "X-Company-Id": strCompanyID
   };

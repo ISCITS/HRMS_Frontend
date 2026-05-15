@@ -6,6 +6,7 @@ import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
 import { generateCSRFToken } from "@/lib/csrfToken";
 import { decryptPayload } from "@/lib/security/decryptPayload";
+import { getServerAppOrigin, getServerCsrfSecretKey } from "@/lib/serverSecurity";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 
 type LabelRequestPayload = {
@@ -16,12 +17,12 @@ type LabelRequestPayload = {
 function buildLabelHeaders(objRequest: NextRequest, strAccessToken: string) {
   const strTenantID = objRequest.headers.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
   const strCompanyID = objRequest.headers.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
-  const strFrontendOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() || "http://localhost:3000";
+  const strFrontendOrigin = getServerAppOrigin();
 
   return {
     Authorization: `Bearer ${strAccessToken}`,
     Origin: strFrontendOrigin,
-    [apiConstants.csrfHeaderName]: generateCSRFToken(apiConstants.csrfSecretKey, "LABELS_READ"),
+    [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), "LABELS_READ"),
     "X-Tenant-Id": strTenantID,
     "X-Company-Id": strCompanyID
   };
