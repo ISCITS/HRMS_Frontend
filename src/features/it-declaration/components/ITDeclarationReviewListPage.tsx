@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { hrItDeclarationReviewService, type HrItDeclarationListRecord } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -62,15 +63,16 @@ export default function ITDeclarationReviewListPage() {
     ["Locked", objSummary.locked || 0],
     ["Proof Pending", objSummary.proof_pending || 0],
   ], [objSummary]);
+  const blnCanView = canViewAny() || canDoAny("view") || hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW");
 
   if (blnLoading || blnRightsLoading) return <BlockingLoader blnOpen strLabel="Loading IT declaration review..." />;
 
   return (
-    <Stack spacing={2}>
-      <Typography sx={{ fontSize: "1.3rem", fontWeight: 800 }}>IT Declaration Proof Review</Typography>
-      {!canViewAny() ? <Alert severity="warning">You do not have permission to view this screen.</Alert> : null}
+    <Stack spacing={2} className={styles.page}>
+      <Typography className={styles.title}>IT Declaration Proof Review</Typography>
+      {!blnCanView ? <Alert severity="warning">You do not have permission to view this screen.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1} className={styles.controlsCard}>
         <TextField size="small" label="Financial Year" value={dicFilters.strFinancialYearCode || ""} onChange={(e) => setDicFilters((d) => ({ ...d, strFinancialYearCode: e.target.value }))} />
         <TextField size="small" label="Company" value={dicFilters.strCompany || ""} onChange={(e) => setDicFilters((d) => ({ ...d, strCompany: e.target.value }))} />
         <TextField size="small" label="Employee Code/Name" value={dicFilters.strEmployee || ""} onChange={(e) => setDicFilters((d) => ({ ...d, strEmployee: e.target.value }))} />
@@ -97,21 +99,22 @@ export default function ITDeclarationReviewListPage() {
         ))}
       </Stack>
 
-      <Box sx={{ border: "1px solid #dbe3ef", borderRadius: 2, overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead><tr>
-            <th>Employee Code</th><th>Employee Name</th><th>Financial Year</th><th>Tax Regime</th><th>Declared Total</th><th>Approved Total</th><th>Proof Pending</th><th>Status</th><th>Submitted On</th><th>Last Updated</th><th>Actions</th>
-          </tr></thead>
+      <Box className={styles.tableCard}>
+        <Box className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead><tr>
+              <th className={styles.actionsColumn}>Actions</th><th>Employee Code</th><th>Employee Name</th><th>Financial Year</th><th>Tax Regime</th><th>Declared Total</th><th>Approved Total</th><th>Proof Pending</th><th>Status</th><th>Submitted On</th><th>Last Updated</th>
+            </tr></thead>
           <tbody>
-            {lstRows.length === 0 ? <tr><td colSpan={11} style={{ textAlign: "center", padding: 16 }}>No records found.</td></tr> : null}
+            {lstRows.length === 0 ? <tr><td colSpan={11} className={styles.emptyState}>No records found.</td></tr> : null}
             {lstRows.map((objRow) => (
               <tr key={objRow.strDeclarationCode}>
-                <td>{objRow.strEmployeeCode}</td><td>{objRow.strEmployeeName}</td><td>{objRow.strFinancialYearCode}</td><td>{objRow.strTaxRegime}</td><td>{objRow.decDeclaredTotalAmount}</td><td>{objRow.decApprovedTotalAmount}</td><td>{objRow.intProofPendingCount}</td><td><ITDeclarationStatusBadge strStatus={objRow.strStatus} /></td><td>{objRow.strSubmittedOn || "-"}</td><td>{objRow.strLastUpdated || "-"}</td>
-                <td><Button size="small" disabled={!(canDoAny("view") || hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW"))} onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)}>View</Button></td>
+                <td className={styles.actionsColumn}><Button size="small" disabled={!blnCanView} onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)}>View</Button></td><td>{objRow.strEmployeeCode}</td><td>{objRow.strEmployeeName}</td><td>{objRow.strFinancialYearCode}</td><td>{objRow.strTaxRegime}</td><td>{objRow.decDeclaredTotalAmount}</td><td>{objRow.decApprovedTotalAmount}</td><td>{objRow.intProofPendingCount}</td><td><ITDeclarationStatusBadge strStatus={objRow.strStatus} /></td><td>{objRow.strSubmittedOn || "-"}</td><td>{objRow.strLastUpdated || "-"}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </Box>
       </Box>
     </Stack>
   );
