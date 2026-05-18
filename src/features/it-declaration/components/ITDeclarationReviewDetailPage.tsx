@@ -96,15 +96,19 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       setStrDialogError("Remarks are required.");
       return;
     }
-    if (strConfirm === "approve_all") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "approve");
-    if (strConfirm === "reject") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "reject", { strRemarks: strReason.trim() });
-    if (strConfirm === "release") await hrItDeclarationReviewService.release(objDetail.intDeclarationID, { strRemarks: strReason.trim() });
-    if (strConfirm === "lock") await hrItDeclarationReviewService.lock(objDetail.intDeclarationID, { strRemarks: strReason.trim() || undefined });
-    setStrConfirm(null);
-    setStrReason("");
-    setStrDialogError("");
-    setStrToast("Action completed successfully.");
-    await loadData();
+    try {
+      if (strConfirm === "approve_all") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "approve");
+      if (strConfirm === "reject") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "reject", { strRemarks: strReason.trim() });
+      if (strConfirm === "release") await hrItDeclarationReviewService.release(objDetail.intDeclarationID, { strRemarks: strReason.trim() });
+      if (strConfirm === "lock") await hrItDeclarationReviewService.lock(objDetail.intDeclarationID, { strRemarks: strReason.trim() || undefined });
+      setStrConfirm(null);
+      setStrReason("");
+      setStrDialogError("");
+      setStrToast("Action completed successfully.");
+      await loadData();
+    } catch (objError) {
+      setStrDialogError(objError instanceof Error ? objError.message : "Unable to complete this action.");
+    }
   }
 
   async function previewProof(intItemID: number) {

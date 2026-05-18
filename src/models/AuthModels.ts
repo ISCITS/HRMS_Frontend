@@ -1,4 +1,4 @@
-﻿export type ApiEnvelope<TData> = {
+export type ApiEnvelope<TData> = {
   ResultCode: number;
   Msg: string;
   Data: TData;
@@ -171,4 +171,14 @@ export type SsoRedirectData = {
   strState: string;
   strProviderName: string;
 };
+
+export type LogoutResponseData = {
+  blnLoggedOut: boolean;
+  intTenantID?: number | null;
+  strTenantUUID?: string | null;
+  strTenantCode?: string | null;
+  strRedirectUrl?: string | null;
+  redirectUrl?: string | null;
+};
+
 

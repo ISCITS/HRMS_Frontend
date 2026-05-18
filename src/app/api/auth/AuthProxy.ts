@@ -194,11 +194,12 @@ export async function proxyActionRights(strAccessToken: string, objRequestHeader
   });
 }
 
-export async function proxyLogout(strAccessToken: string) {
+export async function proxyLogout(strAccessToken: string, objRequestHeaders?: Headers) {
   return callBackendApi<ApiEnvelope<{ blnLoggedOut: boolean }>>("/api/v1/auth/logout", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${strAccessToken}`
-    }
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_LOGOUT", objRequestHeaders)
   });
 }
+
+
+
