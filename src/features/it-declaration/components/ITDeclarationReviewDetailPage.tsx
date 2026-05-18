@@ -23,7 +23,10 @@ type ConfirmAction = "approve_all" | "reject" | "release" | "lock" | null;
 
 export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Props) {
   const objRouter = useRouter();
-  const { blnLoading: blnRightsLoading, canDoAny, objRights } = useModuleActionAccess(["PAYROLL_IT_DECLARATION"]);
+  const { blnLoading: blnRightsLoading, canDoAny, objRights } = useModuleActionAccess([
+    "PAYROLL_IT_DECLARATION_REVIEW",
+    "PAYROLL_IT_DECLARATION",
+  ]);
   const [objDetail, setObjDetail] = useState<HrItDeclarationDetailRecord | null>(null);
   const [lstAudit, setLstAudit] = useState<HrItDeclarationAuditRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -47,7 +50,13 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   const blnCanRelease = canDoAny("release") || hasPermissionCode("PAYROLL_IT_DECLARATION_RELEASE");
   const blnCanLock = canDoAny("lock") || hasPermissionCode("PAYROLL_IT_DECLARATION_LOCK");
   const blnCanProofVerify = canDoAny("proof_verify") || hasPermissionCode("PAYROLL_IT_DECLARATION_PROOF_VERIFY");
+  const strDeclarationStatus = String(objDetail?.strStatus || "").toLowerCase();
   const blnLocked = Boolean(objDetail?.blnLocked || objDetail?.strStatus?.toLowerCase() === "locked");
+  const blnCanStartReview = !blnLocked && blnCanReview && strDeclarationStatus === "submitted";
+  const blnCanApproveHeader = !blnLocked && blnCanApprove && ["submitted", "under_review"].includes(strDeclarationStatus);
+  const blnCanRejectHeader = !blnLocked && blnCanApprove && ["submitted", "under_review"].includes(strDeclarationStatus);
+  const blnCanReleaseHeader = !blnLocked && blnCanRelease && strDeclarationStatus === "approved";
+  const blnCanLockHeader = !blnLocked && blnCanLock && ["approved", "released"].includes(strDeclarationStatus);
 
   async function loadData() {
     setBlnLoading(true);
@@ -72,7 +81,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   }, [blnRightsLoading, intDeclarationID]);
 
   async function handleItemAction(intItemID: number, strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) {
-    if (blnLocked) return;
+    if (blnLocked || !intItemID) return;
     if ((strAction === "reject" || strAction === "partial_approve" || strAction === "proof_reject") && !objPayload?.strRemarks) {
       setStrError("Remarks are required.");
       return;
@@ -133,13 +142,14 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       <Typography sx={{ fontSize: "1.3rem", fontWeight: 800 }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
       <Typography sx={{ color: "#64748b" }}>FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declared: {objDetail.decDeclaredTotalAmount} | Approved: {objDetail.decApprovedTotalAmount} | Proof Pending: {objDetail.intProofPendingCount}</Typography>
       <Stack direction="row" spacing={1}>
-        <Button variant="outlined" disabled={blnLocked || !blnCanReview} onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}>Start Review</Button>
+        <Button variant="outlined" disabled={!blnCanStartReview} onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}>Start Review</Button>
       </Stack>
       <ITDeclarationActionBar
         blnLocked={blnLocked}
-        blnCanRelease={blnCanRelease}
-        blnCanLock={blnCanLock}
-        blnCanApprove={blnCanApprove}
+        blnCanRelease={blnCanReleaseHeader}
+        blnCanLock={blnCanLockHeader}
+        blnCanApprove={blnCanApproveHeader}
+        blnCanReject={blnCanRejectHeader}
         fnApproveAll={() => setStrConfirm("approve_all")}
         fnRejectHeader={() => setStrConfirm("reject")}
         fnRelease={() => setStrConfirm("release")}
@@ -155,7 +165,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
             blnCanApprove={blnCanApprove}
             blnCanReject={blnCanReject}
             blnCanProofVerify={blnCanProofVerify}
-            fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID, strAction, objPayload)}
+            fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
           />
         ))}
       </Box>

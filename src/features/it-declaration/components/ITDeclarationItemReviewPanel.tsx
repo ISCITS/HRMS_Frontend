@@ -19,6 +19,11 @@ export default function ITDeclarationItemReviewPanel({ objItem, blnLocked, blnCa
   const [strRemarks, setStrRemarks] = useState("");
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount ?? objItem.decDeclaredAmount ?? 0));
   const [strError, setStrError] = useState("");
+  const strItemStatus = String(objItem.strItemStatus || "").toLowerCase();
+  const blnItemFinalized = ["approved", "rejected", "released", "locked"].includes(strItemStatus);
+  const blnDisableApprovalActions = blnLocked || blnItemFinalized || !blnCanApprove;
+  const blnDisableRejectActions = blnLocked || blnItemFinalized || !blnCanReject;
+  const blnDisableProofActions = blnLocked || blnItemFinalized || !blnCanProofVerify;
 
   async function runWithValidation(strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject") {
     if (strAction === "reject" || strAction === "partial_approve" || strAction === "proof_reject") {
@@ -42,16 +47,16 @@ export default function ITDeclarationItemReviewPanel({ objItem, blnLocked, blnCa
           <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
         </Stack>
         <Typography sx={{ color: "#64748b", fontSize: "0.84rem" }}>Declared: {objItem.decDeclaredAmount} | Approved: {objItem.decApprovedAmount} | Proof: {objItem.strProofStatus || "N/A"}</Typography>
-        <TextField size="small" label="Approved Amount" value={strApprovedAmount} onChange={(e) => setStrApprovedAmount(e.target.value)} disabled={blnLocked} />
-        <TextField size="small" label="Remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={2} disabled={blnLocked} />
+        <TextField size="small" label="Approved Amount" value={strApprovedAmount} onChange={(e) => setStrApprovedAmount(e.target.value)} disabled={blnDisableApprovalActions} />
+        <TextField size="small" label="Remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={2} disabled={blnLocked || blnItemFinalized} />
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button size="small" variant="contained" disabled={blnLocked || !blnCanApprove} onClick={() => void runWithValidation("approve")}>Approve</Button>
-          <Button size="small" variant="outlined" disabled={blnLocked || !blnCanApprove} onClick={() => void runWithValidation("partial_approve")}>Partial Approve</Button>
-          <Button size="small" variant="outlined" disabled={blnLocked || !blnCanApprove} onClick={() => void runWithValidation("proof_pending")}>Proof Pending</Button>
-          <Button size="small" variant="outlined" color="error" disabled={blnLocked || !blnCanReject} onClick={() => void runWithValidation("reject")}>Reject</Button>
-          <Button size="small" variant="outlined" disabled={blnLocked || !blnCanProofVerify} onClick={() => void runWithValidation("proof_verify")}>Proof Verify</Button>
-          <Button size="small" variant="outlined" color="error" disabled={blnLocked || !blnCanProofVerify} onClick={() => void runWithValidation("proof_reject")}>Proof Reject</Button>
+          <Button size="small" variant="contained" disabled={blnDisableApprovalActions} onClick={() => void runWithValidation("approve")}>Approve</Button>
+          <Button size="small" variant="outlined" disabled={blnDisableApprovalActions} onClick={() => void runWithValidation("partial_approve")}>Partial Approve</Button>
+          <Button size="small" variant="outlined" disabled={blnDisableApprovalActions} onClick={() => void runWithValidation("proof_pending")}>Proof Pending</Button>
+          <Button size="small" variant="outlined" color="error" disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")}>Reject</Button>
+          <Button size="small" variant="outlined" disabled={blnDisableProofActions} onClick={() => void runWithValidation("proof_verify")}>Proof Verify</Button>
+          <Button size="small" variant="outlined" color="error" disabled={blnDisableProofActions} onClick={() => void runWithValidation("proof_reject")}>Proof Reject</Button>
         </Stack>
       </Stack>
     </Paper>

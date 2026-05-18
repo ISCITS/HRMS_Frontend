@@ -85,7 +85,7 @@ function downloadCsv(strFileName: string, lstRows: HrItDeclarationListRecord[]) 
 export default function ITDeclarationReviewListPage() {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny, objRights } =
-    useModuleActionAccess(["PAYROLL_IT_DECLARATION"]);
+    useModuleActionAccess(["PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
   const [lstRows, setLstRows] = useState<HrItDeclarationListRecord[]>([]);
   const [objSummary, setObjSummary] = useState<Record<string, number>>({});
   const [blnLoading, setBlnLoading] = useState(true);
@@ -123,7 +123,11 @@ export default function ITDeclarationReviewListPage() {
     void loadData(dicEmptyFilters);
   }, [blnRightsLoading]);
 
-  const blnCanView = canViewAny() || canDoAny("view") || hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW");
+  const blnCanView =
+    canViewAny() ||
+    canDoAny("view") ||
+    hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW") ||
+    hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanExport = canDoAny("export");
   const lstSummary = useMemo(
     () => [
