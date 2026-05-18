@@ -299,6 +299,33 @@ export type PayrollResultDetailRecord = PayrollResultRecord & {
   lstLines: PayrollResultLineRecord[];
 };
 
+export type StatutoryReportCode = "ALL" | "PF" | "ESI" | "PT" | "LWF";
+
+export type StatutoryReportRow = {
+  intID: number;
+  intPayrollRunID: number;
+  intEmployeePayrollResultID: number;
+  intEmployeeID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strStatus: string;
+  strStatutoryCode: string;
+  strStatutoryName: string;
+  decBasisAmount: number;
+  decEmployeeRatePercent: number | null;
+  decEmployerRatePercent: number | null;
+  decEmployeeAmount: number;
+  decEmployerAmount: number;
+  decTotalAmount: number;
+  decCeilingAmount: number | null;
+  strCalculationMode: string | null;
+  intRuleID: number | null;
+  strRemarks: string | null;
+};
+
 export type PayslipLineRecord = {
   strGroupCode: string;
   strSectionLabel: string;

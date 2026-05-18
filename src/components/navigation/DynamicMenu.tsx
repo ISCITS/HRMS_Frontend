@@ -259,8 +259,30 @@ function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
   );
 }
 
+const objGeneratedStatutoryReportMenu: MenuItem = {
+  strModuleCode: "STATUTORY_REPORT",
+  strModuleName: "Statutory Reports",
+  strRoute: "/reports/statutory",
+  lstPermissionCodes: ["STATUTORY_REPORT_VIEW", "STATUTORY_REPORT_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
+function isReportsMenuBranch(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.toLowerCase();
+  const strModuleName = objItem.strModuleName.toLowerCase();
+  return (
+    strRoute === "/reports" ||
+    strRoute.startsWith("/reports/") ||
+    strModuleCode.includes("reports") ||
+    strModuleName.includes("reports") ||
+    objItem.lstChildren.some(isReportsMenuBranch)
+  );
+}
+
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/payroll-register") || hasRoute(lstItems, "/reports/bank-file")) {
+  if (hasRoute(lstItems, "/reports/statutory")) {
     return lstItems;
   }
 
@@ -268,8 +290,33 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     return lstItems;
   }
 
+  let blnInserted = false;
+  const lstUpdatedItems = lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedReportsMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isReportsMenuBranch(objItem) &&
+      (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
+      !hasRoute(lstChildren, "/reports/statutory");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [...lstChildren, objGeneratedStatutoryReportMenu],
+    };
+  });
+
+  if (blnInserted || hasRoute(lstUpdatedItems, "/reports/statutory")) {
+    return lstUpdatedItems;
+  }
+
   return [
-    ...lstItems,
+    ...lstUpdatedItems,
     {
       strModuleCode: "REPORTS",
       strModuleName: "Reports",
@@ -293,6 +340,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
           blnIsHome: false,
           lstChildren: [],
         },
+        objGeneratedStatutoryReportMenu,
       ],
     },
   ];
@@ -491,6 +539,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
       return strModuleName || "Bank File";
+    }
+
+    if (strRoute.includes("/reports/statutory") || strModuleCode.includes("statutory_report")) {
+      return strModuleName || "Statutory Reports";
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
