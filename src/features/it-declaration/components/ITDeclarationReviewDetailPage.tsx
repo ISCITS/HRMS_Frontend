@@ -147,9 +147,9 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       />
 
       <Box sx={{ display: "grid", gap: 1.2 }}>
-        {objDetail.lstItems.map((objItem) => (
+        {objDetail.lstItems.map((objItem, intIndex) => (
           <ITDeclarationItemReviewPanel
-            key={objItem.intItemID}
+            key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
             objItem={objItem}
             blnLocked={blnLocked}
             blnCanApprove={blnCanApprove}
