@@ -62,6 +62,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/statutory-rules")) {
     return "statutory-rules";
   }
+  if (strLowerPath.startsWith("/reports/statutory")) {
+    return "statutory-report";
+  }
   if (strLowerPath.startsWith("/payroll/tax-regimes") || strLowerPath.startsWith("/tax-regimes")) {
     return "tax-regimes";
   }

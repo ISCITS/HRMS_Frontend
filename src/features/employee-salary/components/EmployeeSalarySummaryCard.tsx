@@ -33,6 +33,14 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
 
+  function openSalaryPage() {
+    if (!intEmployeeID) {
+      return;
+    }
+    const strReturnTo = `${window.location.pathname}${window.location.search}`;
+    objRouter.push(`/employee-salary/${intEmployeeID}?returnTo=${encodeURIComponent(strReturnTo)}`);
+  }
+
   useEffect(() => {
     let blnMounted = true;
     if (!intEmployeeID) {
@@ -98,7 +106,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
               className={styles.primaryButton}
               variant="contained"
               endIcon={<ArrowForwardRoundedIcon />}
-              onClick={() => intEmployeeID && objRouter.push(`/employee-salary/${intEmployeeID}`)}
+              onClick={openSalaryPage}
               disabled={!intEmployeeID}
               sx={{ borderRadius: "14px", px: 2 }}
             >

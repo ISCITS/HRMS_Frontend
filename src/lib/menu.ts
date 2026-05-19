@@ -44,6 +44,7 @@ const dicRouteAliases: Record<string, string> = {
   "/payroll/reimbursement-review": "/payroll/reimbursements",
   "/payroll/reimbursement-claims": "/payroll/reimbursements",
   "/payroll/reimbursements": "/payroll/reimbursements",
+  "/payroll/reimbursement": "/payroll/reimbursements"
 };
 
 function normalizeRoute(strRoute?: string | null) {

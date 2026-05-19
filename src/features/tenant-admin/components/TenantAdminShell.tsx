@@ -2,7 +2,7 @@
 
 import { PropsWithChildren } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   AppBar,
   Box,
@@ -24,15 +24,21 @@ const lstLinks = [
 
 export default function TenantAdminShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
-  const router = useRouter();
 
   async function handleLogout() {
     try {
-      await authApiService.logout();
+      const objLogoutResult = await authApiService.logout();
+      const strBackendRedirect =
+        objLogoutResult?.Data?.strRedirectUrl ||
+        objLogoutResult?.Data?.redirectUrl ||
+        "";
+      const strFallbackLoginUrl = authHelpers.getLoginUrl(
+        objLogoutResult?.Data?.strTenantUUID || undefined
+      );
+      window.location.replace(strBackendRedirect || strFallbackLoginUrl);
     } catch {
-      authHelpers.clearSession();
-    } finally {
-      router.replace("/HRMS/Administrator/login");
+      authHelpers.clearSession(true);
+      window.location.replace(authHelpers.getLoginUrl());
     }
   }
 

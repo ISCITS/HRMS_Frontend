@@ -47,7 +47,8 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intPreferredLanguageID: normalizeOptionalNumber(dicValues.intPreferredLanguageID),
     strEmploymentStatus: dicValues.strEmploymentStatus,
     dtDateOfExit: dicValues.dtDateOfExit || null,
-    blnIsEssEnabled: dicValues.blnIsEssEnabled
+    blnIsEssEnabled: dicValues.blnIsEssEnabled,
+    blnIsPartialSave: dicValues.blnIsPartialSave
   };
 }
 

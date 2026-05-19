@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   ApiRequestMethod,
@@ -18,6 +18,7 @@ import {
   type CurrentUserContext,
   type GoogleMfaChallengeData,
   type MenuResponse,
+  type LogoutResponseData,
   type ResendOtpRequest,
   type SsoCallbackData,
   type SsoMfaBackupCodeVerifyRequest,
@@ -312,7 +313,7 @@ export const authApiService = {
   },
 
   async logout() {
-    const objResult = await requestApi<{ blnLoggedOut: boolean }>({
+    const objResult = await requestApi<LogoutResponseData>({
       strPath: "auth/logout",
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "AUTH_LOGOUT",
@@ -323,4 +324,6 @@ export const authApiService = {
     return objResult;
   }
 };
+
+
 

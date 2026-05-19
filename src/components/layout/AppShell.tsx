@@ -36,7 +36,8 @@ import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
-import { authApiService, clsApiRequestError } from "@/services";
+import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
 const intTopBarHeight = 60;
@@ -428,8 +429,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   async function confirmLogout() {
     setBlnLogoutDialogOpen(false);
     setBlnLoggingOut(true);
-    await authApiService.logout().catch(() => undefined);
-    window.location.replace(authHelpers.getLoginUrl());
+    const objLogoutResult = await authApiService.logout().catch(() => undefined);
+    const strTenantUUID = objLogoutResult?.Data?.strTenantUUID || authHelpers.getTenantUUID();
+    const strLogoutUrl = strTenantUUID
+      ? `/logout?tenantUuid=${encodeURIComponent(strTenantUUID)}`
+      : "/logout";
+    window.location.replace(strLogoutUrl);
   }
 
   async function switchWorkspaceLanguage(intRequestedLanguageID: number) {
@@ -895,7 +900,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 }
 
 function isSessionExpiredError(objError: unknown): boolean {
-  if (objError instanceof clsApiRequestError) {
+  if (objError instanceof ApiRequestError) {
     if (objError.intStatusCode === 401) {
       return true;
     }
@@ -905,3 +910,8 @@ function isSessionExpiredError(objError: unknown): boolean {
 
   return objError instanceof Error && /unauthorized|session|token|expired/i.test(objError.message);
 }
+
+
+
+
+

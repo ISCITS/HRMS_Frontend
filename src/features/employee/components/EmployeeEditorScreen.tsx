@@ -111,6 +111,10 @@ function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildPartialEmployeeCode() {
+  return `PARTIAL-${Date.now()}`;
+}
+
 export default function EmployeeEditorScreen({
   strMode,
   intEmployeeID,
@@ -181,60 +185,43 @@ export default function EmployeeEditorScreen({
   };
 
   const blnViewOnly = strMode === "view";
+  const blnAnySaving = blnBasicSaving || blnAddressSaving || blnBankSaving || blnStatutorySaving || blnExperienceSaving || blnQualificationSaving;
 
   function getFooterActionConfig() {
     if (blnViewOnly) {
       return null;
     }
 
-    if (strActiveTab === "basicInfo") {
-      return {
-        fnOnClick: handleBasicSave,
-        blnDisabled: blnBasicSaving,
-        strLabel: blnBasicSaving ? t("action_saving_basic_info", "Saving Basic Info...") : t("action_save_basic_info", "Save Basic Info"),
-      };
-    }
+    return {
+      fnOnClick: handleSaveAll,
+      blnDisabled: blnAnySaving,
+      strLabel: blnAnySaving ? t("saving", "Saving...") : t("save", "Save"),
+    };
+  }
 
-    if (strActiveTab === "address") {
-      return {
-        fnOnClick: handleAddressSave,
-        blnDisabled: blnAddressSaving,
-        strLabel: blnAddressSaving ? t("action_saving_address", "Saving Address...") : t("action_save_address", "Save Address"),
-      };
-    }
+  function buildBasicFormForSave(blnIsPartialSave: boolean): EmployeeFormValues {
+    return {
+      ...dicBasicForm,
+      blnIsPartialSave,
+    };
+  }
 
-    if (strActiveTab === "bankDetails") {
-      return {
-        fnOnClick: handleBankSave,
-        blnDisabled: blnBankSaving,
-        strLabel: blnBankSaving ? t("action_saving_bank_details", "Saving Bank Details...") : t("action_save_bank_details", "Save Bank Details"),
-      };
-    }
+  function buildBasicFormForPartialSave(): EmployeeFormValues {
+    const intDefaultEmploymentTypeID = dicBasicForm.intEmploymentTypeID || objFormOptions?.lstEmploymentTypes?.[0]?.intID || "";
+    const intDefaultLocationID = dicBasicForm.intLocationID || objFormOptions?.lstLocations?.[0]?.intID || "";
 
-    if (strActiveTab === "experience") {
-      return {
-        fnOnClick: handleExperienceSave,
-        blnDisabled: blnExperienceSaving,
-        strLabel: blnExperienceSaving ? t("action_saving_experience", "Saving Experience...") : t("action_save_experience", "Save Experience"),
-      };
-    }
-
-    if (strActiveTab === "qualification") {
-      return {
-        fnOnClick: handleQualificationSave,
-        blnDisabled: blnQualificationSaving,
-        strLabel: blnQualificationSaving ? t("action_saving_qualification", "Saving Qualification...") : t("action_save_qualification", "Save Qualification"),
-      };
-    }
-
-    if (strActiveTab === "family") {
-      return null;
+    if (intDefaultEmploymentTypeID === "" || intDefaultLocationID === "") {
+      throw new Error(t("basic_defaults_missing", "Employment Type and Location master options are required before saving employee details."));
     }
 
     return {
-      fnOnClick: handleStatutorySave,
-      blnDisabled: blnStatutorySaving,
-      strLabel: blnStatutorySaving ? t("action_saving_statutory", "Saving Statutory...") : t("action_save_statutory", "Save Statutory"),
+      ...dicBasicForm,
+      strEmployeeCode: dicBasicForm.strEmployeeCode.trim() || buildPartialEmployeeCode(),
+      strFirstName: dicBasicForm.strFirstName.trim() || t("partial_employee_name", "Partial Employee"),
+      dtDateOfJoining: dicBasicForm.dtDateOfJoining || getTodayDateString(),
+      intEmploymentTypeID: intDefaultEmploymentTypeID,
+      intLocationID: intDefaultLocationID,
+      blnIsPartialSave: true,
     };
   }
 
@@ -419,6 +406,63 @@ export default function EmployeeEditorScreen({
     return dicNextErrors;
   }
 
+  function validateBasicFormForSave() {
+    const dicValidationErrors = validateEmployeeForm(
+      dicBasicForm,
+      lstEmployees.map((dicEmployee) => ({ intID: dicEmployee.intID, strEmployeeCode: dicEmployee.strEmployeeCode })),
+      intResolvedEmployeeID,
+      {
+        employeeCodeRequired: t("validation_employee_code_required", dicConstant.employeeMaster.validation.employeeCodeRequired),
+        employeeCodeFormat: t("validation_employee_code_format", dicConstant.employeeMaster.validation.employeeCodeFormat),
+        employeeCodeDuplicate: t("validation_employee_code_duplicate", dicConstant.employeeMaster.validation.employeeCodeDuplicate),
+        firstNameRequired: t("validation_first_name_required", dicConstant.employeeMaster.validation.firstNameRequired),
+        joiningDateRequired: t("validation_joining_date_required", dicConstant.employeeMaster.validation.joiningDateRequired),
+        employmentTypeRequired: t("validation_employment_type_required", dicConstant.employeeMaster.validation.employmentTypeRequired),
+        locationRequired: t("validation_location_required", dicConstant.employeeMaster.validation.locationRequired),
+        workEmailInvalid: t("validation_work_email_invalid", dicConstant.employeeMaster.validation.workEmailInvalid),
+        personalEmailInvalid: t("validation_personal_email_invalid", dicConstant.employeeMaster.validation.personalEmailInvalid),
+        mobileNumberInvalid: t("validation_mobile_number_invalid", dicConstant.employeeMaster.validation.mobileNumberInvalid),
+        birthDateInvalid: t("validation_birth_date_invalid", dicConstant.employeeMaster.validation.birthDateInvalid),
+        exitDateInvalid: t("validation_exit_date_invalid", dicConstant.employeeMaster.validation.exitDateInvalid),
+      }
+    );
+    setDicBasicErrors(dicValidationErrors);
+    return dicValidationErrors;
+  }
+
+  function hasAddressData() {
+    return Boolean(
+      dicAddressForm.strAddressLine1.trim() ||
+      dicAddressForm.strAddressLine2.trim() ||
+      dicAddressForm.strCityName.trim() ||
+      dicAddressForm.intStateID !== "" ||
+      dicAddressForm.strPostalCode.trim() ||
+      dicAddressForm.intCountryID !== ""
+    );
+  }
+
+  function hasBankData() {
+    return Boolean(
+      dicBankForm.intBankID !== "" ||
+      dicBankForm.strAccountHolderName.trim() ||
+      dicBankForm.strAccountNumber.trim() ||
+      dicBankForm.strIfscCode.trim()
+    );
+  }
+
+  function hasStatutoryData() {
+    return Boolean(
+      dicStatutoryForm.strPanNumber.trim() ||
+      dicStatutoryForm.strUanNumber.trim() ||
+      dicStatutoryForm.strEsiNumber.trim() ||
+      dicStatutoryForm.strPfNumber.trim() ||
+      dicStatutoryForm.strTaxRegimeCode.trim() ||
+      dicStatutoryForm.blnPfApplicable ||
+      dicStatutoryForm.blnEsiApplicable ||
+      dicStatutoryForm.blnPtApplicable
+    );
+  }
+
   function validateExperienceForm() {
     const dicNextErrors: Partial<Record<keyof EmployeeExperienceFormValues, string>> = {};
     if (!dicExperienceForm.strCompanyName.trim()) {
@@ -527,26 +571,7 @@ export default function EmployeeEditorScreen({
     if (blnViewOnly) {
       return;
     }
-    const dicValidationErrors = validateEmployeeForm(
-      dicBasicForm,
-      lstEmployees.map((dicEmployee) => ({ intID: dicEmployee.intID, strEmployeeCode: dicEmployee.strEmployeeCode })),
-      intResolvedEmployeeID,
-      {
-        employeeCodeRequired: t("validation_employee_code_required", dicConstant.employeeMaster.validation.employeeCodeRequired),
-        employeeCodeFormat: t("validation_employee_code_format", dicConstant.employeeMaster.validation.employeeCodeFormat),
-        employeeCodeDuplicate: t("validation_employee_code_duplicate", dicConstant.employeeMaster.validation.employeeCodeDuplicate),
-        firstNameRequired: t("validation_first_name_required", dicConstant.employeeMaster.validation.firstNameRequired),
-        joiningDateRequired: t("validation_joining_date_required", dicConstant.employeeMaster.validation.joiningDateRequired),
-        employmentTypeRequired: t("validation_employment_type_required", dicConstant.employeeMaster.validation.employmentTypeRequired),
-        locationRequired: t("validation_location_required", dicConstant.employeeMaster.validation.locationRequired),
-        workEmailInvalid: t("validation_work_email_invalid", dicConstant.employeeMaster.validation.workEmailInvalid),
-        personalEmailInvalid: t("validation_personal_email_invalid", dicConstant.employeeMaster.validation.personalEmailInvalid),
-        mobileNumberInvalid: t("validation_mobile_number_invalid", dicConstant.employeeMaster.validation.mobileNumberInvalid),
-        birthDateInvalid: t("validation_birth_date_invalid", dicConstant.employeeMaster.validation.birthDateInvalid),
-        exitDateInvalid: t("validation_exit_date_invalid", dicConstant.employeeMaster.validation.exitDateInvalid),
-      }
-    );
-    setDicBasicErrors(dicValidationErrors);
+    const dicValidationErrors = validateBasicFormForSave();
     if (Object.keys(dicValidationErrors).length > 0) {
       setStrActiveTab("basicInfo");
       focusFirstError(dicValidationErrors, dicFieldRefs, [
@@ -561,12 +586,194 @@ export default function EmployeeEditorScreen({
 
     setBlnBasicSaving(true);
     try {
+      const dicFormToSave = buildBasicFormForSave(false);
       const dicSavedEmployee = strMode === "add" && intResolvedEmployeeID === null
-        ? await employeeService.createEmployee(dicBasicForm)
-        : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicBasicForm);
+        ? await employeeService.createEmployee(dicFormToSave)
+        : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicFormToSave);
       setIntResolvedEmployeeID(dicSavedEmployee.intID);
       setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
       openAlertDialog("success", strMode === "add" && intEmployeeID === undefined ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
+      if (strMode === "add") {
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+      }
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_employee", "Unable to save employee."));
+    } finally {
+      setBlnBasicSaving(false);
+    }
+  }
+
+  async function handleSaveAll() {
+    if (blnViewOnly || blnAnySaving) {
+      return;
+    }
+
+    const dicBasicValidationErrors = validateBasicFormForSave();
+    if (Object.keys(dicBasicValidationErrors).length > 0) {
+      setStrActiveTab("basicInfo");
+      focusFirstError(dicBasicValidationErrors, dicFieldRefs, [
+        "strEmployeeCode",
+        "strFirstName",
+        "dtDateOfJoining",
+        "intEmploymentTypeID",
+        "intLocationID"
+      ]);
+      return;
+    }
+
+    if (hasAddressData()) {
+      const dicValidationErrors = validateAddressForm();
+      if (Object.keys(dicValidationErrors).length > 0) {
+        setStrActiveTab("address");
+        focusFirstError(dicValidationErrors, dicFieldRefs, ["strAddressLine1", "intCountryID"]);
+        return;
+      }
+    } else {
+      setDicAddressErrors({});
+    }
+
+    if (hasBankData()) {
+      const dicValidationErrors = validateBankForm();
+      if (Object.keys(dicValidationErrors).length > 0) {
+        setStrActiveTab("bankDetails");
+        focusFirstError(dicValidationErrors, dicFieldRefs, ["intBankID", "strAccountHolderName", "strAccountNumber"]);
+        return;
+      }
+    } else {
+      setDicBankErrors({});
+    }
+
+    if (hasStatutoryData()) {
+      const dicValidationErrors = validateStatutoryForm();
+      if (Object.keys(dicValidationErrors).length > 0) {
+        setStrActiveTab("statutory");
+        return;
+      }
+    } else {
+      setDicStatutoryErrors({});
+    }
+
+    if (blnAddingExperience || intEditingExperienceID) {
+      const dicValidationErrors = validateExperienceForm();
+      if (Object.keys(dicValidationErrors).length > 0) {
+        setStrActiveTab("experience");
+        return;
+      }
+    }
+
+    if (blnAddingQualification || intEditingQualificationID) {
+      const dicValidationErrors = validateQualificationForm();
+      if (Object.keys(dicValidationErrors).length > 0) {
+        setStrActiveTab("qualification");
+        return;
+      }
+    }
+
+    setBlnBasicSaving(true);
+    setBlnAddressSaving(hasAddressData());
+    setBlnBankSaving(hasBankData());
+    setBlnStatutorySaving(hasStatutoryData());
+    setBlnExperienceSaving(blnAddingExperience || Boolean(intEditingExperienceID));
+    setBlnQualificationSaving(blnAddingQualification || Boolean(intEditingQualificationID));
+
+    try {
+      const dicFormToSave = buildBasicFormForSave(false);
+      const dicSavedEmployee = strMode === "add" && intResolvedEmployeeID === null
+        ? await employeeService.createEmployee(dicFormToSave)
+        : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicFormToSave);
+      setIntResolvedEmployeeID(dicSavedEmployee.intID);
+      setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
+
+      if (hasAddressData()) {
+        const dicRecord = await employeeService.saveEmployeeAddress(dicSavedEmployee.intID, dicAddressForm);
+        setDicAddressForm(toEmployeeAddressFormValues(dicRecord));
+      }
+
+      if (hasBankData()) {
+        const dicRecord = await employeeService.saveEmployeeBankAccount(dicSavedEmployee.intID, dicBankForm);
+        setDicBankForm((dicPrevious) => ({
+          ...toEmployeeBankFormValues(dicRecord),
+          strAccountNumber: dicRecord.strAccountNumber ?? dicPrevious.strAccountNumber
+        }));
+      }
+
+      if (hasStatutoryData()) {
+        const dicRecord = await employeeService.saveEmployeeStatutory(dicSavedEmployee.intID, dicStatutoryForm);
+        setDicStatutoryForm(toEmployeeStatutoryFormValues(dicRecord));
+      }
+
+      if (blnAddingExperience || intEditingExperienceID) {
+        const dicRecord = intEditingExperienceID
+          ? await employeeService.updateEmployeeExperience(dicSavedEmployee.intID, intEditingExperienceID, dicExperienceForm)
+          : await employeeService.createEmployeeExperience(dicSavedEmployee.intID, dicExperienceForm);
+        setLstExperienceRecords((lstPrevious) => {
+          const lstWithoutCurrent = lstPrevious.filter((objItem) => objItem.intID !== dicRecord.intID);
+          return [dicRecord, ...lstWithoutCurrent].sort((objA, objB) => {
+            if (objA.blnIsActive !== objB.blnIsActive) {
+              return Number(objB.blnIsActive) - Number(objA.blnIsActive);
+            }
+            return objA.dtFromDate < objB.dtFromDate ? 1 : -1;
+          });
+        });
+        resetExperienceEditor();
+      }
+
+      if (blnAddingQualification || intEditingQualificationID) {
+        const dicRecord = intEditingQualificationID
+          ? await employeeService.updateEmployeeQualification(dicSavedEmployee.intID, intEditingQualificationID, dicQualificationForm)
+          : await employeeService.createEmployeeQualification(dicSavedEmployee.intID, dicQualificationForm);
+        setLstQualificationRecords((lstPrevious) => {
+          const lstWithoutCurrent = lstPrevious.filter((objItem) => objItem.intID !== dicRecord.intID);
+          return [dicRecord, ...lstWithoutCurrent].sort((objA, objB) => {
+            if (objA.blnIsActive !== objB.blnIsActive) {
+              return Number(objB.blnIsActive) - Number(objA.blnIsActive);
+            }
+            if (objA.blnIsHighestQualification !== objB.blnIsHighestQualification) {
+              return Number(objB.blnIsHighestQualification) - Number(objA.blnIsHighestQualification);
+            }
+            return objB.intYearOfPassing - objA.intYearOfPassing;
+          });
+        });
+        resetQualificationEditor();
+      }
+
+      openAlertDialog("success", strMode === "add" ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
+      if (strMode === "add") {
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+      }
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_employee", "Unable to save employee."));
+    } finally {
+      setBlnBasicSaving(false);
+      setBlnAddressSaving(false);
+      setBlnBankSaving(false);
+      setBlnStatutorySaving(false);
+      setBlnExperienceSaving(false);
+      setBlnQualificationSaving(false);
+    }
+  }
+
+  async function handlePartialSave() {
+    if (blnViewOnly || blnAnySaving) {
+      return;
+    }
+
+    setDicBasicErrors({});
+    setDicAddressErrors({});
+    setDicBankErrors({});
+    setDicStatutoryErrors({});
+    setDicExperienceErrors({});
+    setDicQualificationErrors({});
+    setBlnBasicSaving(true);
+
+    try {
+      const dicFormToSave = buildBasicFormForPartialSave();
+      const dicSavedEmployee = strMode === "add" && intResolvedEmployeeID === null
+        ? await employeeService.createEmployee(dicFormToSave)
+        : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicFormToSave);
+      setIntResolvedEmployeeID(dicSavedEmployee.intID);
+      setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
+      openAlertDialog("success", t("partial_save_success", "Employee saved as partial."));
       if (strMode === "add") {
         objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
       }
@@ -944,6 +1151,34 @@ export default function EmployeeEditorScreen({
             </Button>
             {objPageActionConfig ? (
               <Button
+                className={styles.secondaryButton}
+                variant="outlined"
+                startIcon={<SaveRoundedIcon />}
+                onClick={handlePartialSave}
+                disabled={objPageActionConfig.blnDisabled}
+                sx={{
+                  borderRadius: "14px",
+                  height: 38,
+                  minHeight: 38,
+                  py: 0,
+                  px: 2.25,
+                  minWidth: 128,
+                  fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  "& .MuiButton-startIcon": {
+                    mr: 0.75,
+                    "& svg": {
+                      fontSize: "1rem"
+                    }
+                  }
+                }}
+              >
+                {blnAnySaving ? t("saving", "Saving...") : t("partial_save", "Partial Save")}
+              </Button>
+            ) : null}
+            {objPageActionConfig ? (
+              <Button
                 className={styles.primaryButton}
                 variant="contained"
                 startIcon={<SaveRoundedIcon />}
@@ -1227,9 +1462,6 @@ export default function EmployeeEditorScreen({
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
-                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleExperienceSave} disabled={blnExperienceSaving} aria-label={blnExperienceSaving ? t("saving", "Saving...") : t("save", "Save")}>
-                              <SaveRoundedIcon fontSize="small" />
-                            </button>
                             <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
                               <CloseRoundedIcon fontSize="small" />
                             </button>
@@ -1278,9 +1510,6 @@ export default function EmployeeEditorScreen({
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
-                                  <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleExperienceSave} disabled={blnExperienceSaving} aria-label={blnExperienceSaving ? t("saving", "Saving...") : t("save", "Save")}>
-                                    <SaveRoundedIcon fontSize="small" />
-                                  </button>
                                   <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
                                     <CloseRoundedIcon fontSize="small" />
                                   </button>
@@ -1430,9 +1659,6 @@ export default function EmployeeEditorScreen({
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
-                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleQualificationSave} disabled={blnQualificationSaving} aria-label={blnQualificationSaving ? t("saving", "Saving...") : t("save", "Save")}>
-                              <SaveRoundedIcon fontSize="small" />
-                            </button>
                             <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
                               <CloseRoundedIcon fontSize="small" />
                             </button>
@@ -1481,9 +1707,6 @@ export default function EmployeeEditorScreen({
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
-                                  <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={handleQualificationSave} disabled={blnQualificationSaving} aria-label={blnQualificationSaving ? t("saving", "Saving...") : t("save", "Save")}>
-                                    <SaveRoundedIcon fontSize="small" />
-                                  </button>
                                   <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
                                     <CloseRoundedIcon fontSize="small" />
                                   </button>

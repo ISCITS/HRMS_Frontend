@@ -55,6 +55,10 @@ function getWorkerTypeLabel(blnIsWorker: boolean, t: (strKey: string, strFallbac
     : t("field_non_worker", "Non Worker");
 }
 
+function getPartialSaveLabel(blnIsPartialSave: boolean, t: (strKey: string, strFallback?: string) => string) {
+  return blnIsPartialSave ? t("partial_save_yes", "Yes") : t("partial_save_no", "No");
+}
+
 export default function EmployeeMasterListPanel() {
   const objRouter = useRouter();
   const { strLabelError, t } = useEmployeeLabels();
@@ -226,6 +230,7 @@ export default function EmployeeMasterListPanel() {
       t("grid_designation", dicConstant.employeeMaster.grid.designation),
       t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
       t("field_worker", "Worker"),
+      t("grid_partial_save", "Partial Save"),
       t("grid_status", dicConstant.employeeMaster.grid.status)
     ];
 
@@ -241,6 +246,7 @@ export default function EmployeeMasterListPanel() {
           dicEmployee.strDesignationName || "-",
           formatDisplayDate(dicEmployee.dtDateOfJoining),
           getWorkerTypeLabel(dicEmployee.blnIsWorker, t),
+          getPartialSaveLabel(dicEmployee.blnIsPartialSave, t),
           dicEmployee.strEmploymentStatus
         ].map((strValue) => toCsvCell(String(strValue))).join(",")
       )
@@ -273,6 +279,7 @@ export default function EmployeeMasterListPanel() {
             <td>${dicEmployee.strDesignationName || "-"}</td>
             <td>${formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
             <td>${getWorkerTypeLabel(dicEmployee.blnIsWorker, t)}</td>
+            <td>${getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</td>
             <td>${dicEmployee.strEmploymentStatus}</td>
           </tr>
         `
@@ -304,6 +311,7 @@ export default function EmployeeMasterListPanel() {
                 <th>${t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
                 <th>${t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
                 <th>${t("field_worker", "Worker")}</th>
+                <th>${t("grid_partial_save", "Partial Save")}</th>
                 <th>${t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
               </tr>
             </thead>
@@ -444,12 +452,13 @@ export default function EmployeeMasterListPanel() {
                   <th>{t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
                   <th>{t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
                   <th>{t("field_worker", "Worker")}</th>
+                  <th>{t("grid_partial_save", "Partial Save")}</th>
                   <th>{t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
                 </tr>
               </thead>
               <tbody>
                 {lstFilteredEmployees.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={11}>{t("empty_message", dicConstant.employeeMaster.emptyMessage)}</td></tr>
+                  <tr><td className={styles.emptyState} colSpan={12}>{t("empty_message", dicConstant.employeeMaster.emptyMessage)}</td></tr>
                 ) : lstVisibleEmployees.map((dicEmployee) => {
                   const blnSelected = lstSelectedIDs.includes(dicEmployee.intID);
                   return (
@@ -479,6 +488,7 @@ export default function EmployeeMasterListPanel() {
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
                       <td>{getWorkerTypeLabel(dicEmployee.blnIsWorker, t)}</td>
+                      <td><span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span></td>
                       <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span></td>
                     </tr>
                   );

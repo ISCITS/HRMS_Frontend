@@ -53,6 +53,9 @@ export type EmployeeSalaryComponentLine = {
   decAmountMonthly: number | null;
   decAmountAnnual: number | null;
   decPercentageValue: number | null;
+  decDefaultAmountMonthly?: number | null;
+  decDefaultAmountAnnual?: number | null;
+  decDefaultPercentageValue?: number | null;
   intBasisComponentID: number | null;
   strFormulaExpression: string | null;
   blnIsOverride: boolean;

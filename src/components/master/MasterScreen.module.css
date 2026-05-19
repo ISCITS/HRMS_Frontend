@@ -224,6 +224,16 @@
   color: #fff;
 }
 
+.statusNegative {
+  background: #dc2626;
+  color: #fff;
+}
+
+.statusNeutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .actionCell {
   align-items: center;
   display: flex;

@@ -211,3 +211,159 @@ export const itDeclarationService = {
 };
 
 export type ItDeclarationEnvelope = ApiEnvelope<ItDeclarationDto>;
+
+export type HrItDeclarationListRecord = {
+  strDeclarationCode: string;
+  intDeclarationID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strFinancialYearCode: string;
+  strTaxRegime: string;
+  decDeclaredTotalAmount: number;
+  decApprovedTotalAmount: number;
+  intProofPendingCount: number;
+  strStatus: string;
+  strSubmittedOn?: string | null;
+  strLastUpdated?: string | null;
+  strCompanyName?: string | null;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
+};
+
+export type HrItDeclarationItemRecord = {
+  intItemID: number;
+  strSection: string;
+  strDescription: string;
+  decDeclaredAmount: number;
+  decApprovedAmount: number;
+  strItemStatus: string;
+  strProofStatus?: string | null;
+  blnProofRequired?: boolean;
+};
+
+export type HrItDeclarationProofRecord = {
+  intProofID: number;
+  intItemID: number;
+  strFileName: string;
+  strMimeType: string;
+  intFileSizeBytes: number;
+  strVerificationStatus: string;
+};
+
+export type HrItDeclarationAuditRecord = {
+  strAction: string;
+  strActionBy: string;
+  strActionOn: string;
+  strRemarks?: string | null;
+};
+
+export type HrItDeclarationDetailRecord = {
+  intDeclarationID: number;
+  strDeclarationCode: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strFinancialYearCode: string;
+  strTaxRegime: string;
+  strStatus: string;
+  blnLocked: boolean;
+  decDeclaredTotalAmount: number;
+  decApprovedTotalAmount: number;
+  intProofPendingCount: number;
+  objHraDetails?: Record<string, unknown> | null;
+  objHomeLoanDetails?: Record<string, unknown> | null;
+  objPreviousEmployerDetails?: Record<string, unknown> | null;
+  lstItems: HrItDeclarationItemRecord[];
+  lstProofs: HrItDeclarationProofRecord[];
+};
+
+export const hrItDeclarationReviewService = {
+  async getList(objFilters?: Record<string, string | number | boolean | null | undefined>): Promise<{ lstRows: HrItDeclarationListRecord[]; objSummary: Record<string, number> }> {
+    const objResult = await requestApi<{ lstRows: HrItDeclarationListRecord[]; objSummary: Record<string, number> }>({
+      strPath: "/payroll/it-declaration-review",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: objFilters,
+      strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? { lstRows: [], objSummary: {} };
+  },
+
+  async getDetail(intDeclarationID: number): Promise<HrItDeclarationDetailRecord> {
+    const objResult = await requestApi<HrItDeclarationDetailRecord>({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async startReview(intDeclarationID: number) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/start-review`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "PAYROLL_IT_DECLARATION_REVIEW",
+    });
+  },
+
+  async reviewItem(intDeclarationID: number, intItemID: number, strAction: "approve" | "reject" | "partial-approve" | "proof-pending", objPayload?: unknown) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/${strAction}`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: strAction === "reject" ? "PAYROLL_IT_DECLARATION_REJECT" : "PAYROLL_IT_DECLARATION_APPROVE",
+    });
+  },
+
+  async reviewProof(intDeclarationID: number, intItemID: number, strAction: "verify" | "reject", objPayload?: unknown) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof/${strAction}`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "PAYROLL_IT_DECLARATION_PROOF_VERIFY",
+    });
+  },
+
+  async reviewHeader(intDeclarationID: number, strAction: "approve" | "reject", objPayload?: unknown) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/${strAction}`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: strAction === "approve" ? "PAYROLL_IT_DECLARATION_APPROVE" : "PAYROLL_IT_DECLARATION_REJECT",
+    });
+  },
+
+  async release(intDeclarationID: number, objPayload: { strRemarks: string }) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/release`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "PAYROLL_IT_DECLARATION_RELEASE",
+    });
+  },
+
+  async lock(intDeclarationID: number, objPayload?: { strRemarks?: string }) {
+    return requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/lock`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "PAYROLL_IT_DECLARATION_LOCK",
+    });
+  },
+
+  async getAudit(intDeclarationID: number): Promise<HrItDeclarationAuditRecord[]> {
+    const objResult = await requestApi<HrItDeclarationAuditRecord[]>({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/audit`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_IT_DECLARATION_AUDIT_VIEW",
+    });
+    return objResult.Data ?? [];
+  },
+
+  async previewProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
+    const objResult = await requestApi<ItDeclarationProofPreviewDto>({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+};

@@ -313,6 +313,7 @@ export type EmployeeApiRecord = {
   dtDateOfJoining: string;
   strEmploymentStatus: "Active" | "Inactive";
   blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
   strLocationName: string | null;
   strManagerName: string | null;
 };
@@ -344,6 +345,7 @@ export type EmployeeDetailApiRecord = {
   strEmploymentStatus: "Active" | "Inactive";
   dtDateOfExit: string | null;
   blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
 };
 
 export type EmployeeLookupOptionApiRecord = {

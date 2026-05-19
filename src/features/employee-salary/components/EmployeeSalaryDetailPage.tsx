@@ -39,6 +39,7 @@ import type {
 type EmployeeSalaryDetailPageProps = {
   intEmployeeID: number;
   blnViewMode?: boolean;
+  strReturnTo?: string;
 };
 
 type ConfirmDialogState = {
@@ -97,6 +98,20 @@ function getRevisionMinEffectiveDate(objDetail: EmployeeSalaryDetailRecord | nul
   return strCurrentEffectiveFrom ? addDaysToDateString(strCurrentEffectiveFrom, 1) : "";
 }
 
+const objOverrideValueFieldSx = {
+  "& .MuiInputLabel-root": {
+    backgroundColor: "#f8fafc",
+    px: 0.5,
+  },
+  "& .MuiInputBase-input::placeholder": {
+    color: "#94a3b8",
+    opacity: 1,
+  },
+  "& .MuiInputBase-input.Mui-disabled": {
+    WebkitTextFillColor: "#94a3b8",
+  },
+};
+
 type ComponentGridRow = {
   intEmployeeSalaryComponentID: number;
   strComponentName: string;
@@ -130,6 +145,18 @@ type OverrideSourceLine = {
   decAmountAnnual?: number | null;
   decFixedAmount?: number | null;
   decPercentageValue?: number | null;
+  decDefaultAmountMonthly?: number | null;
+  decDefaultAmountAnnual?: number | null;
+  decDefaultPercentageValue?: number | null;
+};
+
+type ExistingOverrideLine = {
+  intSalaryComponentID: number;
+  decAmountMonthly?: number | string | null;
+  decAmountAnnual?: number | string | null;
+  decPercentageValue?: number | string | null;
+  strRemarks?: string | null;
+  blnIsOverride?: boolean;
 };
 
 function formatOptionalDefaultValue(objValue: number | string | null | undefined) {
@@ -142,21 +169,24 @@ function formatOptionalDefaultValue(objValue: number | string | null | undefined
 
 function buildOverrideRows(
   lstSourceLines: OverrideSourceLine[],
-  lstExistingOverrides: EmployeeSalaryOverrideFormValue[] = [],
+  lstExistingOverrides: ExistingOverrideLine[] = [],
   fnTranslate?: (strKey: string, strFallback: string) => string
 ): EmployeeSalaryOverrideFormValue[] {
   const dicExistingOverrideByComponentID = new Map(
-    lstExistingOverrides.map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
+    lstExistingOverrides
+      .filter((dicOverride) => dicOverride.blnIsOverride !== false)
+      .map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
   );
 
   return lstSourceLines.map((dicLine) => {
     const dicExistingOverride = dicExistingOverrideByComponentID.get(dicLine.intSalaryComponentID);
     const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
-    const decDefaultMonthly = dicLine.decAmountMonthly ?? dicLine.decFixedAmount;
+    const decDefaultMonthly = dicLine.decDefaultAmountMonthly ?? dicLine.decAmountMonthly ?? dicLine.decFixedAmount;
     const strDefaultMonthly = formatOptionalDefaultValue(
       decDefaultMonthly
     );
     const strDefaultAnnual = formatOptionalDefaultValue(
+      dicLine.decDefaultAmountAnnual ??
       dicLine.decAmountAnnual ??
       (decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : null)
     );
@@ -167,12 +197,12 @@ function buildOverrideRows(
         dicLine.strComponentCode ??
         `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
       blnAllowManualOverride: dicLine.blnAllowManualOverride,
-      decAmountMonthly: dicReusableOverride?.decAmountMonthly ?? "",
-      decAmountAnnual: dicReusableOverride?.decAmountAnnual ?? "",
-      decPercentageValue: dicReusableOverride?.decPercentageValue ?? "",
+      decAmountMonthly: formatOptionalDefaultValue(dicReusableOverride?.decAmountMonthly),
+      decAmountAnnual: formatOptionalDefaultValue(dicReusableOverride?.decAmountAnnual),
+      decPercentageValue: formatOptionalDefaultValue(dicReusableOverride?.decPercentageValue),
       strDefaultMonthly,
       strDefaultAnnual,
-      strDefaultPercentage: formatOptionalDefaultValue(dicLine.decPercentageValue),
+      strDefaultPercentage: formatOptionalDefaultValue(dicLine.decDefaultPercentageValue ?? dicLine.decPercentageValue),
       strRemarks: dicReusableOverride?.strRemarks ?? ""
     };
   });
@@ -180,17 +210,27 @@ function buildOverrideRows(
 
 function buildRevisionForm(
   objDetail: EmployeeSalaryDetailRecord | null,
+  objFormOptions?: EmployeeSalaryFormOptions | null,
   fnTranslate?: (strKey: string, strFallback: string) => string
 ): EmployeeSalaryRevisionFormValues {
+  const intSalaryStructureID = objDetail?.objAssignedStructure?.intSalaryStructureID ?? "";
+  const lstStructureComponents = intSalaryStructureID === ""
+    ? []
+    : objFormOptions?.lstSalaryStructures.find((dicStructure) => dicStructure.intID === intSalaryStructureID)?.lstComponents ?? [];
+
   return {
-    intSalaryStructureID: objDetail?.objAssignedStructure?.intSalaryStructureID ?? "",
+    intSalaryStructureID,
     dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail) || getTodayDateString(),
     strRevisionReason: "",
-    lstOverrides: buildOverrideRows(objDetail?.lstComponentLines ?? [], [], fnTranslate)
+    lstOverrides: buildOverrideRows(
+      lstStructureComponents.length > 0 ? lstStructureComponents : objDetail?.lstComponentLines ?? [],
+      objDetail?.lstComponentLines ?? [],
+      fnTranslate
+    )
   };
 }
 
-export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false }: EmployeeSalaryDetailPageProps) {
+export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false, strReturnTo = "/employee-salary" }: EmployeeSalaryDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
@@ -239,7 +279,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         }
         setObjDetail(dicDetail);
         setObjFormOptions(dicFormOptions);
-        setDicRevisionForm(buildRevisionForm(dicDetail));
+        setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, t));
       } catch (objError) {
         if (blnMounted) {
           setStrError(
@@ -465,7 +505,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/employee-salary")}
+                onClick={() => objRouter.push(strReturnTo)}
                 sx={{
                   borderRadius: "14px",
                   height: 38,
@@ -813,61 +853,79 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       border: "1px solid rgba(148,163,184,0.14)"
                     }}
                   >
-                    <TextField label={t("employee_salary_component", "Component")} value={dicOverride.strComponentName} disabled />
-                    <TextField
-                      label={t("employee_salary_monthly", "Monthly")}
-                      value={dicOverride.decAmountMonthly}
-                      placeholder={dicOverride.strDefaultMonthly}
-                      helperText={
-                        dicOverride.strDefaultMonthly
-                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultMonthly}`
-                          : undefined
-                      }
-                      disabled={!dicOverride.blnAllowManualOverride}
-                      onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                        ...dicPrev,
-                        lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAmountMonthly: objEvent.target.value } : dicRow)
-                      }))}
-                    />
-                    <TextField
-                      label={t("employee_salary_annual", "Annual")}
-                      value={dicOverride.decAmountAnnual}
-                      placeholder={dicOverride.strDefaultAnnual}
-                      helperText={
-                        dicOverride.strDefaultAnnual
-                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultAnnual}`
-                          : undefined
-                      }
-                      disabled={!dicOverride.blnAllowManualOverride}
-                      onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                        ...dicPrev,
-                        lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAmountAnnual: objEvent.target.value } : dicRow)
-                      }))}
-                    />
-                    <TextField
-                      label={t("employee_salary_percentage_value", "% Value")}
-                      value={dicOverride.decPercentageValue}
-                      placeholder={dicOverride.strDefaultPercentage}
-                      helperText={
-                        dicOverride.strDefaultPercentage
-                          ? `${t("employee_salary_structure_default", "Structure default")}: ${dicOverride.strDefaultPercentage}`
-                          : undefined
-                      }
-                      disabled={!dicOverride.blnAllowManualOverride}
-                      onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                        ...dicPrev,
-                        lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decPercentageValue: objEvent.target.value } : dicRow)
-                      }))}
-                    />
-                    <TextField
-                      label={t("employee_salary_remarks", "Remarks")}
-                      value={dicOverride.strRemarks}
-                      disabled={!dicOverride.blnAllowManualOverride}
-                      onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                        ...dicPrev,
-                        lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, strRemarks: objEvent.target.value } : dicRow)
-                      }))}
-                    />
+                    <Stack spacing={0.55}>
+                      <TextField label={t("employee_salary_component", "Component")} value={dicOverride.strComponentName} disabled />
+                      <Typography sx={{ color: "#64748b", fontSize: "0.78rem", pl: 1.5 }}>
+                        {t("employee_salary_structure_default", "Structure default")}:
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.55}>
+                      <TextField
+                        label={t("employee_salary_monthly", "Monthly")}
+                        value={dicOverride.decAmountMonthly}
+                        placeholder={dicOverride.strDefaultMonthly}
+                        InputLabelProps={{ shrink: true }}
+                        sx={objOverrideValueFieldSx}
+                        disabled={!dicOverride.blnAllowManualOverride}
+                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                          ...dicPrev,
+                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAmountMonthly: objEvent.target.value } : dicRow)
+                        }))}
+                      />
+                      <Typography sx={{ color: "#475569", fontSize: "0.78rem", pl: 1.5 }}>
+                        {dicOverride.strDefaultMonthly || "-"}
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.55}>
+                      <TextField
+                        label={t("employee_salary_annual", "Annual")}
+                        value={dicOverride.decAmountAnnual}
+                        placeholder={dicOverride.strDefaultAnnual}
+                        InputLabelProps={{ shrink: true }}
+                        sx={objOverrideValueFieldSx}
+                        disabled={!dicOverride.blnAllowManualOverride}
+                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                          ...dicPrev,
+                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAmountAnnual: objEvent.target.value } : dicRow)
+                        }))}
+                      />
+                      <Typography sx={{ color: "#475569", fontSize: "0.78rem", pl: 1.5 }}>
+                        {dicOverride.strDefaultAnnual || "-"}
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.55}>
+                      <TextField
+                        label={t("employee_salary_percentage_value", "% Value")}
+                        value={dicOverride.decPercentageValue}
+                        placeholder={dicOverride.strDefaultPercentage}
+                        InputLabelProps={{ shrink: true }}
+                        sx={objOverrideValueFieldSx}
+                        disabled={!dicOverride.blnAllowManualOverride}
+                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                          ...dicPrev,
+                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decPercentageValue: objEvent.target.value } : dicRow)
+                        }))}
+                      />
+                      <Typography sx={{ color: "#475569", fontSize: "0.78rem", pl: 1.5 }}>
+                        {dicOverride.strDefaultPercentage || "-"}
+                      </Typography>
+                    </Stack>
+                    <Stack spacing={0.55}>
+                      <TextField
+                        label={t("employee_salary_remarks", "Remarks")}
+                        value={dicOverride.strRemarks}
+                        InputLabelProps={{ shrink: true }}
+                        sx={objOverrideValueFieldSx}
+                        disabled={!dicOverride.blnAllowManualOverride}
+                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                          ...dicPrev,
+                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, strRemarks: objEvent.target.value } : dicRow)
+                        }))}
+                      />
+                      <Typography sx={{ color: "transparent", fontSize: "0.78rem", pl: 1.5 }} aria-hidden="true">
+                        -
+                      </Typography>
+                    </Stack>
                   </Box>
                 ))}
               </Stack>
