@@ -10,7 +10,7 @@ export enum ApiResultCode {
 }
 
 export enum ApiRoutePrefix {
-  ApiV1 = "api/v1",
+  ApiV1 = "/api/v1",
 }
 
 export enum ApiFieldKey {

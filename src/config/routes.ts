@@ -14,6 +14,8 @@ export const appRoutes = {
   reports: "/reports",
   payrollRegisterReport: "/reports/payroll-register",
   bankFileReport: "/reports/bank-file",
+  essMyReimbursements: "/ess/reimbursements",
+  payrollReimbursementReview: "/payroll/reimbursements",
   tenantAdminBase: "/HRMS/Administrator",
   tenantAdminLogin: "/HRMS/Administrator/login",
   tenantAdminDashboard: "/HRMS/Administrator/dashboard",
