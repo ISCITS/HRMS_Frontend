@@ -27,24 +27,29 @@ export default function ReportsPage() {
       </Typography>
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mt: 2 }}>
         {lstReports.map((dicReport) => (
-          <Box
+          <Link
             key={dicReport.strHref}
-            component={Link}
             href={dicReport.strHref}
-            sx={{
-              border: "1px solid rgba(187, 213, 232, 0.7)",
-              borderRadius: 2,
+            style={{
               color: "inherit",
-              p: 2,
               textDecoration: "none",
-              "&:hover": { borderColor: "primary.main", backgroundColor: "rgba(29, 93, 150, 0.04)" },
             }}
           >
-            <Typography fontWeight={700}>{dicReport.strTitle}</Typography>
-            <Typography color="text.secondary" sx={{ fontSize: "0.9rem", mt: 0.5 }}>
-              {dicReport.strDescription}
-            </Typography>
-          </Box>
+            <Box
+              sx={{
+                border: "1px solid rgba(187, 213, 232, 0.7)",
+                borderRadius: 2,
+                p: 2,
+                height: "100%",
+                "&:hover": { borderColor: "primary.main", backgroundColor: "rgba(29, 93, 150, 0.04)" },
+              }}
+            >
+              <Typography fontWeight={700}>{dicReport.strTitle}</Typography>
+              <Typography color="text.secondary" sx={{ fontSize: "0.9rem", mt: 0.5 }}>
+                {dicReport.strDescription}
+              </Typography>
+            </Box>
+          </Link>
         ))}
       </Box>
     </Paper>

@@ -39,6 +39,7 @@ import type {
 type EmployeeSalaryDetailPageProps = {
   intEmployeeID: number;
   blnViewMode?: boolean;
+  strReturnTo?: string;
 };
 
 type ConfirmDialogState = {
@@ -190,7 +191,7 @@ function buildRevisionForm(
   };
 }
 
-export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false }: EmployeeSalaryDetailPageProps) {
+export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false, strReturnTo = "/employee-salary" }: EmployeeSalaryDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
@@ -465,7 +466,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/employee-salary")}
+                onClick={() => objRouter.push(strReturnTo)}
                 sx={{
                   borderRadius: "14px",
                   height: 38,

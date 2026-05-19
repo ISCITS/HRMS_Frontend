@@ -203,6 +203,17 @@ function isPayrollMenuBranch(objItem: MenuItem): boolean {
   );
 }
 
+function isPayrollContainerMenu(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    strRoute === "/payroll" ||
+    strModuleCode === "payroll" ||
+    strModuleName === "payroll"
+  );
+}
+
 function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
   if (hasRoute(lstItems, "/payroll/payslips")) {
     return lstItems;
@@ -244,8 +255,8 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
 
 function isDirectReportsMenu(objItem: MenuItem): boolean {
   const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
-  const strModuleCode = objItem.strModuleCode.toLowerCase();
-  const strModuleName = objItem.strModuleName.toLowerCase();
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
   return (
     strRoute === "/reports" ||
     strModuleCode === "reports" ||
@@ -255,13 +266,25 @@ function isDirectReportsMenu(objItem: MenuItem): boolean {
   );
 }
 
+function isReportMenuItem(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    isDirectReportsMenu(objItem) ||
+    strRoute.startsWith("/reports/") ||
+    strModuleCode.includes("report") ||
+    strModuleName.includes("report")
+  );
+}
+
 function removeReportsFromPayrollBranches(lstItems: MenuItem[], blnInsidePayroll = false): MenuItem[] {
   return lstItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
-    if (blnInsidePayroll && isDirectReportsMenu(objItem)) {
+    if (blnInsidePayroll && isReportMenuItem(objItem)) {
       return lstUpdatedItems;
     }
 
-    const blnCurrentItemIsPayrollBranch = isPayrollMenuBranch(objItem);
+    const blnCurrentItemIsPayrollBranch = isPayrollContainerMenu(objItem);
     lstUpdatedItems.push({
       ...objItem,
       lstChildren: removeReportsFromPayrollBranches(
@@ -284,7 +307,7 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
     const blnShouldAppendHere =
       !blnInserted &&
       objItem.lstChildren.length > 0 &&
-      isPayrollMenuBranch(objItem) &&
+      isPayrollContainerMenu(objItem) &&
       !hasRoute(lstChildren, "/payroll/reimbursements");
 
     if (!blnShouldAppendHere) {
@@ -307,6 +330,74 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
       ],
     };
   });
+}
+
+function getMenuIdentityKey(objItem: MenuItem): string {
+  if (isDirectReportsMenu(objItem)) {
+    return "reports";
+  }
+
+  const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return strRoute || strModuleCode || strModuleName;
+}
+
+function mergeUniqueMenuChildren(lstExisting: MenuItem[], lstIncoming: MenuItem[]): MenuItem[] {
+  const lstMerged = [...lstExisting];
+  const dicIndexByKey = new Map<string, number>();
+
+  lstMerged.forEach((objChild, intIndex) => {
+    dicIndexByKey.set(getMenuIdentityKey(objChild), intIndex);
+  });
+
+  lstIncoming.forEach((objChild) => {
+    const strKey = getMenuIdentityKey(objChild);
+    const intExistingIndex = dicIndexByKey.get(strKey);
+    if (intExistingIndex === undefined) {
+      dicIndexByKey.set(strKey, lstMerged.length);
+      lstMerged.push(objChild);
+      return;
+    }
+
+    const objExisting = lstMerged[intExistingIndex];
+    lstMerged[intExistingIndex] = {
+      ...objExisting,
+      lstChildren: mergeUniqueMenuChildren(objExisting.lstChildren, objChild.lstChildren),
+    };
+  });
+
+  return lstMerged;
+}
+
+function collapseDuplicateReportsMenus(lstItems: MenuItem[]): MenuItem[] {
+  let objReportsMenu: MenuItem | null = null;
+  const lstCollapsedItems: MenuItem[] = [];
+
+  lstItems.forEach((objItem) => {
+    const objItemWithCollapsedChildren = {
+      ...objItem,
+      lstChildren: collapseDuplicateReportsMenus(objItem.lstChildren),
+    };
+
+    if (!isDirectReportsMenu(objItemWithCollapsedChildren)) {
+      lstCollapsedItems.push(objItemWithCollapsedChildren);
+      return;
+    }
+
+    if (!objReportsMenu) {
+      objReportsMenu = objItemWithCollapsedChildren;
+      lstCollapsedItems.push(objReportsMenu);
+      return;
+    }
+
+    objReportsMenu.lstChildren = mergeUniqueMenuChildren(
+      objReportsMenu.lstChildren,
+      objItemWithCollapsedChildren.lstChildren,
+    );
+  });
+
+  return lstCollapsedItems;
 }
 
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
@@ -382,35 +473,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     return lstUpdatedItems;
   }
 
-  return [
-    ...lstUpdatedItems,
-    {
-      strModuleCode: "REPORTS",
-      strModuleName: "Reports",
-      strRoute: null,
-      lstPermissionCodes: [],
-      blnIsHome: false,
-      lstChildren: [
-        {
-          strModuleCode: "PAYROLL_REGISTER",
-          strModuleName: "Payroll Register",
-          strRoute: "/reports/payroll-register",
-          lstPermissionCodes: ["PAYROLL_REGISTER_VIEW", "PAYROLL_REGISTER_EXPORT"],
-          blnIsHome: false,
-          lstChildren: [],
-        },
-        {
-          strModuleCode: "BANK_FILE",
-          strModuleName: "Bank File",
-          strRoute: "/reports/bank-file",
-          lstPermissionCodes: ["BANK_FILE_VIEW", "BANK_FILE_EXPORT"],
-          blnIsHome: false,
-          lstChildren: [],
-        },
-        objGeneratedStatutoryReportMenu,
-      ],
-    },
-  ];
+  return lstUpdatedItems;
 }
 
 export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
@@ -666,18 +729,22 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   const dicDefaultExpanded = useMemo(
     () => collectExpandableDefaults(
-      appendGeneratedReportsMenu(
+      collapseDuplicateReportsMenus(
         removeReportsFromPayrollBranches(
-          appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+          appendGeneratedReportsMenu(
+            appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+          ),
         ),
       ),
     ),
     [lstMenuItems, strPathname],
   );
   const lstRenderedMenuItems = useMemo(
-    () => appendGeneratedReportsMenu(
+    () => collapseDuplicateReportsMenus(
       removeReportsFromPayrollBranches(
-        appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+        appendGeneratedReportsMenu(
+          appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+        ),
       ),
     ),
     [lstMenuItems],
