@@ -75,10 +75,16 @@ export default function UserGroupMasterDialog({
         }
 
         if (intUserGroupID) {
-          const objResult = await securityApiService.getUserGroupAuthorizationMetadata(intUserGroupID);
+          const objRightsResult = await securityApiService.getUserGroupRights(intUserGroupID);
+          let objMetadataResult: Awaited<ReturnType<typeof securityApiService.getUserGroupAuthorizationMetadata>> | null = null;
+          try {
+            objMetadataResult = await securityApiService.getUserGroupAuthorizationMetadata(intUserGroupID);
+          } catch {
+            objMetadataResult = null;
+          }
           if (blnMounted) {
-            setObjMetadata(objResult.Data);
-            setLstRightsNodes(objResult.Data.lstMenuTree);
+            setObjMetadata(objMetadataResult?.Data ?? null);
+            setLstRightsNodes(objRightsResult.Data);
           }
           return;
         }
@@ -93,10 +99,16 @@ export default function UserGroupMasterDialog({
           return;
         }
 
-        const objResult = await securityApiService.getUserGroupAuthorizationMetadata(intTemplateGroupID);
+        const objRightsResult = await securityApiService.getUserGroupRights(intTemplateGroupID);
+        let objMetadataResult: Awaited<ReturnType<typeof securityApiService.getUserGroupAuthorizationMetadata>> | null = null;
+        try {
+          objMetadataResult = await securityApiService.getUserGroupAuthorizationMetadata(intTemplateGroupID);
+        } catch {
+          objMetadataResult = null;
+        }
         if (blnMounted) {
-          setObjMetadata(null);
-          setLstRightsNodes(clearMenuTreeRights(objResult.Data.lstMenuTree));
+          setObjMetadata(objMetadataResult?.Data ?? null);
+          setLstRightsNodes(clearMenuTreeRights(objRightsResult.Data));
         }
       } catch {
         if (blnMounted) {

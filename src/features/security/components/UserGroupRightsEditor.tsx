@@ -39,6 +39,50 @@ type UserGroupRightsEditorProps = {
   onChange: (lstNodes: SecurityMenuNode[]) => void;
 };
 
+function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
+  const strRoute = (objNode.strRoutePath ?? "").toLowerCase();
+  const strMenuCode = objNode.strMenuCode.toLowerCase();
+  const strMenuName = objNode.strMenuName;
+
+  if (strRoute.includes("/ess/my-payslip") || strRoute.includes("/ess/my-payslips")) {
+    return "Payslips";
+  }
+  if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+    return "IT Declaration";
+  }
+  if (strRoute.includes("/payroll/runs") || strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
+    return "Payroll Runs";
+  }
+  if (
+    strRoute.includes("/payroll/employee-payroll-inputs") ||
+    strRoute.includes("/payroll/employee-payroll-input") ||
+    strRoute.includes("/payroll/inputs") ||
+    strMenuCode.includes("employee_payroll_input")
+  ) {
+    return "Employee Payroll Input";
+  }
+  if (strRoute.includes("/payroll/results") || strMenuCode.includes("payroll_result")) {
+    return "Payroll Results";
+  }
+  if (strRoute.includes("/payroll/statutory-rules")) {
+    return "Statutory Rules";
+  }
+  if (strRoute.includes("/payroll/process-log") || strRoute.includes("/payroll-process-logs")) {
+    return "Payroll Process Logs";
+  }
+  if (strRoute.includes("/reports/payroll-register") || strMenuCode.includes("payroll_register")) {
+    return "Payroll Register";
+  }
+  if (strRoute.includes("/reports/bank-file") || strMenuCode.includes("bank_file")) {
+    return "Bank File";
+  }
+  if (strRoute.includes("/reports/statutory") || strMenuCode.includes("statutory_report")) {
+    return "Statutory Reports";
+  }
+
+  return strMenuName;
+}
+
 function collectMenuIDs(lstMenuNodes: SecurityMenuNode[]): number[] {
   return lstMenuNodes.flatMap((objNode) => [objNode.intMenuID, ...collectMenuIDs(objNode.lstChildren)]);
 }
@@ -230,6 +274,7 @@ function renderNodeRows(
 ) {
   const blnExpanded = objExpandedMenuIDs.has(objNode.intMenuID);
   const blnNodeChecked = isNodeFullyAllowed(objNode);
+  const strNormalizedMenuName = normalizeRightsMenuName(objNode);
 
   return (
     <Box key={objNode.intMenuID} sx={{ borderTop: intDepth === 0 ? "none" : "1px solid #edf2f7" }}>
@@ -260,7 +305,7 @@ function renderNodeRows(
               lineHeight: 1.2,
             }}
           >
-            {objNode.strMenuName}
+            {strNormalizedMenuName}
           </Button>
         </Box>
         <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
