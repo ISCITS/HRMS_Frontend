@@ -38,6 +38,10 @@ const dicRouteAliases: Record<string, string> = {
   "/reports/bank-file": "/reports/bank-file",
   "/report/bank_file": "/reports/bank-file",
   "/reports/bank_file": "/reports/bank-file",
+  "/payroll/reimbursement": "/payroll/reimbursements",
+  "/payroll/reimbursements": "/payroll/reimbursements",
+  "/payroll/reimbursement-claims": "/payroll/reimbursements",
+  "/payroll/reimbursement_claims": "/payroll/reimbursements",
 };
 
 function normalizeRoute(strRoute?: string | null) {

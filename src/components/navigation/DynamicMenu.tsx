@@ -242,6 +242,73 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
   return lstUpdatedItems;
 }
 
+function isDirectReportsMenu(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.toLowerCase();
+  const strModuleName = objItem.strModuleName.toLowerCase();
+  return (
+    strRoute === "/reports" ||
+    strModuleCode === "reports" ||
+    strModuleCode === "report" ||
+    strModuleName === "reports" ||
+    strModuleName === "report"
+  );
+}
+
+function removeReportsFromPayrollBranches(lstItems: MenuItem[], blnInsidePayroll = false): MenuItem[] {
+  return lstItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
+    if (blnInsidePayroll && isDirectReportsMenu(objItem)) {
+      return lstUpdatedItems;
+    }
+
+    const blnCurrentItemIsPayrollBranch = isPayrollMenuBranch(objItem);
+    lstUpdatedItems.push({
+      ...objItem,
+      lstChildren: removeReportsFromPayrollBranches(
+        objItem.lstChildren,
+        blnInsidePayroll || blnCurrentItemIsPayrollBranch,
+      ),
+    });
+    return lstUpdatedItems;
+  }, []);
+}
+
+function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/payroll/reimbursements")) {
+    return lstItems;
+  }
+
+  let blnInserted = false;
+  return lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedReimbursementsMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isPayrollMenuBranch(objItem) &&
+      !hasRoute(lstChildren, "/payroll/reimbursements");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [
+        ...lstChildren,
+        {
+          strModuleCode: "PAYROLL_REIMBURSEMENTS",
+          strModuleName: "Reimbursements",
+          strRoute: "/payroll/reimbursements",
+          lstPermissionCodes: ["PAYROLL_REIMBURSEMENTS_VIEW"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    };
+  });
+}
+
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
   return (
     hasRoute(lstItems, "/payroll/results") ||
@@ -533,6 +600,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
+    if (strRoute.includes("/payroll/reimbursements") || strModuleCode.includes("reimbursement")) {
+      return strModuleName || "Reimbursements";
+    }
+
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {
       return strModuleName || "Payroll Register";
     }
@@ -594,11 +665,21 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   }
 
   const dicDefaultExpanded = useMemo(
-    () => collectExpandableDefaults(appendGeneratedReportsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
+    () => collectExpandableDefaults(
+      appendGeneratedReportsMenu(
+        removeReportsFromPayrollBranches(
+          appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+        ),
+      ),
+    ),
     [lstMenuItems, strPathname],
   );
   const lstRenderedMenuItems = useMemo(
-    () => appendGeneratedReportsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+    () => appendGeneratedReportsMenu(
+      removeReportsFromPayrollBranches(
+        appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+      ),
+    ),
     [lstMenuItems],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
