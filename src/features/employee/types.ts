@@ -19,6 +19,7 @@ export type EmployeeListRecord = {
   dtDateOfJoining: string;
   strEmploymentStatus: EmployeeStatus;
   blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
   strLocationName: string | null;
   strManagerName: string | null;
 };
@@ -50,6 +51,7 @@ export type EmployeeDetailRecord = {
   strEmploymentStatus: EmployeeStatus;
   dtDateOfExit: string | null;
   blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
 };
 
 export type EmployeeFormValues = {
@@ -77,6 +79,7 @@ export type EmployeeFormValues = {
   strEmploymentStatus: EmployeeStatus;
   dtDateOfExit: string;
   blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
 };
 
 export type EmployeeFormOptions = {

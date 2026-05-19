@@ -49,6 +49,7 @@ const dicEmptyForm: EmployeeFormValues = {
   strTitle: "",
   strFirstName: "",
   strMiddleName: "",
+  blnIsWorker: false,
   strLastName: "",
   dtDateOfBirth: "",
   dtDateOfJoining: "",
@@ -67,7 +68,8 @@ const dicEmptyForm: EmployeeFormValues = {
   intPreferredLanguageID: "",
   strEmploymentStatus: "Active",
   dtDateOfExit: "",
-  blnIsEssEnabled: true
+  blnIsEssEnabled: true,
+  blnIsPartialSave: false
 };
 
 function toFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
@@ -76,6 +78,7 @@ function toFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
     strTitle: dicRecord.strTitle ?? "",
     strFirstName: dicRecord.strFirstName ?? "",
     strMiddleName: dicRecord.strMiddleName ?? "",
+    blnIsWorker: dicRecord.blnIsWorker ?? false,
     strLastName: dicRecord.strLastName ?? "",
     dtDateOfBirth: dicRecord.dtDateOfBirth ?? "",
     dtDateOfJoining: dicRecord.dtDateOfJoining ?? "",
@@ -94,7 +97,8 @@ function toFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
     intPreferredLanguageID: dicRecord.intPreferredLanguageID ?? "",
     strEmploymentStatus: dicRecord.strEmploymentStatus,
     dtDateOfExit: dicRecord.dtDateOfExit ?? "",
-    blnIsEssEnabled: dicRecord.blnIsEssEnabled
+    blnIsEssEnabled: dicRecord.blnIsEssEnabled,
+    blnIsPartialSave: dicRecord.blnIsPartialSave ?? false
   };
 }
 

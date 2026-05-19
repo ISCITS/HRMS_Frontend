@@ -40,7 +40,8 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   intPreferredLanguageID: "",
   strEmploymentStatus: "Active",
   dtDateOfExit: "",
-  blnIsEssEnabled: true
+  blnIsEssEnabled: true,
+  blnIsPartialSave: false
 };
 
 export const dicEmptyEmployeeAddressForm: EmployeeAddressFormValues = {
@@ -135,7 +136,8 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     intPreferredLanguageID: dicRecord.intPreferredLanguageID ?? "",
     strEmploymentStatus: dicRecord.strEmploymentStatus,
     dtDateOfExit: dicRecord.dtDateOfExit ?? "",
-    blnIsEssEnabled: dicRecord.blnIsEssEnabled
+    blnIsEssEnabled: dicRecord.blnIsEssEnabled,
+    blnIsPartialSave: dicRecord.blnIsPartialSave ?? false
   };
 }
 
