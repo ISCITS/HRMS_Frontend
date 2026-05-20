@@ -366,6 +366,34 @@ export default function SalaryEssDeclarationsPage() {
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
   const blnHasAnyFilled = useMemo(() => lstRows.some((objRow) => objRow.decDeclaredAmount > 0), [lstRows]);
+  const lstSectionRows = useMemo(() => {
+    const dicBySection = new Map<string, DeclarationRow>();
+    for (const objRow of lstRows) {
+      const strSectionKey = (objRow.strSection || "").trim().toUpperCase();
+      const objExisting = dicBySection.get(strSectionKey);
+      if (!objExisting) {
+        dicBySection.set(strSectionKey, {
+          ...objRow,
+          intItemID: null,
+          decDeclaredAmount: Math.max(0, objRow.decDeclaredAmount || 0),
+        });
+        continue;
+      }
+      const decMergedAmount = Math.max(0, objExisting.decDeclaredAmount || 0) + Math.max(0, objRow.decDeclaredAmount || 0);
+      const strMergedStatus: DeclarationRow["strStatus"] =
+        decMergedAmount > 0
+          ? "Completed"
+          : (objExisting.strStatus === "In Progress" || objRow.strStatus === "In Progress")
+            ? "In Progress"
+            : "Not Started";
+      dicBySection.set(strSectionKey, {
+        ...objExisting,
+        decDeclaredAmount: decMergedAmount,
+        strStatus: strMergedStatus,
+      });
+    }
+    return Array.from(dicBySection.values());
+  }, [lstRows]);
   const decDeclaredTotal = useMemo(
     () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
     [lstRows]
@@ -1220,7 +1248,7 @@ export default function SalaryEssDeclarationsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {lstRows.length === 0 ? (
+                  {lstSectionRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} sx={{ color: "#64748b", fontSize: "0.82rem" }}>
                         No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.
@@ -1228,7 +1256,7 @@ export default function SalaryEssDeclarationsPage() {
                     </TableRow>
                   ) : (() => {
                     const dicGroups = new Map<string, DeclarationRow[]>();
-                    for (const objRow of lstRows) {
+                    for (const objRow of lstSectionRows) {
                       const strGroupName = getGroupName(objRow);
                       const lstGroupRows = dicGroups.get(strGroupName) ?? [];
                       lstGroupRows.push(objRow);
@@ -1346,13 +1374,17 @@ export default function SalaryEssDeclarationsPage() {
                 Section total: {formatCurrency(decSectionEditTotal)}
               </Typography>
             </Stack>
-            <Stack spacing={0.7}>
+            <Stack spacing={0.5}>
               {lstSectionEditEntries.map((objEntry, intIndex) => (
-                <Paper key={objEntry.strClientKey} sx={{ p: 0.8, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-                  <Stack spacing={0.45}>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>Investment #{intIndex + 1}</Typography>
-                    <Stack direction={{ xs: "column", lg: "row" }} spacing={0.75} alignItems={{ lg: "flex-start" }}>
-                      <Box sx={{ width: { xs: "100%", lg: "47%" } }}>
+                <Paper key={objEntry.strClientKey} sx={{ pt: 0.7, pb: 0.45, px: 0.55, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
+                  <Stack spacing={0.3}>
+                    <Stack direction={{ xs: "column", lg: "row" }} spacing={0.6} alignItems={{ lg: "flex-start" }}>
+                      <Box sx={{ width: { xs: "100%", lg: "4%" }, pt: { lg: 1.1 } }}>
+                        <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#334155", textAlign: { xs: "left", lg: "center" } }}>
+                          {intIndex + 1}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ width: { xs: "100%", lg: "44%" } }}>
                         <Autocomplete
                           freeSolo
                           options={lstInvestmentOptionsForRow}
@@ -1374,16 +1406,16 @@ export default function SalaryEssDeclarationsPage() {
                                 label="Investment name *"
                                 size="small"
                                 error={blnDuplicate || blnMandatoryMissing}
-                                helperText={blnDuplicate ? "Duplicate investment is not allowed." : blnMandatoryMissing ? "Investment name is mandatory." : " "}
+                                helperText={blnDuplicate ? "Duplicate investment is not allowed." : blnMandatoryMissing ? "Investment name is mandatory." : undefined}
                                 InputProps={{ ...params.InputProps, readOnly: blnLocked }}
-                                sx={{ "& .MuiInputBase-root": { minHeight: 36 } }}
+                                sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                                 fullWidth
                               />
                             );
                           }}
                         />
                       </Box>
-                      <Box sx={{ width: { xs: "100%", lg: "20%" } }}>
+                      <Box sx={{ width: { xs: "100%", lg: "19%" } }}>
                         <TextField
                           label="Declared amount *"
                           size="small"
@@ -1395,14 +1427,14 @@ export default function SalaryEssDeclarationsPage() {
                               objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, strAmountInput: strNext } : objCurrent
                             )));
                           }}
-                          sx={{ "& .MuiInputBase-root": { minHeight: 36 } }}
+                          sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                           error={!objEntry.strAmountInput.trim() || Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0}
-                          helperText={!objEntry.strAmountInput.trim() ? "Declared amount is mandatory." : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? "Amount must be greater than zero." : " "}
+                          helperText={!objEntry.strAmountInput.trim() ? "Declared amount is mandatory." : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? "Amount must be greater than zero." : undefined}
                           InputProps={{ readOnly: blnLocked }}
                           fullWidth
                         />
                       </Box>
-                      <Stack direction="row" spacing={0.6} alignItems="center" sx={{ width: { xs: "100%", lg: "16%" }, pt: { lg: 0.3 } }}>
+                      <Stack direction="row" spacing={0.45} alignItems="center" sx={{ width: { xs: "100%", lg: "15%" }, pt: { lg: 0.25 } }}>
                         {!blnLocked ? (
                           <Button
                             component="label"
@@ -1410,13 +1442,13 @@ export default function SalaryEssDeclarationsPage() {
                             size="small"
                             startIcon={<UploadFileRoundedIcon />}
                             sx={{
-                              minHeight: 28,
-                              px: 1.1,
+                              minHeight: 26,
+                              px: 0.9,
                               py: 0.25,
-                              fontSize: "0.74rem",
+                              fontSize: "0.72rem",
                               fontWeight: 700,
                               textTransform: "none",
-                              borderRadius: "8px",
+                              borderRadius: "7px",
                               borderColor: "#2563eb",
                               color: "#1d4ed8",
                               backgroundColor: "#eff6ff",
@@ -1442,7 +1474,7 @@ export default function SalaryEssDeclarationsPage() {
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"
-                              sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", color: "#475569", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
+                              sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
                               onClick={async () => {
                                 if (objEntry.intItemID && intDeclarationID) {
                                   try {
@@ -1464,11 +1496,11 @@ export default function SalaryEssDeclarationsPage() {
                       <Typography
                         sx={{
                           color: objEntry.objProofFileInput ? "#1d4ed8" : "#64748b",
-                          fontSize: "0.72rem",
+                          fontSize: "0.7rem",
                           fontWeight: objEntry.objProofFileInput ? 700 : 500,
                           lineHeight: 1.2,
-                          width: { xs: "100%", lg: "17%" },
-                          pt: { lg: 1.1 },
+                          width: { xs: "100%", lg: "18%" },
+                          pt: { lg: 1.0 },
                         }}
                       >
                         {objEntry.objProofFileInput
