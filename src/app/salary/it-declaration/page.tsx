@@ -1,8 +1,9 @@
 "use client";
 
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
@@ -25,6 +26,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  Tooltip,
   Snackbar,
   Grid,
   Paper,
@@ -41,6 +43,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -73,8 +76,18 @@ type DeclarationRow = {
   } | null;
 };
 
+type SectionEditEntry = {
+  strClientKey: string;
+  intItemID?: number | null;
+  strSection: string;
+  strInvestmentName: string;
+  strAmountInput: string;
+  objProof?: DeclarationRow["objProof"];
+  objProofFileInput?: File | null;
+};
+
 const lstStepper = ["Select Tax Regime", "Enter Declarations", "Compare Tax", "Final Submit"];
-const strFinancialYearCode = "2025-2026";
+const strDefaultFinancialYearCode = "2025-2026";
 const intDeclarationTableMaxHeight = 420;
 const dicInvestmentOptionsFallbackBySection: Record<string, string[]> = {
   "80C": ["Employee Provident Fund (EPF)", "Public Provident Fund (PPF)", "ELSS", "Life Insurance Premium", "NSC", "5-Year Tax Saving FD", "Tuition Fees", "Principal Repayment (Home Loan)"],
@@ -155,25 +168,14 @@ function getGroupName(objRow: DeclarationRow) {
   return "Other Exemptions";
 }
 
-function resolvePreviewMimeType(strMimeType: string, strFileName: string) {
-  const strNormalizedMime = (strMimeType || "").toLowerCase().trim();
-  if (strNormalizedMime && strNormalizedMime !== "application/octet-stream") {
-    return strNormalizedMime;
-  }
-
-  const strLowerFileName = (strFileName || "").toLowerCase();
-  if (strLowerFileName.endsWith(".png")) return "image/png";
-  if (strLowerFileName.endsWith(".jpg") || strLowerFileName.endsWith(".jpeg")) return "image/jpeg";
-  if (strLowerFileName.endsWith(".gif")) return "image/gif";
-  if (strLowerFileName.endsWith(".webp")) return "image/webp";
-  if (strLowerFileName.endsWith(".svg")) return "image/svg+xml";
-  if (strLowerFileName.endsWith(".pdf")) return "application/pdf";
-  if (strLowerFileName.endsWith(".txt")) return "text/plain";
-  if (strLowerFileName.endsWith(".json")) return "application/json";
-  return "application/octet-stream";
-}
-
 function getDeclarationRowKey(objRow: DeclarationRow) {
+  if (objRow.intItemID != null) {
+    return `item-${objRow.intItemID}`;
+  }
+  const strName = (objRow.strInvestmentName || "").trim().toLowerCase();
+  if (strName) {
+    return `${objRow.strSection.trim().toLowerCase()}::${strName}`;
+  }
   return objRow.strSection.trim().toLowerCase();
 }
 
@@ -259,13 +261,13 @@ function SummaryCard({
   objIcon?: React.ReactNode;
 }) {
   return (
-    <Paper sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #d9e3f1", background: "#fff", boxShadow: "0 3px 10px rgba(15, 23, 42, 0.04)" }}>
-      <Stack direction="row" spacing={1}>
-        {objIcon ? <Box sx={{ color: "#5a7aa6", mt: 0.1 }}>{objIcon}</Box> : null}
+    <Paper sx={{ p: 0.9, borderRadius: "9px", border: "1px solid #d9e3f1", background: "#fff", boxShadow: "0 2px 8px rgba(15, 23, 42, 0.035)" }}>
+      <Stack direction="row" spacing={0.8} alignItems="flex-start">
+        {objIcon ? <Box sx={{ color: "#5a7aa6", mt: 0.05, "& .MuiSvgIcon-root": { fontSize: 16 } }}>{objIcon}</Box> : null}
         <Box>
-          <Typography sx={{ color: "#6b7280", fontSize: "0.74rem", mb: 0.2 }}>{strLabel}</Typography>
-          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2 }}>{strValue}</Typography>
-          {strSubValue ? <Typography sx={{ color: "#64748b", fontSize: "0.73rem", mt: 0.18 }}>{strSubValue}</Typography> : null}
+          <Typography sx={{ color: "#6b7280", fontSize: "0.7rem", mb: 0.1, lineHeight: 1.15 }}>{strLabel}</Typography>
+          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.84rem", lineHeight: 1.15 }}>{strValue}</Typography>
+          {strSubValue ? <Typography sx={{ color: "#64748b", fontSize: "0.69rem", mt: 0.1, lineHeight: 1.15 }}>{strSubValue}</Typography> : null}
         </Box>
       </Stack>
     </Paper>
@@ -298,6 +300,13 @@ function FlowNode({ strLabel, intStep, blnActive }: { strLabel: string; intStep:
 }
 
 export default function SalaryEssDeclarationsPage() {
+  const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
+  const strFinancialYearCode = (objSearchParams.get("fy") || "").trim() || strDefaultFinancialYearCode;
+  const strRouteRegime = (objSearchParams.get("regime") || "").trim();
+  const blnRouteCompare = (objSearchParams.get("compare") || "").trim() === "1";
+  const strInitialRegime = (strRouteRegime.toLowerCase().includes("new") ? "New Regime" : "Old Regime") as Regime;
+
   const [intDeclarationID, setIntDeclarationID] = useState<number | null>(null);
   const [strFlowStatus, setStrFlowStatus] = useState<FlowStatus>("NOT_STARTED");
   const [strDeclarationStatus, setStrDeclarationStatus] = useState<ItDeclarationDto["strDeclarationStatus"]>("draft");
@@ -309,7 +318,6 @@ export default function SalaryEssDeclarationsPage() {
   const [strError, setStrError] = useState("");
   const [strWarning, setStrWarning] = useState("");
   const [blnRetryRefresh, setBlnRetryRefresh] = useState(false);
-  const [strRecentlyUpdatedKey, setStrRecentlyUpdatedKey] = useState("");
   const [blnCompared, setBlnCompared] = useState(false);
   const [blnSummaryFromApi, setBlnSummaryFromApi] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -335,11 +343,9 @@ export default function SalaryEssDeclarationsPage() {
   const [blnDismissErrorAlert, setBlnDismissErrorAlert] = useState(false);
 
   const [objEditRow, setObjEditRow] = useState<DeclarationRow | null>(null);
-  const [strInvestmentNameInput, setStrInvestmentNameInput] = useState("");
-  const [strAmountInput, setStrAmountInput] = useState("");
+  const [lstSectionEditEntries, setLstSectionEditEntries] = useState<SectionEditEntry[]>([]);
   const [blnModalSaving, setBlnModalSaving] = useState(false);
   const [lstInvestmentOptionsForRow, setLstInvestmentOptionsForRow] = useState<string[]>([]);
-  const [objProofFileInput, setObjProofFileInput] = useState<File | null>(null);
   const [objTaxSummary, setObjTaxSummary] = useState({
     decGrossSalary: 0,
     decExemptions: 0,
@@ -355,6 +361,7 @@ export default function SalaryEssDeclarationsPage() {
   });
 
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
+  const blnAnyDialogOpen = Boolean(objEditRow) || blnRegimeModalOpen || blnCompareModalOpen || blnSubmitModalOpen;
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
@@ -433,37 +440,46 @@ export default function SalaryEssDeclarationsPage() {
     if (strFlowStatus === "IN_PROGRESS" && blnCompared) return 2;
     return 3;
   }, [strFlowStatus, blnCompared]);
-  const decAmountInputValue = Number((strAmountInput || "").replace(/[^\d.]/g, "") || 0);
   const decAmountMaxInput = 99_99_99_999;
   const decActiveMaxLimit = objEditRow ? (objEditRow.decMaxEligibleAmount ?? parseMaxLimit(objEditRow.strMaxLimitDisplay)) : null;
-  const strAmountInputError = useMemo(() => {
+  const decSectionEditTotal = useMemo(
+    () => lstSectionEditEntries.reduce((decTotal, objEntry) => decTotal + Math.max(0, Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0)), 0),
+    [lstSectionEditEntries]
+  );
+  const strSectionEditError = useMemo(() => {
     if (!objEditRow) return "";
-    if (strAmountInput.trim() === "") return "Amount is required.";
-    if (!Number.isFinite(decAmountInputValue)) return "Amount is invalid.";
-    if (decAmountInputValue < 0) return "Amount cannot be negative.";
-    if (decAmountInputValue > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+    const dicNameCount = new Map<string, number>();
+    for (const objEntry of lstSectionEditEntries) {
+      const strNameKey = objEntry.strInvestmentName.trim().toLowerCase();
+      if (!strNameKey) continue;
+      dicNameCount.set(strNameKey, (dicNameCount.get(strNameKey) ?? 0) + 1);
+    }
+    if (Array.from(dicNameCount.values()).some((intCount) => intCount > 1)) {
+      return "Duplicate investment is not allowed.";
+    }
+    for (const objEntry of lstSectionEditEntries) {
+      const strName = objEntry.strInvestmentName.trim();
+      const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
+      if (!strName) return "Investment name is required for all rows.";
+      if (!objEntry.strAmountInput.trim()) return "Declared amount is required for all rows.";
+      if (!Number.isFinite(decAmount) || decAmount < 0) return "All row amounts must be valid positive values.";
+      if (decAmount <= 0) return "Declared amount must be greater than zero for all rows.";
+      if (decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+    }
+    if (decActiveMaxLimit != null && decSectionEditTotal > decActiveMaxLimit) {
+      return `Section total cannot exceed ${formatCurrency(decActiveMaxLimit)}.`;
+    }
     return "";
-  }, [objEditRow, strAmountInput, decAmountInputValue, decActiveMaxLimit]);
-  const strEligibleCapHelper =
-    decActiveMaxLimit != null && decAmountInputValue > decActiveMaxLimit
-      ? `Eligible amount capped at ${formatCurrency(decActiveMaxLimit)}.`
-      : "";
-  const blnSaveEditDisabled = Boolean(strAmountInputError);
-  const blnModalDirty = useMemo(() => {
-    if (!objEditRow) return false;
-    const strCurrentAmount = formatAmountInput(String(Math.max(0, objEditRow.decDeclaredAmount || 0)));
-    return (
-      strInvestmentNameInput.trim() !== (objEditRow.strInvestmentName || "").trim() ||
-      strAmountInput.trim() !== strCurrentAmount.trim() ||
-      Boolean(objProofFileInput)
-    );
-  }, [objEditRow, strInvestmentNameInput, strAmountInput, objProofFileInput]);
+  }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit]);
+  const blnSaveEditDisabled = Boolean(strSectionEditError);
 
   function hydrateFromApi(objData: ItDeclarationDto) {
+    const blnSummaryFallback = Boolean(objData.objSummary?.blnSummaryFallback);
     const blnHasSummary =
       objData.objSummary != null &&
       Number.isFinite(objData.objSummary.decOldTax) &&
-      Number.isFinite(objData.objSummary.decNewTax);
+      Number.isFinite(objData.objSummary.decNewTax) &&
+      !blnSummaryFallback;
     setBlnSummaryFromApi(blnHasSummary);
     setIntDeclarationID(objData.intDeclarationID ?? null);
     setStrFlowStatus(objData.strFlowStatus as FlowStatus);
@@ -472,22 +488,20 @@ export default function SalaryEssDeclarationsPage() {
     setStrLastUpdated(objData.strLastUpdated || getDateLabel());
     setLstRows(
       objData.lstItems?.length
-        ? dedupeDeclarationRows(
-            objData.lstItems.map((objItem) => {
-              const objRow: DeclarationRow = {
-                intItemID: objItem.intItemID,
-                strSection: objItem.strSection,
-                strDescription: objItem.strDescription,
-                strMaxLimitDisplay: objItem.strMaxLimit,
-                decMaxEligibleAmount: parseMaxLimit(objItem.strMaxLimit),
-                decDeclaredAmount: objItem.decDeclaredAmount,
-                strInvestmentName: objItem.strInvestmentName,
-                strStatus: objItem.strStatus,
-                objProof: objItem.objProof ?? null,
-              };
-              return { ...objRow, strStatus: resolveRowStatus(objRow) };
-            })
-          )
+        ? objData.lstItems.map((objItem) => {
+            const objRow: DeclarationRow = {
+              intItemID: objItem.intItemID,
+              strSection: objItem.strSection,
+              strDescription: objItem.strDescription,
+              strMaxLimitDisplay: objItem.strMaxLimit,
+              decMaxEligibleAmount: parseMaxLimit(objItem.strMaxLimit),
+              decDeclaredAmount: objItem.decDeclaredAmount,
+              strInvestmentName: objItem.strInvestmentName,
+              strStatus: objItem.strStatus,
+              objProof: objItem.objProof ?? null,
+            };
+            return { ...objRow, strStatus: resolveRowStatus(objRow) };
+          })
         : []
     );
     setObjTaxSummary({
@@ -499,6 +513,14 @@ export default function SalaryEssDeclarationsPage() {
       decSavings: objData.objSummary?.decSavings ?? 0,
       strRecommendedRegime: (objData.objSummary?.strRecommendedRegime ?? "Old Regime") as Regime,
     });
+    if (blnSummaryFallback) {
+      setStrWarning(
+        objData.objSummary?.strSummaryWarning?.trim()
+          ? `Tax summary is in preview mode: ${objData.objSummary.strSummaryWarning}`
+          : "Tax summary is in preview mode due to missing tax setup."
+      );
+      setBlnDismissWarningAlert(false);
+    }
     setObjRegimeConfig({
       strDefaultRegime: (objData.objRegimeConfig?.strDefaultRegime ?? "Old Regime") as Regime,
       blnAllowEmployeeOptOut: objData.objRegimeConfig?.blnAllowEmployeeOptOut ?? true,
@@ -568,13 +590,19 @@ export default function SalaryEssDeclarationsPage() {
     setStrWarning("");
     setBlnRetryRefresh(false);
     try {
-      const objData = await itDeclarationService.getDeclaration(strFinancialYearCode);
+      const objData =
+        strRouteRegime
+          ? await itDeclarationService.startDeclaration(strFinancialYearCode, strInitialRegime)
+          : await itDeclarationService.getDeclaration(strFinancialYearCode);
       hydrateFromApi(objData);
       const lstMasterRows = await loadRowsFromCategoryMaster().catch(() => []);
       if (!objData.lstItems?.length) {
         setLstRows(lstMasterRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) })));
       } else if (lstMasterRows.length > 0) {
         setLstRows((lstCurrentRows) => mergeSectionRules(lstCurrentRows, lstMasterRows));
+      }
+      if (blnRouteCompare) {
+        setBlnCompareModalOpen(true);
       }
     } catch (objError) {
       const strApiError = formatApiErrorForUi(objError, "Unable to load IT declaration.");
@@ -604,8 +632,12 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   useEffect(() => {
+    if (!objSearchParams.get("fy")) {
+      objRouter.replace("/salary/ess-declarations");
+      return;
+    }
     void loadDeclaration();
-  }, []);
+  }, [strFinancialYearCode, strRouteRegime, blnRouteCompare]);
 
   useEffect(() => {
     if (!blnDraftSaved) return;
@@ -630,12 +662,6 @@ export default function SalaryEssDeclarationsPage() {
     if (!strError) return;
     setBlnDismissErrorAlert(false);
   }, [strError]);
-
-  useEffect(() => {
-    if (!strRecentlyUpdatedKey) return;
-    const intTimer = window.setTimeout(() => setStrRecentlyUpdatedKey(""), 1800);
-    return () => window.clearTimeout(intTimer);
-  }, [strRecentlyUpdatedKey]);
 
   async function runCompareAndOpenModal() {
     if (blnLocked) return;
@@ -684,9 +710,25 @@ export default function SalaryEssDeclarationsPage() {
       return;
     }
     setObjEditRow(objRow);
-    setStrInvestmentNameInput(objRow.strInvestmentName);
-    setStrAmountInput(objRow.decDeclaredAmount ? formatAmountInput(String(objRow.decDeclaredAmount)) : "");
-    setObjProofFileInput(null);
+    const lstSectionRows = lstRows.filter((objCurrentRow) => objCurrentRow.strSection === objRow.strSection && (objCurrentRow.intItemID != null || objCurrentRow.decDeclaredAmount > 0 || objCurrentRow.strInvestmentName.trim()));
+    const lstNormalized = (lstSectionRows.length > 0 ? lstSectionRows : [objRow]).map((objCurrentRow, intIndex) => ({
+      strClientKey: `row-${objCurrentRow.intItemID ?? `new-${intIndex}`}`,
+      intItemID: objCurrentRow.intItemID,
+      strSection: objCurrentRow.strSection,
+      strInvestmentName: objCurrentRow.strInvestmentName || "",
+      strAmountInput: objCurrentRow.decDeclaredAmount ? formatAmountInput(String(objCurrentRow.decDeclaredAmount)) : "",
+      objProof: objCurrentRow.objProof ?? null,
+      objProofFileInput: null,
+    }));
+    setLstSectionEditEntries(lstNormalized.length > 0 ? lstNormalized : [{
+      strClientKey: `row-new-${Date.now()}`,
+      intItemID: null,
+      strSection: objRow.strSection,
+      strInvestmentName: "",
+      strAmountInput: "",
+      objProof: null,
+      objProofFileInput: null,
+    }]);
     const lstFallbackOptions = getFallbackInvestmentOptions(objRow.strSection);
     const lstLocalHints = [objRow.strDescription?.trim(), objRow.strInvestmentName?.trim()]
       .filter((strValue): strValue is string => Boolean(strValue && strValue !== "-"));
@@ -708,8 +750,33 @@ export default function SalaryEssDeclarationsPage() {
 
   function closeEditModal() {
     setObjEditRow(null);
-    setObjProofFileInput(null);
+    setLstSectionEditEntries([]);
     setLstInvestmentOptionsForRow([]);
+  }
+
+  function addInvestmentRow() {
+    if (!objEditRow) return;
+    const blnHasIncompleteRow = lstSectionEditEntries.some((objEntry) => {
+      const strName = objEntry.strInvestmentName.trim();
+      const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
+      return !strName || !objEntry.strAmountInput.trim() || !Number.isFinite(decAmount) || decAmount <= 0;
+    });
+    if (blnHasIncompleteRow) {
+      setStrWarning("Complete Investment name and Declared amount for current rows before adding a new investment.");
+      return;
+    }
+    setLstSectionEditEntries((lstCurrent) => [
+      ...lstCurrent,
+      {
+        strClientKey: `row-new-${Date.now()}-${lstCurrent.length}`,
+        intItemID: null,
+        strSection: objEditRow.strSection,
+        strInvestmentName: "",
+        strAmountInput: "",
+        objProof: null,
+        objProofFileInput: null,
+      },
+    ]);
   }
 
   async function ensureDeclarationAndSaveSingleItem(objPayload: {
@@ -750,149 +817,55 @@ export default function SalaryEssDeclarationsPage() {
 
   async function saveDeclarationEdit() {
     if (!objEditRow) return;
-    if (strAmountInputError) return;
+    if (strSectionEditError) return;
     setBlnModalSaving(true);
     try {
-      const decAmount = Math.max(0, Number((strAmountInput || "").replace(/[^\d.]/g, "") || 0));
-      const strInvestmentName = strInvestmentNameInput.trim();
-      const strDirtyKey = objEditRow.intItemID != null ? `id-${objEditRow.intItemID}` : `${objEditRow.strSection}-${objEditRow.strDescription}`;
-      setLstRows((lstCurrentRows) =>
-        lstCurrentRows.map((objRow) =>
-          (objRow.intItemID != null && objEditRow.intItemID != null && objRow.intItemID === objEditRow.intItemID) ||
-          (objRow.intItemID == null && objEditRow.intItemID == null && objRow.strSection === objEditRow.strSection && objRow.strDescription === objEditRow.strDescription)
-            ? (() => {
-                const objUpdatedRow: DeclarationRow = {
-                ...objRow,
-                strInvestmentName,
-                decDeclaredAmount: decAmount,
-                strEligibilityNote:
-                  objRow.decMaxEligibleAmount != null && decAmount > objRow.decMaxEligibleAmount
-                    ? `Eligible amount capped at ${formatCurrency(objRow.decMaxEligibleAmount)}.`
-                    : "",
-              };
-                return {
-                  ...objUpdatedRow,
-                  strStatus: resolveRowStatus(objUpdatedRow),
-                };
-              })()
-            : objRow
-        )
-      );
-      setDicDirtyRows((dicCurrentRows) => ({
-        ...dicCurrentRows,
-        [strDirtyKey]: {
-          intItemID: objEditRow.intItemID,
-          strSection: objEditRow.strSection,
-          strInvestmentName,
-          decDeclaredAmount: decAmount,
-        },
-      }));
-      setStrRecentlyUpdatedKey(strDirtyKey);
+      setStrSavingLabel("Saving declaration rows...");
+      setBlnSaving(true);
 
-      if (objProofFileInput) {
-        try {
-          setStrSavingLabel("Uploading proof...");
-          setBlnSaving(true);
-          const objPersisted = await ensureDeclarationAndSaveSingleItem({
-            intItemID: objEditRow.intItemID,
-            strSection: objEditRow.strSection,
-            strInvestmentName,
-            decDeclaredAmount: decAmount,
-          });
-          if (objPersisted.intItemID) {
-            const objData = await itDeclarationService.uploadItemProof(objPersisted.intDeclarationID, objPersisted.intItemID, objProofFileInput);
-            hydrateFromApi(objData);
-          }
-        } catch (objError) {
-          setStrError(formatApiErrorForUi(objError, "Unable to upload declaration proof."));
-        } finally {
-          setBlnSaving(false);
-          setStrSavingLabel("Saving...");
+      const lstRowsToDelete = lstSectionEditEntries.filter((objEntry) =>
+        objEntry.intItemID != null &&
+        !objEntry.strInvestmentName.trim() &&
+        Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0
+      );
+      for (const objDeleteEntry of lstRowsToDelete) {
+        if (intDeclarationID && objDeleteEntry.intItemID) {
+          const objData = await itDeclarationService.deleteItem(intDeclarationID, objDeleteEntry.intItemID);
+          hydrateFromApi(objData);
         }
       }
+
+      for (const objEntry of lstSectionEditEntries) {
+        const strInvestmentName = objEntry.strInvestmentName.trim();
+        const decAmount = Math.max(0, Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0));
+        if (!strInvestmentName && decAmount <= 0) continue;
+        const objPersisted = await ensureDeclarationAndSaveSingleItem({
+          intItemID: objEntry.intItemID,
+          strSection: objEntry.strSection,
+          strInvestmentName,
+          decDeclaredAmount: decAmount,
+        });
+        if (objEntry.objProofFileInput && objPersisted.intItemID) {
+          const objData = await itDeclarationService.uploadItemProof(objPersisted.intDeclarationID, objPersisted.intItemID, objEntry.objProofFileInput);
+          hydrateFromApi(objData);
+        }
+      }
+
+      // Always re-fetch declaration once all row operations are done, so modal reopen reflects persisted server rows.
+      const objRefreshed = await itDeclarationService.getDeclaration(strFinancialYearCode);
+      hydrateFromApi(objRefreshed);
 
       setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : "IN_PROGRESS"));
       setBlnCompared(false);
       setStrLastUpdated(getDateLabel());
       setObjEditRow(null);
-      setObjProofFileInput(null);
+      setLstSectionEditEntries([]);
       setBlnDraftSaved(true);
-      setStrSuccessToast("Declaration item saved successfully.");
+      setStrSuccessToast("Declaration rows saved successfully.");
     } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Saving...");
       setBlnModalSaving(false);
-    }
-  }
-
-  async function previewDeclarationProof() {
-    if (!objEditRow?.intItemID || !intDeclarationID) return;
-    setBlnSaving(true);
-    setBlnSubmitModalLoading(true);
-    setStrSavingLabel("Loading proof...");
-    try {
-      const objPreview = await itDeclarationService.previewItemProof(intDeclarationID, objEditRow.intItemID);
-      const strBase64 = objPreview.strBase64Content;
-      const strMimeType = resolvePreviewMimeType(objPreview.strMimeType, objPreview.strFileName);
-      const setPreviewableMimePrefixes = ["image/", "text/"];
-      const setPreviewableExactMimes = new Set([
-        "application/pdf",
-        "application/json",
-      ]);
-      const blnCanPreviewInline =
-        setPreviewableMimePrefixes.some((strPrefix) => strMimeType.startsWith(strPrefix)) ||
-        setPreviewableExactMimes.has(strMimeType);
-      const strBinary = atob(strBase64);
-      const uintBytes = new Uint8Array(strBinary.length);
-      for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
-        uintBytes[intIndex] = strBinary.charCodeAt(intIndex);
-      }
-      const objBlob = new Blob([uintBytes], { type: strMimeType });
-      const strObjectUrl = URL.createObjectURL(objBlob);
-      if (blnCanPreviewInline) {
-        const objNewTab = window.open(strObjectUrl, "_blank", "noopener,noreferrer");
-        if (!objNewTab) {
-          const objLink = document.createElement("a");
-          objLink.href = strObjectUrl;
-          objLink.download = objPreview.strFileName || "proof";
-          document.body.appendChild(objLink);
-          objLink.click();
-          document.body.removeChild(objLink);
-          setStrWarning("Popup was blocked. File downloaded instead.");
-        }
-      } else {
-        const objLink = document.createElement("a");
-        objLink.href = strObjectUrl;
-        objLink.download = objPreview.strFileName || "proof";
-        document.body.appendChild(objLink);
-        objLink.click();
-        document.body.removeChild(objLink);
-        setStrWarning("This file type cannot be previewed in browser. File downloaded instead.");
-      }
-      window.setTimeout(() => URL.revokeObjectURL(strObjectUrl), 60_000);
-    } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to preview declaration proof."));
-    } finally {
-      setBlnSaving(false);
-      setBlnSubmitModalLoading(false);
-      setStrSavingLabel("Saving...");
-    }
-  }
-
-  async function deleteDeclarationProof() {
-    if (!objEditRow?.intItemID || !intDeclarationID) return;
-    setBlnSaving(true);
-    setStrSavingLabel("Deleting proof...");
-    try {
-      const objData = await itDeclarationService.deleteItemProof(intDeclarationID, objEditRow.intItemID);
-      if (objData) {
-        hydrateFromApi(objData);
-      }
-      setObjEditRow((objCurrent) => (objCurrent ? { ...objCurrent, objProof: null } : objCurrent));
-      setObjProofFileInput(null);
-    } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to delete declaration proof."));
-    } finally {
-      setBlnSaving(false);
-      setStrSavingLabel("Saving...");
     }
   }
 
@@ -949,6 +922,25 @@ export default function SalaryEssDeclarationsPage() {
     }
   }
 
+  async function copyPreviousFinancialYear() {
+    if (blnLocked) return;
+    setBlnSaving(true);
+    setStrSavingLabel("Copying previous FY...");
+    setStrError("");
+    try {
+      const intResolvedDeclarationID = await persistDraftToDb();
+      if (!intResolvedDeclarationID) return;
+      const objData = await itDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID);
+      hydrateFromApi(objData);
+      setStrSuccessToast("Previous FY declaration copied.");
+      setBlnCompared(false);
+    } catch (objError) {
+      setStrError(formatApiErrorForUi(objError, "Unable to copy previous FY declaration."));
+    } finally {
+      setBlnSaving(false);
+    }
+  }
+
   if (blnLoading) {
     return <BlockingLoader blnOpen strLabel="Loading IT Declaration..." />;
   }
@@ -990,13 +982,23 @@ export default function SalaryEssDeclarationsPage() {
       <BlockingLoader blnOpen={blnSaving} strLabel={strSavingLabel} intZIndex={1800} />
 
       <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 20 }} />
-            <Box>
-              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>IT Declaration & Tax Planning</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem" }}>Financial Year {strFinancialYearCode}</Typography>
-            </Box>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} gap={1}>
+          <Stack spacing={0.5} alignItems="flex-start">
+            <Button
+              size="small"
+              startIcon={<ArrowBackRoundedIcon />}
+              sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
+              onClick={() => objRouter.push("/salary/ess-declarations")}
+            >
+              Back
+            </Button>
+            <Stack direction="row" spacing={0.9} alignItems="center" sx={{ mt: 0.1 }}>
+              <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />
+              <Box>
+                <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2, mb: 0.2 }}>IT Declaration & Tax Planning</Typography>
+                <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem", lineHeight: 1.2 }}>Financial Year {strFinancialYearCode}</Typography>
+              </Box>
+            </Stack>
           </Stack>
           <Stack spacing={0.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
             <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
@@ -1007,20 +1009,48 @@ export default function SalaryEssDeclarationsPage() {
                 sx={{
                   mr: { md: 0.5 },
                   "& .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.95)", fontSize: "0.8rem" },
+                  "& .MuiFormControlLabel-root.Mui-disabled .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.82)" },
                   "& .MuiRadio-root": { color: "rgba(239,252,255,0.95)" },
+                  "& .MuiRadio-root.Mui-disabled": { color: "rgba(239,252,255,0.75)" },
                   "& .Mui-checked": { color: "#ffffff !important" },
                 }}
               >
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`Old Regime${objDerivedCalc.strRecommendedRegime === "Old Regime" ? " (Recommended)" : ""}`} />
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label="New Regime" />
               </RadioGroup>
-              <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" } }}>
+              <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
                 Save Draft
               </Button>
-              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0e7490", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0b5f75" } }}>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={blnLocked || blnSaving}
+                onClick={() => void copyPreviousFinancialYear()}
+                sx={{
+                  minHeight: 30,
+                  borderRadius: "8px",
+                  backgroundColor: "#1d4ed8",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "0.76rem",
+                  textTransform: "none",
+                  boxShadow: "none",
+                  "&:hover": { backgroundColor: "#1e40af" },
+                  "&.Mui-disabled": {
+                    backgroundColor: "rgba(148,163,184,0.35)",
+                    color: "rgba(226,232,240,0.92)",
+                    border: "1px dashed rgba(203,213,225,0.65)",
+                    cursor: "not-allowed",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                Copy Previous FY
+              </Button>
+              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                 {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
               </Button>
-              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" } }}>
+              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                 Submit Declaration
               </Button>
               {blnLocked ? (
@@ -1041,7 +1071,15 @@ export default function SalaryEssDeclarationsPage() {
       <Alert
         severity="warning"
         icon={<WarningAmberRoundedIcon />}
-        sx={{ borderRadius: "8px", border: "1px solid rgba(251,146,60,0.35)", backgroundColor: "rgba(255,237,213,0.62)", py: 0.05, "& .MuiAlert-message": { fontSize: "0.8rem" } }}
+        sx={{
+          borderRadius: "8px",
+          border: "1px solid rgba(251,146,60,0.35)",
+          backgroundColor: "rgba(255,237,213,0.62)",
+          py: 0,
+          minHeight: 32,
+          "& .MuiAlert-icon": { py: 0.4, mr: 0.8, "& svg": { fontSize: "1.1rem" } },
+          "& .MuiAlert-message": { fontSize: "0.78rem", py: 0.45, lineHeight: 1.2 },
+        }}
       >
         If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.
       </Alert>
@@ -1080,7 +1118,22 @@ export default function SalaryEssDeclarationsPage() {
         <Fade in={!blnDismissWarningAlert}>
           <Alert
             severity="warning"
-            sx={{ borderRadius: "8px", py: 0.1 }}
+            sx={{
+              borderRadius: "8px",
+              py: 0.1,
+              ...(blnAnyDialogOpen
+                ? {
+                    position: "fixed",
+                    top: 14,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 1600,
+                    minWidth: { xs: "92vw", sm: 540 },
+                    maxWidth: "92vw",
+                    boxShadow: "0 10px 24px rgba(15,23,42,0.22)",
+                  }
+                : {}),
+            }}
             action={
               <IconButton size="small" color="inherit" onClick={() => setBlnDismissWarningAlert(true)}>
                 <CloseRoundedIcon fontSize="small" />
@@ -1095,7 +1148,22 @@ export default function SalaryEssDeclarationsPage() {
         <Fade in={!blnDismissErrorAlert}>
           <Alert
             severity="error"
-            sx={{ borderRadius: "8px", py: 0.1 }}
+            sx={{
+              borderRadius: "8px",
+              py: 0.1,
+              ...(blnAnyDialogOpen
+                ? {
+                    position: "fixed",
+                    top: 14,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 1600,
+                    minWidth: { xs: "92vw", sm: 540 },
+                    maxWidth: "92vw",
+                    boxShadow: "0 10px 24px rgba(15,23,42,0.24)",
+                  }
+                : {}),
+            }}
             action={
               <Stack direction="row" spacing={0.4} alignItems="center">
                 {blnRetryRefresh ? <Button color="inherit" size="small" onClick={() => void loadDeclaration()}>Retry</Button> : null}
@@ -1132,7 +1200,7 @@ export default function SalaryEssDeclarationsPage() {
           ))}
         </Stack>
       </Paper>
-      <Grid container spacing={0.8}>
+      <Grid container spacing={0.6}>
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8}>
@@ -1171,15 +1239,12 @@ export default function SalaryEssDeclarationsPage() {
                         <TableCell colSpan={6} sx={{ fontWeight: 800, color: "#334155", fontSize: "0.78rem" }}>{strGroupName}</TableCell>
                       </TableRow>,
                       ...lstGroupRows.map((objRow, intIndex) => {
-                        const strRowKey = objRow.intItemID != null ? `id-${objRow.intItemID}` : `${objRow.strSection}-${objRow.strDescription}`;
                         return (
                           <TableRow
                             key={objRow.intItemID ?? `${objRow.strSection}-${intIndex}`}
                             hover
                             sx={{
                               height: 56,
-                              backgroundColor: strRecentlyUpdatedKey === strRowKey ? "rgba(16,185,129,0.12)" : undefined,
-                              transition: "background-color 0.8s ease",
                             }}
                           >
                             <TableCell sx={{ fontWeight: 700 }}>{objRow.strSection}</TableCell>
@@ -1261,133 +1326,173 @@ export default function SalaryEssDeclarationsPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(objEditRow)} onClose={closeEditModal} maxWidth="md" fullWidth>
-        <DialogTitle>Edit Declaration ({objEditRow?.strSection})</DialogTitle>
-        <DialogContent sx={{ pt: "12px !important" }}>
-          <Stack spacing={1.35}>
-            <Autocomplete
-              freeSolo
-              options={lstInvestmentOptionsForRow}
-              value={strInvestmentNameInput}
-              onInputChange={(_, strValue) => setStrInvestmentNameInput(strValue)}
-              readOnly={blnLocked}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Investment name"
+      <Dialog open={Boolean(objEditRow)} onClose={closeEditModal} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ py: 1.1, px: 2 }}>Edit Declaration ({objEditRow?.strSection})</DialogTitle>
+        <DialogContent sx={{ pt: "8px !important", pb: "6px !important" }}>
+          <Stack spacing={1}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              {!blnLocked ? (
+                <Button
+                  variant="contained"
                   size="small"
-                  InputProps={{ ...params.InputProps, readOnly: blnLocked }}
-                  fullWidth
-                  helperText={lstInvestmentOptionsForRow.length > 0 ? "Select or search common investments for this section." : "Enter investment name."}
-                />
-              )}
-            />
-            <TextField
-              label="Amount input"
-              size="small"
-              inputMode="numeric"
-              value={strAmountInput}
-              onChange={(objEvent) => setStrAmountInput(formatAmountInput(objEvent.target.value))}
-              error={Boolean(strAmountInputError)}
-              helperText={strAmountInputError || strEligibleCapHelper || " "}
-              InputProps={{ readOnly: blnLocked }}
-              fullWidth
-            />
+                  startIcon={<AddCircleOutlineRoundedIcon />}
+                  sx={{ minHeight: 28, px: 1.05, fontSize: "0.74rem", textTransform: "none", borderRadius: "8px", backgroundColor: "#0b3f73", "&:hover": { backgroundColor: "#0a355f" } }}
+                  onClick={addInvestmentRow}
+                >
+                  Add Investment
+                </Button>
+              ) : <Box />}
+              <Typography sx={{ color: "#334155", fontSize: "0.82rem", fontWeight: 800 }}>
+                Section total: {formatCurrency(decSectionEditTotal)}
+              </Typography>
+            </Stack>
+            <Stack spacing={0.7}>
+              {lstSectionEditEntries.map((objEntry, intIndex) => (
+                <Paper key={objEntry.strClientKey} sx={{ p: 0.8, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
+                  <Stack spacing={0.45}>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>Investment #{intIndex + 1}</Typography>
+                    <Stack direction={{ xs: "column", lg: "row" }} spacing={0.75} alignItems={{ lg: "flex-start" }}>
+                      <Box sx={{ width: { xs: "100%", lg: "47%" } }}>
+                        <Autocomplete
+                          freeSolo
+                          options={lstInvestmentOptionsForRow}
+                          value={objEntry.strInvestmentName}
+                          onInputChange={(_, strValue) => {
+                            setLstSectionEditEntries((lstCurrent) => lstCurrent.map((objCurrent) => (
+                              objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, strInvestmentName: strValue } : objCurrent
+                            )));
+                          }}
+                          readOnly={blnLocked}
+                          renderInput={(params) => {
+                            const strCurrentName = objEntry.strInvestmentName.trim().toLowerCase();
+                            const intDuplicateCount = lstSectionEditEntries.filter((objCurrent) => objCurrent.strInvestmentName.trim().toLowerCase() === strCurrentName && strCurrentName).length;
+                            const blnDuplicate = intDuplicateCount > 1;
+                            const blnMandatoryMissing = !objEntry.strInvestmentName.trim();
+                            return (
+                              <TextField
+                                {...params}
+                                label="Investment name *"
+                                size="small"
+                                error={blnDuplicate || blnMandatoryMissing}
+                                helperText={blnDuplicate ? "Duplicate investment is not allowed." : blnMandatoryMissing ? "Investment name is mandatory." : " "}
+                                InputProps={{ ...params.InputProps, readOnly: blnLocked }}
+                                sx={{ "& .MuiInputBase-root": { minHeight: 36 } }}
+                                fullWidth
+                              />
+                            );
+                          }}
+                        />
+                      </Box>
+                      <Box sx={{ width: { xs: "100%", lg: "20%" } }}>
+                        <TextField
+                          label="Declared amount *"
+                          size="small"
+                          inputMode="numeric"
+                          value={objEntry.strAmountInput}
+                          onChange={(objEvent) => {
+                            const strNext = formatAmountInput(objEvent.target.value);
+                            setLstSectionEditEntries((lstCurrent) => lstCurrent.map((objCurrent) => (
+                              objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, strAmountInput: strNext } : objCurrent
+                            )));
+                          }}
+                          sx={{ "& .MuiInputBase-root": { minHeight: 36 } }}
+                          error={!objEntry.strAmountInput.trim() || Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0}
+                          helperText={!objEntry.strAmountInput.trim() ? "Declared amount is mandatory." : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? "Amount must be greater than zero." : " "}
+                          InputProps={{ readOnly: blnLocked }}
+                          fullWidth
+                        />
+                      </Box>
+                      <Stack direction="row" spacing={0.6} alignItems="center" sx={{ width: { xs: "100%", lg: "16%" }, pt: { lg: 0.3 } }}>
+                        {!blnLocked ? (
+                          <Button
+                            component="label"
+                            variant="outlined"
+                            size="small"
+                            startIcon={<UploadFileRoundedIcon />}
+                            sx={{
+                              minHeight: 28,
+                              px: 1.1,
+                              py: 0.25,
+                              fontSize: "0.74rem",
+                              fontWeight: 700,
+                              textTransform: "none",
+                              borderRadius: "8px",
+                              borderColor: "#2563eb",
+                              color: "#1d4ed8",
+                              backgroundColor: "#eff6ff",
+                              "& .MuiSvgIcon-root": { color: "#1d4ed8", fontSize: "1rem" },
+                              "&:hover": { borderColor: "#1d4ed8", backgroundColor: "#dbeafe" },
+                            }}
+                          >
+                            {objEntry.objProof || objEntry.objProofFileInput ? "Replace" : "Upload"}
+                            <input
+                              hidden
+                              type="file"
+                              accept=".png,.jpg,.jpeg,.pdf"
+                              onChange={(objEvent) => {
+                                const objFile = objEvent.target.files?.[0] ?? null;
+                                setLstSectionEditEntries((lstCurrent) => lstCurrent.map((objCurrent) => (
+                                  objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, objProofFileInput: objFile } : objCurrent
+                                )));
+                              }}
+                            />
+                          </Button>
+                        ) : null}
+                        {!blnLocked ? (
+                          <Tooltip title="Delete">
+                            <IconButton
+                              size="small"
+                              sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", color: "#475569", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
+                              onClick={async () => {
+                                if (objEntry.intItemID && intDeclarationID) {
+                                  try {
+                                    const objData = await itDeclarationService.deleteItem(intDeclarationID, objEntry.intItemID);
+                                    hydrateFromApi(objData);
+                                  } catch (objError) {
+                                    setStrError(formatApiErrorForUi(objError, "Unable to delete investment row."));
+                                    return;
+                                  }
+                                }
+                                setLstSectionEditEntries((lstCurrent) => lstCurrent.filter((objCurrent) => objCurrent.strClientKey !== objEntry.strClientKey));
+                              }}
+                            >
+                              <DeleteOutlineRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                      </Stack>
+                      <Typography
+                        sx={{
+                          color: objEntry.objProofFileInput ? "#1d4ed8" : "#64748b",
+                          fontSize: "0.72rem",
+                          fontWeight: objEntry.objProofFileInput ? 700 : 500,
+                          lineHeight: 1.2,
+                          width: { xs: "100%", lg: "17%" },
+                          pt: { lg: 1.1 },
+                        }}
+                      >
+                        {objEntry.objProofFileInput
+                          ? `Selected: ${objEntry.objProofFileInput.name}`
+                          : objEntry.objProof?.strFileName
+                            ? `Uploaded: ${objEntry.objProof.strFileName}`
+                            : "No proof uploaded"}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+            {strSectionEditError && strSectionEditError.toLowerCase().includes("section total") ? (
+              <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700 }}>{strSectionEditError}</Typography>
+            ) : null}
             {decActiveMaxLimit != null ? (
-              <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: -0.5 }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
                 Max allowed under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
               </Typography>
             ) : null}
-            {objEditRow?.objProof && !objProofFileInput ? (
-              <Stack spacing={0.8}>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<VisibilityOutlinedIcon />}
-                    sx={{ borderColor: "#0f766e", color: "#0f766e", "&:hover": { borderColor: "#115e59", backgroundColor: "rgba(15,118,110,0.08)" } }}
-                    onClick={() => void previewDeclarationProof()}
-                  >
-                    Preview
-                  </Button>
-                  {!blnLocked ? (
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      size="small"
-                      startIcon={<UploadFileRoundedIcon />}
-                      sx={{ borderColor: "#2563eb", color: "#2563eb", "&:hover": { borderColor: "#1d4ed8", backgroundColor: "rgba(37,99,235,0.08)" } }}
-                    >
-                      Replace
-                      <input
-                        hidden
-                        type="file"
-                        accept=".png,.jpg,.jpeg,.pdf,.txt,.xlsx,.xls,.ppt,.pptx,.doc,.docx"
-                        onChange={(objEvent) => {
-                          const objFile = objEvent.target.files?.[0] ?? null;
-                          setObjProofFileInput(objFile);
-                        }}
-                      />
-                    </Button>
-                  ) : null}
-                  {!blnLocked ? (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<DeleteOutlineRoundedIcon />}
-                      sx={{ borderColor: "#cbd5e1", color: "#475569", "&:hover": { borderColor: "#94a3b8", backgroundColor: "#f8fafc" } }}
-                      onClick={() => void deleteDeclarationProof()}
-                    >
-                      Delete
-                    </Button>
-                  ) : null}
-                </Stack>
-                <Box
-                  sx={{
-                    border: "1px dashed #99f6e4",
-                    backgroundColor: "#f0fdfa",
-                    borderRadius: "10px",
-                    px: 1,
-                    py: 0.7,
-                  }}
-                >
-                  <Typography sx={{ color: "#115e59", fontSize: "0.78rem", fontWeight: 700 }}>
-                    Uploaded proof
-                  </Typography>
-                  <Typography sx={{ color: "#134e4a", fontSize: "0.8rem", wordBreak: "break-word" }}>
-                    {objEditRow.objProof.strFileName}
-                  </Typography>
-                </Box>
-              </Stack>
-            ) : !blnLocked ? (
-              <Button component="label" variant="outlined" size="small" startIcon={<UploadFileRoundedIcon />} sx={{ borderStyle: "dashed", borderWidth: "1.5px", color: "#1d4ed8", borderColor: "#93c5fd" }}>
-                Upload Proof
-                <input
-                  hidden
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.pdf,.txt,.xlsx,.xls,.ppt,.pptx,.doc,.docx"
-                  onChange={(objEvent) => {
-                    const objFile = objEvent.target.files?.[0] ?? null;
-                    setObjProofFileInput(objFile);
-                  }}
-                />
-              </Button>
-            ) : null}
-            <Typography sx={{ color: "#64748b", fontSize: "0.74rem", mt: -0.2 }}>
-              Supported types: PNG, JPG, PDF, TXT, XLS/XLSX, PPT/PPTX, DOC/DOCX. Max size: 10 MB.
+            <Typography sx={{ color: "#b45309", fontSize: "0.72rem", mt: -0.15, lineHeight: 1.2, fontWeight: 600 }}>
+              Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.
             </Typography>
-            {(!objEditRow?.objProof || objProofFileInput) && (
-              <Typography sx={{ color: "#475569", fontSize: "0.8rem" }}>
-                {objProofFileInput ? (
-                  <Box component="span" sx={{ color: "#1d4ed8", fontWeight: 700 }}>
-                    Selected: {objProofFileInput.name}
-                  </Box>
-                ) : (
-                  "No proof uploaded"
-                )}
-              </Typography>
-            )}
-            <Typography sx={{ color: "#475569", fontSize: "0.86rem" }}>Total amount: {formatCurrency(Math.max(0, Number(strAmountInput || 0)))}</Typography>
           </Stack>
         </DialogContent>
         <DialogActions>
