@@ -86,7 +86,7 @@ export async function createApiRequestError<TData>(
     const objResponseData = objError.response?.data as ApiErrorResponse<TData> | undefined;
     const strRequestId = objResponseData?.RequestId ?? objError.response?.headers?.["x-request-id"];
 
-    if (objResponseData?.payload) {
+    if (objResponseData && "payload" in objResponseData && objResponseData.payload) {
       const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
       return new ApiRequestError(
         objDecryptedPayload.Msg ?? strFallbackMessage,
@@ -97,7 +97,7 @@ export async function createApiRequestError<TData>(
     }
 
     return new ApiRequestError(
-      objResponseData?.Msg ?? objResponseData?.message ?? objError.message ?? strFallbackMessage,
+      objResponseData?.Msg ?? (objResponseData && "message" in objResponseData ? objResponseData.message : undefined) ?? objError.message ?? strFallbackMessage,
       undefined,
       objError.response?.status,
       strRequestId,
