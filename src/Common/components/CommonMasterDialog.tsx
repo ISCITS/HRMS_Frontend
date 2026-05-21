@@ -1,7 +1,8 @@
 "use client";
 
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
-import type { DialogProps, ReactNode } from "react";
+import type { ReactNode } from "react";
+import type { DialogProps } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 
 import masterStyles from "@/components/master/MasterScreen.module.css";

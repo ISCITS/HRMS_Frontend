@@ -1,6 +1,25 @@
 function normalizePublicApiBaseUrl(strValue: string | undefined) {
-  const strBaseUrl = (strValue ?? "").trim().replace(/\/+$/g, "");
-  return strBaseUrl.endsWith("/api") ? strBaseUrl.slice(0, -"/api".length) : strBaseUrl;
+  let strBaseUrl = (strValue ?? "").trim().replace(/\/+$/g, "");
+  if (strBaseUrl.endsWith("/api")) {
+    strBaseUrl = strBaseUrl.slice(0, -"/api".length);
+  }
+
+  // In browser sessions on local/dev, host.docker.internal can intermittently fail DNS resolution.
+  // Normalize it to localhost to avoid client-side "Network Error" for direct API calls.
+  if (typeof window !== "undefined" && strBaseUrl.includes("host.docker.internal")) {
+    try {
+      const objUrl = new URL(strBaseUrl);
+      const strLocalHost = window.location.hostname || "localhost";
+      if (strLocalHost === "localhost" || strLocalHost === "127.0.0.1") {
+        objUrl.hostname = "localhost";
+        strBaseUrl = objUrl.toString().replace(/\/+$/g, "");
+      }
+    } catch {
+      // Keep configured base URL if parsing fails.
+    }
+  }
+
+  return strBaseUrl;
 }
 
 export const apiConstants = {

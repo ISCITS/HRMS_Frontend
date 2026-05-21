@@ -102,15 +102,22 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
   const blnProofRequired = objRecord.blnProofRequired ?? objRecord.blnIsProofRequired ?? objRecord.proof_required;
   const blnIsActive = objRecord.blnIsActive ?? objRecord.is_active ?? true;
 
+  const intLinkedSalaryComponentIDResolved = typeof intLinkedSalaryComponentID === "number"
+    ? intLinkedSalaryComponentID
+    : (typeof intLinkedSalaryComponentID === "string" && intLinkedSalaryComponentID.trim() ? Number(intLinkedSalaryComponentID) : null);
+  const decMaxLimitResolved = typeof decMaxLimitAmount === "number"
+    ? decMaxLimitAmount
+    : (typeof decMaxLimitAmount === "string" && decMaxLimitAmount.trim() ? Number(decMaxLimitAmount) : null);
+
   return {
     id: String(intID ?? ""),
     code: String(strCategoryCode ?? ""),
     name: String(strCategoryName ?? ""),
     description: String(strCategoryDescription ?? ""),
     declarationKind: String(strDeclarationKind ?? ""),
-    linkedSalaryComponentId: typeof intLinkedSalaryComponentID === "number" ? intLinkedSalaryComponentID : null,
+    linkedSalaryComponentId: Number.isFinite(intLinkedSalaryComponentIDResolved) ? intLinkedSalaryComponentIDResolved : null,
     linkedSalaryComponentName: String(strLinkedSalaryComponentName ?? ""),
-    maxLimitAmount: typeof decMaxLimitAmount === "number" ? decMaxLimitAmount : null,
+    maxLimitAmount: Number.isFinite(decMaxLimitResolved) ? decMaxLimitResolved : null,
     proofRequired: Boolean(blnProofRequired),
     status: Boolean(blnIsActive) ? "Active" : "Inactive",
   };
@@ -132,6 +139,18 @@ function resolveCategoryRows(objData: unknown) {
   }
   if (Array.isArray(objValue.items)) {
     return objValue.items;
+  }
+  if (Array.isArray(objValue.rows)) {
+    return objValue.rows;
+  }
+  if (Array.isArray(objValue.records)) {
+    return objValue.records;
+  }
+  if (Array.isArray(objValue.results)) {
+    return objValue.results;
+  }
+  if (Array.isArray(objValue.data)) {
+    return objValue.data;
   }
   if (Array.isArray(objValue.Data)) {
     return objValue.Data;
@@ -354,41 +373,53 @@ export default function EssDeclarationCategoryMasterPanel({
         "TAX_DECLARATION_COMPONENT_VIEW",
         "ESS_IT_DECLARATION_VIEW",
       ];
+      const lstEndpointAttempts: Array<{ strSource: "tax-declaration-components" | "ess-declaration-categories"; strMenuAction: string }> = [
+        ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "ess-declaration-categories" as const, strMenuAction })),
+        ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "tax-declaration-components" as const, strMenuAction })),
+      ];
       let lstRawRecords: unknown[] = [];
       let strSource = "ess-declaration-categories";
       const lstAttemptNotes: string[] = [];
       let strLastAccessError = "";
+      let objLastError: unknown = null;
+      let blnAnySuccessfulCall = false;
 
-      for (const strAction of lstActionFallbacks) {
+      for (const dicAttempt of lstEndpointAttempts) {
         try {
-          const objResult = await masterApiService.getEssDeclarationCategoriesWithAction(strAction);
+          const objResult = dicAttempt.strSource === "tax-declaration-components"
+            ? await masterApiService.getTaxDeclarationComponents(dicAttempt.strMenuAction)
+            : await masterApiService.getEssDeclarationCategoriesWithAction(dicAttempt.strMenuAction);
+          blnAnySuccessfulCall = true;
+          objLastError = null;
           lstRawRecords = resolveCategoryRows(objResult.Data as unknown);
-          lstAttemptNotes.push(`${strAction}:${lstRawRecords.length}`);
+          lstAttemptNotes.push(`${dicAttempt.strSource}:${dicAttempt.strMenuAction}:${lstRawRecords.length}`);
           if (lstRawRecords.length > 0) {
-            strSource = `ess-declaration-categories (${strAction})`;
+            strSource = `${dicAttempt.strSource} (${dicAttempt.strMenuAction})`;
             break;
           }
         } catch (objError) {
           const strMessage = objError instanceof Error ? objError.message : "request failed";
-          lstAttemptNotes.push(`${strAction}:ERR`);
-          if (strMessage.toLowerCase().includes("access is not available")) {
+          const strLowerMessage = strMessage.toLowerCase();
+          lstAttemptNotes.push(`${dicAttempt.strSource}:${dicAttempt.strMenuAction}:ERR`);
+          if (strLowerMessage.includes("access is not available")) {
             strLastAccessError = strMessage;
             continue;
           }
-          throw objError;
+          // tax-declaration-components is optional in older backend builds.
+          if (dicAttempt.strSource === "tax-declaration-components" && strLowerMessage.includes("not found")) {
+            continue;
+          }
+          objLastError = objError;
+          continue;
         }
       }
 
       if (lstRawRecords.length === 0) {
-        try {
-          const objFallbackResult = await masterApiService.getTaxDeclarationComponents();
-          lstRawRecords = resolveCategoryRows(objFallbackResult.Data as unknown);
-          strSource = "tax-declaration-components";
-        } catch (objError) {
-          if (strLastAccessError) {
-            throw new Error(strLastAccessError);
-          }
-          throw objError;
+        if (!blnAnySuccessfulCall && objLastError) {
+          throw objLastError;
+        }
+        if (!blnAnySuccessfulCall && strLastAccessError) {
+          throw new Error(strLastAccessError);
         }
       }
       const lstMappedRecords = lstRawRecords
@@ -924,7 +955,7 @@ export default function EssDeclarationCategoryMasterPanel({
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
-        {strLoadDiagnostics ? <Typography sx={{ mt: 1, color: "#334155", fontSize: "0.78rem" }}>{strLoadDiagnostics}</Typography> : null}
+        <Typography sx={{ display: "none" }}>{strLoadDiagnostics}</Typography>
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
@@ -983,6 +1014,17 @@ export default function EssDeclarationCategoryMasterPanel({
         ) : (
           <Box className={styles.tableWrap}>
             <table className={styles.table}>
+              <colgroup>
+                <col style={{ width: "44px" }} />
+                <col style={{ width: "116px" }} />
+                <col />
+                <col style={{ width: "190px" }} />
+                <col style={{ width: "210px" }} />
+                <col style={{ width: "300px" }} />
+                <col style={{ width: "140px" }} />
+                <col style={{ width: "130px" }} />
+                <col style={{ width: "120px" }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
