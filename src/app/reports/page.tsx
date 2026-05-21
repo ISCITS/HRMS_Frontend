@@ -13,6 +13,11 @@ const lstReports = [
     strHref: "/reports/bank-file",
   },
   {
+    strTitle: "Payslips",
+    strDescription: "View, generate, download, and print employee payslips.",
+    strHref: "/reports/payslips",
+  },
+  {
     strTitle: "Statutory Reports",
     strDescription: "PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and returns.",
     strHref: "/reports/statutory",
@@ -25,22 +30,21 @@ export default function ReportsPage() {
       <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
         Reports
       </Typography>
+
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mt: 2 }}>
         {lstReports.map((dicReport) => (
           <Link
             key={dicReport.strHref}
             href={dicReport.strHref}
-            style={{
-              color: "inherit",
-              textDecoration: "none",
-            }}
+            style={{ color: "inherit", textDecoration: "none" }}
           >
             <Box
               sx={{
                 border: "1px solid rgba(187, 213, 232, 0.7)",
                 borderRadius: 2,
+                color: "inherit",
                 p: 2,
-                height: "100%",
+                textDecoration: "none",
                 "&:hover": { borderColor: "primary.main", backgroundColor: "rgba(29, 93, 150, 0.04)" },
               }}
             >

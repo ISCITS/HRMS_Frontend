@@ -152,14 +152,14 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     const lstSegments = strNormalizedRoute.split("/").filter(Boolean);
     const strLastSegment = lstSegments.at(-1) ?? "";
     const blnDetailRoute = /^\d+$/.test(strLastSegment);
-    return blnDetailRoute ? `/payroll/payslips/${strLastSegment}` : "/payroll/payslips";
+    return blnDetailRoute ? `/reports/payslips/${strLastSegment}` : "/reports/payslips";
   }
 
   if (
     strLowerRoute === "/payroll/results" &&
     (strModuleCode.includes("payslip") || strModuleName.includes("payslip"))
   ) {
-    return "/payroll/payslips";
+    return "/reports/payslips";
   }
 
   if (
@@ -178,7 +178,7 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     const lstSegments = strNormalizedRoute.split("/").filter(Boolean);
     const strLastSegment = lstSegments.at(-1) ?? "";
     const blnDetailRoute = /^\d+$/.test(strLastSegment);
-    return blnDetailRoute ? `/payroll/payslips/${strLastSegment}` : "/payroll/payslips";
+    return blnDetailRoute ? `/reports/payslips/${strLastSegment}` : "/reports/payslips";
   }
 
   return strNormalizedRoute;
@@ -188,6 +188,18 @@ function hasRoute(lstItems: MenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => {
     const strResolvedRoute = resolveMenuRoute(objItem);
     return strResolvedRoute === strRoute || hasRoute(objItem.lstChildren, strRoute);
+  });
+}
+
+function hasRouteInReportsBranch(lstItems: MenuItem[], strRoute: string, blnInsideReports = false): boolean {
+  return lstItems.some((objItem) => {
+    const blnCurrentItemIsReportsBranch = isDirectReportsMenu(objItem);
+    const blnCurrentInsideReports = blnInsideReports || blnCurrentItemIsReportsBranch;
+    const strResolvedRoute = resolveMenuRoute(objItem);
+    return (
+      (blnCurrentInsideReports && strResolvedRoute === strRoute) ||
+      hasRouteInReportsBranch(objItem.lstChildren, strRoute, blnCurrentInsideReports)
+    );
   });
 }
 
@@ -215,7 +227,7 @@ function isPayrollContainerMenu(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/payroll/payslips")) {
+  if (hasRouteInReportsBranch(lstItems, "/reports/payslips")) {
     return lstItems;
   }
 
@@ -225,9 +237,9 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
     const blnShouldAppendHere =
       !blnInserted &&
       objItem.lstChildren.length > 0 &&
-      isPayrollMenuBranch(objItem) &&
-      hasRoute(lstChildren, "/payroll/results") &&
-      !hasRoute(lstChildren, "/payroll/payslips");
+      isReportsMenuBranch(objItem) &&
+      (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
+      !hasRoute(lstChildren, "/reports/payslips");
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
@@ -241,7 +253,7 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
         {
           strModuleCode: "PAYSLIPS",
           strModuleName: "Payslips",
-          strRoute: "/payroll/payslips",
+          strRoute: "/reports/payslips",
           lstPermissionCodes: ["PAYSLIP_LIST"],
           blnIsHome: false,
           lstChildren: [],
@@ -403,7 +415,7 @@ function collapseDuplicateReportsMenus(lstItems: MenuItem[]): MenuItem[] {
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
   return (
     hasRoute(lstItems, "/payroll/results") ||
-    hasRoute(lstItems, "/payroll/payslips") ||
+    hasRoute(lstItems, "/reports/payslips") ||
     lstItems.some((objItem) => {
       const strModuleCode = objItem.strModuleCode.toLowerCase();
       const strModuleName = objItem.strModuleName.toLowerCase();
@@ -627,7 +639,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
-    if (strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
+    if (strRoute.includes("/reports/payslips") || strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
       return preferResolvedLabel(
         tPayslips("payslips_title", "Payslips"),
         strModuleName,

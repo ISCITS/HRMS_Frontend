@@ -10,5 +10,5 @@ export default async function EssMyPayslipsDetailAliasRoute({
   params,
 }: EssMyPayslipsDetailAliasRouteProps) {
   const { intResultID } = await params;
-  redirect(`/payroll/payslips/${intResultID}?backRoute=${encodeURIComponent("/ess/my-payslips")}`);
+  redirect(`/reports/payslips/${intResultID}?backRoute=${encodeURIComponent("/ess/my-payslips")}`);
 }

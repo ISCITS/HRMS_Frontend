@@ -247,6 +247,25 @@ export type PayrollResultLineRecord = {
   strRemarks: string | null;
 };
 
+export type PayrollStatutoryResultRecord = {
+  intID: number;
+  intPayrollRunID: number;
+  intEmployeePayrollResultID: number;
+  intEmployeeID: number;
+  strStatutoryCode: string;
+  strStatutoryName: string | null;
+  decBasisAmount: number;
+  decEmployeeRatePercent: number | null;
+  decEmployerRatePercent: number | null;
+  decEmployeeAmount: number;
+  decEmployerAmount: number;
+  decTotalAmount: number;
+  decCeilingAmount: number | null;
+  strCalculationMode: string | null;
+  intRuleID: number | null;
+  strRemarks: string | null;
+};
+
 export type PayrollResultRecord = {
   intID: number;
   intPayrollRunID: number;
@@ -297,6 +316,7 @@ export type PayrollResultListRecord = PayrollResultRecord;
 
 export type PayrollResultDetailRecord = PayrollResultRecord & {
   lstLines: PayrollResultLineRecord[];
+  lstStatutoryResults?: PayrollStatutoryResultRecord[];
 };
 
 export type StatutoryReportCode = "ALL" | "PF" | "ESI" | "PT" | "LWF";

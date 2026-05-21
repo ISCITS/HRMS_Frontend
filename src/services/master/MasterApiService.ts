@@ -1009,11 +1009,11 @@ export const masterApiService = {
     });
   },
 
-  getTaxDeclarationComponents() {
+  getTaxDeclarationComponents(strMenuAction: string = MasterMenuAction.EssDeclarationCategoryList) {
     return requestApi<EssDeclarationCategoryApiRecord[] | { lstRecords?: EssDeclarationCategoryApiRecord[]; lstCategories?: EssDeclarationCategoryApiRecord[]; items?: EssDeclarationCategoryApiRecord[] }>({
       strPath: "/masters/tax-declaration-components",
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EssDeclarationCategoryList
+      strMenuAction
     });
   },
 

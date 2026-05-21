@@ -6,6 +6,24 @@ import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHa
 export type ItDeclarationStatus = "draft" | "submitted" | "approved" | "rejected";
 export type ItDeclarationFlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
 export type ItDeclarationRegime = "Old Regime" | "New Regime";
+export type ItDeclarationPrimaryAction = "continue" | "view" | "edit" | "submit";
+
+export type ItDeclarationDashboardCardDto = {
+  intDeclarationID: number;
+  strFinancialYearCode: string;
+  strTaxRegime: string;
+  strStatus: string;
+  decDeclaredAmount: number;
+  decApprovedAmount: number;
+  strLastUpdated?: string | null;
+  blnReadOnly: boolean;
+  strPrimaryAction: ItDeclarationPrimaryAction;
+};
+
+export type ItDeclarationDashboardDto = {
+  strCurrentFinancialYearCode: string;
+  lstDeclarations: ItDeclarationDashboardCardDto[];
+};
 
 export type ItDeclarationItemDto = {
   intItemID?: number | null;
@@ -46,6 +64,8 @@ export type ItDeclarationSummaryDto = {
   decOldTax: number;
   decNewTax: number;
   decSavings: number;
+  blnSummaryFallback?: boolean;
+  strSummaryWarning?: string;
   strRecommendedRegime: ItDeclarationRegime;
 };
 
@@ -128,6 +148,24 @@ export const itDeclarationService = {
     return objResult.Data;
   },
 
+  async deleteItem(intDeclarationID: number, intItemID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/ess/it-declaration/${intDeclarationID}/items/${intItemID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "ESS_IT_DECLARATION_UPDATE",
+    });
+    return objResult.Data;
+  },
+
+  async getDashboard(): Promise<ItDeclarationDashboardDto> {
+    const objResult = await requestApi<ItDeclarationDashboardDto>({
+      strPath: "/ess/it-declaration/dashboard",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "ESS_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? { strCurrentFinancialYearCode: "", lstDeclarations: [] };
+  },
+
   async uploadItemProof(
     intDeclarationID: number,
     intItemID: number,
@@ -205,6 +243,15 @@ export const itDeclarationService = {
       strPath: `/ess/it-declaration/${intDeclarationID}/withdraw`,
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "ESS_IT_DECLARATION_WITHDRAW",
+    });
+    return objResult.Data;
+  },
+
+  async copyPreviousDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/ess/it-declaration/${intDeclarationID}/copy-previous`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "ESS_IT_DECLARATION_UPDATE",
     });
     return objResult.Data;
   },
@@ -366,4 +413,5 @@ export const hrItDeclarationReviewService = {
     });
     return objResult.Data;
   },
+
 };
