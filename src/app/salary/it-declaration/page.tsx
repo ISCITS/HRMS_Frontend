@@ -361,6 +361,10 @@ export default function SalaryEssDeclarationsPage() {
   });
 
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
+  const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
+  const blnHideActionButtons = ["approved", "locked"].includes(strDeclarationStatusNormalized);
+  const blnDraftLikeActionsAllowed = ["draft", "released", "rejected", "resubmitted"].includes(strDeclarationStatusNormalized);
+  const blnCopyAllowedBeforeCreateOnly = !intDeclarationID;
   const blnAnyDialogOpen = Boolean(objEditRow) || blnRegimeModalOpen || blnCompareModalOpen || blnSubmitModalOpen;
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
@@ -1046,45 +1050,49 @@ export default function SalaryEssDeclarationsPage() {
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`Old Regime${objDerivedCalc.strRecommendedRegime === "Old Regime" ? " (Recommended)" : ""}`} />
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label="New Regime" />
               </RadioGroup>
-              <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
-                Save Draft
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                disabled={blnLocked || blnSaving}
-                onClick={() => void copyPreviousFinancialYear()}
-                sx={{
-                  minHeight: 30,
-                  borderRadius: "8px",
-                  backgroundColor: "#1d4ed8",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "0.76rem",
-                  textTransform: "none",
-                  boxShadow: "none",
-                  "&:hover": { backgroundColor: "#1e40af" },
-                  "&.Mui-disabled": {
-                    backgroundColor: "rgba(148,163,184,0.35)",
-                    color: "rgba(226,232,240,0.92)",
-                    border: "1px dashed rgba(203,213,225,0.65)",
-                    cursor: "not-allowed",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                Copy Previous FY
-              </Button>
-              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
-                {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
-              </Button>
-              <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
-                Submit Declaration
-              </Button>
-              {blnLocked ? (
-                <Button variant="outlined" size="small" onClick={() => void withdrawDeclaration()} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" } }}>
-                  Withdraw Declaration
-                </Button>
+              {!blnHideActionButtons ? (
+                <>
+                  <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
+                    Save Draft
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={!blnCopyAllowedBeforeCreateOnly || blnLocked || blnSaving}
+                    onClick={() => void copyPreviousFinancialYear()}
+                    sx={{
+                      minHeight: 30,
+                      borderRadius: "8px",
+                      backgroundColor: "#1d4ed8",
+                      color: "#ffffff",
+                      fontWeight: 700,
+                      fontSize: "0.76rem",
+                      textTransform: "none",
+                      boxShadow: "none",
+                      "&:hover": { backgroundColor: "#1e40af" },
+                      "&.Mui-disabled": {
+                        backgroundColor: "rgba(148,163,184,0.35)",
+                        color: "rgba(226,232,240,0.92)",
+                        border: "1px dashed rgba(203,213,225,0.65)",
+                        cursor: "not-allowed",
+                        boxShadow: "none",
+                      },
+                    }}
+                  >
+                    Copy Previous FY
+                  </Button>
+                  <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving || !blnDraftLikeActionsAllowed} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+                    {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
+                  </Button>
+                  <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+                    Submit Declaration
+                  </Button>
+                  {blnLocked ? (
+                    <Button variant="outlined" size="small" onClick={() => void withdrawDeclaration()} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" } }}>
+                      Withdraw Declaration
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
             </Stack>
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (

@@ -89,7 +89,7 @@ export default function EmployeePayrollInputEditorPage({
       setBlnLoading(true);
       setStrError("");
       try {
-        const [dicOptions, dicInput] = await Promise.all([
+        const [objOptionsResult, objInputResult] = await Promise.allSettled([
           employeePayrollInputService.getFormOptions(),
           (strMode === "edit" || strMode === "view") && intInputID
             ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
@@ -98,9 +98,35 @@ export default function EmployeePayrollInputEditorPage({
         if (!blnMounted) {
           return;
         }
-        setObjOptions(dicOptions);
-        if (dicInput) {
-          setDicForm(toEmployeePayrollInputFormValues(dicInput));
+
+        if (objOptionsResult.status === "fulfilled") {
+          setObjOptions(objOptionsResult.value);
+        }
+
+        if (objInputResult.status === "fulfilled" && objInputResult.value) {
+          setDicForm(toEmployeePayrollInputFormValues(objInputResult.value));
+        }
+
+        const lstLoadErrors = [
+          {
+            strLabel: t("form_options_load_error", "Options"),
+            objResult: objOptionsResult,
+          },
+          {
+            strLabel: t("details_load_error", "Details"),
+            objResult: objInputResult,
+          },
+        ]
+          .filter(({ objResult }) => objResult.status === "rejected")
+          .map(({ strLabel, objResult }) => {
+            const strMessage =
+              objResult.status === "rejected" && objResult.reason instanceof Error
+                ? objResult.reason.message
+                : "Unable to load employee payroll input workspace.";
+            return `${strLabel}: ${strMessage}`;
+          });
+        if (lstLoadErrors.length) {
+          setStrError(lstLoadErrors.join(" "));
         }
       } catch (objError) {
         if (blnMounted) {

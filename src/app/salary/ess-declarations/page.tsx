@@ -50,43 +50,55 @@ export default function SalaryEssDeclarationsPage() {
     setStrError("");
     try {
       const objData = await itDeclarationService.getDashboard();
+      const lstDashboardRows = objData.lstDeclarations || [];
       setStrCurrentFy(objData.strCurrentFinancialYearCode || "");
-      setLstRows(objData.lstDeclarations || []);
+      if (lstDashboardRows.length > 0) {
+        setLstRows(lstDashboardRows);
+        return;
+      }
+      throw new Error("Dashboard returned empty declaration list.");
     } catch (objError) {
       const strFallbackFy = getCurrentFinancialYearCode();
       setStrCurrentFy(strFallbackFy);
       let blnFallbackBound = false;
       try {
-        const objLegacy = await itDeclarationService.getDeclaration(strFallbackFy);
-        const decDeclaredAmount = (objLegacy.lstItems || []).reduce(
-          (decTotal, objItem) => decTotal + Number(objItem.decDeclaredAmount || 0),
-          0
-        );
-        if (objLegacy.intDeclarationID) {
-          setLstRows([
-            {
+        const intStartYear = Number(strFallbackFy.split("-")[0] || new Date().getFullYear());
+        const lstFyCandidates = [
+          `${intStartYear}-${intStartYear + 1}`,
+          `${intStartYear - 1}-${intStartYear}`,
+          `${intStartYear - 2}-${intStartYear - 1}`,
+        ];
+        const lstRecovered: ItDeclarationDashboardCardDto[] = [];
+        for (const strFy of lstFyCandidates) {
+          try {
+            const objLegacy = await itDeclarationService.getDeclaration(strFy);
+            if (!objLegacy?.intDeclarationID) continue;
+            const decDeclaredAmount = (objLegacy.lstItems || []).reduce(
+              (decTotal, objItem) => decTotal + Number(objItem.decDeclaredAmount || 0),
+              0,
+            );
+            const strStatus = String(objLegacy.strDeclarationStatus || "draft").toLowerCase();
+            lstRecovered.push({
               intDeclarationID: objLegacy.intDeclarationID,
-              strFinancialYearCode: objLegacy.strFinancialYearCode || strFallbackFy,
+              strFinancialYearCode: objLegacy.strFinancialYearCode || strFy,
               strTaxRegime: objLegacy.strSelectedRegime || "Old Regime",
-              strStatus: objLegacy.strDeclarationStatus || "draft",
+              strStatus,
               decDeclaredAmount,
               decApprovedAmount: 0,
               strLastUpdated: objLegacy.strLastUpdated || null,
-              blnReadOnly: !["draft", "released", "resubmitted"].includes(
-                (objLegacy.strDeclarationStatus || "").toLowerCase()
-              ),
-              strPrimaryAction: ["draft", "released", "resubmitted"].includes(
-                (objLegacy.strDeclarationStatus || "").toLowerCase()
-              )
-                ? "continue"
-                : "view",
-            },
-          ]);
-          blnFallbackBound = true;
-        } else {
-          setLstRows([]);
-          blnFallbackBound = true;
+              blnReadOnly: !["draft", "released", "resubmitted"].includes(strStatus),
+              strPrimaryAction: ["draft", "released", "resubmitted"].includes(strStatus) ? "continue" : "view",
+            });
+          } catch {
+            // Ignore missing FY declarations.
+          }
         }
+        const dicByKey = new Map<string, ItDeclarationDashboardCardDto>();
+        for (const objRow of lstRecovered) {
+          dicByKey.set(`${objRow.intDeclarationID}-${objRow.strFinancialYearCode}`, objRow);
+        }
+        setLstRows(Array.from(dicByKey.values()).sort((a, b) => b.strFinancialYearCode.localeCompare(a.strFinancialYearCode)));
+        blnFallbackBound = true;
       } catch {
         setLstRows([]);
       }
