@@ -23,6 +23,9 @@ export const payrollResultService = {
     strSearchEmployee?: string;
     strSearchRun?: string;
     strStatus?: string;
+    strDepartment?: string;
+    strLocation?: string;
+    strPayrollMonth?: string;
     blnGeneratedPayslipsOnly?: boolean;
   }): Promise<PayrollResultListRecord[]> {
     const objParams = new URLSearchParams();
@@ -34,6 +37,15 @@ export const payrollResultService = {
     }
     if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
       objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strDepartment?.trim()) {
+      objParams.set("strDepartment", objFilters.strDepartment.trim());
+    }
+    if (objFilters?.strLocation?.trim()) {
+      objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
     }
     if (objFilters?.blnGeneratedPayslipsOnly) {
       objParams.set("blnGeneratedPayslipsOnly", "true");

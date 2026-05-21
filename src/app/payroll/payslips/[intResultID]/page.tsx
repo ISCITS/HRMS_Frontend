@@ -1,4 +1,4 @@
-import PayrollResultDetailPage from "@/features/payroll/components/PayrollResultDetailPage";
+import { redirect } from "next/navigation";
 
 type PayrollResultDetailRouteProps = {
   params: Promise<{
@@ -15,11 +15,8 @@ export default async function PayrollResultDetailRoute({
 }: PayrollResultDetailRouteProps) {
   const { intResultID } = await params;
   const objSearchParams = searchParams ? await searchParams : undefined;
-  return (
-    <PayrollResultDetailPage
-      intResultID={Number(intResultID)}
-      blnPayslipScreen
-      strBackRoute={objSearchParams?.backRoute}
-    />
-  );
+  const strBackRoute = objSearchParams?.backRoute
+    ? `?backRoute=${encodeURIComponent(objSearchParams.backRoute)}`
+    : "";
+  redirect(`/reports/payslips/${intResultID}${strBackRoute}`);
 }

@@ -1,6 +1,6 @@
-import PayslipListPage from "@/features/payroll/components/PayslipListPage";
+import { redirect } from "next/navigation";
 
 export default function PayslipsPage() {
-  return <PayslipListPage />;
+  redirect("/reports/payslips");
 }
 

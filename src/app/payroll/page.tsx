@@ -52,25 +52,6 @@ export default function PayrollPage() {
               Payroll Runs
             </Button>
             <Button
-              href="/payroll/payslips"
-              variant="outlined"
-              sx={{
-                minHeight: 52,
-                px: 2.5,
-                borderRadius: "14px",
-                fontWeight: 600,
-                borderColor: "#2563eb",
-                color: "#2563eb",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  backgroundColor: "rgba(37,99,235,0.06)",
-                  borderColor: "#1d4ed8"
-                }
-              }}
-            >
-              Payslips
-            </Button>
-            <Button
               href="/payroll/statutory-rules"
               variant="outlined"
               sx={{

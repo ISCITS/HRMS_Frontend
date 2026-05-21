@@ -3,7 +3,7 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, MenuItem, Pagination, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -16,12 +16,18 @@ type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
   strStatus: "All" | "Approved" | "Published" | "Paid";
+  strDepartment: string;
+  strLocation: string;
+  strPayrollMonth: string;
 };
 
 const dicEmptySearch: SearchForm = {
   strSearchEmployee: "",
   strSearchRun: "",
   strStatus: "All",
+  strDepartment: "",
+  strLocation: "",
+  strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
 
@@ -143,7 +149,9 @@ export default function BankFileReportPage() {
     "PAYROLL_RESULT",
   ]);
   const [lstRows, setLstRows] = useState<PayrollResultListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
+  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
+  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(true);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -157,6 +165,7 @@ export default function BankFileReportPage() {
     setStrError("");
     try {
       setLstRows(await payrollReportService.getBankFileRows(objFilters));
+      setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
       setIntPage(1);
     } catch (objError) {
@@ -168,14 +177,18 @@ export default function BankFileReportPage() {
 
   useEffect(() => {
     if (!blnRightsLoading) {
-      loadRows().catch(() => undefined);
+      setBlnFilterDialogOpen(true);
     }
   }, [blnRightsLoading]);
 
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
     const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
+    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
+    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
+    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
     return lstRows.filter((dicRow) => {
+      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
       const blnEmployeeMatch =
         !strEmployeeSearch ||
         dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
@@ -184,8 +197,10 @@ export default function BankFileReportPage() {
         !strRunSearch ||
         dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
         dicRow.strRunName.toLowerCase().includes(strRunSearch);
+      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
+      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
       const blnStatusMatch = dicSearchApplied.strStatus === "All" || dicRow.strStatus === dicSearchApplied.strStatus;
-      return blnEmployeeMatch && blnRunMatch && blnStatusMatch && dicRow.decNetPayAmount > 0;
+      return blnEmployeeMatch && blnRunMatch && blnMonthMatch && blnYearMatch && blnStatusMatch && dicRow.decNetPayAmount > 0;
     });
   }, [dicSearchApplied, lstRows]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
@@ -225,7 +240,20 @@ export default function BankFileReportPage() {
     });
   }
 
-  if (blnLoading || blnRightsLoading) {
+  function applyFilters(dicFilters: SearchForm) {
+    setDicSearchDraft(dicFilters);
+    setDicSearchApplied(dicFilters);
+    setBlnFilterDialogOpen(false);
+    loadRows(dicFilters).catch(() => undefined);
+  }
+
+  function clearFilters() {
+    setDicSearchDraft(dicEmptySearch);
+    setDicSearchApplied(dicEmptySearch);
+    loadRows(dicEmptySearch).catch(() => undefined);
+  }
+
+  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading bank file..." />;
   }
 
@@ -244,6 +272,9 @@ export default function BankFileReportPage() {
         <Box className={styles.searchRow}>
           <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth />
           <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth />
+          <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} />
+          <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth />
+          <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth />
           <TextField select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
             <MenuItem value="All">Eligible statuses</MenuItem>
             <MenuItem value="Approved">Approved</MenuItem>
@@ -251,8 +282,8 @@ export default function BankFileReportPage() {
             <MenuItem value="Paid">Paid</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); loadRows(dicSearchDraft).catch(() => undefined); }}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); loadRows(dicEmptySearch).catch(() => undefined); }}>Clear</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -334,6 +365,28 @@ export default function BankFileReportPage() {
           </table>
         </Box>
       </Box>
+
+      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
+        <DialogTitle>Bank File</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
+            <TextField label="Payroll Month" type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label="Department" value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} fullWidth />
+            <TextField label="Location" value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} fullWidth />
+            <TextField label="Status" select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
+              <MenuItem value="All">Eligible statuses</MenuItem>
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Published">Published</MenuItem>
+              <MenuItem value="Paid">Paid</MenuItem>
+            </TextField>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>Reset</Button>
+          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>Close</Button> : null}
+          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>Show Report</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

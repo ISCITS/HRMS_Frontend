@@ -3,7 +3,7 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, MenuItem, Pagination, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -17,6 +17,9 @@ type SearchForm = {
   strSearchRun: string;
   strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
   strStatutoryCode: StatutoryReportCode;
+  strDepartment: string;
+  strLocation: string;
+  strPayrollMonth: string;
 };
 
 const dicEmptySearch: SearchForm = {
@@ -24,6 +27,9 @@ const dicEmptySearch: SearchForm = {
   strSearchRun: "",
   strStatus: "All",
   strStatutoryCode: "ALL",
+  strDepartment: "",
+  strLocation: "",
+  strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
 const lstReportTypes: Array<{ strCode: StatutoryReportCode; strLabel: string; strFile: string }> = [
@@ -33,6 +39,27 @@ const lstReportTypes: Array<{ strCode: StatutoryReportCode; strLabel: string; st
   { strCode: "PT", strLabel: "Professional Tax Report", strFile: "professional-tax-report" },
   { strCode: "LWF", strLabel: "Labour Welfare Fund Report", strFile: "labour-welfare-fund-report" },
 ];
+
+type StatutorySummaryRow = {
+  intID: number;
+  dtPayrollMonth: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strStatus: string;
+  decPfBasis: number;
+  decPfEmployee: number;
+  decPfEmployer: number;
+  decEsiBasis: number;
+  decEsiEmployee: number;
+  decEsiEmployer: number;
+  decPtEmployee: number;
+  decLwfEmployee: number;
+  decGratuityBasis: number;
+  decGratuityEmployer: number;
+  decTotalEmployee: number;
+  decTotalEmployer: number;
+  decGrandTotal: number;
+};
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -55,6 +82,59 @@ function toCsvValue(objValue: unknown) {
 
 function getReportMeta(strCode: StatutoryReportCode) {
   return lstReportTypes.find((dicType) => dicType.strCode === strCode) ?? lstReportTypes[0];
+}
+
+function getSummaryKey(dicRow: StatutoryReportRow) {
+  return `${dicRow.intEmployeePayrollResultID}:${dicRow.intEmployeeID}:${dicRow.dtPayrollMonth ?? ""}`;
+}
+
+function buildSummaryRows(lstRows: StatutoryReportRow[]): StatutorySummaryRow[] {
+  const mapRows = new Map<string, StatutorySummaryRow>();
+  lstRows.forEach((dicRow) => {
+    const strKey = getSummaryKey(dicRow);
+    const dicSummary = mapRows.get(strKey) ?? {
+      intID: dicRow.intEmployeePayrollResultID,
+      dtPayrollMonth: dicRow.dtPayrollMonth,
+      strEmployeeCode: dicRow.strEmployeeCode,
+      strEmployeeName: dicRow.strEmployeeName,
+      strStatus: dicRow.strStatus,
+      decPfBasis: 0,
+      decPfEmployee: 0,
+      decPfEmployer: 0,
+      decEsiBasis: 0,
+      decEsiEmployee: 0,
+      decEsiEmployer: 0,
+      decPtEmployee: 0,
+      decLwfEmployee: 0,
+      decGratuityBasis: 0,
+      decGratuityEmployer: 0,
+      decTotalEmployee: 0,
+      decTotalEmployer: 0,
+      decGrandTotal: 0,
+    };
+    const strCode = dicRow.strStatutoryCode.toUpperCase();
+    if (strCode === "PF") {
+      dicSummary.decPfBasis += dicRow.decBasisAmount || 0;
+      dicSummary.decPfEmployee += dicRow.decEmployeeAmount || 0;
+      dicSummary.decPfEmployer += dicRow.decEmployerAmount || 0;
+    } else if (strCode === "ESI") {
+      dicSummary.decEsiBasis += dicRow.decBasisAmount || 0;
+      dicSummary.decEsiEmployee += dicRow.decEmployeeAmount || 0;
+      dicSummary.decEsiEmployer += dicRow.decEmployerAmount || 0;
+    } else if (strCode === "PT") {
+      dicSummary.decPtEmployee += dicRow.decEmployeeAmount || 0;
+    } else if (strCode === "LWF") {
+      dicSummary.decLwfEmployee += dicRow.decEmployeeAmount || 0;
+    } else if (strCode === "GRATUITY") {
+      dicSummary.decGratuityBasis += dicRow.decBasisAmount || 0;
+      dicSummary.decGratuityEmployer += dicRow.decEmployerAmount || 0;
+    }
+    dicSummary.decTotalEmployee += dicRow.decEmployeeAmount || 0;
+    dicSummary.decTotalEmployer += dicRow.decEmployerAmount || 0;
+    dicSummary.decGrandTotal += dicRow.decTotalAmount || 0;
+    mapRows.set(strKey, dicSummary);
+  });
+  return Array.from(mapRows.values());
 }
 
 function downloadCsv(strFileName: string, lstRows: StatutoryReportRow[]) {
@@ -108,7 +188,9 @@ function exportPdf(strTitle: string, lstRows: StatutoryReportRow[]) {
 export default function StatutoryReportPage() {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(["REPORTS", "STATUTORY_REPORT", "REPORT_STATUTORY", "PAYROLL_RESULTS", "PAYROLL_RESULT"]);
   const [lstRows, setLstRows] = useState<StatutoryReportRow[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
+  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
+  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(true);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -122,6 +204,7 @@ export default function StatutoryReportPage() {
     setStrError("");
     try {
       setLstRows(await payrollReportService.getStatutoryReportRows(objFilters));
+      setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
       setIntPage(1);
     } catch (objError) {
@@ -133,19 +216,25 @@ export default function StatutoryReportPage() {
 
   useEffect(() => {
     if (!blnRightsLoading) {
-      loadRows().catch(() => undefined);
+      setBlnFilterDialogOpen(true);
     }
   }, [blnRightsLoading]);
 
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
     const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
+    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
+    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
+    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
     return lstRows.filter((dicRow) => {
+      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
       const blnEmployeeMatch = !strEmployeeSearch || dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) || dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
       const blnRunMatch = !strRunSearch || dicRow.strRunCode.toLowerCase().includes(strRunSearch) || dicRow.strRunName.toLowerCase().includes(strRunSearch);
+      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
+      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
       const blnStatusMatch = dicSearchApplied.strStatus === "All" || dicRow.strStatus === dicSearchApplied.strStatus;
       const blnStatutoryMatch = dicSearchApplied.strStatutoryCode === "ALL" || dicRow.strStatutoryCode.toUpperCase() === dicSearchApplied.strStatutoryCode;
-      return blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnStatutoryMatch;
+      return blnEmployeeMatch && blnRunMatch && blnMonthMatch && blnYearMatch && blnStatusMatch && blnStatutoryMatch;
     });
   }, [dicSearchApplied, lstRows]);
   const dicTotals = useMemo(() => lstFilteredRows.reduce((dicAccumulator, dicRow) => ({
@@ -154,10 +243,26 @@ export default function StatutoryReportPage() {
     decEmployer: dicAccumulator.decEmployer + (dicRow.decEmployerAmount || 0),
     decTotal: dicAccumulator.decTotal + (dicRow.decTotalAmount || 0),
   }), { decBasis: 0, decEmployee: 0, decEmployer: 0, decTotal: 0 }), [lstFilteredRows]);
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
+  const blnSummaryReport = dicSearchApplied.strStatutoryCode === "ALL";
+  const lstSummaryRows = useMemo(() => buildSummaryRows(lstFilteredRows), [lstFilteredRows]);
+  const lstPagedSourceRows = blnSummaryReport ? lstSummaryRows : lstFilteredRows;
+  const dicSummaryTotals = useMemo(() => lstSummaryRows.reduce((dicAccumulator, dicRow) => ({
+    decPfEmployee: dicAccumulator.decPfEmployee + dicRow.decPfEmployee,
+    decPfEmployer: dicAccumulator.decPfEmployer + dicRow.decPfEmployer,
+    decEsiEmployee: dicAccumulator.decEsiEmployee + dicRow.decEsiEmployee,
+    decEsiEmployer: dicAccumulator.decEsiEmployer + dicRow.decEsiEmployer,
+    decPtEmployee: dicAccumulator.decPtEmployee + dicRow.decPtEmployee,
+    decLwfEmployee: dicAccumulator.decLwfEmployee + dicRow.decLwfEmployee,
+    decGratuityEmployer: dicAccumulator.decGratuityEmployer + dicRow.decGratuityEmployer,
+    decTotalEmployee: dicAccumulator.decTotalEmployee + dicRow.decTotalEmployee,
+    decTotalEmployer: dicAccumulator.decTotalEmployer + dicRow.decTotalEmployer,
+    decGrandTotal: dicAccumulator.decGrandTotal + dicRow.decGrandTotal,
+  }), { decPfEmployee: 0, decPfEmployer: 0, decEsiEmployee: 0, decEsiEmployer: 0, decPtEmployee: 0, decLwfEmployee: 0, decGratuityEmployer: 0, decTotalEmployee: 0, decTotalEmployer: 0, decGrandTotal: 0 }), [lstSummaryRows]);
+  const intPageCount = Math.max(1, Math.ceil(lstPagedSourceRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
   const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
   const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const lstVisibleSummaryRows = lstSummaryRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const lstExportRows = setSelectedRowIDs.size > 0 ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID)) : lstFilteredRows;
   const blnAllVisibleSelected = lstVisibleRows.length > 0 && lstVisibleRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
   const blnSomeVisibleSelected = lstVisibleRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
@@ -171,7 +276,20 @@ export default function StatutoryReportPage() {
     });
   }
 
-  if (blnLoading || blnRightsLoading) {
+  function applyFilters(dicFilters: SearchForm) {
+    setDicSearchDraft(dicFilters);
+    setDicSearchApplied(dicFilters);
+    setBlnFilterDialogOpen(false);
+    loadRows(dicFilters).catch(() => undefined);
+  }
+
+  function clearFilters() {
+    setDicSearchDraft(dicEmptySearch);
+    setDicSearchApplied(dicEmptySearch);
+    loadRows(dicEmptySearch).catch(() => undefined);
+  }
+
+  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading statutory reports..." />;
   }
 
@@ -191,12 +309,15 @@ export default function StatutoryReportPage() {
           </TextField>
           <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth />
           <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth />
+          <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} />
+          <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth />
+          <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth />
           <TextField select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
             <MenuItem value="All">All statuses</MenuItem><MenuItem value="Calculated">Calculated</MenuItem><MenuItem value="Approved">Approved</MenuItem><MenuItem value="Published">Published</MenuItem><MenuItem value="Paid">Paid</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); loadRows(dicSearchDraft).catch(() => undefined); }}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); loadRows(dicEmptySearch).catch(() => undefined); }}>Clear</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -213,22 +334,50 @@ export default function StatutoryReportPage() {
             <Box className={styles.paginationInfo}>
               <Typography>Rows per page</Typography>
               <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }}>{lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}</TextField>
-              <Typography className={styles.paginationRange}>{lstFilteredRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} of ${lstFilteredRows.length}`}</Typography>
+              <Typography className={styles.paginationRange}>{lstPagedSourceRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstPagedSourceRows.length)} of ${lstPagedSourceRows.length}`}</Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
           </Box>
         </Box>
         <Box className={styles.tableWrap}>
-          <table className={styles.table}>
+          {blnSummaryReport ? <table className={styles.table}>
+            <thead><tr><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>PF Employee</th><th>PF Employer</th><th>ESI Employee</th><th>ESI Employer</th><th>PT</th><th>LWF</th><th>Gratuity Employer</th><th>Total Employee</th><th>Total Employer</th><th>Grand Total</th><th>Status</th></tr></thead>
+            <tbody>
+              {lstVisibleSummaryRows.length === 0 ? <tr><td colSpan={14} className={styles.emptyState}>No statutory report rows found for the current filters.</td></tr> : null}
+              {lstVisibleSummaryRows.map((dicRow) => <tr key={dicRow.intID}><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{formatCurrency(dicRow.decPfEmployee)}</td><td>{formatCurrency(dicRow.decPfEmployer)}</td><td>{formatCurrency(dicRow.decEsiEmployee)}</td><td>{formatCurrency(dicRow.decEsiEmployer)}</td><td>{formatCurrency(dicRow.decPtEmployee)}</td><td>{formatCurrency(dicRow.decLwfEmployee)}</td><td>{formatCurrency(dicRow.decGratuityEmployer)}</td><td>{formatCurrency(dicRow.decTotalEmployee)}</td><td>{formatCurrency(dicRow.decTotalEmployer)}</td><td>{formatCurrency(dicRow.decGrandTotal)}</td><td>{dicRow.strStatus}</td></tr>)}
+              {lstSummaryRows.length > 0 ? <tr><td colSpan={3}><strong>Total</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPtEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decLwfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGratuityEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGrandTotal)}</strong></td><td /></tr> : null}
+            </tbody>
+          </table> : <table className={styles.table}>
             <thead><tr><th><Checkbox size="small" checked={blnAllVisibleSelected} indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected} onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)} /></th><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Statutory</th><th>Basis</th><th>Employee Rate</th><th>Employer Rate</th><th>Employee Amount</th><th>Employer Amount</th><th>Total</th><th>Ceiling</th><th>Mode</th><th>Status</th></tr></thead>
             <tbody>
               {lstVisibleRows.length === 0 ? <tr><td colSpan={14} className={styles.emptyState}>No statutory report rows found for the current filters.</td></tr> : null}
               {lstVisibleRows.map((dicRow) => <tr key={dicRow.intID}><td><Checkbox size="small" checked={setSelectedRowIDs.has(dicRow.intID)} onChange={(objEvent) => setSetSelectedRowIDs((setPrevious) => { const setNext = new Set(setPrevious); objEvent.target.checked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID); return setNext; })} /></td><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{dicRow.strStatutoryName}</td><td>{formatCurrency(dicRow.decBasisAmount)}</td><td>{formatPercent(dicRow.decEmployeeRatePercent)}</td><td>{formatPercent(dicRow.decEmployerRatePercent)}</td><td>{formatCurrency(dicRow.decEmployeeAmount)}</td><td>{formatCurrency(dicRow.decEmployerAmount)}</td><td>{formatCurrency(dicRow.decTotalAmount)}</td><td>{dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount)}</td><td>{dicRow.strCalculationMode || "-"}</td><td>{dicRow.strStatus}</td></tr>)}
               {lstFilteredRows.length > 0 ? <tr><td colSpan={5}><strong>Total</strong></td><td><strong>{formatCurrency(dicTotals.decBasis)}</strong></td><td /><td /><td><strong>{formatCurrency(dicTotals.decEmployee)}</strong></td><td><strong>{formatCurrency(dicTotals.decEmployer)}</strong></td><td><strong>{formatCurrency(dicTotals.decTotal)}</strong></td><td /><td /><td /></tr> : null}
             </tbody>
-          </table>
+          </table>}
         </Box>
       </Box>
+      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
+        <DialogTitle>Statutory Reports</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
+            <TextField label="Report Type" select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth>
+              {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
+            </TextField>
+            <TextField label="Payroll Month" type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label="Department" value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} fullWidth />
+            <TextField label="Location" value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} fullWidth />
+            <TextField label="Status" select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
+              <MenuItem value="All">All statuses</MenuItem><MenuItem value="Calculated">Calculated</MenuItem><MenuItem value="Approved">Approved</MenuItem><MenuItem value="Published">Published</MenuItem><MenuItem value="Paid">Paid</MenuItem>
+            </TextField>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>Reset</Button>
+          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>Close</Button> : null}
+          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>Show Report</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

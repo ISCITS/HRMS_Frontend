@@ -5,6 +5,9 @@ export type PayrollReportFilters = {
   strSearchEmployee?: string;
   strSearchRun?: string;
   strStatus?: string;
+  strDepartment?: string;
+  strLocation?: string;
+  strPayrollMonth?: string;
 };
 
 export type StatutoryReportFilters = PayrollReportFilters & {
@@ -41,6 +44,33 @@ function resolveBasisAmount(dicResult: PayrollResultDetailRecord, strCode: Statu
 }
 
 function mapStatutoryLines(dicResult: PayrollResultDetailRecord): StatutoryReportRow[] {
+  if (dicResult.lstStatutoryResults?.length) {
+    return dicResult.lstStatutoryResults.map((dicRow) => ({
+      intID: dicRow.intID,
+      intPayrollRunID: dicRow.intPayrollRunID,
+      intEmployeePayrollResultID: dicRow.intEmployeePayrollResultID,
+      intEmployeeID: dicRow.intEmployeeID,
+      strRunCode: dicResult.strRunCode,
+      strRunName: dicResult.strRunName,
+      dtPayrollMonth: dicResult.dtPayrollMonth,
+      strEmployeeCode: dicResult.strEmployeeCode,
+      strEmployeeName: dicResult.strEmployeeName,
+      strStatus: dicResult.strStatus,
+      strStatutoryCode: dicRow.strStatutoryCode,
+      strStatutoryName: dicRow.strStatutoryName || dicRow.strStatutoryCode,
+      decBasisAmount: Number(dicRow.decBasisAmount || 0),
+      decEmployeeRatePercent: dicRow.decEmployeeRatePercent,
+      decEmployerRatePercent: dicRow.decEmployerRatePercent,
+      decEmployeeAmount: Number(dicRow.decEmployeeAmount || 0),
+      decEmployerAmount: Number(dicRow.decEmployerAmount || 0),
+      decTotalAmount: Number(dicRow.decTotalAmount || 0),
+      decCeilingAmount: dicRow.decCeilingAmount,
+      strCalculationMode: dicRow.strCalculationMode,
+      intRuleID: dicRow.intRuleID,
+      strRemarks: dicRow.strRemarks,
+    }));
+  }
+
   return (dicResult.lstLines ?? [])
     .filter(isStatutoryLine)
     .map((dicLine) => {

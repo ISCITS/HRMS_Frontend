@@ -346,7 +346,7 @@ export default function PayrollResultDetailPage({
                 onClick={() =>
                   objRouter.push(
                     strBackRoute ||
-                      (blnPayslipScreen ? "/payroll/payslips" : "/payroll/results")
+                      (blnPayslipScreen ? "/reports/payslips" : "/payroll/results")
                   )
                 }
                 sx={objActionButtonSx}

@@ -8,6 +8,6 @@ type PayslipDetailAliasRouteProps = {
 
 export default async function PayslipDetailAliasRoute({ params }: PayslipDetailAliasRouteProps) {
   const { intResultID } = await params;
-  redirect(`/payroll/payslips/${intResultID}`);
+  redirect(`/reports/payslips/${intResultID}`);
 }
 

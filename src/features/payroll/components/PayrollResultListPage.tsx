@@ -611,8 +611,8 @@ export default function PayrollResultListPage({
                             objRouter.push(
                               blnPayslipScreen
                                 ? (blnEssMode
-                                    ? `/payroll/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                                    : `/payroll/payslips/${dicRow.intID}`)
+                                    ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                                    : `/reports/payslips/${dicRow.intID}`)
                                 : `/payroll/results/${dicRow.intID}`
                             )
                           }
@@ -623,8 +623,8 @@ export default function PayrollResultListPage({
                                     ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit?backRoute=${strEssBackRoute}`
                                     : `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`)
                                 : (blnEssMode
-                                    ? `/payroll/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                                    : `/payroll/results/${dicRow.intID}`)
+                                    ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                                    : `/reports/payslips/${dicRow.intID}`)
                             )
                           }
                         />
