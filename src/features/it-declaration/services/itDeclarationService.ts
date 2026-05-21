@@ -414,4 +414,13 @@ export const hrItDeclarationReviewService = {
     return objResult.Data;
   },
 
+  async previewProofByID(intDeclarationID: number, intProofID: number): Promise<ItDeclarationProofPreviewDto> {
+    const objResult = await requestApi<ItDeclarationProofPreviewDto>({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/proof/${intProofID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
 };
