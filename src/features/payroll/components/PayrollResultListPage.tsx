@@ -10,6 +10,10 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
   Pagination,
   Stack,
@@ -48,12 +52,18 @@ type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
   strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid" | "Generated";
+  strDepartment: string;
+  strLocation: string;
+  strPayrollMonth: string;
 };
 
 const dicEmptySearch: SearchForm = {
   strSearchEmployee: "",
   strSearchRun: "",
   strStatus: "All",
+  strDepartment: "",
+  strLocation: "",
+  strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
 
@@ -222,7 +232,10 @@ export default function PayrollResultListPage({
       "MY_PAYSLIP",
     ]);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const blnUseOpeningFilterDialog = blnPayslipScreen && !blnEssMode;
+  const [blnLoading, setBlnLoading] = useState(!blnUseOpeningFilterDialog);
+  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
+  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(blnUseOpeningFilterDialog);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] =
@@ -248,6 +261,7 @@ export default function PayrollResultListPage({
           blnGeneratedPayslipsOnly: blnPayslipScreen,
         })
       );
+      setBlnHasLoadedRows(true);
       setIntPage(1);
     } catch (objError) {
       setStrError(
@@ -262,6 +276,11 @@ export default function PayrollResultListPage({
 
   useEffect(() => {
     if (blnRightsLoading) {
+      return;
+    }
+
+    if (blnUseOpeningFilterDialog) {
+      setBlnFilterDialogOpen(true);
       return;
     }
 
@@ -282,12 +301,16 @@ export default function PayrollResultListPage({
       .finally(() => {
         loadResults().catch(() => undefined);
       });
-  }, [blnPayslipScreen, blnRightsLoading, blnSelfOnly]);
+  }, [blnRightsLoading, blnSelfOnly, blnUseOpeningFilterDialog]);
 
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
     const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
+    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
+    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
+    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
     return lstResults.filter((dicRow) => {
+      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
       const blnSelfMatch = !blnSelfOnly || (intSelfEmployeeID !== null && dicRow.intEmployeeID === intSelfEmployeeID);
       const blnEmployeeMatch =
         !strEmployeeSearch ||
@@ -302,7 +325,9 @@ export default function PayrollResultListPage({
         (blnPayslipScreen
           ? dicRow.strPayslipStatus === dicSearchApplied.strStatus
           : dicRow.strStatus === dicSearchApplied.strStatus);
-      return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch;
+      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
+      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
+      return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnMonthMatch && blnYearMatch;
     });
   }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults]);
 
@@ -373,7 +398,22 @@ export default function PayrollResultListPage({
     }
   }
 
-  if (blnLoading || blnRightsLoading) {
+  function applyFilters(dicFilters: SearchForm) {
+    setDicSearchDraft(dicFilters);
+    setDicSearchApplied(dicFilters);
+    setBlnFilterDialogOpen(false);
+    loadResults(dicFilters).catch(() => undefined);
+  }
+
+  function clearFilters() {
+    setDicSearchDraft(dicEmptySearch);
+    setDicSearchApplied(dicEmptySearch);
+    if (!blnUseOpeningFilterDialog || blnHasLoadedRows) {
+      loadResults(dicEmptySearch).catch(() => undefined);
+    }
+  }
+
+  if (blnRightsLoading || (blnLoading && (!blnUseOpeningFilterDialog || !blnHasLoadedRows))) {
     return (
       <BlockingLoader blnOpen strLabel={t("loading_results", "Loading payroll results...")} />
     );
@@ -440,6 +480,45 @@ export default function PayrollResultListPage({
             placeholder={t("run_search_placeholder", "Search by payroll run")}
             fullWidth
           />
+          {blnPayslipScreen ? (
+            <>
+              <TextField
+                type="month"
+                value={dicSearchDraft.strPayrollMonth}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strPayrollMonth: objEvent.target.value,
+                  }))
+                }
+                label={t("payroll_month", "Payroll Month")}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                value={dicSearchDraft.strDepartment}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strDepartment: objEvent.target.value,
+                  }))
+                }
+                placeholder={t("department", "Department")}
+                fullWidth
+              />
+              <TextField
+                value={dicSearchDraft.strLocation}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strLocation: objEvent.target.value,
+                  }))
+                }
+                placeholder={t("location", "Location")}
+                fullWidth
+              />
+            </>
+          ) : null}
           <TextField
             select
             value={dicSearchDraft.strStatus}
@@ -467,21 +546,14 @@ export default function PayrollResultListPage({
             <Button
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-                loadResults(dicSearchDraft).catch(() => undefined);
-              }}
+              onClick={() => applyFilters(dicSearchDraft)}
             >
               {t("search", "Search")}
             </Button>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
-              onClick={() => {
-                setDicSearchDraft(dicEmptySearch);
-                setDicSearchApplied(dicEmptySearch);
-                loadResults(dicEmptySearch).catch(() => undefined);
-              }}
+              onClick={clearFilters}
             >
               {t("clear", "Clear")}
             </Button>
@@ -811,6 +883,71 @@ export default function PayrollResultListPage({
           ) : null
         }
       />
+
+      {blnUseOpeningFilterDialog ? (
+        <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
+          <DialogTitle>{t("payslips_title", "Payslips")}</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
+              <TextField
+                label={t("employee", "Employee")}
+                value={dicSearchDraft.strSearchEmployee}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label={t("payroll_run", "Payroll Run")}
+                value={dicSearchDraft.strSearchRun}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label={t("payroll_month", "Payroll Month")}
+                type="month"
+                value={dicSearchDraft.strPayrollMonth}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label={t("department", "Department")}
+                value={dicSearchDraft.strDepartment}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label={t("location", "Location")}
+                value={dicSearchDraft.strLocation}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label={t("status", "Status")}
+                select
+                value={dicSearchDraft.strStatus}
+                onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
+                fullWidth
+              >
+                <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
+                <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
+              </TextField>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>
+              {t("reset", "Reset")}
+            </Button>
+            {blnHasLoadedRows ? (
+              <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>
+                {t("close", "Close")}
+              </Button>
+            ) : null}
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>
+              {t("show_report", "Show Report")}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      ) : null}
     </Box>
   );
 }
