@@ -9,6 +9,25 @@ import type {
 } from "@/features/payroll/types";
 
 type EmployeePayrollInputApiRecord = EmployeePayrollInputDetailRecord;
+const strEmployeePayrollInputApiPath = "/payroll/employee-payroll-inputs";
+
+function isObjectRecord(objValue: unknown): objValue is Record<string, unknown> {
+  return Boolean(objValue && typeof objValue === "object" && !Array.isArray(objValue));
+}
+
+function ensureEmployeePayrollInputDetail(
+  objValue: unknown
+): EmployeePayrollInputDetailRecord {
+  if (
+    !isObjectRecord(objValue) ||
+    typeof objValue.intID !== "number" ||
+    !Array.isArray(objValue.lstLines)
+  ) {
+    throw new Error("Employee payroll input detail was not returned by the API.");
+  }
+
+  return objValue as EmployeePayrollInputDetailRecord;
+}
 
 function normalizeLineType(
   strValue: string | null | undefined
@@ -142,7 +161,7 @@ export const employeePayrollInputService = {
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<EmployeePayrollInputListRecord[]>({
-      strPath: `/payroll/inputs${strQuery ? `?${strQuery}` : ""}`,
+      strPath: `${strEmployeePayrollInputApiPath}${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_LIST",
     });
@@ -151,7 +170,7 @@ export const employeePayrollInputService = {
 
   async getFormOptions(): Promise<EmployeePayrollInputFormOptions> {
     const objResult = await requestApi<EmployeePayrollInputFormOptions>({
-      strPath: "/payroll/inputs/form-options",
+      strPath: `${strEmployeePayrollInputApiPath}/form-options`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_FORM_OPTIONS",
     });
@@ -162,18 +181,18 @@ export const employeePayrollInputService = {
     intInputID: number
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `/payroll/inputs/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_VIEW",
     });
-    return objResult.Data;
+    return ensureEmployeePayrollInputDetail(objResult.Data);
   },
 
   async createEmployeePayrollInput(
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: "/payroll/inputs",
+      strPath: strEmployeePayrollInputApiPath,
       strMethod: "POST",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_CREATE",
@@ -186,7 +205,7 @@ export const employeePayrollInputService = {
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `/payroll/inputs/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
