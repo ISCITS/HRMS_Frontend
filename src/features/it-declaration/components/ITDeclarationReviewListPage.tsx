@@ -26,6 +26,7 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstRowsPerPageOptions = [10, 20, 50];
+const objInrFormatter = new Intl.NumberFormat("en-IN");
 
 type ItDeclarationFilters = {
   strFinancialYearCode: string;
@@ -80,6 +81,13 @@ function downloadCsv(strFileName: string, lstRows: HrItDeclarationListRecord[]) 
   objLink.download = strFileName;
   objLink.click();
   URL.revokeObjectURL(strUrl);
+}
+
+function formatDisplayLabel(strValue: string) {
+  return String(strValue || "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
 export default function ITDeclarationReviewListPage() {
@@ -153,11 +161,30 @@ export default function ITDeclarationReviewListPage() {
   }
 
   return (
-    <Stack spacing={2.5} className={styles.page}>
+    <Stack spacing={0.8} className={styles.page}>
       {!blnCanView ? <Alert severity="warning">You do not have permission to view this screen.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Box className={styles.controlsCard}>
+      <Box sx={{ borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", overflow: "hidden" }}>
+        <Box sx={{ p: 1.1, background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1, flexWrap: "wrap" }}>
+            <Box>
+              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem", lineHeight: 1.2 }}>IT Declaration Review</Typography>
+              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>Financial Year Dashboard</Typography>
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+            {lstSummary.map(([strLabel, intCount]) => (
+              <Box key={strLabel} sx={{ border: "1px solid rgba(255,255,255,0.45)", borderRadius: "8px", px: 1, py: 0.55, minWidth: 104, backgroundColor: "rgba(8,47,73,0.28)" }}>
+                <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{strLabel}</Typography>
+                <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{intCount}</Typography>
+              </Box>
+            ))}
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      <Box className={styles.controlsCard} sx={{ mt: 0, mb: 0 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
           <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} />
           <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} />
@@ -190,16 +217,7 @@ export default function ITDeclarationReviewListPage() {
         </Box>
       </Box>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-        {lstSummary.map(([strLabel, intCount]) => (
-          <Box key={strLabel} sx={{ border: "1px solid #dbe3ef", borderRadius: 999, px: 1.4, py: 0.8, minWidth: 130 }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{strLabel}</Typography>
-            <Typography sx={{ fontWeight: 800 }}>{intCount}</Typography>
-          </Box>
-        ))}
-      </Box>
-
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ mt: 0 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanExport ? (
@@ -270,11 +288,11 @@ export default function ITDeclarationReviewListPage() {
                     <td>{objRow.strEmployeeCode}</td>
                     <td>{objRow.strEmployeeName}</td>
                     <td>{objRow.strFinancialYearCode}</td>
-                    <td>{objRow.strTaxRegime}</td>
-                    <td>{objRow.decDeclaredTotalAmount}</td>
-                    <td>{objRow.decApprovedTotalAmount}</td>
-                    <td>{objRow.intProofPendingCount}</td>
-                    <td><ITDeclarationStatusBadge strStatus={objRow.strStatus} /></td>
+                      <td>{formatDisplayLabel(objRow.strTaxRegime)}</td>
+                      <td>{`INR ${objInrFormatter.format(Number(objRow.decDeclaredTotalAmount || 0))}`}</td>
+                      <td>{`INR ${objInrFormatter.format(Number(objRow.decApprovedTotalAmount || 0))}`}</td>
+                      <td>{objRow.intProofPendingCount}</td>
+                      <td><ITDeclarationStatusBadge strStatus={formatDisplayLabel(objRow.strStatus)} /></td>
                     <td>{objRow.strSubmittedOn || "-"}</td>
                     <td>{objRow.strLastUpdated || "-"}</td>
                   </tr>

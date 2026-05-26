@@ -117,6 +117,9 @@ export const itDeclarationService = {
       strPath: "/ess/it-declaration/start",
       strMethod: ApiRequestMethod.Post,
       objBody: {
+        // Backend contracts in this module primarily use snake_case.
+        financial_year_code: strFinancialYearCode,
+        selected_regime: strRegime,
         strFinancialYearCode,
         strSelectedRegime: strRegime,
       },
@@ -408,6 +411,15 @@ export const hrItDeclarationReviewService = {
   async previewProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
     const objResult = await requestApi<ItDeclarationProofPreviewDto>({
       strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async previewProofByID(intDeclarationID: number, intProofID: number): Promise<ItDeclarationProofPreviewDto> {
+    const objResult = await requestApi<ItDeclarationProofPreviewDto>({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/proof/${intProofID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
     });
