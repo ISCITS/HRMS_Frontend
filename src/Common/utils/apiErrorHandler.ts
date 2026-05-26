@@ -87,13 +87,22 @@ export async function createApiRequestError<TData>(
     const strRequestId = objResponseData?.RequestId ?? objError.response?.headers?.["x-request-id"];
 
     if (objResponseData && "payload" in objResponseData && objResponseData.payload) {
-      const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
-      return new ApiRequestError(
-        objDecryptedPayload.Msg ?? strFallbackMessage,
-        objDecryptedPayload.Data,
-        objError.response?.status,
-        objDecryptedPayload.RequestId ?? strRequestId,
-      );
+      try {
+        const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
+        return new ApiRequestError(
+          objDecryptedPayload.Msg ?? strFallbackMessage,
+          objDecryptedPayload.Data,
+          objError.response?.status,
+          objDecryptedPayload.RequestId ?? strRequestId,
+        );
+      } catch {
+        return new ApiRequestError(
+          objResponseData?.Msg ?? objError.message ?? strFallbackMessage,
+          undefined,
+          objError.response?.status,
+          strRequestId,
+        );
+      }
     }
 
     return new ApiRequestError(
