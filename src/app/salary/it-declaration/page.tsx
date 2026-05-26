@@ -1,13 +1,11 @@
 "use client";
 
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
-import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
@@ -46,6 +44,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -365,7 +364,6 @@ export default function SalaryEssDeclarationsPage() {
   const blnHideActionButtons = ["approved", "locked"].includes(strDeclarationStatusNormalized);
   const blnDraftLikeActionsAllowed = ["draft", "released", "rejected", "resubmitted"].includes(strDeclarationStatusNormalized);
   const blnCopyAllowedBeforeCreateOnly = !intDeclarationID;
-  const blnAnyDialogOpen = Boolean(objEditRow) || blnRegimeModalOpen || blnCompareModalOpen || blnSubmitModalOpen;
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
@@ -398,6 +396,54 @@ export default function SalaryEssDeclarationsPage() {
     }
     return Array.from(dicBySection.values());
   }, [lstRows]);
+  const lstDeclarationGridRows = useMemo(() => {
+    return lstSectionRows.map((objRow, intIndex) => ({
+      id: objRow.intItemID ?? `${objRow.strSection}-${intIndex}`,
+      category: getGroupName(objRow),
+      section: <Typography sx={{ fontWeight: 700 }}>{objRow.strSection}</Typography>,
+      description: <Typography>{objRow.strDescription}</Typography>,
+      declaredAmount: (
+        <Box>
+          <Typography sx={{ fontSize: "0.85rem" }}>{formatCurrency(objRow.decDeclaredAmount)}</Typography>
+          {objRow.strEligibilityNote ? <Typography sx={{ fontSize: "0.72rem", color: "#b45309" }}>{objRow.strEligibilityNote}</Typography> : null}
+        </Box>
+      ),
+      maxLimit: <Typography>{objRow.strMaxLimitDisplay}</Typography>,
+      status: (
+        <Chip
+          size="small"
+          label={objRow.strStatus}
+          sx={{
+            fontWeight: 700,
+            color: objRow.strStatus === "Completed" ? "#166534" : objRow.strStatus === "Proof Pending" ? "#9a3412" : objRow.strStatus === "In Progress" ? "#9a3412" : "#475569",
+            backgroundColor: objRow.strStatus === "Completed" ? "#dcfce7" : objRow.strStatus === "Proof Pending" ? "#ffedd5" : objRow.strStatus === "In Progress" ? "#ffedd5" : "#e2e8f0",
+          }}
+        />
+      ),
+      action: (
+        <Button
+          variant="text"
+          size="small"
+          sx={{ fontSize: "0.76rem", fontWeight: 700 }}
+          disabled={blnLocked ? objRow.decDeclaredAmount <= 0 : false}
+          onClick={() => openEditModal(objRow)}
+        >
+          {blnLocked
+            ? (objRow.decDeclaredAmount > 0 ? "View" : "-")
+            : (objRow.decDeclaredAmount > 0 ? "View / Edit" : blnStarted ? "Add" : "Start")}
+        </Button>
+      ),
+    }));
+  }, [blnLocked, blnStarted, lstSectionRows]);
+  const lstDeclarationColumns: CommonTableColumn<(typeof lstDeclarationGridRows)[number]>[] = [
+    { field: "category", headerName: "Category", width: 130 },
+    { field: "section", headerName: "Section", width: 90, sortable: false },
+    { field: "description", headerName: "Description", width: 180, sortable: false },
+    { field: "declaredAmount", headerName: "Declared Amount", width: 150, sortable: false },
+    { field: "maxLimit", headerName: "Max Limit", width: 100, sortable: false },
+    { field: "status", headerName: "Status", width: 120, sortable: false },
+    { field: "action", headerName: "Action", width: 100, sortable: false, align: "center", exportable: false },
+  ];
   const decDeclaredTotal = useMemo(
     () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
     [lstRows]
@@ -1055,32 +1101,34 @@ export default function SalaryEssDeclarationsPage() {
                   <Button variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
                     Save Draft
                   </Button>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={!blnCopyAllowedBeforeCreateOnly || blnLocked || blnSaving}
-                    onClick={() => void copyPreviousFinancialYear()}
-                    sx={{
-                      minHeight: 30,
-                      borderRadius: "8px",
-                      backgroundColor: "#1d4ed8",
-                      color: "#ffffff",
-                      fontWeight: 700,
-                      fontSize: "0.76rem",
-                      textTransform: "none",
-                      boxShadow: "none",
-                      "&:hover": { backgroundColor: "#1e40af" },
-                      "&.Mui-disabled": {
-                        backgroundColor: "rgba(148,163,184,0.35)",
-                        color: "rgba(226,232,240,0.92)",
-                        border: "1px dashed rgba(203,213,225,0.65)",
-                        cursor: "not-allowed",
+                  {blnCopyAllowedBeforeCreateOnly && strFlowStatus === "NOT_STARTED" ? (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={blnLocked || blnSaving}
+                      onClick={() => void copyPreviousFinancialYear()}
+                      sx={{
+                        minHeight: 30,
+                        borderRadius: "8px",
+                        backgroundColor: "#1d4ed8",
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        fontSize: "0.76rem",
+                        textTransform: "none",
                         boxShadow: "none",
-                      },
-                    }}
-                  >
-                    Copy Previous FY
-                  </Button>
+                        "&:hover": { backgroundColor: "#1e40af" },
+                        "&.Mui-disabled": {
+                          backgroundColor: "rgba(148,163,184,0.35)",
+                          color: "rgba(226,232,240,0.92)",
+                          border: "1px dashed rgba(203,213,225,0.65)",
+                          cursor: "not-allowed",
+                          boxShadow: "none",
+                        },
+                      }}
+                    >
+                      Copy Previous FY
+                    </Button>
+                  ) : null}
                   <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving || !blnDraftLikeActionsAllowed} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
                   </Button>
@@ -1096,34 +1144,24 @@ export default function SalaryEssDeclarationsPage() {
               ) : null}
             </Stack>
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (
-              <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
-                Regime is locked by policy. Default regime: {objRegimeConfig.strDefaultRegime}
-              </Typography>
+              <>
+                <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
+                  Regime is locked by policy. Default regime: {objRegimeConfig.strDefaultRegime}
+                </Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
+                  If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.
+                </Typography>
+              </>
             ) : null}
           </Stack>
         </Stack>
       </Paper>
 
-      <Alert
-        severity="warning"
-        icon={<WarningAmberRoundedIcon />}
-        sx={{
-          borderRadius: "8px",
-          border: "1px solid rgba(251,146,60,0.35)",
-          backgroundColor: "rgba(255,237,213,0.62)",
-          py: 0,
-          minHeight: 32,
-          "& .MuiAlert-icon": { py: 0.4, mr: 0.8, "& svg": { fontSize: "1.1rem" } },
-          "& .MuiAlert-message": { fontSize: "0.78rem", py: 0.45, lineHeight: 1.2 },
-        }}
-      >
-        If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.
-      </Alert>
-
       {blnDraftSaved && !blnDismissDraftSavedAlert ? (
         <Fade in={!blnDismissDraftSavedAlert}>
           <Alert
             severity="success"
+            variant="filled"
             sx={{ borderRadius: "8px", py: 0.1 }}
             action={
               <IconButton size="small" color="inherit" onClick={() => setBlnDismissDraftSavedAlert(true)}>
@@ -1139,6 +1177,7 @@ export default function SalaryEssDeclarationsPage() {
         <Fade in={!blnDismissUnsavedAlert}>
           <Alert
             severity="info"
+            variant="filled"
             sx={{ borderRadius: "8px", py: 0.1 }}
             action={
               <IconButton size="small" color="inherit" onClick={() => setBlnDismissUnsavedAlert(true)}>
@@ -1154,22 +1193,8 @@ export default function SalaryEssDeclarationsPage() {
         <Fade in={!blnDismissWarningAlert}>
           <Alert
             severity="warning"
-            sx={{
-              borderRadius: "8px",
-              py: 0.1,
-              ...(blnAnyDialogOpen
-                ? {
-                    position: "fixed",
-                    top: 14,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 1600,
-                    minWidth: { xs: "92vw", sm: 540 },
-                    maxWidth: "92vw",
-                    boxShadow: "0 10px 24px rgba(15,23,42,0.22)",
-                  }
-                : {}),
-            }}
+            variant="filled"
+            sx={{ borderRadius: "8px", py: 0.1 }}
             action={
               <IconButton size="small" color="inherit" onClick={() => setBlnDismissWarningAlert(true)}>
                 <CloseRoundedIcon fontSize="small" />
@@ -1184,22 +1209,8 @@ export default function SalaryEssDeclarationsPage() {
         <Fade in={!blnDismissErrorAlert}>
           <Alert
             severity="error"
-            sx={{
-              borderRadius: "8px",
-              py: 0.1,
-              ...(blnAnyDialogOpen
-                ? {
-                    position: "fixed",
-                    top: 14,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 1600,
-                    minWidth: { xs: "92vw", sm: 540 },
-                    maxWidth: "92vw",
-                    boxShadow: "0 10px 24px rgba(15,23,42,0.24)",
-                  }
-                : {}),
-            }}
+            variant="filled"
+            sx={{ borderRadius: "8px", py: 0.1 }}
             action={
               <Stack direction="row" spacing={0.4} alignItems="center">
                 {blnRetryRefresh ? <Button color="inherit" size="small" onClick={() => void loadDeclaration()}>Retry</Button> : null}
@@ -1225,7 +1236,12 @@ export default function SalaryEssDeclarationsPage() {
           <SummaryCard strLabel="Estimated Tax Saving" strValue={formatCurrency(objDerivedCalc.decSavings)} strSubValue={objDerivedCalc.blnPreviewOnly ? "Estimated preview only" : "(Old vs New Regime)"} objIcon={<SavingsOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Last Updated" strValue={strLastUpdated} strSubValue="By You" objIcon={<CalendarTodayOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard
+            strLabel="Gross Salary"
+            strValue={formatCurrency(objDerivedCalc.decGrossSalary)}
+            strSubValue={objDerivedCalc.decGrossSalary > 0 ? "From payroll data" : "Payroll gross not available"}
+            objIcon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
+          />
         </Grid>
       </Grid>
 
@@ -1243,85 +1259,18 @@ export default function SalaryEssDeclarationsPage() {
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>Your Declarations</Typography>
               <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked}>Refresh Amounts</Button>
             </Stack>
-            <TableContainer sx={{ maxHeight: intDeclarationTableMaxHeight, overflowY: "auto", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-              <Table size="small">
-                <TableHead sx={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "#f8fafc" }}>
-                  <TableRow>
-                    <TableCell>Section</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Declared Amount</TableCell>
-                    <TableCell>Max Limit</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {lstSectionRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                        No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.
-                      </TableCell>
-                    </TableRow>
-                  ) : (() => {
-                    const dicGroups = new Map<string, DeclarationRow[]>();
-                    for (const objRow of lstSectionRows) {
-                      const strGroupName = getGroupName(objRow);
-                      const lstGroupRows = dicGroups.get(strGroupName) ?? [];
-                      lstGroupRows.push(objRow);
-                      dicGroups.set(strGroupName, lstGroupRows);
-                    }
-                    return Array.from(dicGroups.entries()).flatMap(([strGroupName, lstGroupRows]) => [
-                      <TableRow key={`grp-${strGroupName}`} sx={{ backgroundColor: "#f8fafc" }}>
-                        <TableCell colSpan={6} sx={{ fontWeight: 800, color: "#334155", fontSize: "0.78rem" }}>{strGroupName}</TableCell>
-                      </TableRow>,
-                      ...lstGroupRows.map((objRow, intIndex) => {
-                        return (
-                          <TableRow
-                            key={objRow.intItemID ?? `${objRow.strSection}-${intIndex}`}
-                            hover
-                            sx={{
-                              height: 56,
-                            }}
-                          >
-                            <TableCell sx={{ fontWeight: 700 }}>{objRow.strSection}</TableCell>
-                            <TableCell>{objRow.strDescription}</TableCell>
-                            <TableCell>
-                              <Typography sx={{ fontSize: "0.85rem" }}>{formatCurrency(objRow.decDeclaredAmount)}</Typography>
-                              {objRow.strEligibilityNote ? <Typography sx={{ fontSize: "0.72rem", color: "#b45309" }}>{objRow.strEligibilityNote}</Typography> : null}
-                            </TableCell>
-                            <TableCell>{objRow.strMaxLimitDisplay}</TableCell>
-                            <TableCell>
-                              <Chip
-                                size="small"
-                                label={objRow.strStatus}
-                                sx={{
-                                  fontWeight: 700,
-                                  color: objRow.strStatus === "Completed" ? "#166534" : objRow.strStatus === "Proof Pending" ? "#9a3412" : objRow.strStatus === "In Progress" ? "#9a3412" : "#475569",
-                                  backgroundColor: objRow.strStatus === "Completed" ? "#dcfce7" : objRow.strStatus === "Proof Pending" ? "#ffedd5" : objRow.strStatus === "In Progress" ? "#ffedd5" : "#e2e8f0",
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <Button
-                                variant="text"
-                                size="small"
-                                sx={{ fontSize: "0.76rem", fontWeight: 700 }}
-                                disabled={blnLocked ? objRow.decDeclaredAmount <= 0 : false}
-                                onClick={() => openEditModal(objRow)}
-                              >
-                                {blnLocked
-                                  ? (objRow.decDeclaredAmount > 0 ? "View" : "-")
-                                  : (objRow.decDeclaredAmount > 0 ? "View / Edit" : blnStarted ? "Add" : "Start")}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      }),
-                    ]);
-                  })()}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box sx={{ height: intDeclarationTableMaxHeight, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+              <CommonTable
+                columns={lstDeclarationColumns}
+                rows={lstDeclarationGridRows}
+                rowIdField={"id"}
+                defaultPageSize={500}
+                hideToolbar
+                minTableWidth={840}
+                withPaper={false}
+                emptyMessage="No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API."
+              />
+            </Box>
           </Paper>
         </Grid>
 

@@ -40,6 +40,8 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  hideToolbar?: boolean;
+  minTableWidth?: number;
   getRowSx?: (row: T) => SxProps<Theme>;
   rowIdField?: keyof T;
   defaultPageSize?: number;
@@ -57,6 +59,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  hideToolbar = false,
+  minTableWidth = 980,
   getRowSx,
   rowIdField,
   defaultPageSize = 5,
@@ -259,74 +263,76 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
 
   const table = (
     <Stack spacing={2.5} sx={{ minHeight: 0, height: "100%" }}>
-      <Stack
-        direction={{ xs: "column", lg: "row" }}
-        spacing={1.5}
-        alignItems={{ lg: "center" }}
-        justifyContent="space-between"
-        sx={{ px: 1.5, pt: 1.25 }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
-          <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
-          {showExportOptions ? (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
-                {strExportExcelLabel}
-              </Button>
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
-                {strExportPdfLabel}
-              </Button>
+      {!hideToolbar ? (
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={1.5}
+          alignItems={{ lg: "center" }}
+          justifyContent="space-between"
+          sx={{ px: 1.5, pt: 1.25 }}
+        >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
+            <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
+            {showExportOptions ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
+                  {strExportExcelLabel}
+                </Button>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
+                  {strExportPdfLabel}
+                </Button>
+              </Stack>
+            ) : null}
+          </Stack>
+          {showPaginationSummary ? (
+            <Stack
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
+              justifyContent={{ xs: "flex-start", lg: "flex-end" }}
+              sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
+            >
+              <Box className={styles.paginationInfo}>
+                <Typography className={styles.paginationLabel}>
+                  {strRowsPerPageLabel}
+                </Typography>
+                <TextField
+                  className={styles.rowsPerPageSelect}
+                  select
+                  size="small"
+                  value={String(rowsPerPage)}
+                  onChange={(event) => {
+                    setRowsPerPage(parseInt(event.target.value, 10));
+                    setPage(0);
+                  }}
+                  sx={{ width: 86 }}
+                >
+                  {pageSizeOptions.map((intOption) => (
+                    <MenuItem key={intOption} value={String(intOption)}>
+                      {intOption}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Typography className={styles.paginationRange}>
+                  {filteredAndSortedRows.length === 0
+                    ? `0 ${strPaginationSeparator} 0`
+                    : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${strPaginationSeparator} ${filteredAndSortedRows.length}`}
+                </Typography>
+              </Box>
+              <Pagination
+                className={styles.paginationBar}
+                count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
+                page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
+                onChange={(_, intNextPage) => setPage(intNextPage - 1)}
+                size="small"
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
             </Stack>
           ) : null}
         </Stack>
-        {showPaginationSummary ? (
-          <Stack
-            direction="row"
-            spacing={1.25}
-            alignItems="center"
-            justifyContent={{ xs: "flex-start", lg: "flex-end" }}
-            sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
-          >
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>
-                {strRowsPerPageLabel}
-              </Typography>
-              <TextField
-                className={styles.rowsPerPageSelect}
-                select
-                size="small"
-                value={String(rowsPerPage)}
-                onChange={(event) => {
-                  setRowsPerPage(parseInt(event.target.value, 10));
-                  setPage(0);
-                }}
-                sx={{ width: 86 }}
-              >
-                {pageSizeOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>
-                    {intOption}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {filteredAndSortedRows.length === 0
-                  ? `0 ${strPaginationSeparator} 0`
-                  : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${strPaginationSeparator} ${filteredAndSortedRows.length}`}
-              </Typography>
-            </Box>
-            <Pagination
-              className={styles.paginationBar}
-              count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
-              page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
-              onChange={(_, intNextPage) => setPage(intNextPage - 1)}
-              size="small"
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
-          </Stack>
-        ) : null}
-      </Stack>
+      ) : null}
 
       <Box
         sx={{
@@ -343,7 +349,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           sx={{
             borderCollapse: "separate",
             borderSpacing: 0,
-            minWidth: Math.max(intMinimumTableWidth, 980),
+            minWidth: Math.max(intMinimumTableWidth, minTableWidth),
             width: "100%"
           }}
         >

@@ -2,7 +2,7 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, MenuItem, Stack, TextField } from "@mui/material";
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
 import { toInputDate } from "@/features/reimbursements/formatters";
@@ -30,15 +30,16 @@ type ItemFormProps = {
   objOptions: ReimbursementOptionsDto;
   blnOpen: boolean;
   blnSaving: boolean;
+  blnReadOnly?: boolean;
   onClose: () => void;
-  onSave: (objPayload: ReimbursementClaimItemRequest, intItemID?: number | null) => Promise<void>;
+  onSave: (objPayload: ReimbursementClaimItemRequest, intItemID?: number | null, objProofFile?: File | null) => Promise<void>;
 };
 
 function buildStateFromItem(objItem?: ReimbursementClaimItemDto | null): ItemFormState {
   return {
     intReimbursementCategoryID: objItem?.intReimbursementCategoryID ? String(objItem.intReimbursementCategoryID) : "",
     intSalaryComponentID: objItem?.intSalaryComponentID ? String(objItem.intSalaryComponentID) : "",
-    dtExpenseDate: toInputDate(objItem?.dtExpenseDate),
+    dtExpenseDate: toInputDate(objItem?.dtExpenseDate) || new Date().toISOString().slice(0, 10),
     strExpenseDescription: objItem?.strExpenseDescription ?? "",
     decClaimedAmount: objItem?.decClaimedAmount ? String(objItem.decClaimedAmount) : "",
     strTaxTreatment: objItem?.strTaxTreatment ?? "proof_based",
@@ -47,11 +48,13 @@ function buildStateFromItem(objItem?: ReimbursementClaimItemDto | null): ItemFor
   };
 }
 
-export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpen, blnSaving, onClose, onSave }: ItemFormProps) {
+export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpen, blnSaving, blnReadOnly = false, onClose, onSave }: ItemFormProps) {
   const [objForm, setObjForm] = useState<ItemFormState>(buildStateFromItem(objItem));
+  const [objProofFile, setObjProofFile] = useState<File | null>(null);
 
   useEffect(() => {
     setObjForm(buildStateFromItem(objItem));
+    setObjProofFile(null);
   }, [objItem, blnOpen]);
 
   const objSelectedCategory = useMemo(
@@ -60,11 +63,11 @@ export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpe
   );
 
   useEffect(() => {
-    if (!blnOpen || objItem || objForm.intReimbursementCategoryID || objOptions.lstCategories.length !== 1) {
+    if (!blnOpen || blnReadOnly || objItem || objForm.intReimbursementCategoryID || objOptions.lstCategories.length !== 1) {
       return;
     }
     applySelectedCategory(objOptions.lstCategories[0]);
-  }, [blnOpen, objItem, objForm.intReimbursementCategoryID, objOptions.lstCategories]);
+  }, [blnOpen, blnReadOnly, objItem, objForm.intReimbursementCategoryID, objOptions.lstCategories]);
 
   function applySelectedCategory(objCategory: ReimbursementCategoryOption | null) {
     // Purpose: Copies category-level tax/proof/payroll defaults into the item draft for consistent payroll mapping.
@@ -94,61 +97,70 @@ export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpe
         blnProofRequired: objForm.blnProofRequired,
         strEmployeeRemarks: objForm.strEmployeeRemarks.trim() || null,
       },
-      objItem?.intID
+      objItem?.intID,
+      objForm.blnProofRequired ? objProofFile : null
     );
   }
 
-  const blnSaveDisabled = blnSaving || !objForm.decClaimedAmount || (!objForm.intReimbursementCategoryID && !objForm.intSalaryComponentID);
+  const objReadOnlyProps = { readOnly: blnReadOnly };
+  const blnSaveDisabled = blnReadOnly || blnSaving || !objForm.decClaimedAmount || (!objForm.intReimbursementCategoryID && !objForm.intSalaryComponentID);
 
   return (
     <Dialog open={blnOpen} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{objItem ? "Edit Claim Item" : "Add Claim Item"}</DialogTitle>
+      <DialogTitle>{blnReadOnly ? "View Claim Item" : objItem ? "Edit Claim Item" : "Add Claim Item"}</DialogTitle>
       <DialogContent sx={{ pt: "12px !important" }}>
         <Stack spacing={1.3}>
           <Grid container spacing={1.2}>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label="Category" value={objForm.intReimbursementCategoryID} onChange={(objEvent) => applySelectedCategory(objOptions.lstCategories.find((objCategory) => String(objCategory.intID) === objEvent.target.value) ?? null)}>
+              <TextField required select fullWidth size="small" label="Category" value={objForm.intReimbursementCategoryID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedCategory(objOptions.lstCategories.find((objCategory) => String(objCategory.intID) === objEvent.target.value) ?? null)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
                 <MenuItem value="">Select category</MenuItem>
                 {objOptions.lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{objCategory.strCategoryName}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label="Payroll component" value={objForm.intSalaryComponentID} onChange={(objEvent) => setObjForm({ ...objForm, intSalaryComponentID: objEvent.target.value })}>
+              <TextField required select fullWidth size="small" label="Payroll component" value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, intSalaryComponentID: objEvent.target.value })} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
                 <MenuItem value="">Select component</MenuItem>
                 {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem key={objComponent.intID} value={String(objComponent.intID)}>{objComponent.strComponentName}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField fullWidth size="small" type="date" label="Expense date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} />
+            <Grid item xs={12} md={6}>
+              <TextField fullWidth size="small" type="date" label="Expense date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField required fullWidth size="small" type="number" label="Claimed amount" value={objForm.decClaimedAmount} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01" }} />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField select fullWidth size="small" label="Tax treatment" value={objForm.strTaxTreatment} onChange={(objEvent) => setObjForm({ ...objForm, strTaxTreatment: objEvent.target.value as ReimbursementTaxTreatment })}>
-                <MenuItem value="proof_based">Proof Based</MenuItem>
-                <MenuItem value="taxable">Taxable</MenuItem>
-                <MenuItem value="exempt">Exempt</MenuItem>
-              </TextField>
+            <Grid item xs={12} md={6}>
+              <TextField required fullWidth size="small" type="number" label="Claimed amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly }} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" label="Expense description" value={objForm.strExpenseDescription} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} />
+              <TextField fullWidth multiline minRows={2} size="small" label="Expense description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objForm.strEmployeeRemarks} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} />
+              <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objForm.strEmployeeRemarks} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
           </Grid>
-          <FormControlLabel control={<Checkbox checked={objForm.blnProofRequired} onChange={(objEvent) => setObjForm({ ...objForm, blnProofRequired: objEvent.target.checked })} />} label="Proof required for this item" />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
+            <FormControlLabel control={<Checkbox checked={objForm.blnProofRequired} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, blnProofRequired: objEvent.target.checked })} />} label="Proof required for this item" />
+            {objForm.blnProofRequired && !blnReadOnly ? (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ ml: { sm: "auto" } }}>
+                {objProofFile ? <Typography sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography> : null}
+                <Button variant="outlined" component="label" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", whiteSpace: "nowrap" }}>
+                  Upload Proof
+                  <input hidden type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
+                </Button>
+              </Stack>
+            ) : null}
+            {objForm.blnProofRequired && blnReadOnly && objItem?.lstProofs?.length ? (
+              <Typography sx={{ fontSize: "0.78rem", color: "#475569", fontWeight: 700 }}>{objItem.lstProofs.length} proof{objItem.lstProofs.length === 1 ? "" : "s"} uploaded</Typography>
+            ) : null}
+          </Stack>
           {objSelectedCategory?.decMaxItemAmount ? (
             <TextField size="small" value={`Category item limit: INR ${objSelectedCategory.decMaxItemAmount}`} InputProps={{ readOnly: true }} />
           ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled}>
+        <Button onClick={onClose} variant={blnReadOnly ? "contained" : "text"} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>{blnReadOnly ? "Close" : "Cancel"}</Button>
+        {!blnReadOnly ? <Button variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled}>
           {objItem ? "Save Item" : "Add Item"}
-        </Button>
+        </Button> : null}
       </DialogActions>
     </Dialog>
   );

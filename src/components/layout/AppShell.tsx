@@ -33,6 +33,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
+import { employeeService } from "@/features/employee/services/employeeService";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
@@ -219,6 +220,31 @@ function resolveLanguageDisplayLabel(
   return `Language ${intLanguageID}`;
 }
 
+function extractLinkedEmployeeName(objUserContext: CurrentUserContext | null) {
+  if (!objUserContext) return "";
+  const objUserContextUnsafe = objUserContext as unknown as Record<string, unknown>;
+  const objUserUnsafe = (objUserContextUnsafe.objUser ?? {}) as Record<string, unknown>;
+  const objEmployeeUnsafe = (objUserContextUnsafe.objEmployee ?? {}) as Record<string, unknown>;
+  const lstCandidates = [
+    objEmployeeUnsafe.strEmployeeName,
+    objEmployeeUnsafe.full_name,
+    objEmployeeUnsafe.strFullName,
+    objEmployeeUnsafe.first_name && objEmployeeUnsafe.last_name
+      ? `${String(objEmployeeUnsafe.first_name)} ${String(objEmployeeUnsafe.last_name)}`
+      : undefined,
+    objEmployeeUnsafe.first_name,
+    objUserUnsafe.strEmployeeName,
+    objUserUnsafe.strFullName,
+    objUserUnsafe.full_name,
+  ];
+  for (const strCandidate of lstCandidates) {
+    if (typeof strCandidate === "string" && strCandidate.trim()) {
+      return strCandidate.trim();
+    }
+  }
+  return "";
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
@@ -239,6 +265,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnLanguageShellReady, setBlnLanguageShellReady] = useState(false);
   const [intLastLabelActivityAt, setIntLastLabelActivityAt] = useState(0);
   const [intLastContentMutationAt, setIntLastContentMutationAt] = useState(0);
+  const [strResolvedEmployeeName, setStrResolvedEmployeeName] = useState("");
   const objShellContentRef = useRef<HTMLDivElement | null>(null);
   const strHeaderModuleName = resolveRouteModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
@@ -426,6 +453,40 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [objRouter]);
 
+  useEffect(() => {
+    let blnMounted = true;
+    const intEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
+    const strHeaderName = extractLinkedEmployeeName(objUserContext);
+    if (strHeaderName) {
+      setStrResolvedEmployeeName(strHeaderName);
+      return () => {
+        blnMounted = false;
+      };
+    }
+    if (!intEmployeeID) {
+      setStrResolvedEmployeeName("");
+      return () => {
+        blnMounted = false;
+      };
+    }
+
+    employeeService
+      .getEmployeeById(intEmployeeID)
+      .then((objEmployee) => {
+        if (!blnMounted) return;
+        const strName = objEmployee?.strFullName?.trim() || "";
+        setStrResolvedEmployeeName(strName);
+      })
+      .catch(() => {
+        if (!blnMounted) return;
+        setStrResolvedEmployeeName("");
+      });
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [objUserContext]);
+
   async function confirmLogout() {
     setBlnLogoutDialogOpen(false);
     setBlnLoggingOut(true);
@@ -486,6 +547,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
+  const intLinkedEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
+  const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
   const strPageTitle = getLocalizedHeaderTitle(
     strPathname,
@@ -830,6 +893,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
               >
                 {strPageTitle}
               </Typography>
+              {strLinkedEmployeeName || intLinkedEmployeeID ? (
+                <Typography
+                  sx={{
+                    ml: 1,
+                    px: 1,
+                    py: 0.35,
+                    borderRadius: "999px",
+                    backgroundColor: "rgba(255,255,255,0.72)",
+                    border: "1px solid rgba(148, 163, 184, 0.25)",
+                    color: "#334155",
+                    fontSize: { xs: "0.72rem", md: "0.76rem" },
+                    fontWeight: 700,
+                    maxWidth: { xs: "110px", sm: "180px", md: "240px" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={strLinkedEmployeeName || `Employee ID: ${intLinkedEmployeeID}`}
+                >
+                  {strLinkedEmployeeName || `Employee #${intLinkedEmployeeID}`}
+                </Typography>
+              ) : null}
             </Box>
 
             <IconButton

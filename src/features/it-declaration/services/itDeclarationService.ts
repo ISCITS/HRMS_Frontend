@@ -117,6 +117,9 @@ export const itDeclarationService = {
       strPath: "/ess/it-declaration/start",
       strMethod: ApiRequestMethod.Post,
       objBody: {
+        // Backend contracts in this module primarily use snake_case.
+        financial_year_code: strFinancialYearCode,
+        selected_regime: strRegime,
         strFinancialYearCode,
         strSelectedRegime: strRegime,
       },

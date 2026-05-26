@@ -169,9 +169,12 @@ export default function SalaryEssDeclarationsPage() {
     if (!strFy) return;
     const strKey = `create-${strRegime}-${strFy}`;
     setStrBusyKey(strKey);
+    setStrError("");
     try {
       await itDeclarationService.startDeclaration(strFy, strRegime);
       await openDeclaration(strFy, strRegime);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to create IT declaration.");
     } finally {
       setStrBusyKey("");
     }
