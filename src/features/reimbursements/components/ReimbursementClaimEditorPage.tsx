@@ -8,7 +8,8 @@ import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
-import { Alert, Box, Button, Grid, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,7 +17,6 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import ReimbursementClaimSummaryCard from "@/features/reimbursements/components/ReimbursementClaimSummaryCard";
-import ReimbursementProofUploadPanel from "@/features/reimbursements/components/ReimbursementProofUploadPanel";
 import { formatCurrency, formatDateLabel, toInputDate } from "@/features/reimbursements/formatters";
 import { canEditReimbursementClaim, canWithdrawReimbursementClaim, getMissingProofItems } from "@/features/reimbursements/rules";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
@@ -40,10 +40,23 @@ function getErrorMessage(objError: unknown) {
 function buildHeaderState(objClaim?: ReimbursementClaimDto | null): HeaderFormState {
   return {
     strClaimTitle: objClaim?.strClaimTitle ?? "",
-    strFinancialYearCode: objClaim?.strFinancialYearCode ?? "",
+    strFinancialYearCode: objClaim?.strFinancialYearCode ?? getCurrentFinancialYearCode(),
     dtClaimDate: toInputDate(objClaim?.dtClaimDate) || new Date().toISOString().slice(0, 10),
     strEmployeeRemarks: objClaim?.strEmployeeRemarks ?? "",
   };
+}
+
+function getCurrentFinancialYearCode() {
+  const objToday = new Date();
+  const intCalendarYear = objToday.getFullYear();
+  const intStartYear = objToday.getMonth() >= 3 ? intCalendarYear : intCalendarYear - 1;
+  return `${intStartYear}-${intStartYear + 1}`;
+}
+
+function getFinancialYearOptions() {
+  const strCurrentYear = getCurrentFinancialYearCode();
+  const intCurrentStartYear = Number(strCurrentYear.slice(0, 4));
+  return [`${intCurrentStartYear - 1}-${intCurrentStartYear}`, strCurrentYear];
 }
 
 function normalizeHeaderValue(strValue?: string | null) {
@@ -56,6 +69,8 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const [objOptions, setObjOptions] = useState<ReimbursementOptionsDto>(objEmptyOptions);
   const [objHeader, setObjHeader] = useState<HeaderFormState>(buildHeaderState());
   const [objEditingItem, setObjEditingItem] = useState<ReimbursementClaimItemDto | null>(null);
+  const [objDeletingItem, setObjDeletingItem] = useState<ReimbursementClaimItemDto | null>(null);
+  const [blnViewingItem, setBlnViewingItem] = useState(false);
   const [blnItemDialogOpen, setBlnItemDialogOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(strMode !== "create");
   const [blnSaving, setBlnSaving] = useState(false);
@@ -66,6 +81,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const blnEditable = strMode === "create" || canEditReimbursementClaim(objClaim?.strClaimStatus);
   const blnReadOnly = strMode === "detail" || !blnEditable;
   const lstMissingProofItems = useMemo(() => getMissingProofItems(objClaim), [objClaim]);
+  const lstFinancialYearOptions = useMemo(() => {
+    const lstOptions = getFinancialYearOptions();
+    if (objHeader.strFinancialYearCode && !lstOptions.includes(objHeader.strFinancialYearCode)) {
+      return [objHeader.strFinancialYearCode, ...lstOptions];
+    }
+    return lstOptions;
+  }, [objHeader.strFinancialYearCode]);
   const strPageTitle = normalizeHeaderValue(objHeader.strClaimTitle)
     || normalizeHeaderValue(objClaim?.strClaimTitle)
     || (objClaim?.intID ? `Reimbursement Claim #${objClaim.intID}` : "New Reimbursement Claim");
@@ -178,7 +200,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         setStrSuccess("Claim draft saved.");
       }
       if (strMode === "create") {
-        objRouter.replace(`/ess/reimbursements/${objSavedClaim.intID}/edit`);
+        window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit`);
       }
       return objSavedClaim;
     } catch (objError) {
@@ -189,27 +211,47 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     }
   }
 
-  async function saveItem(objPayload: ReimbursementClaimItemRequest, intItemID?: number | null) {
+  async function openAddItemDialog() {
+    setObjEditingItem(null);
+    setBlnViewingItem(false);
+    setBlnItemDialogOpen(true);
+  }
+
+  async function saveItem(objPayload: ReimbursementClaimItemRequest, intItemID?: number | null, objProofFile?: File | null) {
     // Purpose: Saves an item against the persisted draft/released claim and refreshes claim totals.
-    if (!objClaim?.intID) {
-      setStrError("Save the claim header before adding items.");
-      return;
-    }
     setBlnSaving(true);
     setStrError("");
     try {
       let objClaimForSave = objClaim;
-      if (blnHeaderDirty) {
-        const objSavedHeader = await reimbursementService.updateClaim(objClaim.intID, buildClaimPayload());
+      if (!objClaimForSave?.intID) {
+        objClaimForSave = await reimbursementService.createClaim(buildClaimPayload());
+        setObjClaim(objClaimForSave);
+        setObjHeader(buildHeaderState(objClaimForSave));
+        if (strMode === "create") {
+          window.history.replaceState(null, "", `/ess/reimbursements/${objClaimForSave.intID}/edit`);
+        }
+      } else if (blnHeaderDirty) {
+        const objSavedHeader = await reimbursementService.updateClaim(objClaimForSave.intID, buildClaimPayload());
         setObjClaim(objSavedHeader);
         setObjHeader(buildHeaderState(objSavedHeader));
         objClaimForSave = objSavedHeader;
       }
       const objUpdatedClaim = await reimbursementService.saveItem(objClaimForSave.intID, objPayload, intItemID);
-      setObjClaim(objUpdatedClaim);
-      setObjHeader(buildHeaderState({ ...objUpdatedClaim, strClaimTitle: objUpdatedClaim.strClaimTitle ?? objClaimForSave.strClaimTitle }));
+      let objFinalClaim = objUpdatedClaim;
+      if (objProofFile) {
+        const setPreviousItemIDs = new Set((objClaimForSave.lstItems ?? []).map((objItem) => objItem.intID));
+        const objSavedItem = intItemID
+          ? objUpdatedClaim.lstItems?.find((objItem) => objItem.intID === intItemID)
+          : objUpdatedClaim.lstItems?.find((objItem) => !setPreviousItemIDs.has(objItem.intID)) ?? objUpdatedClaim.lstItems?.at(-1);
+        if (objSavedItem?.intID) {
+          objFinalClaim = await reimbursementService.uploadProof(objClaimForSave.intID, objSavedItem.intID, objProofFile);
+        }
+      }
+      setObjClaim(objFinalClaim);
+      setObjHeader(buildHeaderState({ ...objFinalClaim, strClaimTitle: objFinalClaim.strClaimTitle ?? objClaimForSave.strClaimTitle }));
       setBlnItemDialogOpen(false);
       setObjEditingItem(null);
+      setBlnViewingItem(false);
       setStrSuccess("Claim item saved.");
     } catch (objError) {
       setStrError(getErrorMessage(objError));
@@ -225,26 +267,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setStrError("");
     try {
       setObjClaim(await reimbursementService.deleteItem(objClaim.intID, intItemID));
+      setObjDeletingItem(null);
       setStrSuccess("Claim item deleted.");
     } catch (objError) {
       setStrError(getErrorMessage(objError));
     } finally {
       setBlnSaving(false);
     }
-  }
-
-  async function uploadProof(intItemID: number, objFile: File) {
-    // Purpose: Adds employee proof to an editable item before submission.
-    if (!objClaim?.intID) return;
-    setObjClaim(await reimbursementService.uploadProof(objClaim.intID, intItemID, objFile));
-    setStrSuccess("Proof uploaded.");
-  }
-
-  async function deleteProof(intItemID: number, intProofID: number) {
-    // Purpose: Deletes a proof from an editable item when the employee replaces or corrects evidence.
-    if (!objClaim?.intID) return;
-    setObjClaim(await reimbursementService.deleteProof(objClaim.intID, intItemID, intProofID));
-    setStrSuccess("Proof deleted.");
   }
 
   async function submitClaim() {
@@ -341,16 +370,18 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             <TextField fullWidth size="small" label="Claim title" value={objHeader.strClaimTitle} onChange={(objEvent) => setObjHeader({ ...objHeader, strClaimTitle: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth size="small" label="Financial year" placeholder="2025-2026" value={objHeader.strFinancialYearCode} onChange={(objEvent) => setObjHeader({ ...objHeader, strFinancialYearCode: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
+            <TextField select fullWidth size="small" label="Financial year" value={objHeader.strFinancialYearCode} onChange={(objEvent) => setObjHeader({ ...objHeader, strFinancialYearCode: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} SelectProps={{ readOnly: blnReadOnly }}>
+              {lstFinancialYearOptions.map((strFinancialYear) => <MenuItem key={strFinancialYear} value={strFinancialYear}>{strFinancialYear}</MenuItem>)}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth type="date" size="small" label="Claim date" InputLabelProps={{ shrink: true }} value={objHeader.dtClaimDate} onChange={(objEvent) => setObjHeader({ ...objHeader, dtClaimDate: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
           </Grid>
           <Grid item xs={12} md={2}>
-            <TextField select fullWidth size="small" label="Mode" value={blnReadOnly ? "read" : "edit"} InputProps={{ readOnly: true }}>
-              <MenuItem value="edit">Editable</MenuItem>
-              <MenuItem value="read">Read only</MenuItem>
-            </TextField>
+            <Stack spacing={0.35} sx={{ minHeight: 40, justifyContent: "center" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 700 }}>Mode</Typography>
+              <Typography sx={{ color: "#0f172a", fontSize: "0.88rem", fontWeight: 800 }}>{blnReadOnly ? "Read only" : "Editable"}</Typography>
+            </Stack>
           </Grid>
           <Grid item xs={12}>
             <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objHeader.strEmployeeRemarks} onChange={(objEvent) => setObjHeader({ ...objHeader, strEmployeeRemarks: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
@@ -362,10 +393,10 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1.1 }}>
           <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>Claim Items</Typography>
           {!blnReadOnly ? (
-            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => { setObjEditingItem(null); setBlnItemDialogOpen(true); }} disabled={!blnExistingClaim} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Add Item</Button>
+            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => void openAddItemDialog()} disabled={blnSaving} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Add Item</Button>
           ) : null}
         </Stack>
-        {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>Save the draft claim before adding items or proof documents.</Alert> : null}
+        {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>Claim number will be generated when you save the first item or save the draft.</Alert> : null}
         <TableContainer>
           <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
@@ -398,15 +429,16 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
                     <TableCell align="right">{formatCurrency(objItem.decClaimedAmount)}</TableCell>
                     <TableCell align="right">{formatCurrency(objItem.decApprovedAmount)}</TableCell>
                     <TableCell sx={{ minWidth: 260 }}>
-                      <ReimbursementProofUploadPanel objItem={objItem} blnEditable={!blnReadOnly} onUpload={(objFile) => uploadProof(objItem.intID, objFile)} onDelete={(intProofID) => deleteProof(objItem.intID, intProofID)} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "#475569", fontWeight: 700 }}>
+                        {objItem.lstProofs?.length ? `${objItem.lstProofs.length} proof${objItem.lstProofs.length === 1 ? "" : "s"} uploaded` : objItem.blnProofRequired ? "Proof required" : "Not required"}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      {!blnReadOnly ? (
                         <Stack direction="row" spacing={0.4} justifyContent="flex-end">
-                          <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnItemDialogOpen(true); }} aria-label="Edit item"><EditRoundedIcon fontSize="small" /></IconButton>
-                          <IconButton size="small" onClick={() => void deleteItem(objItem.intID)} aria-label="Delete item"><DeleteOutlineRoundedIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(true); setBlnItemDialogOpen(true); }} aria-label="View item"><VisibilityRoundedIcon fontSize="small" /></IconButton>
+                          {!blnReadOnly ? <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(false); setBlnItemDialogOpen(true); }} aria-label="Edit item"><EditRoundedIcon fontSize="small" /></IconButton> : null}
+                          {!blnReadOnly ? <IconButton size="small" onClick={() => setObjDeletingItem(objItem)} aria-label="Delete item"><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
                         </Stack>
-                      ) : "-"}
                     </TableCell>
                   </TableRow>
                 );
@@ -416,7 +448,17 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         </TableContainer>
       </Paper>
 
-      <ReimbursementClaimItemForm objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); }} onSave={saveItem} />
+      <ReimbursementClaimItemForm objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} />
+      <Dialog open={Boolean(objDeletingItem)} onClose={() => setObjDeletingItem(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Claim Item</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Are you sure you want to delete this claim item?</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setObjDeletingItem(null)} variant="outlined" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
+          <Button onClick={() => objDeletingItem ? void deleteItem(objDeletingItem.intID) : undefined} variant="contained" color="error" disabled={blnSaving} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Delete</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
