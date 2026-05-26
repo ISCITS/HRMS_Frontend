@@ -33,6 +33,9 @@ import type {
   EmployeePayrollInputFormOptions,
   EmployeePayrollInputFormValues,
 } from "@/features/payroll/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+
+const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
 
 type EmployeePayrollInputEditorPageProps = {
   strMode: "add" | "edit" | "view";
@@ -70,6 +73,7 @@ export default function EmployeePayrollInputEditorPage({
   const objRouter = useRouter();
   const { t } = useModuleLabels("employee-payroll-input");
   const { t: tCommon } = useModuleLabels("common");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeePayrollInputModuleCodes);
   const [dicForm, setDicForm] = useState<EmployeePayrollInputFormValues>(
     createInitialEmployeePayrollInputForm()
   );
@@ -80,9 +84,18 @@ export default function EmployeePayrollInputEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
-  const blnReadOnly = strMode === "view";
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnReadOnly = strMode === "view" || (strMode === "edit" && blnCanView && !blnCanEdit);
 
   useEffect(() => {
+    if (blnRightsLoading || (!blnCanView && !blnCanSave)) {
+      setBlnLoading(false);
+      return;
+    }
+
     let blnMounted = true;
 
     async function loadPage() {
@@ -147,7 +160,7 @@ export default function EmployeePayrollInputEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [intInputID, strMode]);
+  }, [intInputID, strMode, blnRightsLoading, blnCanView, blnCanSave]);
 
   const dicSelectedEmployee = useMemo(
     () =>
@@ -175,7 +188,7 @@ export default function EmployeePayrollInputEditorPage({
   );
 
   const blnFormLocked =
-    blnSaving || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
+    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
 
   function translateStatus(strStatus: string | null | undefined) {
     switch (strStatus) {
@@ -276,6 +289,10 @@ export default function EmployeePayrollInputEditorPage({
   }
 
   async function saveRecord() {
+    if (!blnCanSave) {
+      return;
+    }
+
     const strValidationError = validateForm();
     if (strValidationError) {
       setStrError(strValidationError);
@@ -380,7 +397,7 @@ export default function EmployeePayrollInputEditorPage({
               >
                 {t("back_to_list", "Back to List")}
               </Button>
-              <Button
+              {blnCanSave ? <Button
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRecord}
@@ -388,12 +405,14 @@ export default function EmployeePayrollInputEditorPage({
                 sx={{ display: blnReadOnly ? "none" : undefined }}
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button>
+              </Button> : null}
             </Stack>
           </Stack>
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Employee payroll input access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
@@ -462,9 +481,9 @@ export default function EmployeePayrollInputEditorPage({
               {t("line_help", "Capture additions, deductions, arrears, and recoveries at salary component level.")}
             </Typography>
           </Box>
-          <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked}>
+          {blnCanSave ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked}>
             {t("add_line", "Add Line")}
-          </Button>
+          </Button> : null}
         </Box>
 
         <Box sx={{ overflowX: "auto", maxHeight: 260, overflowY: "auto" }}>
@@ -513,9 +532,9 @@ export default function EmployeePayrollInputEditorPage({
                     <TextField value={dicLine.strRemarks} onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("line_remarks", "Optional line remarks")} fullWidth />
                   </td>
                   <td>
-                    <Button className={styles.secondaryButton} startIcon={<DeleteOutlineRoundedIcon />} onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked}>
+                    {blnCanSave ? <Button className={styles.secondaryButton} startIcon={<DeleteOutlineRoundedIcon />} onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked}>
                       {t("remove", "Remove")}
-                    </Button>
+                    </Button> : null}
                   </td>
                 </tr>
               ))}
@@ -550,7 +569,7 @@ export default function EmployeePayrollInputEditorPage({
             <Switch
               checked={dicForm.blnIsLocked}
               onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
-              disabled={blnSaving || dicForm.strStatus === "Locked"}
+              disabled={blnFormLocked || dicForm.strStatus === "Locked"}
             />
           }
           label={t("lock_record", "Lock this payroll input")}

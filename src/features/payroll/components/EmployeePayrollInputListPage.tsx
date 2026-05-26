@@ -27,6 +27,7 @@ import { employeePayrollInputService } from "@/features/payroll/services/employe
 import type {
   EmployeePayrollInputListRecord,
 } from "@/features/payroll/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type SearchForm = {
   strSearchEmployee: string;
@@ -45,6 +46,7 @@ const dicEmptySearch: SearchForm = {
   strSearchRun: "",
   strStatus: "All",
 };
+const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
 const lstRowsPerPageOptions = [10, 20, 50];
 
 function formatDate(strDate: string | null) {
@@ -166,6 +168,7 @@ function exportPdf(strTitle: string, lstRows: EmployeePayrollInputListRecord[]) 
 export default function EmployeePayrollInputListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("employee-payroll-input");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeePayrollInputModuleCodes);
   const [lstInputs, setLstInputs] = useState<EmployeePayrollInputListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -180,8 +183,18 @@ export default function EmployeePayrollInputListPage() {
     strMessage: "",
     strSeverity: "success",
   });
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanExport = canDoAny("export");
 
   async function loadInputs(objFilters: SearchForm = dicSearchApplied) {
+    if (!blnCanView) {
+      setLstInputs([]);
+      setBlnLoading(false);
+      return;
+    }
+
     setBlnLoading(true);
     setStrError("");
     try {
@@ -201,8 +214,12 @@ export default function EmployeePayrollInputListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     loadInputs().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     return lstInputs.filter((dicRow) => {
@@ -246,7 +263,7 @@ export default function EmployeePayrollInputListPage() {
     window.location.assign(strPath);
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <BlockingLoader
         blnOpen
@@ -346,14 +363,14 @@ export default function EmployeePayrollInputListPage() {
       <Box className={styles.tableCard}>
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            <Button
+            {blnCanAdd ? <Button
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
             >
               {t("employee_payroll_input_add_button", "Add Payroll Input")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() =>
@@ -361,8 +378,8 @@ export default function EmployeePayrollInputListPage() {
               }
             >
               {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() =>
@@ -370,7 +387,7 @@ export default function EmployeePayrollInputListPage() {
               }
             >
               {t("export_pdf", "Export PDF")}
-            </Button>
+            </Button> : null}
           </Box>
 
           <Box className={styles.paginationBar} sx={{ p: 0 }}>
@@ -407,8 +424,15 @@ export default function EmployeePayrollInputListPage() {
           </Box>
         </Box>
 
+        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.tableWrap}>
+        {!blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Employee payroll input access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll input visibility.")}</Typography>
+          </Box>
+        ) : null}
+        {blnCanView ? <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -438,17 +462,17 @@ export default function EmployeePayrollInputListPage() {
                   <td className={styles.actionsColumn}>
                     <Box className={styles.actionCell}>
                       <CommonRowActions
-                        blnCanView
-                        blnCanEdit={!dicRow.blnIsLocked}
+                        blnCanView={blnCanView}
+                        blnCanEdit={blnCanEdit && !dicRow.blnIsLocked}
                         onView={() =>
                           navigateToFullScreen(
                             `/payroll/employee-payroll-inputs/${dicRow.intID}/edit?mode=view`
                           )
                         }
                         onEdit={() =>
-                          navigateToFullScreen(
+                          blnCanEdit ? navigateToFullScreen(
                             `/payroll/employee-payroll-inputs/${dicRow.intID}/edit`
-                          )
+                          ) : undefined
                         }
                       />
                     </Box>
@@ -474,7 +498,7 @@ export default function EmployeePayrollInputListPage() {
               ))}
             </tbody>
           </table>
-        </Box>
+        </Box> : null}
 
       </Box>
 

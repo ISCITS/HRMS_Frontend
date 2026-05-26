@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import UserGroupRightsEditor, { clearMenuTreeRights, serializeRights } from "@/features/security/components/UserGroupRightsEditor";
@@ -266,9 +267,9 @@ export default function UserGroupMasterDialog({
                   {dicLabels.fieldIsActiveHelp}
                 </Typography>
               </Box>
-              <Switch
-                checked={objForm.blnIsActive}
-                onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)}
+              <ActiveStatusSwitch
+                blnIsActive={objForm.blnIsActive}
+                onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
                 disabled={blnReadOnly}
               />
             </Box>

@@ -207,7 +207,6 @@ export default function SalaryStructureListPage() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
   const blnCanClone = blnCanAdd;
 
   const lstFilteredRows = useMemo(() => {
@@ -255,26 +254,6 @@ export default function SalaryStructureListPage() {
       setBlnSubmitting(false);
       closeConfirmDialog();
     }
-  }
-
-  function toggleStatus(dicRow: SalaryStructureListRecord) {
-    const blnNextIsActive = !dicRow.blnIsActive;
-    openConfirmDialog({
-      strTitle: blnNextIsActive
-        ? t("confirm_activate_title", "Activate Salary Structure")
-        : t("confirm_deactivate_title", "Deactivate Salary Structure"),
-      strMessage: blnNextIsActive
-        ? t("confirm_activate_message", "Are you sure you want to mark this salary structure as active?")
-        : t("confirm_deactivate_message", "Are you sure you want to mark this salary structure as inactive?"),
-      strConfirmLabel: blnNextIsActive ? t("activate_button", "Activate") : t("deactivate_button", "Deactivate"),
-      fnOnConfirm: async () => {
-        await salaryStructureService.setSalaryStructureStatus(dicRow.intID, blnNextIsActive);
-        await loadStructures();
-        showToast(blnNextIsActive
-          ? t("activate_success", "Salary structure activated successfully.")
-          : t("deactivate_success", "Salary structure deactivated successfully."));
-      }
-    });
   }
 
   function deleteStructure(intSalaryStructureID: number) {
@@ -478,11 +457,9 @@ export default function SalaryStructureListPage() {
                           blnCanView={!blnCanEdit && blnCanView}
                           blnCanEdit={blnCanEdit}
                           blnCanDelete={blnCanDelete}
-                          blnCanToggle={blnCanChangeStatus}
                           onView={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
                           onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
                           onDelete={() => deleteStructure(dicRow.intID)}
-                          onToggle={() => toggleStatus(dicRow)}
                         />
                         {blnCanClone ? (
                           <button

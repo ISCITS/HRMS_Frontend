@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryStructureLabels } from "@/features/salary-structures/hooks/useSalaryStructureLabels";
@@ -613,7 +614,7 @@ export default function SalaryStructureEditorPage({
             label={t("default_structure", "Default Structure")}
           />
           <FormControlLabel
-            control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateRootField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />}
+            control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
             label={t("active_structure", "Active Structure")}
           />
         </Stack>

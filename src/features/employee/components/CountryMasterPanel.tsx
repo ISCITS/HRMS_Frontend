@@ -14,6 +14,7 @@ import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -383,11 +384,9 @@ export default function CountryMasterPanel() {
           blnCanView={blnCanView}
           blnCanEdit={blnCanEdit}
           blnCanDelete={blnCanDelete}
-          blnCanToggle={blnCanChangeStatus}
           onView={() => void openDialog("view", dicCountry)}
           onEdit={() => void openDialog("edit", dicCountry)}
           onDelete={() => deleteRecord(dicCountry.id)}
-          onToggle={() => toggleStatus(dicCountry.id)}
         />
       ),
       name: dicCountry.name,
@@ -583,26 +582,6 @@ export default function CountryMasterPanel() {
         await masterApiService.bulkCountryDelete([Number(strId)]);
         await loadCountries();
         showToast(dicModuleLabels.deleteSuccess);
-      }
-    });
-  }
-
-  function toggleStatus(strId: string) {
-    const objItem = lstCountries.find((dicItem) => dicItem.id === strId);
-    if (!objItem) {
-      return;
-    }
-
-    const strNextStatus = objItem.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
-      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
-        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strNextStatus === "Active" ? t("activate") : t("deactivate"),
-      fnOnConfirm: async () => {
-        await masterApiService.bulkCountryStatus([Number(strId)], strNextStatus === "Active");
-        await loadCountries();
-        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
       }
     });
   }
@@ -844,7 +823,7 @@ export default function CountryMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         )}

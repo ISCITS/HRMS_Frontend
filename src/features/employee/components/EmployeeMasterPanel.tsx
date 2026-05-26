@@ -6,7 +6,6 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
@@ -27,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
@@ -486,7 +486,6 @@ export default function EmployeeMasterPanel() {
                           <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicEmployee.intID)}><VisibilityRoundedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicEmployee.intID)}><EditRoundedIcon fontSize="small" /></button>
                           <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
                       <td>{dicEmployee.strEmployeeCode}</td>
@@ -544,9 +543,10 @@ export default function EmployeeMasterPanel() {
               {(objFormOptions?.lstGenders ?? []).map((strGender) => <MenuItem key={strGender} value={strGender}>{strGender}</MenuItem>)}
             </TextField>
             {renderOptionField(dicConstant.employeeMaster.fields.preferredLanguage, "intPreferredLanguageID", objFormOptions?.lstLanguages ?? [])}
-            <TextField select label={dicConstant.employeeMaster.fields.employmentStatus} value={dicForm.strEmploymentStatus} disabled={strMode === "view"} onChange={(objEvent) => updateField("strEmploymentStatus", objEvent.target.value as EmployeeStatus)} fullWidth>
-              {(objFormOptions?.lstEmploymentStatuses ?? []).map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus}</MenuItem>)}
-            </TextField>
+            <Box className={styles.switchRow} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, minHeight: 56 }}>
+              <Typography className={styles.switchLabel}>{dicConstant.employeeMaster.fields.employmentStatus}</Typography>
+              <ActiveStatusSwitch blnIsActive={dicForm.strEmploymentStatus === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => updateField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} />
+            </Box>
             <TextField type="date" label={dicConstant.employeeMaster.fields.dateOfExit} value={dicForm.dtDateOfExit} disabled={strMode === "view" || dicForm.strEmploymentStatus === "Active"} onChange={(objEvent) => updateField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfExit)} helperText={dicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} fullWidth />
           </Box>
 

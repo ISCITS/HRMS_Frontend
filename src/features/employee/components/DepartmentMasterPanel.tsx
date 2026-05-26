@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -669,25 +670,6 @@ export default function DepartmentMasterPanel() {
     });
   }
 
-  function toggleDepartmentStatus(strDepartmentId: string) {
-    // Flips one row between Active and Inactive through the shared bulk-status API.
-    const objDepartment = lstDepartments.find((dicItem) => dicItem.id === strDepartmentId);
-    if (!objDepartment) {
-      return;
-    }
-    const strNextStatus = objDepartment.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateTitle : dicDepartmentLabels.confirmDeactivateTitle,
-      strMessage: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateMessage : dicDepartmentLabels.confirmDeactivateMessage,
-      strConfirmLabel: strNextStatus === "Active" ? dicDepartmentLabels.confirmActivateLabel : dicDepartmentLabels.confirmDeactivateLabel,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkDepartmentStatus([Number(strDepartmentId)], strNextStatus === "Active");
-        await loadDepartments();
-        showToast(strNextStatus === "Active" ? dicDepartmentLabels.activateSuccess : dicDepartmentLabels.deactivateSuccess);
-      }
-    });
-  }
-
   const lstTableRows = useMemo(
     () =>
       lstFilteredDepartments.map((dicDepartment) => {
@@ -700,12 +682,9 @@ export default function DepartmentMasterPanel() {
               blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
-              blnCanToggle={blnCanChangeStatus}
-              blnToggleActive={dicDepartment.status === "Active"}
               onView={() => openDialog("view", dicDepartment)}
               onEdit={() => openDialog("edit", dicDepartment)}
               onDelete={() => deleteDepartment(dicDepartment.id)}
-              onToggle={() => toggleDepartmentStatus(dicDepartment.id)}
             />
           ),
           name: dicDepartment.name,
@@ -1002,7 +981,7 @@ export default function DepartmentMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicDepartmentLabels.fieldIsActive}</Typography>
-              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }

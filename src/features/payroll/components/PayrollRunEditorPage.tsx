@@ -25,11 +25,15 @@ import {
   payrollRunService,
 } from "@/features/payroll/services/payrollRunService";
 import type { PayrollRunFormOptions, PayrollRunFormValues } from "@/features/payroll/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+
+const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
 
 export default function PayrollRunEditorPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
   const { t: tCommon } = useModuleLabels("common");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny } = useModuleActionAccess(lstPayrollRunModuleCodes);
   const [dicForm, setDicForm] = useState<PayrollRunFormValues>(
     createInitialPayrollRunForm()
   );
@@ -38,6 +42,8 @@ export default function PayrollRunEditorPage() {
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const blnCanAdd = canDoAny("add");
+  const blnFieldDisabled = blnSaving || blnLoadingOptions || blnRightsLoading || !blnCanAdd;
 
   function updateField<TKey extends keyof PayrollRunFormValues>(
     strField: TKey,
@@ -66,6 +72,11 @@ export default function PayrollRunEditorPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading || !blnCanAdd) {
+      setBlnLoadingOptions(false);
+      return;
+    }
+
     let blnMounted = true;
     setBlnLoadingOptions(true);
     payrollRunService
@@ -101,9 +112,13 @@ export default function PayrollRunEditorPage() {
     return () => {
       blnMounted = false;
     };
-  }, []);
+  }, [blnRightsLoading, blnCanAdd]);
 
   async function saveRun() {
+    if (!blnCanAdd) {
+      return;
+    }
+
     const strValidationError = validateForm();
     if (strValidationError) {
       setStrError(strValidationError);
@@ -174,19 +189,21 @@ export default function PayrollRunEditorPage() {
               >
                 {t("back_to_list", "Back to List")}
               </Button>
-              <Button
+              {blnCanAdd ? <Button
                 className={masterStyles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRun}
-                disabled={blnSaving}
+                disabled={blnFieldDisabled}
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button>
+              </Button> : null}
             </Stack>
           </Stack>
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {!blnCanAdd ? <Alert severity="warning">{t("add_access_denied", "Payroll run add access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
@@ -225,7 +242,7 @@ export default function PayrollRunEditorPage() {
                   objEvent.target.value ? Number(objEvent.target.value) : ""
                 )
               }
-              disabled={blnSaving || blnLoadingOptions}
+              disabled={blnFieldDisabled}
               fullWidth
             >
               <MenuItem value="">{t("select_payroll_cycle", "Select payroll cycle")}</MenuItem>
@@ -239,14 +256,14 @@ export default function PayrollRunEditorPage() {
               label={t("run_code", "Run Code")}
               value={dicForm.strRunCode}
               onChange={(objEvent) => updateField("strRunCode", objEvent.target.value)}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
             <TextField
               label={t("run_name", "Run Name")}
               value={dicForm.strRunName}
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
             <TextField
@@ -263,7 +280,7 @@ export default function PayrollRunEditorPage() {
                       : "",
                 }))
               }
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             >
               <MenuItem value="All">{t("scope_all", "All employees")}</MenuItem>
@@ -279,7 +296,7 @@ export default function PayrollRunEditorPage() {
                   objEvent.target.value ? Number(objEvent.target.value) : ""
                 )
               }
-              disabled={blnSaving || dicForm.strScopeType !== "SelectedEmployee"}
+              disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
               fullWidth
             >
               <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
@@ -295,7 +312,7 @@ export default function PayrollRunEditorPage() {
               value={dicForm.dtPayrollMonth}
               onChange={(objEvent) => updateField("dtPayrollMonth", objEvent.target.value)}
               InputLabelProps={{ shrink: true }}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
             <TextField
@@ -305,7 +322,7 @@ export default function PayrollRunEditorPage() {
               onChange={(objEvent) =>
                 updateField("strRunStatus", objEvent.target.value as PayrollRunFormValues["strRunStatus"])
               }
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             >
               <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
@@ -319,7 +336,7 @@ export default function PayrollRunEditorPage() {
               <Switch
                 checked={dicForm.blnIsLocked}
                 onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
-                disabled={blnSaving}
+                disabled={blnFieldDisabled}
               />
             }
             label={t("locked", "Locked")}

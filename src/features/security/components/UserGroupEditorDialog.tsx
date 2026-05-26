@@ -4,12 +4,12 @@ import {
   Box,
   MenuItem,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from "@mui/material";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import { authHelpers } from "@/lib/auth";
 import type { UserGroupFormPayload } from "@/models/SecurityModels";
 
@@ -139,11 +139,11 @@ export default function UserGroupEditorDialog({
                 Inactive groups are excluded from current user-group resolution.
               </Typography>
             </Box>
-            <Switch
-              checked={objForm.blnIsActive}
-              onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)}
+            <ActiveStatusSwitch
+              blnIsActive={objForm.blnIsActive}
+              onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
               disabled={blnReadOnly}
-              />
+            />
             </Box>
         </Stack>}
     />

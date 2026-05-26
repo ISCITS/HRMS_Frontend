@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useVersionLogLabels } from "@/features/version-logs/hooks/useVersionLogLabels";
@@ -326,7 +327,7 @@ export default function VersionLogEditorPage({
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
-                control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />}
+                control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
               />
             </Box>

@@ -18,7 +18,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -33,12 +32,6 @@ type SearchForm = {
   strName: string;
   strCode: string;
   strStatus: "All" | Status;
-};
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 type ToastState = {
   blnOpen: boolean;
@@ -62,7 +55,6 @@ export default function PayrollCycleListPage() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadPayrollCycles() {
@@ -113,11 +105,8 @@ export default function PayrollCycleListPage() {
           <CommonRowActions
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            blnCanToggle={blnCanEdit}
-            blnToggleActive={dicRow.blnIsActive}
             onView={() => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}?mode=view`)}
             onEdit={blnCanEdit ? () => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}`) : undefined}
-            onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}
           />
         ),
         strCycleCode: dicRow.strCycleCode,
@@ -158,44 +147,6 @@ export default function PayrollCycleListPage() {
 
   function closeToast() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
-  }
-
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    setObjConfirmDialog(objDialog);
-  }
-
-  function closeConfirmDialog() {
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
-  }
-
-  function toggleStatus(dicRow: PayrollCycleListRecord) {
-    openConfirmDialog({
-      strTitle: dicRow.blnIsActive ? t("confirm_deactivate_title", "Deactivate Payroll Cycle") : t("confirm_activate_title", "Activate Payroll Cycle"),
-      strMessage: dicRow.blnIsActive
-        ? t("confirm_deactivate_message", "Are you sure you want to mark this payroll cycle as inactive?")
-        : t("confirm_activate_message", "Are you sure you want to mark this payroll cycle as active?"),
-      strConfirmLabel: dicRow.blnIsActive ? t("deactivate", "Deactivate") : t("activate", "Activate"),
-      fnOnConfirm: async () => {
-        await payrollCycleService.setPayrollCycleStatus(dicRow.intID, !dicRow.blnIsActive);
-        await loadPayrollCycles();
-        showToast(t("status_updated", "Payroll cycle status updated successfully."));
-      }
-    });
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -282,18 +233,6 @@ export default function PayrollCycleListPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle ?? ""}
-        strMessage={objConfirmDialog?.strMessage ?? ""}
-        strCancelLabel={t("cancel", "Cancel")}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm", "Confirm")}
-        blnConfirmDisabled={blnSubmitting}
-        blnCancelDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

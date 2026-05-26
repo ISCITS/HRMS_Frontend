@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { usePayrollCycleLabels } from "@/features/payroll-cycles/hooks/usePayrollCycleLabels";
 import {
@@ -355,7 +356,7 @@ export default function PayrollCycleEditorPage({
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
-                control={<Switch checked={dicForm.blnIsActive} onChange={(objEvent) => updateField("blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />}
+                control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
               />
             </Box>

@@ -227,9 +227,8 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               </Button>
             </Stack>
             <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-              <Button
+              {blnCanStartReview ? <Button
                 variant="outlined"
-                disabled={!blnCanStartReview}
                 onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}
                 sx={{
                   minHeight: 30,
@@ -245,7 +244,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 }}
               >
                 Start Review
-              </Button>
+              </Button> : null}
               <ITDeclarationActionBar
                 blnLocked={blnLocked}
                 blnCanRelease={blnCanReleaseHeader}

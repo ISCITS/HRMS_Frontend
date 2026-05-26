@@ -18,7 +18,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -32,12 +31,6 @@ import {
 import type { VersionLogListRecord } from "@/features/version-logs/types";
 
 type VersionLogFilters = ReturnType<typeof createInitialVersionLogFilters>;
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
-};
 type ToastState = {
   blnOpen: boolean;
   strMessage: string;
@@ -87,7 +80,6 @@ export default function VersionLogListPage() {
   const [dicSearchApplied, setDicSearchApplied] = useState<VersionLogFilters>(createInitialVersionLogFilters());
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadVersionLogs() {
@@ -127,11 +119,8 @@ export default function VersionLogListPage() {
           <CommonRowActions
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            blnCanToggle={blnCanEdit}
-            blnToggleActive={dicRow.blnIsActive}
             onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}?mode=view`)}
             onEdit={blnCanEdit ? () => objRouter.push(`/version-logs/edit/${dicRow.intID}`) : undefined}
-            onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}
           />
         ),
         strVersionCode: dicRow.strVersionCode,
@@ -171,41 +160,6 @@ export default function VersionLogListPage() {
 
   function closeToast() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
-  }
-
-  function closeConfirmDialog() {
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
-  }
-
-  function toggleStatus(dicRow: VersionLogListRecord) {
-    const blnNextIsActive = !dicRow.blnIsActive;
-    setObjConfirmDialog({
-      strTitle: blnNextIsActive ? t("confirm_activate_title", "Activate Version Log") : t("confirm_deactivate_title", "Deactivate Version Log"),
-      strMessage: blnNextIsActive
-        ? t("confirm_activate_message", "Are you sure you want to mark this version log as active?")
-        : t("confirm_deactivate_message", "Are you sure you want to mark this version log as inactive?"),
-      strConfirmLabel: blnNextIsActive ? t("activate", "Activate") : t("deactivate", "Deactivate"),
-      fnOnConfirm: async () => {
-        await versionLogService.setVersionLogStatus(dicRow.intID, blnNextIsActive);
-        await loadVersionLogs();
-        showToast(t("status_updated", "Version log status updated successfully."));
-      }
-    });
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -309,18 +263,6 @@ export default function VersionLogListPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle ?? ""}
-        strMessage={objConfirmDialog?.strMessage ?? ""}
-        strCancelLabel={t("cancel", "Cancel")}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm", "Confirm")}
-        blnConfirmDisabled={blnSubmitting}
-        blnCancelDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

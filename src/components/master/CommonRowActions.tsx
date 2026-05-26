@@ -2,11 +2,10 @@
 
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import ToggleOffRoundedIcon from "@mui/icons-material/ToggleOffRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Box } from "@mui/material";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 
 type CommonRowActionsProps = {
@@ -50,13 +49,7 @@ export default function CommonRowActions({
         </button>
       ) : null}
       {blnCanToggle && onToggle ? (
-        <button
-          className={`${styles.iconButton} ${styles.toggleIcon} ${blnToggleActive ? styles.toggleActiveIcon : styles.toggleInactiveIcon}`}
-          type="button"
-          onClick={onToggle}
-        >
-          {blnToggleActive ? <ToggleOnRoundedIcon fontSize="small" /> : <ToggleOffRoundedIcon fontSize="small" />}
-        </button>
+        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} />
       ) : null}
     </Box>
   );

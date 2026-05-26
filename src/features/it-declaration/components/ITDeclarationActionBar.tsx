@@ -57,10 +57,10 @@ export default function ITDeclarationActionBar({
 
   return (
     <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-      <Button variant="contained" sx={objContainedPrimarySx} disabled={blnLocked || !blnCanApprove} onClick={fnApproveAll}>Approve All</Button>
-      <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked || !blnCanReject} onClick={fnRejectHeader}>Reject</Button>
-      <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked || !blnCanRelease} onClick={fnRelease}>Release</Button>
-      <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked || !blnCanLock} onClick={fnLock}>Lock</Button>
+      {blnCanApprove ? <Button variant="contained" sx={objContainedPrimarySx} disabled={blnLocked} onClick={fnApproveAll}>Approve All</Button> : null}
+      {blnCanReject ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRejectHeader}>Reject</Button> : null}
+      {blnCanRelease ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRelease}>Release</Button> : null}
+      {blnCanLock ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnLock}>Lock</Button> : null}
     </Stack>
   );
 }

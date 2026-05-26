@@ -15,7 +15,7 @@ import type { PayrollResultListRecord } from "@/features/payroll/types";
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Approved" | "Published" | "Paid";
+  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
@@ -51,6 +51,10 @@ function toCsvValue(objValue: unknown) {
   return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
 }
 
+function displayValue(strValue: string | null | undefined) {
+  return strValue?.trim() || "-";
+}
+
 function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
   const lstHeaders = [
     "Employee Code",
@@ -69,9 +73,9 @@ function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
         dicRow.strEmployeeCode,
         dicRow.strEmployeeName,
         dicRow.dtPayrollMonth ?? "",
-        "",
-        "",
-        "",
+        dicRow.strBankName ?? "",
+        dicRow.strBankAccountMasked ?? "",
+        dicRow.strIfscCode ?? "",
         dicRow.decNetPayAmount,
         dicRow.strStatus === "Paid" ? "Paid" : "Payment Required",
       ].map(toCsvValue).join(",")
@@ -96,9 +100,9 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
       <td>${dicRow.strEmployeeCode}</td>
       <td>${dicRow.strEmployeeName}</td>
       <td>${formatMonth(dicRow.dtPayrollMonth)}</td>
-      <td>-</td>
-      <td>-</td>
-      <td>-</td>
+      <td>${displayValue(dicRow.strBankName)}</td>
+      <td>${displayValue(dicRow.strBankAccountMasked)}</td>
+      <td>${displayValue(dicRow.strIfscCode)}</td>
       <td>${formatCurrency(dicRow.decNetPayAmount)}</td>
       <td>${dicRow.strStatus === "Paid" ? "Paid" : "Payment Required"}</td>
     </tr>
@@ -199,7 +203,10 @@ export default function BankFileReportPage() {
         dicRow.strRunName.toLowerCase().includes(strRunSearch);
       const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
       const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
-      const blnStatusMatch = dicSearchApplied.strStatus === "All" || dicRow.strStatus === dicSearchApplied.strStatus;
+      const blnStatusMatch =
+        dicSearchApplied.strStatus === "All" ||
+        dicSearchApplied.strStatus === "Approved" ||
+        dicRow.strStatus === dicSearchApplied.strStatus;
       return blnEmployeeMatch && blnRunMatch && blnMonthMatch && blnYearMatch && blnStatusMatch && dicRow.decNetPayAmount > 0;
     });
   }, [dicSearchApplied, lstRows]);
@@ -277,6 +284,7 @@ export default function BankFileReportPage() {
           <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth />
           <TextField select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
             <MenuItem value="All">Eligible statuses</MenuItem>
+            <MenuItem value="Calculated">Calculated</MenuItem>
             <MenuItem value="Approved">Approved</MenuItem>
             <MenuItem value="Published">Published</MenuItem>
             <MenuItem value="Paid">Paid</MenuItem>
@@ -290,9 +298,6 @@ export default function BankFileReportPage() {
 
       <Box className={styles.tableCard}>
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Bank file view access is not available for your user group.</Alert> : null}
-        <Alert severity="info" sx={{ mb: 1.5 }}>
-          Bank name, account number, and IFSC/routing code are not present on the existing payroll result API. The generated CSV keeps those columns blank until a backend bank-file endpoint joins employee bank details.
-        </Alert>
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
@@ -347,9 +352,9 @@ export default function BankFileReportPage() {
                   <td>{dicRow.strEmployeeCode}</td>
                   <td>{dicRow.strEmployeeName}</td>
                   <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
-                  <td>-</td>
-                  <td>-</td>
-                  <td>-</td>
+                  <td>{displayValue(dicRow.strBankName)}</td>
+                  <td>{displayValue(dicRow.strBankAccountMasked)}</td>
+                  <td>{displayValue(dicRow.strIfscCode)}</td>
                   <td>{formatCurrency(dicRow.decNetPayAmount)}</td>
                   <td>{dicRow.strStatus === "Paid" ? "Paid" : "Payment Required"}</td>
                 </tr>
@@ -375,6 +380,7 @@ export default function BankFileReportPage() {
             <TextField label="Location" value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} fullWidth />
             <TextField label="Status" select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
               <MenuItem value="All">Eligible statuses</MenuItem>
+              <MenuItem value="Calculated">Calculated</MenuItem>
               <MenuItem value="Approved">Approved</MenuItem>
               <MenuItem value="Published">Published</MenuItem>
               <MenuItem value="Paid">Paid</MenuItem>
