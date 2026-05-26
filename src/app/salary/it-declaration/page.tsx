@@ -9,6 +9,7 @@ import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalance
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Autocomplete,
   Alert,
@@ -123,6 +124,10 @@ function getFallbackInvestmentOptions(strSection: string) {
 
 function formatCurrency(decValue: number) {
   return `INR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(decValue || 0)}`;
+}
+
+function formatPercent(decValue: number) {
+  return `${decValue.toFixed(2)}%`;
 }
 
 function formatAmountInput(strValue: string) {
@@ -333,6 +338,7 @@ export default function SalaryEssDeclarationsPage() {
   const [blnRegimeModalOpen, setBlnRegimeModalOpen] = useState(false);
   const [strRegimeDraft, setStrRegimeDraft] = useState<Regime>("Old Regime");
   const [blnCompareModalOpen, setBlnCompareModalOpen] = useState(false);
+  const [blnTaxCalcInfoOpen, setBlnTaxCalcInfoOpen] = useState(false);
   const [blnSubmitModalOpen, setBlnSubmitModalOpen] = useState(false);
   const [blnDeclarationConfirm, setBlnDeclarationConfirm] = useState(false);
   const [blnSubmitModalLoading, setBlnSubmitModalLoading] = useState(false);
@@ -361,7 +367,7 @@ export default function SalaryEssDeclarationsPage() {
 
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
-  const blnHideActionButtons = ["approved", "locked"].includes(strDeclarationStatusNormalized);
+  const blnHideActionButtons = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
   const blnDraftLikeActionsAllowed = ["draft", "released", "rejected", "resubmitted"].includes(strDeclarationStatusNormalized);
   const blnCopyAllowedBeforeCreateOnly = !intDeclarationID;
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
@@ -475,12 +481,16 @@ export default function SalaryEssDeclarationsPage() {
       const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
       const decSavingsAbs = Math.abs(decOld - decNew);
       const strRecommended = decOld === decNew ? "Either Regime" : decOld < decNew ? "Old Regime" : "New Regime";
+      const decTaxableOldFromSummary = Math.max(0, objTaxSummary.decTaxableIncome || 0);
+      const decExemptionsFromTaxableDelta = Math.max(0, decGross - decTaxableOldFromSummary);
+      const decExemptionsFromApi = Math.max(0, objTaxSummary.decExemptions || 0);
+      const decEffectiveExemptions = decExemptionsFromApi > 0 ? decExemptionsFromApi : decExemptionsFromTaxableDelta;
       return {
         blnPreviewOnly: false,
         blnRuleBasedFallback: false,
         decGrossSalary: decGross,
-        decExemptions: Math.max(0, objTaxSummary.decExemptions || 0),
-        decTaxableOld: Math.max(0, objTaxSummary.decTaxableIncome || 0),
+        decExemptions: decEffectiveExemptions,
+        decTaxableOld: decTaxableOldFromSummary,
         decTaxableNew: Math.max(0, decGross),
         decOldTax: decOld,
         decNewTax: decNew,
@@ -511,6 +521,8 @@ export default function SalaryEssDeclarationsPage() {
   }, [blnUseSummaryAsTruth, objTaxSummary, lstRows]);
   const strRecommendedRegimeSelectable: Regime =
     objDerivedCalc.strRecommendedRegime === "New Regime" ? "New Regime" : "Old Regime";
+  const decOldEffectiveRate = objDerivedCalc.decTaxableOld > 0 ? (objDerivedCalc.decOldTax / objDerivedCalc.decTaxableOld) * 100 : 0;
+  const decNewEffectiveRate = objDerivedCalc.decTaxableNew > 0 ? (objDerivedCalc.decNewTax / objDerivedCalc.decTaxableNew) * 100 : 0;
   const intActiveStep = useMemo(() => {
     if (strFlowStatus === "NOT_STARTED") return 0;
     if (strFlowStatus === "REGIME_SELECTED") return 1;
@@ -981,25 +993,6 @@ export default function SalaryEssDeclarationsPage() {
     }
   }
 
-  async function withdrawDeclaration() {
-    if (!blnLocked || !intDeclarationID) return;
-    setBlnSaving(true);
-    setStrSavingLabel("Withdrawing declaration...");
-    setStrError("");
-    try {
-      const objData = await itDeclarationService.withdrawDeclaration(intDeclarationID);
-      hydrateFromApi(objData);
-      setBlnDeclarationConfirm(false);
-      setBlnDraftSaved(true);
-      setStrSuccessToast("Declaration withdrawn successfully.");
-    } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to withdraw declaration."));
-    } finally {
-      setBlnSaving(false);
-      setStrSavingLabel("Saving...");
-    }
-  }
-
   async function copyPreviousFinancialYear() {
     if (blnLocked) return;
     setBlnSaving(true);
@@ -1135,11 +1128,6 @@ export default function SalaryEssDeclarationsPage() {
                   <Button variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     Submit Declaration
                   </Button>
-                  {blnLocked ? (
-                    <Button variant="outlined" size="small" onClick={() => void withdrawDeclaration()} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" } }}>
-                      Withdraw Declaration
-                    </Button>
-                  ) : null}
                 </>
               ) : null}
             </Stack>
@@ -1276,7 +1264,14 @@ export default function SalaryEssDeclarationsPage() {
 
         <Grid item xs={12} lg={4}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%" }}>
-            <Typography sx={{ fontWeight: 800, mb: 1, fontSize: "0.95rem" }}>Tax Summary (Live)</Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>Tax Summary (Live)</Typography>
+              <Tooltip title="View detailed tax calculation">
+                <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
+                  <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
             <Stack spacing={0.72}>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Gross Salary</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Total Exemptions</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
@@ -1495,7 +1490,16 @@ export default function SalaryEssDeclarationsPage() {
       </Dialog>
 
       <Dialog open={blnCompareModalOpen} onClose={() => setBlnCompareModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Compare Tax</DialogTitle>
+        <DialogTitle sx={{ py: 1, px: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography sx={{ fontWeight: 800 }}>Compare Tax</Typography>
+            <Tooltip title="View detailed tax calculation">
+              <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
+                <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.1}>
             <TableContainer sx={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
@@ -1543,6 +1547,109 @@ export default function SalaryEssDeclarationsPage() {
         <DialogActions>
           <Button onClick={() => setBlnCompareModalOpen(false)}>Back</Button>
           <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>Continue to Submit</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={blnTaxCalcInfoOpen} onClose={() => setBlnTaxCalcInfoOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ py: 1.1 }}>Tax Calculation Details</DialogTitle>
+        <DialogContent sx={{ pt: "10px !important" }}>
+          <Stack spacing={1}>
+            <Alert severity="info" sx={{ borderRadius: "8px" }}>
+              <Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>
+                Old Regime taxable income is reduced by eligible exemptions. New Regime uses gross salary in this summary view.
+              </Typography>
+              {objDerivedCalc.blnPreviewOnly ? (
+                <Typography sx={{ fontSize: "0.76rem", mt: 0.25 }}>
+                  Showing estimated values based on current saved/unsaved declaration inputs.
+                </Typography>
+              ) : null}
+            </Alert>
+            <Grid container spacing={0.8}>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 0.85, borderRadius: "8px", border: "1px solid #bfdbfe", background: "linear-gradient(140deg, #eff6ff 0%, #f8fbff 100%)", height: "100%" }}>
+                  <Stack spacing={0.22}>
+                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#1e3a8a" }}>Formula Guide</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>A = Gross Salary</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>B = Eligible Exemptions considered for that regime</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>Taxable Income = A - B</Typography>
+                    <Typography sx={{ fontSize: "0.73rem", color: "#475569", mt: 0.1 }}>
+                      In this view, declaration-based exemptions are applied to Old Regime. For New Regime, B is shown as 0.
+                    </Typography>
+                  </Stack>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 0.85, borderRadius: "8px", border: "1px solid #bbf7d0", background: "linear-gradient(140deg, #f0fdf4 0%, #f8fff8 100%)", height: "100%" }}>
+                  <Stack spacing={0.22}>
+                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#166534" }}>Tax Amount Formula Flow</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>C = Taxable Income (A - B)</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>D = Estimated Tax (from regime slab rules in payroll tax engine)</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>Effective Tax Rate = D / C</Typography>
+                <Typography sx={{ fontSize: "0.73rem", color: "#475569", mt: 0.1 }}>
+                  Old: {formatPercent(decOldEffectiveRate)} | New: {formatPercent(decNewEffectiveRate)}
+                </Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>
+                  Old rate = {formatCurrency(objDerivedCalc.decOldTax)} / {formatCurrency(objDerivedCalc.decTaxableOld)} × 100 = {formatPercent(decOldEffectiveRate)}
+                </Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>
+                  New rate = {formatCurrency(objDerivedCalc.decNewTax)} / {formatCurrency(objDerivedCalc.decTaxableNew)} × 100 = {formatPercent(decNewEffectiveRate)}
+                </Typography>
+                <Typography sx={{ fontSize: "0.73rem", color: "#475569" }}>
+                  Estimated Savings = |Estimated Tax (Old) - Estimated Tax (New)|
+                </Typography>
+                  </Stack>
+                </Paper>
+              </Grid>
+            </Grid>
+            <TableContainer sx={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <Table size="small">
+                <TableHead sx={{ backgroundColor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Calculation Step</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Old Regime</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>New Regime</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Gross Salary (A)</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decGrossSalary)}</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decGrossSalary)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Total Declared Amount</TableCell>
+                    <TableCell>{formatCurrency(decDeclaredTotal)}</TableCell>
+                    <TableCell>{formatCurrency(decDeclaredTotal)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Eligible Exemptions (B)</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decExemptions)}</TableCell>
+                    <TableCell>{formatCurrency(0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Taxable Income (A - B)</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decTaxableOld)}</TableCell>
+                    <TableCell>{formatCurrency(objDerivedCalc.decTaxableNew)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Estimated Tax</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{formatCurrency(objDerivedCalc.decOldTax)}</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{formatCurrency(objDerivedCalc.decNewTax)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Estimated Savings</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: "#166534" }}>{formatCurrency(objDerivedCalc.decSavings)}</TableCell>
+                    <TableCell sx={{ color: "#64748b" }}>
+                      {objDerivedCalc.strRecommendedRegime === "Either Regime" ? "No difference" : `${objDerivedCalc.strRecommendedRegime} recommended`}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBlnTaxCalcInfoOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 

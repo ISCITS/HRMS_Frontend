@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { itDeclarationService, type ItDeclarationDashboardCardDto, type ItDeclarationRegime } from "@/features/it-declaration/services/itDeclarationService";
+import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 
@@ -30,6 +31,11 @@ function getCurrentFinancialYearCode() {
   return `${intFyStartYear}-${intFyStartYear + 1}`;
 }
 
+function canEditDeclarationByStatus(strStatus?: string | null) {
+  const strNormalized = String(strStatus || "").trim().toLowerCase();
+  return ["draft", "released", "rejected", "resubmitted"].includes(strNormalized);
+}
+
 export default function SalaryEssDeclarationsPage() {
   const objRouter = useRouter();
   const [blnLoading, setBlnLoading] = useState(true);
@@ -45,18 +51,62 @@ export default function SalaryEssDeclarationsPage() {
   const [strSearchStatus, setStrSearchStatus] = useState("All");
   const [dicAppliedFilters, setDicAppliedFilters] = useState({ fy: "", regime: "", status: "All" });
 
+  function mapDeclarationToDashboardCard(objDeclaration: Awaited<ReturnType<typeof itDeclarationService.getDeclaration>>, strFallbackFy: string): ItDeclarationDashboardCardDto | null {
+    if (!objDeclaration?.intDeclarationID) return null;
+    const decDeclaredAmount = (objDeclaration.lstItems || []).reduce(
+      (decTotal, objItem) => decTotal + Number(objItem.decDeclaredAmount || 0),
+      0,
+    );
+    const strStatus = String(objDeclaration.strDeclarationStatus || "draft").toLowerCase();
+    return {
+      intDeclarationID: objDeclaration.intDeclarationID,
+      strFinancialYearCode: objDeclaration.strFinancialYearCode || strFallbackFy,
+      strTaxRegime: objDeclaration.strSelectedRegime || "Old Regime",
+      strStatus,
+      decDeclaredAmount,
+      decApprovedAmount: 0,
+      strLastUpdated: objDeclaration.strLastUpdated || null,
+      blnReadOnly: !["draft", "released", "resubmitted"].includes(strStatus),
+      strPrimaryAction: ["draft", "released", "resubmitted"].includes(strStatus) ? "continue" : "view",
+    };
+  }
+
   async function loadDashboard() {
     setBlnLoading(true);
     setStrError("");
     try {
       const objData = await itDeclarationService.getDashboard();
-      const lstDashboardRows = objData.lstDeclarations || [];
-      setStrCurrentFy(objData.strCurrentFinancialYearCode || "");
-      if (lstDashboardRows.length > 0) {
-        setLstRows(lstDashboardRows);
-        return;
+      const strResolvedCurrentFy = objData.strCurrentFinancialYearCode || getCurrentFinancialYearCode();
+      setStrCurrentFy(strResolvedCurrentFy);
+
+      const intStartYear = Number(strResolvedCurrentFy.split("-")[0] || new Date().getFullYear());
+      const lstFyFromDashboard = (objData.lstDeclarations || [])
+        .map((objRow) => String(objRow.strFinancialYearCode || "").trim())
+        .filter(Boolean);
+      const lstFyCandidates = Array.from(new Set<string>([
+        ...lstFyFromDashboard,
+        strResolvedCurrentFy,
+        `${intStartYear - 1}-${intStartYear}`,
+        `${intStartYear - 2}-${intStartYear - 1}`,
+      ]));
+
+      const lstDeclarations = await Promise.allSettled(
+        lstFyCandidates.map((strFy) => itDeclarationService.getDeclaration(strFy))
+      );
+      const lstRecovered: ItDeclarationDashboardCardDto[] = [];
+      for (let intIndex = 0; intIndex < lstDeclarations.length; intIndex += 1) {
+        const objResult = lstDeclarations[intIndex];
+        if (objResult.status !== "fulfilled") continue;
+        const objCard = mapDeclarationToDashboardCard(objResult.value, lstFyCandidates[intIndex]);
+        if (objCard) lstRecovered.push(objCard);
       }
-      throw new Error("Dashboard returned empty declaration list.");
+
+      const dicByKey = new Map<string, ItDeclarationDashboardCardDto>();
+      for (const objRow of lstRecovered) {
+        dicByKey.set(`${objRow.intDeclarationID}-${objRow.strFinancialYearCode}`, objRow);
+      }
+      setLstRows(Array.from(dicByKey.values()).sort((a, b) => b.strFinancialYearCode.localeCompare(a.strFinancialYearCode)));
+      return;
     } catch (objError) {
       const strFallbackFy = getCurrentFinancialYearCode();
       setStrCurrentFy(strFallbackFy);
@@ -72,23 +122,10 @@ export default function SalaryEssDeclarationsPage() {
         for (const strFy of lstFyCandidates) {
           try {
             const objLegacy = await itDeclarationService.getDeclaration(strFy);
-            if (!objLegacy?.intDeclarationID) continue;
-            const decDeclaredAmount = (objLegacy.lstItems || []).reduce(
-              (decTotal, objItem) => decTotal + Number(objItem.decDeclaredAmount || 0),
-              0,
-            );
-            const strStatus = String(objLegacy.strDeclarationStatus || "draft").toLowerCase();
-            lstRecovered.push({
-              intDeclarationID: objLegacy.intDeclarationID,
-              strFinancialYearCode: objLegacy.strFinancialYearCode || strFy,
-              strTaxRegime: objLegacy.strSelectedRegime || "Old Regime",
-              strStatus,
-              decDeclaredAmount,
-              decApprovedAmount: 0,
-              strLastUpdated: objLegacy.strLastUpdated || null,
-              blnReadOnly: !["draft", "released", "resubmitted"].includes(strStatus),
-              strPrimaryAction: ["draft", "released", "resubmitted"].includes(strStatus) ? "continue" : "view",
-            });
+            const objCard = mapDeclarationToDashboardCard(objLegacy, strFy);
+            if (objCard) {
+              lstRecovered.push(objCard);
+            }
           } catch {
             // Ignore missing FY declarations.
           }
@@ -200,9 +237,7 @@ export default function SalaryEssDeclarationsPage() {
       fy: objRow.strFinancialYearCode,
       regime: objRow.strTaxRegime,
       status: (
-        <Typography sx={{ fontSize: "0.78rem", textTransform: "capitalize", fontWeight: 700, color: "#0f172a" }}>
-          {objRow.strStatus}
-        </Typography>
+        <ITDeclarationStatusBadge strStatus={String(objRow.strStatus || "draft")} />
       ),
       declared: formatCurrency(objRow.decDeclaredAmount),
       approved: formatCurrency(objRow.decApprovedAmount),
@@ -210,7 +245,7 @@ export default function SalaryEssDeclarationsPage() {
       action: (
         <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
           <Button size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            {objRow.blnReadOnly ? "View" : "Continue"}
+            {canEditDeclarationByStatus(objRow.strStatus) ? "Continue" : "View"}
           </Button>
           <Button size="small" variant="text" onClick={() => void openCompare(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
             Compare Tax
