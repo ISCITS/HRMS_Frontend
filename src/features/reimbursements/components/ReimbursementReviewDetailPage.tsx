@@ -1,7 +1,7 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,6 +15,8 @@ import { formatDateLabel } from "@/features/reimbursements/formatters";
 import { isHrReimbursementTerminal } from "@/features/reimbursements/hrRules";
 import { payrollReimbursementService, type ReimbursementAuditRecord } from "@/features/reimbursements/services/payrollReimbursementService";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
+import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
+import type { PayrollRunOption } from "@/features/payroll/types";
 import type { ReimbursementClaimDto, ReimbursementClaimItemDto, ReimbursementOptionsDto } from "@/features/reimbursements/types";
 
 type DialogAction =
@@ -44,12 +46,19 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   const [strSuccess, setStrSuccess] = useState("");
   const [strRemarks, setStrRemarks] = useState("");
   const [strPayrollRunID, setStrPayrollRunID] = useState("");
+  const [strDialogError, setStrDialogError] = useState("");
+  const [lstPayrollRuns, setLstPayrollRuns] = useState<PayrollRunOption[]>([]);
+  const [blnPayrollRunsLoading, setBlnPayrollRunsLoading] = useState(false);
   const [blnConfirmed, setBlnConfirmed] = useState(false);
   const [strDialogAction, setStrDialogAction] = useState<DialogAction>(null);
   const [objSelectedItem, setObjSelectedItem] = useState<ReimbursementClaimItemDto | null>(null);
   const [intSelectedProofID, setIntSelectedProofID] = useState<number | null>(null);
 
   const blnActionsDisabled = !objClaim || isHrReimbursementTerminal(objClaim.strClaimStatus) || blnBusy;
+  const lstEditablePayrollRuns = useMemo(
+    () => lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked),
+    [lstPayrollRuns]
+  );
 
   async function loadDetail() {
     // Purpose: Loads claim, option labels, and audit rows needed by the HR review workspace.
@@ -85,15 +94,42 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrDialogAction(strAction);
     setObjSelectedItem(objItem ?? null);
     setIntSelectedProofID(intProofID ?? null);
+    setStrDialogError("");
     setStrRemarks("");
     setStrPayrollRunID("");
     setBlnConfirmed(false);
+    if (strAction === "push_payroll") {
+      void loadPayrollRunOptions();
+    }
+  }
+
+  async function loadPayrollRunOptions() {
+    setBlnPayrollRunsLoading(true);
+    setStrDialogError("");
+    try {
+      const objFormOptions = await employeePayrollInputService.getFormOptions();
+      const lstEditableRuns = objFormOptions.lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked);
+      setLstPayrollRuns(objFormOptions.lstPayrollRuns);
+      const objClaimRun = lstEditableRuns.find((objRun) => objRun.intID === objClaim?.intPayrollRunID);
+      const objDefaultRun = objClaimRun ?? lstEditableRuns[0] ?? null;
+      setStrPayrollRunID(objDefaultRun ? String(objDefaultRun.intID) : "");
+      if (!objDefaultRun) {
+        setStrDialogError("No Open or Submitted unlocked payroll run is available. Please open or submit an unlocked payroll run before pushing this reimbursement.");
+      }
+    } catch (objError) {
+      setStrDialogError(getErrorMessage(objError));
+      setLstPayrollRuns([]);
+      setStrPayrollRunID("");
+    } finally {
+      setBlnPayrollRunsLoading(false);
+    }
   }
 
   function closeDialog() {
     setStrDialogAction(null);
     setObjSelectedItem(null);
     setIntSelectedProofID(null);
+    setStrDialogError("");
     setStrRemarks("");
     setStrPayrollRunID("");
     setBlnConfirmed(false);
@@ -110,7 +146,12 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       setStrSuccess(strMessage);
       closeDialog();
     } catch (objError) {
-      setStrError(getErrorMessage(objError));
+      const strMessage = getErrorMessage(objError);
+      if (strDialogAction) {
+        setStrDialogError(strMessage);
+      } else {
+        setStrError(strMessage);
+      }
     } finally {
       setBlnBusy(false);
     }
@@ -147,13 +188,18 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   async function submitDialogAction() {
     // Purpose: Submits the selected dialog action after required reason/confirmation checks.
     if (!objClaim || !strDialogAction) return;
+    setStrDialogError("");
     const strCleanRemarks = strRemarks.trim();
     if (["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction) && !strCleanRemarks) {
-      setStrError("Reason is required for this action.");
+      setStrDialogError("Reason is required for this action.");
       return;
     }
     if (strDialogAction === "push_payroll" && !blnConfirmed) {
-      setStrError("Confirm payroll push before continuing.");
+      setStrDialogError("Confirm payroll push before continuing.");
+      return;
+    }
+    if (strDialogAction === "push_payroll" && !strPayrollRunID) {
+      setStrDialogError("Select an Open or Submitted unlocked payroll run before continuing.");
       return;
     }
     if (strDialogAction === "approve_claim") await runAction(() => payrollReimbursementService.approveClaim(objClaim.intID, { strRemarks: strCleanRemarks || null }), "Claim approved.");
@@ -233,9 +279,25 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
         <DialogTitle>{strDialogTitle}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
+            {strDialogError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strDialogError}</Alert> : null}
             {strDialogAction === "push_payroll" ? (
               <>
-                <TextField size="small" label="Target payroll run ID" value={strPayrollRunID} onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value.replace(/[^\d]/g, ""))} helperText="Leave blank to use claim payroll run when already assigned." />
+                <TextField
+                  select
+                  size="small"
+                  label="Target payroll run"
+                  value={strPayrollRunID}
+                  onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value)}
+                  disabled={blnPayrollRunsLoading || lstEditablePayrollRuns.length === 0}
+                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Open or Submitted unlocked runs are listed."}
+                >
+                  <MenuItem value="" disabled>Select payroll run</MenuItem>
+                  {lstEditablePayrollRuns.map((objRun) => (
+                    <MenuItem key={objRun.intID} value={String(objRun.intID)}>
+                      {objRun.strLabel || objRun.strCode} ({objRun.strStatus})
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} />} label="I confirm this reimbursement should be pushed to payroll input." />
               </>
             ) : null}
@@ -244,7 +306,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy}>Continue</Button>
+          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy || blnPayrollRunsLoading}>Continue</Button>
         </DialogActions>
       </Dialog>
     </Stack>
