@@ -13,8 +13,10 @@ import { formatCurrency, formatDateLabel } from "@/features/reimbursements/forma
 import { claimHasProofPending } from "@/features/reimbursements/hrRules";
 import { createInitialPayrollReimbursementFilters, payrollReimbursementService, type PayrollReimbursementFilters } from "@/features/reimbursements/services/payrollReimbursementService";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved", "partially_approved", "rejected", "released", "locked", "pushed_to_payroll", "paid"];
+const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to load reimbursement review queue.";
@@ -22,12 +24,20 @@ function getErrorMessage(objError: unknown) {
 
 export default function ReimbursementReviewListPage() {
   const objRouter = useRouter();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
   const [dicFilters, setDicFilters] = useState<PayrollReimbursementFilters>(createInitialPayrollReimbursementFilters());
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
 
   async function loadClaims(dicNextFilters = dicFilters) {
+    if (!blnCanView) {
+      setLstClaims([]);
+      setBlnLoading(false);
+      return;
+    }
+
     // Purpose: Loads the HR reimbursement queue using API-backed filters, then applies UI-only filters locally.
     setBlnLoading(true);
     setStrError("");
@@ -41,8 +51,12 @@ export default function ReimbursementReviewListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     void loadClaims();
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredClaims = useMemo(() => {
     const strSearch = dicFilters.strSearchText.trim().toLowerCase();
@@ -102,10 +116,18 @@ export default function ReimbursementReviewListPage() {
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading} strLabel="Loading reimbursement review queue..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement review queue..." />
 
-      <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+      {!blnCanView ? (
+        <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Reimbursement review access is not available for your user group.</Typography>
+          <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need reimbursement review visibility.</Typography>
+        </Paper>
+      ) : null}
+
+      {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 860 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
@@ -142,7 +164,7 @@ export default function ReimbursementReviewListPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Paper> : null}
     </Stack>
   );
 }

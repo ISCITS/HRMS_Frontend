@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import {
   createInitialStatutoryRuleForm,
   statutoryRuleService,
@@ -32,6 +33,8 @@ type StatutoryRuleEditorPageProps = {
   intRuleID?: number;
 };
 
+const lstStatutoryRuleModuleCodes = ["STATUTORY_RULE", "STATUTORY_RULES", "PAYROLL_STATUTORY_RULE", "PAYROLL_STATUTORY_RULES"];
+
 export default function StatutoryRuleEditorPage({
   strMode,
   intRuleID,
@@ -39,6 +42,7 @@ export default function StatutoryRuleEditorPage({
   const objRouter = useRouter();
   const { t } = useModuleLabels("statutory-rules");
   const { t: tCommon } = useModuleLabels("common");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstStatutoryRuleModuleCodes);
   const [dicForm, setDicForm] = useState<StatutoryRuleFormValues>(
     createInitialStatutoryRuleForm()
   );
@@ -46,8 +50,18 @@ export default function StatutoryRuleEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnFieldDisabled = blnSaving || blnRightsLoading || !blnCanSave;
 
   useEffect(() => {
+    if (blnRightsLoading || (strMode === "edit" && !blnCanView && !blnCanEdit)) {
+      setBlnLoading(false);
+      return;
+    }
+
     let blnMounted = true;
 
     async function loadRule() {
@@ -81,7 +95,7 @@ export default function StatutoryRuleEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [intRuleID, strMode]);
+  }, [intRuleID, strMode, blnRightsLoading, blnCanView, blnCanEdit]);
 
   function updateField<TKey extends keyof StatutoryRuleFormValues>(
     strField: TKey,
@@ -117,6 +131,10 @@ export default function StatutoryRuleEditorPage({
   }
 
   async function saveRule() {
+    if (!blnCanSave) {
+      return;
+    }
+
     const strValidationError = validateForm();
     if (strValidationError) {
       setStrError(strValidationError);
@@ -148,7 +166,7 @@ export default function StatutoryRuleEditorPage({
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_rule", "Loading statutory rule...")} />;
   }
 
@@ -202,19 +220,21 @@ export default function StatutoryRuleEditorPage({
               >
                 {t("back_to_list", "Back to List")}
               </Button>
-              <Button
+              {blnCanSave ? <Button
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRule}
                 disabled={blnSaving}
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button>
+              </Button> : null}
             </Stack>
           </Stack>
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {!blnCanSave ? <Alert severity="warning">{t("save_access_denied", "Statutory rule save access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
@@ -242,7 +262,7 @@ export default function StatutoryRuleEditorPage({
               value={dicForm.strRuleCode}
               onChange={(objEvent) => updateField("strRuleCode", objEvent.target.value)}
               placeholder="pf_employee_rate"
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
             <TextField
@@ -250,7 +270,7 @@ export default function StatutoryRuleEditorPage({
               label={t("scope", "Scope")}
               value={dicForm.strScopeType}
               onChange={(objEvent) => updateField("strScopeType", objEvent.target.value as StatutoryRuleFormValues["strScopeType"])}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             >
               <MenuItem value="tenant">{t("scope_tenant", "Tenant-wide")}</MenuItem>
@@ -261,7 +281,7 @@ export default function StatutoryRuleEditorPage({
               label={t("effective_from", "Effective From")}
               value={dicForm.dtEffectiveFrom}
               onChange={(objEvent) => updateField("dtEffectiveFrom", objEvent.target.value)}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -270,7 +290,7 @@ export default function StatutoryRuleEditorPage({
               value={dicForm.strRuleValue}
               onChange={(objEvent) => updateField("strRuleValue", objEvent.target.value)}
               placeholder="12.00"
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
           </Box>
@@ -299,7 +319,7 @@ export default function StatutoryRuleEditorPage({
               value={dicForm.strRuleConfig}
               onChange={(objEvent) => updateField("strRuleConfig", objEvent.target.value)}
               placeholder={`{\n  "cap": 15000,\n  "rounding": "nearest"\n}`}
-              disabled={blnSaving}
+              disabled={blnFieldDisabled}
               fullWidth
             />
           </Box>
@@ -309,7 +329,7 @@ export default function StatutoryRuleEditorPage({
               <Switch
                 checked={dicForm.blnIsActive}
                 onChange={(_, blnChecked) => updateField("blnIsActive", blnChecked)}
-                disabled={blnSaving}
+                disabled={blnFieldDisabled}
               />
             }
             label={t("status_active", "Active")}

@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -719,25 +720,6 @@ export default function BankMasterPanel() {
     });
   }
 
-  function toggleBankStatus(strBankId: string) {
-    const objBank = lstBanks.find((dicItem) => dicItem.id === strBankId);
-    if (!objBank) {
-      return;
-    }
-    const strNextStatus = objBank.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicBankLabels.confirmActivateTitle : dicBankLabels.confirmDeactivateTitle,
-      strMessage: (strNextStatus === "Active" ? dicBankLabels.confirmActivateMessage : dicBankLabels.confirmDeactivateMessage)
-        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkBankStatus([Number(strBankId)], strNextStatus === "Active");
-        await loadBanks();
-        showToast(strNextStatus === "Active" ? dicBankLabels.activateSuccess : dicBankLabels.deactivateSuccess);
-      }
-    });
-  }
-
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
@@ -845,7 +827,7 @@ export default function BankMasterPanel() {
                 return (
                   <tr key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} /></td>
-                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicBank.status === "Active"} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} onToggle={() => toggleBankStatus(dicBank.id)} /></td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
                     <td>{dicBank.name}</td>
                     <td>{dicBank.code}</td>
                     <td><span className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -1019,7 +1001,7 @@ export default function BankMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicBankLabels.fieldIsActive}</Typography>
-              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }

@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
@@ -52,6 +53,8 @@ import {
 type PayrollRunDetailPageProps = {
   intRunID: number;
 };
+
+const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -141,6 +144,7 @@ export default function PayrollRunDetailPage({
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
   const { t: tCommon } = useModuleLabels("common");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollRunModuleCodes);
   const [objRun, setObjRun] = useState<PayrollRunDetailRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -161,8 +165,21 @@ export default function PayrollRunDetailPage({
     useState<PayslipPreviewRecord | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanValidate = canDoAny("validate") || canDoAny("submit");
+  const blnCanProcess = canDoAny("process") || canDoAny("approve");
+  const blnCanReprocess = canDoAny("reprocess") || canDoAny("edit");
+  const blnCanClose = canDoAny("close") || canDoAny("lock");
+  const blnCanGeneratePayslip = canDoAny("add") || canDoAny("edit") || canDoAny("process");
+  const blnCanExport = canDoAny("export");
 
   async function loadRun(blnShowLoader = true) {
+    if (!blnCanView) {
+      setBlnLoading(false);
+      return;
+    }
+
     if (blnShowLoader) {
       setBlnLoading(true);
     }
@@ -191,8 +208,12 @@ export default function PayrollRunDetailPage({
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     loadRun().catch(() => undefined);
-  }, [intRunID]);
+  }, [intRunID, blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     let blnMounted = true;
@@ -210,6 +231,10 @@ export default function PayrollRunDetailPage({
   }, []);
 
   async function saveStatus() {
+    if (!blnCanEdit) {
+      return;
+    }
+
     if (strScopeType === "SelectedEmployee" && !intScopedEmployeeID) {
       setStrError(t("scoped_employee_required", "Employee is required for selected employee payroll run."));
       return;
@@ -239,6 +264,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function validateRun() {
+    if (!blnCanValidate) {
+      return;
+    }
+
     setBlnSaving(true);
     setStrError("");
     setStrSuccess("");
@@ -258,6 +287,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function processRun() {
+    if (!blnCanProcess) {
+      return;
+    }
+
     setBlnSaving(true);
     setStrError("");
     setStrSuccess("");
@@ -287,6 +320,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function reprocessRun() {
+    if (!blnCanReprocess) {
+      return;
+    }
+
     const strReason = window.prompt(t("reprocess_reason", "Reason for reprocess"));
     if (!strReason?.trim()) {
       return;
@@ -315,6 +352,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function closeRun() {
+    if (!blnCanClose) {
+      return;
+    }
+
     setBlnSaving(true);
     setStrError("");
     setStrSuccess("");
@@ -342,6 +383,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function generateAllPayslips() {
+    if (!blnCanGeneratePayslip) {
+      return;
+    }
+
     setBlnPayslipLoading(true);
     setStrError("");
     setStrSuccess("");
@@ -364,6 +409,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function generatePayslip(dicRow: PayslipRunListRecord) {
+    if (!blnCanGeneratePayslip) {
+      return null;
+    }
+
     setBlnPayslipLoading(true);
     setStrError("");
     setStrSuccess("");
@@ -405,6 +454,10 @@ export default function PayrollRunDetailPage({
   }
 
   async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean) {
+    if (!blnCanExport) {
+      return;
+    }
+
     setBlnPayslipLoading(true);
     setStrError("");
     try {
@@ -434,8 +487,16 @@ export default function PayrollRunDetailPage({
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_run", "Loading payroll run...")} />;
+  }
+
+  if (!blnCanView) {
+    return (
+      <Box className={styles.page}>
+        <Alert severity="warning">{t("access_denied", "Payroll run access is not available for your user group.")}</Alert>
+      </Box>
+    );
   }
 
   if (!objRun) {
@@ -483,31 +544,31 @@ export default function PayrollRunDetailPage({
           {t("back_to_list", "Back to List")}
         </Button>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <Button
+          {blnCanValidate ? <Button
             className={styles.secondaryButton}
             startIcon={<FactCheckRoundedIcon />}
             onClick={validateRun}
             disabled={blnSaving || objRun.strRunStatus === "Closed"}
           >
             {t("validate", "Validate")}
-          </Button>
-          <Button
+          </Button> : null}
+          {blnCanProcess ? <Button
             className={styles.primaryButton}
             startIcon={<PlayArrowRoundedIcon />}
             onClick={processRun}
             disabled={blnSaving || objRun.strRunStatus !== "Approved"}
           >
             {t("process", "Process")}
-          </Button>
-          <Button
+          </Button> : null}
+          {blnCanReprocess ? <Button
             className={styles.secondaryButton}
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
             disabled={blnSaving || objRun.strRunStatus !== "Processed"}
           >
             {t("reprocess", "Reprocess")}
-          </Button>
-          <Button
+          </Button> : null}
+          {blnCanGeneratePayslip ? <Button
             className={styles.secondaryButton}
             startIcon={<ReceiptLongRoundedIcon />}
             onClick={generateAllPayslips}
@@ -518,7 +579,7 @@ export default function PayrollRunDetailPage({
             }
           >
             {t("generate_payslips", "Generate Payslips")}
-          </Button>
+          </Button> : null}
           <Button
             className={styles.secondaryButton}
             startIcon={<ReceiptLongRoundedIcon />}
@@ -526,7 +587,7 @@ export default function PayrollRunDetailPage({
           >
             {t("view_results", "Results")}
           </Button>
-          <Button
+          {blnCanClose ? <Button
             className={styles.secondaryButton}
             startIcon={<LockRoundedIcon />}
             onClick={closeRun}
@@ -537,7 +598,7 @@ export default function PayrollRunDetailPage({
             }
           >
             {t("close", "Close")}
-          </Button>
+          </Button> : null}
         </Stack>
       </Box>
 
@@ -595,6 +656,7 @@ export default function PayrollRunDetailPage({
           overflow: "visible",
         }}
       >
+        {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
         {blnPayslipLoading ? (
@@ -638,7 +700,7 @@ export default function PayrollRunDetailPage({
                     setIntScopedEmployeeID("");
                   }
                 }}
-                disabled={["Processed", "Closed"].includes(objRun.strRunStatus)}
+                disabled={!blnCanEdit || ["Processed", "Closed"].includes(objRun.strRunStatus)}
                 fullWidth
               >
                 <MenuItem value="All">{t("scope_all", "All employees")}</MenuItem>
@@ -655,6 +717,7 @@ export default function PayrollRunDetailPage({
                 }
                 disabled={
                   strScopeType !== "SelectedEmployee" ||
+                  !blnCanEdit ||
                   ["Processed", "Closed"].includes(objRun.strRunStatus)
                 }
                 fullWidth
@@ -674,6 +737,7 @@ export default function PayrollRunDetailPage({
                   setStrRunStatus(objEvent.target.value as PayrollRunStatus)
                 }
                 fullWidth
+                disabled={!blnCanEdit}
               >
                 <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
                 <MenuItem value="Submitted">{t("status_submitted", "Submitted")}</MenuItem>
@@ -686,16 +750,17 @@ export default function PayrollRunDetailPage({
                 <Switch
                   checked={blnIsLocked}
                   onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
+                  disabled={!blnCanEdit}
                 />
               </Box>
-              <Button
+              {blnCanEdit ? <Button
                 className={styles.primaryButton}
                 onClick={saveStatus}
                 disabled={blnSaving}
                 sx={{ alignSelf: "flex-end" }}
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button>
+              </Button> : null}
             </Stack>
           </Box>
         </Box>
@@ -767,14 +832,14 @@ export default function PayrollRunDetailPage({
               <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>
                 {t("payslip_panel", "Payslips")}
               </Typography>
-              <Button
+              {blnCanGeneratePayslip ? <Button
                 className={styles.secondaryButton}
                 startIcon={<ReceiptLongRoundedIcon />}
                 onClick={generateAllPayslips}
                 disabled={blnPayslipLoading}
               >
                 {t("generate_all", "Generate All")}
-              </Button>
+              </Button> : null}
             </Box>
             <Box className={styles.tableWrap}>
               <table className={styles.table}>
@@ -811,29 +876,29 @@ export default function PayrollRunDetailPage({
                             >
                               {t("view", "View")}
                             </Button>
-                            <Button
+                            {blnCanGeneratePayslip ? <Button
                               className={styles.secondaryButton}
                               onClick={() => generatePayslip(dicRow)}
                               disabled={blnPayslipLoading}
                             >
                               {t("generate", "Generate")}
-                            </Button>
-                            <Button
+                            </Button> : null}
+                            {blnCanExport ? <Button
                               className={styles.secondaryButton}
                               startIcon={<DownloadRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, false)}
                               disabled={blnPayslipLoading}
                             >
                               {t("download", "Download")}
-                            </Button>
-                            <Button
+                            </Button> : null}
+                            {blnCanExport ? <Button
                               className={styles.secondaryButton}
                               startIcon={<PrintRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, true)}
                               disabled={blnPayslipLoading}
                             >
                               {t("print", "Print")}
-                            </Button>
+                            </Button> : null}
                           </Stack>
                         </td>
                       </tr>

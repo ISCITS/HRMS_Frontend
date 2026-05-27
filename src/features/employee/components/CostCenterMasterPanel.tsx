@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -724,25 +725,6 @@ export default function CostCenterMasterPanel() {
     });
   }
 
-  function toggleCostCenterStatus(strCostCenterId: string) {
-    const objCostCenter = lstCostCenters.find((dicItem) => dicItem.id === strCostCenterId);
-    if (!objCostCenter) {
-      return;
-    }
-    const strNextStatus = objCostCenter.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
-      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
-        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkCostCenterStatus([Number(strCostCenterId)], strNextStatus === "Active");
-        await loadCostCenters();
-        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
-      }
-    });
-  }
-
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
@@ -850,7 +832,7 @@ export default function CostCenterMasterPanel() {
                 return (
                   <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} /></td>
-                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicCostCenter.status === "Active"} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} onToggle={() => toggleCostCenterStatus(dicCostCenter.id)} /></td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} /></td>
                     <td>{dicCostCenter.name}</td>
                     <td>{dicCostCenter.code}</td>
                     <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -1024,7 +1006,7 @@ export default function CostCenterMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }

@@ -708,24 +708,6 @@ export default function EssDeclarationCategoryMasterPanel({
     });
   }
 
-  function toggleCategoryStatus(strID: string) {
-    const objRecord = lstCategories.find((dicItem) => dicItem.id === strID);
-    if (!objRecord) {
-      return;
-    }
-    const strNextStatus = objRecord.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicLabels.confirmActivateTitle : dicLabels.confirmDeactivateTitle,
-      strMessage: strNextStatus === "Active" ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
-      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryStatus([Number(strID)], strNextStatus === "Active");
-        await loadCategories();
-        showToast(strNextStatus === "Active" ? dicLabels.activateSuccess : dicLabels.deactivateSuccess);
-      },
-    });
-  }
-
   const strDialogTitle = strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle;
   const blnDialogReadOnly = strMode === "view";
   function renderDialogSection(strTitle: string, strSubtitle: string, nodeContent: ReactNode) {
@@ -1046,7 +1028,7 @@ export default function EssDeclarationCategoryMasterPanel({
                   return (
                     <tr key={dicCategory.id} className={blnSelected ? styles.selectedRow : undefined}>
                       <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCategory.id)} /></td>
-                      <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} onView={() => openDialog("view", dicCategory)} onEdit={() => openDialog("edit", dicCategory)} onDelete={() => deleteCategory(dicCategory.id)} onToggle={() => toggleCategoryStatus(dicCategory.id)} /></td>
+                      <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCategory)} onEdit={() => openDialog("edit", dicCategory)} onDelete={() => deleteCategory(dicCategory.id)} /></td>
                       <td>{dicCategory.name}</td>
                       <td>{dicCategory.code}</td>
                       <td>{dicCategory.declarationKind}</td>

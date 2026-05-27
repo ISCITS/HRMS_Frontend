@@ -18,6 +18,7 @@ import { reimbursementService } from "@/features/reimbursements/services/reimbur
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import type { PayrollRunOption } from "@/features/payroll/types";
 import type { ReimbursementClaimDto, ReimbursementClaimItemDto, ReimbursementOptionsDto } from "@/features/reimbursements/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type DialogAction =
   | "approve_claim"
@@ -30,6 +31,7 @@ type DialogAction =
   | null;
 
 const objEmptyOptions: ReimbursementOptionsDto = { lstCategories: [], lstSalaryComponents: [] };
+const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement review action.";
@@ -37,6 +39,7 @@ function getErrorMessage(objError: unknown) {
 
 export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaimID: number }) {
   const objRouter = useRouter();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
   const [objClaim, setObjClaim] = useState<ReimbursementClaimDto | null>(null);
   const [lstAudit, setLstAudit] = useState<ReimbursementAuditRecord[]>([]);
   const [objOptions, setObjOptions] = useState<ReimbursementOptionsDto>(objEmptyOptions);
@@ -54,13 +57,21 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   const [objSelectedItem, setObjSelectedItem] = useState<ReimbursementClaimItemDto | null>(null);
   const [intSelectedProofID, setIntSelectedProofID] = useState<number | null>(null);
 
-  const blnActionsDisabled = !objClaim || isHrReimbursementTerminal(objClaim.strClaimStatus) || blnBusy;
-  const lstEditablePayrollRuns = useMemo(
-    () => lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked),
-    [lstPayrollRuns]
-  );
+  const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
+  const blnCanReview = canDoAny("review") || canDoAny("edit");
+  const blnCanApprove = canDoAny("approve");
+  const blnCanReject = canDoAny("reject");
+  const blnCanRelease = canDoAny("release");
+  const blnCanLock = canDoAny("lock");
+  const blnCanPush = canDoAny("submit") || canDoAny("push") || canDoAny("export");
+  const blnActionsDisabled = !objClaim || isHrReimbursementTerminal(objClaim.strClaimStatus) || blnBusy || !blnCanReview;
 
   async function loadDetail() {
+    if (!blnCanView) {
+      setBlnLoading(false);
+      return;
+    }
+
     // Purpose: Loads claim, option labels, and audit rows needed by the HR review workspace.
     setBlnLoading(true);
     setStrError("");
@@ -81,8 +92,12 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     void loadDetail();
-  }, [intClaimID]);
+  }, [intClaimID, blnRightsLoading, blnCanView]);
 
   const dicCategoryNameByID = useMemo(
     () => new Map(objOptions.lstCategories.map((objCategory) => [objCategory.intID, objCategory.strCategoryName])),
@@ -228,7 +243,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
 
   return (
     <Stack spacing={1.4}>
-      <BlockingLoader blnOpen={blnLoading} strLabel="Loading reimbursement review..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement review..." />
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -241,12 +256,24 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
           {objClaim ? (
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} />
-              <ReimbursementActionBar objClaim={objClaim} blnBusy={blnBusy} onAction={(strAction) => void handleActionBar(strAction)} />
+              <ReimbursementActionBar
+                objClaim={objClaim}
+                blnBusy={blnBusy}
+                blnCanStart={blnCanReview}
+                blnCanApprove={blnCanApprove}
+                blnCanReject={blnCanReject}
+                blnCanRelease={blnCanRelease}
+                blnCanLock={blnCanLock}
+                blnCanPush={blnCanPush}
+                onAction={(strAction) => void handleActionBar(strAction)}
+              />
             </Stack>
           ) : null}
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
+      {!blnCanView ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>Reimbursement review access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")} sx={{ borderRadius: "8px" }}>{strSuccess}</Alert> : null}
       {objClaim?.strReviewerRemarks ? <Alert severity={objClaim.strClaimStatus === "rejected" ? "error" : "info"} sx={{ borderRadius: "8px" }}>{objClaim.strReviewerRemarks}</Alert> : null}
@@ -262,6 +289,9 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                 objItem={objItem}
                 strCategoryName={objItem.intReimbursementCategoryID ? dicCategoryNameByID.get(objItem.intReimbursementCategoryID) : null}
                 blnActionsDisabled={blnActionsDisabled}
+                blnCanApprove={blnCanApprove}
+                blnCanReject={blnCanReject}
+                blnCanProofReview={blnCanReview}
                 onApprove={(objNextItem, decApprovedAmount, strItemRemarks) => void approveItem(objNextItem, decApprovedAmount, strItemRemarks)}
                 onReject={(objNextItem) => openReasonDialog("reject_item", objNextItem)}
                 onProofPending={(objNextItem) => openReasonDialog("proof_pending", objNextItem)}

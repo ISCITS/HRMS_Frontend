@@ -6,7 +6,6 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -474,9 +473,6 @@ export default function EmployeeMasterListPanel() {
                           ) : null}
                           {blnCanDelete ? (
                             <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
-                          ) : null}
-                          {blnCanChangeStatus ? (
-                            <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => updateEmployeeStatus([dicEmployee.intID], dicEmployee.strEmploymentStatus !== "Active")}><ToggleOnRoundedIcon fontSize="small" /></button>
                           ) : null}
                         </Box>
                       </td>

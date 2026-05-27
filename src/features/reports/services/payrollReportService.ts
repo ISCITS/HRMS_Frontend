@@ -14,6 +14,8 @@ export type StatutoryReportFilters = PayrollReportFilters & {
   strStatutoryCode?: StatutoryReportCode;
 };
 
+const setBankFileEligibleStatuses = new Set(["Approved", "Published", "Paid", "Generated", "Calculated"]);
+
 function normalizeStatutoryCode(dicLine: PayrollResultLineRecord): Exclude<StatutoryReportCode, "ALL"> | null {
   const strLookup = `${dicLine.strComponentCode} ${dicLine.strComponentName} ${dicLine.strLineType} ${dicLine.strSourceType ?? ""}`.toUpperCase();
   if (strLookup.includes("PROFESSIONAL") || /\bPT\b/.test(strLookup)) {
@@ -113,10 +115,11 @@ export const payrollReportService = {
   async getBankFileRows(
     objFilters?: PayrollReportFilters,
   ): Promise<PayrollResultListRecord[]> {
-    const lstRows = await payrollResultService.getPayrollResults(objFilters);
-    return lstRows.filter((dicRow) =>
-      ["Approved", "Published", "Paid", "Generated"].includes(dicRow.strStatus)
-    );
+    const objApiFilters = objFilters?.strStatus === "Approved"
+      ? { ...objFilters, strStatus: "All" }
+      : objFilters;
+    const lstRows = await payrollResultService.getPayrollResults(objApiFilters);
+    return lstRows.filter((dicRow) => setBankFileEligibleStatuses.has(dicRow.strStatus));
   },
 
   async getStatutoryReportRows(

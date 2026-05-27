@@ -14,6 +14,9 @@ import { formatCurrency, formatDateLabel } from "@/features/reimbursements/forma
 import { canEditReimbursementClaim, isPayrollVisibleStatus } from "@/features/reimbursements/rules";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+
+const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
@@ -21,11 +24,21 @@ function getErrorMessage(objError: unknown) {
 
 export default function MyReimbursementClaimsPage() {
   const objRouter = useRouter();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementModuleCodes);
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
 
   async function loadClaims() {
+    if (!blnCanView) {
+      setLstClaims([]);
+      setBlnLoading(false);
+      return;
+    }
+
     // Purpose: Loads employee-owned reimbursement claims for tracking and action routing.
     setBlnLoading(true);
     setStrError("");
@@ -39,8 +52,12 @@ export default function MyReimbursementClaimsPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     void loadClaims();
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const objSummary = useMemo(() => {
     const decPending = lstClaims
@@ -65,15 +82,23 @@ export default function MyReimbursementClaimsPage() {
           </Stack>
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
             <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Refresh</Button>
-            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>New Claim</Button>
+            {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>New Claim</Button> : null}
           </Stack>
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading} strLabel="Loading reimbursement claims..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement claims..." />
 
-      <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+      {!blnCanView ? (
+        <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Reimbursement access is not available for your user group.</Typography>
+          <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need reimbursement visibility.</Typography>
+        </Paper>
+      ) : null}
+
+      {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 780 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
@@ -109,7 +134,7 @@ export default function MyReimbursementClaimsPage() {
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={() => objRouter.push(canEditReimbursementClaim(objClaim.strClaimStatus) ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
+                      onClick={() => objRouter.push(blnCanEdit && canEditReimbursementClaim(objClaim.strClaimStatus) ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
                       aria-label="Open claim"
                     >
                       <OpenInNewRoundedIcon fontSize="small" />
@@ -120,7 +145,7 @@ export default function MyReimbursementClaimsPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Paper> : null}
     </Stack>
   );
 }

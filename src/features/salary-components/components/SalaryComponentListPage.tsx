@@ -93,7 +93,6 @@ export default function SalaryComponentListPage() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
 
   const lstFilteredRows = useMemo(() => {
     return lstComponents.filter((dicRow) => {
@@ -198,26 +197,6 @@ export default function SalaryComponentListPage() {
     });
   }
 
-  function toggleSalaryComponentStatus(dicRow: SalaryComponentListRecord) {
-    const blnNextIsActive = !dicRow.blnIsActive;
-    openConfirmDialog({
-      strTitle: blnNextIsActive
-        ? t("confirm_activate_title", "Activate Salary Component")
-        : t("confirm_deactivate_title", "Deactivate Salary Component"),
-      strMessage: blnNextIsActive
-        ? t("confirm_activate_message", "Are you sure you want to mark this salary component as active?")
-        : t("confirm_deactivate_message", "Are you sure you want to mark this salary component as inactive?"),
-      strConfirmLabel: blnNextIsActive ? t("activate_button", "Activate") : t("deactivate_button", "Deactivate"),
-      fnOnConfirm: async () => {
-        await salaryComponentService.setSalaryComponentStatus(dicRow.intID, blnNextIsActive);
-        await loadComponents();
-        showToast(blnNextIsActive
-          ? t("activate_success", "Salary component activated successfully.")
-          : t("deactivate_success", "Salary component deactivated successfully."));
-      }
-    });
-  }
-
   const lstTableRows = useMemo(
     () =>
       lstFilteredRows.map((dicRow) => {
@@ -229,10 +208,8 @@ export default function SalaryComponentListPage() {
             <CommonRowActions
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
-              blnCanToggle={blnCanChangeStatus}
               onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}`)}
               onDelete={() => deleteSalaryComponent(dicRow.intID)}
-              onToggle={() => toggleSalaryComponentStatus(dicRow)}
             />
           ),
           strComponentCode: dicRow.strComponentCode,
@@ -261,7 +238,7 @@ export default function SalaryComponentListPage() {
           ),
         };
       }),
-    [blnCanChangeStatus, blnCanDelete, blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, t]
+    [blnCanDelete, blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -373,11 +350,11 @@ export default function SalaryComponentListPage() {
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
+        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${t("bulk_rows_selected", "rows selected")}`}</Typography>
-            {blnCanChangeStatus ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
-            {blnCanChangeStatus ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
+            {blnCanEdit ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
+            {blnCanEdit ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
             {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Delete")}</Button> : null}
           </Box>
         ) : null}

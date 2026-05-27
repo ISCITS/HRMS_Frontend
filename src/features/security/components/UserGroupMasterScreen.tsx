@@ -4,17 +4,12 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   LinearProgress,
   MenuItem,
   Snackbar,
@@ -36,12 +31,6 @@ import type { UserGroupFormPayload, UserGroupRecord, UserGroupRightSaveItem } fr
 import { securityApiService } from "@/features/security/services/securityApiService";
 
 type FormMode = "add" | "edit" | "view";
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
-};
 type UserGroupTableRow = {
   intID: number;
   select: ReactNode;
@@ -85,7 +74,6 @@ export default function UserGroupMasterScreen() {
   const [strMode, setStrMode] = useState<FormMode>("add");
   const [intEditingID, setIntEditingID] = useState<number | null>(null);
   const [objForm, setObjForm] = useState<UserGroupFormPayload>(objEmptyForm);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -100,7 +88,6 @@ export default function UserGroupMasterScreen() {
     searchStatusInactive: t("search_status_inactive", "Inactive"),
     searchButton: t("search_button", "Search"),
     clearButton: t("clear_button", "Clear"),
-    cancelButton: t("cancel_button", "Cancel"),
     addButton: t("add_button", "Add User Group"),
     accessUnavailableTitle: t("access_unavailable_title", "User group access is not available for your user group"),
     accessUnavailableMessage: t("access_unavailable_message", "Contact your administrator if you need user group visibility."),
@@ -121,47 +108,8 @@ export default function UserGroupMasterScreen() {
     saveSuccess: t("save_success", "User group and rights saved successfully."),
     updateSuccess: t("update_success", "User group updated successfully."),
     errorSave: t("error_save", "Unable to save user group."),
-    statusUpdateSuccess: t("status_update_success", "User group status updated successfully."),
-    statusUpdateError: t("status_update_error", "Unable to update status."),
-    confirmActivateTitle: t("confirm_activate_title", "Activate User Group"),
-    confirmDeactivateTitle: t("confirm_deactivate_title", "Deactivate User Group"),
-    confirmActivateMessage: t("confirm_activate_message", "Are you sure you want to mark this user group as active?"),
-    confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this user group as inactive?"),
-    confirmActivateLabel: t("confirm_activate_label", "Activate"),
-    confirmDeactivateLabel: t("confirm_deactivate_label", "Deactivate"),
-    confirmButton: t("confirm_button", "Confirm"),
     exportFileName: t("export_file_name", "user_groups"),
   };
-
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    setObjConfirmDialog(objDialog);
-  }
-
-  function closeConfirmDialog() {
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-
-    setBlnSaving(true);
-
-    await runFrontendAction({
-      fnAction: objConfirmDialog.fnOnConfirm,
-      fnOnError: (objError) => setObjToast({
-        open: true,
-        message: objError.message,
-        severity: "error",
-      }),
-      fnFinally: () => {
-        setBlnSaving(false);
-        closeConfirmDialog();
-      },
-      strFallbackMessage: dicLabels.statusUpdateError,
-    });
-  }
 
   async function loadUserGroups() {
     if (!canViewAny()) {
@@ -206,7 +154,6 @@ export default function UserGroupMasterScreen() {
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
-  const blnCanChangeStatus = canDoAny("edit");
   const blnReadOnly = isReadOnly();
 
   const lstFilteredRecords = useMemo(() => {
@@ -233,7 +180,6 @@ export default function UserGroupMasterScreen() {
         <Box className={styles.actionCell}>
           {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
           {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)}><EditOutlinedIcon fontSize="small" /></button> : null}
-          {blnCanChangeStatus ? <button className={`${styles.iconButton} ${styles.toggleIcon}`} type="button" onClick={() => toggleStatus(objRecord)}><ToggleOnRoundedIcon fontSize="small" /></button> : null}
         </Box>
       ),
       strGroupCode: objRecord.strGroupCode,
@@ -245,7 +191,7 @@ export default function UserGroupMasterScreen() {
         </span>
       ),
     };
-  }), [blnCanChangeStatus, blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords, lstSelectedIds]);
+  }), [blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords, lstSelectedIds]);
   const lstTableColumns = useMemo<CommonTableColumn<UserGroupTableRow>[]>(() => [
     {
       field: "select",
@@ -350,24 +296,6 @@ export default function UserGroupMasterScreen() {
       }),
       fnFinally: () => setBlnSaving(false),
       strFallbackMessage: dicLabels.errorSave,
-    });
-  }
-
-  async function toggleStatus(objRecord: UserGroupRecord) {
-    const blnNextIsActive = !objRecord.blnIsActive;
-    openConfirmDialog({
-      strTitle: blnNextIsActive ? dicLabels.confirmActivateTitle : dicLabels.confirmDeactivateTitle,
-      strMessage: blnNextIsActive ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
-      strConfirmLabel: blnNextIsActive ? dicLabels.confirmActivateLabel : dicLabels.confirmDeactivateLabel,
-      fnOnConfirm: async () => {
-        await securityApiService.updateUserGroupStatus(objRecord.intID, blnNextIsActive);
-        await loadUserGroups();
-        setObjToast({
-          open: true,
-          message: dicLabels.statusUpdateSuccess,
-          severity: "success",
-        });
-      }
     });
   }
 
@@ -497,19 +425,6 @@ export default function UserGroupMasterScreen() {
         onChange={setObjForm}
         onSave={saveRecord}
       />
-
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} PaperProps={{ className: styles.confirmDialogPaper }}>
-        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
-        </DialogContent>
-        <DialogActions className={styles.confirmDialogActions}>
-          <Button className={styles.textAction} onClick={closeConfirmDialog}>{dicLabels.cancelButton}</Button>
-          <Button className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSaving}>
-            {objConfirmDialog?.strConfirmLabel ?? dicLabels.confirmButton}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>

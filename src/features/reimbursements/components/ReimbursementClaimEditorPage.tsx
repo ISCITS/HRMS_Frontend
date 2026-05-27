@@ -21,6 +21,7 @@ import { formatCurrency, formatDateLabel, toInputDate } from "@/features/reimbur
 import { canEditReimbursementClaim, canWithdrawReimbursementClaim, getMissingProofItems } from "@/features/reimbursements/rules";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
 import type { ReimbursementCategoryOption, ReimbursementClaimDto, ReimbursementClaimItemDto, ReimbursementClaimItemRequest, ReimbursementClaimRequest, ReimbursementOptionsDto, ReimbursementSalaryComponentOption } from "@/features/reimbursements/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type EditorMode = "create" | "edit" | "detail";
 
@@ -32,6 +33,7 @@ type HeaderFormState = {
 };
 
 const objEmptyOptions: ReimbursementOptionsDto = { lstCategories: [], lstSalaryComponents: [] };
+const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
@@ -65,6 +67,7 @@ function normalizeHeaderValue(strValue?: string | null) {
 
 export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { intClaimID?: number | null; strMode: EditorMode }) {
   const objRouter = useRouter();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementModuleCodes);
   const [objClaim, setObjClaim] = useState<ReimbursementClaimDto | null>(null);
   const [objOptions, setObjOptions] = useState<ReimbursementOptionsDto>(objEmptyOptions);
   const [objHeader, setObjHeader] = useState<HeaderFormState>(buildHeaderState());
@@ -77,8 +80,12 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
 
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanSubmit = canDoAny("submit");
   const blnExistingClaim = Boolean(objClaim?.intID);
-  const blnEditable = strMode === "create" || canEditReimbursementClaim(objClaim?.strClaimStatus);
+  const blnEditable = (strMode === "create" ? blnCanAdd : blnCanEdit) && (strMode === "create" || canEditReimbursementClaim(objClaim?.strClaimStatus));
   const blnReadOnly = strMode === "detail" || !blnEditable;
   const lstMissingProofItems = useMemo(() => getMissingProofItems(objClaim), [objClaim]);
   const lstFinancialYearOptions = useMemo(() => {
@@ -142,6 +149,11 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     let blnMounted = true;
 
     async function loadEditor() {
+      if (blnRightsLoading || (!blnCanView && !blnCanAdd && !blnCanEdit)) {
+        setBlnLoading(false);
+        return;
+      }
+
       // Purpose: Binds claim detail first so the edit form is not blocked by option lookup failures.
       setBlnLoading(true);
       setStrError("");
@@ -174,7 +186,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     return () => {
       blnMounted = false;
     };
-  }, [intClaimID, strMode]);
+  }, [intClaimID, strMode, blnRightsLoading, blnCanView, blnCanAdd, blnCanEdit]);
 
   function buildClaimPayload(): ReimbursementClaimRequest {
     // Purpose: Converts header fields into the ESS claim create/update payload.
@@ -187,6 +199,10 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   }
 
   async function saveHeader(options?: { blnSilent?: boolean }) {
+    if (!blnEditable) {
+      return null;
+    }
+
     // Purpose: Creates the draft claim or persists editable header changes before item work continues.
     setBlnSaving(true);
     setStrError("");
@@ -218,6 +234,10 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   }
 
   async function saveItem(objPayload: ReimbursementClaimItemRequest, intItemID?: number | null, objProofFile?: File | null) {
+    if (!blnEditable) {
+      return;
+    }
+
     // Purpose: Saves an item against the persisted draft/released claim and refreshes claim totals.
     setBlnSaving(true);
     setStrError("");
@@ -261,6 +281,10 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   }
 
   async function deleteItem(intItemID: number) {
+    if (!blnEditable) {
+      return;
+    }
+
     // Purpose: Removes an editable item and refreshes reimbursement totals.
     if (!objClaim?.intID) return;
     setBlnSaving(true);
@@ -276,7 +300,25 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     }
   }
 
+  async function uploadProof(intItemID: number, objFile: File) {
+    // Purpose: Adds employee proof to an editable item before submission.
+    if (!objClaim?.intID) return;
+    setObjClaim(await reimbursementService.uploadProof(objClaim.intID, intItemID, objFile));
+    setStrSuccess("Proof uploaded.");
+  }
+
+  async function deleteProof(intItemID: number, intProofID: number) {
+    // Purpose: Deletes a proof from an editable item when the employee replaces or corrects evidence.
+    if (!objClaim?.intID) return;
+    setObjClaim(await reimbursementService.deleteProof(objClaim.intID, intItemID, intProofID));
+    setStrSuccess("Proof deleted.");
+  }
+
   async function submitClaim() {
+    if (!blnCanSubmit) {
+      return;
+    }
+
     // Purpose: Submits only complete claims with at least one item and all required proofs attached.
     if (!objClaim?.intID) return;
     if ((objClaim.lstItems ?? []).length === 0) {
@@ -330,7 +372,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
 
   return (
     <Stack spacing={1.4}>
-      <BlockingLoader blnOpen={blnLoading} strLabel="Loading reimbursement claim..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement claim..." />
       <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -343,7 +385,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           </Stack>
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
             {objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" /> : null}
-            {blnReadOnly && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
+            {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit`)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
             ) : null}
             {!blnReadOnly ? (
@@ -352,13 +394,15 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
             ) : null}
-            {!blnReadOnly && objClaim ? (
+            {!blnReadOnly && blnCanSubmit && objClaim ? (
               <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>Submit</Button>
             ) : null}
           </Stack>
         </Stack>
       </Paper>
 
+      {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
+      {!blnCanView && !blnCanAdd && !blnCanEdit ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>Reimbursement access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")} sx={{ borderRadius: "8px" }}>{strSuccess}</Alert> : null}
       {objClaim ? <ReimbursementClaimSummaryCard objClaim={objClaim} /> : null}

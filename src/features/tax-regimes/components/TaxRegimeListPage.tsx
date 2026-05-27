@@ -20,7 +20,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -34,12 +33,6 @@ type SearchForm = {
   strName: string;
   strCode: string;
   strStatus: "All" | Status;
-};
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 type ToastState = {
   blnOpen: boolean;
@@ -146,7 +139,6 @@ export default function TaxRegimeListPage() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   async function loadTaxRegimes() {
@@ -202,44 +194,6 @@ export default function TaxRegimeListPage() {
 
   function closeToast() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
-  }
-
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    setObjConfirmDialog(objDialog);
-  }
-
-  function closeConfirmDialog() {
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : t("request_failed", "Request failed."), "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
-  }
-
-  function toggleStatus(dicRow: TaxRegimeListRecord) {
-    openConfirmDialog({
-      strTitle: dicRow.blnIsActive ? t("deactivate_title", "Deactivate Tax Regime") : t("activate_title", "Activate Tax Regime"),
-      strMessage: dicRow.blnIsActive
-        ? t("deactivate_message", "Are you sure you want to mark this tax regime as inactive?")
-        : t("activate_message", "Are you sure you want to mark this tax regime as active?"),
-      strConfirmLabel: dicRow.blnIsActive ? t("deactivate", "Deactivate") : t("activate", "Activate"),
-      fnOnConfirm: async () => {
-        await taxRegimeService.setTaxRegimeStatus(dicRow.intID, !dicRow.blnIsActive);
-        await loadTaxRegimes();
-        showToast(t("status_updated", "Tax regime status updated successfully."));
-      }
-    });
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -376,11 +330,8 @@ export default function TaxRegimeListPage() {
                       <CommonRowActions
                         blnCanView={blnCanView}
                         blnCanEdit={blnCanEdit}
-                        blnCanToggle={blnCanEdit}
-                        blnToggleActive={dicRow.blnIsActive}
                         onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
                         onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
-                        onToggle={blnCanEdit ? () => toggleStatus(dicRow) : undefined}
                       />
                       {(blnCanView || blnCanEdit) ? (
                         <Button
@@ -426,18 +377,6 @@ export default function TaxRegimeListPage() {
           </table>
         </Box>
       </Box>
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle ?? ""}
-        strMessage={objConfirmDialog?.strMessage ?? ""}
-        strCancelLabel={t("cancel", "Cancel")}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm", "Confirm")}
-        blnConfirmDisabled={blnSubmitting}
-        blnCancelDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

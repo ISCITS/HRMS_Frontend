@@ -30,6 +30,7 @@ import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboar
 type FamilyDetailsTabProps = {
   lstInitialRows: EmployeeFamilyDetailRecord[];
   blnViewOnly: boolean;
+  blnCanDelete?: boolean;
   fnEnsureEmployeeRecordForTabSave: () => Promise<number>;
   fnShowAlert: (strSeverity: "success" | "error", strMessage: string) => void;
   fnOnRowsChange: (lstRows: EmployeeFamilyDetailRecord[]) => void;
@@ -75,6 +76,7 @@ function validateFamilyForm(
 export default function FamilyDetailsTab({
   lstInitialRows,
   blnViewOnly,
+  blnCanDelete = false,
   fnEnsureEmployeeRecordForTabSave,
   fnShowAlert,
   fnOnRowsChange,
@@ -235,6 +237,7 @@ export default function FamilyDetailsTab({
       <FamilyTable
         lstRows={lstRows}
         blnViewOnly={blnViewOnly}
+        blnCanDelete={blnCanDelete}
         fnOnEdit={openEditDialog}
         fnOnDelete={handleDeleteRequest}
         fnTranslate={t}

@@ -22,6 +22,7 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import type { PayrollRunListRecord } from "@/features/payroll/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type SearchForm = {
   strSearch: string;
@@ -34,6 +35,7 @@ const dicEmptySearch: SearchForm = {
   strSearchMonth: "",
   strStatus: "All",
 };
+const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
 const lstRowsPerPageOptions = [10, 20, 50];
 
 function formatMonth(strDate: string) {
@@ -148,6 +150,7 @@ function exportPdf(strTitle: string, lstRows: PayrollRunListRecord[]) {
 export default function PayrollRunListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollRunModuleCodes);
   const [lstRuns, setLstRuns] = useState<PayrollRunListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -156,8 +159,17 @@ export default function PayrollRunListPage() {
     useState<SearchForm>(dicEmptySearch);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanExport = canDoAny("export");
 
   async function loadRuns(objFilters: SearchForm = dicSearchApplied) {
+    if (!blnCanView) {
+      setLstRuns([]);
+      setBlnLoading(false);
+      return;
+    }
+
     setBlnLoading(true);
     setStrError("");
     try {
@@ -175,8 +187,12 @@ export default function PayrollRunListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     loadRuns().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
       const strSearch = dicSearchApplied.strSearch.trim().toLowerCase();
@@ -208,7 +224,7 @@ export default function PayrollRunListPage() {
       ? `0 ${t("pagination_separator", "of")} 0`
       : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_runs", "Loading payroll runs...")} />;
   }
 
@@ -289,27 +305,27 @@ export default function PayrollRunListPage() {
       <Box className={styles.tableCard}>
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            <Button
+            {blnCanAdd ? <Button
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => objRouter.push("/payroll/runs/new")}
             >
               {t("add_button", "Add Payroll Run")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("payroll-runs.csv", lstFilteredRows)}
             >
               {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => exportPdf("Payroll Runs", lstFilteredRows)}
             >
               {t("export_pdf", "Export PDF")}
-            </Button>
+            </Button> : null}
           </Box>
 
           <Box className={styles.paginationBar} sx={{ p: 0 }}>
@@ -346,8 +362,15 @@ export default function PayrollRunListPage() {
           </Box>
         </Box>
 
+        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.tableWrap}>
+        {!blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll run access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll run visibility.")}</Typography>
+          </Box>
+        ) : null}
+        {blnCanView ? <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -374,7 +397,7 @@ export default function PayrollRunListPage() {
                   <td className={styles.actionsColumn}>
                     <Box className={styles.actionCell}>
                       <CommonRowActions
-                        blnCanView
+                        blnCanView={blnCanView}
                         onView={() => objRouter.push(`/payroll/runs/${dicRow.intID}`)}
                       />
                     </Box>
@@ -397,7 +420,7 @@ export default function PayrollRunListPage() {
               ))}
             </tbody>
           </table>
-        </Box>
+        </Box> : null}
       </Box>
     </Box>
   );

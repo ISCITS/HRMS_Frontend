@@ -278,6 +278,11 @@ export type PayrollResultRecord = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strBankName?: string | null;
+  strBankCode?: string | null;
+  strBankAccountMasked?: string | null;
+  strIfscCode?: string | null;
+  strAccountHolderName?: string | null;
   strStatus: string;
   decGrossAmount: number;
   decDeductionAmount: number;

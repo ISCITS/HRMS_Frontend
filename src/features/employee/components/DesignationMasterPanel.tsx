@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -728,25 +729,6 @@ export default function DesignationMasterPanel() {
     });
   }
 
-  function toggleDesignationStatus(strDesignationId: string) {
-    // Flips one designation between Active and Inactive through the shared status endpoint.
-    const objDesignation = lstDesignations.find((dicItem) => dicItem.id === strDesignationId);
-    if (!objDesignation) {
-      return;
-    }
-    const strNextStatus = objDesignation.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateTitle : dicDesignationLabels.confirmDeactivateTitle,
-      strMessage: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateMessage : dicDesignationLabels.confirmDeactivateMessage,
-      strConfirmLabel: strNextStatus === "Active" ? dicDesignationLabels.confirmActivateLabel : dicDesignationLabels.confirmDeactivateLabel,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkDesignationStatus([Number(strDesignationId)], strNextStatus === "Active");
-        await loadDesignations();
-        showToast(strNextStatus === "Active" ? dicDesignationLabels.activateSuccess : dicDesignationLabels.deactivateSuccess);
-      }
-    });
-  }
-
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
@@ -854,7 +836,7 @@ export default function DesignationMasterPanel() {
                 return (
                   <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} /></td>
-                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicDesignation.status === "Active"} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} onToggle={() => toggleDesignationStatus(dicDesignation.id)} /></td>
+                    <td><CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} /></td>
                     <td>{dicDesignation.name}</td>
                     <td>{dicDesignation.code}</td>
                     <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
@@ -1028,7 +1010,7 @@ export default function DesignationMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
-              <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -318,30 +319,12 @@ export default function StateMasterPanel() {
     });
   }
 
-  function toggleStatus(strId: string) {
-    const dicItem = lstStates.find((dicState) => dicState.id === strId);
-    if (!dicItem) {
-      return;
-    }
-    const strNextStatus = dicItem.status === "Active" ? "Inactive" : "Active";
-    setObjConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicLabels.confirmActivateTitle : dicLabels.confirmDeactivateTitle,
-      strMessage: strNextStatus === "Active" ? dicLabels.confirmActivateMessage : dicLabels.confirmDeactivateMessage,
-      strConfirmLabel: strNextStatus === "Active" ? t("activate") : t("deactivate"),
-      fnOnConfirm: async () => {
-        await masterApiService.bulkStateStatus([Number(strId)], strNextStatus === "Active");
-        await loadData();
-        showToast(strNextStatus === "Active" ? dicLabels.activateSuccess : dicLabels.deactivateSuccess);
-      }
-    });
-  }
-
   const lstTableRows = useMemo(() => lstFiltered.map((dicState) => {
     const blnSelected = lstSelectedIds.includes(dicState.id);
     return {
       id: dicState.id,
       select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(dicState.id)} />,
-      action: <CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicState.status === "Active"} onView={() => void openDialog("view", dicState)} onEdit={() => void openDialog("edit", dicState)} onDelete={() => deleteRecord(dicState.id)} onToggle={() => toggleStatus(dicState.id)} />,
+      action: <CommonRowActions blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => void openDialog("view", dicState)} onEdit={() => void openDialog("edit", dicState)} onDelete={() => deleteRecord(dicState.id)} />,
       countryName: dicState.countryName || "-",
       name: dicState.name,
       code: dicState.code,
@@ -402,7 +385,7 @@ export default function StateMasterPanel() {
           <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="state-master" showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
-      <CommonMasterDialog blnOpen={blnDialogOpen} onClose={closeDialog} strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle} strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel} strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save} onPrimaryAction={saveState} blnPrimaryDisabled={blnSubmitting} blnHidePrimary={strMode === "view"} paperClassName={styles.dialogPaper} maxWidth="xl" paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }} contentSx={{ overflowX: "hidden", overflowY: "visible" }} nodeContent={<Box sx={{ display: "grid", gap: 2, pt: 0.5 }}><TextField select label={`${dicLabels.fieldCountry} *`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, countryId: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: objEvent.target.value ? Number(objEvent.target.value) : "" })); }} error={Boolean(dicErrors.countryId)} helperText={dicErrors.countryId} fullWidth><MenuItem value="">{dicLabels.selectCountry}</MenuItem>{objFormOptions.lstCountries.map((dicCountry) => <MenuItem key={dicCountry.intID} value={String(dicCountry.intID)}>{dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}</TextField><TextField label={`${dicLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField label={`${dicLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography><Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box></Box>} />
+      <CommonMasterDialog blnOpen={blnDialogOpen} onClose={closeDialog} strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle} strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel} strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save} onPrimaryAction={saveState} blnPrimaryDisabled={blnSubmitting} blnHidePrimary={strMode === "view"} paperClassName={styles.dialogPaper} maxWidth="xl" paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }} contentSx={{ overflowX: "hidden", overflowY: "visible" }} nodeContent={<Box sx={{ display: "grid", gap: 2, pt: 0.5 }}><TextField select label={`${dicLabels.fieldCountry} *`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, countryId: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: objEvent.target.value ? Number(objEvent.target.value) : "" })); }} error={Boolean(dicErrors.countryId)} helperText={dicErrors.countryId} fullWidth><MenuItem value="">{dicLabels.selectCountry}</MenuItem>{objFormOptions.lstCountries.map((dicCountry) => <MenuItem key={dicCountry.intID} value={String(dicCountry.intID)}>{dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}</TextField><TextField label={`${dicLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField label={`${dicLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography><ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box></Box>} />
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicLabels.confirmButton} blnConfirmDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction} />
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}><Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert></Snackbar>

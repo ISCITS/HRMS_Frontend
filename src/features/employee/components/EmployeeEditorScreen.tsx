@@ -38,9 +38,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
 import FamilyDetailsTab from "@/features/employee/components/FamilyDetailsTab";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import {
   dicEmptyEmployeeAddressForm,
   dicEmptyEmployeeBankForm,
@@ -71,7 +73,6 @@ import type {
   EmployeeQualificationFormValues,
   EmployeeQualificationRecord,
   EmployeeStatutoryFormValues,
-  EmployeeStatus
 } from "@/features/employee/types";
 
 type EmployeeEditorScreenProps = {
@@ -81,6 +82,8 @@ type EmployeeEditorScreenProps = {
   blnHidePageHeading?: boolean;
   strBackRoute?: string;
 };
+
+const lstEmployeeModuleCodes = ["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"];
 
 type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory" | "experience" | "qualification" | "family";
 
@@ -123,6 +126,7 @@ export default function EmployeeEditorScreen({
   strBackRoute = "/employees"
 }: EmployeeEditorScreenProps) {
   const objRouter = useRouter();
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeeModuleCodes);
   const { strLabelError, t } = useEmployeeDetailsLabels();
   const [strActiveTab, setStrActiveTab] = useState<TabKey>("basicInfo");
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
@@ -184,7 +188,12 @@ export default function EmployeeEditorScreen({
     strAccountNumber: useRef<HTMLInputElement | null>(null)
   };
 
-  const blnViewOnly = strMode === "view";
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanDelete = canDoAny("delete");
+  const blnCanSaveEmployee = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnViewOnly = strMode === "view" || !blnCanSaveEmployee;
   const blnAnySaving = blnBasicSaving || blnAddressSaving || blnBankSaving || blnStatutorySaving || blnExperienceSaving || blnQualificationSaving;
 
   function getFooterActionConfig() {
@@ -226,6 +235,11 @@ export default function EmployeeEditorScreen({
   }
 
   useEffect(() => {
+    if (blnRightsLoading || (strMode !== "add" && !blnCanView && !blnCanEdit)) {
+      setBlnLoading(false);
+      return;
+    }
+
     let blnMounted = true;
 
     async function loadScreenData() {
@@ -303,7 +317,7 @@ export default function EmployeeEditorScreen({
     return () => {
       blnMounted = false;
     };
-  }, [intEmployeeID, strMode]);
+  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit]);
 
   const lstManagerOptions = useMemo(
     () => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intResolvedEmployeeID),
@@ -1077,7 +1091,7 @@ export default function EmployeeEditorScreen({
     );
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={2} alignItems="center">
@@ -1120,6 +1134,14 @@ export default function EmployeeEditorScreen({
           ) : null}
           {strLabelError ? (
             <Typography sx={{ mt: blnHidePageHeading ? 0 : 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
+          ) : null}
+          {strRightsError ? (
+            <Typography sx={{ mt: 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          ) : null}
+          {!blnCanView && !blnCanSaveEmployee ? (
+            <Typography sx={{ mt: 0.75, color: "#b45309", fontSize: "0.85rem", fontWeight: 700 }}>
+              {t("access_denied", "Employee access is not available for your user group.")}
+            </Typography>
           ) : null}
         </Box>
         {!blnViewOnly ? (
@@ -1306,7 +1328,10 @@ export default function EmployeeEditorScreen({
                   <TextField label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)} value={dicBasicForm.strMobileNumber} onChange={(objEvent) => updateBasicField("strMobileNumber", objEvent.target.value)} error={Boolean(dicBasicErrors.strMobileNumber)} helperText={dicBasicErrors.strMobileNumber} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
                   {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
-                  {renderSelectField(t("field_employment_status", dicConstant.employeeMaster.fields.employmentStatus), dicBasicForm.strEmploymentStatus, (objValue) => updateBasicField("strEmploymentStatus", objValue as EmployeeStatus), objFormOptions?.lstEmploymentStatuses ?? [], blnViewOnly)}
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 56, border: "1px solid #dbe4ee", borderRadius: "14px", px: 1.75, py: 1.25 }}>
+                    <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("field_employment_status", dicConstant.employeeMaster.fields.employmentStatus)}</Typography>
+                    <ActiveStatusSwitch blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} />
+                  </Box>
                   <TextField type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
                   <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
                     <FormControlLabel control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} />} label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)} />
@@ -1537,7 +1562,7 @@ export default function EmployeeEditorScreen({
                                     <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleExperienceEdit(objRecord)} aria-label={t("edit", "Edit")}>
                                       <EditRoundedIcon fontSize="small" />
                                     </button>
-                                    {objRecord.blnIsActive ? (
+                                    {blnCanDelete && objRecord.blnIsActive ? (
                                       <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleExperienceDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
                                         <DeleteRoundedIcon fontSize="small" />
                                       </button>
@@ -1734,7 +1759,7 @@ export default function EmployeeEditorScreen({
                                     <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleQualificationEdit(objRecord)} aria-label={t("edit", "Edit")}>
                                       <EditRoundedIcon fontSize="small" />
                                     </button>
-                                    {objRecord.blnIsActive ? (
+                                    {blnCanDelete && objRecord.blnIsActive ? (
                                       <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleQualificationDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
                                         <DeleteRoundedIcon fontSize="small" />
                                       </button>
@@ -1767,6 +1792,7 @@ export default function EmployeeEditorScreen({
             <FamilyDetailsTab
               lstInitialRows={lstFamilyRecords}
               blnViewOnly={blnViewOnly}
+              blnCanDelete={blnCanDelete}
               fnEnsureEmployeeRecordForTabSave={ensureEmployeeRecordForTabSave}
               fnShowAlert={(strSeverity, strMessage) => openAlertDialog(strSeverity, strMessage)}
               fnOnRowsChange={setLstFamilyRecords}

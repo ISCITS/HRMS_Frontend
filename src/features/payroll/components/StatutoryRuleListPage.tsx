@@ -25,6 +25,7 @@ import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDial
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import {
   statutoryRuleService,
 } from "@/features/payroll/services/statutoryRuleService";
@@ -47,6 +48,7 @@ const dicEmptySearch: SearchForm = {
   strScopeType: "all",
   strStatus: "All",
 };
+const lstStatutoryRuleModuleCodes = ["STATUTORY_RULE", "STATUTORY_RULES", "PAYROLL_STATUTORY_RULE", "PAYROLL_STATUTORY_RULES"];
 const lstRowsPerPageOptions = [10, 20, 50];
 
 function formatDate(strDate: string) {
@@ -146,6 +148,7 @@ function exportPdf(strTitle: string, lstRows: StatutoryRuleListRecord[]) {
 export default function StatutoryRuleListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("statutory-rules");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstStatutoryRuleModuleCodes);
   const [lstRules, setLstRules] = useState<StatutoryRuleListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -155,8 +158,18 @@ export default function StatutoryRuleListPage() {
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objPreviewRule, setObjPreviewRule] = useState<StatutoryRuleDetailRecord | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const blnCanView = canViewAny() || canDoAny("list");
+  const blnCanAdd = canDoAny("add");
+  const blnCanEdit = canDoAny("edit");
+  const blnCanExport = canDoAny("export");
 
   async function loadRules(objFilters: SearchForm = dicSearchApplied) {
+    if (!blnCanView) {
+      setLstRules([]);
+      setBlnLoading(false);
+      return;
+    }
+
     setBlnLoading(true);
     setStrError("");
     try {
@@ -176,8 +189,12 @@ export default function StatutoryRuleListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
+
     loadRules().catch(() => undefined);
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     return lstRules.filter((dicRow) => {
@@ -219,7 +236,7 @@ export default function StatutoryRuleListPage() {
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_rules", "Loading statutory rules...")} />;
   }
 
@@ -289,27 +306,27 @@ export default function StatutoryRuleListPage() {
       <Box className={styles.tableCard}>
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            <Button
+            {blnCanAdd ? <Button
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => objRouter.push("/payroll/statutory-rules/new")}
             >
               {t("add_button", "Add Rule")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("statutory-rules.csv", lstFilteredRows)}
             >
               {t("export_excel", "Export Excel")}
-            </Button>
-            <Button
+            </Button> : null}
+            {blnCanExport ? <Button
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => exportPdf("Statutory Rules", lstFilteredRows)}
             >
               {t("export_pdf", "Export PDF")}
-            </Button>
+            </Button> : null}
           </Box>
 
           <Box className={styles.paginationBar} sx={{ p: 0 }}>
@@ -338,8 +355,15 @@ export default function StatutoryRuleListPage() {
           </Box>
         </Box>
 
+        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.tableWrap}>
+        {!blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Statutory rule access is not available for your user group.")}</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need statutory rule visibility.")}</Typography>
+          </Box>
+        ) : null}
+        {blnCanView ? <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -365,10 +389,10 @@ export default function StatutoryRuleListPage() {
                   <td className={styles.actionsColumn}>
                     <Box className={styles.actionCell}>
                       <CommonRowActions
-                        blnCanView
-                        blnCanEdit
+                        blnCanView={blnCanView}
+                        blnCanEdit={blnCanEdit}
                         onView={() => openPreview(dicRow.intID).catch(() => undefined)}
-                        onEdit={() => objRouter.push(`/payroll/statutory-rules/${dicRow.intID}/edit`)}
+                        onEdit={blnCanEdit ? () => objRouter.push(`/payroll/statutory-rules/${dicRow.intID}/edit`) : undefined}
                       />
                     </Box>
                   </td>
@@ -386,7 +410,7 @@ export default function StatutoryRuleListPage() {
               ))}
             </tbody>
           </table>
-        </Box>
+        </Box> : null}
 
       </Box>
 

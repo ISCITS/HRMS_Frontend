@@ -20,6 +20,7 @@ import type { EmployeeFamilyDetailRecord } from "@/features/employee/types";
 type FamilyTableProps = {
   lstRows: EmployeeFamilyDetailRecord[];
   blnViewOnly: boolean;
+  blnCanDelete?: boolean;
   fnOnEdit: (objRecord: EmployeeFamilyDetailRecord) => void;
   fnOnDelete: (intFamilyID: number) => void;
   fnTranslate: (strKey: string, strFallback?: string) => string;
@@ -28,6 +29,7 @@ type FamilyTableProps = {
 export default function FamilyTable({
   lstRows,
   blnViewOnly,
+  blnCanDelete = false,
   fnOnEdit,
   fnOnDelete,
   fnTranslate
@@ -78,9 +80,9 @@ export default function FamilyTable({
                       <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => fnOnEdit(objRecord)} aria-label={t("edit_family_member", "Edit family member")}>
                         <EditRoundedIcon fontSize="small" />
                       </button>
-                      <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => fnOnDelete(objRecord.intID)} aria-label={t("delete_family_member", "Delete family member")}>
+                      {blnCanDelete ? <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => fnOnDelete(objRecord.intID)} aria-label={t("delete_family_member", "Delete family member")}>
                         <DeleteRoundedIcon fontSize="small" />
-                      </button>
+                      </button> : null}
                     </Box>
                   ) : (
                     <Typography sx={{ color: "#64748b" }}>-</Typography>

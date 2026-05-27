@@ -29,6 +29,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
@@ -663,26 +664,6 @@ export default function UserMasterPanel() {
     });
   }
 
-  function toggleUserStatus(strUserId: string) {
-    const objUser = lstUsers.find((dicItem) => dicItem.id === strUserId);
-    if (!objUser) {
-      return;
-    }
-
-    const strNextStatus = objUser.status === "Active" ? "Inactive" : "Active";
-    openConfirmDialog({
-      strTitle: strNextStatus === "Active" ? dicModuleLabels.confirmActivateTitle : dicModuleLabels.confirmDeactivateTitle,
-      strMessage: (strNextStatus === "Active" ? dicModuleLabels.confirmActivateMessage : dicModuleLabels.confirmDeactivateMessage)
-        .replace("{status}", strNextStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strNextStatus === "Active" ? dicCommonLabels.activate : dicCommonLabels.deactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkUserStatus([Number(strUserId)], strNextStatus === "Active");
-        await loadData();
-        showToast(strNextStatus === "Active" ? dicModuleLabels.activateSuccess : dicModuleLabels.deactivateSuccess);
-      }
-    });
-  }
-
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
@@ -809,7 +790,7 @@ export default function UserMasterPanel() {
                       <Checkbox checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
                     </td>
                     <td>
-                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} blnCanToggle={blnCanChangeStatus} blnToggleActive={dicUser.status === "Active"} onView={() => { void openDialog("view", dicUser); }} onEdit={() => { void openDialog("edit", dicUser); }} onDelete={() => deleteUser(dicUser.id)} onToggle={() => toggleUserStatus(dicUser.id)} />
+                      <CommonRowActions blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => { void openDialog("view", dicUser); }} onEdit={() => { void openDialog("edit", dicUser); }} onDelete={() => deleteUser(dicUser.id)} />
                     </td>
                     <td>{dicUser.loginName}</td>
                     <td>{dicUser.email}</td>
@@ -1074,7 +1055,7 @@ export default function UserMasterPanel() {
 
           <Box className={styles.switchRow}>
             <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
-            <Switch checked={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(_, blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+            <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
           </Box>
         </Box>}
       />

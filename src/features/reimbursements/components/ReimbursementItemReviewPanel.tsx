@@ -15,6 +15,9 @@ type ItemReviewPanelProps = {
   objItem: ReimbursementClaimItemDto;
   strCategoryName?: string | null;
   blnActionsDisabled: boolean;
+  blnCanApprove?: boolean;
+  blnCanReject?: boolean;
+  blnCanProofReview?: boolean;
   onApprove: (objItem: ReimbursementClaimItemDto, decApprovedAmount: number, strRemarks: string) => void;
   onReject: (objItem: ReimbursementClaimItemDto) => void;
   onProofPending: (objItem: ReimbursementClaimItemDto) => void;
@@ -26,6 +29,9 @@ export default function ReimbursementItemReviewPanel({
   objItem,
   strCategoryName,
   blnActionsDisabled,
+  blnCanApprove = false,
+  blnCanReject = false,
+  blnCanProofReview = false,
   onApprove,
   onReject,
   onProofPending,
@@ -61,18 +67,18 @@ export default function ReimbursementItemReviewPanel({
           <Stack spacing={0.8}>
             <Typography sx={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 700 }}>Claimed</Typography>
             <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(objItem.decClaimedAmount)}</Typography>
-            <TextField size="small" type="number" label="Approved amount" value={strApprovedAmount} onChange={(objEvent) => setStrApprovedAmount(objEvent.target.value)} inputProps={{ min: 0, max: objItem.decClaimedAmount, step: "0.01" }} disabled={blnActionsDisabled} />
-            <TextField size="small" multiline minRows={2} label="Review remarks" value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} disabled={blnActionsDisabled} />
+            <TextField size="small" type="number" label="Approved amount" value={strApprovedAmount} onChange={(objEvent) => setStrApprovedAmount(objEvent.target.value)} inputProps={{ min: 0, max: objItem.decClaimedAmount, step: "0.01" }} disabled={blnActionsDisabled || !blnCanApprove} />
+            <TextField size="small" multiline minRows={2} label="Review remarks" value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} disabled={blnActionsDisabled || (!blnCanApprove && !blnCanReject && !blnCanProofReview)} />
           </Stack>
         </Grid>
         <Grid item xs={12} md={4}>
-          <ReimbursementProofViewer lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled} onVerify={onVerifyProof} onReject={onRejectProof} />
+          <ReimbursementProofViewer lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
         </Grid>
         <Grid item xs={12}>
           <Stack direction="row" spacing={0.7} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-            <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onProofPending(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Proof Pending</Button>
-            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject Item</Button>
-            <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={approveItem} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Approve Item</Button>
+            {blnCanProofReview ? <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onProofPending(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Proof Pending</Button> : null}
+            {blnCanReject ? <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject Item</Button> : null}
+            {blnCanApprove ? <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={approveItem} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Approve Item</Button> : null}
           </Stack>
         </Grid>
       </Grid>
