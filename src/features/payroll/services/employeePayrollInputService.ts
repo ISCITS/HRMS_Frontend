@@ -168,9 +168,14 @@ export const employeePayrollInputService = {
     return objResult.Data;
   },
 
-  async getFormOptions(): Promise<EmployeePayrollInputFormOptions> {
+  async getFormOptions(objFilters?: { intEmployeeID?: number | null }): Promise<EmployeePayrollInputFormOptions> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.intEmployeeID) {
+      objParams.set("intEmployeeID", String(objFilters.intEmployeeID));
+    }
+    const strQuery = objParams.toString();
     const objResult = await requestApi<EmployeePayrollInputFormOptions>({
-      strPath: `${strEmployeePayrollInputApiPath}/form-options`,
+      strPath: `${strEmployeePayrollInputApiPath}/form-options${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_FORM_OPTIONS",
     });

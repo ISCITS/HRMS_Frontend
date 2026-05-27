@@ -107,14 +107,19 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setBlnPayrollRunsLoading(true);
     setStrDialogError("");
     try {
-      const objFormOptions = await employeePayrollInputService.getFormOptions();
-      const lstEditableRuns = objFormOptions.lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked);
-      setLstPayrollRuns(objFormOptions.lstPayrollRuns);
+      if (!objClaim) return;
+      const objFormOptions = await employeePayrollInputService.getFormOptions({ intEmployeeID: objClaim.intEmployeeID ?? null });
+      const lstEligibleRuns = objFormOptions.lstPayrollRuns.filter((objRun) => {
+        const strScopeType = objRun.strScopeType ?? "All";
+        return strScopeType !== "SelectedEmployee" || objRun.intScopedEmployeeID === objClaim.intEmployeeID;
+      });
+      const lstEditableRuns = lstEligibleRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked);
+      setLstPayrollRuns(lstEligibleRuns);
       const objClaimRun = lstEditableRuns.find((objRun) => objRun.intID === objClaim?.intPayrollRunID);
       const objDefaultRun = objClaimRun ?? lstEditableRuns[0] ?? null;
       setStrPayrollRunID(objDefaultRun ? String(objDefaultRun.intID) : "");
       if (!objDefaultRun) {
-        setStrDialogError("No Open or Submitted unlocked payroll run is available. Please open or submit an unlocked payroll run before pushing this reimbursement.");
+        setStrDialogError("No Open or Submitted unlocked payroll run is available for this claim employee.");
       }
     } catch (objError) {
       setStrDialogError(getErrorMessage(objError));
@@ -289,12 +294,12 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                   value={strPayrollRunID}
                   onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value)}
                   disabled={blnPayrollRunsLoading || lstEditablePayrollRuns.length === 0}
-                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Open or Submitted unlocked runs are listed."}
+                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Open or Submitted unlocked runs for this claim employee are listed."}
                 >
                   <MenuItem value="" disabled>Select payroll run</MenuItem>
                   {lstEditablePayrollRuns.map((objRun) => (
                     <MenuItem key={objRun.intID} value={String(objRun.intID)}>
-                      {objRun.strLabel || objRun.strCode} ({objRun.strStatus})
+                      {objRun.strCode} ({objRun.strStatus})
                     </MenuItem>
                   ))}
                 </TextField>

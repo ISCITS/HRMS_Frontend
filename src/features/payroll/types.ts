@@ -43,6 +43,8 @@ export type PayrollSelectOption = {
 };
 
 export type PayrollRunOption = PayrollSelectOption & {
+  strScopeType?: PayrollRunScopeType;
+  intScopedEmployeeID?: number | null;
   dtPayrollMonth: string;
   strStatus: string;
   blnIsLocked: boolean;
