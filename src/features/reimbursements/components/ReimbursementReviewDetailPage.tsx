@@ -57,6 +57,11 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   const [objSelectedItem, setObjSelectedItem] = useState<ReimbursementClaimItemDto | null>(null);
   const [intSelectedProofID, setIntSelectedProofID] = useState<number | null>(null);
 
+
+  const lstEditablePayrollRuns = useMemo(
+    () => lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked),
+    [lstPayrollRuns]
+  );
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
   const blnCanReview = canDoAny("review") || canDoAny("edit");
   const blnCanApprove = canDoAny("approve");
