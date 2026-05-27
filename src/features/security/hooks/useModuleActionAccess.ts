@@ -29,18 +29,23 @@ export function useModuleActionAccess(lstModuleHints: string[]) {
     return lstResolvedModuleCodes.some((strModuleCode) => objActionRights.canDo(strModuleCode, strActionCode));
   }
 
+  function hasRightAny(strActionCode: string) {
+    return lstResolvedModuleCodes.some((strModuleCode) => objActionRights.hasRight(strModuleCode, strActionCode));
+  }
+
   function canViewAny() {
     return lstResolvedModuleCodes.some((strModuleCode) => objActionRights.canViewModule(strModuleCode));
   }
 
   function isReadOnly() {
-    return canViewAny() && !lstMutatingActionCodes.some(canDoAny);
+    return canViewAny() && !lstMutatingActionCodes.some(hasRightAny);
   }
 
   return {
     ...objActionRights,
     lstResolvedModuleCodes,
     canDoAny,
+    hasRightAny,
     canViewAny,
     isReadOnly,
   };
