@@ -24,7 +24,7 @@ export default function FNFSettlementListPage() {
   const [lstRows, setLstRows] = useState<FNFSettlementRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
-  const [dicFilters, setDicFilters] = useState({ employee_id: "", company: "", department: "", location: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "" });
+  const [dicFilters, setDicFilters] = useState({ employee_code: "", company: "", department: "", location: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "" });
   const blnCanView = canViewAny() || canDoAny("view");
   const blnCanCreate = canDoAny("create") || canDoAny("add");
 
@@ -36,7 +36,7 @@ export default function FNFSettlementListPage() {
     setBlnLoading(true);
     setStrError("");
     try {
-      setLstRows(await fnfSettlementService.listSettlements({ status: dicFilters.status, employee_id: dicFilters.employee_id }));
+      setLstRows(await fnfSettlementService.listSettlements({ status: dicFilters.status, employee_code: dicFilters.employee_code }));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load FNF settlements.");
     } finally {
@@ -62,7 +62,7 @@ export default function FNFSettlementListPage() {
           {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")}>New Settlement</Button> : null}
         </Box>
         <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(4, minmax(150px, 1fr)) auto auto", mt: 1 }}>
-          <TextField size="small" label="Employee Code" value={dicFilters.employee_id} onChange={(e) => setDicFilters((d) => ({ ...d, employee_id: e.target.value }))} />
+          <TextField size="small" label="Employee Code" value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} />
           <TextField size="small" label="Company" value={dicFilters.company} onChange={(e) => setDicFilters((d) => ({ ...d, company: e.target.value }))} />
           <TextField size="small" label="Department" value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} />
           <TextField size="small" label="Location" value={dicFilters.location} onChange={(e) => setDicFilters((d) => ({ ...d, location: e.target.value }))} />
@@ -73,14 +73,14 @@ export default function FNFSettlementListPage() {
           <TextField size="small" type="date" label="LWD To" InputLabelProps={{ shrink: true }} value={dicFilters.lwd_to} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_to: e.target.value }))} />
           <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(4, minmax(150px, 1fr)) auto auto", mt: 1 }}>
             <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => loadRows()}>Search</Button>
-            <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={() => setDicFilters({ employee_id: "", company: "", department: "", location: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "" })}>Clear</Button>
+            <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={() => setDicFilters({ employee_code: "", company: "", department: "", location: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "" })}>Clear</Button>
           </Box>
         </Box>
       </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Box className={styles.tableCard}>
-        <Box className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Settlement</th><th>Employee</th><th>Exit Type</th><th>LWD</th><th>Status</th><th>Net Payable</th><th>Net Recoverable</th><th className={styles.actionsColumn}>Actions</th></tr></thead><tbody>
-          {lstFiltered.length ? lstFiltered.map((row) => <tr key={row.intID}><td>{row.strSettlementNumber || row.intID}</td><td>{row.intEmployeeID}</td><td>{row.strExitType}</td><td>{row.dtLastWorkingDate}</td><td><FNFStatusBadge strStatus={row.strSettlementStatus} /></td><td>{formatCurrency(row.decNetPayableAmount)}</td><td>{formatCurrency(row.decNetRecoverableAmount)}</td><td className={styles.actionsColumn}><Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}>Open</Button></td></tr>) : <tr><td colSpan={8} className={styles.emptyState}>No FNF settlements found.</td></tr>}
+        <Box className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Settlement</th><th>Employee Code</th><th>Exit Type</th><th>LWD</th><th>Status</th><th>Net Payable</th><th>Net Recoverable</th><th className={styles.actionsColumn}>Actions</th></tr></thead><tbody>
+          {lstFiltered.length ? lstFiltered.map((row) => <tr key={row.intID}><td>{row.strSettlementNumber || row.intID}</td><td>{row.strEmployeeCode || row.intEmployeeID}</td><td>{row.strExitType}</td><td>{row.dtLastWorkingDate}</td><td><FNFStatusBadge strStatus={row.strSettlementStatus} /></td><td>{formatCurrency(row.decNetPayableAmount)}</td><td>{formatCurrency(row.decNetRecoverableAmount)}</td><td className={styles.actionsColumn}><Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}>Open</Button></td></tr>) : <tr><td colSpan={8} className={styles.emptyState}>No FNF settlements found.</td></tr>}
         </tbody></table></Box>
       </Box>
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading FNF settlements..." />

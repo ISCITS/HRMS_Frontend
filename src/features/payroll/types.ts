@@ -213,6 +213,7 @@ export type FNFSettlementLineRecord = {
 export type FNFSettlementRecord = {
   intID: number;
   intEmployeeID: number;
+  strEmployeeCode?: string | null;
   intCompanyID?: number;
   strSettlementNumber?: string | null;
   intPayrollRunID?: number | null;
