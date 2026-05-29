@@ -63,7 +63,13 @@ function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
 
 export default function UserGroupMasterScreen() {
   const { t } = useModuleLabels("user_group");
-  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
+  const {
+    blnLoading: blnRightsLoading,
+    strError: strRightsError,
+    hasRightAny,
+    canViewAny,
+    isReadOnly,
+  } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -151,9 +157,9 @@ export default function UserGroupMasterScreen() {
   }, [blnRightsLoading]);
 
   const blnCanView = canViewAny();
-  const blnCanAdd = canDoAny("add");
-  const blnCanEdit = canDoAny("edit");
-  const blnCanExport = canDoAny("export");
+  const blnCanAdd = hasRightAny("add");
+  const blnCanEdit = hasRightAny("edit");
+  const blnCanExport = hasRightAny("export");
   const blnReadOnly = isReadOnly();
 
   const lstFilteredRecords = useMemo(() => {

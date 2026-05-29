@@ -35,7 +35,10 @@ export function useActionRights() {
           if (!blnMounted) {
             return;
           }
-          setObjRights(objResult.Data);
+          setObjRights({
+            dicAllowedActions: objResult.Data.dicAllowedActions ?? {},
+            dicAccessScopeByAction: objResult.Data.dicAccessScopeByAction ?? {},
+          });
         },
         fnOnError: (objError) => {
           if (!blnMounted) {
@@ -72,13 +75,21 @@ export function useActionRights() {
     );
   }, [objRights.dicAllowedActions]);
 
+  function hasRight(strModuleCode: string, strActionCode: string) {
+    const strNormalizedModuleCode = normalizeModuleCode(strModuleCode);
+    const strNormalizedActionCode = normalizeActionCode(strActionCode);
+    const lstAllowedActions = dicNormalizedActions[strNormalizedModuleCode] ?? [];
+    return lstAllowedActions.includes(strNormalizedActionCode);
+  }
+
   function canDo(strModuleCode: string, strActionCode: string) {
-    const lstAllowedActions = dicNormalizedActions[normalizeModuleCode(strModuleCode)] ?? [];
-    return lstAllowedActions.includes(normalizeActionCode(strActionCode));
+    return hasRight(strModuleCode, strActionCode);
   }
 
   function canViewModule(strModuleCode: string) {
-    return canDo(strModuleCode, "view");
+    const strNormalizedModuleCode = normalizeModuleCode(strModuleCode);
+    const lstAllowedActions = dicNormalizedActions[strNormalizedModuleCode] ?? [];
+    return lstAllowedActions.includes("view");
   }
 
   function isReadOnlyModule(strModuleCode: string) {
@@ -100,6 +111,7 @@ export function useActionRights() {
     blnLoading,
     strError,
     objRights,
+    hasRight,
     canDo,
     canViewModule,
     isReadOnlyModule,
