@@ -23,12 +23,24 @@ function formatDateLabel(strDate?: string | null) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(objDate);
 }
 
+function normalizeFinancialYearCode(strValue?: string | null) {
+  const strCode = String(strValue || "").trim().toUpperCase().replace("/", "-");
+  if (!strCode) return "";
+  const strWithoutPrefix = strCode.startsWith("FY ") ? strCode.slice(3).trim() : (strCode.startsWith("FY") ? strCode.slice(2).trim() : strCode);
+  const lstParts = strWithoutPrefix.split("-").map((strPart) => strPart.trim()).filter(Boolean);
+  if (lstParts.length !== 2) return strWithoutPrefix;
+  const [strStart, strEnd] = lstParts;
+  if (!/^\d{4}$/.test(strStart) || !/^\d{2,4}$/.test(strEnd)) return strWithoutPrefix;
+  if (strEnd.length === 2) return `${strStart}-${strEnd}`;
+  return `${strStart}-${strEnd.slice(-2)}`;
+}
+
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
   const intYear = objNow.getFullYear();
   const intMonth = objNow.getMonth();
   const intFyStartYear = intMonth >= 3 ? intYear : intYear - 1;
-  return `${intFyStartYear}-${intFyStartYear + 1}`;
+  return `${intFyStartYear}-${String(intFyStartYear + 1).slice(-2)}`;
 }
 
 function canEditDeclarationByStatus(strStatus?: string | null) {
@@ -60,7 +72,7 @@ export default function SalaryEssDeclarationsPage() {
     const strStatus = String(objDeclaration.strDeclarationStatus || "draft").toLowerCase();
     return {
       intDeclarationID: objDeclaration.intDeclarationID,
-      strFinancialYearCode: objDeclaration.strFinancialYearCode || strFallbackFy,
+      strFinancialYearCode: normalizeFinancialYearCode(objDeclaration.strFinancialYearCode || strFallbackFy),
       strTaxRegime: objDeclaration.strSelectedRegime || "Old Regime",
       strStatus,
       decDeclaredAmount,
@@ -76,18 +88,18 @@ export default function SalaryEssDeclarationsPage() {
     setStrError("");
     try {
       const objData = await itDeclarationService.getDashboard();
-      const strResolvedCurrentFy = objData.strCurrentFinancialYearCode || getCurrentFinancialYearCode();
+      const strResolvedCurrentFy = normalizeFinancialYearCode(objData.strCurrentFinancialYearCode || getCurrentFinancialYearCode());
       setStrCurrentFy(strResolvedCurrentFy);
 
       const intStartYear = Number(strResolvedCurrentFy.split("-")[0] || new Date().getFullYear());
       const lstFyFromDashboard = (objData.lstDeclarations || [])
-        .map((objRow) => String(objRow.strFinancialYearCode || "").trim())
+        .map((objRow) => normalizeFinancialYearCode(objRow.strFinancialYearCode))
         .filter(Boolean);
       const lstFyCandidates = Array.from(new Set<string>([
         ...lstFyFromDashboard,
         strResolvedCurrentFy,
-        `${intStartYear - 1}-${intStartYear}`,
-        `${intStartYear - 2}-${intStartYear - 1}`,
+        `${intStartYear - 1}-${String(intStartYear).slice(-2)}`,
+        `${intStartYear - 2}-${String(intStartYear - 1).slice(-2)}`,
       ]));
 
       const lstDeclarations = await Promise.allSettled(
@@ -103,20 +115,20 @@ export default function SalaryEssDeclarationsPage() {
 
       const dicByKey = new Map<string, ItDeclarationDashboardCardDto>();
       for (const objRow of lstRecovered) {
-        dicByKey.set(`${objRow.intDeclarationID}-${objRow.strFinancialYearCode}`, objRow);
+        dicByKey.set(`${objRow.intDeclarationID}-${normalizeFinancialYearCode(objRow.strFinancialYearCode)}`, objRow);
       }
       setLstRows(Array.from(dicByKey.values()).sort((a, b) => b.strFinancialYearCode.localeCompare(a.strFinancialYearCode)));
       return;
     } catch (objError) {
-      const strFallbackFy = getCurrentFinancialYearCode();
+      const strFallbackFy = normalizeFinancialYearCode(getCurrentFinancialYearCode());
       setStrCurrentFy(strFallbackFy);
       let blnFallbackBound = false;
       try {
         const intStartYear = Number(strFallbackFy.split("-")[0] || new Date().getFullYear());
         const lstFyCandidates = [
-          `${intStartYear}-${intStartYear + 1}`,
-          `${intStartYear - 1}-${intStartYear}`,
-          `${intStartYear - 2}-${intStartYear - 1}`,
+          `${intStartYear}-${String(intStartYear + 1).slice(-2)}`,
+          `${intStartYear - 1}-${String(intStartYear).slice(-2)}`,
+          `${intStartYear - 2}-${String(intStartYear - 1).slice(-2)}`,
         ];
         const lstRecovered: ItDeclarationDashboardCardDto[] = [];
         for (const strFy of lstFyCandidates) {
@@ -132,7 +144,7 @@ export default function SalaryEssDeclarationsPage() {
         }
         const dicByKey = new Map<string, ItDeclarationDashboardCardDto>();
         for (const objRow of lstRecovered) {
-          dicByKey.set(`${objRow.intDeclarationID}-${objRow.strFinancialYearCode}`, objRow);
+          dicByKey.set(`${objRow.intDeclarationID}-${normalizeFinancialYearCode(objRow.strFinancialYearCode)}`, objRow);
         }
         setLstRows(Array.from(dicByKey.values()).sort((a, b) => b.strFinancialYearCode.localeCompare(a.strFinancialYearCode)));
         blnFallbackBound = true;
@@ -156,7 +168,7 @@ export default function SalaryEssDeclarationsPage() {
   }, []);
 
   const lstCurrentFyRows = useMemo(
-    () => lstRows.filter((objRow) => strCurrentFy && objRow.strFinancialYearCode.toUpperCase() === strCurrentFy.toUpperCase()),
+    () => lstRows.filter((objRow) => strCurrentFy && normalizeFinancialYearCode(objRow.strFinancialYearCode) === normalizeFinancialYearCode(strCurrentFy)),
     [lstRows, strCurrentFy]
   );
   const lstFilteredRows = useMemo(() => {
@@ -164,7 +176,7 @@ export default function SalaryEssDeclarationsPage() {
     const strRegime = dicAppliedFilters.regime.trim().toLowerCase();
     const strStatus = dicAppliedFilters.status.trim().toLowerCase();
     return lstRows.filter((objRow) => {
-      const blnFy = !strFy || objRow.strFinancialYearCode.toLowerCase().includes(strFy);
+      const blnFy = !strFy || normalizeFinancialYearCode(objRow.strFinancialYearCode).toLowerCase().includes(strFy);
       const blnRegime = !strRegime || objRow.strTaxRegime.toLowerCase().includes(strRegime);
       const blnStatus = strStatus === "all" || (objRow.strStatus || "").toLowerCase() === strStatus;
       return blnFy && blnRegime && blnStatus;
@@ -172,21 +184,21 @@ export default function SalaryEssDeclarationsPage() {
   }, [lstRows, dicAppliedFilters]);
   const lstFyOptions = useMemo(() => {
     const setCodes = new Set<string>();
-    if (strCurrentFy) setCodes.add(strCurrentFy);
+    if (strCurrentFy) setCodes.add(normalizeFinancialYearCode(strCurrentFy));
     const intNow = new Date().getFullYear();
     const intMonth = new Date().getMonth();
     const intStart = intMonth >= 3 ? intNow : intNow - 1;
-    setCodes.add(`${intStart}-${intStart + 1}`);
-    setCodes.add(`${intStart - 1}-${intStart}`);
-    setCodes.add(`${intStart - 2}-${intStart - 1}`);
-    for (const objRow of lstRows) setCodes.add(objRow.strFinancialYearCode);
+    setCodes.add(`${intStart}-${String(intStart + 1).slice(-2)}`);
+    setCodes.add(`${intStart - 1}-${String(intStart).slice(-2)}`);
+    setCodes.add(`${intStart - 2}-${String(intStart - 1).slice(-2)}`);
+    for (const objRow of lstRows) setCodes.add(normalizeFinancialYearCode(objRow.strFinancialYearCode));
     return Array.from(setCodes).filter(Boolean).sort((a, b) => b.localeCompare(a));
   }, [strCurrentFy, lstRows]);
 
   const setDeclaredFy = useMemo(() => {
     const setData = new Set<string>();
     for (const objRow of lstRows) {
-      setData.add(objRow.strFinancialYearCode);
+      setData.add(normalizeFinancialYearCode(objRow.strFinancialYearCode));
     }
     return setData;
   }, [lstRows]);
@@ -227,8 +239,15 @@ export default function SalaryEssDeclarationsPage() {
 
   async function createFromDialog() {
     if (!strAddFy) return;
-    if (setDeclaredFy.has(strAddFy)) return;
-    await createDeclaration(strAddRegime, strAddFy);
+    const strNormalizedFy = normalizeFinancialYearCode(strAddFy);
+    const objExistingDeclaration = lstRows.find(
+      (objRow) => normalizeFinancialYearCode(objRow.strFinancialYearCode) === strNormalizedFy
+    );
+    if (objExistingDeclaration) {
+      await openDeclaration(objExistingDeclaration.strFinancialYearCode, objExistingDeclaration.strTaxRegime);
+      return;
+    }
+    await createDeclaration(strAddRegime, strNormalizedFy);
   }
 
   const lstGridRows = useMemo(() => {
@@ -420,7 +439,7 @@ export default function SalaryEssDeclarationsPage() {
           <Button onClick={() => setBlnAddDialogOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            disabled={!strAddFy || !!strBusyKey || setDeclaredFy.has(strAddFy)}
+            disabled={!strAddFy || !!strBusyKey}
             onClick={() => void createFromDialog()}
           >
             Create
