@@ -62,7 +62,7 @@ export default function FNFSettlementListPage() {
           {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")}>New Settlement</Button> : null}
         </Box>
         <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(4, minmax(150px, 1fr)) auto auto", mt: 1 }}>
-          <TextField size="small" label="Employee ID" value={dicFilters.employee_id} onChange={(e) => setDicFilters((d) => ({ ...d, employee_id: e.target.value }))} />
+          <TextField size="small" label="Employee Code" value={dicFilters.employee_id} onChange={(e) => setDicFilters((d) => ({ ...d, employee_id: e.target.value }))} />
           <TextField size="small" label="Company" value={dicFilters.company} onChange={(e) => setDicFilters((d) => ({ ...d, company: e.target.value }))} />
           <TextField size="small" label="Department" value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} />
           <TextField size="small" label="Location" value={dicFilters.location} onChange={(e) => setDicFilters((d) => ({ ...d, location: e.target.value }))} />

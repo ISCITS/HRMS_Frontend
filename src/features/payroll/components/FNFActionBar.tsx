@@ -19,7 +19,7 @@ const dicActionButtonSx = {
   release: { backgroundColor: "#0ea5e9", "&:hover": { backgroundColor: "#0284c7" } },
   lock: { backgroundColor: "#475569", "&:hover": { backgroundColor: "#334155" } },
   markPaid: { backgroundColor: "#059669", "&:hover": { backgroundColor: "#047857" } },
-  statement: { backgroundColor: "#2563eb", "&:hover": { backgroundColor: "#1d4ed8" } },
+  statement: { backgroundColor: "#2563eb", "&:hover": { backgroundColor: "#1d4ed8" } }
 };
 
 export default function FNFActionBar({ objSettlement, blnBusy, onAction }: { objSettlement: FNFSettlementRecord; blnBusy: boolean; onAction: (strAction: string) => void }) {
