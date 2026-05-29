@@ -344,6 +344,42 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
   });
 }
 
+function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/payroll/fnf-settlements")) {
+    return lstItems;
+  }
+
+  let blnInserted = false;
+  return lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedFNFMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isPayrollContainerMenu(objItem) &&
+      !hasRoute(lstChildren, "/payroll/fnf-settlements");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [
+        ...lstChildren,
+        {
+          strModuleCode: "PAYROLL_FNF_SETTLEMENTS",
+          strModuleName: "Full and Final Settlement",
+          strRoute: "/payroll/fnf-settlements",
+          lstPermissionCodes: ["PAYROLL_FNF_VIEW"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    };
+  });
+}
+
 function getMenuIdentityKey(objItem: MenuItem): string {
   if (isDirectReportsMenu(objItem)) {
     return "reports";
@@ -679,6 +715,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return strModuleName || "Reimbursements";
     }
 
+    if (strRoute.includes("/payroll/fnf-settlements") || strModuleCode.includes("fnf")) {
+      return strModuleName || "Full and Final Settlement";
+    }
+
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {
       return strModuleName || "Payroll Register";
     }
@@ -744,7 +784,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       collapseDuplicateReportsMenus(
         removeReportsFromPayrollBranches(
           appendGeneratedReportsMenu(
-            appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+            appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
           ),
         ),
       ),
@@ -755,7 +795,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     () => collapseDuplicateReportsMenus(
       removeReportsFromPayrollBranches(
         appendGeneratedReportsMenu(
-          appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems)),
+          appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
         ),
       ),
     ),

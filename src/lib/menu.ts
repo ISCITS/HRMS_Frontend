@@ -44,7 +44,12 @@ const dicRouteAliases: Record<string, string> = {
   "/payroll/reimbursement-review": "/payroll/reimbursements",
   "/payroll/reimbursement-claims": "/payroll/reimbursements",
   "/payroll/reimbursements": "/payroll/reimbursements",
-  "/payroll/reimbursement": "/payroll/reimbursements"
+  "/payroll/reimbursement": "/payroll/reimbursements",
+  "/payroll/fnf": "/payroll/fnf-settlements",
+  "/payroll/fnf-settlement": "/payroll/fnf-settlements",
+  "/payroll/fnf-settlements": "/payroll/fnf-settlements",
+  "/payroll/full-final-settlement": "/payroll/fnf-settlements",
+  "/payroll/full-and-final-settlement": "/payroll/fnf-settlements"
 };
 
 function normalizeRoute(strRoute?: string | null) {

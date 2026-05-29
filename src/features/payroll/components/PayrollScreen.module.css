@@ -105,6 +105,46 @@
   padding: 0 10px !important;
 }
 
+.fnfCreateTitleBlock {
+  padding: 6px 0;
+}
+
+.fnfCreateCard {
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.fnfCreateForm {
+  width: 100%;
+}
+
+.fnfCreateGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fnfCreateActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fnfCreateActions .primaryButton {
+  min-width: 176px !important;
+  width: auto;
+}
+
+.fnfActionButton {
+  border-radius: 9px !important;
+  box-shadow: 0 12px 24px rgba(29, 93, 150, 0.22) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  min-height: 34px;
+  padding: 0 10px !important;
+}
+
 .compactButton {
   border-radius: 7px !important;
   font-size: 0.76rem !important;
@@ -254,6 +294,70 @@
   padding: 6px 10px;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.fnfDenseTable {
+  min-width: 900px;
+}
+
+.fnfDenseTable thead th {
+  font-size: 0.78rem;
+  padding: 6px 8px;
+}
+
+.fnfDenseTable tbody td {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+.fnfStatementPreview {
+  color: #172033;
+}
+
+.fnfStatementPreview :global(h1) {
+  color: #1f2937;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+
+.fnfStatementPreview :global(p) {
+  font-size: 0.86rem;
+  margin: 0 0 10px;
+}
+
+.fnfStatementPreview :global(table) {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  width: 100%;
+}
+
+.fnfStatementPreview :global(th),
+.fnfStatementPreview :global(td) {
+  padding: 5px 8px !important;
+}
+
+.fnfStatementPreview :global(p:has(strong)) {
+  font-size: 0.9rem;
+}
+
+.fnfStatementPreview :global(p:has(strong):nth-of-type(2)) {
+  font-weight: 900;
+  margin-top: 12px;
+}
+
+.fnfStatementPreview :global(p:has(strong):nth-of-type(3)) {
+  font-weight: 900;
+}
+
+.fnfStatementNetPayable {
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.fnfStatementNetRecoverable {
+  color: #dc2626;
+  font-weight: 900;
 }
 
 .selectedRow {
@@ -486,6 +590,10 @@
 
 @media (max-width: 900px) {
   .searchRow {
+    grid-template-columns: 1fr;
+  }
+
+  .fnfCreateGrid {
     grid-template-columns: 1fr;
   }
 

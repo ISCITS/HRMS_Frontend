@@ -175,6 +175,120 @@ export type PayrollRunFormOptions = {
   lstEmployees: PayrollSelectOption[];
 };
 
+export type FNFSettlementStatus =
+  | "draft"
+  | "calculated"
+  | "under_review"
+  | "released"
+  | "approved"
+  | "locked"
+  | "paid"
+  | "recovered"
+  | "cancelled";
+
+export type FNFLineType = "EARNING" | "DEDUCTION" | "RECOVERY" | "STATUTORY" | "TAX";
+
+export type FNFSettlementLineRecord = {
+  intID: number;
+  strLineType: FNFLineType;
+  strLineCode: string;
+  strLineName: string;
+  intSalaryComponentID?: number | null;
+  decAmount: number;
+  decTaxableAmount?: number;
+  decExemptAmount?: number;
+  decStatutoryAmount?: number;
+  strCalculationBasis?: string | null;
+  decCalculationDays?: number | null;
+  decRateAmount?: number | null;
+  strSourceType?: string | null;
+  intSourceReferenceID?: number | null;
+  blnIsSystemCalculated?: boolean;
+  blnIsManualOverride?: boolean;
+  strOverrideReason?: string | null;
+  intDisplayOrder?: number;
+  strRemarks?: string | null;
+};
+
+export type FNFSettlementRecord = {
+  intID: number;
+  intEmployeeID: number;
+  intCompanyID?: number;
+  strSettlementNumber?: string | null;
+  intPayrollRunID?: number | null;
+  strExitType: string;
+  strExitReason?: string | null;
+  dtResignationDate?: string | null;
+  dtLastWorkingDate: string;
+  dtSettlementDate?: string | null;
+  dtSettlementMonth?: string | null;
+  decNoticePeriodDays?: number;
+  decNoticeServedDays?: number;
+  decNoticeShortfallDays?: number;
+  strSettlementStatus: FNFSettlementStatus;
+  strCurrencyCode?: string;
+  decTotalEarnings?: number;
+  decTotalDeductions?: number;
+  decTotalRecoveries?: number;
+  decTotalTaxDeducted?: number;
+  decTotalStatutoryDeduction?: number;
+  decNetPayableAmount?: number;
+  decNetRecoverableAmount?: number;
+  decFinalTaxLiability?: number;
+  decFinalTdsAmount?: number;
+  objCalculationSnapshot?: Record<string, unknown> | null;
+  strRemarks?: string | null;
+  lstLines?: FNFSettlementLineRecord[];
+  lstAudit?: FNFAuditRecord[];
+};
+
+export type FNFSettlementFormValues = {
+  strEmployeeCode: string;
+  strSettlementNumber: string;
+  intPayrollRunID: number | "";
+  strExitType: string;
+  strExitReason: string;
+  dtResignationDate: string;
+  dtLastWorkingDate: string;
+  dtSettlementDate: string;
+  dtSettlementMonth: string;
+  decNoticePeriodDays: string;
+  decNoticeServedDays: string;
+  decNoticeShortfallDays: string;
+  strCurrencyCode: string;
+  strRemarks: string;
+};
+
+export type FNFLineFormValues = {
+  intID?: number;
+  strLineType: FNFLineType;
+  strLineCode: string;
+  strLineName: string;
+  decAmount: string;
+  blnIsManualOverride: boolean;
+  strOverrideReason: string;
+  strRemarks: string;
+};
+
+export type FNFAuditRecord = {
+  intID: number;
+  strActionCode: string;
+  strFromStatus?: string | null;
+  strToStatus?: string | null;
+  strRemarks?: string | null;
+  intActionBy?: number | null;
+  dtActionOn?: string | null;
+};
+
+export type FNFStatementRecord = {
+  intID: number;
+  strStatementNumber: string;
+  strStatementHTML?: string | null;
+  objStatementJson?: Record<string, unknown> | null;
+  dtGeneratedOn?: string | null;
+  blnIsLatest?: boolean;
+};
+
 export type EmployeePayrollInputLineRecord = {
   intID: number;
   intSalaryComponentID: number;

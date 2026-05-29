@@ -1,0 +1,40 @@
+"use client";
+
+import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import TextSnippetRoundedIcon from "@mui/icons-material/TextSnippetRounded";
+import { Button, Stack } from "@mui/material";
+import type { FNFSettlementRecord } from "@/features/payroll/types";
+import styles from "@/features/payroll/components/PayrollScreen.module.css";
+
+const dicActionButtonSx = {
+  calculate: { backgroundColor: "#f59e0b", "&:hover": { backgroundColor: "#d97706" } },
+  submitReview: { backgroundColor: "#7c3aed", "&:hover": { backgroundColor: "#6d28d9" } },
+  approve: { backgroundColor: "#16a34a", "&:hover": { backgroundColor: "#15803d" } },
+  release: { backgroundColor: "#0ea5e9", "&:hover": { backgroundColor: "#0284c7" } },
+  lock: { backgroundColor: "#475569", "&:hover": { backgroundColor: "#334155" } },
+  markPaid: { backgroundColor: "#059669", "&:hover": { backgroundColor: "#047857" } },
+  statement: { backgroundColor: "#2563eb", "&:hover": { backgroundColor: "#1d4ed8" } },
+};
+
+export default function FNFActionBar({ objSettlement, blnBusy, onAction }: { objSettlement: FNFSettlementRecord; blnBusy: boolean; onAction: (strAction: string) => void }) {
+  const strStatus = objSettlement.strSettlementStatus;
+  const blnEditable = ["draft", "calculated", "released"].includes(strStatus);
+  return (
+    <Stack direction="row" flexWrap="wrap" gap={1}>
+      {blnEditable ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.calculate} startIcon={<CalculateRoundedIcon />} disabled={blnBusy} onClick={() => onAction("calculate")}>Calculate</Button> : null}
+      {["calculated", "released"].includes(strStatus) ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.submitReview} startIcon={<SendRoundedIcon />} disabled={blnBusy} onClick={() => onAction("submit-review")}>Submit Review</Button> : null}
+      {strStatus === "under_review" ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.approve} startIcon={<CheckCircleRoundedIcon />} disabled={blnBusy} onClick={() => onAction("approve")}>Approve</Button> : null}
+      {["under_review", "approved"].includes(strStatus) ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.release} startIcon={<ReplyRoundedIcon />} disabled={blnBusy} onClick={() => onAction("release")}>Release</Button> : null}
+      {strStatus === "approved" ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.lock} startIcon={<LockRoundedIcon />} disabled={blnBusy} onClick={() => onAction("lock")}>Lock</Button> : null}
+      {strStatus === "locked" ? <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.markPaid} startIcon={<PaymentsRoundedIcon />} disabled={blnBusy} onClick={() => onAction("mark-paid")}>Mark Paid</Button> : null}
+      <Button className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.statement} startIcon={<TextSnippetRoundedIcon />} disabled={blnBusy} onClick={() => onAction("statement")}>Statement</Button>
+      {!["paid", "recovered", "cancelled"].includes(strStatus) ? <Button className={styles.fnfActionButton} variant="contained" color="error" startIcon={<CancelRoundedIcon />} disabled={blnBusy} onClick={() => onAction("cancel")}>Cancel</Button> : null}
+    </Stack>
+  );
+}
