@@ -263,10 +263,10 @@ export default function SalaryEssDeclarationsPage() {
       lastUpdated: formatDateLabel(objRow.strLastUpdated),
       action: (
         <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
-          <Button size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
+          <Button data-testid="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
             {canEditDeclarationByStatus(objRow.strStatus) ? "Continue" : "View"}
           </Button>
-          <Button size="small" variant="text" onClick={() => void openCompare(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
+          <Button data-testid="salary.ess-declarations.row.compare-tax.button" data-row-key={objRow.intDeclarationID} size="small" variant="text" onClick={() => void openCompare(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
             Compare Tax
           </Button>
         </Stack>
@@ -320,6 +320,7 @@ export default function SalaryEssDeclarationsPage() {
       <Paper className={styles.controlsCard} sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
         <Box className={styles.searchRow}>
           <TextField
+            data-testid="salary.ess-declarations.search.financial-year.input"
             value={strSearchFy}
             onChange={(objEvent) => setStrSearchFy(objEvent.target.value)}
             placeholder="Search FY"
@@ -327,6 +328,7 @@ export default function SalaryEssDeclarationsPage() {
             fullWidth
           />
           <TextField
+            data-testid="salary.ess-declarations.search.regime.input"
             value={strSearchRegime}
             onChange={(objEvent) => setStrSearchRegime(objEvent.target.value)}
             placeholder="Search Regime"
@@ -334,6 +336,7 @@ export default function SalaryEssDeclarationsPage() {
             fullWidth
           />
           <TextField
+            data-testid="salary.ess-declarations.search.status.select"
             select
             value={strSearchStatus}
             onChange={(objEvent) => setStrSearchStatus(objEvent.target.value)}
@@ -352,6 +355,7 @@ export default function SalaryEssDeclarationsPage() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="salary.ess-declarations.search.button"
               className={styles.primaryButton}
               variant="contained"
               startIcon={<SearchRoundedIcon />}
@@ -362,6 +366,7 @@ export default function SalaryEssDeclarationsPage() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="salary.ess-declarations.clear.button"
               className={styles.secondaryButton}
               variant="outlined"
               startIcon={<ClearRoundedIcon />}
@@ -384,7 +389,7 @@ export default function SalaryEssDeclarationsPage() {
           rows={lstGridRows}
           rowIdField={"id"}
           toolbarLeft={(
-            <Button className={styles.primaryButton} variant="contained" startIcon={<AddCircleOutlineRoundedIcon />} onClick={openAddDeclarationDialog}>
+            <Button data-testid="salary.ess-declarations.add.button" className={styles.primaryButton} variant="contained" startIcon={<AddCircleOutlineRoundedIcon />} onClick={openAddDeclarationDialog}>
               Add Declaration
             </Button>
           )}
@@ -400,11 +405,12 @@ export default function SalaryEssDeclarationsPage() {
         <Alert severity="info">No declaration started for current FY {strCurrentFy}. Use Add Declaration.</Alert>
       ) : null}
 
-      <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth data-testid="salary.ess-declarations.add.dialog">
         <DialogTitle>Add Declaration</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
             <TextField
+              data-testid="salary.ess-declarations.add.financial-year.select"
               select
               label="Financial Year"
               value={strAddFy}
@@ -419,6 +425,7 @@ export default function SalaryEssDeclarationsPage() {
               ))}
             </TextField>
             <TextField
+              data-testid="salary.ess-declarations.add.regime.select"
               select
               label="Tax Regime"
               value={strAddRegime}
@@ -436,8 +443,9 @@ export default function SalaryEssDeclarationsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnAddDialogOpen(false)}>Cancel</Button>
+          <Button data-testid="salary.ess-declarations.add.cancel.button" onClick={() => setBlnAddDialogOpen(false)}>Cancel</Button>
           <Button
+            data-testid="salary.ess-declarations.add.confirm.button"
             variant="contained"
             disabled={!strAddFy || !!strBusyKey}
             onClick={() => void createFromDialog()}

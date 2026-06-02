@@ -117,6 +117,8 @@ export default function VersionLogListPage() {
         id: dicRow.intID,
         action: (
           <CommonRowActions
+            testIdPrefix="version-logs.list.row"
+            rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
             onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}?mode=view`)}
@@ -190,7 +192,7 @@ export default function VersionLogListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button data-testid="version-logs.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button", "Back")}
         </Button>
       </Box>
@@ -198,12 +200,14 @@ export default function VersionLogListPage() {
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <TextField
+            inputProps={{ "data-testid": "version-logs.list.search.code.input" }}
             label={t("version_code", "Version Code")}
             value={dicSearchDraft.strSearchCode}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchCode: objEvent.target.value.toUpperCase() }))}
             size="small"
           />
           <TextField
+            inputProps={{ "data-testid": "version-logs.list.search.name.input" }}
             label={t("version_name", "Version Name")}
             value={dicSearchDraft.strSearchName}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchName: objEvent.target.value }))}
@@ -211,6 +215,7 @@ export default function VersionLogListPage() {
           />
           <TextField
             select
+            inputProps={{ "data-testid": "version-logs.list.search.status.select" }}
             label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as VersionLogFilters["strStatus"] }))}
@@ -221,12 +226,13 @@ export default function VersionLogListPage() {
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied({ ...dicSearchDraft })}>
+            <Button data-testid="version-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied({ ...dicSearchDraft })}>
               {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="version-logs.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -253,10 +259,11 @@ export default function VersionLogListPage() {
           pageSizeOptions={[10, 20, 50]}
           exportFileName="version_logs"
           showExportOptions={blnCanExport}
+          testIdPrefix="version-logs.list"
           showPaginationSummary
           emptyMessage={t("empty_message", "No version logs found.")}
           toolbarLeft={blnCanAdd ? (
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/version-logs/add")}>
+            <Button data-testid="version-logs.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/version-logs/add")}>
               {t("add_version_log", "Add Version Log")}
             </Button>
           ) : undefined}

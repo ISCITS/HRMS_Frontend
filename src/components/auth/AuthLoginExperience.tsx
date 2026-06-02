@@ -293,6 +293,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         const objResult = await authApiService.verifyOtp({
           intUserID: objOtpChallenge.intUserID,
           intTenantID: objOtpChallenge.intTenantID,
+          strPreAuthToken: objOtpChallenge.strPreAuthToken ?? undefined,
           strOtp
         });
         setObjOtpChallenge(null);
@@ -411,7 +412,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     try {
       await authApiService.resendOtp({
         intUserID: objOtpChallenge.intUserID,
-        intTenantID: objOtpChallenge.intTenantID
+        intTenantID: objOtpChallenge.intTenantID,
+        strPreAuthToken: objOtpChallenge.strPreAuthToken ?? undefined
       });
       setIntResendRemainingSeconds(30);
     } catch (objError) {
@@ -496,6 +498,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         onVerify={() => {
           void handleGoogleMfaVerification();
         }}
+        codeInputTestId="auth.mfa.code.input"
+        backupCodeInputTestId="auth.mfa.backup-code.input"
+        verifyButtonTestId="auth.mfa.verify.button"
+        toggleBackupCodeButtonTestId="auth.mfa.toggle-backup-code.button"
       />
     );
   }
@@ -546,6 +552,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     <button
                       key={dicLanguageOption.intLanguageID}
                       type="button"
+                      data-testid="auth.login.language.button"
+                      data-option-key={dicLanguageOption.intLanguageID}
                       className={`${styles.languageButton} ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? styles.languageButtonActive : ""}`}
                       onClick={() => {
                         if (dicLanguageOption.intLanguageID === intLoadedLanguageID) {
@@ -579,6 +587,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   {getLoginLabel("loginIdLabel")}
                 </Typography>
                 <TextField
+                  inputProps={{ "data-testid": "auth.login.login-id.input" }}
                   placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => {
@@ -604,6 +613,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
+                  inputProps={{ "data-testid": "auth.login.password.input" }}
                   placeholder={getLoginLabel("passwordPlaceholder")}
                   type={blnPasswordVisible ? "text" : "password"}
                   value={strPassword}
@@ -618,7 +628,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
+                        <IconButton data-testid="auth.login.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
                           {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                         </IconButton>
                       </InputAdornment>
@@ -631,6 +641,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 <Box>
                   <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
                   <TextField
+                    inputProps={{ "data-testid": "auth.login.otp.input" }}
                     placeholder={getLoginLabel("otpPlaceholder")}
                     value={strOtp}
                     onChange={(objEvent) => setStrOtp(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -651,6 +662,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
  
               <Button
+                data-testid="auth.login.submit.button"
                 type="submit"
                 variant="contained"
                 size="large"
@@ -668,6 +680,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
               {blnOtpStep ? (
                 <Button
+                  data-testid="auth.login.resend-otp.button"
                   variant="text"
                   onClick={resendOtp}
                   disabled={blnResendingOtp || intResendRemainingSeconds > 0}
@@ -694,6 +707,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         strMessage={strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
         strSeverity="error"
         fnOnClose={clearErrorState}
+        rootTestId="auth.login.error.dialog"
+        closeButtonTestId="auth.login.error.close.button"
       />
     </Box>
   );

@@ -63,6 +63,8 @@ export default function ThemePalettePanel() {
                   variant={selected ? "contained" : "outlined"}
                   startIcon={selected ? <CheckCircleOutlineIcon /> : undefined}
                   onClick={() => setPreset(option.value)}
+                  data-testid="theme.palette.apply.button"
+                  data-preset-key={option.value}
                 >
                   {selected ? dicConstant.theme.appliedButton : dicConstant.theme.applyButton}
                 </Button>

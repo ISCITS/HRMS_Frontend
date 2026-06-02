@@ -306,6 +306,7 @@ export default function PayrollResultDetailPage({
                     startIcon={<ReceiptLongRoundedIcon />}
                     onClick={loadPayslipPreview}
                     disabled={blnPayslipLoading}
+                    data-testid="payroll.result-detail.preview-payslip.button"
                     sx={objActionButtonSx}
                   >
                     {t("preview_payslip", "Preview Payslip")}
@@ -315,6 +316,7 @@ export default function PayrollResultDetailPage({
                     startIcon={<ReceiptLongRoundedIcon />}
                     onClick={generatePayslip}
                     disabled={blnPayslipLoading}
+                    data-testid="payroll.result-detail.generate-payslip.button"
                     sx={objActionButtonSx}
                   >
                     {t("generate_payslip", "Generate")}
@@ -324,6 +326,7 @@ export default function PayrollResultDetailPage({
                     startIcon={<DownloadRoundedIcon />}
                     onClick={() => openGeneratedPayslip(false)}
                     disabled={blnPayslipLoading}
+                    data-testid="payroll.result-detail.download-payslip.button"
                     sx={objActionButtonSx}
                   >
                     {t("download_payslip", "Download")}
@@ -333,6 +336,7 @@ export default function PayrollResultDetailPage({
                     startIcon={<PrintRoundedIcon />}
                     onClick={() => openGeneratedPayslip(true)}
                     disabled={blnPayslipLoading}
+                    data-testid="payroll.result-detail.print-payslip.button"
                     sx={objActionButtonSx}
                   >
                     {t("print_payslip", "Print")}
@@ -349,6 +353,7 @@ export default function PayrollResultDetailPage({
                       (blnPayslipScreen ? "/reports/payslips" : "/payroll/results")
                   )
                 }
+                data-testid="payroll.result-detail.back.button"
                 sx={objActionButtonSx}
               >
                 {t("back_to_list", "Back to List")}

@@ -26,7 +26,7 @@ export default function LeaveForm() {
         <TextField
           id="leave-type"
           select
-          SelectProps={{ native: true }}
+          SelectProps={{ native: true, inputProps: { "data-testid": "leave.form.type.select" } }}
           label={dicConstant.leave.form.type}
           defaultValue={dicConstant.leave.form.typeCasual}
           fullWidth
@@ -35,11 +35,12 @@ export default function LeaveForm() {
           <option value={dicConstant.leave.form.typeSick}>{dicConstant.leave.form.typeSick}</option>
           <option value={dicConstant.leave.form.typeEarned}>{dicConstant.leave.form.typeEarned}</option>
         </TextField>
-        <TextField id="leave-start-date" type="date" label={dicConstant.leave.form.startDate} InputLabelProps={{ shrink: true }} fullWidth />
-        <TextField id="leave-end-date" type="date" label={dicConstant.leave.form.endDate} InputLabelProps={{ shrink: true }} fullWidth />
+        <TextField id="leave-start-date" type="date" label={dicConstant.leave.form.startDate} inputProps={{ "data-testid": "leave.form.start-date.input" }} InputLabelProps={{ shrink: true }} fullWidth />
+        <TextField id="leave-end-date" type="date" label={dicConstant.leave.form.endDate} inputProps={{ "data-testid": "leave.form.end-date.input" }} InputLabelProps={{ shrink: true }} fullWidth />
         <TextField
           id="leave-reason"
           label={dicConstant.leave.form.reason}
+          inputProps={{ "data-testid": "leave.form.reason.input" }}
           multiline
           minRows={3}
           fullWidth
@@ -47,10 +48,10 @@ export default function LeaveForm() {
         />
       </Box>
       <Stack direction="row" className={styles.actionsRow}>
-        <Button component={Link} href="/leave" variant="text">
+        <Button data-testid="leave.form.cancel.button" component={Link} href="/leave" variant="text">
           {dicConstant.common.cancel}
         </Button>
-        <Button variant="contained">{dicConstant.leave.form.submit}</Button>
+        <Button data-testid="leave.form.submit.button" variant="contained">{dicConstant.leave.form.submit}</Button>
       </Stack>
     </Stack>
   );

@@ -103,6 +103,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
           {!blnHideOpenPageButton ? (
             <Button
+              data-testid="employee-salary.summary.open-page.button"
               className={styles.primaryButton}
               variant="contained"
               endIcon={<ArrowForwardRoundedIcon />}

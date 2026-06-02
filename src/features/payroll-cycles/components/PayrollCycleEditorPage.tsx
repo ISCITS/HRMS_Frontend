@@ -204,6 +204,7 @@ export default function PayrollCycleEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <Button
+                data-testid="payroll-cycles.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/cycles")}
@@ -226,6 +227,7 @@ export default function PayrollCycleEditorPage({
               </Button>
               {blnCanSave ? (
                 <Button
+                  data-testid="payroll-cycles.editor.save.button"
                   className={styles.primaryButton}
                   startIcon={<SaveRoundedIcon />}
                   onClick={handleSave}
@@ -303,6 +305,7 @@ export default function PayrollCycleEditorPage({
           >
             <TextField
               label={t("payroll_group", "Payroll Group")}
+              inputProps={{ "data-testid": "payroll-cycles.editor.payroll-group.select" }}
               select
               value={dicForm.intPayrollGroupID}
               onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
@@ -318,6 +321,7 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("period_type", "Period Type")}
+              inputProps={{ "data-testid": "payroll-cycles.editor.period-type.select" }}
               select
               value={dicForm.strPeriodType}
               onChange={(objEvent) => updateField("strPeriodType", objEvent.target.value)}
@@ -331,6 +335,7 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cycle_code", "Cycle Code")}
+              inputProps={{ "data-testid": "payroll-cycles.editor.cycle-code.input" }}
               value={dicForm.strCycleCode}
               onChange={(objEvent) => updateField("strCycleCode", objEvent.target.value.toUpperCase())}
               disabled={blnFieldDisabled}
@@ -339,6 +344,7 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cycle_name", "Cycle Name")}
+              inputProps={{ "data-testid": "payroll-cycles.editor.cycle-name.input" }}
               value={dicForm.strCycleName}
               onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
               disabled={blnFieldDisabled}
@@ -347,6 +353,7 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cutoff_day", "Cutoff Day")}
+              inputProps={{ "data-testid": "payroll-cycles.editor.cutoff-day.input" }}
               value={dicForm.intCutoffDay}
               onChange={(objEvent) => updateField("intCutoffDay", objEvent.target.value.replace(/[^\d]/g, ""))}
               disabled={blnFieldDisabled}
@@ -356,7 +363,7 @@ export default function PayrollCycleEditorPage({
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
-                control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+                control={<ActiveStatusSwitch testId="payroll-cycles.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
               />
             </Box>

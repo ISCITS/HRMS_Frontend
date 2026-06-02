@@ -107,6 +107,7 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
           <TextField
             id="employee-full-name"
             label={dicConstant.employees.form.fullName}
+            inputProps={{ "data-testid": "employee.form.full-name.input" }}
             fullWidth
             required
             value={dicFormValues.name}
@@ -124,6 +125,7 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
             id="employee-email"
             label={dicConstant.employees.form.email}
             type="email"
+            inputProps={{ "data-testid": "employee.form.email.input" }}
             fullWidth
             required
             value={dicFormValues.email}
@@ -140,6 +142,7 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
           <TextField
             id="employee-role"
             label={dicConstant.employees.form.role}
+            inputProps={{ "data-testid": "employee.form.role.input" }}
             fullWidth
             required
             value={dicFormValues.role}
@@ -156,6 +159,7 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
           <TextField
             id="employee-department"
             label={dicConstant.employees.form.department}
+            inputProps={{ "data-testid": "employee.form.department.input" }}
             fullWidth
             required
             value={dicFormValues.department}
@@ -172,7 +176,7 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
           <TextField
             id="employee-status"
             select
-            SelectProps={{ native: true }}
+            SelectProps={{ native: true, inputProps: { "data-testid": "employee.form.status.select" } }}
             label={dicConstant.employees.form.status}
             fullWidth
             value={dicFormValues.status}
@@ -190,10 +194,10 @@ export default function EmployeeForm({ initialValues, submitLabel, cancelHref }:
         </Box>
       </Box>
       <Stack direction="row" className={styles.actionsRow}>
-        <Button component={Link} href={cancelHref} variant="text">
+        <Button data-testid="employee.form.cancel.button" component={Link} href={cancelHref} variant="text">
           {dicConstant.common.cancel}
         </Button>
-        <Button type="submit" variant="contained">
+        <Button data-testid="employee.form.submit.button" type="submit" variant="contained">
           {submitLabel}
         </Button>
       </Stack>

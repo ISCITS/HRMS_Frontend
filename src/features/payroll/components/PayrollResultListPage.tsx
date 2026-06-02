@@ -429,6 +429,7 @@ export default function PayrollResultListPage({
 
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
         <Button
+          data-testid="payroll-results.list.back.button"
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll")}
@@ -456,6 +457,7 @@ export default function PayrollResultListPage({
         ) : null}
         <Box className={styles.searchRow}>
           <TextField
+            data-testid="payroll-results.list.employee-search.input"
             value={dicSearchDraft.strSearchEmployee}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -544,6 +546,7 @@ export default function PayrollResultListPage({
           </TextField>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="payroll-results.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => applyFilters(dicSearchDraft)}
@@ -551,6 +554,7 @@ export default function PayrollResultListPage({
               {t("search", "Search")}
             </Button>
             <Button
+              data-testid="payroll-results.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={clearFilters}
@@ -575,6 +579,7 @@ export default function PayrollResultListPage({
           <Box className={styles.listUtilityActions}>
             {canDoAny("export") ? (
               <Button
+                data-testid="payroll-results.list.export-excel.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() =>
@@ -589,6 +594,7 @@ export default function PayrollResultListPage({
             ) : null}
             {canDoAny("export") ? (
               <Button
+                data-testid="payroll-results.list.export-pdf.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() =>
@@ -677,6 +683,8 @@ export default function PayrollResultListPage({
                     <td className={styles.actionsColumn}>
                       <Box className={styles.actionCell} sx={{ gap: 0.75 }}>
                         <CommonRowActions
+                          testIdPrefix="payroll-results.list.row"
+                          rowKey={dicRow.intID}
                           blnCanView
                           blnCanEdit={blnPayslipScreen}
                           onView={() =>

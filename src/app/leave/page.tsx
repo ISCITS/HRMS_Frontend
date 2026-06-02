@@ -20,7 +20,7 @@ export default function LeavePage() {
   const rows = leaveRequests.map((request) => ({
     ...request,
     action: (
-      <Button size="small" variant="outlined">
+      <Button data-testid="leave.page.row.approve.button" data-row-key={request.id} size="small" variant="outlined">
         {dicConstant.leave.actionApprove}
       </Button>
     )
@@ -38,7 +38,7 @@ export default function LeavePage() {
           rowIdField="id"
           withPaper={false}
           toolbarLeft={
-            <Button variant="contained" href="/leave/apply">
+            <Button data-testid="leave.page.apply.button" variant="contained" href="/leave/apply">
               {dicConstant.leave.applyButton}
             </Button>
           }

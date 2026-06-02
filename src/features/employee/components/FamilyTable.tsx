@@ -77,10 +77,10 @@ export default function FamilyTable({
                 <TableCell>
                   {!blnViewOnly ? (
                     <Box className={styles.actionCell}>
-                      <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => fnOnEdit(objRecord)} aria-label={t("edit_family_member", "Edit family member")}>
+                      <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => fnOnEdit(objRecord)} aria-label={t("edit_family_member", "Edit family member")} data-testid="employee.family.row.edit.button" data-row-key={objRecord.intID}>
                         <EditRoundedIcon fontSize="small" />
                       </button>
-                      {blnCanDelete ? <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => fnOnDelete(objRecord.intID)} aria-label={t("delete_family_member", "Delete family member")}>
+                      {blnCanDelete ? <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => fnOnDelete(objRecord.intID)} aria-label={t("delete_family_member", "Delete family member")} data-testid="employee.family.row.delete.button" data-row-key={objRecord.intID}>
                         <DeleteRoundedIcon fontSize="small" />
                       </button> : null}
                     </Box>

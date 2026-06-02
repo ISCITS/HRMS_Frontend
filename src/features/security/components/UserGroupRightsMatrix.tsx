@@ -447,6 +447,7 @@ export default function UserGroupRightsMatrix({
           }}
         >
           <TextField
+            data-testid="security.user-group-rights-matrix.search.input"
             placeholder="Search menu, module, or action"
             value={strSearch}
             onChange={(objEvent) => setStrSearch(objEvent.target.value)}
@@ -455,6 +456,7 @@ export default function UserGroupRightsMatrix({
             }}
           />
           <Button
+            data-testid="security.user-group-rights-matrix.expand-all.button"
             variant="outlined"
             startIcon={<ExpandMoreRoundedIcon />}
             onClick={() => setObjExpandedMenuIDs(new Set(collectMenuIDs(lstNodes)))}
@@ -463,6 +465,7 @@ export default function UserGroupRightsMatrix({
             Expand All
           </Button>
           <Button
+            data-testid="security.user-group-rights-matrix.collapse-all.button"
             variant="outlined"
             startIcon={<ExpandLessRoundedIcon />}
             onClick={() => setObjExpandedMenuIDs(new Set())}
@@ -471,6 +474,7 @@ export default function UserGroupRightsMatrix({
             Collapse All
           </Button>
           <Button
+            data-testid="security.user-group-rights-matrix.reset.button"
             variant="outlined"
             startIcon={<RestartAltRoundedIcon />}
             disabled={blnReadOnly}
@@ -484,6 +488,7 @@ export default function UserGroupRightsMatrix({
             Reset
           </Button>
           <Button
+            data-testid="security.user-group-rights-matrix.save.button"
             variant="contained"
             startIcon={<SaveRoundedIcon />}
             disabled={blnReadOnly}

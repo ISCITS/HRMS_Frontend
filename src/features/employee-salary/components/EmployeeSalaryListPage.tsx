@@ -231,29 +231,36 @@ export default function EmployeeSalaryListPage() {
 
         <Box className={styles.searchRow}>
           <TextField
+            data-testid="employee-salary.list.search-name.input"
+            inputProps={{ "data-testid": "employee-salary.list.search-name.input" }}
             value={dicSearch.strName}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("employee_salary_search_employee_name", "Search employee name")}
             fullWidth
           />
           <TextField
+            data-testid="employee-salary.list.search-code.input"
+            inputProps={{ "data-testid": "employee-salary.list.search-code.input" }}
             value={dicSearch.strCode}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
             placeholder={t("employee_salary_search_employee_code", "Search employee code")}
             fullWidth
           />
           <TextField
+            data-testid="employee-salary.list.search-status.select"
+            inputProps={{ "data-testid": "employee-salary.list.search-status.select" }}
             select
             value={dicSearch.strStatus}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value }))}
             fullWidth
           >
-            <MenuItem value="All">{t("employee_salary_status_filter", "Salary Status")}</MenuItem>
-            <MenuItem value="Assigned">{t("employee_salary_status_assigned", "Assigned")}</MenuItem>
-            <MenuItem value="Unassigned">{t("employee_salary_status_unassigned", "Unassigned")}</MenuItem>
+            <MenuItem data-testid="employee-salary.list.search-status.all.option" value="All">{t("employee_salary_status_filter", "Salary Status")}</MenuItem>
+            <MenuItem data-testid="employee-salary.list.search-status.assigned.option" value="Assigned">{t("employee_salary_status_assigned", "Assigned")}</MenuItem>
+            <MenuItem data-testid="employee-salary.list.search-status.unassigned.option" value="Unassigned">{t("employee_salary_status_unassigned", "Unassigned")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="employee-salary.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
@@ -266,6 +273,7 @@ export default function EmployeeSalaryListPage() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="employee-salary.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -285,6 +293,7 @@ export default function EmployeeSalaryListPage() {
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanMutate ? (
               <Button
+                data-testid="employee-salary.list.open-employee.button"
                 className={styles.primaryButton}
                 startIcon={<AddRoundedIcon />}
                 onClick={() => {
@@ -299,6 +308,7 @@ export default function EmployeeSalaryListPage() {
             ) : null}
             {blnCanExport ? (
               <Button
+                data-testid="employee-salary.list.export-excel.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() => downloadCsv("employee_salary.csv", lstFilteredRows)}
@@ -308,6 +318,7 @@ export default function EmployeeSalaryListPage() {
             ) : null}
             {blnCanExport ? (
               <Button
+                data-testid="employee-salary.list.export-pdf.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() => exportPdf(t("employee_salary_title", "Employee Salary"), lstFilteredRows)}
@@ -322,6 +333,8 @@ export default function EmployeeSalaryListPage() {
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
               <TextField
+                data-testid="employee-salary.list.rows-per-page.select"
+                inputProps={{ "data-testid": "employee-salary.list.rows-per-page.select" }}
                 select
                 size="small"
                 value={String(intRowsPerPage)}
@@ -332,7 +345,7 @@ export default function EmployeeSalaryListPage() {
                 className={styles.rowsPerPageSelect}
               >
                 {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
+                  <MenuItem key={intOption} value={String(intOption)} data-testid={`employee-salary.list.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
@@ -340,6 +353,7 @@ export default function EmployeeSalaryListPage() {
               </Typography>
             </Box>
             <Pagination
+              data-testid="employee-salary.list.pagination"
               count={intPageCount}
               page={intCurrentPage}
               onChange={(_, intNextPage) => setIntPage(intNextPage)}
@@ -390,6 +404,8 @@ export default function EmployeeSalaryListPage() {
                   <tr key={dicRow.intEmployeeID}>
                     <td>
                       <CommonRowActions
+                        testIdPrefix="employee-salary.list.row"
+                        rowKey={dicRow.intEmployeeID}
                         blnCanView={blnCanView}
                         blnCanEdit={blnCanMutate}
                         onView={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}?mode=view`)}

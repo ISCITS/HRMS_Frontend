@@ -22,6 +22,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -352,7 +353,9 @@ export default function EmployeeMasterPanel() {
 
   function renderOptionField(strLabel: string, strField: keyof EmployeeFormValues, lstOptions: Array<{ intID: number; strLabel: string; strCode?: string }>, blnDisabled = false) {
     return (
-      <TextField
+        <TextField
+        data-testid={`employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select`}
+        inputProps={{ "data-testid": `employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select` }}
         select
         label={strLabel}
         value={dicForm[strField]}
@@ -375,7 +378,7 @@ export default function EmployeeMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.employeeMaster.backButton}</Button>
+        <Button data-testid="employee.master.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.employeeMaster.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -383,20 +386,20 @@ export default function EmployeeMasterPanel() {
         {strError && !blnDialogOpen ? <Alert severity="error" onClose={() => setStrError("")} sx={{ mt: 1.5 }}>{strError}</Alert> : null}
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicConstant.employeeMaster.search.namePlaceholder} fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicConstant.employeeMaster.search.codePlaceholder} fullWidth />
-            <TextField select label={dicConstant.employeeMaster.search.statusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+          <TextField data-testid="employee.master.search.name.input" inputProps={{ "data-testid": "employee.master.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicConstant.employeeMaster.search.namePlaceholder} fullWidth />
+          <TextField data-testid="employee.master.search.code.input" inputProps={{ "data-testid": "employee.master.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicConstant.employeeMaster.search.codePlaceholder} fullWidth />
+            <TextField data-testid="employee.master.search.status.select" inputProps={{ "data-testid": "employee.master.search.status.select" }} select label={dicConstant.employeeMaster.search.statusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
               <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
             </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button data-testid="employee.master.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {dicConstant.common.search}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button data-testid="employee.master.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {dicConstant.common.clear}
             </Button>
           </Box>
@@ -410,9 +413,9 @@ export default function EmployeeMasterPanel() {
         ) : lstSelectedIDs.length > 0 ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIDs.length} row(s) selected</Typography>
-            <Button className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>Bulk Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>Bulk Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>Bulk Deactivate</Button>
+            <Button data-testid="employee.master.bulk-activate.button" className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>Bulk Activate</Button>
+            <Button data-testid="employee.master.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>Bulk Deactivate</Button>
+            <Button data-testid="employee.master.bulk-delete.button" className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>Bulk Deactivate</Button>
           </Box>
         ) : null}
       </Box>
@@ -420,7 +423,7 @@ export default function EmployeeMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
+            <Button data-testid="employee.master.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
               {dicConstant.employeeMaster.addButton}
             </Button>
           </Box>
@@ -430,6 +433,8 @@ export default function EmployeeMasterPanel() {
             <Box className={styles.paginationInfo}>
               <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
               <TextField
+                data-testid="employee.master.rows-per-page.select"
+                inputProps={{ "data-testid": "employee.master.rows-per-page.select" }}
                 select
                 size="small"
                 value={String(intRowsPerPage)}
@@ -461,7 +466,7 @@ export default function EmployeeMasterPanel() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} /></th>
+                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "employee.master.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
                   <th>{dicConstant.employeeMaster.grid.actions}</th>
                   <th>{dicConstant.employeeMaster.grid.employeeCode}</th>
                   <th>{dicConstant.employeeMaster.grid.fullName}</th>
@@ -480,12 +485,12 @@ export default function EmployeeMasterPanel() {
                   const blnSelected = lstSelectedIDs.includes(dicEmployee.intID);
                   return (
                     <tr key={dicEmployee.intID} className={blnSelected ? styles.selectedRow : undefined}>
-                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} /></td>
+                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} inputProps={{ "data-testid": "employee.master.row.select.checkbox", "data-row-key": dicEmployee.intID } as InputHTMLAttributes<HTMLInputElement>} /></td>
                       <td>
                         <Box className={styles.actionCell}>
-                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicEmployee.intID)}><VisibilityRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicEmployee.intID)}><EditRoundedIcon fontSize="small" /></button>
-                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)}><DeleteRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", dicEmployee.intID)} data-testid="employee.master.row.view.button" data-row-key={dicEmployee.intID}><VisibilityRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", dicEmployee.intID)} data-testid="employee.master.row.edit.button" data-row-key={dicEmployee.intID}><EditRoundedIcon fontSize="small" /></button>
+                          <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)} data-testid="employee.master.row.delete.button" data-row-key={dicEmployee.intID}><DeleteRoundedIcon fontSize="small" /></button>
                         </Box>
                       </td>
                       <td>{dicEmployee.strEmployeeCode}</td>
@@ -505,7 +510,7 @@ export default function EmployeeMasterPanel() {
         )}
       </Box>
 
-      <Dialog open={blnDialogOpen} onClose={closeDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.dialogPaper }}>
+      <Dialog open={blnDialogOpen} onClose={closeDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.dialogPaper, "data-testid": "employee.master.dialog" }}>
         <DialogTitle className={styles.dialogTitle}>
           {strMode === "add" ? dicConstant.employeeMaster.dialogAddTitle : strMode === "edit" ? dicConstant.employeeMaster.dialogEditTitle : dicConstant.employeeMaster.dialogViewTitle}
         </DialogTitle>
@@ -513,16 +518,16 @@ export default function EmployeeMasterPanel() {
           {strError ? <Alert severity="error" sx={{ mb: 2 }}>{strError}</Alert> : null}
           <Typography className={styles.sectionBar}>Identity & Employment</Typography>
           <Box className={styles.dialogGrid}>
-            <TextField label={`${dicConstant.employeeMaster.fields.employeeCode} *`} value={dicForm.strEmployeeCode} disabled={strMode === "view"} onChange={(objEvent) => updateField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth />
-            <TextField select label={dicConstant.employeeMaster.fields.title} value={dicForm.strTitle} disabled={strMode === "view"} onChange={(objEvent) => updateField("strTitle", objEvent.target.value)} fullWidth>
+            <TextField data-testid="employee.master.dialog.employee-code.input" inputProps={{ "data-testid": "employee.master.dialog.employee-code.input" }} label={`${dicConstant.employeeMaster.fields.employeeCode} *`} value={dicForm.strEmployeeCode} disabled={strMode === "view"} onChange={(objEvent) => updateField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth />
+            <TextField data-testid="employee.master.dialog.title.select" inputProps={{ "data-testid": "employee.master.dialog.title.select" }} select label={dicConstant.employeeMaster.fields.title} value={dicForm.strTitle} disabled={strMode === "view"} onChange={(objEvent) => updateField("strTitle", objEvent.target.value)} fullWidth>
               <MenuItem value="">Select</MenuItem>
               {(objFormOptions?.lstTitles ?? []).map((strTitle) => <MenuItem key={strTitle} value={strTitle}>{strTitle}</MenuItem>)}
             </TextField>
-            <TextField label={`${dicConstant.employeeMaster.fields.firstName} *`} value={dicForm.strFirstName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strFirstName", objEvent.target.value)} error={Boolean(dicErrors.strFirstName)} helperText={dicErrors.strFirstName} fullWidth />
-            <TextField label={dicConstant.employeeMaster.fields.middleName} value={dicForm.strMiddleName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strMiddleName", objEvent.target.value)} fullWidth />
-            <TextField label={dicConstant.employeeMaster.fields.lastName} value={dicForm.strLastName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strLastName", objEvent.target.value)} fullWidth />
-            <TextField type="date" label={dicConstant.employeeMaster.fields.dateOfBirth} value={dicForm.dtDateOfBirth} disabled={strMode === "view"} onChange={(objEvent) => updateField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfBirth)} helperText={dicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} fullWidth />
-            <TextField type="date" label={`${dicConstant.employeeMaster.fields.dateOfJoining} *`} value={dicForm.dtDateOfJoining} disabled={strMode === "view"} onChange={(objEvent) => updateField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfJoining)} helperText={dicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} fullWidth />
+            <TextField data-testid="employee.master.dialog.first-name.input" inputProps={{ "data-testid": "employee.master.dialog.first-name.input" }} label={`${dicConstant.employeeMaster.fields.firstName} *`} value={dicForm.strFirstName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strFirstName", objEvent.target.value)} error={Boolean(dicErrors.strFirstName)} helperText={dicErrors.strFirstName} fullWidth />
+            <TextField data-testid="employee.master.dialog.middle-name.input" inputProps={{ "data-testid": "employee.master.dialog.middle-name.input" }} label={dicConstant.employeeMaster.fields.middleName} value={dicForm.strMiddleName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strMiddleName", objEvent.target.value)} fullWidth />
+            <TextField data-testid="employee.master.dialog.last-name.input" inputProps={{ "data-testid": "employee.master.dialog.last-name.input" }} label={dicConstant.employeeMaster.fields.lastName} value={dicForm.strLastName} disabled={strMode === "view"} onChange={(objEvent) => updateField("strLastName", objEvent.target.value)} fullWidth />
+            <TextField data-testid="employee.master.dialog.date-of-birth.input" inputProps={{ "data-testid": "employee.master.dialog.date-of-birth.input" }} type="date" label={dicConstant.employeeMaster.fields.dateOfBirth} value={dicForm.dtDateOfBirth} disabled={strMode === "view"} onChange={(objEvent) => updateField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfBirth)} helperText={dicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} fullWidth />
+            <TextField data-testid="employee.master.dialog.date-of-joining.input" inputProps={{ "data-testid": "employee.master.dialog.date-of-joining.input" }} type="date" label={`${dicConstant.employeeMaster.fields.dateOfJoining} *`} value={dicForm.dtDateOfJoining} disabled={strMode === "view"} onChange={(objEvent) => updateField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfJoining)} helperText={dicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} fullWidth />
             {renderOptionField(`${dicConstant.employeeMaster.fields.employmentType} *`, "intEmploymentTypeID", objFormOptions?.lstEmploymentTypes ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.department, "intDepartmentID", objFormOptions?.lstDepartments ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.designation, "intDesignationID", objFormOptions?.lstDesignations ?? [])}
@@ -535,35 +540,35 @@ export default function EmployeeMasterPanel() {
 
           <Typography className={styles.sectionBar}>Contact & Preferences</Typography>
           <Box className={styles.dialogGrid}>
-            <TextField label={dicConstant.employeeMaster.fields.workEmail} value={dicForm.strWorkEmail} disabled={strMode === "view"} onChange={(objEvent) => updateField("strWorkEmail", objEvent.target.value)} error={Boolean(dicErrors.strWorkEmail)} helperText={dicErrors.strWorkEmail} fullWidth />
-            <TextField label={dicConstant.employeeMaster.fields.personalEmail} value={dicForm.strPersonalEmail} disabled={strMode === "view"} onChange={(objEvent) => updateField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicErrors.strPersonalEmail)} helperText={dicErrors.strPersonalEmail} fullWidth />
-            <TextField label={dicConstant.employeeMaster.fields.mobileNumber} value={dicForm.strMobileNumber} disabled={strMode === "view"} onChange={(objEvent) => updateField("strMobileNumber", objEvent.target.value)} error={Boolean(dicErrors.strMobileNumber)} helperText={dicErrors.strMobileNumber} fullWidth />
-            <TextField select label={dicConstant.employeeMaster.fields.gender} value={dicForm.strGender} disabled={strMode === "view"} onChange={(objEvent) => updateField("strGender", objEvent.target.value)} fullWidth>
+            <TextField data-testid="employee.master.dialog.work-email.input" inputProps={{ "data-testid": "employee.master.dialog.work-email.input" }} label={dicConstant.employeeMaster.fields.workEmail} value={dicForm.strWorkEmail} disabled={strMode === "view"} onChange={(objEvent) => updateField("strWorkEmail", objEvent.target.value)} error={Boolean(dicErrors.strWorkEmail)} helperText={dicErrors.strWorkEmail} fullWidth />
+            <TextField data-testid="employee.master.dialog.personal-email.input" inputProps={{ "data-testid": "employee.master.dialog.personal-email.input" }} label={dicConstant.employeeMaster.fields.personalEmail} value={dicForm.strPersonalEmail} disabled={strMode === "view"} onChange={(objEvent) => updateField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicErrors.strPersonalEmail)} helperText={dicErrors.strPersonalEmail} fullWidth />
+            <TextField data-testid="employee.master.dialog.mobile-number.input" inputProps={{ "data-testid": "employee.master.dialog.mobile-number.input" }} label={dicConstant.employeeMaster.fields.mobileNumber} value={dicForm.strMobileNumber} disabled={strMode === "view"} onChange={(objEvent) => updateField("strMobileNumber", objEvent.target.value)} error={Boolean(dicErrors.strMobileNumber)} helperText={dicErrors.strMobileNumber} fullWidth />
+            <TextField data-testid="employee.master.dialog.gender.select" inputProps={{ "data-testid": "employee.master.dialog.gender.select" }} select label={dicConstant.employeeMaster.fields.gender} value={dicForm.strGender} disabled={strMode === "view"} onChange={(objEvent) => updateField("strGender", objEvent.target.value)} fullWidth>
               <MenuItem value="">Select</MenuItem>
               {(objFormOptions?.lstGenders ?? []).map((strGender) => <MenuItem key={strGender} value={strGender}>{strGender}</MenuItem>)}
             </TextField>
             {renderOptionField(dicConstant.employeeMaster.fields.preferredLanguage, "intPreferredLanguageID", objFormOptions?.lstLanguages ?? [])}
             <Box className={styles.switchRow} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, minHeight: 56 }}>
               <Typography className={styles.switchLabel}>{dicConstant.employeeMaster.fields.employmentStatus}</Typography>
-              <ActiveStatusSwitch blnIsActive={dicForm.strEmploymentStatus === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => updateField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} />
+              <ActiveStatusSwitch testId="employee.master.dialog.employment-status.switch" blnIsActive={dicForm.strEmploymentStatus === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => updateField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} />
             </Box>
-            <TextField type="date" label={dicConstant.employeeMaster.fields.dateOfExit} value={dicForm.dtDateOfExit} disabled={strMode === "view" || dicForm.strEmploymentStatus === "Active"} onChange={(objEvent) => updateField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfExit)} helperText={dicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} fullWidth />
+            <TextField data-testid="employee.master.dialog.date-of-exit.input" inputProps={{ "data-testid": "employee.master.dialog.date-of-exit.input" }} type="date" label={dicConstant.employeeMaster.fields.dateOfExit} value={dicForm.dtDateOfExit} disabled={strMode === "view" || dicForm.strEmploymentStatus === "Active"} onChange={(objEvent) => updateField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicErrors.dtDateOfExit)} helperText={dicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} fullWidth />
           </Box>
 
           <Typography className={styles.sectionBar}>Access</Typography>
           <Box className={styles.switchRow}>
-            <Switch checked={dicForm.blnIsEssEnabled} disabled={strMode === "view"} onChange={(_, blnChecked) => updateField("blnIsEssEnabled", blnChecked)} />
+            <Switch checked={dicForm.blnIsEssEnabled} disabled={strMode === "view"} onChange={(_, blnChecked) => updateField("blnIsEssEnabled", blnChecked)} inputProps={{ "data-testid": "employee.master.dialog.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />
             <Typography className={styles.switchLabel}>{dicConstant.employeeMaster.fields.essEnabled}</Typography>
           </Box>
         </DialogContent>
         <Box className={styles.dialogFooter}>
           {strMode === "view" ? (
-            <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
+            <Button data-testid="employee.master.dialog.close.button" className={styles.textAction} onClick={closeDialog}>{dicConstant.common.close}</Button>
           ) : (
             <>
-              <Button className={styles.textAction} onClick={() => setDicForm(dicEmptyForm)}>{dicConstant.common.reset}</Button>
-              <Button className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
-              <Button className={styles.primaryButton} onClick={saveEmployee} disabled={blnSubmitting}>
+              <Button data-testid="employee.master.dialog.reset.button" className={styles.textAction} onClick={() => setDicForm(dicEmptyForm)}>{dicConstant.common.reset}</Button>
+              <Button data-testid="employee.master.dialog.cancel.button" className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
+              <Button data-testid="employee.master.dialog.save.button" className={styles.primaryButton} onClick={saveEmployee} disabled={blnSubmitting}>
                 {blnSubmitting ? "Saving..." : dicConstant.common.save}
               </Button>
             </>

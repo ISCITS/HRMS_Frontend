@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -390,6 +390,7 @@ export default function EmployeePayrollInputEditorPage({
               }}
             >
               <Button
+                data-testid="employee-payroll-input.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push(strBackRoute || "/payroll/employee-payroll-inputs")}
@@ -398,6 +399,7 @@ export default function EmployeePayrollInputEditorPage({
                 {t("back_to_list", "Back to List")}
               </Button>
               {blnCanSave ? <Button
+                data-testid="employee-payroll-input.editor.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRecord}
@@ -567,6 +569,7 @@ export default function EmployeePayrollInputEditorPage({
           sx={{ mt: 1.25 }}
           control={
             <Switch
+              inputProps={{ "data-testid": "employee-payroll-input.editor.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
               checked={dicForm.blnIsLocked}
               onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
               disabled={blnFormLocked || dicForm.strStatus === "Locked"}

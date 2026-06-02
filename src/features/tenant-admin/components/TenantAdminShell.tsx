@@ -56,6 +56,8 @@ export default function TenantAdminShell({ children }: PropsWithChildren) {
                 return (
                   <Button
                     key={dicLink.strHref}
+                    data-testid="tenant-admin.shell.nav.button"
+                    data-route={dicLink.strHref}
                     component={Link}
                     href={dicLink.strHref}
                     color={blnActive ? "primary" : "inherit"}
@@ -68,7 +70,7 @@ export default function TenantAdminShell({ children }: PropsWithChildren) {
               })}
             </Stack>
           </Stack>
-          <Button variant="outlined" onClick={handleLogout}>Logout</Button>
+          <Button data-testid="tenant-admin.shell.logout.button" variant="outlined" onClick={handleLogout}>Logout</Button>
         </Toolbar>
       </AppBar>
       <Container maxWidth="xl" sx={{ py: 4 }}>

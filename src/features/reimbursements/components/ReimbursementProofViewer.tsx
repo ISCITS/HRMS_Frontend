@@ -32,8 +32,8 @@ export default function ReimbursementProofViewer({ lstProofs, blnActionsDisabled
           </Stack>
           {objProof.strVerificationRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objProof.strVerificationRemarks}</Typography> : null}
           <Stack direction="row" spacing={0.6}>
-            <Button size="small" variant="outlined" startIcon={<CheckCircleOutlineRoundedIcon />} disabled={blnActionsDisabled || objProof.strVerificationStatus === "verified"} onClick={() => onVerify(objProof.intID)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Verify</Button>
-            <Button size="small" variant="outlined" color="error" startIcon={<HighlightOffRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objProof.intID)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject</Button>
+            <Button data-testid="reimbursements.proof-viewer.verify.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<CheckCircleOutlineRoundedIcon />} disabled={blnActionsDisabled || objProof.strVerificationStatus === "verified"} onClick={() => onVerify(objProof.intID)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Verify</Button>
+            <Button data-testid="reimbursements.proof-viewer.reject.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<HighlightOffRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objProof.intID)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject</Button>
           </Stack>
         </Stack>
       ))}

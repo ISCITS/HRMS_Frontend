@@ -199,6 +199,8 @@ export default function SsoCallbackClient() {
         onVerify={() => {
           void handleVerify();
         }}
+        codeInputTestId="auth.sso-callback.otp.input"
+        verifyButtonTestId="auth.sso-callback.verify.button"
       />
     );
   }
@@ -218,6 +220,10 @@ export default function SsoCallbackClient() {
       onVerify={() => {
         void handleVerify();
       }}
+      codeInputTestId="auth.sso-callback.mfa-code.input"
+      backupCodeInputTestId="auth.sso-callback.backup-code.input"
+      verifyButtonTestId="auth.sso-callback.verify.button"
+      toggleBackupCodeButtonTestId="auth.sso-callback.toggle-backup-code.button"
     />
   );
 }

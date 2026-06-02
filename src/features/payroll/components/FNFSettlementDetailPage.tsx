@@ -115,7 +115,7 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
         <Box className={styles.controlsHeader}>
           <Box sx={{ p: 1 }}><Typography className={styles.breadcrumbs}>Payroll / Full and Final</Typography><Typography className={styles.title} sx={{ fontSize: "1.2rem" }}>Full and Final Settlement #{objSettlement?.strSettlementNumber || objSettlement?.intID}</Typography></Box>
           <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="flex-end">
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")}>Back</Button>
+            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")} data-testid="payroll.fnf-settlement-detail.back.button">Back</Button>
             {objSettlement ? <FNFActionBar objSettlement={objSettlement} blnBusy={blnSaving} onAction={openAction} /> : null}
           </Stack>
         </Box>
@@ -164,14 +164,14 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
           <Typography>Are you sure you want to delete {objLineToDelete?.strLineName || "this settlement line"}?</Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: "flex-end", px: 3, pb: 2 }}>
-          <Button size="small" variant="text" onClick={() => setObjLineToDelete(null)} disabled={blnSaving}>Cancel</Button>
-          <Button size="small" variant="contained" color="error" onClick={confirmDeleteLine} disabled={blnSaving}>Delete</Button>
+          <Button size="small" variant="text" onClick={() => setObjLineToDelete(null)} disabled={blnSaving} data-testid="payroll.fnf-settlement-detail.delete-line.cancel.button">Cancel</Button>
+          <Button size="small" variant="contained" color="error" onClick={confirmDeleteLine} disabled={blnSaving} data-testid="payroll.fnf-settlement-detail.delete-line.confirm.button">Delete</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(strPendingAction)} onClose={() => setStrPendingAction("")} fullWidth maxWidth="sm">
         <DialogTitle>{strPendingAction === "mark-paid" ? "Payment Reference" : "Reason Required"}</DialogTitle>
-        <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{strPendingAction === "mark-paid" ? <TextField label="Payment Reference" value={strPaymentReference} onChange={(e) => setStrPaymentReference(e.target.value)} fullWidth /> : null}<TextField label="Reason / Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} fullWidth multiline minRows={3} /></Stack></DialogContent>
-        <DialogActions><Button onClick={() => setStrPendingAction("")}>Close</Button><Button variant="contained" onClick={() => { if (strPendingAction === "mark-paid" && !strPaymentReference.trim()) { setStrError("Payment reference is required."); return; } if (["release", "cancel"].includes(strPendingAction) && !strReason.trim()) { setStrError("Reason is required."); return; } handleAction(strPendingAction, { strRemarks: strReason, strPaymentReferenceNo: strPaymentReference }).catch(() => undefined); }}>Confirm</Button></DialogActions>
+        <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{strPendingAction === "mark-paid" ? <TextField label="Payment Reference" value={strPaymentReference} onChange={(e) => setStrPaymentReference(e.target.value)} fullWidth data-testid="payroll.fnf-settlement-detail.payment-reference.input" /> : null}<TextField label="Reason / Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} fullWidth multiline minRows={3} data-testid="payroll.fnf-settlement-detail.reason-remarks.input" /></Stack></DialogContent>
+        <DialogActions><Button onClick={() => setStrPendingAction("")} data-testid="payroll.fnf-settlement-detail.action-dialog.close.button">Close</Button><Button variant="contained" onClick={() => { if (strPendingAction === "mark-paid" && !strPaymentReference.trim()) { setStrError("Payment reference is required."); return; } if (["release", "cancel"].includes(strPendingAction) && !strReason.trim()) { setStrError("Reason is required."); return; } handleAction(strPendingAction, { strRemarks: strReason, strPaymentReferenceNo: strPaymentReference }).catch(() => undefined); }} data-testid="payroll.fnf-settlement-detail.action-dialog.confirm.button">Confirm</Button></DialogActions>
       </Dialog>
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? "Loading settlement..." : "Saving..."} />
     </Box>

@@ -305,10 +305,10 @@ export default function DepartmentMasterInlinePanel() {
         employeeCount: dicDepartment.employeeCount,
         action: intIsEditingRow ? (
           <Stack direction="row" spacing={1}>
-            <Button size="small" variant="contained" onClick={handleSaveEdit}>
+            <Button data-testid="department-inline.edit.save.button" size="small" variant="contained" onClick={handleSaveEdit}>
               {dicConstant.common.save}
             </Button>
-            <Button size="small" variant="outlined" onClick={handleCancelInline}>
+            <Button data-testid="department-inline.edit.cancel.button" size="small" variant="outlined" onClick={handleCancelInline}>
               {dicConstant.common.cancel}
             </Button>
           </Stack>
@@ -336,10 +336,10 @@ export default function DepartmentMasterInlinePanel() {
         employeeCount: "-",
         action: (
           <Stack direction="row" spacing={1}>
-            <Button size="small" variant="contained" onClick={handleSaveNew}>
+            <Button data-testid="department-inline.create.save.button" size="small" variant="contained" onClick={handleSaveNew}>
               {dicConstant.common.save}
             </Button>
-            <Button size="small" variant="outlined" onClick={handleCancelInline}>
+            <Button data-testid="department-inline.create.cancel.button" size="small" variant="outlined" onClick={handleCancelInline}>
               {dicConstant.common.cancel}
             </Button>
           </Stack>

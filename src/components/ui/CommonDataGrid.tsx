@@ -52,6 +52,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   emptyMessage?: string;
   withPaper?: boolean;
   sx?: SxProps<Theme>;
+  testIdPrefix?: string;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -70,7 +71,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   showPaginationSummary = false,
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
-  sx
+  sx,
+  testIdPrefix = "common-data-grid"
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -275,10 +277,10 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
             {showExportOptions ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
+                <Button data-testid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
                   {strExportExcelLabel}
                 </Button>
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
+                <Button data-testid={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
                   {strExportPdfLabel}
                 </Button>
               </Stack>
@@ -297,6 +299,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   {strRowsPerPageLabel}
                 </Typography>
                 <TextField
+                  data-testid={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
                   select
                   size="small"
@@ -320,6 +323,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Typography>
               </Box>
               <Pagination
+                data-testid={`${testIdPrefix}.pagination`}
                 className={styles.paginationBar}
                 count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
                 page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
@@ -344,6 +348,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
         }}
       >
         <Table
+          data-testid={`${testIdPrefix}.table`}
           size="small"
           stickyHeader
           sx={{
@@ -403,6 +408,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               paginatedRows.map((row, index) => (
                 <TableRow
                   key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
+                  data-testid={`${testIdPrefix}.row`}
                   hover
                   sx={[
                     {

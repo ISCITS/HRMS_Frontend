@@ -206,6 +206,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               startIcon={<ArrowBackRoundedIcon />}
               sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, textTransform: "none", "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
               onClick={() => objRouter.push("/payroll/it-declaration-review")}
+              data-testid="it-declaration.review-detail.back.button"
             >
               Back
             </Button>
@@ -221,6 +222,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 variant="text"
                 size="small"
                 onClick={() => setBlnAuditDialogOpen(true)}
+                data-testid="it-declaration.review-detail.view-log.button"
                 sx={{ textTransform: "none", color: "#e2e8f0", minWidth: "auto", px: 0.6 }}
               >
                 View Log
@@ -230,6 +232,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               {blnCanStartReview ? <Button
                 variant="outlined"
                 onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}
+                data-testid="it-declaration.review-detail.start-review.button"
                 sx={{
                   minHeight: 30,
                   borderRadius: "8px",
@@ -266,9 +269,9 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
         <Typography sx={{ fontWeight: 800 }}>Items ({lstItems.length})</Typography>
         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-          <Button variant="outlined" size="small" onClick={goToPreviousPage} disabled={intSafeItemPage <= 1}>Previous</Button>
+          <Button variant="outlined" size="small" onClick={goToPreviousPage} disabled={intSafeItemPage <= 1} data-testid="it-declaration.review-detail.previous-page.button">Previous</Button>
           <Typography sx={{ fontSize: "0.82rem", color: "#64748b" }}>Page {intSafeItemPage} of {intItemPageCount}</Typography>
-          <Button variant="outlined" size="small" onClick={goToNextPage} disabled={intSafeItemPage >= intItemPageCount}>Next</Button>
+          <Button variant="outlined" size="small" onClick={goToNextPage} disabled={intSafeItemPage >= intItemPageCount} data-testid="it-declaration.review-detail.next-page.button">Next</Button>
         </Stack>
       </Stack>
 
@@ -313,22 +316,22 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
         </Box>
       ) : null}
 
-      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth data-testid="it-declaration.review-detail.confirm.dialog">
         <DialogTitle>Confirm Action</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 1 }}>Please confirm this action.</Typography>
           {(strConfirm === "reject" || strConfirm === "release") ? (
-            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} />
+            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} data-testid="it-declaration.review-detail.confirm.remarks.input" />
           ) : null}
           {strDialogError ? <Alert severity="error" sx={{ mt: 1 }}>{strDialogError}</Alert> : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStrConfirm(null)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void confirmAction()}>Confirm</Button>
+          <Button onClick={() => setStrConfirm(null)} data-testid="it-declaration.review-detail.confirm.cancel.button">Cancel</Button>
+          <Button variant="contained" onClick={() => void confirmAction()} data-testid="it-declaration.review-detail.confirm.submit.button">Confirm</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={blnAuditDialogOpen} onClose={() => setBlnAuditDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={blnAuditDialogOpen} onClose={() => setBlnAuditDialogOpen(false)} maxWidth="md" fullWidth data-testid="it-declaration.review-detail.audit.dialog">
         <DialogTitle>Audit Logs</DialogTitle>
         <DialogContent>
           {lstAudit.length === 0 ? (
@@ -353,7 +356,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnAuditDialogOpen(false)}>Close</Button>
+          <Button onClick={() => setBlnAuditDialogOpen(false)} data-testid="it-declaration.review-detail.audit.close.button">Close</Button>
         </DialogActions>
       </Dialog>
 

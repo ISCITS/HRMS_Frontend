@@ -425,6 +425,7 @@ export default function UserGroupRightsEditor({
         }}
       >
         <TextField
+          data-testid="security.user-group-rights-editor.search.input"
           placeholder={dicLabels.searchPlaceholder}
           value={strSearch}
           onChange={(objEvent) => setStrSearch(objEvent.target.value)}
@@ -437,6 +438,7 @@ export default function UserGroupRightsEditor({
           }}
         />
         <Button
+          data-testid="security.user-group-rights-editor.expand-all.button"
           variant="outlined"
           startIcon={<ExpandMoreRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set(collectMenuIDs(lstNodes)))}
@@ -445,6 +447,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.expandAll}
         </Button>
         <Button
+          data-testid="security.user-group-rights-editor.collapse-all.button"
           variant="outlined"
           startIcon={<ExpandLessRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set())}
@@ -453,6 +456,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.collapseAll}
         </Button>
         <Button
+          data-testid="security.user-group-rights-editor.reset.button"
           variant="outlined"
           startIcon={<RestartAltRoundedIcon />}
           disabled={blnReadOnly}

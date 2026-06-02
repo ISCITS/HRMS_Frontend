@@ -1,13 +1,30 @@
 import { NextResponse } from "next/server";
 
-import { proxyGenericLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
+import { normalizeAuthRouteBody } from "@/app/api/auth/AuthRouteBody";
+import { isAuthSuccessData, proxyGenericLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
+
+type GenericLoginRouteBody = {
+  payload?: string;
+  strEmailAddress?: string;
+  emailAddress?: string;
+  email?: string;
+  strPassword?: string;
+  password?: string;
+};
 
 export async function POST(request: Request) {
   try {
-    const objBody = (await request.json()) as unknown;
-    const objResult = await proxyGenericLogin(objBody);
+    const objBody = await normalizeAuthRouteBody<GenericLoginRouteBody>(await request.json());
+    const objResult = await proxyGenericLogin({
+      strEmailAddress: objBody.strEmailAddress ?? objBody.emailAddress ?? objBody.email,
+      strPassword: objBody.strPassword ?? objBody.password,
+    });
     const objResponse = NextResponse.json(objResult, { status: 200 });
-    await setAuthCookies(objResponse, objResult.Data);
+
+    if (isAuthSuccessData(objResult.Data)) {
+      await setAuthCookies(objResponse, objResult.Data);
+    }
+
     return objResponse;
   } catch (objError) {
     return NextResponse.json(

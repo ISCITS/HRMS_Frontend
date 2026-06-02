@@ -3,7 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
 import { toInputDate } from "@/features/reimbursements/formatters";
 import type {
@@ -112,38 +112,38 @@ export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpe
         <Stack spacing={1.3}>
           <Grid container spacing={1.2}>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label="Category" value={objForm.intReimbursementCategoryID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedCategory(objOptions.lstCategories.find((objCategory) => String(objCategory.intID) === objEvent.target.value) ?? null)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
+              <TextField data-testid="reimbursements.claim-item.category.select" required select fullWidth size="small" label="Category" value={objForm.intReimbursementCategoryID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedCategory(objOptions.lstCategories.find((objCategory) => String(objCategory.intID) === objEvent.target.value) ?? null)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
                 <MenuItem value="">Select category</MenuItem>
                 {objOptions.lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{objCategory.strCategoryName}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label="Payroll component" value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, intSalaryComponentID: objEvent.target.value })} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
+              <TextField required select fullWidth size="small" label="Payroll component" data-testid="reimbursements.claim-item.payroll-component.select" inputProps={{ "data-testid": "reimbursements.claim-item.payroll-component.select" }} value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, intSalaryComponentID: objEvent.target.value })} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
                 <MenuItem value="">Select component</MenuItem>
-                {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem key={objComponent.intID} value={String(objComponent.intID)}>{objComponent.strComponentName}</MenuItem>)}
+                {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem data-testid="reimbursements.claim-item.payroll-component.option" data-option-key={objComponent.intID} key={objComponent.intID} value={String(objComponent.intID)}>{objComponent.strComponentName}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth size="small" type="date" label="Expense date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField fullWidth size="small" type="date" data-testid="reimbursements.claim-item.expense-date.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-date.input" }} label="Expense date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField required fullWidth size="small" type="number" label="Claimed amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly }} />
+              <TextField required fullWidth size="small" type="number" data-testid="reimbursements.claim-item.claimed-amount.input" label="Claimed amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly, "data-testid": "reimbursements.claim-item.claimed-amount.input" }} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" label="Expense description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField fullWidth multiline minRows={2} size="small" data-testid="reimbursements.claim-item.expense-description.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-description.input" }} label="Expense description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objForm.strEmployeeRemarks} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField fullWidth multiline minRows={2} size="small" data-testid="reimbursements.claim-item.employee-remarks.input" inputProps={{ "data-testid": "reimbursements.claim-item.employee-remarks.input" }} label="Employee remarks" value={objForm.strEmployeeRemarks} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
           </Grid>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
-            <FormControlLabel control={<Checkbox checked={objForm.blnProofRequired} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, blnProofRequired: objEvent.target.checked })} />} label="Proof required for this item" />
+            <FormControlLabel control={<Checkbox checked={objForm.blnProofRequired} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, blnProofRequired: objEvent.target.checked })} inputProps={{ "data-testid": "reimbursements.claim-item.proof-required.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Proof required for this item" />
             {objForm.blnProofRequired && !blnReadOnly ? (
               <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ ml: { sm: "auto" } }}>
                 {objProofFile ? <Typography sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography> : null}
-                <Button variant="outlined" component="label" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", whiteSpace: "nowrap" }}>
+                <Button data-testid="reimbursements.claim-item.upload-proof.button" variant="outlined" component="label" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", whiteSpace: "nowrap" }}>
                   Upload Proof
-                  <input hidden type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
+                  <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
                 </Button>
               </Stack>
             ) : null}
@@ -157,8 +157,8 @@ export default function ReimbursementClaimItemForm({ objItem, objOptions, blnOpe
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} variant={blnReadOnly ? "contained" : "text"} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>{blnReadOnly ? "Close" : "Cancel"}</Button>
-        {!blnReadOnly ? <Button variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled}>
+        <Button data-testid="reimbursements.claim-item.close.button" onClick={onClose} variant={blnReadOnly ? "contained" : "text"} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>{blnReadOnly ? "Close" : "Cancel"}</Button>
+        {!blnReadOnly ? <Button data-testid="reimbursements.claim-item.save.button" variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled}>
           {objItem ? "Save Item" : "Add Item"}
         </Button> : null}
       </DialogActions>

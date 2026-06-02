@@ -304,7 +304,7 @@ export default function SalaryStructureListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button data-testid="salary-structures.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button", "Back")}
         </Button>
       </Box>
@@ -319,30 +319,37 @@ export default function SalaryStructureListPage() {
 
         <Box className={styles.searchRow}>
           <TextField
+            data-testid="salary-structures.list.search-name.input"
+            inputProps={{ "data-testid": "salary-structures.list.search-name.input" }}
             value={dicSearchDraft.strName}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("search_structure_name", "Search structure name")}
             fullWidth
           />
           <TextField
+            data-testid="salary-structures.list.search-code.input"
+            inputProps={{ "data-testid": "salary-structures.list.search-code.input" }}
             value={dicSearchDraft.strCode}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
             placeholder={t("search_structure_code", "Search structure code")}
             fullWidth
           />
           <TextField
+            data-testid="salary-structures.list.search-status.select"
+            inputProps={{ "data-testid": "salary-structures.list.search-status.select" }}
             select
             label={t("search_status_label", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
             fullWidth
           >
-            <MenuItem value="All">{t("all_status", "All Status")}</MenuItem>
-            <MenuItem value="Active">{t("status_active", "Active")}</MenuItem>
-            <MenuItem value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
+            <MenuItem data-testid="salary-structures.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
+            <MenuItem data-testid="salary-structures.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
+            <MenuItem data-testid="salary-structures.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="salary-structures.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
@@ -356,6 +363,7 @@ export default function SalaryStructureListPage() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="salary-structures.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -375,17 +383,17 @@ export default function SalaryStructureListPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanAdd ? (
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button data-testid="salary-structures.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("add_salary_structure", "Add Salary Structure")}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("salary_structures.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button data-testid="salary-structures.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("salary_structures.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_excel", "Export Excel")}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("salary_structure_title", "Salary Structures"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button data-testid="salary-structures.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("salary_structure_title", "Salary Structures"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_pdf", "Export PDF")}
               </Button>
             ) : null}
@@ -396,6 +404,8 @@ export default function SalaryStructureListPage() {
               <Box className={styles.paginationInfo}>
                 <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
                 <TextField
+                  data-testid="salary-structures.list.rows-per-page.select"
+                  inputProps={{ "data-testid": "salary-structures.list.rows-per-page.select" }}
                   select
                   size="small"
                   value={String(intRowsPerPage)}
@@ -406,14 +416,14 @@ export default function SalaryStructureListPage() {
                   className={styles.rowsPerPageSelect}
                 >
                   {lstRowsPerPageOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
+                    <MenuItem key={intOption} value={String(intOption)} data-testid={`salary-structures.list.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                   ))}
                 </TextField>
                 <Typography className={styles.paginationRange}>
                   {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} {t("pagination_separator", "of")} {lstFilteredRows.length}
                 </Typography>
               </Box>
-              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
+              <Pagination data-testid="salary-structures.list.pagination" count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
             </Box>
           ) : null}
         </Box>
@@ -454,6 +464,8 @@ export default function SalaryStructureListPage() {
                     <td>
                       <Box className={styles.actionCell}>
                         <CommonRowActions
+                          testIdPrefix="salary-structures.list.row"
+                          rowKey={dicRow.intID}
                           blnCanView={!blnCanEdit && blnCanView}
                           blnCanEdit={blnCanEdit}
                           blnCanDelete={blnCanDelete}
@@ -463,6 +475,8 @@ export default function SalaryStructureListPage() {
                         />
                         {blnCanClone ? (
                           <button
+                            data-testid="salary-structures.list.row.clone.button"
+                            data-row-key={String(dicRow.intID)}
                             className={`${styles.iconButton} ${styles.editIcon}`}
                             type="button"
                             onClick={() => handleCloneOpen(dicRow.intID)}
@@ -493,7 +507,7 @@ export default function SalaryStructureListPage() {
         )}
       </Box>
 
-      <Dialog open={blnCloneOpen} onClose={() => !blnCloneSaving && setBlnCloneOpen(false)} fullWidth maxWidth="md">
+      <Dialog open={blnCloneOpen} onClose={() => !blnCloneSaving && setBlnCloneOpen(false)} fullWidth maxWidth="md" data-testid="salary-structures.list.clone.dialog">
         <DialogTitle>{t("clone_salary_structure", "Clone Salary Structure")}</DialogTitle>
         <DialogContent>
           {dicCloneForm ? (
@@ -508,6 +522,8 @@ export default function SalaryStructureListPage() {
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureCode: objEvent.target.value.toUpperCase() } : dicPrev)}
                   disabled={blnCloneSaving}
                   fullWidth
+                  data-testid="salary-structures.list.clone.structure-code.input"
+                  inputProps={{ "data-testid": "salary-structures.list.clone.structure-code.input" }}
                 />
                 <TextField
                   label={t("new_structure_name", "New Structure Name")}
@@ -515,6 +531,8 @@ export default function SalaryStructureListPage() {
                   onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureName: objEvent.target.value } : dicPrev)}
                   disabled={blnCloneSaving}
                   fullWidth
+                  data-testid="salary-structures.list.clone.structure-name.input"
+                  inputProps={{ "data-testid": "salary-structures.list.clone.structure-name.input" }}
                 />
                 <TextField
                   label={t("effective_from", "Effective From")}
@@ -524,6 +542,8 @@ export default function SalaryStructureListPage() {
                   InputLabelProps={{ shrink: true }}
                   disabled={blnCloneSaving}
                   fullWidth
+                  data-testid="salary-structures.list.clone.effective-from.input"
+                  inputProps={{ "data-testid": "salary-structures.list.clone.effective-from.input" }}
                 />
                 <TextField
                   label={t("effective_to", "Effective To")}
@@ -533,6 +553,8 @@ export default function SalaryStructureListPage() {
                   InputLabelProps={{ shrink: true }}
                   disabled={blnCloneSaving}
                   fullWidth
+                  data-testid="salary-structures.list.clone.effective-to.input"
+                  inputProps={{ "data-testid": "salary-structures.list.clone.effective-to.input" }}
                 />
               </Box>
               {objCloneSource ? (
@@ -544,8 +566,8 @@ export default function SalaryStructureListPage() {
           ) : null}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setBlnCloneOpen(false)} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
-          <Button variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
+          <Button data-testid="salary-structures.list.clone.cancel.button" onClick={() => setBlnCloneOpen(false)} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
+          <Button data-testid="salary-structures.list.clone.confirm.button" variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
             {blnCloneSaving ? t("cloning", "Cloning...") : t("clone_button", "Clone")}
           </Button>
         </DialogActions>

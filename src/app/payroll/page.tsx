@@ -30,6 +30,7 @@ export default function PayrollPage() {
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button
+              data-testid="payroll.page.runs.button"
               href="/payroll/runs"
               variant="contained"
               sx={{
@@ -52,6 +53,7 @@ export default function PayrollPage() {
               Payroll Runs
             </Button>
             <Button
+              data-testid="payroll.page.statutory-rules.button"
               href="/payroll/statutory-rules"
               variant="outlined"
               sx={{
@@ -71,6 +73,7 @@ export default function PayrollPage() {
               Statutory Rules
             </Button>
             <Button
+              data-testid="payroll.page.employee-inputs.button"
               href="/payroll/employee-payroll-inputs"
               variant="outlined"
               sx={{
