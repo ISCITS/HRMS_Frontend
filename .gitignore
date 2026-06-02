@@ -25,3 +25,7 @@ tools/generate_workflow_doc.py
 ~$CESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 *.tsbuildinfo
+<<<<<<< Updated upstream
+=======
+*.tsbuildinfo
+>>>>>>> Stashed changes
