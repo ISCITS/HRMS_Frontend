@@ -83,6 +83,11 @@ export type ReimbursementClaimItemDto = {
 export type ReimbursementClaimDto = {
   intID: number;
   intEmployeeID?: number | null;
+  strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
+  strCompanyName?: string | null;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
   strClaimCode?: string | null;
   strClaimTitle?: string | null;
   strClaimStatus: ReimbursementClaimStatus;

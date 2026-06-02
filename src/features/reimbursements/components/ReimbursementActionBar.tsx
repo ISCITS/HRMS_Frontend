@@ -35,15 +35,17 @@ export default function ReimbursementActionBar({
   onAction,
 }: ActionBarProps) {
   const blnTerminal = isHrReimbursementTerminal(objClaim.strClaimStatus);
+  const objButtonSx = { minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" };
+  const objContainedButtonSx = { ...objButtonSx, fontWeight: 800 };
 
   return (
-    <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
-      {blnCanStart ? <Button size="small" variant="contained" startIcon={<PlayArrowRoundedIcon />} disabled={blnBusy || !canStartReimbursementReview(objClaim.strClaimStatus)} onClick={() => onAction("start")} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Start Review</Button> : null}
-      {blnCanApprove ? <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("approve")} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Approve Claim</Button> : null}
-      {blnCanReject ? <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("reject")} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject</Button> : null}
-      {blnCanRelease ? <Button size="small" variant="outlined" startIcon={<ReplyRoundedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("release")} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Release</Button> : null}
-      {blnCanLock ? <Button size="small" variant="outlined" startIcon={<LockRoundedIcon />} disabled={blnBusy || !canLockReimbursementClaim(objClaim.strClaimStatus)} onClick={() => onAction("lock")} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Lock</Button> : null}
-      {blnCanPush ? <Button size="small" variant="contained" color="success" startIcon={<PublishRoundedIcon />} disabled={blnBusy || !canPushReimbursementClaim(objClaim.strClaimStatus)} onClick={() => onAction("push")} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Push to Payroll</Button> : null}
+    <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
+      {blnCanStart ? <Button size="small" variant="contained" startIcon={<PlayArrowRoundedIcon />} disabled={blnBusy || !canStartReimbursementReview(objClaim.strClaimStatus)} onClick={() => onAction("start")} sx={objContainedButtonSx}>Start Review</Button> : null}
+      {blnCanApprove ? <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("approve")} sx={objButtonSx}>Approve Claim</Button> : null}
+      {blnCanReject ? <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("reject")} sx={objButtonSx}>Reject</Button> : null}
+      {blnCanRelease ? <Button size="small" variant="outlined" startIcon={<ReplyRoundedIcon />} disabled={blnBusy || blnTerminal} onClick={() => onAction("release")} sx={objButtonSx}>Release</Button> : null}
+      {blnCanLock ? <Button size="small" variant="outlined" startIcon={<LockRoundedIcon />} disabled={blnBusy || !canLockReimbursementClaim(objClaim.strClaimStatus)} onClick={() => onAction("lock")} sx={objButtonSx}>Lock</Button> : null}
+      {blnCanPush ? <Button size="small" variant="contained" color="success" startIcon={<PublishRoundedIcon />} disabled={blnBusy || !canPushReimbursementClaim(objClaim.strClaimStatus)} onClick={() => onAction("push")} sx={objContainedButtonSx}>Push to Payroll</Button> : null}
     </Stack>
   );
 }

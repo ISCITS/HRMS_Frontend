@@ -1,7 +1,7 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -252,14 +252,14 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton size="small" onClick={() => objRouter.push("/payroll/reimbursements")} aria-label="Back to reimbursement review"><ArrowBackRoundedIcon fontSize="small" /></IconButton>
             <Box>
               <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{objClaim?.strClaimCode || `Claim #${intClaimID}`}</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objClaim ? `${objClaim.strClaimTitle || "-"} | ${formatDateLabel(objClaim.dtClaimDate)}` : "Review reimbursement claim"}</Typography>
             </Box>
           </Stack>
-          {objClaim ? (
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
+            {objClaim ? (
+              <>
               <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} />
               <ReimbursementActionBar
                 objClaim={objClaim}
@@ -272,8 +272,10 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                 blnCanPush={blnCanPush}
                 onAction={(strAction) => void handleActionBar(strAction)}
               />
-            </Stack>
-          ) : null}
+              </>
+            ) : null}
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/reimbursements")} sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -285,35 +287,31 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
 
       {objClaim ? <ReimbursementClaimSummaryCard objClaim={objClaim} /> : null}
 
-      <Grid container spacing={1.2}>
-        <Grid item xs={12} lg={8}>
-          <Stack spacing={1}>
-            {(objClaim?.lstItems ?? []).map((objItem) => (
-              <ReimbursementItemReviewPanel
-                key={objItem.intID}
-                objItem={objItem}
-                strCategoryName={objItem.intReimbursementCategoryID ? dicCategoryNameByID.get(objItem.intReimbursementCategoryID) : null}
-                blnActionsDisabled={blnActionsDisabled}
-                blnCanApprove={blnCanApprove}
-                blnCanReject={blnCanReject}
-                blnCanProofReview={blnCanReview}
-                onApprove={(objNextItem, decApprovedAmount, strItemRemarks) => void approveItem(objNextItem, decApprovedAmount, strItemRemarks)}
-                onReject={(objNextItem) => openReasonDialog("reject_item", objNextItem)}
-                onProofPending={(objNextItem) => openReasonDialog("proof_pending", objNextItem)}
-                onVerifyProof={(intProofID) => void verifyProof(intProofID)}
-                onRejectProof={(intProofID) => openReasonDialog("reject_proof", undefined, intProofID)}
-              />
-            ))}
-            {objClaim && (objClaim.lstItems ?? []).length === 0 ? <Alert severity="info">No claim items found.</Alert> : null}
-          </Stack>
-        </Grid>
-        <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", mb: 1 }}>Audit Timeline</Typography>
-            <ReimbursementAuditTimeline lstAudit={lstAudit} />
-          </Paper>
-        </Grid>
-      </Grid>
+      <Stack spacing={1.2}>
+        <Stack spacing={1}>
+          {(objClaim?.lstItems ?? []).map((objItem) => (
+            <ReimbursementItemReviewPanel
+              key={objItem.intID}
+              objItem={objItem}
+              strCategoryName={objItem.intReimbursementCategoryID ? dicCategoryNameByID.get(objItem.intReimbursementCategoryID) : null}
+              blnActionsDisabled={blnActionsDisabled}
+              blnCanApprove={blnCanApprove}
+              blnCanReject={blnCanReject}
+              blnCanProofReview={blnCanReview}
+              onApprove={(objNextItem, decApprovedAmount, strItemRemarks) => void approveItem(objNextItem, decApprovedAmount, strItemRemarks)}
+              onReject={(objNextItem) => openReasonDialog("reject_item", objNextItem)}
+              onProofPending={(objNextItem) => openReasonDialog("proof_pending", objNextItem)}
+              onVerifyProof={(intProofID) => void verifyProof(intProofID)}
+              onRejectProof={(intProofID) => openReasonDialog("reject_proof", undefined, intProofID)}
+            />
+          ))}
+          {objClaim && (objClaim.lstItems ?? []).length === 0 ? <Alert severity="info">No claim items found.</Alert> : null}
+        </Stack>
+        <Paper sx={{ px: 1, py: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
+          <Typography sx={{ fontWeight: 900, color: "#0f172a", mb: 1 }}>Audit Timeline</Typography>
+          <ReimbursementAuditTimeline lstAudit={lstAudit} />
+        </Paper>
+      </Stack>
 
       <Dialog open={Boolean(strDialogAction)} onClose={closeDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{strDialogTitle}</DialogTitle>

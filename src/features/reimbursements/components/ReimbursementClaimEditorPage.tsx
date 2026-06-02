@@ -6,7 +6,6 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
@@ -16,7 +15,6 @@ import { useEffect, useMemo, useState } from "react";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
-import ReimbursementClaimSummaryCard from "@/features/reimbursements/components/ReimbursementClaimSummaryCard";
 import { formatCurrency, formatDateLabel, toInputDate } from "@/features/reimbursements/formatters";
 import { canEditReimbursementClaim, canWithdrawReimbursementClaim, getMissingProofItems } from "@/features/reimbursements/rules";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
@@ -203,7 +201,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       return null;
     }
 
-    // Purpose: Creates the draft claim or persists editable header changes before item work continues.
+    // Purpose: Persists the claim header when item work or final submit needs a claim ID.
     setBlnSaving(true);
     setStrError("");
     try {
@@ -213,7 +211,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setObjClaim(objSavedClaim);
       setObjHeader(buildHeaderState(objSavedClaim));
       if (!options?.blnSilent) {
-        setStrSuccess("Claim draft saved.");
+        setStrSuccess("Claim saved.");
       }
       if (strMode === "create") {
         window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit`);
@@ -320,8 +318,19 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     }
 
     // Purpose: Submits only complete claims with at least one item and all required proofs attached.
-    if (!objClaim?.intID) return;
-    if ((objClaim.lstItems ?? []).length === 0) {
+    let objClaimForSubmit = objClaim;
+    if (!objClaimForSubmit?.intID) {
+      setStrError("Add at least one reimbursement item before submitting.");
+      return;
+    }
+    if (blnHeaderDirty) {
+      const objSavedClaim = await saveHeader({ blnSilent: true });
+      if (!objSavedClaim?.intID) {
+        return;
+      }
+      objClaimForSubmit = objSavedClaim;
+    }
+    if ((objClaimForSubmit.lstItems ?? []).length === 0) {
       setStrError("Add at least one reimbursement item before submitting.");
       return;
     }
@@ -332,7 +341,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setBlnSaving(true);
     setStrError("");
     try {
-      const objSubmittedClaim = await reimbursementService.submitClaim(objClaim.intID);
+      const objSubmittedClaim = await reimbursementService.submitClaim(objClaimForSubmit.intID);
       setObjClaim(objSubmittedClaim);
       setObjHeader(buildHeaderState(objSubmittedClaim));
       setStrSuccess("Claim submitted for review.");
@@ -388,9 +397,6 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit`)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
             ) : null}
-            {!blnReadOnly ? (
-              <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} onClick={() => void saveHeader()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.42)", color: "rgba(255,255,255,0.58)" } }}>Save Draft</Button>
-            ) : null}
             {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
             ) : null}
@@ -401,31 +407,20 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         </Stack>
       </Paper>
 
-      {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
-      {!blnCanView && !blnCanAdd && !blnCanEdit ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>Reimbursement access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")} sx={{ borderRadius: "8px" }}>{strSuccess}</Alert> : null}
-      {objClaim ? <ReimbursementClaimSummaryCard objClaim={objClaim} /> : null}
       {objClaim?.strReviewerRemarks ? <Alert severity={objClaim.strClaimStatus === "rejected" ? "error" : "info"} sx={{ borderRadius: "8px" }}>{objClaim.strReviewerRemarks}</Alert> : null}
 
       <Paper sx={{ p: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Grid container spacing={1.2}>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth size="small" label="Claim title" value={objHeader.strClaimTitle} onChange={(objEvent) => setObjHeader({ ...objHeader, strClaimTitle: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
+            <TextField fullWidth size="small" label="Claim Reason" value={objHeader.strClaimTitle} onChange={(objEvent) => setObjHeader({ ...objHeader, strClaimTitle: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField select fullWidth size="small" label="Financial year" value={objHeader.strFinancialYearCode} onChange={(objEvent) => setObjHeader({ ...objHeader, strFinancialYearCode: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} SelectProps={{ readOnly: blnReadOnly }}>
               {lstFinancialYearOptions.map((strFinancialYear) => <MenuItem key={strFinancialYear} value={strFinancialYear}>{strFinancialYear}</MenuItem>)}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField fullWidth type="date" size="small" label="Claim date" InputLabelProps={{ shrink: true }} value={objHeader.dtClaimDate} onChange={(objEvent) => setObjHeader({ ...objHeader, dtClaimDate: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <Stack spacing={0.35} sx={{ minHeight: 40, justifyContent: "center" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 700 }}>Mode</Typography>
-              <Typography sx={{ color: "#0f172a", fontSize: "0.88rem", fontWeight: 800 }}>{blnReadOnly ? "Read only" : "Editable"}</Typography>
-            </Stack>
           </Grid>
           <Grid item xs={12}>
             <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objHeader.strEmployeeRemarks} onChange={(objEvent) => setObjHeader({ ...objHeader, strEmployeeRemarks: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
@@ -440,7 +435,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => void openAddItemDialog()} disabled={blnSaving} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Add Item</Button>
           ) : null}
         </Stack>
-        {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>Claim number will be generated when you save the first item or save the draft.</Alert> : null}
+        {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>Claim number will be generated when you save the first item.</Alert> : null}
         <TableContainer>
           <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
@@ -493,6 +488,35 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       </Paper>
 
       <ReimbursementClaimItemForm objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} />
+      <Dialog open={Boolean(!blnRightsLoading && (strRightsError || (!blnCanView && !blnCanAdd && !blnCanEdit)))} maxWidth="xs" fullWidth>
+        <DialogTitle>Alert</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {strRightsError || "Reimbursement access is not available for your user group."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => objRouter.push("/ess/reimbursements")} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>OK</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(strError)} onClose={() => setStrError("")} maxWidth="xs" fullWidth>
+        <DialogTitle>Alert</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{strError}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStrError("")} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>OK</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(strSuccess)} onClose={() => setStrSuccess("")} maxWidth="xs" fullWidth>
+        <DialogTitle>Success</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{strSuccess}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStrSuccess("")} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>OK</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(objDeletingItem)} onClose={() => setObjDeletingItem(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete Claim Item</DialogTitle>
         <DialogContent>

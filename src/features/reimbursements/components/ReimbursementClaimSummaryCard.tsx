@@ -4,7 +4,7 @@ import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalance
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
-import { Grid, Paper, Stack, Typography } from "@mui/material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 
 import { formatCurrency } from "@/features/reimbursements/formatters";
@@ -29,19 +29,19 @@ function SummaryMetric({ strLabel, strValue, objIcon }: { strLabel: string; strV
 export default function ReimbursementClaimSummaryCard({ objClaim }: { objClaim: ReimbursementClaimDto }) {
   const intItemCount = objClaim.lstItems?.length ?? 0;
   return (
-    <Grid container spacing={1.1}>
-      <Grid item xs={6} md={3}>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.1 }}>
+      <Box>
         <SummaryMetric strLabel="Claimed" strValue={formatCurrency(objClaim.decClaimedAmount)} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
-      </Grid>
-      <Grid item xs={6} md={3}>
+      </Box>
+      <Box>
         <SummaryMetric strLabel="Approved" strValue={formatCurrency(objClaim.decApprovedAmount)} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
-      </Grid>
-      <Grid item xs={6} md={3}>
+      </Box>
+      <Box>
         <SummaryMetric strLabel="Taxable" strValue={formatCurrency(objClaim.decTaxableAmount)} objIcon={<RuleOutlinedIcon fontSize="small" />} />
-      </Grid>
-      <Grid item xs={6} md={3}>
+      </Box>
+      <Box>
         <SummaryMetric strLabel="Items" strValue={`${intItemCount}`} objIcon={<AccountBalanceWalletOutlinedIcon fontSize="small" />} />
-      </Grid>
-    </Grid>
+      </Box>
+    </Box>
   );
 }

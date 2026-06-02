@@ -24,7 +24,7 @@ export default function ReimbursementClaimStatusBadge({ strStatus, size = "small
       size={size}
       color={getStatusColor(strStatus)}
       label={formatStatusLabel(strStatus)}
-      sx={{ fontWeight: 700, borderRadius: "8px" }}
+      sx={{ minWidth: 94, height: 30, fontWeight: 700, borderRadius: "8px" }}
     />
   );
 }
