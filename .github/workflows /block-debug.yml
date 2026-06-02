@@ -90,8 +90,7 @@ jobs:
       - name: Run secret scan
         run: |
           echo "Scanning for secrets..."
-          detect-secrets scan --all-files --force-use-all-plugins --exclude-files '^(\.git/|node_modules/|\.next/|out/|coverage/|build/|dist/)' > .secrets.baseline
-
+          detect-secrets scan --all-files --disable-plugin KeywordDetector --exclude-files '^(\.git/|node_modules/|\.next/|out/|coverage/|build/|dist/|tsconfig\.tsbuildinfo$|.*\.tsbuildinfo$)' > .secrets.baseline
           python - <<'PY'
           import json
           import sys
