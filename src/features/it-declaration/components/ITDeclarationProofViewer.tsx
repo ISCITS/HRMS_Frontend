@@ -34,10 +34,10 @@ export default function ITDeclarationProofViewer({
               <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{objProof.strMimeType} | {formatBytes(objProof.intFileSizeBytes)}</Typography>
             </Box>
             <Stack direction="row" spacing={1}>
-              <Button variant="outlined" size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => void fnPreview(objProof.intItemID)}>
+              <Button data-testid="it-declaration.proof-viewer.view.button" data-proof-id={objProof.intProofID} variant="outlined" size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => void fnPreview(objProof.intItemID)}>
                 View
               </Button>
-              <Button variant="outlined" size="small" startIcon={<DownloadRoundedIcon />} onClick={() => void fnPreview(objProof.intItemID)}>
+              <Button data-testid="it-declaration.proof-viewer.download.button" data-proof-id={objProof.intProofID} variant="outlined" size="small" startIcon={<DownloadRoundedIcon />} onClick={() => void fnPreview(objProof.intItemID)}>
                 Download
               </Button>
             </Stack>

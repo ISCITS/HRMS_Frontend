@@ -21,6 +21,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -409,9 +410,10 @@ export default function TenantOnboardingPage() {
         {intActiveStep === 2 ? renderDatastoreConfiguration() : null}
 
         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, mt: 4 }}>
-          <Button variant="outlined" onClick={handleBack} disabled={intActiveStep === 0 || blnSubmitting}>Previous</Button>
+          <Button data-testid="tenant.onboarding.previous.button" variant="outlined" onClick={handleBack} disabled={intActiveStep === 0 || blnSubmitting}>Previous</Button>
           {intActiveStep < 2 ? (
             <Button
+              data-testid="tenant.onboarding.next.button"
               variant="contained"
               onClick={handleNext}
               disabled={blnSubmitting || blnCheckingCode}
@@ -421,6 +423,7 @@ export default function TenantOnboardingPage() {
             </Button>
           ) : (
             <Button
+              data-testid="tenant.onboarding.create.button"
               variant="contained"
               onClick={handleSubmit}
               disabled={blnSubmitting}
@@ -449,20 +452,20 @@ export default function TenantOnboardingPage() {
       <Stack spacing={2.25}>
         <Typography variant="h6">Tenant Basic Details</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-          <TextField label="Tenant Name *" value={objForm.basic.strTenantName} onChange={(e) => setField("basic.strTenantName", e.target.value)} error={Boolean(dicErrors["basic.strTenantName"])} helperText={dicErrors["basic.strTenantName"]} fullWidth />
-          <TextField label="Tenant Code *" value={objForm.basic.strTenantCode} onChange={(e) => setField("basic.strTenantCode", e.target.value.toUpperCase())} error={Boolean(dicErrors["basic.strTenantCode"])} helperText={dicErrors["basic.strTenantCode"] ?? "Use uppercase letters, numbers, hyphen, or underscore."} fullWidth />
-          <TextField label="Contact Person Name" value={objForm.basic.strContactPersonName} onChange={(e) => setField("basic.strContactPersonName", e.target.value)} error={Boolean(dicErrors["basic.strContactPersonName"])} helperText={dicErrors["basic.strContactPersonName"]} fullWidth />
-          <TextField label="Contact Email Address" value={objForm.basic.strContactEmailAddress} onChange={(e) => setField("basic.strContactEmailAddress", e.target.value)} error={Boolean(dicErrors["basic.strContactEmailAddress"])} helperText={dicErrors["basic.strContactEmailAddress"]} fullWidth />
-          <TextField label="Contact Mobile Number" value={objForm.basic.strContactMobileNumber} onChange={(e) => setField("basic.strContactMobileNumber", e.target.value)} error={Boolean(dicErrors["basic.strContactMobileNumber"])} helperText={dicErrors["basic.strContactMobileNumber"]} fullWidth />
-          <TextField select label="Default Language *" value={objForm.basic.intDefaultLanguageID === "" ? "" : String(objForm.basic.intDefaultLanguageID)} onChange={(e) => setField("basic.intDefaultLanguageID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["basic.intDefaultLanguageID"])} helperText={dicErrors["basic.intDefaultLanguageID"]} fullWidth>
+          <TextField data-testid="tenant.onboarding.basic.tenant-name.input" inputProps={{ "data-testid": "tenant.onboarding.basic.tenant-name.input" }} label="Tenant Name *" value={objForm.basic.strTenantName} onChange={(e) => setField("basic.strTenantName", e.target.value)} error={Boolean(dicErrors["basic.strTenantName"])} helperText={dicErrors["basic.strTenantName"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.basic.tenant-code.input" inputProps={{ "data-testid": "tenant.onboarding.basic.tenant-code.input" }} label="Tenant Code *" value={objForm.basic.strTenantCode} onChange={(e) => setField("basic.strTenantCode", e.target.value.toUpperCase())} error={Boolean(dicErrors["basic.strTenantCode"])} helperText={dicErrors["basic.strTenantCode"] ?? "Use uppercase letters, numbers, hyphen, or underscore."} fullWidth />
+          <TextField data-testid="tenant.onboarding.basic.contact-person-name.input" inputProps={{ "data-testid": "tenant.onboarding.basic.contact-person-name.input" }} label="Contact Person Name" value={objForm.basic.strContactPersonName} onChange={(e) => setField("basic.strContactPersonName", e.target.value)} error={Boolean(dicErrors["basic.strContactPersonName"])} helperText={dicErrors["basic.strContactPersonName"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.basic.contact-email-address.input" inputProps={{ "data-testid": "tenant.onboarding.basic.contact-email-address.input" }} label="Contact Email Address" value={objForm.basic.strContactEmailAddress} onChange={(e) => setField("basic.strContactEmailAddress", e.target.value)} error={Boolean(dicErrors["basic.strContactEmailAddress"])} helperText={dicErrors["basic.strContactEmailAddress"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.basic.contact-mobile-number.input" inputProps={{ "data-testid": "tenant.onboarding.basic.contact-mobile-number.input" }} label="Contact Mobile Number" value={objForm.basic.strContactMobileNumber} onChange={(e) => setField("basic.strContactMobileNumber", e.target.value)} error={Boolean(dicErrors["basic.strContactMobileNumber"])} helperText={dicErrors["basic.strContactMobileNumber"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.basic.default-language.select" inputProps={{ "data-testid": "tenant.onboarding.basic.default-language.select" }} select label="Default Language *" value={objForm.basic.intDefaultLanguageID === "" ? "" : String(objForm.basic.intDefaultLanguageID)} onChange={(e) => setField("basic.intDefaultLanguageID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["basic.intDefaultLanguageID"])} helperText={dicErrors["basic.intDefaultLanguageID"]} fullWidth>
             <MenuItem value="">Select language</MenuItem>
             {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
-          <TextField select label="Secondary Language" value={objForm.basic.intSecondaryLanguageID === "" ? "" : String(objForm.basic.intSecondaryLanguageID)} onChange={(e) => setField("basic.intSecondaryLanguageID", e.target.value ? Number(e.target.value) : "")} fullWidth>
+          <TextField data-testid="tenant.onboarding.basic.secondary-language.select" inputProps={{ "data-testid": "tenant.onboarding.basic.secondary-language.select" }} select label="Secondary Language" value={objForm.basic.intSecondaryLanguageID === "" ? "" : String(objForm.basic.intSecondaryLanguageID)} onChange={(e) => setField("basic.intSecondaryLanguageID", e.target.value ? Number(e.target.value) : "")} fullWidth>
             <MenuItem value="">None</MenuItem>
             {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
-          <TextField select label="Default Country" value={objForm.basic.intDefaultCountryID === "" ? "" : String(objForm.basic.intDefaultCountryID)} onChange={(e) => setField("basic.intDefaultCountryID", e.target.value ? Number(e.target.value) : "")} fullWidth>
+          <TextField data-testid="tenant.onboarding.basic.default-country.select" inputProps={{ "data-testid": "tenant.onboarding.basic.default-country.select" }} select label="Default Country" value={objForm.basic.intDefaultCountryID === "" ? "" : String(objForm.basic.intDefaultCountryID)} onChange={(e) => setField("basic.intDefaultCountryID", e.target.value ? Number(e.target.value) : "")} fullWidth>
             <MenuItem value="">None</MenuItem>
             {(objFormOptions?.lstCountries ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
@@ -476,16 +479,16 @@ export default function TenantOnboardingPage() {
       <Stack spacing={2.5}>
         <Typography variant="h6">Authentication & MFA</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-          <TextField select label="Authentication Mode *" value={objForm.auth.intAuthModeTypeID === "" ? "" : String(objForm.auth.intAuthModeTypeID)} onChange={(e) => setField("auth.intAuthModeTypeID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intAuthModeTypeID"])} helperText={dicErrors["auth.intAuthModeTypeID"]} fullWidth>
+          <TextField data-testid="tenant.onboarding.auth.authentication-mode.select" inputProps={{ "data-testid": "tenant.onboarding.auth.authentication-mode.select" }} select label="Authentication Mode *" value={objForm.auth.intAuthModeTypeID === "" ? "" : String(objForm.auth.intAuthModeTypeID)} onChange={(e) => setField("auth.intAuthModeTypeID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intAuthModeTypeID"])} helperText={dicErrors["auth.intAuthModeTypeID"]} fullWidth>
             <MenuItem value="">Select authentication mode</MenuItem>
             {(objFormOptions?.lstAuthModeTypes ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
-          <TextField select label="MFA Flag *" value={objForm.auth.intMfaFlagID === "" ? "" : String(objForm.auth.intMfaFlagID)} onChange={(e) => setField("auth.intMfaFlagID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intMfaFlagID"])} helperText={dicErrors["auth.intMfaFlagID"]} fullWidth>
+          <TextField data-testid="tenant.onboarding.auth.mfa-flag.select" inputProps={{ "data-testid": "tenant.onboarding.auth.mfa-flag.select" }} select label="MFA Flag *" value={objForm.auth.intMfaFlagID === "" ? "" : String(objForm.auth.intMfaFlagID)} onChange={(e) => setField("auth.intMfaFlagID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intMfaFlagID"])} helperText={dicErrors["auth.intMfaFlagID"]} fullWidth>
             <MenuItem value="">Select MFA flag</MenuItem>
             {(objFormOptions?.lstMfaFlags ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
           {blnShowMfaType ? (
-            <TextField select label="MFA Type *" value={objForm.auth.intMfaTypeID === "" ? "" : String(objForm.auth.intMfaTypeID)} onChange={(e) => setField("auth.intMfaTypeID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intMfaTypeID"])} helperText={dicErrors["auth.intMfaTypeID"]} fullWidth>
+            <TextField data-testid="tenant.onboarding.auth.mfa-type.select" inputProps={{ "data-testid": "tenant.onboarding.auth.mfa-type.select" }} select label="MFA Type *" value={objForm.auth.intMfaTypeID === "" ? "" : String(objForm.auth.intMfaTypeID)} onChange={(e) => setField("auth.intMfaTypeID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["auth.intMfaTypeID"])} helperText={dicErrors["auth.intMfaTypeID"]} fullWidth>
               <MenuItem value="">Select MFA type</MenuItem>
               {(objFormOptions?.lstMfaTypes ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
             </TextField>
@@ -496,19 +499,19 @@ export default function TenantOnboardingPage() {
             <Stack spacing={2}>
               <Typography variant="subtitle1" fontWeight={700}>SSO Identity Provider Details</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-                <TextField select label="Provider Type *" value={objForm.auth.sso.strProviderType} onChange={(e) => setField("auth.sso.strProviderType", e.target.value)} fullWidth>
+                <TextField data-testid="tenant.onboarding.auth.provider-type.select" inputProps={{ "data-testid": "tenant.onboarding.auth.provider-type.select" }} select label="Provider Type *" value={objForm.auth.sso.strProviderType} onChange={(e) => setField("auth.sso.strProviderType", e.target.value)} fullWidth>
                   {(objFormOptions?.lstSsoProviderTypes ?? []).map((dicOption) => <MenuItem key={dicOption.strCode} value={dicOption.strCode}>{dicOption.strLabel}</MenuItem>)}
                 </TextField>
-                <TextField label="Provider Name *" value={objForm.auth.sso.strProviderName} onChange={(e) => setField("auth.sso.strProviderName", e.target.value)} error={Boolean(dicErrors["auth.sso.strProviderName"])} helperText={dicErrors["auth.sso.strProviderName"]} fullWidth />
-                <TextField label="Issuer" value={objForm.auth.sso.strIssuer} onChange={(e) => setField("auth.sso.strIssuer", e.target.value)} fullWidth />
-                <TextField label="Client ID *" value={objForm.auth.sso.strClientID} onChange={(e) => setField("auth.sso.strClientID", e.target.value)} error={Boolean(dicErrors["auth.sso.strClientID"])} helperText={dicErrors["auth.sso.strClientID"]} fullWidth />
-                <TextField type="password" label="Client Secret *" value={objForm.auth.sso.strClientSecret} onChange={(e) => setField("auth.sso.strClientSecret", e.target.value)} error={Boolean(dicErrors["auth.sso.strClientSecret"])} helperText={dicErrors["auth.sso.strClientSecret"]} fullWidth />
-                <TextField label="Authorization Endpoint *" value={objForm.auth.sso.strAuthorizationEndpoint} onChange={(e) => setField("auth.sso.strAuthorizationEndpoint", e.target.value)} error={Boolean(dicErrors["auth.sso.strAuthorizationEndpoint"])} helperText={dicErrors["auth.sso.strAuthorizationEndpoint"]} fullWidth />
-                <TextField label="Token Endpoint *" value={objForm.auth.sso.strTokenEndpoint} onChange={(e) => setField("auth.sso.strTokenEndpoint", e.target.value)} error={Boolean(dicErrors["auth.sso.strTokenEndpoint"])} helperText={dicErrors["auth.sso.strTokenEndpoint"]} fullWidth />
-                <TextField label="JWKS URI" value={objForm.auth.sso.strJwksUri} onChange={(e) => setField("auth.sso.strJwksUri", e.target.value)} fullWidth />
-                <TextField label="Redirect URI *" value={objForm.auth.sso.strSsoRedirectUrl} onChange={(e) => setField("auth.sso.strSsoRedirectUrl", e.target.value)} error={Boolean(dicErrors["auth.sso.strSsoRedirectUrl"])} helperText={dicErrors["auth.sso.strSsoRedirectUrl"]} fullWidth />
-                <TextField label="SSO Entry Point" value={objForm.auth.sso.strSsoEntryPoint} onChange={(e) => setField("auth.sso.strSsoEntryPoint", e.target.value)} fullWidth />
-                <TextField label="Single Logout Endpoint" value={objForm.auth.sso.strSloEndpoint} onChange={(e) => setField("auth.sso.strSloEndpoint", e.target.value)} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.provider-name.input" inputProps={{ "data-testid": "tenant.onboarding.auth.provider-name.input" }} label="Provider Name *" value={objForm.auth.sso.strProviderName} onChange={(e) => setField("auth.sso.strProviderName", e.target.value)} error={Boolean(dicErrors["auth.sso.strProviderName"])} helperText={dicErrors["auth.sso.strProviderName"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.issuer.input" inputProps={{ "data-testid": "tenant.onboarding.auth.issuer.input" }} label="Issuer" value={objForm.auth.sso.strIssuer} onChange={(e) => setField("auth.sso.strIssuer", e.target.value)} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.client-id.input" inputProps={{ "data-testid": "tenant.onboarding.auth.client-id.input" }} label="Client ID *" value={objForm.auth.sso.strClientID} onChange={(e) => setField("auth.sso.strClientID", e.target.value)} error={Boolean(dicErrors["auth.sso.strClientID"])} helperText={dicErrors["auth.sso.strClientID"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.client-secret.input" inputProps={{ "data-testid": "tenant.onboarding.auth.client-secret.input" }} type="password" label="Client Secret *" value={objForm.auth.sso.strClientSecret} onChange={(e) => setField("auth.sso.strClientSecret", e.target.value)} error={Boolean(dicErrors["auth.sso.strClientSecret"])} helperText={dicErrors["auth.sso.strClientSecret"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.authorization-endpoint.input" inputProps={{ "data-testid": "tenant.onboarding.auth.authorization-endpoint.input" }} label="Authorization Endpoint *" value={objForm.auth.sso.strAuthorizationEndpoint} onChange={(e) => setField("auth.sso.strAuthorizationEndpoint", e.target.value)} error={Boolean(dicErrors["auth.sso.strAuthorizationEndpoint"])} helperText={dicErrors["auth.sso.strAuthorizationEndpoint"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.token-endpoint.input" inputProps={{ "data-testid": "tenant.onboarding.auth.token-endpoint.input" }} label="Token Endpoint *" value={objForm.auth.sso.strTokenEndpoint} onChange={(e) => setField("auth.sso.strTokenEndpoint", e.target.value)} error={Boolean(dicErrors["auth.sso.strTokenEndpoint"])} helperText={dicErrors["auth.sso.strTokenEndpoint"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.jwks-uri.input" inputProps={{ "data-testid": "tenant.onboarding.auth.jwks-uri.input" }} label="JWKS URI" value={objForm.auth.sso.strJwksUri} onChange={(e) => setField("auth.sso.strJwksUri", e.target.value)} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.redirect-uri.input" inputProps={{ "data-testid": "tenant.onboarding.auth.redirect-uri.input" }} label="Redirect URI *" value={objForm.auth.sso.strSsoRedirectUrl} onChange={(e) => setField("auth.sso.strSsoRedirectUrl", e.target.value)} error={Boolean(dicErrors["auth.sso.strSsoRedirectUrl"])} helperText={dicErrors["auth.sso.strSsoRedirectUrl"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.sso-entry-point.input" inputProps={{ "data-testid": "tenant.onboarding.auth.sso-entry-point.input" }} label="SSO Entry Point" value={objForm.auth.sso.strSsoEntryPoint} onChange={(e) => setField("auth.sso.strSsoEntryPoint", e.target.value)} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.single-logout-endpoint.input" inputProps={{ "data-testid": "tenant.onboarding.auth.single-logout-endpoint.input" }} label="Single Logout Endpoint" value={objForm.auth.sso.strSloEndpoint} onChange={(e) => setField("auth.sso.strSloEndpoint", e.target.value)} fullWidth />
               </Box>
             </Stack>
           </Paper>
@@ -519,12 +522,12 @@ export default function TenantOnboardingPage() {
             <Stack spacing={2}>
               <Typography variant="subtitle1" fontWeight={700}>Email OTP Provider Details</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-                <TextField label="Sender Email *" value={objForm.auth.email.strSmtpSenderEmail} onChange={(e) => setField("auth.email.strSmtpSenderEmail", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpSenderEmail"])} helperText={dicErrors["auth.email.strSmtpSenderEmail"]} fullWidth />
-                <TextField label="SMTP Username *" value={objForm.auth.email.strSmtpUsername} onChange={(e) => setField("auth.email.strSmtpUsername", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpUsername"])} helperText={dicErrors["auth.email.strSmtpUsername"]} fullWidth />
-                <TextField type="password" label="SMTP Password *" value={objForm.auth.email.strSmtpPassword} onChange={(e) => setField("auth.email.strSmtpPassword", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpPassword"])} helperText={dicErrors["auth.email.strSmtpPassword"]} fullWidth />
-                <TextField label="SMTP Server *" value={objForm.auth.email.strSmtpServer} onChange={(e) => setField("auth.email.strSmtpServer", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpServer"])} helperText={dicErrors["auth.email.strSmtpServer"]} fullWidth />
-                <TextField label="SMTP Port *" value={objForm.auth.email.intSmtpPort} onChange={(e) => setField("auth.email.intSmtpPort", e.target.value.replace(/\D/g, ""))} error={Boolean(dicErrors["auth.email.intSmtpPort"])} helperText={dicErrors["auth.email.intSmtpPort"]} fullWidth />
-                <TextField label="BCC Email" value={objForm.auth.email.strSmtpBccEmail} onChange={(e) => setField("auth.email.strSmtpBccEmail", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpBccEmail"])} helperText={dicErrors["auth.email.strSmtpBccEmail"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.sender-email.input" inputProps={{ "data-testid": "tenant.onboarding.auth.sender-email.input" }} label="Sender Email *" value={objForm.auth.email.strSmtpSenderEmail} onChange={(e) => setField("auth.email.strSmtpSenderEmail", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpSenderEmail"])} helperText={dicErrors["auth.email.strSmtpSenderEmail"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.smtp-username.input" inputProps={{ "data-testid": "tenant.onboarding.auth.smtp-username.input" }} label="SMTP Username *" value={objForm.auth.email.strSmtpUsername} onChange={(e) => setField("auth.email.strSmtpUsername", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpUsername"])} helperText={dicErrors["auth.email.strSmtpUsername"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.smtp-password.input" inputProps={{ "data-testid": "tenant.onboarding.auth.smtp-password.input" }} type="password" label="SMTP Password *" value={objForm.auth.email.strSmtpPassword} onChange={(e) => setField("auth.email.strSmtpPassword", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpPassword"])} helperText={dicErrors["auth.email.strSmtpPassword"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.smtp-server.input" inputProps={{ "data-testid": "tenant.onboarding.auth.smtp-server.input" }} label="SMTP Server *" value={objForm.auth.email.strSmtpServer} onChange={(e) => setField("auth.email.strSmtpServer", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpServer"])} helperText={dicErrors["auth.email.strSmtpServer"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.smtp-port.input" inputProps={{ "data-testid": "tenant.onboarding.auth.smtp-port.input" }} label="SMTP Port *" value={objForm.auth.email.intSmtpPort} onChange={(e) => setField("auth.email.intSmtpPort", e.target.value.replace(/\D/g, ""))} error={Boolean(dicErrors["auth.email.intSmtpPort"])} helperText={dicErrors["auth.email.intSmtpPort"]} fullWidth />
+                <TextField data-testid="tenant.onboarding.auth.bcc-email.input" inputProps={{ "data-testid": "tenant.onboarding.auth.bcc-email.input" }} label="BCC Email" value={objForm.auth.email.strSmtpBccEmail} onChange={(e) => setField("auth.email.strSmtpBccEmail", e.target.value)} error={Boolean(dicErrors["auth.email.strSmtpBccEmail"])} helperText={dicErrors["auth.email.strSmtpBccEmail"]} fullWidth />
               </Box>
             </Stack>
           </Paper>
@@ -538,27 +541,28 @@ export default function TenantOnboardingPage() {
       <Stack spacing={2.25}>
         <Typography variant="h6">Datastore Configuration</Typography>
         <FormControlLabel
-          control={<Checkbox checked={objForm.datastore.blnUseExistingDatabase} onChange={(_, blnChecked) => setField("datastore.blnUseExistingDatabase", blnChecked)} />}
+          control={<Checkbox checked={objForm.datastore.blnUseExistingDatabase} onChange={(_, blnChecked) => setField("datastore.blnUseExistingDatabase", blnChecked)} inputProps={{ "data-testid": "tenant.onboarding.datastore.use-existing-database.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />}
           label="Use Existing Database"
         />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-          <TextField select label="Datastore Type *" value={objForm.datastore.strStoreType} onChange={(e) => setField("datastore.strStoreType", e.target.value)} fullWidth>
+          <TextField data-testid="tenant.onboarding.datastore.datastore-type.select" inputProps={{ "data-testid": "tenant.onboarding.datastore.datastore-type.select" }} select label="Datastore Type *" value={objForm.datastore.strStoreType} onChange={(e) => setField("datastore.strStoreType", e.target.value)} fullWidth>
             {(objFormOptions?.lstDatastoreTypes ?? []).map((dicOption) => <MenuItem key={dicOption.strCode} value={dicOption.strCode}>{dicOption.strLabel}</MenuItem>)}
           </TextField>
-          <TextField select label="Database Type *" value={objForm.datastore.strDatabaseType} onChange={(e) => setField("datastore.strDatabaseType", e.target.value)} fullWidth>
+          <TextField data-testid="tenant.onboarding.datastore.database-type.select" inputProps={{ "data-testid": "tenant.onboarding.datastore.database-type.select" }} select label="Database Type *" value={objForm.datastore.strDatabaseType} onChange={(e) => setField("datastore.strDatabaseType", e.target.value)} fullWidth>
             <MenuItem value="postgresql">PostgreSQL</MenuItem>
           </TextField>
-          <TextField label="Database Name *" value={objForm.datastore.strDatabaseName} onChange={(e) => setField("datastore.strDatabaseName", e.target.value)} error={Boolean(dicErrors["datastore.strDatabaseName"])} helperText={dicErrors["datastore.strDatabaseName"]} fullWidth />
-          <TextField label="Schema Name" value={objForm.datastore.strSchemaName} onChange={(e) => setField("datastore.strSchemaName", e.target.value)} error={Boolean(dicErrors["datastore.strSchemaName"])} helperText={dicErrors["datastore.strSchemaName"]} fullWidth />
-          <TextField label="Database Host / Server *" value={objForm.datastore.strDbHost} onChange={(e) => setField("datastore.strDbHost", e.target.value)} error={Boolean(dicErrors["datastore.strDbHost"])} helperText={dicErrors["datastore.strDbHost"]} fullWidth />
-          <TextField label="Port *" value={objForm.datastore.intDbPort} onChange={(e) => setField("datastore.intDbPort", e.target.value.replace(/\D/g, ""))} error={Boolean(dicErrors["datastore.intDbPort"])} helperText={dicErrors["datastore.intDbPort"]} fullWidth />
-          <TextField label="Database Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
-          <TextField type="password" label="Database Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.database-name.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.database-name.input" }} label="Database Name *" value={objForm.datastore.strDatabaseName} onChange={(e) => setField("datastore.strDatabaseName", e.target.value)} error={Boolean(dicErrors["datastore.strDatabaseName"])} helperText={dicErrors["datastore.strDatabaseName"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.schema-name.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.schema-name.input" }} label="Schema Name" value={objForm.datastore.strSchemaName} onChange={(e) => setField("datastore.strSchemaName", e.target.value)} error={Boolean(dicErrors["datastore.strSchemaName"])} helperText={dicErrors["datastore.strSchemaName"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.database-host.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.database-host.input" }} label="Database Host / Server *" value={objForm.datastore.strDbHost} onChange={(e) => setField("datastore.strDbHost", e.target.value)} error={Boolean(dicErrors["datastore.strDbHost"])} helperText={dicErrors["datastore.strDbHost"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.port.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.port.input" }} label="Port *" value={objForm.datastore.intDbPort} onChange={(e) => setField("datastore.intDbPort", e.target.value.replace(/\D/g, ""))} error={Boolean(dicErrors["datastore.intDbPort"])} helperText={dicErrors["datastore.intDbPort"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.database-username.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.database-username.input" }} label="Database Username *" value={objForm.datastore.strDbUserName} onChange={(e) => setField("datastore.strDbUserName", e.target.value)} error={Boolean(dicErrors["datastore.strDbUserName"])} helperText={dicErrors["datastore.strDbUserName"]} fullWidth />
+          <TextField data-testid="tenant.onboarding.datastore.database-password.input" inputProps={{ "data-testid": "tenant.onboarding.datastore.database-password.input" }} type="password" label="Database Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"]} fullWidth />
         </Box>
         {objForm.datastore.blnUseExistingDatabase ? (
           <Stack spacing={2}>
             <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <Button
+                data-testid="tenant.onboarding.datastore.validate-database.button"
                 variant="outlined"
                 onClick={handleValidateExistingDatabase}
                 disabled={blnValidatingDatabase}
@@ -573,6 +577,7 @@ export default function TenantOnboardingPage() {
         <Box>
           <InputLabel id="tenant-onboarding-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
           <Select
+            data-testid="tenant.onboarding.datastore.modules.select"
             labelId="tenant-onboarding-modules-label"
             multiple
             value={objForm.datastore.lstModuleIDs.map(String)}
@@ -593,15 +598,15 @@ export default function TenantOnboardingPage() {
             {(objFormOptions?.lstModules ?? []).map((dicOption) => {
               const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
               return (
-                <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>
-                  <Checkbox checked={blnChecked} />
+                <MenuItem key={dicOption.intID} value={String(dicOption.intID)} data-testid="tenant.onboarding.datastore.modules.option" data-option-key={dicOption.intID}>
+                  <Checkbox checked={blnChecked} inputProps={{ "data-testid": "tenant.onboarding.datastore.modules.checkbox", "data-option-key": dicOption.intID } as InputHTMLAttributes<HTMLInputElement>} />
                   <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
                 </MenuItem>
               );
             })}
           </Select>
         </Box>
-        <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} />} label="Datastore active" />
+        <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} inputProps={{ "data-testid": "tenant.onboarding.datastore.active.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Datastore active" />
         {objForm.datastore.blnUseExistingDatabase ? renderInitialAdminSection() : null}
       </Stack>
     );
@@ -613,12 +618,12 @@ export default function TenantOnboardingPage() {
         <Stack spacing={2}>
           <Typography variant="subtitle1" fontWeight={700}>Initial Admin User</Typography>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-            <TextField label="Full Name *" value={objForm.initialAdmin.strFullName} onChange={(e) => setField("initialAdmin.strFullName", e.target.value)} error={Boolean(dicErrors["initialAdmin.strFullName"])} helperText={dicErrors["initialAdmin.strFullName"]} fullWidth />
-            <TextField label="Login ID / Username *" value={objForm.initialAdmin.strLoginID} onChange={(e) => setField("initialAdmin.strLoginID", e.target.value)} error={Boolean(dicErrors["initialAdmin.strLoginID"])} helperText={dicErrors["initialAdmin.strLoginID"]} fullWidth />
-            <TextField label="Email *" value={objForm.initialAdmin.strEmailAddress} onChange={(e) => setField("initialAdmin.strEmailAddress", e.target.value)} error={Boolean(dicErrors["initialAdmin.strEmailAddress"])} helperText={dicErrors["initialAdmin.strEmailAddress"]} fullWidth />
-            <TextField label="Mobile Number" value={objForm.initialAdmin.strMobileNumber} onChange={(e) => setField("initialAdmin.strMobileNumber", e.target.value)} error={Boolean(dicErrors["initialAdmin.strMobileNumber"])} helperText={dicErrors["initialAdmin.strMobileNumber"]} fullWidth />
-            <TextField type="password" label="Password *" value={objForm.initialAdmin.strPassword} onChange={(e) => setField("initialAdmin.strPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strPassword"])} helperText={dicErrors["initialAdmin.strPassword"]} fullWidth />
-            <TextField type="password" label="Confirm Password *" value={objForm.initialAdmin.strConfirmPassword} onChange={(e) => setField("initialAdmin.strConfirmPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strConfirmPassword"])} helperText={dicErrors["initialAdmin.strConfirmPassword"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.full-name.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.full-name.input" }} label="Full Name *" value={objForm.initialAdmin.strFullName} onChange={(e) => setField("initialAdmin.strFullName", e.target.value)} error={Boolean(dicErrors["initialAdmin.strFullName"])} helperText={dicErrors["initialAdmin.strFullName"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.login-id.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.login-id.input" }} label="Login ID / Username *" value={objForm.initialAdmin.strLoginID} onChange={(e) => setField("initialAdmin.strLoginID", e.target.value)} error={Boolean(dicErrors["initialAdmin.strLoginID"])} helperText={dicErrors["initialAdmin.strLoginID"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.email.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.email.input" }} label="Email *" value={objForm.initialAdmin.strEmailAddress} onChange={(e) => setField("initialAdmin.strEmailAddress", e.target.value)} error={Boolean(dicErrors["initialAdmin.strEmailAddress"])} helperText={dicErrors["initialAdmin.strEmailAddress"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.mobile-number.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.mobile-number.input" }} label="Mobile Number" value={objForm.initialAdmin.strMobileNumber} onChange={(e) => setField("initialAdmin.strMobileNumber", e.target.value)} error={Boolean(dicErrors["initialAdmin.strMobileNumber"])} helperText={dicErrors["initialAdmin.strMobileNumber"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.password.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.password.input" }} type="password" label="Password *" value={objForm.initialAdmin.strPassword} onChange={(e) => setField("initialAdmin.strPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strPassword"])} helperText={dicErrors["initialAdmin.strPassword"]} fullWidth />
+            <TextField data-testid="tenant.onboarding.initial-admin.confirm-password.input" inputProps={{ "data-testid": "tenant.onboarding.initial-admin.confirm-password.input" }} type="password" label="Confirm Password *" value={objForm.initialAdmin.strConfirmPassword} onChange={(e) => setField("initialAdmin.strConfirmPassword", e.target.value)} error={Boolean(dicErrors["initialAdmin.strConfirmPassword"])} helperText={dicErrors["initialAdmin.strConfirmPassword"]} fullWidth />
           </Box>
         </Stack>
       </Paper>

@@ -3,7 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementActionBar from "@/features/reimbursements/components/ReimbursementActionBar";
@@ -252,7 +252,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton size="small" onClick={() => objRouter.push("/payroll/reimbursements")} aria-label="Back to reimbursement review"><ArrowBackRoundedIcon fontSize="small" /></IconButton>
+            <IconButton size="small" onClick={() => objRouter.push("/payroll/reimbursements")} aria-label="Back to reimbursement review" data-testid="reimbursements.review-detail.back.icon-button"><ArrowBackRoundedIcon fontSize="small" /></IconButton>
             <Box>
               <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{objClaim?.strClaimCode || `Claim #${intClaimID}`}</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objClaim ? `${objClaim.strClaimTitle || "-"} | ${formatDateLabel(objClaim.dtClaimDate)}` : "Review reimbursement claim"}</Typography>
@@ -315,7 +315,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
         </Grid>
       </Grid>
 
-      <Dialog open={Boolean(strDialogAction)} onClose={closeDialog} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(strDialogAction)} onClose={closeDialog} maxWidth="sm" fullWidth data-testid="reimbursements.review-detail.action.dialog">
         <DialogTitle>{strDialogTitle}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
@@ -330,6 +330,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                   onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value)}
                   disabled={blnPayrollRunsLoading || lstEditablePayrollRuns.length === 0}
                   helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Open or Submitted unlocked runs for this claim employee are listed."}
+                  data-testid="reimbursements.review-detail.target-payroll-run.select"
                 >
                   <MenuItem value="" disabled>Select payroll run</MenuItem>
                   {lstEditablePayrollRuns.map((objRun) => (
@@ -338,15 +339,15 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                     </MenuItem>
                   ))}
                 </TextField>
-                <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} />} label="I confirm this reimbursement should be pushed to payroll input." />
+                <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} inputProps={{ "data-testid": "reimbursements.review-detail.confirm-payroll.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="I confirm this reimbursement should be pushed to payroll input." />
               </>
             ) : null}
-            <TextField fullWidth multiline minRows={3} label={["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction || "") ? "Reason" : "Remarks"} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} />
+            <TextField fullWidth multiline minRows={3} label={["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction || "") ? "Reason" : "Remarks"} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} data-testid="reimbursements.review-detail.remarks.input" />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy || blnPayrollRunsLoading}>Continue</Button>
+          <Button onClick={closeDialog} data-testid="reimbursements.review-detail.action.cancel.button">Cancel</Button>
+          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy || blnPayrollRunsLoading} data-testid="reimbursements.review-detail.action.continue.button">Continue</Button>
         </DialogActions>
       </Dialog>
     </Stack>

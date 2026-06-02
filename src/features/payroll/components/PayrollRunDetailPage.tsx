@@ -23,7 +23,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -540,6 +540,7 @@ export default function PayrollRunDetailPage({
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll/runs")}
+          data-testid="payroll.run-detail.back.button"
         >
           {t("back_to_list", "Back to List")}
         </Button>
@@ -549,6 +550,7 @@ export default function PayrollRunDetailPage({
             startIcon={<FactCheckRoundedIcon />}
             onClick={validateRun}
             disabled={blnSaving || objRun.strRunStatus === "Closed"}
+            data-testid="payroll.run-detail.validate.button"
           >
             {t("validate", "Validate")}
           </Button> : null}
@@ -557,6 +559,7 @@ export default function PayrollRunDetailPage({
             startIcon={<PlayArrowRoundedIcon />}
             onClick={processRun}
             disabled={blnSaving || objRun.strRunStatus !== "Approved"}
+            data-testid="payroll.run-detail.process.button"
           >
             {t("process", "Process")}
           </Button> : null}
@@ -565,6 +568,7 @@ export default function PayrollRunDetailPage({
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
             disabled={blnSaving || objRun.strRunStatus !== "Processed"}
+            data-testid="payroll.run-detail.reprocess.button"
           >
             {t("reprocess", "Reprocess")}
           </Button> : null}
@@ -577,6 +581,7 @@ export default function PayrollRunDetailPage({
               blnPayslipLoading ||
               !["Processed", "Closed"].includes(objRun.strRunStatus)
             }
+            data-testid="payroll.run-detail.generate-payslips.button"
           >
             {t("generate_payslips", "Generate Payslips")}
           </Button> : null}
@@ -584,6 +589,7 @@ export default function PayrollRunDetailPage({
             className={styles.secondaryButton}
             startIcon={<ReceiptLongRoundedIcon />}
             onClick={() => objRouter.push("/payroll/results")}
+            data-testid="payroll.run-detail.results.button"
           >
             {t("view_results", "Results")}
           </Button>
@@ -596,6 +602,7 @@ export default function PayrollRunDetailPage({
               objRun.strRunStatus !== "Processed" ||
               objRun.dicSummary.intValidationErrorCount > 0
             }
+            data-testid="payroll.run-detail.close.button"
           >
             {t("close", "Close")}
           </Button> : null}
@@ -693,6 +700,7 @@ export default function PayrollRunDetailPage({
                 select
                 label={t("run_scope", "Run Scope")}
                 value={strScopeType}
+                data-testid="payroll.run-detail.run-scope.select"
                 onChange={(objEvent) => {
                   const strNextScope = objEvent.target.value as PayrollRunScopeType;
                   setStrScopeType(strNextScope);
@@ -710,6 +718,7 @@ export default function PayrollRunDetailPage({
                 select
                 label={t("scope_employee", "Employee")}
                 value={intScopedEmployeeID}
+                data-testid="payroll.run-detail.employee.select"
                 onChange={(objEvent) =>
                   setIntScopedEmployeeID(
                     objEvent.target.value ? Number(objEvent.target.value) : ""
@@ -733,6 +742,7 @@ export default function PayrollRunDetailPage({
                 select
                 label={t("status", "Status")}
                 value={strRunStatus}
+                data-testid="payroll.run-detail.status.select"
                 onChange={(objEvent) =>
                   setStrRunStatus(objEvent.target.value as PayrollRunStatus)
                 }
@@ -751,6 +761,7 @@ export default function PayrollRunDetailPage({
                   checked={blnIsLocked}
                   onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
                   disabled={!blnCanEdit}
+                  inputProps={{ "data-testid": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 />
               </Box>
               {blnCanEdit ? <Button
@@ -758,6 +769,7 @@ export default function PayrollRunDetailPage({
                 onClick={saveStatus}
                 disabled={blnSaving}
                 sx={{ alignSelf: "flex-end" }}
+                data-testid="payroll.run-detail.save-status.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button> : null}
@@ -837,6 +849,7 @@ export default function PayrollRunDetailPage({
                 startIcon={<ReceiptLongRoundedIcon />}
                 onClick={generateAllPayslips}
                 disabled={blnPayslipLoading}
+                data-testid="payroll.run-detail.payslips.generate-all.button"
               >
                 {t("generate_all", "Generate All")}
               </Button> : null}
@@ -873,6 +886,8 @@ export default function PayrollRunDetailPage({
                               className={styles.secondaryButton}
                               onClick={() => viewPayslip(dicRow)}
                               disabled={blnPayslipLoading}
+                              data-testid="payroll.run-detail.payslip.view.button"
+                              data-row-key={dicRow.intEmployeeID}
                             >
                               {t("view", "View")}
                             </Button>
@@ -880,6 +895,8 @@ export default function PayrollRunDetailPage({
                               className={styles.secondaryButton}
                               onClick={() => generatePayslip(dicRow)}
                               disabled={blnPayslipLoading}
+                              data-testid="payroll.run-detail.payslip.generate.button"
+                              data-row-key={dicRow.intEmployeeID}
                             >
                               {t("generate", "Generate")}
                             </Button> : null}
@@ -888,6 +905,8 @@ export default function PayrollRunDetailPage({
                               startIcon={<DownloadRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, false)}
                               disabled={blnPayslipLoading}
+                              data-testid="payroll.run-detail.payslip.download.button"
+                              data-row-key={dicRow.intEmployeeID}
                             >
                               {t("download", "Download")}
                             </Button> : null}
@@ -896,6 +915,8 @@ export default function PayrollRunDetailPage({
                               startIcon={<PrintRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, true)}
                               disabled={blnPayslipLoading}
+                              data-testid="payroll.run-detail.payslip.print.button"
+                              data-row-key={dicRow.intEmployeeID}
                             >
                               {t("print", "Print")}
                             </Button> : null}
@@ -921,10 +942,11 @@ export default function PayrollRunDetailPage({
         onClose={() => setBlnPayslipDialogOpen(false)}
         maxWidth="lg"
         fullWidth
+        data-testid="payroll.run-detail.payslip-preview.dialog"
       >
         <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
           {t("payslip_preview", "Payslip Preview")}
-          <IconButton onClick={() => setBlnPayslipDialogOpen(false)}>
+          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} data-testid="payroll.run-detail.payslip-preview.close.icon-button">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>

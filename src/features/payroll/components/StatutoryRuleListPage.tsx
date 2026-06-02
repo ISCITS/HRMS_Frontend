@@ -244,7 +244,7 @@ export default function StatutoryRuleListPage() {
     <Box className={styles.page}>
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{t("breadcrumbs", "Payroll / Statutory Rules")}</Typography>
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
-        <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll")}>
+        <Button data-testid="statutory-rules.list.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll")}>
           {t("back_button", "Back to Payroll")}
         </Button>
       </Box>
@@ -252,6 +252,7 @@ export default function StatutoryRuleListPage() {
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <TextField
+            data-testid="statutory-rules.list.search-code.input"
             value={dicSearchDraft.strSearchCode}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchCode: objEvent.target.value }))}
             placeholder={t("search_code_placeholder", "Search by rule code")}
@@ -279,6 +280,7 @@ export default function StatutoryRuleListPage() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
+              data-testid="statutory-rules.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
@@ -307,6 +309,7 @@ export default function StatutoryRuleListPage() {
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
             {blnCanAdd ? <Button
+              data-testid="statutory-rules.list.add.button"
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => objRouter.push("/payroll/statutory-rules/new")}
@@ -389,6 +392,8 @@ export default function StatutoryRuleListPage() {
                   <td className={styles.actionsColumn}>
                     <Box className={styles.actionCell}>
                       <CommonRowActions
+                        testIdPrefix="statutory-rules.list.row"
+                        rowKey={dicRow.intID}
                         blnCanView={blnCanView}
                         blnCanEdit={blnCanEdit}
                         onView={() => openPreview(dicRow.intID).catch(() => undefined)}

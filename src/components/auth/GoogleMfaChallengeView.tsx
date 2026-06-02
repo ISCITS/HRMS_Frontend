@@ -35,6 +35,10 @@ type GoogleMfaChallengeViewProps = {
   strCodePlaceholder?: string;
   strVerifyButtonLabel?: string;
   blnAllowBackupCode?: boolean;
+  codeInputTestId?: string;
+  backupCodeInputTestId?: string;
+  verifyButtonTestId?: string;
+  toggleBackupCodeButtonTestId?: string;
 };
 
 export default function GoogleMfaChallengeView({
@@ -54,6 +58,10 @@ export default function GoogleMfaChallengeView({
   strCodePlaceholder,
   strVerifyButtonLabel,
   blnAllowBackupCode = true,
+  codeInputTestId = "auth.mfa.code.input",
+  backupCodeInputTestId = "auth.mfa.backup-code.input",
+  verifyButtonTestId = "auth.mfa.verify.button",
+  toggleBackupCodeButtonTestId = "auth.mfa.toggle-backup-code.button",
 }: GoogleMfaChallengeViewProps) {
   const strQrCodeSrc = useMemo(() => {
     if (!objChallenge.strQrCodeBase64) {
@@ -126,7 +134,7 @@ export default function GoogleMfaChallengeView({
 
           <Stack spacing={2}>
             {blnAllowBackupCode ? (
-              <Button variant="text" onClick={onToggleBackupCode} startIcon={<VpnKeyRoundedIcon />}>
+              <Button data-testid={toggleBackupCodeButtonTestId} variant="text" onClick={onToggleBackupCode} startIcon={<VpnKeyRoundedIcon />}>
                 {blnUseBackupCode ? "Use authenticator code instead" : "Use backup code instead"}
               </Button>
             ) : null}
@@ -134,6 +142,7 @@ export default function GoogleMfaChallengeView({
             {blnUseBackupCode ? (
               <TextField
                 label="Backup code"
+                inputProps={{ "data-testid": backupCodeInputTestId }}
                 value={strBackupCode}
                 onChange={(objEvent) => onBackupCodeChange(objEvent.target.value.toUpperCase())}
                 placeholder="Enter one backup code"
@@ -142,6 +151,7 @@ export default function GoogleMfaChallengeView({
             ) : (
               <TextField
                 label={strResolvedCodeLabel}
+                inputProps={{ "data-testid": codeInputTestId }}
                 value={strCode}
                 onChange={(objEvent) => onCodeChange(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder={strResolvedCodePlaceholder}
@@ -150,6 +160,7 @@ export default function GoogleMfaChallengeView({
             )}
 
             <Button
+              data-testid={verifyButtonTestId}
               variant="contained"
               disabled={blnSubmitting || !blnCanVerify}
               onClick={onVerify}

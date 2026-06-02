@@ -131,13 +131,13 @@ export default function ProfileForm() {
       <ProfileSection strTitle={dicConstant.profile.sectionPersonal}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.fullName} defaultValue="Ava Johnson" fullWidth sx={dicInputSx} />
+            <TextField label={dicConstant.profile.fullName} defaultValue="Ava Johnson" fullWidth sx={dicInputSx} data-testid="profile.form.full-name.input" inputProps={{ "data-testid": "profile.form.full-name.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.email} defaultValue="ava.johnson@company.com" fullWidth sx={dicInputSx} />
+            <TextField label={dicConstant.profile.email} defaultValue="ava.johnson@company.com" fullWidth sx={dicInputSx} data-testid="profile.form.email.input" inputProps={{ "data-testid": "profile.form.email.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.phone} defaultValue="+1 555 102 4567" fullWidth sx={dicInputSx} />
+            <TextField label={dicConstant.profile.phone} defaultValue="+1 555 102 4567" fullWidth sx={dicInputSx} data-testid="profile.form.phone.input" inputProps={{ "data-testid": "profile.form.phone.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
@@ -145,10 +145,10 @@ export default function ProfileForm() {
       <ProfileSection strTitle={dicConstant.profile.sectionWork}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.designation} defaultValue="Frontend Developer" fullWidth sx={dicInputSx} />
+            <TextField label={dicConstant.profile.designation} defaultValue="Frontend Developer" fullWidth sx={dicInputSx} data-testid="profile.form.designation.input" inputProps={{ "data-testid": "profile.form.designation.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="Department" defaultValue="Engineering" fullWidth sx={dicInputSx} />
+            <TextField label="Department" defaultValue="Engineering" fullWidth sx={dicInputSx} data-testid="profile.form.department.input" inputProps={{ "data-testid": "profile.form.department.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
@@ -169,7 +169,7 @@ export default function ProfileForm() {
           </Stack>
           <Typography sx={{ fontSize: 14, color: "#64748b" }}>{dicConstant.profile.twoFactorStatus}</Typography>
           <Typography sx={{ fontSize: 13, color: "#64748b" }}>{dicConstant.profile.lastLogin}</Typography>
-          <Button variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }}>
+          <Button variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }} data-testid="profile.form.change-password.button">
             Change Password
           </Button>
         </Stack>
@@ -178,6 +178,7 @@ export default function ProfileForm() {
       <Button
         type="submit"
         variant="contained"
+        data-testid="profile.form.update.button"
         sx={{
           alignSelf: "flex-end",
           minHeight: 52,

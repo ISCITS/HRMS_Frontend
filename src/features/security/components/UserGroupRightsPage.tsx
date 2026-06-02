@@ -58,6 +58,7 @@ export default function UserGroupRightsPage({ intUserGroupID }: UserGroupRightsP
             variant="outlined"
             startIcon={<ArrowBackRoundedIcon />}
             onClick={() => objRouter.push("/security/user-groups")}
+            data-testid="security.user-group-rights.back.button"
             sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700 }}
           >
             Back To User Groups

@@ -22,32 +22,34 @@ export default function PayrollRunForm() {
   return (
     <Stack component="form" spacing={3}>
       <Box className={styles.formGrid}>
-        <TextField select label={dicConstant.payroll.runForm.month} defaultValue={dicConstant.payroll.runForm.monthMarch} fullWidth>
+        <TextField select label={dicConstant.payroll.runForm.month} defaultValue={dicConstant.payroll.runForm.monthMarch} data-testid="payroll.run-form.month.select" inputProps={{ "data-testid": "payroll.run-form.month.select" }} fullWidth>
           <MenuItem value={dicConstant.payroll.runForm.monthMarch}>{dicConstant.payroll.runForm.monthMarch}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.monthFebruary}>{dicConstant.payroll.runForm.monthFebruary}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.monthJanuary}>{dicConstant.payroll.runForm.monthJanuary}</MenuItem>
         </TextField>
-        <TextField select label={dicConstant.payroll.runForm.department} defaultValue={dicConstant.payroll.runForm.departmentAll} fullWidth>
+        <TextField select label={dicConstant.payroll.runForm.department} defaultValue={dicConstant.payroll.runForm.departmentAll} data-testid="payroll.run-form.department.select" inputProps={{ "data-testid": "payroll.run-form.department.select" }} fullWidth>
           <MenuItem value={dicConstant.payroll.runForm.departmentAll}>{dicConstant.payroll.runForm.departmentAll}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.departmentEngineering}>{dicConstant.payroll.runForm.departmentEngineering}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.departmentHr}>{dicConstant.payroll.runForm.departmentHr}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.departmentFinance}>{dicConstant.payroll.runForm.departmentFinance}</MenuItem>
         </TextField>
-        <TextField select label={dicConstant.payroll.runForm.cycle} defaultValue={dicConstant.payroll.runForm.cycleMonthly} fullWidth>
+        <TextField select label={dicConstant.payroll.runForm.cycle} defaultValue={dicConstant.payroll.runForm.cycleMonthly} data-testid="payroll.run-form.cycle.select" inputProps={{ "data-testid": "payroll.run-form.cycle.select" }} fullWidth>
           <MenuItem value={dicConstant.payroll.runForm.cycleMonthly}>{dicConstant.payroll.runForm.cycleMonthly}</MenuItem>
           <MenuItem value={dicConstant.payroll.runForm.cycleBiWeekly}>{dicConstant.payroll.runForm.cycleBiWeekly}</MenuItem>
         </TextField>
       </Box>
       <TextField
         label={dicConstant.payroll.runForm.note}
+        data-testid="payroll.run-form.note.input"
+        inputProps={{ "data-testid": "payroll.run-form.note.input" }}
         fullWidth
         multiline
         minRows={2}
         placeholder={dicConstant.payroll.runForm.notePlaceholder}
       />
       <Stack direction="row" className={styles.actionsRow}>
-        <Button variant="contained">{dicConstant.payroll.runForm.generateButton}</Button>
-        <Button variant="outlined">{dicConstant.payroll.runForm.previewButton}</Button>
+        <Button variant="contained" data-testid="payroll.run-form.generate.button">{dicConstant.payroll.runForm.generateButton}</Button>
+        <Button variant="outlined" data-testid="payroll.run-form.preview.button">{dicConstant.payroll.runForm.previewButton}</Button>
       </Stack>
     </Stack>
   );

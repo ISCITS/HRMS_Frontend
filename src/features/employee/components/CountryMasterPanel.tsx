@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -378,7 +378,7 @@ export default function CountryMasterPanel() {
     const blnSelected = lstSelectedIds.includes(dicCountry.id);
     return {
       id: dicCountry.id,
-      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCountry.id)} />,
+      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(dicCountry.id)} inputProps={{ "data-testid": "country-master.list.row.select.checkbox", "data-row-key": dicCountry.id } as InputHTMLAttributes<HTMLInputElement>} />,
       rowActions: (
         <CommonRowActions
           blnCanView={blnCanView}
@@ -387,6 +387,8 @@ export default function CountryMasterPanel() {
           onView={() => void openDialog("view", dicCountry)}
           onEdit={() => void openDialog("edit", dicCountry)}
           onDelete={() => deleteRecord(dicCountry.id)}
+          testIdPrefix="country-master.list.row"
+          rowKey={dicCountry.id}
         />
       ),
       name: dicCountry.name,
@@ -410,6 +412,7 @@ export default function CountryMasterPanel() {
           indeterminate={blnSomeFilteredSelected}
           onChange={toggleSelectAll}
           disabled={lstFiltered.length === 0}
+          inputProps={{ "data-testid": "country-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
         />
       ),
       width: 64,
@@ -589,7 +592,7 @@ export default function CountryMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()} data-testid="country-master.back.button">
           {dicModuleLabels.backButton}
         </Button>
       </Box>
@@ -603,20 +606,20 @@ export default function CountryMasterPanel() {
         ) : null}
 
         <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
-          <TextField select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth data-testid="country-master.search.name.input" />
+          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth data-testid="country-master.search.code.input" />
+          <TextField select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth data-testid="country-master.search.status.select">
             <MenuItem value="All">All</MenuItem>
             <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting} data-testid="country-master.search.button">
               {dicCommonLabels.search}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting} data-testid="country-master.clear.button">
               {dicCommonLabels.clear}
             </Button>
           </Box>
@@ -625,9 +628,9 @@ export default function CountryMasterPanel() {
         {lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            {blnCanChangeStatus ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
+            {blnCanChangeStatus ? <Button className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting} data-testid="country-master.bulk-activate.button">{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting} data-testid="country-master.bulk-deactivate.button">{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting} data-testid="country-master.bulk-delete.button">{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -653,11 +656,12 @@ export default function CountryMasterPanel() {
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="country-master"
             showExportOptions={blnCanExport}
+            testIdPrefix="country-master.list"
             showPaginationSummary
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
-                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} />
+                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading} data-testid="country-master.add.button">{dicModuleLabels.addButton}</Button> : null}
+                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} inputProps={{ "data-testid": "country-master.toolbar.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
@@ -675,6 +679,9 @@ export default function CountryMasterPanel() {
         onPrimaryAction={saveCountry}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
+        rootTestId="country-master.dialog"
+        cancelButtonTestId="country-master.dialog.cancel.button"
+        primaryButtonTestId="country-master.dialog.primary.button"
         paperClassName={styles.dialogPaper}
         maxWidth="xl"
         paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
@@ -694,6 +701,7 @@ export default function CountryMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
+                data-testid="country-master.dialog.name.input"
                 fullWidth
               />
               <TextField
@@ -708,6 +716,7 @@ export default function CountryMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
+                data-testid="country-master.dialog.code.input"
                 fullWidth
               />
               <TextField
@@ -721,6 +730,7 @@ export default function CountryMasterPanel() {
                 }}
                 error={Boolean(dicErrors.currencyCode)}
                 helperText={dicErrors.currencyCode}
+                data-testid="country-master.dialog.currency-code.input"
                 fullWidth
               />
               <TextField
@@ -728,6 +738,7 @@ export default function CountryMasterPanel() {
                 value={dicForm.phoneCode}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, phoneCode: objEvent.target.value }))}
+                data-testid="country-master.dialog.phone-code.input"
                 fullWidth
               />
             </Box>
@@ -740,13 +751,14 @@ export default function CountryMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled data-testid="country-master.dialog.add-language.button">
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
                   variant="contained"
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+                  data-testid="country-master.dialog.translate.button"
                   sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
@@ -786,6 +798,7 @@ export default function CountryMasterPanel() {
                         "",
                     }}
                     disabled
+                    data-testid="country-master.dialog.translation.language.select"
                     fullWidth
                   >
                     {objFormOptions.lstLanguages.map((dicLanguage) => (
@@ -804,6 +817,7 @@ export default function CountryMasterPanel() {
                       }
                     }}
                     disabled={strMode === "view" || intIndex === 0}
+                    data-testid="country-master.dialog.translation.name.input"
                     InputProps={{
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
@@ -815,6 +829,7 @@ export default function CountryMasterPanel() {
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
                     value={dicText.strCountryCode}
                     disabled
+                    data-testid="country-master.dialog.translation.code.input"
                     fullWidth
                   />
                 </Box>
@@ -823,7 +838,7 @@ export default function CountryMasterPanel() {
 
             <Box className={styles.switchRow}>
               <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
             </Box>
           </Box>
         )}
@@ -836,6 +851,9 @@ export default function CountryMasterPanel() {
         strCancelLabel={dicCommonLabels.cancel}
         strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicModuleLabels.confirmButton}
         blnConfirmDisabled={blnSubmitting}
+        rootTestId="country-master.confirm.dialog"
+        cancelButtonTestId="country-master.confirm.cancel.button"
+        confirmButtonTestId="country-master.confirm.confirm.button"
         onClose={closeConfirmDialog}
         onConfirm={executeConfirmedAction}
       />

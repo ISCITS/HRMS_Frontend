@@ -35,6 +35,10 @@ type DynamicMenuProps = {
 
 const objMenuIconSx = { color: "inherit" };
 
+function toMenuTestSegment(strValue: string) {
+  return strValue.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+}
+
 function getMenuIcon(objItem: MenuItem) {
   const strIconName = (objItem as MenuItem & { strIconName?: string | null }).strIconName?.toLowerCase() ?? "";
   if (objItem.blnIsHome) {
@@ -849,7 +853,14 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     if (blnHasChildren) {
       return (
         <Fragment key={`${objItem.strModuleCode}-${intDepth}`}>
-          <ListItemButton onClick={() => toggleMenu(objItem.strModuleCode)} sx={getButtonStyles(blnHasActiveChild, intDepth)}>
+          <ListItemButton
+            data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
+            data-menu-code={objItem.strModuleCode}
+            data-menu-label={resolveMenuLabel(objItem)}
+            data-menu-route={strRoute ?? ""}
+            onClick={() => toggleMenu(objItem.strModuleCode)}
+            sx={getButtonStyles(blnHasActiveChild, intDepth)}
+          >
             <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
               {getMenuIcon(objItem)}
             </ListItemIcon>
@@ -878,6 +889,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     return (
       <ListItemButton
         key={strRoute ?? objItem.strModuleCode}
+        data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
+        data-menu-code={objItem.strModuleCode}
+        data-menu-label={resolveMenuLabel(objItem)}
+        data-menu-route={strRoute ?? ""}
         component={Link}
         href={strRoute ?? "#"}
         onClick={onNavigate}
@@ -899,7 +914,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   }
 
   return (
-    <List sx={{ mt: 0 }}>
+    <List data-testid="nav.menu.list" sx={{ mt: 0 }}>
       {lstRenderedMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );

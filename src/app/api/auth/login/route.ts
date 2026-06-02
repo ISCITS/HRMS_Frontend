@@ -1,13 +1,33 @@
 import { NextResponse } from "next/server";
 
-import { proxyTenantLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
+import { isAuthSuccessData, proxyTenantLogin, setAuthCookies } from "@/app/api/auth/AuthProxy";
+import { normalizeAuthRouteBody } from "@/app/api/auth/AuthRouteBody";
+
+type LoginRouteBody = {
+  payload?: string;
+  strTenantUUID?: string;
+  tenantUuid?: string;
+  TenantUUID?: string;
+  strLoginID?: string;
+  loginId?: string;
+  strPassword?: string;
+  password?: string;
+};
 
 export async function POST(request: Request) {
   try {
-    const objBody = (await request.json()) as unknown;
-    const objResult = await proxyTenantLogin(objBody);
+    const objBody = await normalizeAuthRouteBody<LoginRouteBody>(await request.json());
+    const objResult = await proxyTenantLogin({
+      strTenantUUID: objBody.strTenantUUID ?? objBody.tenantUuid ?? objBody.TenantUUID,
+      strLoginID: objBody.strLoginID ?? objBody.loginId,
+      strPassword: objBody.strPassword ?? objBody.password,
+    });
     const objResponse = NextResponse.json(objResult, { status: 200 });
-    await setAuthCookies(objResponse, objResult.Data);
+
+    if (isAuthSuccessData(objResult.Data)) {
+      await setAuthCookies(objResponse, objResult.Data);
+    }
+
     return objResponse;
   } catch (objError) {
     return NextResponse.json(

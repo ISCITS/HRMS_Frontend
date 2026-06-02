@@ -18,6 +18,8 @@ type AlertDialogProps = {
   strSeverity: "success" | "error";
   strTitle?: string;
   fnOnClose: () => void;
+  rootTestId?: string;
+  closeButtonTestId?: string;
 };
 
 export default function AlertDialog({
@@ -26,9 +28,11 @@ export default function AlertDialog({
   strSeverity,
   strTitle,
   fnOnClose,
+  rootTestId,
+  closeButtonTestId,
 }: AlertDialogProps) {
   return (
-    <Dialog open={blnOpen} onClose={fnOnClose} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
+    <Dialog data-testid={rootTestId} open={blnOpen} onClose={fnOnClose} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
       <DialogTitle>{strTitle ?? (strSeverity === "success" ? AlertDialogText.SuccessTitle : AlertDialogText.ErrorTitle)}</DialogTitle>
       <DialogContent>
         <Alert severity={strSeverity}>
@@ -36,7 +40,7 @@ export default function AlertDialog({
         </Alert>
       </DialogContent>
       <DialogActions>
-        <Button onClick={fnOnClose} variant="contained">
+        <Button data-testid={closeButtonTestId} onClick={fnOnClose} variant="contained">
           {AlertDialogText.OkButton}
         </Button>
       </DialogActions>

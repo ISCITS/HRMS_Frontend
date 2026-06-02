@@ -65,6 +65,7 @@ function TenantAdminLoginPageContent() {
 
           <TextField
             label="Login ID or Email"
+            inputProps={{ "data-testid": "tenant-admin.login.login-id.input" }}
             value={strLoginID}
             onChange={(e) => setStrLoginID(e.target.value)}
             required
@@ -74,12 +75,14 @@ function TenantAdminLoginPageContent() {
           <TextField
             label="Password"
             type="password"
+            inputProps={{ "data-testid": "tenant-admin.login.password.input" }}
             value={strPassword}
             onChange={(e) => setStrPassword(e.target.value)}
             required
             fullWidth
           />
           <Button
+            data-testid="tenant-admin.login.submit.button"
             type="submit"
             variant="contained"
             size="large"

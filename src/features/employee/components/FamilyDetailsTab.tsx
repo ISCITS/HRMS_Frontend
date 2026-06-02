@@ -222,6 +222,7 @@ export default function FamilyDetailsTab({
         </Box>
         {!blnViewOnly ? (
           <Button
+            data-testid="employee.family.add.button"
             className={styles.primaryButton}
             size="small"
             variant="contained"
@@ -261,6 +262,7 @@ export default function FamilyDetailsTab({
         onKeyDown={handleSingleDialogActionEnter}
         fullWidth
         maxWidth="xs"
+        data-testid="employee.family.delete.dialog"
       >
         <DialogTitle>{t("family_delete_title", "Delete Family Member")}</DialogTitle>
         <DialogContent>
@@ -272,8 +274,8 @@ export default function FamilyDetailsTab({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDeleteDialog}>{t("cancel", "Cancel")}</Button>
-          <Button onClick={handleDeleteConfirm} variant="contained" color="error">
+          <Button onClick={closeDeleteDialog} data-testid="employee.family.delete.cancel.button">{t("cancel", "Cancel")}</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error" data-testid="employee.family.delete.confirm.button">
             {t("delete", "Delete")}
           </Button>
         </DialogActions>

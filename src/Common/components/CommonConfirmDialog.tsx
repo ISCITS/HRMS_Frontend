@@ -24,6 +24,9 @@ type CommonConfirmDialogProps = {
   strDialogActionsClassName?: string;
   strCancelButtonClassName?: string;
   strConfirmButtonClassName?: string;
+  rootTestId?: string;
+  cancelButtonTestId?: string;
+  confirmButtonTestId?: string;
 };
 
 export type { CommonConfirmDialogProps };
@@ -46,9 +49,13 @@ export default function CommonConfirmDialog({
   strDialogActionsClassName = masterStyles.confirmDialogActions,
   strCancelButtonClassName = masterStyles.textAction,
   strConfirmButtonClassName = masterStyles.primaryButton,
+  rootTestId,
+  cancelButtonTestId,
+  confirmButtonTestId,
 }: CommonConfirmDialogProps) {
   return (
     <Dialog
+      data-testid={rootTestId}
       open={blnOpen}
       onClose={onClose}
       onKeyDown={handleSingleDialogActionEnter}
@@ -59,10 +66,10 @@ export default function CommonConfirmDialog({
         {nodeMessage ?? <Typography className={strDialogMessageClassName}>{strMessage}</Typography>}
       </DialogContent>
       <DialogActions className={strDialogActionsClassName}>
-        <Button className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
+        <Button data-testid={cancelButtonTestId} className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
           {strCancelLabel}
         </Button>
-        <Button className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
+        <Button data-testid={confirmButtonTestId} className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
           {strConfirmLabel}
         </Button>
       </DialogActions>

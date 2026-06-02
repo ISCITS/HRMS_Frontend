@@ -104,10 +104,10 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
         <Box className={styles.controlsHeader}>
           <Typography component="h1" className={styles.title}>User Group Assignments</Typography>
           <Box className={styles.headerActions}>
-            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addAssignment}>
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addAssignment} data-testid="security.user-group-assignments.add.button">
               Add Assignment
             </Button>
-            <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={saveAssignments}>
+            <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={saveAssignments} data-testid="security.user-group-assignments.save.button">
               Save
             </Button>
           </Box>
@@ -135,6 +135,7 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   select
                   label="User Group"
                   value={objAssignment.intUserGroupID}
+                  data-testid="security.user-group-assignments.user-group.select"
                   onChange={(objEvent) =>
                     setLstAssignments((lstPrevious) =>
                       lstPrevious.map((objItem, intItemIndex) =>
@@ -155,6 +156,7 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   label="Effective From"
                   type="date"
                   value={objAssignment.dtEffectiveFrom}
+                  data-testid="security.user-group-assignments.effective-from.input"
                   onChange={(objEvent) =>
                     setLstAssignments((lstPrevious) =>
                       lstPrevious.map((objItem, intItemIndex) =>
@@ -170,6 +172,7 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   label="Effective To"
                   type="date"
                   value={objAssignment.dtEffectiveTo ?? ""}
+                  data-testid="security.user-group-assignments.effective-to.input"
                   onChange={(objEvent) =>
                     setLstAssignments((lstPrevious) =>
                       lstPrevious.map((objItem, intItemIndex) =>
@@ -185,6 +188,7 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   select
                   label="Status"
                   value={objAssignment.blnIsActive ? "active" : "inactive"}
+                  data-testid="security.user-group-assignments.status.select"
                   onChange={(objEvent) =>
                     setLstAssignments((lstPrevious) =>
                       lstPrevious.map((objItem, intItemIndex) =>
@@ -201,6 +205,8 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                 <IconButton
                   color="error"
                   onClick={() => setLstAssignments((lstPrevious) => lstPrevious.filter((_, intItemIndex) => intItemIndex !== intIndex))}
+                  data-testid="security.user-group-assignments.delete.icon-button"
+                  data-row-key={intIndex}
                 >
                   <DeleteOutlineRoundedIcon />
                 </IconButton>

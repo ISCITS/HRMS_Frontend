@@ -214,6 +214,7 @@ export default function VersionLogEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <Button
+                data-testid="version-logs.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/version-logs")}
@@ -230,6 +231,7 @@ export default function VersionLogEditorPage({
               </Button>
               {blnCanSave ? (
                 <Button
+                  data-testid="version-logs.editor.save.button"
                   className={styles.primaryButton}
                   startIcon={<SaveRoundedIcon />}
                   onClick={handleSave}
@@ -300,6 +302,8 @@ export default function VersionLogEditorPage({
             }}
           >
             <TextField
+              data-testid="version-logs.editor.version-code.input"
+              inputProps={{ "data-testid": "version-logs.editor.version-code.input" }}
               label={t("version_code", "Version Code")}
               value={dicForm.strVersionCode}
               onChange={(objEvent) => updateField("strVersionCode", objEvent.target.value.toUpperCase())}
@@ -308,6 +312,8 @@ export default function VersionLogEditorPage({
             />
 
             <TextField
+              data-testid="version-logs.editor.version-name.input"
+              inputProps={{ "data-testid": "version-logs.editor.version-name.input" }}
               label={t("version_name", "Version Name")}
               value={dicForm.strVersionName}
               onChange={(objEvent) => updateField("strVersionName", objEvent.target.value)}
@@ -316,6 +322,8 @@ export default function VersionLogEditorPage({
             />
 
             <TextField
+              data-testid="version-logs.editor.release-date.input"
+              inputProps={{ "data-testid": "version-logs.editor.release-date.input" }}
               label={t("release_date", "Release Date")}
               type="date"
               value={dicForm.dtReleaseDate}
@@ -327,12 +335,14 @@ export default function VersionLogEditorPage({
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
-                control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+                control={<ActiveStatusSwitch testId="version-logs.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
               />
             </Box>
 
             <TextField
+              data-testid="version-logs.editor.release-notes.input"
+              inputProps={{ "data-testid": "version-logs.editor.release-notes.input" }}
               label={t("release_notes", "Release Notes")}
               value={dicForm.strReleaseNotes}
               onChange={(objEvent) => updateField("strReleaseNotes", objEvent.target.value)}

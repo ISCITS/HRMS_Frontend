@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import masterStyles from "@/components/master/MasterScreen.module.css";
@@ -186,6 +186,7 @@ export default function PayrollRunEditorPage() {
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/runs")}
                 disabled={blnSaving}
+                data-testid="payroll.run-editor.back.button"
               >
                 {t("back_to_list", "Back to List")}
               </Button>
@@ -194,6 +195,7 @@ export default function PayrollRunEditorPage() {
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRun}
                 disabled={blnFieldDisabled}
+                data-testid="payroll.run-editor.save.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button> : null}
@@ -236,6 +238,7 @@ export default function PayrollRunEditorPage() {
               select
               label={t("payroll_cycle", "Payroll Cycle")}
               value={dicForm.intPayrollCycleID}
+              data-testid="payroll.run-editor.payroll-cycle.select"
               onChange={(objEvent) =>
                 updateField(
                   "intPayrollCycleID",
@@ -257,6 +260,7 @@ export default function PayrollRunEditorPage() {
               value={dicForm.strRunCode}
               onChange={(objEvent) => updateField("strRunCode", objEvent.target.value)}
               disabled={blnFieldDisabled}
+              data-testid="payroll.run-editor.run-code.input"
               fullWidth
             />
             <TextField
@@ -264,12 +268,14 @@ export default function PayrollRunEditorPage() {
               value={dicForm.strRunName}
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
               disabled={blnFieldDisabled}
+              data-testid="payroll.run-editor.run-name.input"
               fullWidth
             />
             <TextField
               select
               label={t("run_scope", "Run Scope")}
               value={dicForm.strScopeType}
+              data-testid="payroll.run-editor.run-scope.select"
               onChange={(objEvent) =>
                 setDicForm((dicPrevious) => ({
                   ...dicPrevious,
@@ -290,6 +296,7 @@ export default function PayrollRunEditorPage() {
               select
               label={t("scope_employee", "Employee")}
               value={dicForm.intScopedEmployeeID}
+              data-testid="payroll.run-editor.employee.select"
               onChange={(objEvent) =>
                 updateField(
                   "intScopedEmployeeID",
@@ -313,12 +320,14 @@ export default function PayrollRunEditorPage() {
               onChange={(objEvent) => updateField("dtPayrollMonth", objEvent.target.value)}
               InputLabelProps={{ shrink: true }}
               disabled={blnFieldDisabled}
+              data-testid="payroll.run-editor.payroll-month.input"
               fullWidth
             />
             <TextField
               select
               label={t("status", "Status")}
               value={dicForm.strRunStatus}
+              data-testid="payroll.run-editor.status.select"
               onChange={(objEvent) =>
                 updateField("strRunStatus", objEvent.target.value as PayrollRunFormValues["strRunStatus"])
               }
@@ -337,6 +346,7 @@ export default function PayrollRunEditorPage() {
                 checked={dicForm.blnIsLocked}
                 onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
                 disabled={blnFieldDisabled}
+                inputProps={{ "data-testid": "payroll.run-editor.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
               />
             }
             label={t("locked", "Locked")}

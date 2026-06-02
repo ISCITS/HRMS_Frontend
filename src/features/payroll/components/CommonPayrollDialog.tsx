@@ -1,6 +1,7 @@
 "use client";
 
-import type { DialogProps, ReactNode } from "react";
+import type { ReactNode } from "react";
+import type { DialogProps } from "@mui/material";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -20,6 +21,9 @@ type CommonPayrollDialogProps = {
   paperClassName?: string;
   paperSx?: object;
   onDialogClose?: DialogProps["onClose"];
+  rootTestId?: string;
+  cancelButtonTestId?: string;
+  primaryButtonTestId?: string;
 };
 
 export default function CommonPayrollDialog({
@@ -37,6 +41,9 @@ export default function CommonPayrollDialog({
   paperClassName = styles.compactDialogPaper,
   paperSx,
   onDialogClose,
+  rootTestId,
+  cancelButtonTestId,
+  primaryButtonTestId,
 }: CommonPayrollDialogProps) {
   return (
     <CommonMasterDialog
@@ -56,6 +63,9 @@ export default function CommonPayrollDialog({
       onDialogClose={onDialogClose}
       strSecondaryButtonClassName={styles.secondaryButton}
       strPrimaryButtonClassName={styles.primaryButton}
+      rootTestId={rootTestId}
+      cancelButtonTestId={cancelButtonTestId}
+      primaryButtonTestId={primaryButtonTestId}
     />
   );
 }

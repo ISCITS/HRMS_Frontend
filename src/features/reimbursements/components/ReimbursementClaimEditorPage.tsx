@@ -376,7 +376,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton size="small" onClick={() => objRouter.push("/ess/reimbursements")} aria-label="Back to claims" sx={{ color: "#f8fcff", "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" } }}><ArrowBackRoundedIcon fontSize="small" /></IconButton>
+            <IconButton size="small" onClick={() => objRouter.push("/ess/reimbursements")} aria-label="Back to claims" data-testid="reimbursements.claim-editor.back.icon-button" sx={{ color: "#f8fcff", "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" } }}><ArrowBackRoundedIcon fontSize="small" /></IconButton>
             <ReceiptLongOutlinedIcon sx={{ fontSize: 20 }} />
             <Box>
               <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>{strPageTitle}</Typography>
@@ -389,13 +389,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit`)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
             ) : null}
             {!blnReadOnly ? (
-              <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} onClick={() => void saveHeader()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.42)", color: "rgba(255,255,255,0.58)" } }}>Save Draft</Button>
+              <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} onClick={() => void saveHeader()} disabled={blnSaving} data-testid="reimbursements.claim-editor.save-draft.button" sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.42)", color: "rgba(255,255,255,0.58)" } }}>Save Draft</Button>
             ) : null}
             {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
-              <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
+              <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.withdraw.button" sx={{ minHeight: 30, borderRadius: "8px", borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
             ) : null}
             {!blnReadOnly && blnCanSubmit && objClaim ? (
-              <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>Submit</Button>
+              <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.submit.button" sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>Submit</Button>
             ) : null}
           </Stack>
         </Stack>
@@ -411,15 +411,15 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       <Paper sx={{ p: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Grid container spacing={1.2}>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth size="small" label="Claim title" value={objHeader.strClaimTitle} onChange={(objEvent) => setObjHeader({ ...objHeader, strClaimTitle: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
+            <TextField fullWidth size="small" label="Claim title" value={objHeader.strClaimTitle} onChange={(objEvent) => setObjHeader({ ...objHeader, strClaimTitle: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} data-testid="reimbursements.claim-editor.title.input" />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth size="small" label="Financial year" value={objHeader.strFinancialYearCode} onChange={(objEvent) => setObjHeader({ ...objHeader, strFinancialYearCode: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} SelectProps={{ readOnly: blnReadOnly }}>
+            <TextField select fullWidth size="small" label="Financial year" value={objHeader.strFinancialYearCode} onChange={(objEvent) => setObjHeader({ ...objHeader, strFinancialYearCode: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} SelectProps={{ readOnly: blnReadOnly }} data-testid="reimbursements.claim-editor.financial-year.select">
               {lstFinancialYearOptions.map((strFinancialYear) => <MenuItem key={strFinancialYear} value={strFinancialYear}>{strFinancialYear}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth type="date" size="small" label="Claim date" InputLabelProps={{ shrink: true }} value={objHeader.dtClaimDate} onChange={(objEvent) => setObjHeader({ ...objHeader, dtClaimDate: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
+            <TextField fullWidth type="date" size="small" label="Claim date" InputLabelProps={{ shrink: true }} value={objHeader.dtClaimDate} onChange={(objEvent) => setObjHeader({ ...objHeader, dtClaimDate: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} data-testid="reimbursements.claim-editor.claim-date.input" />
           </Grid>
           <Grid item xs={12} md={2}>
             <Stack spacing={0.35} sx={{ minHeight: 40, justifyContent: "center" }}>
@@ -428,7 +428,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             </Stack>
           </Grid>
           <Grid item xs={12}>
-            <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objHeader.strEmployeeRemarks} onChange={(objEvent) => setObjHeader({ ...objHeader, strEmployeeRemarks: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} />
+            <TextField fullWidth multiline minRows={2} size="small" label="Employee remarks" value={objHeader.strEmployeeRemarks} onChange={(objEvent) => setObjHeader({ ...objHeader, strEmployeeRemarks: objEvent.target.value })} InputProps={{ readOnly: blnReadOnly }} data-testid="reimbursements.claim-editor.employee-remarks.input" />
           </Grid>
         </Grid>
       </Paper>
@@ -437,7 +437,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1.1 }}>
           <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>Claim Items</Typography>
           {!blnReadOnly ? (
-            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => void openAddItemDialog()} disabled={blnSaving} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Add Item</Button>
+            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => void openAddItemDialog()} disabled={blnSaving} data-testid="reimbursements.claim-editor.add-item.button" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Add Item</Button>
           ) : null}
         </Stack>
         {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>Claim number will be generated when you save the first item or save the draft.</Alert> : null}
@@ -479,9 +479,9 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
                     </TableCell>
                     <TableCell align="right">
                         <Stack direction="row" spacing={0.4} justifyContent="flex-end">
-                          <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(true); setBlnItemDialogOpen(true); }} aria-label="View item"><VisibilityRoundedIcon fontSize="small" /></IconButton>
-                          {!blnReadOnly ? <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(false); setBlnItemDialogOpen(true); }} aria-label="Edit item"><EditRoundedIcon fontSize="small" /></IconButton> : null}
-                          {!blnReadOnly ? <IconButton size="small" onClick={() => setObjDeletingItem(objItem)} aria-label="Delete item"><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
+                          <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(true); setBlnItemDialogOpen(true); }} aria-label="View item" data-testid="reimbursements.claim-editor.item.view.icon-button" data-row-key={objItem.intID}><VisibilityRoundedIcon fontSize="small" /></IconButton>
+                          {!blnReadOnly ? <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(false); setBlnItemDialogOpen(true); }} aria-label="Edit item" data-testid="reimbursements.claim-editor.item.edit.icon-button" data-row-key={objItem.intID}><EditRoundedIcon fontSize="small" /></IconButton> : null}
+                          {!blnReadOnly ? <IconButton size="small" onClick={() => setObjDeletingItem(objItem)} aria-label="Delete item" data-testid="reimbursements.claim-editor.item.delete.icon-button" data-row-key={objItem.intID}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
                         </Stack>
                     </TableCell>
                   </TableRow>
@@ -493,14 +493,14 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       </Paper>
 
       <ReimbursementClaimItemForm objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} />
-      <Dialog open={Boolean(objDeletingItem)} onClose={() => setObjDeletingItem(null)} maxWidth="xs" fullWidth>
+      <Dialog open={Boolean(objDeletingItem)} onClose={() => setObjDeletingItem(null)} maxWidth="xs" fullWidth data-testid="reimbursements.claim-editor.delete-item.dialog">
         <DialogTitle>Delete Claim Item</DialogTitle>
         <DialogContent>
           <DialogContentText>Are you sure you want to delete this claim item?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setObjDeletingItem(null)} variant="outlined" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
-          <Button onClick={() => objDeletingItem ? void deleteItem(objDeletingItem.intID) : undefined} variant="contained" color="error" disabled={blnSaving} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Delete</Button>
+          <Button onClick={() => setObjDeletingItem(null)} variant="outlined" data-testid="reimbursements.claim-editor.delete-item.cancel.button" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
+          <Button onClick={() => objDeletingItem ? void deleteItem(objDeletingItem.intID) : undefined} variant="contained" color="error" disabled={blnSaving} data-testid="reimbursements.claim-editor.delete-item.confirm.button" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Delete</Button>
         </DialogActions>
       </Dialog>
     </Stack>

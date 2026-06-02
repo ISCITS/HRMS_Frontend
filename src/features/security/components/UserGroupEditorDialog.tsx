@@ -77,6 +77,7 @@ export default function UserGroupEditorDialog({
             }}
           >
             <TextField
+              data-testid="security.user-group-editor.group-code.input"
               label="Group Code"
               value={objForm.strGroupCode}
               onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
@@ -84,6 +85,7 @@ export default function UserGroupEditorDialog({
               required
             />
             <TextField
+              data-testid="security.user-group-editor.group-name.input"
               label="Group Name"
               value={objForm.strGroupName}
               onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
@@ -140,6 +142,7 @@ export default function UserGroupEditorDialog({
               </Typography>
             </Box>
             <ActiveStatusSwitch
+              testId="security.user-group-editor.active.switch"
               blnIsActive={objForm.blnIsActive}
               onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
               disabled={blnReadOnly}

@@ -67,8 +67,8 @@ export default function ReimbursementItemReviewPanel({
           <Stack spacing={0.8}>
             <Typography sx={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 700 }}>Claimed</Typography>
             <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(objItem.decClaimedAmount)}</Typography>
-            <TextField size="small" type="number" label="Approved amount" value={strApprovedAmount} onChange={(objEvent) => setStrApprovedAmount(objEvent.target.value)} inputProps={{ min: 0, max: objItem.decClaimedAmount, step: "0.01" }} disabled={blnActionsDisabled || !blnCanApprove} />
-            <TextField size="small" multiline minRows={2} label="Review remarks" value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} disabled={blnActionsDisabled || (!blnCanApprove && !blnCanReject && !blnCanProofReview)} />
+            <TextField size="small" type="number" label="Approved amount" value={strApprovedAmount} onChange={(objEvent) => setStrApprovedAmount(objEvent.target.value)} inputProps={{ min: 0, max: objItem.decClaimedAmount, step: "0.01" }} disabled={blnActionsDisabled || !blnCanApprove} data-testid="reimbursements.review-item.approved-amount.input" />
+            <TextField size="small" multiline minRows={2} label="Review remarks" value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} disabled={blnActionsDisabled || (!blnCanApprove && !blnCanReject && !blnCanProofReview)} data-testid="reimbursements.review-item.remarks.input" />
           </Stack>
         </Grid>
         <Grid item xs={12} md={4}>
@@ -76,9 +76,9 @@ export default function ReimbursementItemReviewPanel({
         </Grid>
         <Grid item xs={12}>
           <Stack direction="row" spacing={0.7} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-            {blnCanProofReview ? <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onProofPending(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Proof Pending</Button> : null}
-            {blnCanReject ? <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objItem)} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject Item</Button> : null}
-            {blnCanApprove ? <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={approveItem} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Approve Item</Button> : null}
+            {blnCanProofReview ? <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onProofPending(objItem)} data-testid="reimbursements.review-item.proof-pending.button" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Proof Pending</Button> : null}
+            {blnCanReject ? <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objItem)} data-testid="reimbursements.review-item.reject.button" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Reject Item</Button> : null}
+            {blnCanApprove ? <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnActionsDisabled} onClick={approveItem} data-testid="reimbursements.review-item.approve.button" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Approve Item</Button> : null}
           </Stack>
         </Grid>
       </Grid>

@@ -84,35 +84,35 @@ export default function ReimbursementReviewListPage() {
             <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
           </Box>
           <Stack direction="row" spacing={0.7}>
-            <Button variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Search</Button>
-            <Button variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Clear</Button>
+            <Button variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} data-testid="reimbursements.review-list.search.button" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Search</Button>
+            <Button variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-testid="reimbursements.review-list.clear.button" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Clear</Button>
           </Stack>
         </Stack>
       </Paper>
 
       <Paper sx={{ p: 1.1, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }}>
+          <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.status.select">
             <MenuItem value="">All statuses</MenuItem>
             {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
           </TextField>
-          <TextField size="small" label="Employee ID" value={dicFilters.intEmployeeID} onChange={(objEvent) => setDicFilters({ ...dicFilters, intEmployeeID: objEvent.target.value.replace(/[^\d]/g, "") })} sx={{ minWidth: 130 }} />
-          <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
-          <TextField size="small" label="Employee / claim search" value={dicFilters.strSearchText} onChange={(objEvent) => setDicFilters({ ...dicFilters, strSearchText: objEvent.target.value })} sx={{ minWidth: 220 }} />
-          <TextField size="small" label="Category" value={dicFilters.strCategory} onChange={(objEvent) => setDicFilters({ ...dicFilters, strCategory: objEvent.target.value })} sx={{ minWidth: 150 }} />
-          <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
+          <TextField size="small" label="Employee ID" value={dicFilters.intEmployeeID} onChange={(objEvent) => setDicFilters({ ...dicFilters, intEmployeeID: objEvent.target.value.replace(/[^\d]/g, "") })} sx={{ minWidth: 130 }} data-testid="reimbursements.review-list.employee-id.input" />
+          <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} data-testid="reimbursements.review-list.claim-month.input" />
+          <TextField size="small" label="Employee / claim search" value={dicFilters.strSearchText} onChange={(objEvent) => setDicFilters({ ...dicFilters, strSearchText: objEvent.target.value })} sx={{ minWidth: 220 }} data-testid="reimbursements.review-list.search-text.input" />
+          <TextField size="small" label="Category" value={dicFilters.strCategory} onChange={(objEvent) => setDicFilters({ ...dicFilters, strCategory: objEvent.target.value })} sx={{ minWidth: 150 }} data-testid="reimbursements.review-list.category.input" />
+          <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }} data-testid="reimbursements.review-list.proof-pending.select">
             <MenuItem value="">Any</MenuItem>
             <MenuItem value="yes">Yes</MenuItem>
             <MenuItem value="no">No</MenuItem>
           </TextField>
-          <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }}>
+          <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.payroll-status.select">
             <MenuItem value="">Any</MenuItem>
             <MenuItem value="in_payroll">In payroll</MenuItem>
             <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
           </TextField>
-          <TextField size="small" label="Company" value={dicFilters.strCompany} onChange={(objEvent) => setDicFilters({ ...dicFilters, strCompany: objEvent.target.value })} sx={{ minWidth: 140 }} />
-          <TextField size="small" label="Department" value={dicFilters.strDepartment} onChange={(objEvent) => setDicFilters({ ...dicFilters, strDepartment: objEvent.target.value })} sx={{ minWidth: 140 }} />
-          <TextField size="small" label="Location" value={dicFilters.strLocation} onChange={(objEvent) => setDicFilters({ ...dicFilters, strLocation: objEvent.target.value })} sx={{ minWidth: 140 }} />
+          <TextField size="small" label="Company" value={dicFilters.strCompany} onChange={(objEvent) => setDicFilters({ ...dicFilters, strCompany: objEvent.target.value })} sx={{ minWidth: 140 }} data-testid="reimbursements.review-list.company.input" />
+          <TextField size="small" label="Department" value={dicFilters.strDepartment} onChange={(objEvent) => setDicFilters({ ...dicFilters, strDepartment: objEvent.target.value })} sx={{ minWidth: 140 }} data-testid="reimbursements.review-list.department.input" />
+          <TextField size="small" label="Location" value={dicFilters.strLocation} onChange={(objEvent) => setDicFilters({ ...dicFilters, strLocation: objEvent.target.value })} sx={{ minWidth: 140 }} data-testid="reimbursements.review-list.location.input" />
         </Stack>
       </Paper>
 
@@ -158,7 +158,7 @@ export default function ReimbursementReviewListPage() {
                   <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
                   <TableCell>{["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
-                  <TableCell align="right"><IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim"><OpenInNewRoundedIcon fontSize="small" /></IconButton></TableCell>
+                  <TableCell align="right"><IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton></TableCell>
                 </TableRow>
               ))}
             </TableBody>
