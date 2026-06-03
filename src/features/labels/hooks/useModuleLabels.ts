@@ -24,6 +24,7 @@ const dicModuleConstantMap: Record<string, unknown> = {
   state: dicConstant.states,
   location: dicConstant.locations,
   employee: dicConstant.employeeMaster,
+  dashboard: dicConstant.dashboard,
 };
 
 function toCamelCase(strValue: string) {

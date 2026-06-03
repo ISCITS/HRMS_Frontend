@@ -16,6 +16,7 @@ import {
   type AuthOtpChallengeData,
   type AuthSuccessData,
   type CurrentUserContext,
+  type DashboardResponse,
   type GoogleMfaChallengeData,
   type MenuResponse,
   type LogoutResponseData,
@@ -289,6 +290,15 @@ export const authApiService = {
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "AUTH_ME",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async getDashboard() {
+    return requestApi<DashboardResponse>({
+      strPath: "dashboard",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "DASHBOARD_VIEW",
       blnUseAuthHeader: true
     });
   },
