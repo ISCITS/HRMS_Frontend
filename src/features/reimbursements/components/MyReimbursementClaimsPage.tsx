@@ -22,6 +22,10 @@ function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
 }
 
+function getClaimReferenceNumber(objClaim: ReimbursementClaimDto) {
+  return objClaim.strClaimNumber || objClaim.strClaimCode || "-";
+}
+
 export default function MyReimbursementClaimsPage() {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementModuleCodes);
@@ -81,8 +85,8 @@ export default function MyReimbursementClaimsPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-            <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} data-testid="reimbursements.my-claims.refresh.button" sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Refresh</Button>
-            {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} data-testid="reimbursements.my-claims.new-claim.button" sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>New Claim</Button> : null}
+            <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} data-testid="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Refresh</Button>
+            {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} data-testid="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>New Claim</Button> : null}
           </Stack>
         </Stack>
       </Paper>
@@ -103,13 +107,18 @@ export default function MyReimbursementClaimsPage() {
           <Table size="small" sx={{ minWidth: 780 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800 }}>Claim</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Action</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Reference Number</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Purpose</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Payroll</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Open</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed Amount
+                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved Amount
+                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Payment Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -123,15 +132,6 @@ export default function MyReimbursementClaimsPage() {
               {lstClaims.map((objClaim) => (
                 <TableRow key={objClaim.intID} hover>
                   <TableCell>
-                    <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{objClaim.strClaimCode || `Claim #${objClaim.intID}`}</Typography>
-                    <Typography sx={{ fontSize: "0.76rem", color: "#64748b" }}>{objClaim.strClaimTitle || "Untitled claim"}</Typography>
-                  </TableCell>
-                  <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
-                  <TableCell><ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
-                  <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
-                  <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
-                  <TableCell>{isPayrollVisibleStatus(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
-                  <TableCell align="right">
                     <IconButton
                       size="small"
                       onClick={() => objRouter.push(blnCanEdit && canEditReimbursementClaim(objClaim.strClaimStatus) ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
@@ -142,6 +142,15 @@ export default function MyReimbursementClaimsPage() {
                       <OpenInNewRoundedIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim)}</Typography>
+                  </TableCell>
+                  <TableCell> {objClaim.strClaimTitle || "-"} </TableCell>
+                  <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
+                  <TableCell><ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
+                  <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
+                  <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
+                  <TableCell>{isPayrollVisibleStatus(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

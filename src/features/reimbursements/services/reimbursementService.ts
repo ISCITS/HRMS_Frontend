@@ -1,13 +1,14 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { ApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
   ReimbursementCategoryOption,
   ReimbursementClaimDto,
   ReimbursementClaimItemRequest,
   ReimbursementClaimRequest,
   ReimbursementOptionsDto,
+  ReimbursementProofPreviewDto,
   ReimbursementTaxTreatment,
 } from "@/features/reimbursements/types";
 
@@ -148,6 +149,27 @@ export const reimbursementService = {
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: "ESS_REIMBURSEMENT_UPLOAD_PROOF",
     });
+    return objResult.Data;
+  },
+
+  async previewProof(intClaimID: number, intItemID: number, intProofID: number): Promise<ReimbursementProofPreviewDto> {
+    let objResult;
+    try {
+      objResult = await requestApi<ReimbursementProofPreviewDto>({
+        strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}/preview`,
+        strMethod: ApiRequestMethod.Get,
+        strMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      });
+    } catch (objError) {
+      if (!(objError instanceof ApiRequestError) || objError.intStatusCode !== 404) {
+        throw objError;
+      }
+      objResult = await requestApi<ReimbursementProofPreviewDto>({
+        strPath: `/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+        strMethod: ApiRequestMethod.Get,
+        strMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      });
+    }
     return objResult.Data;
   },
 

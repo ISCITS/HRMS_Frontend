@@ -1,5 +1,5 @@
 export function formatCurrency(decValue?: number | null) {
-  return `INR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.max(0, decValue || 0))}`;
+  return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.max(0, decValue || 0))}`;
 }
 
 export function formatDateLabel(strDate?: string | null) {

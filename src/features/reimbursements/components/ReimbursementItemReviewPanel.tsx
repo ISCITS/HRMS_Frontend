@@ -40,6 +40,7 @@ export default function ReimbursementItemReviewPanel({
 }: ItemReviewPanelProps) {
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount || objItem.decClaimedAmount || 0));
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
+  const strDisplayName = objItem.strReimbursementTypeName || strCategoryName || objItem.strExpenseDescription || "Reimbursement";
 
   function approveItem() {
     // Purpose: Sends the reviewer-selected approved amount and remarks for full or partial item approval.
@@ -49,14 +50,11 @@ export default function ReimbursementItemReviewPanel({
   }
 
   return (
-    <Paper sx={{ position: "relative", px: 1, py: 1.2, pr: { xs: 1.2, md: 2 }, borderRadius: "8px", border: "1px solid #dbe3ef", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
-      <Box sx={{ position: "absolute", top: 10, right: 12 }}>
-        <ReimbursementStatusBadge strStatus={objItem.strItemStatus} />
-      </Box>
+    <Paper sx={{ px: 1, py: 1.2, pr: { xs: 1.2, md: 2 }, borderRadius: "8px", border: "1px solid #dbe3ef", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
       <Grid container spacing={2}>
         <Grid item xs={12} md={3}>
           <Stack spacing={0.6} sx={{ pr: { xs: 0, md: 2.2 } }}>
-            <Typography sx={{ maxWidth: { xs: "calc(100% - 112px)", md: "100%" }, fontWeight: 900, color: "#0f172a" }}>{strCategoryName || objItem.strExpenseDescription || `Item #${objItem.intID}`}</Typography>
+            <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{strDisplayName}</Typography>
             <Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{formatDateLabel(objItem.dtExpenseDate)} | {objItem.strTaxTreatment.replace("_", " ")}</Typography>
             <Typography sx={{ fontSize: "0.82rem", color: "#334155" }}>{objItem.strExpenseDescription || "-"}</Typography>
             {objItem.strEmployeeRemarks ? <Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
@@ -72,9 +70,12 @@ export default function ReimbursementItemReviewPanel({
           </Stack>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Box sx={{ mr: { xs: 0, md: 1 } }}>
-            <ReimbursementProofViewer lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
-          </Box>
+          <Stack spacing={1} alignItems={{ xs: "flex-start", md: "flex-end" }} sx={{ mr: { xs: 0, md: 1 } }}>
+            <ReimbursementStatusBadge strStatus={objItem.strItemStatus} />
+            <Box sx={{ width: "100%" }}>
+              <ReimbursementProofViewer lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
+            </Box>
+          </Stack>
         </Grid>
         <Grid item xs={12}>
           <Stack direction="row" spacing={0.7} justifyContent="flex-end" flexWrap="wrap" useFlexGap>

@@ -43,6 +43,7 @@ export type ReimbursementSalaryComponentOption = {
   strComponentCode: string;
   strComponentName: string;
   strTaxTreatment?: ReimbursementTaxTreatment | null;
+  blnDeclarationRequired?: boolean | null;
   blnProofRequired?: boolean | null;
 };
 
@@ -61,10 +62,19 @@ export type ReimbursementProofDto = {
   strVerificationRemarks?: string | null;
 };
 
+export type ReimbursementProofPreviewDto = {
+  intProofID: number;
+  strFileName: string;
+  strMimeType: string;
+  strBase64Content: string;
+  intFileSizeBytes: number;
+};
+
 export type ReimbursementClaimItemDto = {
   intID: number;
   intReimbursementCategoryID?: number | null;
   intSalaryComponentID?: number | null;
+  strReimbursementTypeName?: string | null;
   dtExpenseDate?: string | null;
   strExpenseDescription?: string | null;
   decClaimedAmount: number;
@@ -88,6 +98,7 @@ export type ReimbursementClaimDto = {
   strCompanyName?: string | null;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strClaimNumber?: string | null;
   strClaimCode?: string | null;
   strClaimTitle?: string | null;
   strClaimStatus: ReimbursementClaimStatus;
@@ -114,7 +125,6 @@ export type ReimbursementClaimRequest = {
 };
 
 export type ReimbursementClaimItemRequest = {
-  intReimbursementCategoryID?: number | null;
   intSalaryComponentID?: number | null;
   dtExpenseDate?: string | null;
   strExpenseDescription?: string | null;
