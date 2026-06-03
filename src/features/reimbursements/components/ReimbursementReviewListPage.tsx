@@ -54,6 +54,10 @@ function normalizeFilterValue(strValue?: string | number | null) {
   return String(strValue ?? "").trim();
 }
 
+function getClaimReferenceNumber(objClaim: ReimbursementClaimDto) {
+  return normalizeFilterValue(objClaim.strClaimNumber || objClaim.strClaimCode);
+}
+
 function createUniqueOptions(lstOptions: FilterOption[]) {
   const mapOptions = new Map<string, FilterOption>();
   lstOptions.forEach((objOption) => {
@@ -155,7 +159,7 @@ export default function ReimbursementReviewListPage() {
 
   const lstClaimOptions = useMemo(
     () => createUniqueOptions(lstClaims.map((objClaim) => {
-      const strClaimCode = normalizeFilterValue(objClaim.strClaimCode || `Claim #${objClaim.intID}`);
+      const strClaimCode = getClaimReferenceNumber(objClaim);
       const strClaimTitle = normalizeFilterValue(objClaim.strClaimTitle);
       return {
         strValue: strClaimCode,
@@ -179,7 +183,7 @@ export default function ReimbursementReviewListPage() {
     const strSearch = dicFilters.strSearchText.trim().toLowerCase();
     return lstClaims.filter((objClaim) => {
       const blnNotDraft = objClaim.strClaimStatus !== "draft";
-      const blnSearchMatch = !strSearch || [objClaim.strClaimCode, `Claim #${objClaim.intID}`, objClaim.strClaimTitle, objClaim.strEmployeeCode, objClaim.strEmployeeName, objClaim.strEmployeeRemarks, objClaim.strReviewerRemarks].some((strValue) => (strValue || "").toLowerCase().includes(strSearch));
+      const blnSearchMatch = !strSearch || [objClaim.strClaimNumber, objClaim.strClaimCode, objClaim.strClaimTitle, objClaim.strEmployeeCode, objClaim.strEmployeeName, objClaim.strEmployeeRemarks, objClaim.strReviewerRemarks].some((strValue) => (strValue || "").toLowerCase().includes(strSearch));
       const blnMonthMatch = !dicFilters.strClaimMonth || (objClaim.dtClaimDate || "").startsWith(dicFilters.strClaimMonth);
       const blnProofMatch = !dicFilters.strProofPending || (dicFilters.strProofPending === "yes" ? claimHasProofPending(objClaim) : !claimHasProofPending(objClaim));
       const blnPayrollMatch = !dicFilters.strPayrollStatus || (dicFilters.strPayrollStatus === "in_payroll" ? ["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) : !["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus));
@@ -262,15 +266,21 @@ export default function ReimbursementReviewListPage() {
           <Table size="small" sx={{ minWidth: 980 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800 }}>Claim</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>Action</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Reference Number</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Purpose</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Employee</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Proof</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Payroll</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Open</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed Amount 
+                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                  </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved Amount
+                   <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Payment Status</TableCell>
+
               </TableRow>
             </TableHead>
             <TableBody>
@@ -279,10 +289,12 @@ export default function ReimbursementReviewListPage() {
               ) : null}
               {lstFilteredClaims.map((objClaim) => (
                 <TableRow key={objClaim.intID} hover>
+                  <TableCell align="right"><IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton></TableCell>
                   <TableCell>
-                    <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{objClaim.strClaimCode || `Claim #${objClaim.intID}`}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objClaim.strClaimTitle || "-"}</Typography>
+                    <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim) || "-"}</Typography>
+                    {/* <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objClaim.strClaimTitle || "-"}</Typography> */}
                   </TableCell>
+                  <TableCell>{objClaim.strClaimTitle || ""}</TableCell>
                   <TableCell>{getEmployeeLabel(objClaim, mapEmployees) || "-"}</TableCell>
                   <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
                   <TableCell><ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
@@ -290,7 +302,6 @@ export default function ReimbursementReviewListPage() {
                   <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
                   <TableCell>{["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
-                  <TableCell align="right"><IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton></TableCell>
                 </TableRow>
               ))}
             </TableBody>

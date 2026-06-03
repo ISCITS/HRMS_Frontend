@@ -31,16 +31,16 @@ export default function ReimbursementClaimSummaryCard({ objClaim }: { objClaim: 
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.1 }}>
       <Box>
-        <SummaryMetric strLabel="Claimed" strValue={formatCurrency(objClaim.decClaimedAmount)} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Claimed Amount" strValue={formatCurrency(objClaim.decClaimedAmount)} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
       </Box>
       <Box>
-        <SummaryMetric strLabel="Approved" strValue={formatCurrency(objClaim.decApprovedAmount)} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Approved Amount" strValue={formatCurrency(objClaim.decApprovedAmount)} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
       </Box>
       <Box>
-        <SummaryMetric strLabel="Taxable" strValue={formatCurrency(objClaim.decTaxableAmount)} objIcon={<RuleOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Taxable Amount" strValue={formatCurrency(objClaim.decTaxableAmount)} objIcon={<RuleOutlinedIcon fontSize="small" />} />
       </Box>
       <Box>
-        <SummaryMetric strLabel="Items" strValue={`${intItemCount}`} objIcon={<AccountBalanceWalletOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Claim Items" strValue={`${intItemCount}`} objIcon={<AccountBalanceWalletOutlinedIcon fontSize="small" />} />
       </Box>
     </Box>
   );
