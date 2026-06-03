@@ -142,15 +142,15 @@ export async function proxySsoCallback(strSearch: string) {
 
 function buildProtectedProxyHeaders(strAccessToken: string, strMenuAction: string, objRequestHeaders?: Headers) {
   const strFrontendOrigin = getServerAppOrigin();
-  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
-  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
+  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || "";
+  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || "";
 
   return {
     Authorization: `Bearer ${strAccessToken}`,
     Origin: strFrontendOrigin,
     [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), strMenuAction),
-    "X-Tenant-Id": strTenantID,
-    "X-Company-Id": strCompanyID,
+    ...(strTenantID ? { "X-Tenant-Id": strTenantID } : {}),
+    ...(strCompanyID ? { "X-Company-Id": strCompanyID } : {}),
   };
 }
 

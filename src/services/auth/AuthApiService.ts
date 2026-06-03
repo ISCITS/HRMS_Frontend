@@ -16,6 +16,7 @@ import {
   type AuthOtpChallengeData,
   type AuthSuccessData,
   type CurrentUserContext,
+  type DashboardResponse,
   type GoogleMfaChallengeData,
   type MenuResponse,
   type LogoutResponseData,
@@ -289,6 +290,16 @@ export const authApiService = {
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: "AUTH_ME",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async getDashboard(strPayrollMonth?: string | null) {
+    return requestApi<DashboardResponse>({
+      strPath: "dashboard",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: strPayrollMonth ? { payroll_month: strPayrollMonth } : undefined,
+      strMenuAction: "DASHBOARD_VIEW",
       blnUseAuthHeader: true
     });
   },

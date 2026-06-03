@@ -136,6 +136,55 @@ function getFirstNavigableRoute(lstMenuItems: MenuItem[]): string | null {
   return null;
 }
 
+function isDashboardMenuItem(objItem: MenuItem): boolean {
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  const strRoute = (normalizeRoute(objItem.strRoute) ?? "").trim().toLowerCase();
+
+  return strRoute === "/dashboard" || strModuleCode === "dashboard" || strModuleName === "dashboard";
+}
+
+function ensureTopLevelDashboard(lstMenuItems: MenuItem[]): MenuItem[] {
+  let objDashboardItem: MenuItem | null = null;
+
+  function stripNestedDashboard(lstItems: MenuItem[]): MenuItem[] {
+    return lstItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
+      if (isDashboardMenuItem(objItem)) {
+        if (!objDashboardItem) {
+          objDashboardItem = {
+            ...objItem,
+            strModuleCode: "DASHBOARD",
+            strModuleName: "Dashboard",
+            strRoute: "/dashboard",
+            blnIsHome: true,
+            lstChildren: [],
+          };
+        }
+        return lstUpdatedItems;
+      }
+
+      lstUpdatedItems.push({
+        ...objItem,
+        blnIsHome: false,
+        lstChildren: stripNestedDashboard(objItem.lstChildren),
+      });
+      return lstUpdatedItems;
+    }, []);
+  }
+
+  const lstWithoutNestedDashboard = stripNestedDashboard(lstMenuItems);
+  const objResolvedDashboard = objDashboardItem ?? {
+    strModuleCode: "DASHBOARD",
+    strModuleName: "Dashboard",
+    strRoute: "/dashboard",
+    lstPermissionCodes: [],
+    blnIsHome: true,
+    lstChildren: [],
+  };
+
+  return [objResolvedDashboard, ...lstWithoutNestedDashboard];
+}
+
 export function getPostLoginRoute(strPreferredRoute?: string | null) {
   const strNormalizedRoute = normalizeRoute(strPreferredRoute);
 
@@ -147,11 +196,12 @@ export function getPostLoginRoute(strPreferredRoute?: string | null) {
 }
 
 export function normalizeMenuResponse(objMenu: MenuResponse): MenuResponse {
-  const lstMenuItems = filterHiddenMenuItems(objMenu.lstMenuItems.map(normalizeMenuItem));
+  const lstMenuItems = ensureTopLevelDashboard(
+    filterHiddenMenuItems(objMenu.lstMenuItems.map(normalizeMenuItem)),
+  );
   const strPreferredHomeRoute = getPostLoginRoute(objMenu.strHomeRoute);
   const strHomeRoute =
-    (strPreferredHomeRoute && hasRoute(lstMenuItems, strPreferredHomeRoute) ? strPreferredHomeRoute : null) ??
-    getFirstNavigableRoute(lstMenuItems) ??
+    (strPreferredHomeRoute && strPreferredHomeRoute === "/dashboard" ? strPreferredHomeRoute : null) ??
     "/dashboard";
 
   return {

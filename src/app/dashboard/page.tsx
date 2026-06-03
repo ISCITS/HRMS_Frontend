@@ -2,32 +2,35 @@
 
 import { useEffect, useState } from "react";
 
-import DashboardLanding from "@/components/dashboard/DashboardLanding";
+import RoleBasedDashboard from "@/components/dashboard/RoleBasedDashboard";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { normalizeMenuResponse } from "@/lib/menu";
-import type { CurrentUserContext, MenuResponse } from "@/models/AuthModels";
+import dicConstant from "@/constants/Constant.json";
+import { useDashboardLabels } from "@/features/dashboard/hooks/useDashboardLabels";
+import type { CurrentUserContext, DashboardResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
 export default function DashboardPage() {
+  const { t } = useDashboardLabels();
   const [blnLoading, setBlnLoading] = useState(true);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
-  const [objMenu, setObjMenu] = useState<MenuResponse | null>(null);
+  const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
   const [strError, setStrError] = useState("");
+  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
 
   useEffect(() => {
     let blnMounted = true;
 
-    Promise.all([authApiService.getCurrentUser(), authApiService.getMenu()])
-      .then(([objUserResult, objMenuResult]) => {
+    Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard(strSelectedPayrollMonth)])
+      .then(([objUserResult, objDashboardResult]) => {
         if (!blnMounted) {
           return;
         }
         setObjUserContext(objUserResult.Data);
-        setObjMenu(normalizeMenuResponse(objMenuResult.Data));
+        setObjDashboard(objDashboardResult.Data);
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load dashboard.");
+          setStrError(objError instanceof Error ? objError.message : t("load_error", dicConstant.dashboard.loadError));
         }
       })
       .finally(() => {
@@ -39,18 +42,25 @@ export default function DashboardPage() {
     return () => {
       blnMounted = false;
     };
-  }, []);
+  }, [strSelectedPayrollMonth]);
 
-  if (blnLoading || !objUserContext || !objMenu) {
+  if (blnLoading || !objUserContext || !objDashboard) {
     if (!blnLoading && strError) {
       return (
         <div style={{ padding: "24px", color: "#b91c1c" }}>{strError}</div>
       );
     }
     return (
-      <BlockingLoader blnOpen strLabel="Loading dashboard..." />
+      <BlockingLoader blnOpen strLabel={t("loading", dicConstant.dashboard.loading)} />
     );
   }
 
-  return <DashboardLanding objUserContext={objUserContext} objMenu={objMenu} />;
+  return (
+    <RoleBasedDashboard
+      objDashboard={objDashboard}
+      objUserContext={objUserContext}
+      t={t}
+      onPayrollMonthChange={setStrSelectedPayrollMonth}
+    />
+  );
 }
