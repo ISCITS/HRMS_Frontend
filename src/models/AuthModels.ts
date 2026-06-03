@@ -147,6 +147,35 @@ export type CurrentUserContext = {
   strLoginMethod: string;
 };
 
+export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";
+
+export type DashboardWidget = {
+  strWidgetCode: string;
+  strWidgetName: string;
+  strWidgetType: string;
+  strDashboardType: DashboardType;
+  strIconName?: string | null;
+  strRoutePath?: string | null;
+  strApiKey?: string | null;
+  intDisplayOrder: number;
+  blnIsVisible: boolean;
+  objPayload?: Record<string, unknown> | unknown[] | null;
+};
+
+export type DashboardQuickAction = {
+  strActionCode: string;
+  strActionName: string;
+  strRoutePath?: string | null;
+  strIconName?: string | null;
+};
+
+export type DashboardResponse = {
+  strDashboardType: DashboardType;
+  lstWidgets: DashboardWidget[];
+  lstQuickActions: DashboardQuickAction[];
+  dtGeneratedOn: string;
+};
+
 export type MenuItem = {
   strModuleCode: string;
   strModuleName: string;
