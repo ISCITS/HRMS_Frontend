@@ -294,10 +294,11 @@ export const authApiService = {
     });
   },
 
-  async getDashboard() {
+  async getDashboard(strPayrollMonth?: string | null) {
     return requestApi<DashboardResponse>({
       strPath: "dashboard",
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: strPayrollMonth ? { payroll_month: strPayrollMonth } : undefined,
       strMenuAction: "DASHBOARD_VIEW",
       blnUseAuthHeader: true
     });

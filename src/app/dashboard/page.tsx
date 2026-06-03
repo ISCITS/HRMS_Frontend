@@ -15,11 +15,12 @@ export default function DashboardPage() {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
   const [strError, setStrError] = useState("");
+  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
 
   useEffect(() => {
     let blnMounted = true;
 
-    Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard()])
+    Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard(strSelectedPayrollMonth)])
       .then(([objUserResult, objDashboardResult]) => {
         if (!blnMounted) {
           return;
@@ -41,7 +42,7 @@ export default function DashboardPage() {
     return () => {
       blnMounted = false;
     };
-  }, []);
+  }, [strSelectedPayrollMonth]);
 
   if (blnLoading || !objUserContext || !objDashboard) {
     if (!blnLoading && strError) {
@@ -54,5 +55,12 @@ export default function DashboardPage() {
     );
   }
 
-  return <RoleBasedDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
+  return (
+    <RoleBasedDashboard
+      objDashboard={objDashboard}
+      objUserContext={objUserContext}
+      t={t}
+      onPayrollMonthChange={setStrSelectedPayrollMonth}
+    />
+  );
 }
