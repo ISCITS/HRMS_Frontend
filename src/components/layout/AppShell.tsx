@@ -549,7 +549,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const intLinkedEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
-  const strAvatarText = strUserName.trim().charAt(0).toUpperCase() || "U";
+  const strProfileDisplayName = strLinkedEmployeeName || strUserName;
+  const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strPageTitle = getLocalizedHeaderTitle(
     strPathname,
     strHeaderModuleName,
@@ -957,7 +958,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }}
       >
         <Box sx={{ px: 2, py: 1.5, textAlign: "left" }}>
-          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strUserName}</Typography>
+          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strProfileDisplayName}</Typography>
+          {strLinkedEmployeeName && strLinkedEmployeeName !== strUserName ? (
+            <Typography sx={{ mt: 0.35, color: "#64748b", fontSize: "0.8rem" }}>{strUserName}</Typography>
+          ) : null}
         </Box>
         <Divider />
         <MenuItem

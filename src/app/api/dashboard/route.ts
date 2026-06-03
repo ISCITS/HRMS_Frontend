@@ -12,14 +12,14 @@ import { getAccessTokenFromCookie, getAccessTokenFromRequest } from "@/app/api/a
 
 function buildProtectedProxyHeaders(strAccessToken: string, objRequestHeaders?: Headers) {
   const strFrontendOrigin = getServerAppOrigin();
-  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
-  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
+  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || "";
+  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || "";
   return {
     Authorization: `Bearer ${strAccessToken}`,
     Origin: strFrontendOrigin,
     [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), "DASHBOARD_VIEW"),
-    "X-Tenant-Id": strTenantID,
-    "X-Company-Id": strCompanyID
+    ...(strTenantID ? { "X-Tenant-Id": strTenantID } : {}),
+    ...(strCompanyID ? { "X-Company-Id": strCompanyID } : {})
   };
 }
 
@@ -33,7 +33,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const objResult = await callBackendApi<ApiEnvelope<DashboardResponse>>("/api/v1/dashboard", {
+    const strPayrollMonth = request.nextUrl.searchParams.get("payroll_month")?.trim() || "";
+    const strBackendPath = strPayrollMonth
+      ? `/api/v1/dashboard?payroll_month=${encodeURIComponent(strPayrollMonth)}`
+      : "/api/v1/dashboard";
+    const objResult = await callBackendApi<ApiEnvelope<DashboardResponse>>(strBackendPath, {
       method: "GET",
       cache: "no-store",
       headers: buildProtectedProxyHeaders(strAccessToken, request.headers)
