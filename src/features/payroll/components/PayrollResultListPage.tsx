@@ -55,6 +55,7 @@ type SearchForm = {
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
+  strMonthScope: "Latest" | "Custom" | "All";
 };
 
 const dicEmptySearch: SearchForm = {
@@ -64,6 +65,7 @@ const dicEmptySearch: SearchForm = {
   strDepartment: "",
   strLocation: "",
   strPayrollMonth: "",
+  strMonthScope: "Latest",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
 
@@ -97,6 +99,34 @@ function formatCurrency(decValue: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(decValue || 0);
+}
+
+function normalizeMonthValue(strDate: string | null) {
+  if (!strDate) {
+    return "";
+  }
+
+  const objDate = new Date(strDate);
+  if (Number.isNaN(objDate.getTime())) {
+    return "";
+  }
+
+  const intMonth = objDate.getMonth() + 1;
+  return `${objDate.getFullYear()}-${String(intMonth).padStart(2, "0")}`;
+}
+
+function getLatestPayrollMonth(lstRows: PayrollResultListRecord[]) {
+  const lstMonthValues = lstRows
+    .map((dicRow) => normalizeMonthValue(dicRow.dtPayrollMonth))
+    .filter(Boolean);
+
+  if (lstMonthValues.length === 0) {
+    return "";
+  }
+
+  return lstMonthValues.reduce((strLatestMonth, strCurrentMonth) =>
+    strCurrentMonth > strLatestMonth ? strCurrentMonth : strLatestMonth
+  );
 }
 
 function getStatusPillSx(strStatus: string) {
@@ -249,6 +279,7 @@ export default function PayrollResultListPage({
   const blnCanAccessResults =
     canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
+  const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     setBlnLoading(true);
@@ -306,7 +337,15 @@ export default function PayrollResultListPage({
   const lstFilteredRows = useMemo(() => {
     const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
     const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
-    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
+    const strEffectivePayrollMonth =
+      blnPayslipScreen
+        ? dicSearchApplied.strPayrollMonth
+        : dicSearchApplied.strMonthScope === "All"
+          ? ""
+          : dicSearchApplied.strMonthScope === "Custom" && dicSearchApplied.strPayrollMonth
+            ? dicSearchApplied.strPayrollMonth
+            : strLatestPayrollMonth;
+    const [strPayrollYear, strPayrollMonth] = strEffectivePayrollMonth.split("-");
     const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
     const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
     return lstResults.filter((dicRow) => {
@@ -329,7 +368,7 @@ export default function PayrollResultListPage({
       const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
       return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnMonthMatch && blnYearMatch;
     });
-  }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults]);
+  }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults, strLatestPayrollMonth]);
 
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -521,29 +560,22 @@ export default function PayrollResultListPage({
               />
             </>
           ) : null}
-          <TextField
-            select
-            value={dicSearchDraft.strStatus}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strStatus: objEvent.target.value as SearchForm["strStatus"],
-              }))
-            }
-            fullWidth
-          >
-            <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
-            {blnPayslipScreen ? (
+          {blnPayslipScreen ? (
+            <TextField
+              select
+              value={dicSearchDraft.strStatus}
+              onChange={(objEvent) =>
+                setDicSearchDraft((dicPrevious) => ({
+                  ...dicPrevious,
+                  strStatus: objEvent.target.value as SearchForm["strStatus"],
+                }))
+              }
+              fullWidth
+            >
+              <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
               <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
-            ) : (
-              [
-                <MenuItem key="Calculated" value="Calculated">{t("status_calculated", "Calculated")}</MenuItem>,
-                <MenuItem key="Approved" value="Approved">{t("status_approved", "Approved")}</MenuItem>,
-                <MenuItem key="Published" value="Published">{t("status_published", "Published")}</MenuItem>,
-                <MenuItem key="Paid" value="Paid">{t("status_paid", "Paid")}</MenuItem>,
-              ]
-            )}
-          </TextField>
+            </TextField>
+          ) : null}
           <Box className={styles.searchActions}>
             <Button
               data-testid="payroll-results.list.search.button"
@@ -563,6 +595,60 @@ export default function PayrollResultListPage({
             </Button>
           </Box>
         </Box>
+        {!blnPayslipScreen ? (
+          <Box className={styles.quickFilterRow}>
+            <TextField
+              select
+              value={dicSearchDraft.strMonthScope}
+              onChange={(objEvent) =>
+                setDicSearchDraft((dicPrevious) => ({
+                  ...dicPrevious,
+                  strMonthScope: objEvent.target.value as SearchForm["strMonthScope"],
+                  strPayrollMonth:
+                    objEvent.target.value === "Custom" ? dicPrevious.strPayrollMonth : "",
+                }))
+              }
+              label={t("data_scope", "Data Scope")}
+              fullWidth
+            >
+              <MenuItem value="Latest">{t("latest_month", "Latest month")}</MenuItem>
+              <MenuItem value="Custom">{t("custom_month", "Custom month")}</MenuItem>
+              <MenuItem value="All">{t("all_data", "All data")}</MenuItem>
+            </TextField>
+            <TextField
+              type="month"
+              value={dicSearchDraft.strPayrollMonth}
+              onChange={(objEvent) =>
+                setDicSearchDraft((dicPrevious) => ({
+                  ...dicPrevious,
+                  strPayrollMonth: objEvent.target.value,
+                }))
+              }
+              label={t("payroll_month", "Payroll Month")}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              disabled={dicSearchDraft.strMonthScope !== "Custom"}
+            />
+            <TextField
+              select
+              value={dicSearchDraft.strStatus}
+              onChange={(objEvent) =>
+                setDicSearchDraft((dicPrevious) => ({
+                  ...dicPrevious,
+                  strStatus: objEvent.target.value as SearchForm["strStatus"],
+                }))
+              }
+              label={t("status", "Status")}
+              fullWidth
+            >
+              <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
+              <MenuItem value="Calculated">{t("status_calculated", "Calculated")}</MenuItem>
+              <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
+              <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
+              <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
+            </TextField>
+          </Box>
+        ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
