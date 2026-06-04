@@ -557,6 +557,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     tHeader,
     tCommon
   );
+  const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
@@ -749,7 +750,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {objSidebarContent}
       </Drawer>
 
-      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", p: { xs: 1, md: 1.5 } }}>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "hidden",
+          p: blnDashboardRoute ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 }
+        }}
+      >
         <AppBar
           position="sticky"
           color="inherit"
@@ -938,7 +947,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ minHeight: 0, height: "calc(100% - 98px)", overflowY: "auto", overflowX: "hidden", pr: 0.5 }}>{children}</Box>
+        <Box
+          component="main"
+          sx={{
+            minHeight: 0,
+            height: "calc(100% - 98px)",
+            overflowY: "auto",
+            overflowX: "hidden",
+            pr: blnDashboardRoute ? 0 : 0.5
+          }}
+        >
+          {children}
+        </Box>
       </Box>
 
       <Menu
