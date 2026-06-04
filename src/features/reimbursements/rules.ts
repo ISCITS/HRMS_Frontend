@@ -23,7 +23,7 @@ export function isPayrollVisibleStatus(strStatus?: string | null) {
   return ["locked", "pushed_to_payroll", "paid"].includes(strStatus || "");
 }
 
-export function getItemDisplayName(objItem: ReimbursementClaimItemDto, strCategoryName?: string) {
-  // Purpose: Provides a stable label for item rows when a category name is unavailable.
-  return strCategoryName || objItem.strExpenseDescription || `Item #${objItem.intID}`;
+export function getItemDisplayName(objItem: ReimbursementClaimItemDto, strReimbursementTypeName?: string) {
+  // Purpose: Provides a stable label for item rows when a reimbursement type name is unavailable.
+  return strReimbursementTypeName || objItem.strExpenseDescription || `Item #${objItem.intID}`;
 }

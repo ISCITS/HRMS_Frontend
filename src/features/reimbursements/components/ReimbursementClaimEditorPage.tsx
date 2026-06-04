@@ -30,7 +30,7 @@ type HeaderFormState = {
   strEmployeeRemarks: string;
 };
 
-const objEmptyOptions: ReimbursementOptionsDto = { lstCategories: [], lstSalaryComponents: [] };
+const objEmptyOptions: ReimbursementOptionsDto = { lstSalaryComponents: [] };
 const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
@@ -102,7 +102,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     }
     return lstOptions;
   }, [objHeader.strFinancialYearCode]);
-  const strPageTitle = normalizeHeaderValue(objClaim?.intID ? `Claim Reference Number: ${getClaimReferenceNumber(objClaim) || "-"}` : "New Reimbursement Claim");
+  const strPageTitle = normalizeHeaderValue(objClaim?.intID ? `Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}` : "New Reimbursement Claim");
   const objDetailActionButtonSx = { minHeight: 30, px: 1.15, py: 0.25, borderRadius: "8px", fontSize: "0.75rem", textTransform: "none" };
 
   const blnHeaderDirty = useMemo(() => {
@@ -133,7 +133,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       }
     });
 
-    return { lstCategories: [], lstSalaryComponents };
+    return { lstSalaryComponents };
   }, [objClaim?.lstItems, objOptions.lstSalaryComponents]);
 
   useEffect(() => {

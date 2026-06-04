@@ -267,7 +267,7 @@ export default function ReimbursementReviewListPage() {
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
               <TableRow>
                 <TableCell align="right" sx={{ fontWeight: 800 }}>Action</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Reference Number</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Claim Ref #</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Claim Purpose</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Employee</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>

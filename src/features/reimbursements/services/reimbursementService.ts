@@ -3,13 +3,11 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
-  ReimbursementCategoryOption,
   ReimbursementClaimDto,
   ReimbursementClaimItemRequest,
   ReimbursementClaimRequest,
   ReimbursementOptionsDto,
   ReimbursementProofPreviewDto,
-  ReimbursementTaxTreatment,
 } from "@/features/reimbursements/types";
 
 async function requestApi<TData>(objOptions: {
@@ -29,33 +27,7 @@ async function requestApi<TData>(objOptions: {
 
 function normalizeOptions(objOptions?: ReimbursementOptionsDto | null): ReimbursementOptionsDto {
   const lstSalaryComponents = objOptions?.lstSalaryComponents ?? [];
-  const strDefaultTaxTreatment: ReimbursementTaxTreatment = "proof_based";
-  const lstCategories =
-    objOptions?.lstCategories?.length
-      ? objOptions.lstCategories
-      : lstSalaryComponents.length
-        ? lstSalaryComponents.map<ReimbursementCategoryOption>((objComponent) => ({
-            intID: objComponent.intID,
-            strCategoryCode: objComponent.strComponentCode,
-            strCategoryName: objComponent.strComponentName,
-            intSalaryComponentID: objComponent.intID,
-            strTaxTreatment: objComponent.strTaxTreatment ?? strDefaultTaxTreatment,
-            blnProofRequired: objComponent.blnProofRequired ?? true,
-            decMaxClaimAmount: null,
-            decMaxItemAmount: null,
-          }))
-        : [{
-            intID: -1,
-            strCategoryCode: "GENERAL_REIMBURSEMENT",
-            strCategoryName: "General Reimbursement",
-            intSalaryComponentID: null,
-            strTaxTreatment: strDefaultTaxTreatment,
-            blnProofRequired: true,
-            decMaxClaimAmount: null,
-            decMaxItemAmount: null,
-          }];
-
-  return { lstCategories, lstSalaryComponents };
+  return { lstSalaryComponents };
 }
 
 export const reimbursementService = {

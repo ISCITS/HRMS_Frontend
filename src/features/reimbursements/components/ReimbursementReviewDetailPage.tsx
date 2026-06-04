@@ -30,7 +30,7 @@ type DialogAction =
   | "reject_proof"
   | null;
 
-const objEmptyOptions: ReimbursementOptionsDto = { lstCategories: [], lstSalaryComponents: [] };
+const objEmptyOptions: ReimbursementOptionsDto = { lstSalaryComponents: [] };
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 
 function getErrorMessage(objError: unknown) {
@@ -39,6 +39,10 @@ function getErrorMessage(objError: unknown) {
 
 function getClaimReferenceNumber(objClaim?: ReimbursementClaimDto | null) {
   return objClaim?.strClaimNumber || objClaim?.strClaimCode || "";
+}
+
+function getClaimDisplayName(objClaim?: ReimbursementClaimDto | null) {
+  return objClaim?.reimbursement_claim_name || objClaim?.strClaimTitle || null;
 }
 
 export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaimID: number }) {
@@ -108,19 +112,6 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     void loadDetail();
   }, [intClaimID, blnRightsLoading, blnCanView]);
 
-  const dicCategoryNameByID = useMemo(
-    () => new Map(objOptions.lstCategories.map((objCategory) => [objCategory.intID, objCategory.strCategoryName])),
-    [objOptions.lstCategories]
-  );
-  const dicCategoryNameBySalaryComponentID = useMemo(
-    () =>
-      new Map(
-        objOptions.lstCategories
-          .filter((objCategory) => objCategory.intSalaryComponentID)
-          .map((objCategory) => [objCategory.intSalaryComponentID as number, objCategory.strCategoryName])
-      ),
-    [objOptions.lstCategories]
-  );
   const dicSalaryComponentNameByID = useMemo(
     () => new Map(objOptions.lstSalaryComponents.map((objComponent) => [objComponent.intID, objComponent.strComponentName])),
     [objOptions.lstSalaryComponents]
@@ -130,16 +121,8 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     if (objItem.strReimbursementTypeName) {
       return objItem.strReimbursementTypeName;
     }
-    if (objItem.intReimbursementCategoryID) {
-      const strCategoryName = dicCategoryNameByID.get(objItem.intReimbursementCategoryID);
-      if (strCategoryName) return strCategoryName;
-    }
     if (objItem.intSalaryComponentID) {
-      return (
-        dicCategoryNameBySalaryComponentID.get(objItem.intSalaryComponentID) ??
-        dicSalaryComponentNameByID.get(objItem.intSalaryComponentID) ??
-        null
-      );
+      return dicSalaryComponentNameByID.get(objItem.intSalaryComponentID) ?? null;
     }
     return null;
   }
@@ -288,7 +271,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Box>
-              <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{`Claim Reference Number: ${getClaimReferenceNumber(objClaim) || "-"}`}</Typography>
+              <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{`Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`}</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objClaim ? `Claim Purpose: ${objClaim.strClaimTitle || "-"} | Claim Date: ${formatDateLabel(objClaim.dtClaimDate)}` : "Review reimbursement claim"}</Typography>
             </Box>
           </Stack>
@@ -328,7 +311,8 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
             <ReimbursementItemReviewPanel
               key={objItem.intID}
               objItem={objItem}
-              strCategoryName={getItemReimbursementTypeName(objItem)}
+              strClaimName={getClaimDisplayName(objClaim)}
+              strReimbursementTypeName={getItemReimbursementTypeName(objItem)}
               blnActionsDisabled={blnActionsDisabled}
               blnCanApprove={blnCanApprove}
               blnCanReject={blnCanReject}

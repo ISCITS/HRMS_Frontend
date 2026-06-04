@@ -9,7 +9,7 @@ export type PayrollReimbursementFilters = {
   intEmployeeID: string;
   strSearchText: string;
   strClaimMonth: string;
-  strCategory: string;
+  strReimbursementType: string;
   strProofPending: string;
   strPayrollStatus: string;
   strCompany: string;
@@ -67,7 +67,7 @@ export function createInitialPayrollReimbursementFilters(): PayrollReimbursement
     intEmployeeID: "",
     strSearchText: "",
     strClaimMonth: "",
-    strCategory: "",
+    strReimbursementType: "",
     strProofPending: "",
     strPayrollStatus: "",
     strCompany: "",

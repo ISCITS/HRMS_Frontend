@@ -210,22 +210,6 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
           </Grid>
           {strProofError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strProofError}</Alert> : null}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
-            <FormControlLabel control={<Checkbox checked={blnSelectedComponentProofRequired} disabled={blnReadOnly || !blnSelectedComponentProofRequired} onChange={(objEvent) => setObjForm({ ...objForm, blnProofRequired: objEvent.target.checked })} inputProps={{ "data-testid": "reimbursements.claim-item.proof-required.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label={<Typography component="span" sx={{ fontSize: "0.86rem" }}>Proof required for this item{blnSelectedComponentProofRequired ? <Typography component="span" aria-hidden="true" sx={{ color: "#d32f2f", ml: 0.3 }}>*</Typography> : null}</Typography>} />
-            {blnSelectedComponentProofRequired && !blnReadOnly ? (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ ml: { sm: "auto" } }}>
-                {objProofFile ? (
-                  <Stack direction="row" spacing={0.6} alignItems="center">
-                    <Typography title={objProofFile.name} sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography>
-                    <Button size="small" variant="text" startIcon={<VisibilityRoundedIcon />} onClick={() => openLocalFileInNewTab(objProofFile)} sx={objSmallProofButtonSx}>View</Button>
-                    <Button size="small" variant="text" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setObjProofFile(null)} sx={objSmallProofButtonSx}>Delete</Button>
-                  </Stack>
-                ) : null}
-                <Button data-testid="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
-                  Upload Proof
-                  <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
-                </Button>
-              </Stack>
-            ) : null}
           </Stack>
           {lstExistingProofs.length ? (
             <Stack spacing={0.75}>
@@ -256,7 +240,28 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3.2, pt: 1.4, pb: 2.2 }}>
-        <Button data-testid="reimbursements.claim-item.close.button" size="small" onClick={onClose} variant={blnReadOnly ? "contained" : "text"} sx={{ ...objSmallActionButtonSx, fontWeight: 700 }}>{blnReadOnly ? "Close" : "Cancel"}</Button>
+        <Button data-testid="reimbursements.claim-item.close.button" 
+        size="small" 
+        onClick={onClose} 
+        variant={blnReadOnly ? "contained" : "outlined"} 
+        sx={{ ...objSmallActionButtonSx, fontWeight: 700 }}>{blnReadOnly ? "Close" : "Cancel"}
+        </Button>
+        {!blnReadOnly ? (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ ml: { sm: "auto" } }}>
+            {objProofFile ? (
+              <Stack direction="row" spacing={0.6} alignItems="center">
+                <Typography title={objProofFile.name} sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography>
+                <Button size="small" variant="text" startIcon={<VisibilityRoundedIcon />} onClick={() => openLocalFileInNewTab(objProofFile)} sx={objSmallProofButtonSx}>View</Button>
+                <Button size="small" variant="text" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setObjProofFile(null)} sx={objSmallProofButtonSx}>Delete</Button>
+              </Stack>
+            ) : null}
+            <Button data-testid="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
+              Upload Proof
+              <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
+            </Button>
+          </Stack>
+        ) : null}
+
         {!blnReadOnly ? <Button data-testid="reimbursements.claim-item.save.button" size="small" variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled} sx={{ ...objSmallActionButtonSx, fontWeight: 800 }}>
           {objItem ? "Save Claim Item" : "Add Claim Item"}
         </Button> : null}

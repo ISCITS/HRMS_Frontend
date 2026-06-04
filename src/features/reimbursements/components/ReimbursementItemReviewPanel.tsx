@@ -13,7 +13,8 @@ import type { ReimbursementClaimItemDto } from "@/features/reimbursements/types"
 
 type ItemReviewPanelProps = {
   objItem: ReimbursementClaimItemDto;
-  strCategoryName?: string | null;
+  strClaimName?: string | null;
+  strReimbursementTypeName?: string | null;
   blnActionsDisabled: boolean;
   blnCanApprove?: boolean;
   blnCanReject?: boolean;
@@ -27,7 +28,8 @@ type ItemReviewPanelProps = {
 
 export default function ReimbursementItemReviewPanel({
   objItem,
-  strCategoryName,
+  strClaimName,
+  strReimbursementTypeName,
   blnActionsDisabled,
   blnCanApprove = false,
   blnCanReject = false,
@@ -40,7 +42,7 @@ export default function ReimbursementItemReviewPanel({
 }: ItemReviewPanelProps) {
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount || objItem.decClaimedAmount || 0));
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
-  const strDisplayName = objItem.strReimbursementTypeName || strCategoryName || objItem.strExpenseDescription || "Reimbursement";
+  const strDisplayName = objItem.strReimbursementTypeName || strReimbursementTypeName;
 
   function approveItem() {
     // Purpose: Sends the reviewer-selected approved amount and remarks for full or partial item approval.

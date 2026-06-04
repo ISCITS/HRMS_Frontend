@@ -27,17 +27,6 @@ export type ReimbursementItemStatus =
 export type ReimbursementProofStatus = "pending" | "verified" | "rejected";
 export type ReimbursementTaxTreatment = "taxable" | "exempt" | "proof_based";
 
-export type ReimbursementCategoryOption = {
-  intID: number;
-  strCategoryCode: string;
-  strCategoryName: string;
-  intSalaryComponentID?: number | null;
-  strTaxTreatment: ReimbursementTaxTreatment;
-  blnProofRequired: boolean;
-  decMaxClaimAmount?: number | null;
-  decMaxItemAmount?: number | null;
-};
-
 export type ReimbursementSalaryComponentOption = {
   intID: number;
   strComponentCode: string;
@@ -48,7 +37,6 @@ export type ReimbursementSalaryComponentOption = {
 };
 
 export type ReimbursementOptionsDto = {
-  lstCategories: ReimbursementCategoryOption[];
   lstSalaryComponents: ReimbursementSalaryComponentOption[];
 };
 
@@ -72,7 +60,6 @@ export type ReimbursementProofPreviewDto = {
 
 export type ReimbursementClaimItemDto = {
   intID: number;
-  intReimbursementCategoryID?: number | null;
   intSalaryComponentID?: number | null;
   strReimbursementTypeName?: string | null;
   dtExpenseDate?: string | null;
@@ -101,6 +88,7 @@ export type ReimbursementClaimDto = {
   strClaimNumber?: string | null;
   strClaimCode?: string | null;
   strClaimTitle?: string | null;
+  reimbursement_claim_name?: string | null;
   strClaimStatus: ReimbursementClaimStatus;
   strFinancialYearCode?: string | null;
   intPayrollRunID?: number | null;
