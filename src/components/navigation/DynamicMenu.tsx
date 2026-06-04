@@ -545,6 +545,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const { t: tUserGroup } = useModuleLabels("user_group");
   const { t: tSalaryComponents } = useModuleLabels("salary-components");
   const { t: tSalaryStructures } = useModuleLabels("salary-structures");
+  const { t: tEmployeeSalary } = useModuleLabels("employee-salary");
   const { t: tPayrollCycles } = useModuleLabels("payroll-cycles");
   const { t: tPayrollProcessLogs } = useModuleLabels("payroll-process-logs");
   const { t: tPayslips } = useModuleLabels("payslips");
@@ -636,6 +637,14 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strRoute.includes("/salary-structures")) {
       return tSalaryStructures("page_title", strModuleName || "Salary Structures");
+    }
+
+    if (strRoute.includes("/employee-salary") || strModuleCode.includes("employee_salary")) {
+      return preferResolvedLabel(
+        tEmployeeSalary("employee_salary_title", "Employee Salary"),
+        strModuleName,
+        "Employee Salary"
+      );
     }
 
     if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
