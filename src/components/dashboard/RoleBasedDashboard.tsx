@@ -258,16 +258,19 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
     || lstStages.find((objStage) => objStage.strStatus === "pending")
     || lstStages[lstStages.length - 1];
   const intActionRequiredCount = lstAlerts.reduce((intTotal, objAlert) => intTotal + Number(objAlert.intCount || 0), 0);
+  const objDashboardGridSpacing = { xs: 1.5, md: 2, xl: 2.25 };
 
   return (
     <Stack
       spacing={2.5}
       sx={{
-        p: { xs: 1, md: 1.5 },
+        width: "100%",
+        p: 0,
         background: "linear-gradient(180deg, #F8FBFF 0%, #F7FBFE 100%)",
+        boxSizing: "border-box",
       }}
     >
-      <Grid container spacing={2.5} alignItems="stretch">
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         <Grid item xs={12} lg={8}>
           <Paper
             sx={{
@@ -398,7 +401,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
         </Grid>
       </Grid>
 
-      <Grid container spacing={2.5} alignItems="stretch">
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         {lstKpiWidgets.map((objWidget, intIndex) => (
           <Grid key={objWidget.strWidgetCode} item xs={12} sm={6} xl={3} sx={{ display: "flex" }}>
             <PayrollKpiPanel
@@ -411,7 +414,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
         ))}
       </Grid>
 
-      <Grid container spacing={2.5} alignItems="stretch">
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
           <WorkflowPanel objWidget={objTrackerWidget} t={t} />
         </Grid>
@@ -420,7 +423,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
         </Grid>
       </Grid>
 
-      <Grid container spacing={2.5} alignItems="stretch">
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         {lstSummaryWidgets.map((objWidget) => (
           <Grid key={objWidget.strWidgetCode} item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
             <SummaryPanel objWidget={objWidget} t={t} />
@@ -428,7 +431,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
         ))}
       </Grid>
 
-      <Grid container spacing={2.5} alignItems="stretch">
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
           <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
         </Grid>

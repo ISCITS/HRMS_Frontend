@@ -188,11 +188,15 @@ function ensureTopLevelDashboard(lstMenuItems: MenuItem[]): MenuItem[] {
 export function getPostLoginRoute(strPreferredRoute?: string | null) {
   const strNormalizedRoute = normalizeRoute(strPreferredRoute);
 
-  if (!strNormalizedRoute || strNormalizedRoute === "/user-management") {
+  if (!strNormalizedRoute) {
     return "/dashboard";
   }
 
-  return strNormalizedRoute;
+  if (strNormalizedRoute.toLowerCase().startsWith("/hrms/administrator/")) {
+    return strNormalizedRoute;
+  }
+
+  return "/dashboard";
 }
 
 export function normalizeMenuResponse(objMenu: MenuResponse): MenuResponse {
