@@ -284,6 +284,15 @@ export type HrItDeclarationItemRecord = {
   intItemID: number;
   strSection: string;
   strDescription: string;
+  strInvestmentName?: string | null;
+  strInvestmentOptionName?: string | null;
+  strOptionName?: string | null;
+  strDeductionName?: string | null;
+  strComponentName?: string | null;
+  investment_name?: string | null;
+  investmentName?: string | null;
+  strEmployeeRemarks?: string | null;
+  strReviewerRemarks?: string | null;
   decDeclaredAmount: number;
   decApprovedAmount: number;
   strItemStatus: string;

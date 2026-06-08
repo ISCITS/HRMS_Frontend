@@ -195,6 +195,54 @@ function hasRoute(lstItems: MenuItem[], strRoute: string): boolean {
   });
 }
 
+function isDashboardMenuItem(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return objItem.blnIsHome || strRoute === "/dashboard" || strModuleCode === "dashboard" || strModuleName === "dashboard";
+}
+
+function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
+  let objDashboardItem: MenuItem | null = null;
+
+  function stripNestedDashboard(lstCurrentItems: MenuItem[]): MenuItem[] {
+    return lstCurrentItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
+      if (isDashboardMenuItem(objItem)) {
+        if (!objDashboardItem) {
+          objDashboardItem = {
+            ...objItem,
+            strModuleCode: "DASHBOARD",
+            strModuleName: "Dashboard",
+            strRoute: "/dashboard",
+            blnIsHome: true,
+            lstChildren: [],
+          };
+        }
+        return lstUpdatedItems;
+      }
+
+      lstUpdatedItems.push({
+        ...objItem,
+        blnIsHome: false,
+        lstChildren: stripNestedDashboard(objItem.lstChildren),
+      });
+      return lstUpdatedItems;
+    }, []);
+  }
+
+  const lstWithoutNestedDashboard = stripNestedDashboard(lstItems);
+  const objResolvedDashboard = objDashboardItem ?? {
+    strModuleCode: "DASHBOARD",
+    strModuleName: "Dashboard",
+    strRoute: "/dashboard",
+    lstPermissionCodes: [],
+    blnIsHome: true,
+    lstChildren: [],
+  };
+
+  return [objResolvedDashboard, ...lstWithoutNestedDashboard];
+}
+
 function hasRouteInReportsBranch(lstItems: MenuItem[], strRoute: string, blnInsideReports = false): boolean {
   return lstItems.some((objItem) => {
     const blnCurrentItemIsReportsBranch = isDirectReportsMenu(objItem);
@@ -797,7 +845,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       collapseDuplicateReportsMenus(
         removeReportsFromPayrollBranches(
           appendGeneratedReportsMenu(
-            appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
+            appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(promoteDashboardMenu(lstMenuItems)))),
           ),
         ),
       ),
@@ -808,7 +856,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     () => collapseDuplicateReportsMenus(
       removeReportsFromPayrollBranches(
         appendGeneratedReportsMenu(
-          appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
+          appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(promoteDashboardMenu(lstMenuItems)))),
         ),
       ),
     ),
