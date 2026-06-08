@@ -1,6 +1,7 @@
 "use client";
 
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import {
   Avatar,
@@ -8,13 +9,17 @@ import {
   Button,
   CircularProgress,
   Grid,
+  IconButton,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+
 import ProfileSection from "@/components/shared/profile/ProfileSection";
 import dicConstant from "@/constants/Constant.json";
+import type { CurrentUserContext } from "@/models/AuthModels";
+import { authApiService } from "@/services";
 
 const dicInputSx = {
   "& .MuiInputLabel-root": {
@@ -39,35 +44,71 @@ const dicInputSx = {
   }
 };
 
-// Renders user profile edit fields and update action.
 export default function ProfileForm() {
-  /*
-  Functional responsibility:
-  - Render premium profile UI sections and simulate save interaction.
-  
-  Inputs:
-  - Uses local default profile values for template/demo behavior.
-  
-  Output:
-  - Sectioned profile form UI with avatar block and security settings card.
-  
-  Failure behavior:
-  - No backend persistence; submit shows loading state only.
-  */
   const [intIsSaving, setIntIsSaving] = useState(0);
+  const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
+  const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
+  const [strAvatarError, setStrAvatarError] = useState("");
+
+  useEffect(() => {
+    authApiService.getCurrentUser()
+      .then((objResult) => setObjUserContext(objResult.Data))
+      .catch(() => undefined);
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIntIsSaving(1);
 
     await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 1200);
+      setTimeout(resolve, 1200);
     });
 
     setIntIsSaving(0);
   };
+
+  async function refreshCurrentUser() {
+    const objCurrentUserResult = await authApiService.getCurrentUser();
+    setObjUserContext(objCurrentUserResult.Data);
+    window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
+  }
+
+  async function handleAvatarUpload(objEvent: ChangeEvent<HTMLInputElement>) {
+    const objFile = objEvent.target.files?.[0];
+    objEvent.target.value = "";
+    if (!objFile) {
+      return;
+    }
+
+    setBlnAvatarUpdating(true);
+    setStrAvatarError("");
+    try {
+      await authApiService.uploadCurrentAvatar(objFile);
+      await refreshCurrentUser();
+    } catch (objError: unknown) {
+      setStrAvatarError(objError instanceof Error ? objError.message : "Unable to upload profile photo.");
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
+  }
+
+  async function handleAvatarDelete() {
+    setBlnAvatarUpdating(true);
+    setStrAvatarError("");
+    try {
+      await authApiService.deleteCurrentAvatar();
+      await refreshCurrentUser();
+    } catch (objError: unknown) {
+      setStrAvatarError(objError instanceof Error ? objError.message : "Unable to remove profile photo.");
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
+  }
+
+  const strProfileDisplayName = objUserContext?.objEmployee?.strFullName || objUserContext?.objUser?.strLoginName || "Workspace User";
+  const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
+  const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const strEmailAddress = objUserContext?.objUser?.strEmailAddress || "Not available";
 
   return (
     <Stack component="form" spacing={4} onSubmit={handleSubmit}>
@@ -90,23 +131,24 @@ export default function ProfileForm() {
               }
             }}
           >
-            <Avatar
-              sx={{
-                width: 88,
-                height: 88,
+              <Avatar
+                src={strAvatarUrl || undefined}
+                sx={{
+                  width: 88,
+                  height: 88,
                 bgcolor: "rgba(37, 99, 235, 0.14)",
                 color: "primary.main",
                 fontWeight: 700,
                 fontSize: 30
               }}
             >
-              AJ
+              {strAvatarText}
             </Avatar>
-            <Box
-              className="profile-overlay"
-              sx={{
-                position: "absolute",
-                inset: 0,
+              <Box
+                className="profile-overlay"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
                 borderRadius: "50%",
                 bgcolor: "rgba(15,23,42,0.38)",
                 display: "flex",
@@ -115,29 +157,55 @@ export default function ProfileForm() {
                 opacity: 0,
                 transition: "all 0.2s ease"
               }}
-            >
-              <CameraAltOutlinedIcon sx={{ color: "#ffffff", fontSize: 22 }} />
-            </Box>
+              >
+                <CameraAltOutlinedIcon sx={{ color: "#ffffff", fontSize: 22 }} />
+              </Box>
+              <IconButton
+                component="label"
+                size="small"
+                disabled={blnAvatarUpdating}
+                sx={{
+                  position: "absolute",
+                  right: -2,
+                  bottom: -2,
+                  width: 28,
+                  height: 28,
+                  bgcolor: "#2563eb",
+                  color: "#ffffff",
+                  boxShadow: "0 10px 22px rgba(37,99,235,0.35)",
+                  "&:hover": { bgcolor: "#1d4ed8" },
+                  "&.Mui-disabled": { bgcolor: "#94a3b8", color: "#e2e8f0" }
+                }}
+              >
+                {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <CameraAltOutlinedIcon sx={{ fontSize: 16 }} />}
+                <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
+              </IconButton>
           </Box>
-          <Typography sx={{ fontSize: 12, color: "#64748b" }}>{dicConstant.profile.changePhoto}</Typography>
+          <Typography sx={{ fontSize: 12, color: "#64748b" }}>Profile photo</Typography>
+          <Button component="label" size="small" variant="outlined" disabled={blnAvatarUpdating} startIcon={blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <CameraAltOutlinedIcon />}>
+            Upload
+            <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
+          </Button>
+          <Button size="small" variant="text" disabled={blnAvatarUpdating || !strAvatarUrl} startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete}>Remove</Button>
+          {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", maxWidth: 180, textAlign: "center" }}>{strAvatarError}</Typography> : null}
         </Stack>
 
         <Stack spacing={0.5} alignItems={{ xs: "center", sm: "flex-start" }} sx={{ pt: { sm: 1 } }}>
-          <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Ava Johnson</Typography>
-          <Typography sx={{ fontSize: 14, color: "#64748b" }}>Frontend Developer</Typography>
+          <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>{strProfileDisplayName}</Typography>
+          <Typography sx={{ fontSize: 14, color: "#64748b" }}>{strEmailAddress}</Typography>
         </Stack>
       </Stack>
 
       <ProfileSection strTitle={dicConstant.profile.sectionPersonal}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.fullName} defaultValue="Ava Johnson" fullWidth sx={dicInputSx} data-testid="profile.form.full-name.input" inputProps={{ "data-testid": "profile.form.full-name.input" }} />
+            <TextField label={dicConstant.profile.fullName} defaultValue={strProfileDisplayName} fullWidth sx={dicInputSx} data-testid="profile.form.full-name.input" inputProps={{ "data-testid": "profile.form.full-name.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.email} defaultValue="ava.johnson@company.com" fullWidth sx={dicInputSx} data-testid="profile.form.email.input" inputProps={{ "data-testid": "profile.form.email.input" }} />
+            <TextField label={dicConstant.profile.email} defaultValue={strEmailAddress} fullWidth sx={dicInputSx} data-testid="profile.form.email.input" inputProps={{ "data-testid": "profile.form.email.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.phone} defaultValue="+1 555 102 4567" fullWidth sx={dicInputSx} data-testid="profile.form.phone.input" inputProps={{ "data-testid": "profile.form.phone.input" }} />
+            <TextField label={dicConstant.profile.phone} defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.phone.input" inputProps={{ "data-testid": "profile.form.phone.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
@@ -145,10 +213,10 @@ export default function ProfileForm() {
       <ProfileSection strTitle={dicConstant.profile.sectionWork}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.designation} defaultValue="Frontend Developer" fullWidth sx={dicInputSx} data-testid="profile.form.designation.input" inputProps={{ "data-testid": "profile.form.designation.input" }} />
+            <TextField label={dicConstant.profile.designation} defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.designation.input" inputProps={{ "data-testid": "profile.form.designation.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="Department" defaultValue="Engineering" fullWidth sx={dicInputSx} data-testid="profile.form.department.input" inputProps={{ "data-testid": "profile.form.department.input" }} />
+            <TextField label="Department" defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.department.input" inputProps={{ "data-testid": "profile.form.department.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
@@ -202,4 +270,3 @@ export default function ProfileForm() {
     </Stack>
   );
 }
-

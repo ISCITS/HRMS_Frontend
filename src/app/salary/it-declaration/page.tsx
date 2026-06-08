@@ -54,13 +54,16 @@ import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterAp
 
 type FlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
 type Regime = "Old Regime" | "New Regime";
+type MaxLimitAppliedAt = "ENTRY_LEVEL" | "APPROVAL_LEVEL";
 
 type DeclarationRow = {
   intItemID?: number | null;
   strSection: string;
+  strCategory?: string;
   strDescription: string;
   strMaxLimitDisplay: string;
   decMaxEligibleAmount?: number | null;
+  strMaxLimitAppliedAt?: MaxLimitAppliedAt;
   blnProofRequired?: boolean;
   decDeclaredAmount: number;
   strInvestmentName: string;
@@ -154,14 +157,80 @@ function resolveRowStatus(objRow: DeclarationRow) {
   return "Not Started" as const;
 }
 
-function parseMaxLimit(strMaxLimit: string) {
+function parseMaxLimit(objMaxLimit: unknown) {
+  if (typeof objMaxLimit === "number") return Number.isFinite(objMaxLimit) ? objMaxLimit : null;
+  const strMaxLimit = String(objMaxLimit || "").trim();
   if (!strMaxLimit || strMaxLimit === "-") return null;
   const strDigits = strMaxLimit.replace(/[^0-9.]/g, "");
   const decParsed = Number(strDigits);
   return Number.isFinite(decParsed) ? decParsed : null;
 }
 
+function resolveMaxLimitAmount(objRecord: Record<string, unknown>) {
+  return parseMaxLimit(
+    objRecord.decMaxLimitAmount ??
+    objRecord.decMaxLimit ??
+    objRecord.strMaxLimitAmount ??
+    objRecord.maxLimitAmount ??
+    objRecord.max_limit_amount ??
+    objRecord.maximum_limit_amount ??
+    objRecord.max_limit ??
+    objRecord.strMaxLimit
+  );
+}
+
+function normalizeMaxLimitAppliedAt(objValue: unknown): MaxLimitAppliedAt {
+  const strValue = String(objValue || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
+}
+
+function resolveBooleanFlag(objValue: unknown, blnDefault = false) {
+  if (typeof objValue === "boolean") return objValue;
+  if (typeof objValue === "number") return objValue !== 0;
+  if (typeof objValue === "string") {
+    const strValue = objValue.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "active"].includes(strValue)) return true;
+    if (["false", "0", "no", "n", "inactive"].includes(strValue)) return false;
+  }
+  return blnDefault;
+}
+
+function formatDeclarationKind(objValue: unknown) {
+  const strValue = String(objValue || "").trim();
+  if (!strValue) return "";
+  const strNormalized = strValue.toUpperCase().replace(/[\s-]+/g, "_");
+  const dicKnownLabels: Record<string, string> = {
+    DEDUCTION: "Deductions",
+    DEDUCTIONS: "Deductions",
+    EXEMPTION: "Exemptions",
+    EXEMPTIONS: "Exemptions",
+    OTHER_EXEMPTION: "Other Exemptions",
+    OTHER_EXEMPTIONS: "Other Exemptions",
+    LOAN: "Loans & Property",
+    LOANS: "Loans & Property",
+    LOANS_PROPERTY: "Loans & Property",
+    LOANS_AND_PROPERTY: "Loans & Property",
+  };
+  if (dicKnownLabels[strNormalized]) return dicKnownLabels[strNormalized];
+  return strValue
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function resolveCategoryRows(objData: unknown): EssDeclarationCategoryApiRecord[] {
+  if (Array.isArray(objData)) return objData as EssDeclarationCategoryApiRecord[];
+  if (!objData || typeof objData !== "object") return [];
+  const objValue = objData as Record<string, unknown>;
+  for (const strKey of ["lstCategories", "lstRecords", "items", "rows", "records", "results", "data", "Data"]) {
+    if (Array.isArray(objValue[strKey])) return objValue[strKey] as EssDeclarationCategoryApiRecord[];
+  }
+  return [];
+}
+
 function getGroupName(objRow: DeclarationRow) {
+  if (objRow.strCategory?.trim()) return objRow.strCategory.trim();
   const strCode = objRow.strSection.toUpperCase();
   if (["24B", "80EE", "80EEA", "80EEB"].some((strPrefix) => strCode.startsWith(strPrefix))) {
     return "Loans & Property";
@@ -209,25 +278,58 @@ function dedupeDeclarationRows(lstInputRows: DeclarationRow[]) {
   return Array.from(dicByCompositeKey.values());
 }
 
+// Normalize section codes so "SEC_80CCD_1B" and "80CCD(1B)" are treated as the same section.
+// Strips optional "SEC_" prefix then removes all non-alphanumeric characters.
+function normalizeSectionKey(strSection: string) {
+  return strSection.trim().toUpperCase().replace(/^SEC_/, "").replace(/[^A-Z0-9]/g, "");
+}
+
 function mergeSectionRules(lstBaseRows: DeclarationRow[], lstRuleRows: DeclarationRow[]) {
   if (lstRuleRows.length === 0) return lstBaseRows;
   const dicRuleBySection = new Map<string, DeclarationRow>();
   for (const objRuleRow of lstRuleRows) {
     dicRuleBySection.set(objRuleRow.strSection.trim().toUpperCase(), objRuleRow);
+    dicRuleBySection.set(normalizeSectionKey(objRuleRow.strSection), objRuleRow);
   }
   return lstBaseRows.map((objRow) => {
-    const objRule = dicRuleBySection.get(objRow.strSection.trim().toUpperCase());
+    const objRule =
+      dicRuleBySection.get(objRow.strSection.trim().toUpperCase()) ??
+      dicRuleBySection.get(normalizeSectionKey(objRow.strSection));
     if (!objRule) return { ...objRow, strStatus: resolveRowStatus(objRow) };
     const decConfigured = objRule.decMaxEligibleAmount ?? parseMaxLimit(objRule.strMaxLimitDisplay);
     const objMerged: DeclarationRow = {
       ...objRow,
       decMaxEligibleAmount: decConfigured ?? null,
+      strCategory: objRule.strCategory ?? objRow.strCategory,
+      strMaxLimitAppliedAt: objRule.strMaxLimitAppliedAt ?? objRow.strMaxLimitAppliedAt ?? "ENTRY_LEVEL",
       blnProofRequired: objRule.blnProofRequired ?? objRow.blnProofRequired,
       strMaxLimitDisplay:
         decConfigured != null ? formatCurrency(decConfigured) : objRow.strMaxLimitDisplay,
     };
     return { ...objMerged, strStatus: resolveRowStatus(objMerged) };
   });
+}
+
+function applyActiveMasterRules(lstBaseRows: DeclarationRow[], lstMasterRows: DeclarationRow[]) {
+  if (lstMasterRows.length === 0) return lstBaseRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) }));
+  const setBaseNormalized = new Set<string>();
+  const lstVisibleRows = mergeSectionRules(
+    lstBaseRows.filter((objRow) => {
+      const strNorm = normalizeSectionKey(objRow.strSection);
+      const blnVisible = lstMasterRows.some(
+        (objRuleRow) =>
+          objRuleRow.strSection.trim().toUpperCase() === objRow.strSection.trim().toUpperCase() ||
+          normalizeSectionKey(objRuleRow.strSection) === strNorm
+      );
+      if (blnVisible) setBaseNormalized.add(strNorm);
+      return blnVisible;
+    }),
+    lstMasterRows
+  );
+  const lstMissingMasterRows = lstMasterRows.filter(
+    (objRuleRow) => !setBaseNormalized.has(normalizeSectionKey(objRuleRow.strSection))
+  );
+  return dedupeDeclarationRows([...lstVisibleRows, ...lstMissingMasterRows]).map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) }));
 }
 
 function formatApiErrorForUi(objError: unknown, strFallback: string) {
@@ -533,6 +635,7 @@ export default function SalaryEssDeclarationsPage() {
   }, [strFlowStatus, blnCompared]);
   const decAmountMaxInput = 99_99_99_999;
   const decActiveMaxLimit = objEditRow ? (objEditRow.decMaxEligibleAmount ?? parseMaxLimit(objEditRow.strMaxLimitDisplay)) : null;
+  const blnApplyMaxLimitAtEntry = (objEditRow?.strMaxLimitAppliedAt ?? "ENTRY_LEVEL") === "ENTRY_LEVEL";
   const decSectionEditTotal = useMemo(
     () => lstSectionEditEntries.reduce((decTotal, objEntry) => decTotal + Math.max(0, Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0)), 0),
     [lstSectionEditEntries]
@@ -555,14 +658,25 @@ export default function SalaryEssDeclarationsPage() {
       if (!objEntry.strAmountInput.trim()) return "Declared amount is required for all rows.";
       if (!Number.isFinite(decAmount) || decAmount < 0) return "All row amounts must be valid positive values.";
       if (decAmount <= 0) return "Declared amount must be greater than zero for all rows.";
-      if (decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+      if (blnApplyMaxLimitAtEntry && decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+      if (objEditRow.blnProofRequired && decAmount > 0 && !objEntry.objProof && !objEntry.objProofFileInput) {
+        return "Proof upload is required for this section.";
+      }
     }
-    if (decActiveMaxLimit != null && decSectionEditTotal > decActiveMaxLimit) {
+    if (blnApplyMaxLimitAtEntry && decActiveMaxLimit != null && decSectionEditTotal > decActiveMaxLimit) {
       return `Section total cannot exceed ${formatCurrency(decActiveMaxLimit)}.`;
     }
     return "";
-  }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit]);
+  }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit, blnApplyMaxLimitAtEntry]);
   const blnSaveEditDisabled = Boolean(strSectionEditError);
+  const strSectionEditWarning = useMemo(() => {
+    if (!objEditRow || blnApplyMaxLimitAtEntry) return "";
+    for (const objEntry of lstSectionEditEntries) {
+      const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
+      if (decAmount > decAmountMaxInput) return `Amount ${formatCurrency(decAmount)} exceeds ${formatCurrency(decAmountMaxInput)}. Limit is enforced at approval — please ensure the value is correct.`;
+    }
+    return "";
+  }, [objEditRow, lstSectionEditEntries, blnApplyMaxLimitAtEntry]);
 
   function hydrateFromApi(objData: ItDeclarationDto) {
     const blnSummaryFallback = Boolean(objData.objSummary?.blnSummaryFallback);
@@ -577,15 +691,18 @@ export default function SalaryEssDeclarationsPage() {
     setStrDeclarationStatus(objData.strDeclarationStatus ?? "draft");
     setStrSelectedRegime((objData.strSelectedRegime || "") as Regime | "");
     setStrLastUpdated(objData.strLastUpdated || getDateLabel());
-    setLstRows(
+    const lstNextRows =
       objData.lstItems?.length
         ? objData.lstItems.map((objItem) => {
             const objRow: DeclarationRow = {
               intItemID: objItem.intItemID,
               strSection: objItem.strSection,
+              strCategory: formatDeclarationKind((objItem as unknown as Record<string, unknown>).strDeclarationKind ?? (objItem as unknown as Record<string, unknown>).declaration_kind),
               strDescription: objItem.strDescription,
               strMaxLimitDisplay: objItem.strMaxLimit,
-              decMaxEligibleAmount: parseMaxLimit(objItem.strMaxLimit),
+              decMaxEligibleAmount: objItem.decMaxEligibleAmount ?? objItem.decMaxLimitAmount ?? parseMaxLimit(objItem.strMaxLimit),
+              strMaxLimitAppliedAt: normalizeMaxLimitAppliedAt(objItem.strMaxLimitAppliedAt ?? (objItem as unknown as Record<string, unknown>).max_limit_applied_at),
+              blnProofRequired: resolveBooleanFlag(objItem.blnProofRequired ?? (objItem as unknown as Record<string, unknown>).blnIsProofRequired ?? (objItem as unknown as Record<string, unknown>).proof_required),
               decDeclaredAmount: objItem.decDeclaredAmount,
               strInvestmentName: objItem.strInvestmentName,
               strStatus: objItem.strStatus,
@@ -593,8 +710,10 @@ export default function SalaryEssDeclarationsPage() {
             };
             return { ...objRow, strStatus: resolveRowStatus(objRow) };
           })
-        : []
-    );
+        : [];
+    setLstRows((lstPreviousRows) => (
+      lstNextRows.length > 0 ? mergeSectionRules(lstNextRows, lstPreviousRows) : []
+    ));
     setObjTaxSummary({
       decGrossSalary: objData.objSummary?.decGrossSalary ?? 0,
       decExemptions: objData.objSummary?.decExemptions ?? 0,
@@ -622,15 +741,20 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   function mapCategoryToRow(objCategory: EssDeclarationCategoryApiRecord): DeclarationRow {
+    const objCategoryRecord = objCategory as unknown as Record<string, unknown>;
     const strDescription = objCategory.strCategoryDescription?.trim() || objCategory.strCategoryName;
-    const strMaxLimitDisplay = objCategory.decMaxLimitAmount == null ? "-" : formatCurrency(objCategory.decMaxLimitAmount);
+    const decMaxLimitAmount = resolveMaxLimitAmount(objCategoryRecord);
+    const strMaxLimitDisplay = decMaxLimitAmount == null ? "-" : formatCurrency(decMaxLimitAmount);
+    const strCategory = formatDeclarationKind(objCategory.strDeclarationKind ?? objCategoryRecord.strKind ?? objCategoryRecord.declaration_kind);
     return {
       intItemID: null,
-      strSection: objCategory.strCategoryCode,
+      strSection: (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
+      strCategory,
       strDescription,
       strMaxLimitDisplay,
-      decMaxEligibleAmount: objCategory.decMaxLimitAmount ?? null,
-      blnProofRequired: objCategory.blnProofRequired,
+      decMaxEligibleAmount: decMaxLimitAmount,
+      strMaxLimitAppliedAt: normalizeMaxLimitAppliedAt(objCategory.strMaxLimitAppliedAt ?? objCategoryRecord.strMaximumLimitAppliedAt ?? objCategoryRecord.max_limit_applied_at ?? objCategoryRecord.maximum_limit_applied_at),
+      blnProofRequired: resolveBooleanFlag(objCategory.blnProofRequired ?? objCategoryRecord.blnIsProofRequired ?? objCategoryRecord.proof_required),
       decDeclaredAmount: 0,
       strInvestmentName: "",
       strStatus: "Not Started",
@@ -641,7 +765,7 @@ export default function SalaryEssDeclarationsPage() {
     const lstCandidatePaths = [
       "/masters/ess-declaration-categories",
       "/ess-declaration-categories",
-      "/masters/tax-declaration-component",
+      "/masters/tax-declaration-components",
     ];
     const lstCandidateMenuActions = [
       "ESS_IT_DECLARATION_VIEW",
@@ -652,15 +776,15 @@ export default function SalaryEssDeclarationsPage() {
     for (const strPath of lstCandidatePaths) {
       for (const strMenuAction of lstCandidateMenuActions) {
         try {
-          const objCategoryResult = await requestEncryptedApi<EssDeclarationCategoryApiRecord[]>({
+          const objCategoryResult = await requestEncryptedApi<EssDeclarationCategoryApiRecord[] | Record<string, unknown>>({
             strPath: `${ApiRoutePrefix.ApiV1}${strPath}`,
             strMethod: ApiRequestMethod.Get,
             strMenuAction,
             blnUseAuthHeader: true,
           });
           return dedupeDeclarationRows(
-            (objCategoryResult.Data ?? [])
-              .filter((objCategory) => objCategory.blnIsActive)
+            resolveCategoryRows(objCategoryResult.Data)
+              .filter((objCategory) => resolveBooleanFlag((objCategory as unknown as Record<string, unknown>).blnIsActive ?? (objCategory as unknown as Record<string, unknown>).is_active, true))
               .map(mapCategoryToRow)
           );
         } catch (objError) {
@@ -690,7 +814,7 @@ export default function SalaryEssDeclarationsPage() {
       if (!objData.lstItems?.length) {
         setLstRows(lstMasterRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) })));
       } else if (lstMasterRows.length > 0) {
-        setLstRows((lstCurrentRows) => mergeSectionRules(lstCurrentRows, lstMasterRows));
+        setLstRows((lstCurrentRows) => applyActiveMasterRules(lstCurrentRows, lstMasterRows));
       }
       if (blnRouteCompare) {
         setBlnCompareModalOpen(true);
@@ -1123,10 +1247,7 @@ export default function SalaryEssDeclarationsPage() {
                       Copy Previous FY
                     </Button>
                   ) : null}
-                  <Button data-testid="salary.it-declaration.compare-tax.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving || !blnDraftLikeActionsAllowed} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
-                    {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
-                  </Button>
-                  <Button data-testid="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+<Button data-testid="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     Submit Declaration
                   </Button>
                 </>
@@ -1467,17 +1588,23 @@ export default function SalaryEssDeclarationsPage() {
                 </Paper>
               ))}
             </Stack>
-            {strSectionEditError && strSectionEditError.toLowerCase().includes("section total") ? (
-              <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700 }}>{strSectionEditError}</Typography>
-            ) : null}
             {decActiveMaxLimit != null ? (
-              <Typography sx={{ color: "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
-                Max allowed under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
+              <Typography sx={{ color: blnApplyMaxLimitAtEntry && decSectionEditTotal > decActiveMaxLimit ? "#b91c1c" : "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
+                Max allowed{!blnApplyMaxLimitAtEntry ? " (checked at approval, not enforced here)" : ""} under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
               </Typography>
             ) : null}
+            <Typography sx={{ color: objEditRow?.blnProofRequired ? "#b45309" : "#64748b", fontSize: "0.74rem", mt: -0.35, fontWeight: 700 }}>
+              Proof: {objEditRow?.blnProofRequired ? "Mandatory" : "Optional"}
+            </Typography>
             <Typography sx={{ color: "#b45309", fontSize: "0.72rem", mt: -0.15, lineHeight: 1.2, fontWeight: 600 }}>
               Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.
             </Typography>
+            {strSectionEditError && strSectionEditError !== "Investment name is required for all rows." && strSectionEditError !== "Declared amount is required for all rows." ? (
+              <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700, mt: 0.2 }}>{strSectionEditError}</Typography>
+            ) : null}
+            {strSectionEditWarning ? (
+              <Typography sx={{ fontSize: "0.73rem", color: "#b45309", fontWeight: 700, mt: 0.2 }}>{strSectionEditWarning}</Typography>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>

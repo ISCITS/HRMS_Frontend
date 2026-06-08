@@ -154,6 +154,14 @@ function buildProtectedProxyHeaders(strAccessToken: string, strMenuAction: strin
   };
 }
 
+export function buildProtectedProxyRequestHeaders(
+  strAccessToken: string,
+  strMenuAction: string,
+  objRequestHeaders?: Headers
+) {
+  return buildProtectedProxyHeaders(strAccessToken, strMenuAction, objRequestHeaders);
+}
+
 export async function proxyCurrentUser(
   strAccessToken: string,
   objRequestHeaders?: Headers,

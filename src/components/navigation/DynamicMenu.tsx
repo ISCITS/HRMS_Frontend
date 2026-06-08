@@ -195,6 +195,54 @@ function hasRoute(lstItems: MenuItem[], strRoute: string): boolean {
   });
 }
 
+function isDashboardMenuItem(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return objItem.blnIsHome || strRoute === "/dashboard" || strModuleCode === "dashboard" || strModuleName === "dashboard";
+}
+
+function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
+  let objDashboardItem: MenuItem | null = null;
+
+  function stripNestedDashboard(lstCurrentItems: MenuItem[]): MenuItem[] {
+    return lstCurrentItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
+      if (isDashboardMenuItem(objItem)) {
+        if (!objDashboardItem) {
+          objDashboardItem = {
+            ...objItem,
+            strModuleCode: "DASHBOARD",
+            strModuleName: "Dashboard",
+            strRoute: "/dashboard",
+            blnIsHome: true,
+            lstChildren: [],
+          };
+        }
+        return lstUpdatedItems;
+      }
+
+      lstUpdatedItems.push({
+        ...objItem,
+        blnIsHome: false,
+        lstChildren: stripNestedDashboard(objItem.lstChildren),
+      });
+      return lstUpdatedItems;
+    }, []);
+  }
+
+  const lstWithoutNestedDashboard = stripNestedDashboard(lstItems);
+  const objResolvedDashboard = objDashboardItem ?? {
+    strModuleCode: "DASHBOARD",
+    strModuleName: "Dashboard",
+    strRoute: "/dashboard",
+    lstPermissionCodes: [],
+    blnIsHome: true,
+    lstChildren: [],
+  };
+
+  return [objResolvedDashboard, ...lstWithoutNestedDashboard];
+}
+
 function hasRouteInReportsBranch(lstItems: MenuItem[], strRoute: string, blnInsideReports = false): boolean {
   return lstItems.some((objItem) => {
     const blnCurrentItemIsReportsBranch = isDirectReportsMenu(objItem);
@@ -385,13 +433,44 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
 }
 
 function getMenuIdentityKey(objItem: MenuItem): string {
-  if (isDirectReportsMenu(objItem)) {
-    return "reports";
-  }
-
   const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
+
+  if (objItem.lstChildren.length > 0) {
+    if (isDirectReportsMenu(objItem) || strRoute.startsWith("/reports/")) {
+      return "group:reports";
+    }
+
+    if (isPayrollContainerMenu(objItem) || strRoute.startsWith("/payroll/")) {
+      return "group:payroll";
+    }
+
+    if (strRoute === "/salary" || strRoute.startsWith("/salary/") || strModuleCode.includes("salary") || strModuleName === "salary") {
+      return "group:salary";
+    }
+
+    if (
+      strRoute === "/masters" ||
+      strRoute === "/master" ||
+      strModuleCode.includes("masters") ||
+      strModuleCode === "master" ||
+      strModuleName === "masters" ||
+      strModuleName === "master"
+    ) {
+      return "group:masters";
+    }
+
+    if (
+      strRoute === "/user-management" ||
+      strModuleCode.includes("user_management") ||
+      strModuleCode.includes("usermanagement") ||
+      strModuleName === "user management"
+    ) {
+      return "group:user-management";
+    }
+  }
+
   return strRoute || strModuleCode || strModuleName;
 }
 
@@ -422,34 +501,65 @@ function mergeUniqueMenuChildren(lstExisting: MenuItem[], lstIncoming: MenuItem[
   return lstMerged;
 }
 
-function collapseDuplicateReportsMenus(lstItems: MenuItem[]): MenuItem[] {
-  let objReportsMenu: MenuItem | null = null;
+function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
   const lstCollapsedItems: MenuItem[] = [];
+  const dicIndexByKey = new Map<string, number>();
 
   lstItems.forEach((objItem) => {
     const objItemWithCollapsedChildren = {
       ...objItem,
-      lstChildren: collapseDuplicateReportsMenus(objItem.lstChildren),
+      lstChildren: collapseDuplicateMenuBranches(objItem.lstChildren),
     };
+    const strKey = getMenuIdentityKey(objItemWithCollapsedChildren);
+    const intExistingIndex = dicIndexByKey.get(strKey);
 
-    if (!isDirectReportsMenu(objItemWithCollapsedChildren)) {
+    if (intExistingIndex === undefined) {
+      dicIndexByKey.set(strKey, lstCollapsedItems.length);
       lstCollapsedItems.push(objItemWithCollapsedChildren);
       return;
     }
 
-    if (!objReportsMenu) {
-      objReportsMenu = objItemWithCollapsedChildren;
-      lstCollapsedItems.push(objReportsMenu);
-      return;
-    }
-
-    objReportsMenu.lstChildren = mergeUniqueMenuChildren(
-      objReportsMenu.lstChildren,
-      objItemWithCollapsedChildren.lstChildren,
-    );
+    const objExisting = lstCollapsedItems[intExistingIndex];
+    lstCollapsedItems[intExistingIndex] = {
+      ...objExisting,
+      lstChildren: mergeUniqueMenuChildren(
+        objExisting.lstChildren,
+        objItemWithCollapsedChildren.lstChildren,
+      ),
+    };
+    lstCollapsedItems[intExistingIndex].lstPermissionCodes = Array.from(new Set([
+      ...objExisting.lstPermissionCodes,
+      ...objItemWithCollapsedChildren.lstPermissionCodes,
+    ]));
   });
 
   return lstCollapsedItems;
+}
+
+function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
+  return collapseDuplicateMenuBranches(
+    removeReportsFromPayrollBranches(
+      appendGeneratedReportsMenu(
+        appendGeneratedFNFMenu(
+          appendGeneratedReimbursementsMenu(
+            appendGeneratedPayslipMenu(
+              promoteDashboardMenu(lstItems),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
+  return [
+    intDepth,
+    resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "",
+    objItem.strModuleCode.trim().toLowerCase(),
+    objItem.strModuleName.trim().toLowerCase(),
+    getMenuIdentityKey(objItem),
+  ].filter(Boolean).join("|");
 }
 
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
@@ -545,6 +655,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const { t: tUserGroup } = useModuleLabels("user_group");
   const { t: tSalaryComponents } = useModuleLabels("salary-components");
   const { t: tSalaryStructures } = useModuleLabels("salary-structures");
+  const { t: tEmployeeSalary } = useModuleLabels("employee-salary");
   const { t: tPayrollCycles } = useModuleLabels("payroll-cycles");
   const { t: tPayrollProcessLogs } = useModuleLabels("payroll-process-logs");
   const { t: tPayslips } = useModuleLabels("payslips");
@@ -638,16 +749,32 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return tSalaryStructures("page_title", strModuleName || "Salary Structures");
     }
 
+    if (strRoute.includes("/employee-salary") || strModuleCode.includes("employee_salary")) {
+      return preferResolvedLabel(
+        tEmployeeSalary("employee_salary_title", "Employee Salary"),
+        strModuleName,
+        "Employee Salary"
+      );
+    }
+
     if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
       return "IT Declaration";
     }
 
-    if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/runs")) {
+    if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
       return preferResolvedLabel(
         tPayrollCycles(
-          "page_title",
-          getLastBreadcrumbSegment(tPayrollCycles("breadcrumbs", "Payroll / Payroll Runs"))
+          "schedule_page_title",
+          strModuleName || "Payroll Schedules"
         ),
+        strModuleName,
+        "Payroll Schedules"
+      );
+    }
+
+    if (strRoute.includes("/payroll/runs")) {
+      return preferResolvedLabel(
+        strModuleName,
         strModuleName,
         "Payroll Runs"
       );
@@ -768,7 +895,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     );
   }
 
-  function collectExpandableDefaults(lstItems: MenuItem[]): Record<string, boolean> {
+  function collectExpandableDefaults(lstItems: MenuItem[], intDepth = 0): Record<string, boolean> {
     return Object.fromEntries(
       lstItems.flatMap((objItem) => {
         if (objItem.lstChildren.length === 0) {
@@ -776,34 +903,20 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
         }
 
         return [
-          [objItem.strModuleCode, hasActiveDescendant(objItem)],
-          ...Object.entries(collectExpandableDefaults(objItem.lstChildren)),
+          [getMenuNodeKey(objItem, intDepth), hasActiveDescendant(objItem)],
+          ...Object.entries(collectExpandableDefaults(objItem.lstChildren, intDepth + 1)),
         ];
       }),
     );
   }
 
-  const dicDefaultExpanded = useMemo(
-    () => collectExpandableDefaults(
-      collapseDuplicateReportsMenus(
-        removeReportsFromPayrollBranches(
-          appendGeneratedReportsMenu(
-            appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
-          ),
-        ),
-      ),
-    ),
-    [lstMenuItems, strPathname],
-  );
   const lstRenderedMenuItems = useMemo(
-    () => collapseDuplicateReportsMenus(
-      removeReportsFromPayrollBranches(
-        appendGeneratedReportsMenu(
-          appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(lstMenuItems))),
-        ),
-      ),
-    ),
+    () => prepareMenuItems(lstMenuItems),
     [lstMenuItems],
+  );
+  const dicDefaultExpanded = useMemo(
+    () => collectExpandableDefaults(lstRenderedMenuItems),
+    [lstRenderedMenuItems, strPathname],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
 
@@ -814,10 +927,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     }));
   }, [lstRenderedMenuItems, strPathname]);
 
-  function toggleMenu(strModuleCode: string) {
+  function toggleMenu(strMenuKey: string) {
     setDicExpandedMenus((dicPrevious) => ({
       ...dicPrevious,
-      [strModuleCode]: !dicPrevious[strModuleCode],
+      [strMenuKey]: !dicPrevious[strMenuKey],
     }));
   }
 
@@ -845,20 +958,21 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
     const strRoute = resolveMenuRoute(objItem);
+    const strMenuKey = getMenuNodeKey(objItem, intDepth);
     const blnIsActive = strRoute === strPathname;
     const blnHasChildren = objItem.lstChildren.length > 0;
     const blnHasActiveChild = hasActiveDescendant(objItem);
-    const blnExpanded = dicExpandedMenus[objItem.strModuleCode] ?? blnHasActiveChild;
+    const blnExpanded = dicExpandedMenus[strMenuKey] ?? blnHasActiveChild;
 
     if (blnHasChildren) {
       return (
-        <Fragment key={`${objItem.strModuleCode}-${intDepth}`}>
+        <Fragment key={strMenuKey}>
           <ListItemButton
             data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
             data-menu-code={objItem.strModuleCode}
             data-menu-label={resolveMenuLabel(objItem)}
             data-menu-route={strRoute ?? ""}
-            onClick={() => toggleMenu(objItem.strModuleCode)}
+            onClick={() => toggleMenu(strMenuKey)}
             sx={getButtonStyles(blnHasActiveChild, intDepth)}
           >
             <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
@@ -888,7 +1002,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     return (
       <ListItemButton
-        key={strRoute ?? objItem.strModuleCode}
+        key={strMenuKey}
         data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
         data-menu-code={objItem.strModuleCode}
         data-menu-label={resolveMenuLabel(objItem)}

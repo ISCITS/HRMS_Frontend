@@ -1,26 +1,31 @@
 "use client";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import HomeWorkRoundedIcon from "@mui/icons-material/HomeWorkRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import {
+  Avatar,
   Box,
   Button,
   Chip,
   CircularProgress,
   Divider,
   Grid,
+  IconButton,
   Paper,
   Stack,
   Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
 function formatDate(strDate: string | null) {
@@ -66,11 +71,13 @@ function resolveLookupLabel(
 export default function EssMyProfilePage() {
   const objRouter = useRouter();
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
+  const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [objAddress, setObjAddress] = useState<EmployeeAddressRecord | null>(null);
   const [objStatutory, setObjStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
   const [strError, setStrError] = useState("");
 
   useEffect(() => {
@@ -83,6 +90,7 @@ export default function EssMyProfilePage() {
           return;
         }
 
+        setObjUserContext(objResult.Data);
         const intCurrentEmployeeID = objResult.Data.objUser.intEmployeeID ?? null;
         if (!intCurrentEmployeeID) {
           setStrError("No employee is linked to the current user.");
@@ -154,6 +162,45 @@ export default function EssMyProfilePage() {
   const strFullName = objEmployee?.strFullName?.trim() || "Employee";
   const strInitial = strFullName[0]?.toUpperCase() || "E";
   const strTitleName = [objEmployee?.strTitle ?? "", strFullName].filter(Boolean).join(" ");
+  const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+
+  async function refreshUserContext() {
+    const objCurrentUserResult = await authApiService.getCurrentUser();
+    setObjUserContext(objCurrentUserResult.Data);
+    window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
+  }
+
+  async function handleAvatarUpload(objEvent: ChangeEvent<HTMLInputElement>) {
+    const objFile = objEvent.target.files?.[0];
+    objEvent.target.value = "";
+    if (!objFile) {
+      return;
+    }
+
+    setBlnAvatarUpdating(true);
+    setStrError("");
+    try {
+      await authApiService.uploadCurrentAvatar(objFile);
+      await refreshUserContext();
+    } catch (objError: unknown) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to upload profile photo.");
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
+  }
+
+  async function handleAvatarDelete() {
+    setBlnAvatarUpdating(true);
+    setStrError("");
+    try {
+      await authApiService.deleteCurrentAvatar();
+      await refreshUserContext();
+    } catch (objError: unknown) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to remove profile photo.");
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
+  }
 
   return (
     <Stack spacing={1.5} sx={{ position: "relative" }}>
@@ -198,20 +245,41 @@ export default function EssMyProfilePage() {
           spacing={1.2}
         >
           <Stack direction="row" spacing={1.1} alignItems="center">
-            <Box
-              sx={{
-                width: 50,
-                height: 50,
-                borderRadius: "50%",
-                background: "rgba(255,255,255,0.2)",
-                color: "#f8fafc",
-                display: "grid",
-                placeItems: "center",
-                fontWeight: 800,
-                fontSize: "1.05rem"
-              }}
-            >
-              {strInitial}
+            <Box sx={{ position: "relative", width: 56, height: 56 }}>
+              <Avatar
+                src={strAvatarUrl || undefined}
+                sx={{
+                  width: 56,
+                  height: 56,
+                  background: "rgba(255,255,255,0.2)",
+                  color: "#f8fafc",
+                  fontWeight: 800,
+                  fontSize: "1.05rem",
+                  border: "2px solid rgba(255,255,255,0.2)"
+                }}
+              >
+                {strInitial}
+              </Avatar>
+              <IconButton
+                component="label"
+                size="small"
+                disabled={blnAvatarUpdating}
+                sx={{
+                  position: "absolute",
+                  right: -4,
+                  bottom: -4,
+                  width: 24,
+                  height: 24,
+                  backgroundColor: "#ffffff",
+                  color: "#0f172a",
+                  boxShadow: "0 8px 18px rgba(15,23,42,0.24)",
+                  "&:hover": { backgroundColor: "#e2e8f0" },
+                  "&.Mui-disabled": { backgroundColor: "#cbd5e1", color: "#475569" }
+                }}
+              >
+                {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <EditRoundedIcon sx={{ fontSize: 14 }} />}
+                <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
+              </IconButton>
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 800, color: "white", fontSize: "1rem", lineHeight: 1.2 }}>{strTitleName}</Typography>
@@ -232,25 +300,64 @@ export default function EssMyProfilePage() {
               </Stack>
             </Box>
           </Stack>
-          <Button
-            data-testid="ess.my-profile.edit.button"
-            variant="contained"
-            startIcon={<EditRoundedIcon />}
-            onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}
-            sx={{
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: 700,
-              px: 1.4,
-              py: 0.65,
-              fontSize: "0.82rem",
-              backgroundColor: "white",
-              color: "#0f172a",
-              "&:hover": { backgroundColor: "#e2e8f0" }
-            }}
-          >
-            Edit
-          </Button>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={blnAvatarUpdating ? <CircularProgress size={16} color="inherit" /> : <PhotoCameraRoundedIcon />}
+              disabled={blnAvatarUpdating}
+              sx={{
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                px: 1.4,
+                py: 0.65,
+                fontSize: "0.82rem",
+                borderColor: "rgba(255,255,255,0.55)",
+                color: "white"
+              }}
+            >
+              Upload
+              <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DeleteOutlineRoundedIcon />}
+              onClick={handleAvatarDelete}
+              disabled={blnAvatarUpdating || !strAvatarUrl}
+              sx={{
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                px: 1.4,
+                py: 0.65,
+                fontSize: "0.82rem",
+                borderColor: "rgba(255,255,255,0.4)",
+                color: "white"
+              }}
+            >
+              Remove
+            </Button>
+            <Button
+              data-testid="ess.my-profile.edit.button"
+              variant="contained"
+              startIcon={<EditRoundedIcon />}
+              onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}
+              sx={{
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                px: 1.4,
+                py: 0.65,
+                fontSize: "0.82rem",
+                backgroundColor: "white",
+                color: "#0f172a",
+                "&:hover": { backgroundColor: "#e2e8f0" }
+              }}
+            >
+              Edit
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
 

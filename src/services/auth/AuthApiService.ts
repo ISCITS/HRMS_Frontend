@@ -294,6 +294,32 @@ export const authApiService = {
     });
   },
 
+  async uploadCurrentAvatar(objFile: File) {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    return requestApi<{
+      intEmployeeID: number;
+      strEmployeeCode?: string | null;
+      strFullName?: string | null;
+      strProfilePhotoUrl?: string | null;
+    }>({
+      strPath: "auth/avatar/current",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objFormData,
+      strMenuAction: "AUTH_AVATAR_UPDATE",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async deleteCurrentAvatar() {
+    return requestApi<{ blnDeleted: boolean }>({
+      strPath: "auth/avatar/current",
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "AUTH_AVATAR_DELETE",
+      blnUseAuthHeader: true
+    });
+  },
+
   async getDashboard(strPayrollMonth?: string | null) {
     return requestApi<DashboardResponse>({
       strPath: "dashboard",

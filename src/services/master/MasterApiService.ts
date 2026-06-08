@@ -163,6 +163,7 @@ export type EssDeclarationCategoryApiRecord = {
   intLinkedSalaryComponentID: number | null;
   strLinkedSalaryComponentName?: string | null;
   decMaxLimitAmount: number | null;
+  strMaxLimitAppliedAt?: "ENTRY_LEVEL" | "APPROVAL_LEVEL" | "Entry Level" | "Approval Level" | string | null;
   blnProofRequired: boolean;
   blnIsActive: boolean;
   lstTexts?: EssDeclarationCategoryTextApiRecord[];
@@ -1027,6 +1028,7 @@ export const masterApiService = {
     strDeclarationKind: string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
+    strMaxLimitAppliedAt?: string;
     blnProofRequired: boolean;
     blnIsActive: boolean;
   }) {
@@ -1045,6 +1047,7 @@ export const masterApiService = {
     strDeclarationKind: string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
+    strMaxLimitAppliedAt?: string;
     blnProofRequired: boolean;
     blnIsActive: boolean;
   }) {

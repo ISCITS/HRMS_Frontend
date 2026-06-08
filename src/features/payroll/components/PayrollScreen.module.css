@@ -37,7 +37,7 @@
 }
 
 .controlsCard {
-  padding: 10px 12px 8px;
+  padding: 8px 12px;
   flex: 0 0 auto;
 }
 
@@ -45,7 +45,7 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   justify-content: space-between;
 }
 
@@ -165,16 +165,40 @@
 }
 
 .searchRow {
-  align-items: stretch;
+  align-items: end;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto;
-  margin-top: 8px;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  margin-top: 6px;
+}
+
+.quickFilterRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(170px, 220px));
+  margin-top: 6px;
 }
 
 .searchActions {
+  align-items: center;
+  align-self: end;
   display: flex;
   gap: 10px;
+  justify-content: flex-start;
+  margin-top: 0;
+  padding-top: 0;
+  white-space: nowrap;
+}
+
+.quickFilterRow :global(.MuiInputBase-root),
+.searchRow :global(.MuiInputBase-root) {
+  min-height: 40px;
+}
+
+.quickFilterRow :global(.MuiOutlinedInput-input),
+.searchRow :global(.MuiOutlinedInput-input) {
+  padding-bottom: 10px;
+  padding-top: 10px;
 }
 
 .bulkBar {
@@ -589,6 +613,7 @@
 }
 
 @media (max-width: 900px) {
+  .quickFilterRow,
   .searchRow {
     grid-template-columns: 1fr;
   }
