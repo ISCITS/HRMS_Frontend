@@ -28,8 +28,13 @@ export type ItDeclarationDashboardDto = {
 export type ItDeclarationItemDto = {
   intItemID?: number | null;
   strSection: string;
+  strDeclarationKind?: string | null;
   strDescription: string;
   strMaxLimit: string;
+  decMaxLimitAmount?: number | null;
+  decMaxEligibleAmount?: number | null;
+  strMaxLimitAppliedAt?: "ENTRY_LEVEL" | "APPROVAL_LEVEL" | "Entry Level" | "Approval Level" | string | null;
+  blnProofRequired?: boolean;
   decDeclaredAmount: number;
   strInvestmentName: string;
   strStatus: "Completed" | "In Progress" | "Not Started";
@@ -293,6 +298,10 @@ export type HrItDeclarationItemRecord = {
   investmentName?: string | null;
   strEmployeeRemarks?: string | null;
   strReviewerRemarks?: string | null;
+  strMaxLimit?: string | null;
+  decMaxLimitAmount?: number | null;
+  decMaxEligibleAmount?: number | null;
+  strMaxLimitAppliedAt?: "ENTRY_LEVEL" | "APPROVAL_LEVEL" | "Entry Level" | "Approval Level" | string | null;
   decDeclaredAmount: number;
   decApprovedAmount: number;
   strItemStatus: string;

@@ -22,6 +22,7 @@ import {
   type HrItDeclarationProofRecord,
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { masterApiService, type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type Props = { intDeclarationID: number };
 type ConfirmAction = "approve_all" | "reject" | "release" | "lock" | null;
@@ -30,8 +31,17 @@ type DeclarationSectionGroup = {
   strDescription: string;
   lstItems: HrItDeclarationItemRecord[];
   lstProofs: HrItDeclarationProofRecord[];
+  decMaxLimitAmount: number | null;
+  strMaxLimitAppliedAt: string;
   decDeclaredAmount: number;
   decApprovedAmount: number;
+};
+
+type CategoryRule = {
+  strSection: string;
+  decMaxLimitAmount: number | null;
+  strMaxLimitAppliedAt: string;
+  blnProofRequired: boolean;
 };
 
 const objInrFormatter = new Intl.NumberFormat("en-IN", {
@@ -42,6 +52,68 @@ const objInrFormatter = new Intl.NumberFormat("en-IN", {
 
 function normalizeReviewStatus(strStatus?: string | null) {
   return String(strStatus || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function parseMaxLimit(objValue: unknown) {
+  if (typeof objValue === "number") return Number.isFinite(objValue) ? objValue : null;
+  const strDigits = String(objValue || "").replace(/[^0-9.]/g, "");
+  const decParsed = Number(strDigits);
+  return Number.isFinite(decParsed) ? decParsed : null;
+}
+
+function resolveMaxLimitAmount(objRecord: Record<string, unknown>) {
+  return parseMaxLimit(
+    objRecord.decMaxLimitAmount ??
+    objRecord.decMaxLimit ??
+    objRecord.strMaxLimitAmount ??
+    objRecord.maxLimitAmount ??
+    objRecord.max_limit_amount ??
+    objRecord.maximum_limit_amount ??
+    objRecord.max_limit ??
+    objRecord.strMaxLimit
+  );
+}
+
+function getItemMaxLimit(objItem: HrItDeclarationItemRecord) {
+  return objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount ?? parseMaxLimit(objItem.strMaxLimit);
+}
+
+function normalizeMaxLimitAppliedAt(objValue: unknown) {
+  const strValue = String(objValue || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
+}
+
+function resolveBooleanFlag(objValue: unknown, blnDefault = false) {
+  if (typeof objValue === "boolean") return objValue;
+  if (typeof objValue === "number") return objValue !== 0;
+  if (typeof objValue === "string") {
+    const strValue = objValue.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "active"].includes(strValue)) return true;
+    if (["false", "0", "no", "n", "inactive"].includes(strValue)) return false;
+  }
+  return blnDefault;
+}
+
+function resolveCategoryRows(objData: unknown) {
+  if (Array.isArray(objData)) return objData;
+  if (!objData || typeof objData !== "object") return [];
+  const objValue = objData as Record<string, unknown>;
+  for (const strKey of ["lstCategories", "lstRecords", "items", "rows", "records", "results", "data", "Data"]) {
+    if (Array.isArray(objValue[strKey])) return objValue[strKey];
+  }
+  return [];
+}
+
+function mapCategoryRule(objCategory: EssDeclarationCategoryApiRecord): CategoryRule {
+  const objCategoryRecord = objCategory as unknown as Record<string, unknown>;
+  const strSection = String(objCategory.strCategoryCode ?? objCategoryRecord.strCode ?? objCategoryRecord.category_code ?? "").trim().toUpperCase();
+  const decMaxLimitAmount = resolveMaxLimitAmount(objCategoryRecord);
+  return {
+    strSection,
+    decMaxLimitAmount,
+    strMaxLimitAppliedAt: normalizeMaxLimitAppliedAt(objCategory.strMaxLimitAppliedAt ?? objCategoryRecord.strMaximumLimitAppliedAt ?? objCategoryRecord.max_limit_applied_at ?? objCategoryRecord.maximum_limit_applied_at),
+    blnProofRequired: resolveBooleanFlag(objCategory.blnProofRequired ?? objCategoryRecord.blnIsProofRequired ?? objCategoryRecord.proof_required),
+  };
 }
 
 function countItemsByStatus(lstItems: HrItDeclarationItemRecord[], lstStatuses: string[]) {
@@ -123,6 +195,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   ]);
   const [objDetail, setObjDetail] = useState<HrItDeclarationDetailRecord | null>(null);
   const [lstAudit, setLstAudit] = useState<HrItDeclarationAuditRecord[]>([]);
+  const [lstCategoryRules, setLstCategoryRules] = useState<CategoryRule[] | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [strToast, setStrToast] = useState("");
@@ -163,17 +236,50 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objFetched, lstAuditEvents] = await Promise.all([
+      const [objFetched, lstAuditEvents, lstRules] = await Promise.all([
         hrItDeclarationReviewService.getDetail(intDeclarationID),
         hrItDeclarationReviewService.getAudit(intDeclarationID),
+        loadCategoryRules(),
       ]);
       setObjDetail(objFetched);
       setLstAudit(lstAuditEvents);
+      setLstCategoryRules(lstRules);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load declaration detail.");
     } finally {
       setBlnLoading(false);
     }
+  }
+
+  async function loadCategoryRules() {
+    const lstActionFallbacks = [
+      "MASTER_ESS_DECLARATION_CATEGORY_LIST",
+      "MASTER_TAX_DECLARATION_COMPONENT_LIST",
+      "TAX_DECLARATION_COMPONENT_LIST",
+      "TAX_DECLARATION_COMPONENT_VIEW",
+      "ESS_IT_DECLARATION_VIEW",
+    ];
+    const lstAttempts: Array<{ strSource: "ess" | "tax"; strMenuAction: string }> = [
+      ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "ess" as const, strMenuAction })),
+      ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "tax" as const, strMenuAction })),
+    ];
+    for (const dicAttempt of lstAttempts) {
+      try {
+        const objResult = dicAttempt.strSource === "tax"
+          ? await masterApiService.getTaxDeclarationComponents(dicAttempt.strMenuAction)
+          : await masterApiService.getEssDeclarationCategoriesWithAction(dicAttempt.strMenuAction);
+        const lstRows = resolveCategoryRows(objResult.Data);
+        if (lstRows.length > 0) {
+          return lstRows
+            .filter((objRecord) => resolveBooleanFlag((objRecord as Record<string, unknown>).blnIsActive ?? (objRecord as Record<string, unknown>).is_active, true))
+            .map((objRecord) => mapCategoryRule(objRecord as EssDeclarationCategoryApiRecord))
+            .filter((objRule) => objRule.strSection);
+        }
+      } catch {
+        continue;
+      }
+    }
+    return null;
   }
 
   useEffect(() => {
@@ -262,14 +368,24 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   }
 
   const lstProofs = useMemo(() => objDetail?.lstProofs || [], [objDetail]);
+  const dicCategoryRuleBySection = useMemo(
+    () => new Map((lstCategoryRules ?? []).map((objRule) => [objRule.strSection, objRule])),
+    [lstCategoryRules]
+  );
   const lstItems = useMemo(
-    () => (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0),
-    [objDetail]
+    () => {
+      const lstDeclaredItems = (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0);
+      if (lstCategoryRules === null) return lstDeclaredItems;
+      const setActiveSections = new Set(lstCategoryRules.map((objRule) => objRule.strSection));
+      return lstDeclaredItems.filter((objItem) => setActiveSections.has(String(objItem.strSection || "").trim().toUpperCase()));
+    },
+    [objDetail, lstCategoryRules]
   );
   const lstSectionGroups = useMemo<DeclarationSectionGroup[]>(() => {
     const dicGroups = new Map<string, DeclarationSectionGroup>();
     for (const objItem of lstItems) {
       const strSection = objItem.strSection || "Other";
+      const objRule = dicCategoryRuleBySection.get(strSection.trim().toUpperCase());
       const strItemDescription = objItem.strDescription || "";
       const strDescription = strItemDescription.toLowerCase().includes(strSection.toLowerCase()) || strItemDescription.toLowerCase().includes("section")
         ? strItemDescription
@@ -280,9 +396,13 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
         strDescription,
         lstItems: [],
         lstProofs: [],
+        decMaxLimitAmount: null,
+        strMaxLimitAppliedAt: "ENTRY_LEVEL",
         decDeclaredAmount: 0,
         decApprovedAmount: 0,
       };
+      objExisting.decMaxLimitAmount = objExisting.decMaxLimitAmount ?? objRule?.decMaxLimitAmount ?? getItemMaxLimit(objItem) ?? null;
+      objExisting.strMaxLimitAppliedAt = normalizeMaxLimitAppliedAt(objRule?.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt);
       const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === objItem.intItemID);
       objExisting.lstItems.push(objItem);
       objExisting.lstProofs.push(...lstItemProofs);
@@ -291,7 +411,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       dicGroups.set(strKey, objExisting);
     }
     return Array.from(dicGroups.values());
-  }, [lstItems, lstProofs]);
+  }, [lstItems, lstProofs, dicCategoryRuleBySection]);
 
   if (blnLoading || blnRightsLoading) return <BlockingLoader blnOpen strLabel="Loading IT declaration detail..." />;
   if (!objDetail) return <Alert severity="error">{strError || "Declaration not found."}</Alert>;
@@ -385,6 +505,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               </Box>
               <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", lg: "flex-end" }}>
                 <SectionStat strLabel="Declared" strValue={objInrFormatter.format(objGroup.decDeclaredAmount)} />
+                {objGroup.decMaxLimitAmount != null ? <SectionStat strLabel="Max Limit" strValue={objInrFormatter.format(objGroup.decMaxLimitAmount)} /> : null}
                 <SectionStat strLabel="Approved" strValue={objInrFormatter.format(objGroup.decApprovedAmount)} strTone={objGroup.decApprovedAmount > 0 ? "success" : "default"} />
                 <SectionStat strLabel="Pending" strValue={`${Math.max(0, intPendingCount)}`} strTone={intPendingCount > 0 ? "warning" : "default"} />
                 <SectionStat strLabel="Proof Pending" strValue={`${intProofPendingCount}`} strTone={intProofPendingCount > 0 ? "warning" : "default"} />
@@ -395,16 +516,24 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               {objGroup.lstItems.map((objItem, intIndex) => {
                 const intCurrentItemID = objItem.intItemID ?? 0;
                 const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
+                const objItemWithSectionRule = {
+                  ...objItem,
+                  decMaxLimitAmount: objGroup.decMaxLimitAmount ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount,
+                  strMaxLimitAppliedAt: objGroup.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt,
+                  blnProofRequired: dicCategoryRuleBySection.get(String(objItem.strSection || "").trim().toUpperCase())?.blnProofRequired ?? objItem.blnProofRequired,
+                };
                 return (
                   <ITDeclarationItemReviewPanel
                     key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
-                    objItem={objItem}
+                    objItem={objItemWithSectionRule}
                     blnLocked={blnLocked || !blnItemActionsAllowedStatus}
                     blnCanReview={blnCanReview}
                     blnCanApprove={blnCanApprove}
                     blnCanReject={blnCanReject}
                     blnCanProofVerify={blnCanProofVerify}
                     lstProofs={lstItemProofs}
+                    decSectionMaxLimit={objGroup.decMaxLimitAmount}
+                    decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
                     fnPreviewProof={(intProofID) => void previewProof(intProofID)}
                     fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
                     fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}

@@ -40,6 +40,18 @@ function getInvestmentDisplayName(objItem: HrItDeclarationItemRecord) {
   return "Investment / Deduction";
 }
 
+function normalizeMaxLimitAppliedAt(objValue: unknown) {
+  const strValue = String(objValue || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
+}
+
+function parseMaxLimit(objValue: unknown) {
+  if (typeof objValue === "number") return Number.isFinite(objValue) ? objValue : null;
+  const strDigits = String(objValue || "").replace(/[^0-9.]/g, "");
+  const decParsed = Number(strDigits);
+  return Number.isFinite(decParsed) ? decParsed : null;
+}
+
 type Props = {
   objItem: HrItDeclarationItemRecord;
   blnLocked: boolean;
@@ -48,6 +60,8 @@ type Props = {
   blnCanReject: boolean;
   blnCanProofVerify: boolean;
   lstProofs?: HrItDeclarationProofRecord[];
+  decSectionMaxLimit?: number | null;
+  decOtherApprovedAmount?: number;
   fnPreviewProof?: (intProofID: number) => void;
   fnDownloadProof?: (intProofID: number) => void;
   fnAction: (strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) => Promise<void>;
@@ -61,6 +75,8 @@ export default function ITDeclarationItemReviewPanel({
   blnCanReject,
   blnCanProofVerify,
   lstProofs = [],
+  decSectionMaxLimit = null,
+  decOtherApprovedAmount = 0,
   fnPreviewProof,
   fnDownloadProof,
   fnAction,
@@ -88,7 +104,23 @@ export default function ITDeclarationItemReviewPanel({
           : String(lstProofs[0]?.strVerificationStatus || "uploaded")));
   const decDeclaredAmount = Number(objItem.decDeclaredAmount || 0);
   const decApprovedInput = Number(strApprovedAmount || 0);
-  const blnApprovedAmountInvalid = !Number.isFinite(decApprovedInput) || decApprovedInput < 0 || decApprovedInput > decDeclaredAmount;
+  const decConfiguredMaxLimit = decSectionMaxLimit ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount ?? parseMaxLimit(objItem.strMaxLimit);
+  const blnApplyMaxLimitAtApproval = normalizeMaxLimitAppliedAt(objItem.strMaxLimitAppliedAt) === "APPROVAL_LEVEL";
+  const decApprovalAvailableForItem =
+    blnApplyMaxLimitAtApproval && decConfiguredMaxLimit != null
+      ? Math.max(0, Number(decConfiguredMaxLimit) - Math.max(0, Number(decOtherApprovedAmount || 0)))
+      : null;
+  const blnApprovedAmountInvalid =
+    !Number.isFinite(decApprovedInput) ||
+    decApprovedInput < 0 ||
+    decApprovedInput > decDeclaredAmount ||
+    (decApprovalAvailableForItem != null && decApprovedInput > decApprovalAvailableForItem);
+  const strApprovedAmountHelperText =
+    !Number.isFinite(decApprovedInput) || decApprovedInput < 0 || decApprovedInput > decDeclaredAmount
+      ? `Approved amount must be between 0 and ${decDeclaredAmount}.`
+      : decApprovalAvailableForItem != null && decApprovedInput > decApprovalAvailableForItem
+        ? `Section approval cannot exceed ${objInrFormatter.format(decConfiguredMaxLimit || 0)}. Available for this row: ${objInrFormatter.format(decApprovalAvailableForItem)}.`
+        : " ";
   const strDeductionName = getInvestmentDisplayName(objItem);
   const strDescription = String(objItem.strDescription || "").trim();
   const intVerifiedProofCount = lstProofs.filter((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "verified").length;
@@ -99,7 +131,7 @@ export default function ITDeclarationItemReviewPanel({
 
   async function runWithValidation(strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject") {
     if ((strAction === "approve" || strAction === "partial_approve") && blnApprovedAmountInvalid) {
-      setStrError("Approved amount cannot be greater than declared amount.");
+      setStrError(decApprovalAvailableForItem != null && decApprovedInput > decApprovalAvailableForItem ? "Approved amount exceeds the section maximum limit." : "Approved amount cannot be greater than declared amount.");
       return;
     }
     if (strAction === "reject" || strAction === "partial_approve" || strAction === "proof_reject") {
@@ -179,8 +211,8 @@ export default function ITDeclarationItemReviewPanel({
               onChange={(e) => setStrApprovedAmount(e.target.value)}
               disabled={blnDisableApprovalActions}
               error={blnApprovedAmountInvalid}
-              helperText={blnApprovedAmountInvalid ? `Approved amount must be between 0 and ${decDeclaredAmount}.` : " "}
-              inputProps={{ min: 0, max: decDeclaredAmount, step: "0.01" }}
+              helperText={strApprovedAmountHelperText}
+              inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
               sx={{ width: { xs: "100%", sm: 230 } }}
             />
             <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={2} disabled={blnLocked || blnItemFinalized} data-testid="it-declaration.review.remarks.input" />
