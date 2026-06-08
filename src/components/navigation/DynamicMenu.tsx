@@ -433,13 +433,44 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
 }
 
 function getMenuIdentityKey(objItem: MenuItem): string {
-  if (isDirectReportsMenu(objItem)) {
-    return "reports";
-  }
-
   const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
+
+  if (objItem.lstChildren.length > 0) {
+    if (isDirectReportsMenu(objItem) || strRoute.startsWith("/reports/")) {
+      return "group:reports";
+    }
+
+    if (isPayrollContainerMenu(objItem) || strRoute.startsWith("/payroll/")) {
+      return "group:payroll";
+    }
+
+    if (strRoute === "/salary" || strRoute.startsWith("/salary/") || strModuleCode.includes("salary") || strModuleName === "salary") {
+      return "group:salary";
+    }
+
+    if (
+      strRoute === "/masters" ||
+      strRoute === "/master" ||
+      strModuleCode.includes("masters") ||
+      strModuleCode === "master" ||
+      strModuleName === "masters" ||
+      strModuleName === "master"
+    ) {
+      return "group:masters";
+    }
+
+    if (
+      strRoute === "/user-management" ||
+      strModuleCode.includes("user_management") ||
+      strModuleCode.includes("usermanagement") ||
+      strModuleName === "user management"
+    ) {
+      return "group:user-management";
+    }
+  }
+
   return strRoute || strModuleCode || strModuleName;
 }
 
@@ -470,34 +501,65 @@ function mergeUniqueMenuChildren(lstExisting: MenuItem[], lstIncoming: MenuItem[
   return lstMerged;
 }
 
-function collapseDuplicateReportsMenus(lstItems: MenuItem[]): MenuItem[] {
-  let objReportsMenu: MenuItem | null = null;
+function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
   const lstCollapsedItems: MenuItem[] = [];
+  const dicIndexByKey = new Map<string, number>();
 
   lstItems.forEach((objItem) => {
     const objItemWithCollapsedChildren = {
       ...objItem,
-      lstChildren: collapseDuplicateReportsMenus(objItem.lstChildren),
+      lstChildren: collapseDuplicateMenuBranches(objItem.lstChildren),
     };
+    const strKey = getMenuIdentityKey(objItemWithCollapsedChildren);
+    const intExistingIndex = dicIndexByKey.get(strKey);
 
-    if (!isDirectReportsMenu(objItemWithCollapsedChildren)) {
+    if (intExistingIndex === undefined) {
+      dicIndexByKey.set(strKey, lstCollapsedItems.length);
       lstCollapsedItems.push(objItemWithCollapsedChildren);
       return;
     }
 
-    if (!objReportsMenu) {
-      objReportsMenu = objItemWithCollapsedChildren;
-      lstCollapsedItems.push(objReportsMenu);
-      return;
-    }
-
-    objReportsMenu.lstChildren = mergeUniqueMenuChildren(
-      objReportsMenu.lstChildren,
-      objItemWithCollapsedChildren.lstChildren,
-    );
+    const objExisting = lstCollapsedItems[intExistingIndex];
+    lstCollapsedItems[intExistingIndex] = {
+      ...objExisting,
+      lstChildren: mergeUniqueMenuChildren(
+        objExisting.lstChildren,
+        objItemWithCollapsedChildren.lstChildren,
+      ),
+    };
+    lstCollapsedItems[intExistingIndex].lstPermissionCodes = Array.from(new Set([
+      ...objExisting.lstPermissionCodes,
+      ...objItemWithCollapsedChildren.lstPermissionCodes,
+    ]));
   });
 
   return lstCollapsedItems;
+}
+
+function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
+  return collapseDuplicateMenuBranches(
+    removeReportsFromPayrollBranches(
+      appendGeneratedReportsMenu(
+        appendGeneratedFNFMenu(
+          appendGeneratedReimbursementsMenu(
+            appendGeneratedPayslipMenu(
+              promoteDashboardMenu(lstItems),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
+  return [
+    intDepth,
+    resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "",
+    objItem.strModuleCode.trim().toLowerCase(),
+    objItem.strModuleName.trim().toLowerCase(),
+    getMenuIdentityKey(objItem),
+  ].filter(Boolean).join("|");
 }
 
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
@@ -825,7 +887,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     );
   }
 
-  function collectExpandableDefaults(lstItems: MenuItem[]): Record<string, boolean> {
+  function collectExpandableDefaults(lstItems: MenuItem[], intDepth = 0): Record<string, boolean> {
     return Object.fromEntries(
       lstItems.flatMap((objItem) => {
         if (objItem.lstChildren.length === 0) {
@@ -833,34 +895,20 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
         }
 
         return [
-          [objItem.strModuleCode, hasActiveDescendant(objItem)],
-          ...Object.entries(collectExpandableDefaults(objItem.lstChildren)),
+          [getMenuNodeKey(objItem, intDepth), hasActiveDescendant(objItem)],
+          ...Object.entries(collectExpandableDefaults(objItem.lstChildren, intDepth + 1)),
         ];
       }),
     );
   }
 
-  const dicDefaultExpanded = useMemo(
-    () => collectExpandableDefaults(
-      collapseDuplicateReportsMenus(
-        removeReportsFromPayrollBranches(
-          appendGeneratedReportsMenu(
-            appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(promoteDashboardMenu(lstMenuItems)))),
-          ),
-        ),
-      ),
-    ),
-    [lstMenuItems, strPathname],
-  );
   const lstRenderedMenuItems = useMemo(
-    () => collapseDuplicateReportsMenus(
-      removeReportsFromPayrollBranches(
-        appendGeneratedReportsMenu(
-          appendGeneratedFNFMenu(appendGeneratedReimbursementsMenu(appendGeneratedPayslipMenu(promoteDashboardMenu(lstMenuItems)))),
-        ),
-      ),
-    ),
+    () => prepareMenuItems(lstMenuItems),
     [lstMenuItems],
+  );
+  const dicDefaultExpanded = useMemo(
+    () => collectExpandableDefaults(lstRenderedMenuItems),
+    [lstRenderedMenuItems, strPathname],
   );
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
 
@@ -871,10 +919,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     }));
   }, [lstRenderedMenuItems, strPathname]);
 
-  function toggleMenu(strModuleCode: string) {
+  function toggleMenu(strMenuKey: string) {
     setDicExpandedMenus((dicPrevious) => ({
       ...dicPrevious,
-      [strModuleCode]: !dicPrevious[strModuleCode],
+      [strMenuKey]: !dicPrevious[strMenuKey],
     }));
   }
 
@@ -902,20 +950,21 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
     const strRoute = resolveMenuRoute(objItem);
+    const strMenuKey = getMenuNodeKey(objItem, intDepth);
     const blnIsActive = strRoute === strPathname;
     const blnHasChildren = objItem.lstChildren.length > 0;
     const blnHasActiveChild = hasActiveDescendant(objItem);
-    const blnExpanded = dicExpandedMenus[objItem.strModuleCode] ?? blnHasActiveChild;
+    const blnExpanded = dicExpandedMenus[strMenuKey] ?? blnHasActiveChild;
 
     if (blnHasChildren) {
       return (
-        <Fragment key={`${objItem.strModuleCode}-${intDepth}`}>
+        <Fragment key={strMenuKey}>
           <ListItemButton
             data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
             data-menu-code={objItem.strModuleCode}
             data-menu-label={resolveMenuLabel(objItem)}
             data-menu-route={strRoute ?? ""}
-            onClick={() => toggleMenu(objItem.strModuleCode)}
+            onClick={() => toggleMenu(strMenuKey)}
             sx={getButtonStyles(blnHasActiveChild, intDepth)}
           >
             <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
@@ -945,7 +994,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     return (
       <ListItemButton
-        key={strRoute ?? objItem.strModuleCode}
+        key={strMenuKey}
         data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
         data-menu-code={objItem.strModuleCode}
         data-menu-label={resolveMenuLabel(objItem)}

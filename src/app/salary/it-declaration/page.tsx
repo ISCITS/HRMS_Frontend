@@ -278,14 +278,23 @@ function dedupeDeclarationRows(lstInputRows: DeclarationRow[]) {
   return Array.from(dicByCompositeKey.values());
 }
 
+// Normalize section codes so "SEC_80CCD_1B" and "80CCD(1B)" are treated as the same section.
+// Strips optional "SEC_" prefix then removes all non-alphanumeric characters.
+function normalizeSectionKey(strSection: string) {
+  return strSection.trim().toUpperCase().replace(/^SEC_/, "").replace(/[^A-Z0-9]/g, "");
+}
+
 function mergeSectionRules(lstBaseRows: DeclarationRow[], lstRuleRows: DeclarationRow[]) {
   if (lstRuleRows.length === 0) return lstBaseRows;
   const dicRuleBySection = new Map<string, DeclarationRow>();
   for (const objRuleRow of lstRuleRows) {
     dicRuleBySection.set(objRuleRow.strSection.trim().toUpperCase(), objRuleRow);
+    dicRuleBySection.set(normalizeSectionKey(objRuleRow.strSection), objRuleRow);
   }
   return lstBaseRows.map((objRow) => {
-    const objRule = dicRuleBySection.get(objRow.strSection.trim().toUpperCase());
+    const objRule =
+      dicRuleBySection.get(objRow.strSection.trim().toUpperCase()) ??
+      dicRuleBySection.get(normalizeSectionKey(objRow.strSection));
     if (!objRule) return { ...objRow, strStatus: resolveRowStatus(objRow) };
     const decConfigured = objRule.decMaxEligibleAmount ?? parseMaxLimit(objRule.strMaxLimitDisplay);
     const objMerged: DeclarationRow = {
@@ -303,17 +312,23 @@ function mergeSectionRules(lstBaseRows: DeclarationRow[], lstRuleRows: Declarati
 
 function applyActiveMasterRules(lstBaseRows: DeclarationRow[], lstMasterRows: DeclarationRow[]) {
   if (lstMasterRows.length === 0) return lstBaseRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) }));
-  const setBaseSections = new Set<string>();
+  const setBaseNormalized = new Set<string>();
   const lstVisibleRows = mergeSectionRules(
     lstBaseRows.filter((objRow) => {
-      const strSection = objRow.strSection.trim().toUpperCase();
-      const blnVisible = lstMasterRows.some((objRuleRow) => objRuleRow.strSection.trim().toUpperCase() === strSection);
-      if (blnVisible) setBaseSections.add(strSection);
+      const strNorm = normalizeSectionKey(objRow.strSection);
+      const blnVisible = lstMasterRows.some(
+        (objRuleRow) =>
+          objRuleRow.strSection.trim().toUpperCase() === objRow.strSection.trim().toUpperCase() ||
+          normalizeSectionKey(objRuleRow.strSection) === strNorm
+      );
+      if (blnVisible) setBaseNormalized.add(strNorm);
       return blnVisible;
     }),
     lstMasterRows
   );
-  const lstMissingMasterRows = lstMasterRows.filter((objRuleRow) => !setBaseSections.has(objRuleRow.strSection.trim().toUpperCase()));
+  const lstMissingMasterRows = lstMasterRows.filter(
+    (objRuleRow) => !setBaseNormalized.has(normalizeSectionKey(objRuleRow.strSection))
+  );
   return dedupeDeclarationRows([...lstVisibleRows, ...lstMissingMasterRows]).map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) }));
 }
 
@@ -643,7 +658,7 @@ export default function SalaryEssDeclarationsPage() {
       if (!objEntry.strAmountInput.trim()) return "Declared amount is required for all rows.";
       if (!Number.isFinite(decAmount) || decAmount < 0) return "All row amounts must be valid positive values.";
       if (decAmount <= 0) return "Declared amount must be greater than zero for all rows.";
-      if (decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+      if (blnApplyMaxLimitAtEntry && decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
       if (objEditRow.blnProofRequired && decAmount > 0 && !objEntry.objProof && !objEntry.objProofFileInput) {
         return "Proof upload is required for this section.";
       }
@@ -654,6 +669,14 @@ export default function SalaryEssDeclarationsPage() {
     return "";
   }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit, blnApplyMaxLimitAtEntry]);
   const blnSaveEditDisabled = Boolean(strSectionEditError);
+  const strSectionEditWarning = useMemo(() => {
+    if (!objEditRow || blnApplyMaxLimitAtEntry) return "";
+    for (const objEntry of lstSectionEditEntries) {
+      const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
+      if (decAmount > decAmountMaxInput) return `Amount ${formatCurrency(decAmount)} exceeds ${formatCurrency(decAmountMaxInput)}. Limit is enforced at approval — please ensure the value is correct.`;
+    }
+    return "";
+  }, [objEditRow, lstSectionEditEntries, blnApplyMaxLimitAtEntry]);
 
   function hydrateFromApi(objData: ItDeclarationDto) {
     const blnSummaryFallback = Boolean(objData.objSummary?.blnSummaryFallback);
@@ -725,7 +748,7 @@ export default function SalaryEssDeclarationsPage() {
     const strCategory = formatDeclarationKind(objCategory.strDeclarationKind ?? objCategoryRecord.strKind ?? objCategoryRecord.declaration_kind);
     return {
       intItemID: null,
-      strSection: objCategory.strCategoryCode,
+      strSection: (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
       strCategory,
       strDescription,
       strMaxLimitDisplay,
@@ -1224,10 +1247,7 @@ export default function SalaryEssDeclarationsPage() {
                       Copy Previous FY
                     </Button>
                   ) : null}
-                  <Button data-testid="salary.it-declaration.compare-tax.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || blnSaving || !blnDraftLikeActionsAllowed} onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0369a1", color: "#ffffff", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 0 0 1px rgba(3,105,161,0.18)", "&:hover": { backgroundColor: "#075985" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
-                    {blnSaving && strSavingLabel.includes("comparing") ? "Comparing..." : "Compare Tax"}
-                  </Button>
-                  <Button data-testid="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+<Button data-testid="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     Submit Declaration
                   </Button>
                 </>
@@ -1568,12 +1588,9 @@ export default function SalaryEssDeclarationsPage() {
                 </Paper>
               ))}
             </Stack>
-            {strSectionEditError ? (
-              <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700 }}>{strSectionEditError}</Typography>
-            ) : null}
             {decActiveMaxLimit != null ? (
-              <Typography sx={{ color: "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
-                Max allowed under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
+              <Typography sx={{ color: blnApplyMaxLimitAtEntry && decSectionEditTotal > decActiveMaxLimit ? "#b91c1c" : "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
+                Max allowed{!blnApplyMaxLimitAtEntry ? " (checked at approval, not enforced here)" : ""} under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
               </Typography>
             ) : null}
             <Typography sx={{ color: objEditRow?.blnProofRequired ? "#b45309" : "#64748b", fontSize: "0.74rem", mt: -0.35, fontWeight: 700 }}>
@@ -1582,6 +1599,12 @@ export default function SalaryEssDeclarationsPage() {
             <Typography sx={{ color: "#b45309", fontSize: "0.72rem", mt: -0.15, lineHeight: 1.2, fontWeight: 600 }}>
               Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.
             </Typography>
+            {strSectionEditError && strSectionEditError !== "Investment name is required for all rows." && strSectionEditError !== "Declared amount is required for all rows." ? (
+              <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700, mt: 0.2 }}>{strSectionEditError}</Typography>
+            ) : null}
+            {strSectionEditWarning ? (
+              <Typography sx={{ fontSize: "0.73rem", color: "#b45309", fontWeight: 700, mt: 0.2 }}>{strSectionEditWarning}</Typography>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
