@@ -2,6 +2,7 @@
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
 
 export type PayrollReimbursementFilters = {
@@ -205,6 +206,16 @@ export const payrollReimbursementService = {
       strMenuAction: "PAYROLL_REIMBURSEMENT_PROOF_VERIFY",
     });
     return objResult.Data;
+  },
+
+  async previewProof(intClaimID: number, intProofID: number): Promise<Blob> {
+    const objResponse = await axiosInstance.request<Blob>({
+      method: ApiRequestMethod.Get,
+      url: `${ApiRoutePrefix.ApiV1}/payroll/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+      responseType: "blob",
+      csrfMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
+    } as ApiRequestConfig);
+    return objResponse.data;
   },
 
   async listAudit(intClaimID: number): Promise<ReimbursementAuditRecord[]> {

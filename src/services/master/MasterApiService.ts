@@ -470,6 +470,9 @@ export type SalaryComponentApiRecord = {
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
   intDisplayOrder: number;
+  blnIsReimbursement?: boolean;
+  decReimbursementMaxClaimMonthlyLimit?: number | null;
+  decReimbursementMaxClaimYearlyLimit?: number | null;
   blnIsEmployerContribution: boolean;
   blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;

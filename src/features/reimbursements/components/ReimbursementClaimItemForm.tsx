@@ -60,9 +60,10 @@ function formatFileSize(intBytes?: number | null) {
   return `${(intBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function openPreviewInNewTab(strMimeType: string, strBase64Content: string) {
-  const strUrl = `data:${strMimeType || "application/octet-stream"};base64,${strBase64Content}`;
+function openBlobInNewTab(objBlob: Blob) {
+  const strUrl = URL.createObjectURL(objBlob);
   window.open(strUrl, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
 }
 
 function openLocalFileInNewTab(objFile: File) {
@@ -130,12 +131,12 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
         strEmployeeRemarks: objForm.strEmployeeRemarks.trim() || null,
       },
       objItem?.intID,
-      blnSelectedComponentProofRequired ? objProofFile : null
+      objProofFile
     );
   }
 
   async function viewProof(objProof: ReimbursementProofDto) {
-    if (!intClaimID || !objItem?.intID) {
+    if (!intClaimID) {
       setStrProofError("Save the claim item before viewing proof.");
       return;
     }
@@ -143,8 +144,10 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
     setIntPreviewingProofID(objProof.intID);
     setStrProofError("");
     try {
-      const objPreview = await reimbursementService.previewProof(intClaimID, objItem.intID, objProof.intID);
-      openPreviewInNewTab(objPreview.strMimeType, objPreview.strBase64Content);
+      const objPreview = objItem?.intID
+        ? await reimbursementService.previewProof(intClaimID, objItem.intID, objProof.intID)
+        : await reimbursementService.previewProofByID(intClaimID, objProof.intID);
+      openBlobInNewTab(objPreview);
     } catch (objError) {
       setStrProofError(objError instanceof Error ? objError.message : "Unable to open proof file.");
     } finally {
@@ -257,7 +260,7 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
             ) : null}
             <Button data-testid="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
               Upload Proof
-              <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
+              <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
             </Button>
           </Stack>
         ) : null}

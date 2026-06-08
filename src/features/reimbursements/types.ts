@@ -50,14 +50,6 @@ export type ReimbursementProofDto = {
   strVerificationRemarks?: string | null;
 };
 
-export type ReimbursementProofPreviewDto = {
-  intProofID: number;
-  strFileName: string;
-  strMimeType: string;
-  strBase64Content: string;
-  intFileSizeBytes: number;
-};
-
 export type ReimbursementClaimItemDto = {
   intID: number;
   intSalaryComponentID?: number | null;

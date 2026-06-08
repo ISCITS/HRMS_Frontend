@@ -1,13 +1,15 @@
 "use client";
 
+import axios from "axios";
+
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { ApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   ReimbursementClaimDto,
   ReimbursementClaimItemRequest,
   ReimbursementClaimRequest,
   ReimbursementOptionsDto,
-  ReimbursementProofPreviewDto,
 } from "@/features/reimbursements/types";
 
 async function requestApi<TData>(objOptions: {
@@ -106,13 +108,17 @@ export const reimbursementService = {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     objFormData.append("strDocumentType", "reimbursement_proof");
-    const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs`,
-      strMethod: ApiRequestMethod.Post,
-      objBody: objFormData,
-      strMenuAction: "ESS_REIMBURSEMENT_UPLOAD_PROOF",
-    });
-    return objResult.Data;
+    try {
+      const objResponse = await axiosInstance.request<ReimbursementClaimDto | { Data: ReimbursementClaimDto }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs`,
+        data: objFormData,
+        csrfMenuAction: "ESS_REIMBURSEMENT_UPLOAD_PROOF",
+      } as ApiRequestConfig);
+      return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
+    } catch (objError) {
+      throw await createApiRequestError<ReimbursementClaimDto>(objError);
+    }
   },
 
   async deleteProof(intClaimID: number, intItemID: number, intProofID: number): Promise<ReimbursementClaimDto> {
@@ -124,25 +130,37 @@ export const reimbursementService = {
     return objResult.Data;
   },
 
-  async previewProof(intClaimID: number, intItemID: number, intProofID: number): Promise<ReimbursementProofPreviewDto> {
-    let objResult;
+  async previewProof(intClaimID: number, intItemID: number, intProofID: number): Promise<Blob> {
     try {
-      objResult = await requestApi<ReimbursementProofPreviewDto>({
-        strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}/preview`,
-        strMethod: ApiRequestMethod.Get,
-        strMenuAction: "ESS_REIMBURSEMENT_VIEW",
-      });
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}/preview`,
+        responseType: "blob",
+        csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      } as ApiRequestConfig);
+      return objResponse.data;
     } catch (objError) {
-      if (!(objError instanceof ApiRequestError) || objError.intStatusCode !== 404) {
+      if (!axios.isAxiosError(objError) || objError.response?.status !== 404) {
         throw objError;
       }
-      objResult = await requestApi<ReimbursementProofPreviewDto>({
-        strPath: `/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
-        strMethod: ApiRequestMethod.Get,
-        strMenuAction: "ESS_REIMBURSEMENT_VIEW",
-      });
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+        responseType: "blob",
+        csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      } as ApiRequestConfig);
+      return objResponse.data;
     }
-    return objResult.Data;
+  },
+
+  async previewProofByID(intClaimID: number, intProofID: number): Promise<Blob> {
+    const objResponse = await axiosInstance.request<Blob>({
+      method: ApiRequestMethod.Get,
+      url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+      responseType: "blob",
+      csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+    } as ApiRequestConfig);
+    return objResponse.data;
   },
 
   async submitClaim(intClaimID: number): Promise<ReimbursementClaimDto> {

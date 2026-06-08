@@ -17,6 +17,9 @@ export type SalaryComponentListRecord = {
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
   intDisplayOrder: number;
+  blnIsReimbursement: boolean;
+  decReimbursementMaxClaimMonthlyLimit: number | null;
+  decReimbursementMaxClaimYearlyLimit: number | null;
   blnIsEmployerContribution: boolean;
   blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
@@ -60,6 +63,8 @@ export type SalaryComponentFormValues = {
   blnIncludeInPayslip: boolean;
   strPayslipSection: string;
   strDisplayOrder: string;
+  strReimbursementMaxClaimMonthlyLimit: string;
+  strReimbursementMaxClaimYearlyLimit: string;
   blnIsEmployerContribution: boolean;
   blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
