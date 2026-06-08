@@ -22,7 +22,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { usePayrollCycleLabels } from "@/features/payroll-cycles/hooks/usePayrollCycleLabels";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { payrollCycleService } from "@/features/payroll-cycles/services/payrollCycleService";
 import type { PayrollCycleListRecord } from "@/features/payroll-cycles/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -48,7 +48,7 @@ function formatCutoffDay(intCutoffDay: number | null) {
 
 export default function PayrollCycleListPage() {
   const objRouter = useRouter();
-  const { t } = usePayrollCycleLabels();
+  const { t } = useModuleLabels("payroll-cycles");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstPayrollCycleModuleCodes);
   const [lstCycles, setLstCycles] = useState<PayrollCycleListRecord[]>([]);
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -67,7 +67,7 @@ export default function PayrollCycleListPage() {
     try {
       setLstCycles(await payrollCycleService.getPayrollCycles());
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to load payroll cycles.", "error");
+      showToast(objError instanceof Error ? objError.message : t("schedule_load_list_failed"), "error");
     } finally {
       setBlnLoading(false);
     }
@@ -123,7 +123,7 @@ export default function PayrollCycleListPage() {
         strCutoffDay: formatCutoffDay(dicRow.intCutoffDay),
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-            {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
+            {dicRow.blnIsActive ? t("active") : t("inactive")}
           </span>
         ),
       })),
@@ -132,13 +132,13 @@ export default function PayrollCycleListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strCycleCode", headerName: t("cycle_code", "Cycle Code") },
-      { field: "strCycleName", headerName: t("cycle_name", "Cycle Name") },
-      { field: "strPayrollGroup", headerName: t("payroll_group", "Payroll Group"), sortable: false, filterable: false, width: 220 },
-      { field: "strPeriodType", headerName: t("period_type", "Period Type") },
-      { field: "strCutoffDay", headerName: t("cutoff_day", "Cutoff Day") },
-      { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
+      { field: "action", headerName: t("actions"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strCycleCode", headerName: t("cycle_code") },
+      { field: "strCycleName", headerName: t("cycle_name") },
+      { field: "strPayrollGroup", headerName: t("payroll_group"), sortable: false, filterable: false, width: 220 },
+      { field: "strPeriodType", headerName: t("period_type") },
+      { field: "strCutoffDay", headerName: t("cutoff_day") },
+      { field: "blnIsActive", headerName: t("status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]
   );
@@ -156,7 +156,7 @@ export default function PayrollCycleListPage() {
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
           <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("loading_payroll_cycles", "Loading payroll cycles...")}</Typography>
+          <Typography sx={{ color: "#64748b" }}>{t("schedule_loading_list")}</Typography>
         </Stack>
       </Box>
     );
@@ -166,10 +166,10 @@ export default function PayrollCycleListPage() {
     return (
       <Box className={styles.emptyState}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-          {t("access_denied", "Payroll cycle access is not available for your user group.")}
+          {t("schedule_access_denied")}
         </Typography>
         <Typography sx={{ mt: 1, color: "#64748b" }}>
-          {t("access_denied_help", "Contact your administrator if you need payroll cycle visibility.")}
+          {t("schedule_access_denied_help")}
         </Typography>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
       </Box>
@@ -180,22 +180,22 @@ export default function PayrollCycleListPage() {
     <Box className={styles.page}>
       <Box className={styles.topBar}>
         <Button data-testid="payroll-cycles.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
-          {t("back_button", "Back")}
+          {t("back_button")}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
-          <TextField data-testid="payroll-cycles.list.cycle-code.input" inputProps={{ "data-testid": "payroll-cycles.list.cycle-code.input" }} label={t("cycle_code", "Cycle Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField inputProps={{ "data-testid": "payroll-cycles.list.cycle-name.input" }} label={t("cycle_name", "Cycle Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField data-testid="payroll-cycles.list.search-status.select" inputProps={{ "data-testid": "payroll-cycles.list.search-status.select" }} select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
-            <MenuItem data-testid="payroll-cycles.list.search-status.all.option" value="All">{t("all", "All")}</MenuItem>
-            <MenuItem data-testid="payroll-cycles.list.search-status.active.option" value="Active">{t("active", "Active")}</MenuItem>
-            <MenuItem data-testid="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive", "Inactive")}</MenuItem>
+          <TextField data-testid="payroll-cycles.list.cycle-code.input" inputProps={{ "data-testid": "payroll-cycles.list.cycle-code.input" }} label={t("cycle_code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
+          <TextField inputProps={{ "data-testid": "payroll-cycles.list.cycle-name.input" }} label={t("cycle_name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
+          <TextField data-testid="payroll-cycles.list.search-status.select" inputProps={{ "data-testid": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+            <MenuItem data-testid="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
+            <MenuItem data-testid="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
+            <MenuItem data-testid="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button data-testid="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
-              {t("search", "Search")}
+              {t("search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
@@ -207,16 +207,16 @@ export default function PayrollCycleListPage() {
                 setDicSearchApplied(dicEmptySearch);
               }}
             >
-              {t("clear", "Clear")}
+              {t("clear")}
             </Button>
           </Box>
         </Box>
       </Box>
 
-      {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Payroll Cycles.")}</Alert> : null}
+      {blnReadOnly ? <Alert severity="info">{t("schedule_read_only_mode")}</Alert> : null}
 
       <Box className={styles.tableCard}>
-        <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing payroll cycle request...")} />
+        <BlockingLoader blnOpen={blnSubmitting} strLabel={t("schedule_processing")} />
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
@@ -227,10 +227,10 @@ export default function PayrollCycleListPage() {
           showExportOptions={blnCanExport}
           testIdPrefix="payroll-cycles.list"
           showPaginationSummary
-          emptyMessage={t("no_records", "No payroll cycles found.")}
+          emptyMessage={t("schedule_no_records")}
           toolbarLeft={blnCanAdd ? (
             <Button data-testid="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/cycles/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-              {t("add_payroll_cycle", "Add Payroll Cycle")}
+              {t("schedule_add_button")}
             </Button>
           ) : undefined}
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}

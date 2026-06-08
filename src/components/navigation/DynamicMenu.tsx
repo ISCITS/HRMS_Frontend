@@ -761,12 +761,20 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return "IT Declaration";
     }
 
-    if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/runs")) {
+    if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
       return preferResolvedLabel(
         tPayrollCycles(
-          "page_title",
-          getLastBreadcrumbSegment(tPayrollCycles("breadcrumbs", "Payroll / Payroll Runs"))
+          "schedule_page_title",
+          strModuleName || "Payroll Schedules"
         ),
+        strModuleName,
+        "Payroll Schedules"
+      );
+    }
+
+    if (strRoute.includes("/payroll/runs")) {
+      return preferResolvedLabel(
+        strModuleName,
         strModuleName,
         "Payroll Runs"
       );

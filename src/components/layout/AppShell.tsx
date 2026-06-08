@@ -46,6 +46,7 @@ const strLanguageSwitchTokenKey = "hrms_language_switch_token";
 const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
 const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
+const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
 
 function getPageTitle(strPathname: string) {
@@ -137,6 +138,16 @@ function getLocalizedHeaderTitle(
         getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payroll Runs"))
       )
     );
+  }
+
+  if (strHeaderModuleName === "payroll-cycles") {
+    if (strLowerPath.endsWith("/add")) {
+      return tHeader("schedule_add_title", "Add Payroll Schedule");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("schedule_edit_title", "Edit Payroll Schedule");
+    }
+    return stripMasterTitle(tHeader("schedule_page_title", "Payroll Schedules"));
   }
 
   if (strHeaderModuleName === "payslips") {
@@ -454,6 +465,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }, [objRouter]);
 
   useEffect(() => {
+    function handleAvatarRefresh() {
+      loadWorkspaceContext(authHelpers.getLanguageID()).catch(() => undefined);
+    }
+
+    window.addEventListener(strAvatarRefreshEventName, handleAvatarRefresh);
+    return () => {
+      window.removeEventListener(strAvatarRefreshEventName, handleAvatarRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
     let blnMounted = true;
     const intEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
     const strHeaderName = extractLinkedEmployeeName(objUserContext);
@@ -551,6 +573,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
+  const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
   const strPageTitle = getLocalizedHeaderTitle(
     strPathname,
     strHeaderModuleName,
@@ -940,7 +963,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 backgroundColor: "rgba(248,250,252,0.92)"
               }}
             >
-              <Avatar sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+              <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
                 {strAvatarText}
               </Avatar>
             </IconButton>

@@ -72,6 +72,13 @@ export type UserSummary = {
   lstRoles: string[];
 };
 
+export type EmployeeAvatarSummary = {
+  intEmployeeID: number;
+  strEmployeeCode?: string | null;
+  strFullName?: string | null;
+  strProfilePhotoUrl?: string | null;
+};
+
 export type AuthSuccessData = {
   objToken: TokenPayload;
   objTenant: TenantSummary;
@@ -142,9 +149,11 @@ export type SsoMfaBackupCodeVerifyRequest = {
 export type CurrentUserContext = {
   objTenant: TenantSummary;
   objUser: UserSummary;
+  objEmployee?: EmployeeAvatarSummary | null;
   dtLastSeenOn: string | null;
   strAuthSource: string;
   strLoginMethod: string;
+  strAvatarUrl?: string | null;
 };
 
 export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";

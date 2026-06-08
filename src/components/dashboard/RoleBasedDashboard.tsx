@@ -30,7 +30,7 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
-import { Box, Chip, Grid, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Chip, Grid, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
 
@@ -984,7 +984,7 @@ function ensureWidget(
   };
 }
 
-function EssDashboard({ objDashboard, t }: RoleBasedDashboardProps) {
+function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardProps) {
   const ESS_COLORS = {
     navy: "#0F1F3D",
     teal: "#0E9FA8",
@@ -1024,6 +1024,7 @@ function EssDashboard({ objDashboard, t }: RoleBasedDashboardProps) {
   const lstPayslips = (((objPayslipWidget?.objPayload as { lstRows?: EssPayslipRow[] } | undefined)?.lstRows) || []) as EssPayslipRow[];
   const lstQuickActions = (((objQuickActionsWidget?.objPayload as { lstActions?: DashboardQuickAction[] } | undefined)?.lstActions) || []) as DashboardQuickAction[];
   const strEmployeeName = String(objWelcome.strEmployeeName || "Employee");
+  const strAvatarUrl = objUserContext.strAvatarUrl || objUserContext.objEmployee?.strProfilePhotoUrl || "";
   const strJoinedOn = objWelcome.strJoinedOn ? formatDateLabel(String(objWelcome.strJoinedOn)) : "Not available";
   const strDesignation = String(objWelcome.strDesignationName || "Employee");
   const strDepartment = String(objWelcome.strDepartmentName || "Department");
@@ -1092,9 +1093,12 @@ function EssDashboard({ objDashboard, t }: RoleBasedDashboardProps) {
               }}
             />
             <Stack direction="row" spacing={1.8} alignItems="center" sx={{ position: "relative", zIndex: 1 }}>
-              <Box sx={{ width: 86, height: 86, borderRadius: "50%", background: "#ffffff", color: ESS_COLORS.teal, border: "1px solid rgba(255,255,255,0.9)", display: "grid", placeItems: "center", fontWeight: 800, fontSize: "1.42rem", boxShadow: "0 8px 20px rgba(37,99,235,0.08)", flexShrink: 0 }}>
+              <Avatar
+                src={strAvatarUrl || undefined}
+                sx={{ width: 86, height: 86, background: "#ffffff", color: ESS_COLORS.teal, border: "1px solid rgba(255,255,255,0.9)", fontWeight: 800, fontSize: "1.42rem", boxShadow: "0 8px 20px rgba(37,99,235,0.08)", flexShrink: 0 }}
+              >
                 {getInitials(strEmployeeName)}
-              </Box>
+              </Avatar>
               <Box>
                 <Typography sx={{ fontSize: "0.84rem", color: ESS_COLORS.body }}>Welcome back,</Typography>
                 <Typography sx={{ mt: 0.35, fontSize: { xs: "1.7rem", md: "1.95rem" }, lineHeight: 1.1, fontWeight: 800, color: ESS_COLORS.navy }}>
