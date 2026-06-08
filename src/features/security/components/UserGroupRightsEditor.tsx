@@ -50,7 +50,10 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
   if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
     return "IT Declaration";
   }
-  if (strRoute.includes("/payroll/runs") || strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
+  if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
+    return strMenuName || "Payroll Schedules";
+  }
+  if (strRoute.includes("/payroll/runs")) {
     return "Payroll Runs";
   }
   if (
