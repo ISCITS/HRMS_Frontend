@@ -262,12 +262,9 @@ export default function SalaryEssDeclarationsPage() {
       approved: formatCurrency(objRow.decApprovedAmount),
       lastUpdated: formatDateLabel(objRow.strLastUpdated),
       action: (
-        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
           <Button data-testid="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
             {canEditDeclarationByStatus(objRow.strStatus) ? "Continue" : "View"}
-          </Button>
-          <Button data-testid="salary.ess-declarations.row.compare-tax.button" data-row-key={objRow.intDeclarationID} size="small" variant="text" onClick={() => void openCompare(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            Compare Tax
           </Button>
         </Stack>
       ),
@@ -275,7 +272,7 @@ export default function SalaryEssDeclarationsPage() {
   }, [lstFilteredRows, strBusyKey]);
 
   const lstColumns: CommonTableColumn<(typeof lstGridRows)[number]>[] = [
-    { field: "action", headerName: "Action", width: 240, sortable: false, exportable: false, align: "center" },
+    { field: "action", headerName: "Action", width: 120, sortable: false, exportable: false, align: "center" },
     { field: "fy", headerName: "FY", width: 160 },
     { field: "regime", headerName: "Regime", width: 180 },
     { field: "status", headerName: "Status", width: 140, sortable: false },

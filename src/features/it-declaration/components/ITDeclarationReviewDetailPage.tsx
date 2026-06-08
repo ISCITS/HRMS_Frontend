@@ -1,7 +1,12 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -13,11 +18,174 @@ import {
   hrItDeclarationReviewService,
   type HrItDeclarationAuditRecord,
   type HrItDeclarationDetailRecord,
+  type HrItDeclarationItemRecord,
+  type HrItDeclarationProofRecord,
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { masterApiService, type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type Props = { intDeclarationID: number };
 type ConfirmAction = "approve_all" | "reject" | "release" | "lock" | null;
+type DeclarationSectionGroup = {
+  strSection: string;
+  strDescription: string;
+  lstItems: HrItDeclarationItemRecord[];
+  lstProofs: HrItDeclarationProofRecord[];
+  decMaxLimitAmount: number | null;
+  strMaxLimitAppliedAt: string;
+  decDeclaredAmount: number;
+  decApprovedAmount: number;
+};
+
+type CategoryRule = {
+  strSection: string;
+  decMaxLimitAmount: number | null;
+  strMaxLimitAppliedAt: string;
+  blnProofRequired: boolean;
+};
+
+const objInrFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+function normalizeReviewStatus(strStatus?: string | null) {
+  return String(strStatus || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function parseMaxLimit(objValue: unknown) {
+  if (typeof objValue === "number") return Number.isFinite(objValue) ? objValue : null;
+  const strDigits = String(objValue || "").replace(/[^0-9.]/g, "");
+  const decParsed = Number(strDigits);
+  return Number.isFinite(decParsed) ? decParsed : null;
+}
+
+function resolveMaxLimitAmount(objRecord: Record<string, unknown>) {
+  return parseMaxLimit(
+    objRecord.decMaxLimitAmount ??
+    objRecord.decMaxLimit ??
+    objRecord.strMaxLimitAmount ??
+    objRecord.maxLimitAmount ??
+    objRecord.max_limit_amount ??
+    objRecord.maximum_limit_amount ??
+    objRecord.max_limit ??
+    objRecord.strMaxLimit
+  );
+}
+
+function getItemMaxLimit(objItem: HrItDeclarationItemRecord) {
+  return objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount ?? parseMaxLimit(objItem.strMaxLimit);
+}
+
+function normalizeMaxLimitAppliedAt(objValue: unknown) {
+  const strValue = String(objValue || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
+}
+
+function resolveBooleanFlag(objValue: unknown, blnDefault = false) {
+  if (typeof objValue === "boolean") return objValue;
+  if (typeof objValue === "number") return objValue !== 0;
+  if (typeof objValue === "string") {
+    const strValue = objValue.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "active"].includes(strValue)) return true;
+    if (["false", "0", "no", "n", "inactive"].includes(strValue)) return false;
+  }
+  return blnDefault;
+}
+
+function resolveCategoryRows(objData: unknown) {
+  if (Array.isArray(objData)) return objData;
+  if (!objData || typeof objData !== "object") return [];
+  const objValue = objData as Record<string, unknown>;
+  for (const strKey of ["lstCategories", "lstRecords", "items", "rows", "records", "results", "data", "Data"]) {
+    if (Array.isArray(objValue[strKey])) return objValue[strKey];
+  }
+  return [];
+}
+
+function mapCategoryRule(objCategory: EssDeclarationCategoryApiRecord): CategoryRule {
+  const objCategoryRecord = objCategory as unknown as Record<string, unknown>;
+  const strSection = String(objCategory.strCategoryCode ?? objCategoryRecord.strCode ?? objCategoryRecord.category_code ?? "").trim().toUpperCase();
+  const decMaxLimitAmount = resolveMaxLimitAmount(objCategoryRecord);
+  return {
+    strSection,
+    decMaxLimitAmount,
+    strMaxLimitAppliedAt: normalizeMaxLimitAppliedAt(objCategory.strMaxLimitAppliedAt ?? objCategoryRecord.strMaximumLimitAppliedAt ?? objCategoryRecord.max_limit_applied_at ?? objCategoryRecord.maximum_limit_applied_at),
+    blnProofRequired: resolveBooleanFlag(objCategory.blnProofRequired ?? objCategoryRecord.blnIsProofRequired ?? objCategoryRecord.proof_required),
+  };
+}
+
+function countItemsByStatus(lstItems: HrItDeclarationItemRecord[], lstStatuses: string[]) {
+  const setStatuses = new Set(lstStatuses);
+  return lstItems.filter((objItem) => setStatuses.has(normalizeReviewStatus(objItem.strItemStatus))).length;
+}
+
+function SectionStat({ strLabel, strValue, strTone = "default" }: { strLabel: string; strValue: string; strTone?: "default" | "success" | "warning" | "danger" }) {
+  const dicTone = {
+    default: { backgroundColor: "#ffffff", borderColor: "#e2e8f0", color: "#0f172a" },
+    success: { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534" },
+    warning: { backgroundColor: "#fff7ed", borderColor: "#fed7aa", color: "#9a3412" },
+    danger: { backgroundColor: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" },
+  }[strTone];
+  return (
+    <Box sx={{ minWidth: 94, px: 1, py: 0.65, borderRadius: "8px", border: `1px solid ${dicTone.borderColor}`, backgroundColor: dicTone.backgroundColor }}>
+      <Typography sx={{ color: "#64748b", fontSize: "0.68rem", fontWeight: 800 }}>{strLabel}</Typography>
+      <Typography sx={{ color: dicTone.color, fontSize: "0.9rem", fontWeight: 900 }}>{strValue}</Typography>
+    </Box>
+  );
+}
+
+function SummaryMetric({ strLabel, strValue, objIcon }: { strLabel: string; strValue: string; objIcon: ReactNode }) {
+  return (
+    <Paper sx={{ p: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Stack sx={{ width: 34, height: 34, borderRadius: "8px", backgroundColor: "#eff6ff", color: "#1d4ed8" }} alignItems="center" justifyContent="center">
+          {objIcon}
+        </Stack>
+        <Stack>
+          <Typography sx={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700 }}>{strLabel}</Typography>
+          <Typography sx={{ fontSize: "0.98rem", color: "#0f172a", fontWeight: 800 }}>{strValue}</Typography>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function formatDetailValue(objValue: unknown) {
+  if (objValue == null || objValue === "") return "-";
+  if (typeof objValue === "number") return Number.isFinite(objValue) ? objInrFormatter.format(objValue) : "-";
+  if (typeof objValue === "boolean") return objValue ? "Yes" : "No";
+  if (typeof objValue === "object") return JSON.stringify(objValue);
+  return String(objValue);
+}
+
+function formatDetailLabel(strKey: string) {
+  return strKey
+    .replace(/^str|^int|^dec|^bln|^dt/, "")
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function DeclarationDetailPanel({ strTitle, objDetails }: { strTitle: string; objDetails: Record<string, unknown> }) {
+  const lstEntries = Object.entries(objDetails).filter(([, objValue]) => objValue != null && objValue !== "");
+  if (!lstEntries.length) return null;
+  return (
+    <Paper sx={{ px: 1, py: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
+      <Typography sx={{ fontWeight: 900, color: "#0f172a", mb: 1 }}>{strTitle}</Typography>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1 }}>
+        {lstEntries.map(([strKey, objValue]) => (
+          <Box key={strKey} sx={{ px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 800 }}>{formatDetailLabel(strKey)}</Typography>
+            <Typography sx={{ color: "#0f172a", fontSize: "0.88rem", fontWeight: 800, overflowWrap: "anywhere" }}>{formatDetailValue(objValue)}</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Paper>
+  );
+}
 
 export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Props) {
   const objRouter = useRouter();
@@ -27,6 +195,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   ]);
   const [objDetail, setObjDetail] = useState<HrItDeclarationDetailRecord | null>(null);
   const [lstAudit, setLstAudit] = useState<HrItDeclarationAuditRecord[]>([]);
+  const [lstCategoryRules, setLstCategoryRules] = useState<CategoryRule[] | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [strToast, setStrToast] = useState("");
@@ -34,8 +203,6 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   const [strDialogError, setStrDialogError] = useState("");
   const [strConfirm, setStrConfirm] = useState<ConfirmAction>(null);
   const [blnAuditDialogOpen, setBlnAuditDialogOpen] = useState(false);
-  const [intItemsPerPage] = useState(2);
-  const [intItemPage, setIntItemPage] = useState(1);
 
   function hasPermissionCode(strCode: string) {
     const strNormalized = strCode.trim().toUpperCase();
@@ -69,17 +236,50 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objFetched, lstAuditEvents] = await Promise.all([
+      const [objFetched, lstAuditEvents, lstRules] = await Promise.all([
         hrItDeclarationReviewService.getDetail(intDeclarationID),
         hrItDeclarationReviewService.getAudit(intDeclarationID),
+        loadCategoryRules(),
       ]);
       setObjDetail(objFetched);
       setLstAudit(lstAuditEvents);
+      setLstCategoryRules(lstRules);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load declaration detail.");
     } finally {
       setBlnLoading(false);
     }
+  }
+
+  async function loadCategoryRules() {
+    const lstActionFallbacks = [
+      "MASTER_ESS_DECLARATION_CATEGORY_LIST",
+      "MASTER_TAX_DECLARATION_COMPONENT_LIST",
+      "TAX_DECLARATION_COMPONENT_LIST",
+      "TAX_DECLARATION_COMPONENT_VIEW",
+      "ESS_IT_DECLARATION_VIEW",
+    ];
+    const lstAttempts: Array<{ strSource: "ess" | "tax"; strMenuAction: string }> = [
+      ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "ess" as const, strMenuAction })),
+      ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "tax" as const, strMenuAction })),
+    ];
+    for (const dicAttempt of lstAttempts) {
+      try {
+        const objResult = dicAttempt.strSource === "tax"
+          ? await masterApiService.getTaxDeclarationComponents(dicAttempt.strMenuAction)
+          : await masterApiService.getEssDeclarationCategoriesWithAction(dicAttempt.strMenuAction);
+        const lstRows = resolveCategoryRows(objResult.Data);
+        if (lstRows.length > 0) {
+          return lstRows
+            .filter((objRecord) => resolveBooleanFlag((objRecord as Record<string, unknown>).blnIsActive ?? (objRecord as Record<string, unknown>).is_active, true))
+            .map((objRecord) => mapCategoryRule(objRecord as EssDeclarationCategoryApiRecord))
+            .filter((objRule) => objRule.strSection);
+        }
+      } catch {
+        continue;
+      }
+    }
+    return null;
   }
 
   useEffect(() => {
@@ -168,54 +368,65 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   }
 
   const lstProofs = useMemo(() => objDetail?.lstProofs || [], [objDetail]);
-  const lstItems = objDetail?.lstItems || [];
-  const intItemPageCount = Math.max(1, Math.ceil(lstItems.length / intItemsPerPage));
-  const intSafeItemPage = Math.min(intItemPage, intItemPageCount);
-  const intStartIndex = (intSafeItemPage - 1) * intItemsPerPage;
-  const lstVisibleItems = lstItems.slice(intStartIndex, intStartIndex + intItemsPerPage);
-
-  function goToNextItem(intCurrentItemID?: number) {
-    if (!lstItems.length) return;
-    const intCurrentIndex = typeof intCurrentItemID === "number"
-      ? lstItems.findIndex((objItem) => objItem.intItemID === intCurrentItemID)
-      : intStartIndex;
-    const intNextIndex = intCurrentIndex >= 0 ? intCurrentIndex + 1 : intStartIndex + 1;
-    if (intNextIndex >= lstItems.length) return;
-    const intNextPage = Math.floor(intNextIndex / intItemsPerPage) + 1;
-    setIntItemPage(intNextPage);
-  }
-
-  function goToPreviousPage() {
-    setIntItemPage((intPrev) => Math.max(1, intPrev - 1));
-  }
-
-  function goToNextPage() {
-    setIntItemPage((intPrev) => Math.min(intItemPageCount, intPrev + 1));
-  }
+  const dicCategoryRuleBySection = useMemo(
+    () => new Map((lstCategoryRules ?? []).map((objRule) => [objRule.strSection, objRule])),
+    [lstCategoryRules]
+  );
+  const lstItems = useMemo(
+    () => {
+      const lstDeclaredItems = (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0);
+      if (lstCategoryRules === null) return lstDeclaredItems;
+      const setActiveSections = new Set(lstCategoryRules.map((objRule) => objRule.strSection));
+      return lstDeclaredItems.filter((objItem) => setActiveSections.has(String(objItem.strSection || "").trim().toUpperCase()));
+    },
+    [objDetail, lstCategoryRules]
+  );
+  const lstSectionGroups = useMemo<DeclarationSectionGroup[]>(() => {
+    const dicGroups = new Map<string, DeclarationSectionGroup>();
+    for (const objItem of lstItems) {
+      const strSection = objItem.strSection || "Other";
+      const objRule = dicCategoryRuleBySection.get(strSection.trim().toUpperCase());
+      const strItemDescription = objItem.strDescription || "";
+      const strDescription = strItemDescription.toLowerCase().includes(strSection.toLowerCase()) || strItemDescription.toLowerCase().includes("section")
+        ? strItemDescription
+        : "";
+      const strKey = strSection;
+      const objExisting = dicGroups.get(strKey) ?? {
+        strSection,
+        strDescription,
+        lstItems: [],
+        lstProofs: [],
+        decMaxLimitAmount: null,
+        strMaxLimitAppliedAt: "ENTRY_LEVEL",
+        decDeclaredAmount: 0,
+        decApprovedAmount: 0,
+      };
+      objExisting.decMaxLimitAmount = objExisting.decMaxLimitAmount ?? objRule?.decMaxLimitAmount ?? getItemMaxLimit(objItem) ?? null;
+      objExisting.strMaxLimitAppliedAt = normalizeMaxLimitAppliedAt(objRule?.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt);
+      const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === objItem.intItemID);
+      objExisting.lstItems.push(objItem);
+      objExisting.lstProofs.push(...lstItemProofs);
+      objExisting.decDeclaredAmount += Number(objItem.decDeclaredAmount || 0);
+      objExisting.decApprovedAmount += Number(objItem.decApprovedAmount || 0);
+      dicGroups.set(strKey, objExisting);
+    }
+    return Array.from(dicGroups.values());
+  }, [lstItems, lstProofs, dicCategoryRuleBySection]);
 
   if (blnLoading || blnRightsLoading) return <BlockingLoader blnOpen strLabel="Loading IT declaration detail..." />;
   if (!objDetail) return <Alert severity="error">{strError || "Declaration not found."}</Alert>;
 
   return (
-    <Stack spacing={2}>
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} gap={1}>
-          <Stack spacing={0.6} alignItems="flex-start">
-            <Button
-              size="small"
-              startIcon={<ArrowBackRoundedIcon />}
-              sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, textTransform: "none", "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
-              onClick={() => objRouter.push("/payroll/it-declaration-review")}
-              data-testid="it-declaration.review-detail.back.button"
-            >
-              Back
-            </Button>
-            <Typography sx={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fcff" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
-            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.78rem" }}>
-              FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declared: {objDetail.decDeclaredTotalAmount} | Approved: {objDetail.decApprovedTotalAmount} | Proof Pending: {objDetail.intProofPendingCount}
+    <Stack spacing={1.4}>
+      <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef", backgroundColor: "#ffffff", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+          <Stack spacing={0.35}>
+            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
+              FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declaration Ref: {objDetail.strDeclarationCode || "-"}
             </Typography>
           </Stack>
-          <Stack spacing={0.6} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
             <Stack direction="row" spacing={1} alignItems="center">
               <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
               <Button
@@ -223,7 +434,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 size="small"
                 onClick={() => setBlnAuditDialogOpen(true)}
                 data-testid="it-declaration.review-detail.view-log.button"
-                sx={{ textTransform: "none", color: "#e2e8f0", minWidth: "auto", px: 0.6 }}
+                sx={{ textTransform: "none", color: "#0f172a", minWidth: "auto", px: 0.6, fontWeight: 800 }}
               >
                 View Log
               </Button>
@@ -240,10 +451,9 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                   textTransform: "none",
                   fontWeight: 700,
                   fontSize: "0.76rem",
-                  borderColor: "rgba(255,255,255,0.65)",
-                  color: "#f8fcff",
-                  "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.08)" },
-                  "&.Mui-disabled": { borderColor: "rgba(255,255,255,0.32)", color: "rgba(226,232,240,0.8)" },
+                  borderColor: "#cbd5e1",
+                  color: "#0f172a",
+                  "&:hover": { borderColor: "#94a3b8", backgroundColor: "#f8fafc" },
                 }}
               >
                 Start Review
@@ -254,67 +464,92 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 blnCanLock={blnCanLockHeader}
                 blnCanApprove={blnCanApproveHeader}
                 blnCanReject={blnCanRejectHeader}
-                blnHeaderMode
                 fnApproveAll={() => setStrConfirm("approve_all")}
                 fnRejectHeader={() => setStrConfirm("reject")}
                 fnRelease={() => setStrConfirm("release")}
                 fnLock={() => setStrConfirm("lock")}
               />
             </Stack>
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} data-testid="it-declaration.review-detail.back.button" sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
           </Stack>
         </Stack>
       </Paper>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
-        <Typography sx={{ fontWeight: 800 }}>Items ({lstItems.length})</Typography>
-        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-          <Button variant="outlined" size="small" onClick={goToPreviousPage} disabled={intSafeItemPage <= 1} data-testid="it-declaration.review-detail.previous-page.button">Previous</Button>
-          <Typography sx={{ fontSize: "0.82rem", color: "#64748b" }}>Page {intSafeItemPage} of {intItemPageCount}</Typography>
-          <Button variant="outlined" size="small" onClick={goToNextPage} disabled={intSafeItemPage >= intItemPageCount} data-testid="it-declaration.review-detail.next-page.button">Next</Button>
-        </Stack>
-      </Stack>
-
-      <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-        {lstVisibleItems.map((objItem, intIndex) => {
-          const intCurrentItemID = objItem.intItemID ?? 0;
-          const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
-          return (
-          <ITDeclarationItemReviewPanel
-            key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
-            objItem={objItem}
-            blnLocked={blnLocked || !blnItemActionsAllowedStatus}
-            blnCanReview={blnCanReview}
-            blnCanApprove={blnCanApprove}
-            blnCanReject={blnCanReject}
-            blnCanProofVerify={blnCanProofVerify}
-            lstProofs={lstItemProofs}
-            fnPreviewProof={(intProofID) => void previewProof(intProofID)}
-            fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
-            fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
-          />
-          );
-        })}
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.1 }}>
+        <SummaryMetric strLabel="Total Declared Amount" strValue={objInrFormatter.format(Number(objDetail.decDeclaredTotalAmount || 0))} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Approved Amount" strValue={objInrFormatter.format(Number(objDetail.decApprovedTotalAmount || 0))} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Proof Pending" strValue={`${objDetail.intProofPendingCount || 0}`} objIcon={<FactCheckOutlinedIcon fontSize="small" />} />
+        <SummaryMetric strLabel="Total Declaration Items" strValue={`${lstItems.length}`} objIcon={<AccountBalanceWalletOutlinedIcon fontSize="small" />} />
       </Box>
 
-      {objDetail.objHraDetails ? (
-        <Box>
-          <Typography sx={{ fontWeight: 800 }}>HRA Details</Typography>
-          <Typography sx={{ color: "#475569", fontSize: "0.85rem" }}>{JSON.stringify(objDetail.objHraDetails)}</Typography>
-        </Box>
-      ) : null}
-      {objDetail.objHomeLoanDetails ? (
-        <Box>
-          <Typography sx={{ fontWeight: 800 }}>Home Loan Details</Typography>
-          <Typography sx={{ color: "#475569", fontSize: "0.85rem" }}>{JSON.stringify(objDetail.objHomeLoanDetails)}</Typography>
-        </Box>
-      ) : null}
-      {objDetail.objPreviousEmployerDetails ? (
-        <Box>
-          <Typography sx={{ fontWeight: 800 }}>Previous Employer Details</Typography>
-          <Typography sx={{ color: "#475569", fontSize: "0.85rem" }}>{JSON.stringify(objDetail.objPreviousEmployerDetails)}</Typography>
-        </Box>
-      ) : null}
+      <Stack spacing={1.1}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
+          <Box>
+            <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>Deduction Review ({lstItems.length} items)</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstSectionGroups.length} deduction sections with declared rows and proof actions.</Typography>
+          </Box>
+        </Stack>
+
+        {lstSectionGroups.map((objGroup) => {
+          const intApprovedCount = countItemsByStatus(objGroup.lstItems, ["approved"]);
+          const intRejectedCount = countItemsByStatus(objGroup.lstItems, ["rejected"]);
+          const intProofPendingCount = countItemsByStatus(objGroup.lstItems, ["proof_pending"]);
+          const intPendingCount = objGroup.lstItems.length - intApprovedCount - intRejectedCount - intProofPendingCount;
+          return (
+          <Paper key={`${objGroup.strSection}-${objGroup.strDescription}`} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", overflow: "hidden", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
+            <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={1.2} sx={{ px: 1.2, py: 1, backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <Box sx={{ minWidth: 220 }}>
+                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{objGroup.strDescription ? `${objGroup.strSection} - ${objGroup.strDescription}` : objGroup.strSection}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{objGroup.lstItems.length} declared row{objGroup.lstItems.length === 1 ? "" : "s"} | {objGroup.lstProofs.length} uploaded proof{objGroup.lstProofs.length === 1 ? "" : "s"}</Typography>
+              </Box>
+              <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", lg: "flex-end" }}>
+                <SectionStat strLabel="Declared" strValue={objInrFormatter.format(objGroup.decDeclaredAmount)} />
+                {objGroup.decMaxLimitAmount != null ? <SectionStat strLabel="Max Limit" strValue={objInrFormatter.format(objGroup.decMaxLimitAmount)} /> : null}
+                <SectionStat strLabel="Approved" strValue={objInrFormatter.format(objGroup.decApprovedAmount)} strTone={objGroup.decApprovedAmount > 0 ? "success" : "default"} />
+                <SectionStat strLabel="Pending" strValue={`${Math.max(0, intPendingCount)}`} strTone={intPendingCount > 0 ? "warning" : "default"} />
+                <SectionStat strLabel="Proof Pending" strValue={`${intProofPendingCount}`} strTone={intProofPendingCount > 0 ? "warning" : "default"} />
+                <SectionStat strLabel="Rejected" strValue={`${intRejectedCount}`} strTone={intRejectedCount > 0 ? "danger" : "default"} />
+              </Stack>
+            </Stack>
+            <Stack spacing={0.9} sx={{ p: 1 }}>
+              {objGroup.lstItems.map((objItem, intIndex) => {
+                const intCurrentItemID = objItem.intItemID ?? 0;
+                const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
+                const objItemWithSectionRule = {
+                  ...objItem,
+                  decMaxLimitAmount: objGroup.decMaxLimitAmount ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount,
+                  strMaxLimitAppliedAt: objGroup.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt,
+                  blnProofRequired: dicCategoryRuleBySection.get(String(objItem.strSection || "").trim().toUpperCase())?.blnProofRequired ?? objItem.blnProofRequired,
+                };
+                return (
+                  <ITDeclarationItemReviewPanel
+                    key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
+                    objItem={objItemWithSectionRule}
+                    blnLocked={blnLocked || !blnItemActionsAllowedStatus}
+                    blnCanReview={blnCanReview}
+                    blnCanApprove={blnCanApprove}
+                    blnCanReject={blnCanReject}
+                    blnCanProofVerify={blnCanProofVerify}
+                    lstProofs={lstItemProofs}
+                    decSectionMaxLimit={objGroup.decMaxLimitAmount}
+                    decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
+                    fnPreviewProof={(intProofID) => void previewProof(intProofID)}
+                    fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
+                    fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
+                  />
+                );
+              })}
+            </Stack>
+          </Paper>
+          );
+        })}
+        {lstItems.length === 0 ? <Alert severity="info">No declaration items found.</Alert> : null}
+      </Stack>
+
+      {objDetail.objHraDetails ? <DeclarationDetailPanel strTitle="HRA Details" objDetails={objDetail.objHraDetails} /> : null}
+      {objDetail.objHomeLoanDetails ? <DeclarationDetailPanel strTitle="Home Loan Details" objDetails={objDetail.objHomeLoanDetails} /> : null}
+      {objDetail.objPreviousEmployerDetails ? <DeclarationDetailPanel strTitle="Previous Employer Details" objDetails={objDetail.objPreviousEmployerDetails} /> : null}
 
       <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth data-testid="it-declaration.review-detail.confirm.dialog">
         <DialogTitle>Confirm Action</DialogTitle>
