@@ -85,6 +85,47 @@ function buildSelectTestIdProps(strTestId: string) {
   };
 }
 
+function getCategoryLabel(strValue: string) {
+  switch (normalizeSelectToken(strValue)) {
+    case "earning":
+      return "Earning";
+    case "deduction":
+      return "Deduction";
+    case "employer":
+    case "employercontribution":
+    case "contribution":
+      return "Employer Contribution";
+    case "reimbursement":
+      return "Reimbursement";
+    default:
+      return strValue;
+  }
+}
+
+function getWageTypeLabel(strValue: "wages" | "nonWages") {
+  return strValue === "wages" ? "Wage Component" : "Non-Wage Component";
+}
+
+function getTaxTreatmentLabel(strValue: string) {
+  switch (normalizeSelectToken(strValue)) {
+    case "taxable":
+      return "Taxable";
+    case "exempt":
+      return "Exempt";
+    case "partialexempt":
+      return "Partially Exempt";
+    case "pretax":
+      return "Pre-Tax Deduction";
+    case "nontaxable":
+    case "nontax":
+      return "Non-Taxable";
+    case "deferred":
+      return "Deferred";
+    default:
+      return strValue;
+  }
+}
+
 export default function SalaryComponentEditorPage({
   strMode,
   intSalaryComponentID
@@ -517,7 +558,7 @@ export default function SalaryComponentEditorPage({
 
           <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
             {lstCategoryOptions.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{getCategoryLabel(strOption)}</MenuItem>
             ))}
           </TextField>
           <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
@@ -539,13 +580,13 @@ export default function SalaryComponentEditorPage({
               <FormControlLabel
                 value="wages"
                 control={<Radio disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.wage-type.wages.radio")} />}
-                label={t("wages", "Wages")}
+                label={t("wages", getWageTypeLabel("wages"))}
                 disabled={blnFieldDisabled}
               />
               <FormControlLabel
                 value="nonWages"
                 control={<Radio disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.wage-type.non-wages.radio")} />}
-                label={t("non_wages", "Non Wages")}
+                label={t("non_wages", getWageTypeLabel("nonWages"))}
                 disabled={blnFieldDisabled}
               />
             </RadioGroup>
@@ -587,7 +628,7 @@ export default function SalaryComponentEditorPage({
           <TextField select label={t("tax_treatment", "Tax Treatment")} value={resolveSelectValue(objFormOptions?.lstTaxTreatments ?? [], dicForm.strTaxTreatment)} onChange={(objEvent) => updateRootField("strTaxTreatment", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.tax-treatment.select")}>
             <MenuItem value="" data-testid="salary-components.editor.tax-treatment.none.option">{t("none", "None")}</MenuItem>
             {(objFormOptions?.lstTaxTreatments ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
             ))}
           </TextField>
           <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} />
@@ -606,7 +647,7 @@ export default function SalaryComponentEditorPage({
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("payroll_payslip_flags", "Payroll / Payslip Flags")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("payslip_configuration", "Payslip Configuration")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mb: 1.5 }}>
           <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-testid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
@@ -619,16 +660,17 @@ export default function SalaryComponentEditorPage({
      </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>4. {t("declaration_proof", "Declaration / Proof")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>4. {t("declaration_proof", "Declaration & Proof")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.declaration-required.switch")} />} label={t("declaration_required", "Declaration required")} />
+          <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required", "Proof Required")} />
         </Stack>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>5. {t("multilingual_text", "Multilingual Text")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>5. {t("translations", "Translations")}</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
               {t("multilingual_text_help", "Add translated component names and descriptions for supported languages.")}
             </Typography>
@@ -694,7 +736,7 @@ export default function SalaryComponentEditorPage({
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>6. {t("dependency_mapping", "Dependency Mapping")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>6. {t("calculation_dependencies", "Calculation Dependencies")}</Typography>
         <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mb: 1.25 }}>
           {t("dependency_mapping_help", "Select upstream components this component depends on for basis or formula evaluation.")}
         </Typography>

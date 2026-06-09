@@ -122,6 +122,13 @@ function getLastBreadcrumbSegment(strValue: string) {
   return lstSegments.at(-1) ?? strValue.trim();
 }
 
+function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
+  if (!strCandidateRoute) {
+    return false;
+  }
+  return strPathname === strCandidateRoute || strPathname.startsWith(`${strCandidateRoute}/`);
+}
+
 function resolveMenuRoute(objItem: MenuItem): string | null {
   const strRoute = objItem.strRoute?.trim() ?? "";
   if (!strRoute) {
@@ -136,6 +143,15 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     strModuleCode.includes("my_payslip") ||
     strModuleCode.includes("my-payslip") ||
     strModuleName.includes("my payslip");
+
+  if (
+    strLowerRoute === "/payroll/cycles" ||
+    strLowerRoute === "/payroll-cycles" ||
+    strLowerRoute.startsWith("/payroll/cycles/") ||
+    strLowerRoute.startsWith("/payroll-cycles/")
+  ) {
+    return strLowerRoute.includes("/add") ? "/payroll/schedules/add" : "/payroll/schedules";
+  }
 
   if (
     strLowerRoute.startsWith("/ess/my-payslip") ||
@@ -891,7 +907,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
   function hasActiveDescendant(objItem: MenuItem): boolean {
     return objItem.lstChildren.some(
-      (objChild) => resolveMenuRoute(objChild) === strPathname || hasActiveDescendant(objChild),
+      (objChild) => matchesRoute(resolveMenuRoute(objChild), strPathname) || hasActiveDescendant(objChild),
     );
   }
 
@@ -959,7 +975,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
     const strRoute = resolveMenuRoute(objItem);
     const strMenuKey = getMenuNodeKey(objItem, intDepth);
-    const blnIsActive = strRoute === strPathname;
+    const blnIsActive = matchesRoute(strRoute, strPathname);
     const blnHasChildren = objItem.lstChildren.length > 0;
     const blnHasActiveChild = hasActiveDescendant(objItem);
     const blnExpanded = dicExpandedMenus[strMenuKey] ?? blnHasActiveChild;

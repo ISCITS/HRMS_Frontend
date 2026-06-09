@@ -25,6 +25,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { payrollCycleService } from "@/features/payroll-cycles/services/payrollCycleService";
 import type { PayrollCycleListRecord } from "@/features/payroll-cycles/types";
+import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type Status = "Active" | "Inactive";
@@ -56,6 +57,11 @@ export default function PayrollCycleListPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+
+  function openScheduleEditor(intPayrollCycleID: number, strMode: "edit" | "view" = "edit") {
+    setPayrollScheduleSelectedID(intPayrollCycleID);
+    objRouter.push(strMode === "view" ? "/payroll/schedules/edit?mode=view" : "/payroll/schedules/edit");
+  }
 
   async function loadPayrollCycles() {
     if (!canViewAny()) {
@@ -107,8 +113,8 @@ export default function PayrollCycleListPage() {
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}?mode=view`)}
-            onEdit={blnCanEdit ? () => objRouter.push(`/payroll/cycles/edit/${dicRow.intID}`) : undefined}
+            onView={() => openScheduleEditor(dicRow.intID, "view")}
+            onEdit={blnCanEdit ? () => openScheduleEditor(dicRow.intID, "edit") : undefined}
           />
         ),
         strCycleCode: dicRow.strCycleCode,
@@ -229,7 +235,7 @@ export default function PayrollCycleListPage() {
           showPaginationSummary
           emptyMessage={t("schedule_no_records")}
           toolbarLeft={blnCanAdd ? (
-            <Button data-testid="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/cycles/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+            <Button data-testid="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/schedules/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
               {t("schedule_add_button")}
             </Button>
           ) : undefined}

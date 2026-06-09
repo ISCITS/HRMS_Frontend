@@ -6,15 +6,13 @@ import {
   Alert,
   Box,
   Button,
-  FormControlLabel,
   MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from "@mui/material";
-import { type InputHTMLAttributes, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import masterStyles from "@/components/master/MasterScreen.module.css";
@@ -28,6 +26,16 @@ import type { PayrollRunFormOptions, PayrollRunFormValues } from "@/features/pay
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+
+function formatPayrollMonthLabel(strDate: string) {
+  if (!strDate) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(strDate));
+}
 
 export default function PayrollRunEditorPage() {
   const objRouter = useRouter();
@@ -52,12 +60,30 @@ export default function PayrollRunEditorPage() {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
+  function buildSuggestedRunName(
+    strPayrollMonth: string,
+    intPayrollCycleID: number | "",
+    strProcessFor: PayrollRunFormValues["strProcessFor"]
+  ) {
+    const strMonthLabel = formatPayrollMonthLabel(strPayrollMonth);
+    if (!strMonthLabel) {
+      return "";
+    }
+    const dicCycle = objOptions?.lstPayrollCycles.find(
+      (dicItem) => dicItem.intID === intPayrollCycleID
+    );
+    const strCycleLabel = dicCycle?.strLabel?.trim() ?? "";
+    const blnUseCycleLabel =
+      strProcessFor === "PayrollGroup" &&
+      strCycleLabel &&
+      !/monthly payroll schedule/i.test(strCycleLabel) &&
+      !/^monthly$/i.test(strCycleLabel);
+    return blnUseCycleLabel ? `${strMonthLabel} ${strCycleLabel}` : `${strMonthLabel} Payroll`;
+  }
+
   function validateForm() {
     if (!dicForm.intPayrollCycleID) {
       return t("payroll_cycle_required", "Payroll cycle is required.");
-    }
-    if (!dicForm.strRunCode.trim()) {
-      return t("run_code_required", "Run code is required.");
     }
     if (!dicForm.strRunName.trim()) {
       return t("run_name_required", "Run name is required.");
@@ -113,6 +139,23 @@ export default function PayrollRunEditorPage() {
       blnMounted = false;
     };
   }, [blnRightsLoading, blnCanAdd]);
+
+  useEffect(() => {
+    setDicForm((dicPrevious) => {
+      const strSuggestedName = buildSuggestedRunName(
+        dicPrevious.dtPayrollMonth,
+        dicPrevious.intPayrollCycleID,
+        dicPrevious.strProcessFor
+      );
+      if (!strSuggestedName) {
+        return dicPrevious;
+      }
+      if (!dicPrevious.strRunName.trim() || dicPrevious.strRunName === strSuggestedName) {
+        return { ...dicPrevious, strRunName: strSuggestedName };
+      }
+      return dicPrevious;
+    });
+  }, [dicForm.dtPayrollMonth, dicForm.intPayrollCycleID, dicForm.strProcessFor, objOptions]);
 
   async function saveRun() {
     if (!blnCanAdd) {
@@ -223,7 +266,7 @@ export default function PayrollRunEditorPage() {
               {t("basic_information", "Basic Information")}
             </Typography>
             <Typography sx={{ color: "#64748b", mt: 0.5 }}>
-              {t("basic_information_help", "Capture the run identity, payroll month, workflow status, and lock state in a full-page form.")}
+              {t("basic_information_help", "Set the payroll schedule, payroll month, and employee scope for this payroll run.")}
             </Typography>
           </Box>
 
@@ -236,7 +279,7 @@ export default function PayrollRunEditorPage() {
           >
             <TextField
               select
-              label={t("payroll_cycle", "Payroll Cycle")}
+              label={t("payroll_cycle", "Payroll Schedule")}
               value={dicForm.intPayrollCycleID}
               data-testid="payroll.run-editor.payroll-cycle.select"
               onChange={(objEvent) =>
@@ -247,8 +290,12 @@ export default function PayrollRunEditorPage() {
               }
               disabled={blnFieldDisabled}
               fullWidth
+              helperText={t(
+                "payroll_cycle_help",
+                "Select the payroll schedule that defines the employee group, payroll frequency and payroll cut-off day for this payroll run."
+              )}
             >
-              <MenuItem value="">{t("select_payroll_cycle", "Select payroll cycle")}</MenuItem>
+              <MenuItem value="">{t("select_payroll_cycle", "Select payroll schedule")}</MenuItem>
               {(objOptions?.lstPayrollCycles ?? []).map((dicCycle) => (
                 <MenuItem key={dicCycle.intID} value={dicCycle.intID}>
                   {dicCycle.strCode} - {dicCycle.strLabel}
@@ -256,15 +303,7 @@ export default function PayrollRunEditorPage() {
               ))}
             </TextField>
             <TextField
-              label={t("run_code", "Run Code")}
-              value={dicForm.strRunCode}
-              onChange={(objEvent) => updateField("strRunCode", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              data-testid="payroll.run-editor.run-code.input"
-              fullWidth
-            />
-            <TextField
-              label={t("run_name", "Run Name")}
+              label={t("run_name", "Payroll Run")}
               value={dicForm.strRunName}
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
               disabled={blnFieldDisabled}
@@ -273,26 +312,26 @@ export default function PayrollRunEditorPage() {
             />
             <TextField
               select
-              label={t("run_scope", "Run Scope")}
-              value={dicForm.strScopeType}
-              data-testid="payroll.run-editor.run-scope.select"
+              label={t("run_scope", "Process For")}
+              value={dicForm.strProcessFor}
+              data-testid="payroll.run-editor.process-for.select"
               onChange={(objEvent) =>
                 setDicForm((dicPrevious) => ({
                   ...dicPrevious,
-                  strScopeType: objEvent.target.value as PayrollRunFormValues["strScopeType"],
-                  intScopedEmployeeID:
-                    objEvent.target.value === "SelectedEmployee"
-                      ? dicPrevious.intScopedEmployeeID
-                      : "",
+                  strProcessFor: objEvent.target.value as PayrollRunFormValues["strProcessFor"],
+                  strScopeType:
+                    objEvent.target.value === "SelectedEmployees" ? "SelectedEmployee" : "All",
+                  intScopedEmployeeID: objEvent.target.value === "SelectedEmployees" ? dicPrevious.intScopedEmployeeID : "",
                 }))
               }
               disabled={blnFieldDisabled}
               fullWidth
             >
-              <MenuItem value="All">{t("scope_all", "All employees")}</MenuItem>
-              <MenuItem value="SelectedEmployee">{t("scope_selected_employee", "Selected employee")}</MenuItem>
+              <MenuItem value="AllEmployees">{t("scope_all", "All Employees")}</MenuItem>
+              <MenuItem value="SelectedEmployees">{t("scope_selected_employee", "Selected Employees")}</MenuItem>
+              <MenuItem value="PayrollGroup">{t("scope_payroll_group", "Payroll Group")}</MenuItem>
             </TextField>
-            <TextField
+            {dicForm.strProcessFor === "SelectedEmployees" ? <TextField
               select
               label={t("scope_employee", "Employee")}
               value={dicForm.intScopedEmployeeID}
@@ -312,7 +351,7 @@ export default function PayrollRunEditorPage() {
                   {dicEmployee.strCode} - {dicEmployee.strLabel}
                 </MenuItem>
               ))}
-            </TextField>
+            </TextField> : null}
             <TextField
               type="date"
               label={t("payroll_month", "Payroll Month")}
@@ -323,34 +362,7 @@ export default function PayrollRunEditorPage() {
               data-testid="payroll.run-editor.payroll-month.input"
               fullWidth
             />
-            <TextField
-              select
-              label={t("status", "Status")}
-              value={dicForm.strRunStatus}
-              data-testid="payroll.run-editor.status.select"
-              onChange={(objEvent) =>
-                updateField("strRunStatus", objEvent.target.value as PayrollRunFormValues["strRunStatus"])
-              }
-              disabled={blnFieldDisabled}
-              fullWidth
-            >
-              <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
-              <MenuItem value="Submitted">{t("status_submitted", "Submitted")}</MenuItem>
-              <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
-            </TextField>
           </Box>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={dicForm.blnIsLocked}
-                onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
-                disabled={blnFieldDisabled}
-                inputProps={{ "data-testid": "payroll.run-editor.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
-              />
-            }
-            label={t("locked", "Locked")}
-          />
         </Stack>
       </Paper>
     </Stack>

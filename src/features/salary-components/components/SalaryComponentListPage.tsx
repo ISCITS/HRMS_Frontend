@@ -49,6 +49,54 @@ type ToastState = {
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
 
+function normalizeSelectToken(strValue: string) {
+  return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function getCategoryLabel(strValue: string) {
+  switch (normalizeSelectToken(strValue)) {
+    case "earning":
+      return "Earning";
+    case "deduction":
+      return "Deduction";
+    case "employer":
+    case "employercontribution":
+    case "contribution":
+      return "Employer Contribution";
+    case "reimbursement":
+      return "Reimbursement";
+    default:
+      return strValue;
+  }
+}
+
+function getWageTypeLabel(blnIsWages: boolean) {
+  return blnIsWages ? "Wage Component" : "Non-Wage Component";
+}
+
+function getTaxTreatmentLabel(strValue: string | null) {
+  if (!strValue) {
+    return "-";
+  }
+  switch (normalizeSelectToken(strValue)) {
+    case "taxable":
+      return "Taxable";
+    case "exempt":
+      return "Exempt";
+    case "partialexempt":
+      return "Partially Exempt";
+    case "pretax":
+      return "Pre-Tax Deduction";
+    case "nontaxable":
+    case "nontax":
+      return "Non-Taxable";
+    case "deferred":
+      return "Deferred";
+    default:
+      return strValue;
+  }
+}
+
 export default function SalaryComponentListPage() {
   const objRouter = useRouter();
   const { t } = useSalaryComponentLabels();
@@ -216,13 +264,13 @@ export default function SalaryComponentListPage() {
           ),
           strComponentCode: dicRow.strComponentCode,
           strComponentName: dicRow.strComponentName,
-          strComponentCategory: dicRow.strComponentCategory,
+          strComponentCategory: getCategoryLabel(dicRow.strComponentCategory),
           strComponentGroup: dicRow.strComponentGroup ?? "-",
-          strWageType: dicRow.blnIsWages ? t("wages", "Wages") : t("non_wages", "Non Wages"),
+          strWageType: dicRow.blnIsWages ? t("wages", getWageTypeLabel(true)) : t("non_wages", getWageTypeLabel(false)),
           strCalcMethod: dicRow.strCalcMethod,
           strRoundingRule: dicRow.strRoundingRule ?? "-",
           strDefaultPeriodicity: dicRow.strDefaultPeriodicity,
-          strTaxTreatment: dicRow.strTaxTreatment ?? "-",
+          strTaxTreatment: getTaxTreatmentLabel(dicRow.strTaxTreatment),
           blnIncludeInPF: dicRow.blnIncludeInPF ? t("yes", "Yes") : t("no", "No"),
           blnIncludeInESIC: dicRow.blnIncludeInESIC ? t("yes", "Yes") : t("no", "No"),
           blnIncludeInGratuity: dicRow.blnIncludeInGratuity ? t("yes", "Yes") : t("no", "No"),

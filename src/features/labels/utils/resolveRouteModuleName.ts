@@ -41,6 +41,13 @@ export function resolveRouteModuleName(strPathname: string) {
     return "payroll-runs";
   }
   if (
+    strLowerPath.startsWith("/payroll/schedules") ||
+    strLowerPath.startsWith("/payroll/cycles") ||
+    strLowerPath.startsWith("/payroll-cycles")
+  ) {
+    return "payroll-cycles";
+  }
+  if (
     strLowerPath.startsWith("/payroll/employee-payroll-inputs") ||
     strLowerPath.startsWith("/payroll/employee-payroll-input") ||
     strLowerPath.startsWith("/payroll/inputs")

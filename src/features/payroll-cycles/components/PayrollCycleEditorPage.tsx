@@ -29,6 +29,7 @@ import type {
   PayrollCycleFormOptions,
   PayrollCycleFormValues
 } from "@/features/payroll-cycles/types";
+import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
@@ -135,13 +136,14 @@ export default function PayrollCycleEditorPage({
         ? await payrollCycleService.updatePayrollCycle(intPayrollCycleID, dicForm)
         : await payrollCycleService.createPayrollCycle(dicForm);
       setDicForm(toPayrollCycleFormValues(dicSavedRecord));
+      setPayrollScheduleSelectedID(dicSavedRecord.intID);
       setStrSuccess(
         strMode === "edit"
           ? t("schedule_update_success")
           : t("schedule_create_success")
       );
       if (strMode === "add") {
-        objRouter.push(`/payroll/cycles/edit/${dicSavedRecord.intID}`);
+        objRouter.push("/payroll/schedules/edit");
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("schedule_save_failed"));
@@ -206,7 +208,7 @@ export default function PayrollCycleEditorPage({
                 data-testid="payroll-cycles.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/payroll/cycles")}
+                onClick={() => objRouter.push("/payroll/schedules")}
                 sx={{
                   height: 38,
                   minHeight: 38,
