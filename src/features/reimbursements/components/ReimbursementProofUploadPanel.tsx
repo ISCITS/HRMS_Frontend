@@ -62,7 +62,7 @@ export default function ReimbursementProofUploadPanel({ objItem, blnEditable, on
       {blnEditable ? (
         <Button data-testid="reimbursements.proof-upload.upload.button" component="label" variant="outlined" size="small" startIcon={blnBusy ? <CircularProgress size={15} /> : <UploadFileRoundedIcon />} sx={{ alignSelf: "flex-start", borderRadius: "8px", textTransform: "none", fontWeight: 700 }}>
           Upload Proof
-          <input hidden data-testid="reimbursements.proof-upload.file.input" type="file" accept=".png,.jpg,.jpeg,.pdf,.txt,.xlsx,.xls,.doc,.docx" onChange={(objEvent) => void uploadSelectedFile(objEvent.target.files?.[0] ?? null)} />
+          <input hidden data-testid="reimbursements.proof-upload.file.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => void uploadSelectedFile(objEvent.target.files?.[0] ?? null)} />
         </Button>
       ) : null}
     </Stack>

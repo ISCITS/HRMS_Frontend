@@ -310,6 +310,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
           {(objClaim?.lstItems ?? []).map((objItem) => (
             <ReimbursementItemReviewPanel
               key={objItem.intID}
+              intClaimID={objClaim?.intID ?? 0}
               objItem={objItem}
               strClaimName={getClaimDisplayName(objClaim)}
               strReimbursementTypeName={getItemReimbursementTypeName(objItem)}

@@ -5,6 +5,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -189,7 +190,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     };
   }
 
-  async function saveHeader() {
+  async function saveHeader(blnShowSuccessMessage = false) {
     if (!blnEditable) {
       return null;
     }
@@ -205,6 +206,9 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setObjHeader(buildHeaderState(objSavedClaim));
       if (strMode === "create") {
         window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit`);
+      }
+      if (blnShowSuccessMessage) {
+        setStrSuccess("Claim saved.");
       }
       return objSavedClaim;
     } catch (objError) {
@@ -420,6 +424,9 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             ) : null}
             {blnCanDeleteClaim ? (
               <Button variant="contained" size="small" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setBlnDeleteClaimDialogOpen(true)} disabled={blnSaving} data-testid="reimbursements.claim-editor.delete-claim.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#dc2626", color: "#ffffff", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#b91c1c", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(220,38,38,0.42)", color: "rgba(255,255,255,0.62)" } }}>Delete</Button>
+            ) : null}
+            {!blnReadOnly ? (
+              <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} onClick={() => void saveHeader(true)} disabled={blnSaving || (Boolean(objClaim?.intID) && !blnHeaderDirty)} data-testid="reimbursements.claim-editor.save-header.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.42)", color: "rgba(255,255,255,0.62)" } }}>Save</Button>
             ) : null}
             {blnShowSubmit ? (
               <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.submit.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>Submit</Button>

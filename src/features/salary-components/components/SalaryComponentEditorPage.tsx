@@ -211,6 +211,7 @@ export default function SalaryComponentEditorPage({
   const lstCategoryOptions = objFormOptions?.lstComponentCategories ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroups ?? [];
   const lstPayslipSections = ["Earnings", "Deductions", "Information", "Employer Contributions"];
+  const blnIsReimbursementCategory = normalizeSelectToken(dicForm.strComponentCategory) === "reimbursement";
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID()
@@ -632,6 +633,30 @@ export default function SalaryComponentEditorPage({
             ))}
           </TextField>
           <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} />
+          {blnIsReimbursementCategory ? (
+            <>
+              <TextField
+                type="number"
+                label={t("reimbursement_max_claim_monthly_limit", "Max Claim Monthly Limit")}
+                value={dicForm.strReimbursementMaxClaimMonthlyLimit}
+                onChange={(objEvent) => updateRootField("strReimbursementMaxClaimMonthlyLimit", objEvent.target.value)}
+                disabled={blnFieldDisabled}
+                fullWidth
+                data-testid="salary-components.editor.reimbursement-max-claim-monthly-limit.input"
+                inputProps={{ ...buildInputTestIdProps("salary-components.editor.reimbursement-max-claim-monthly-limit.input"), min: 0, step: "0.01" }}
+              />
+              <TextField
+                type="number"
+                label={t("reimbursement_max_claim_yearly_limit", "Max Claim Yearly Limit")}
+                value={dicForm.strReimbursementMaxClaimYearlyLimit}
+                onChange={(objEvent) => updateRootField("strReimbursementMaxClaimYearlyLimit", objEvent.target.value)}
+                disabled={blnFieldDisabled}
+                fullWidth
+                data-testid="salary-components.editor.reimbursement-max-claim-yearly-limit.input"
+                inputProps={{ ...buildInputTestIdProps("salary-components.editor.reimbursement-max-claim-yearly-limit.input"), min: 0, step: "0.01" }}
+              />
+            </>
+          ) : null}
         </Box>
         <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, mt: 1.5 }}>
            <FormControlLabel control={<Switch checked={dicForm.blnAllowManualOverride} onChange={(objEvent) => updateRootField("blnAllowManualOverride", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.allow-manual-override.switch")} />} label={t("allow_manual_override", "Allow manual override")} />

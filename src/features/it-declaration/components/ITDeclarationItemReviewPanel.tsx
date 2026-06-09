@@ -87,10 +87,8 @@ export default function ITDeclarationItemReviewPanel({
   const [blnUploadsDialogOpen, setBlnUploadsDialogOpen] = useState(false);
   const strItemStatus = String(objItem.strItemStatus || "").toLowerCase();
   const blnItemFinalized = ["approved", "rejected", "released", "locked"].includes(strItemStatus);
-  const blnNeedsVerifiedProofForApproval =
-    Boolean(objItem.blnProofRequired) &&
-    !lstProofs.some((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "verified");
-  const blnDisableApprovalActions = blnLocked || blnItemFinalized || !blnCanApprove || blnNeedsVerifiedProofForApproval;
+  const blnHasProof = lstProofs.length > 0;
+  const blnDisableApprovalActions = blnLocked || blnItemFinalized || !blnCanApprove;
   const blnDisableProofPendingAction = blnLocked || blnItemFinalized || !blnCanReview;
   const blnDisableRejectActions = blnLocked || blnItemFinalized || !blnCanReject;
   const blnDisableProofActions = blnLocked || blnItemFinalized || !blnCanProofVerify;
@@ -148,37 +146,25 @@ export default function ITDeclarationItemReviewPanel({
   }
 
   return (
-    <Paper sx={{ px: 1, py: 1.15, pr: { xs: 1.2, md: 1.4 }, border: "1px solid #dbe3ef", borderRadius: "8px", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
+    <Paper sx={{ px: 1, py: 1.15, pr: { xs: 1.2, md: 1.4 }, border: "3px solid #94a3b8", borderRadius: "8px", boxShadow: "0 5px 16px rgba(15,23,42,0.1)", backgroundColor: "#ffffff" }}>
       <Grid container spacing={2} alignItems="stretch">
-        <Grid item xs={12} md={3}>
-          <Stack spacing={0.6} sx={{ pr: { xs: 0, md: 2.2 } }}>
-            <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{strDeductionName}</Typography>
-              <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
+        <Grid item xs={12}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "flex-start" }} spacing={1}>
+            <Stack spacing={0.6} sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{strDeductionName}</Typography>
+                <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
+              </Stack>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", fontWeight: 700 }}>{objItem.strSection}</Typography>
+              {strDescription && strDescription !== strDeductionName ? <Typography sx={{ color: "#334155", fontSize: "0.82rem" }}>{strDescription}</Typography> : null}
+              {objItem.strEmployeeRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
+              {objItem.strReviewerRemarks ? <Typography sx={{ color: "#b45309", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
             </Stack>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem", fontWeight: 700 }}>{objItem.strSection}</Typography>
-            {strDescription && strDescription !== strDeductionName ? <Typography sx={{ color: "#334155", fontSize: "0.82rem" }}>{strDescription}</Typography> : null}
-            {objItem.strEmployeeRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
-            {objItem.strReviewerRemarks ? <Typography sx={{ color: "#b45309", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
-          </Stack>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Stack spacing={0.8}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              <Box sx={{ minWidth: { xs: "calc(50% - 4px)", sm: 155 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Declared</Typography>
-                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decDeclaredAmount || 0))}</Typography>
-              </Box>
-              <Box sx={{ minWidth: { xs: "calc(50% - 4px)", sm: 155 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #dbeafe", backgroundColor: "#eff6ff" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Current Approved</Typography>
-                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decApprovedAmount || 0))}</Typography>
-              </Box>
-            </Stack>
-            <Box sx={{ px: 1, py: 0.8, borderRadius: "8px", border: `1px solid ${strProofBorder}`, backgroundColor: strProofBackground }}>
+            <Box sx={{ flex: { xs: "1 1 auto", sm: "0 0 245px" }, px: 1, py: 0.7, borderRadius: "8px", border: `1px solid ${strProofBorder}`, backgroundColor: strProofBackground }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Box>
+                <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Proof Status</Typography>
-                  <Typography sx={{ fontSize: "0.84rem", color: strProofTone, fontWeight: 900 }}>
+                  <Typography sx={{ fontSize: "0.84rem", color: strProofTone, fontWeight: 900, overflowWrap: "anywhere" }}>
                     {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded | ${intVerifiedProofCount} verified${intRejectedProofCount ? ` | ${intRejectedProofCount} rejected` : ""}`}
                   </Typography>
                 </Box>
@@ -199,29 +185,40 @@ export default function ITDeclarationItemReviewPanel({
             </Box>
           </Stack>
         </Grid>
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12}>
+          <Stack spacing={0.8}>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <Box sx={{ flex: "1 1 150px", minWidth: { xs: "calc(50% - 4px)", sm: 150 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Declared</Typography>
+                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decDeclaredAmount || 0))}</Typography>
+              </Box>
+              <Box sx={{ flex: "1 1 150px", minWidth: { xs: "calc(50% - 4px)", sm: 150 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #dbeafe", backgroundColor: "#eff6ff" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Current Approved</Typography>
+                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decApprovedAmount || 0))}</Typography>
+              </Box>
+            </Stack>
+          </Stack>
+        </Grid>
+        <Grid item xs={12}>
           <Stack spacing={0.8}>
             <Typography sx={{ fontSize: "0.78rem", color: "#334155", fontWeight: 900 }}>Review Decision</Typography>
-            <TextField
-              size="small"
-              label="Approved amount"
-              data-testid="it-declaration.review.approved-amount.input"
-              type="number"
-              value={strApprovedAmount}
-              onChange={(e) => setStrApprovedAmount(e.target.value)}
-              disabled={blnDisableApprovalActions}
-              error={blnApprovedAmountInvalid}
-              helperText={strApprovedAmountHelperText}
-              inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
-              sx={{ width: { xs: "100%", sm: 230 } }}
-            />
-            <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={2} disabled={blnLocked || blnItemFinalized} data-testid="it-declaration.review.remarks.input" />
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "190px minmax(0, 1fr)" }, gap: 0.8, alignItems: "start" }}>
+              <TextField
+                size="small"
+                label="Approved amount"
+                data-testid="it-declaration.review.approved-amount.input"
+                type="number"
+                value={strApprovedAmount}
+                onChange={(e) => setStrApprovedAmount(e.target.value)}
+                disabled={blnDisableApprovalActions}
+                error={blnApprovedAmountInvalid}
+                helperText={strApprovedAmountHelperText}
+                inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
+                sx={{ width: "100%" }}
+              />
+              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} data-testid="it-declaration.review.remarks.input" />
+            </Box>
             {strError ? <Alert severity="error" sx={{ width: "100%" }}>{strError}</Alert> : null}
-            {blnNeedsVerifiedProofForApproval ? (
-              <Alert severity="warning" sx={{ py: 0, width: "100%" }}>
-                Verify at least one proof before approve/partial approve.
-              </Alert>
-            ) : null}
           </Stack>
         </Grid>
         <Grid item xs={12}>
@@ -242,7 +239,9 @@ export default function ITDeclarationItemReviewPanel({
               },
             }}
           >
-            <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnDisableProofPendingAction} onClick={() => void runWithValidation("proof_pending")} data-testid="it-declaration.review.proof-pending.button">Proof Pending</Button>
+            {blnHasProof ? (
+              <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnDisableProofPendingAction} onClick={() => void runWithValidation("proof_pending")} data-testid="it-declaration.review.proof-pending.button">Proof Pending</Button>
+            ) : null}
             <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} data-testid="it-declaration.review.reject.button">Reject Item</Button>
             <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("partial_approve")} data-testid="it-declaration.review.partial-approve.button">Partial Approve</Button>
             <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} data-testid="it-declaration.review.approve.button">Approve Item</Button>

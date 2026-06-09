@@ -54,6 +54,14 @@ function normalizeReviewStatus(strStatus?: string | null) {
   return String(strStatus || "").trim().toLowerCase().replace(/\s+/g, "_");
 }
 
+function normalizeDeclarationSection(strSection?: string | null) {
+  return String(strSection || "")
+    .trim()
+    .toUpperCase()
+    .replace(/^SEC[_\s-]*/, "")
+    .replace(/[^A-Z0-9]/g, "");
+}
+
 function parseMaxLimit(objValue: unknown) {
   if (typeof objValue === "number") return Number.isFinite(objValue) ? objValue : null;
   const strDigits = String(objValue || "").replace(/[^0-9.]/g, "");
@@ -213,7 +221,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   }
 
   const blnCanApprove = canDoAny("approve") || hasPermissionCode("PAYROLL_IT_DECLARATION_APPROVE");
-  const blnCanReject = canDoAny("reject") || hasPermissionCode("PAYROLL_IT_DECLARATION_REJECT");
+  const blnCanReject = canDoAny("reject") || hasPermissionCode("PAYROLL_IT_DECLARATION_REJECT") || blnCanApprove;
   const blnCanReview = canDoAny("edit") || hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanRelease = canDoAny("release") || hasPermissionCode("PAYROLL_IT_DECLARATION_RELEASE");
   const blnCanLock = canDoAny("lock") || hasPermissionCode("PAYROLL_IT_DECLARATION_LOCK");
@@ -221,12 +229,13 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     canDoAny("proof_verify") ||
     hasPermissionCode("PAYROLL_IT_DECLARATION_PROOF_VERIFY") ||
     blnCanReview;
+  const blnCanReviewWorkflow = blnCanReview || blnCanApprove || blnCanReject || blnCanProofVerify;
   const strDeclarationStatus = String(objDetail?.strStatus || "").toLowerCase();
   const blnLocked = Boolean(objDetail?.blnLocked || objDetail?.strStatus?.toLowerCase() === "locked");
   const blnReviewEditable = ["under_review"].includes(strDeclarationStatus);
   const blnSubmittedPendingReview = strDeclarationStatus === "submitted";
   const blnItemActionsAllowedStatus = blnReviewEditable || blnSubmittedPendingReview;
-  const blnCanStartReview = !blnLocked && blnCanReview && strDeclarationStatus === "submitted";
+  const blnCanStartReview = !blnLocked && blnCanReviewWorkflow && strDeclarationStatus === "submitted";
   const blnCanApproveHeader = !blnLocked && blnCanApprove && strDeclarationStatus === "under_review";
   const blnCanRejectHeader = !blnLocked && blnCanReject && strDeclarationStatus === "under_review";
   const blnCanReleaseHeader = !blnLocked && (blnCanRelease || blnCanReview) && ["submitted", "under_review", "approved", "partially_approved", "rejected"].includes(strDeclarationStatus);
@@ -369,15 +378,15 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
 
   const lstProofs = useMemo(() => objDetail?.lstProofs || [], [objDetail]);
   const dicCategoryRuleBySection = useMemo(
-    () => new Map((lstCategoryRules ?? []).map((objRule) => [objRule.strSection, objRule])),
+    () => new Map((lstCategoryRules ?? []).map((objRule) => [normalizeDeclarationSection(objRule.strSection), objRule])),
     [lstCategoryRules]
   );
   const lstItems = useMemo(
     () => {
       const lstDeclaredItems = (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0);
       if (lstCategoryRules === null) return lstDeclaredItems;
-      const setActiveSections = new Set(lstCategoryRules.map((objRule) => objRule.strSection));
-      return lstDeclaredItems.filter((objItem) => setActiveSections.has(String(objItem.strSection || "").trim().toUpperCase()));
+      const setActiveSections = new Set(lstCategoryRules.map((objRule) => normalizeDeclarationSection(objRule.strSection)));
+      return lstDeclaredItems.filter((objItem) => setActiveSections.has(normalizeDeclarationSection(objItem.strSection)));
     },
     [objDetail, lstCategoryRules]
   );
@@ -385,7 +394,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     const dicGroups = new Map<string, DeclarationSectionGroup>();
     for (const objItem of lstItems) {
       const strSection = objItem.strSection || "Other";
-      const objRule = dicCategoryRuleBySection.get(strSection.trim().toUpperCase());
+      const objRule = dicCategoryRuleBySection.get(normalizeDeclarationSection(strSection));
       const strItemDescription = objItem.strDescription || "";
       const strDescription = strItemDescription.toLowerCase().includes(strSection.toLowerCase()) || strItemDescription.toLowerCase().includes("section")
         ? strItemDescription
@@ -418,7 +427,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
 
   return (
     <Stack spacing={1.4}>
-      <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef", backgroundColor: "#ffffff", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
+      <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #bbf7d0", backgroundColor: "#f0fdf4", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Stack spacing={0.35}>
             <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
@@ -434,7 +443,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 size="small"
                 onClick={() => setBlnAuditDialogOpen(true)}
                 data-testid="it-declaration.review-detail.view-log.button"
-                sx={{ textTransform: "none", color: "#0f172a", minWidth: "auto", px: 0.6, fontWeight: 800 }}
+                sx={{ textTransform: "none", color: "#14532d", minWidth: "auto", px: 0.6, fontWeight: 800 }}
               >
                 View Log
               </Button>
@@ -497,8 +506,8 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
           const intProofPendingCount = countItemsByStatus(objGroup.lstItems, ["proof_pending"]);
           const intPendingCount = objGroup.lstItems.length - intApprovedCount - intRejectedCount - intProofPendingCount;
           return (
-          <Paper key={`${objGroup.strSection}-${objGroup.strDescription}`} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", overflow: "hidden", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
-            <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={1.2} sx={{ px: 1.2, py: 1, backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+          <Paper key={`${objGroup.strSection}-${objGroup.strDescription}`} sx={{ border: "1px solid #fed7aa", borderRadius: "8px", overflow: "hidden", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
+            <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={1.2} sx={{ px: 1.2, py: 1, backgroundColor: "#fff7ed", borderBottom: "1px solid #fdba74" }}>
               <Box sx={{ minWidth: 220 }}>
                 <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{objGroup.strDescription ? `${objGroup.strSection} - ${objGroup.strDescription}` : objGroup.strSection}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{objGroup.lstItems.length} declared row{objGroup.lstItems.length === 1 ? "" : "s"} | {objGroup.lstProofs.length} uploaded proof{objGroup.lstProofs.length === 1 ? "" : "s"}</Typography>
@@ -512,7 +521,15 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 <SectionStat strLabel="Rejected" strValue={`${intRejectedCount}`} strTone={intRejectedCount > 0 ? "danger" : "default"} />
               </Stack>
             </Stack>
-            <Stack spacing={0.9} sx={{ p: 1 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" },
+                gap: 1.3,
+                p: 1,
+                alignItems: "stretch",
+              }}
+            >
               {objGroup.lstItems.map((objItem, intIndex) => {
                 const intCurrentItemID = objItem.intItemID ?? 0;
                 const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
@@ -520,7 +537,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                   ...objItem,
                   decMaxLimitAmount: objGroup.decMaxLimitAmount ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount,
                   strMaxLimitAppliedAt: objGroup.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt,
-                  blnProofRequired: dicCategoryRuleBySection.get(String(objItem.strSection || "").trim().toUpperCase())?.blnProofRequired ?? objItem.blnProofRequired,
+                  blnProofRequired: dicCategoryRuleBySection.get(normalizeDeclarationSection(objItem.strSection))?.blnProofRequired ?? objItem.blnProofRequired,
                 };
                 return (
                   <ITDeclarationItemReviewPanel
@@ -540,7 +557,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                   />
                 );
               })}
-            </Stack>
+            </Box>
           </Paper>
           );
         })}
