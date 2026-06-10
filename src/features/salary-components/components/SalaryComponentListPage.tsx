@@ -70,10 +70,6 @@ function getCategoryLabel(strValue: string) {
   }
 }
 
-function getWageTypeLabel(blnIsWages: boolean) {
-  return blnIsWages ? "Wage Component" : "Non-Wage Component";
-}
-
 function getTaxTreatmentLabel(strValue: string | null) {
   if (!strValue) {
     return "-";
@@ -95,6 +91,19 @@ function getTaxTreatmentLabel(strValue: string | null) {
     default:
       return strValue;
   }
+}
+
+function getPfEsicLabel(blnIncludeInPF: boolean, blnIncludeInESIC: boolean) {
+  if (blnIncludeInPF && blnIncludeInESIC) {
+    return "PF / ESIC";
+  }
+  if (blnIncludeInPF) {
+    return "PF";
+  }
+  if (blnIncludeInESIC) {
+    return "ESIC";
+  }
+  return "-";
 }
 
 export default function SalaryComponentListPage() {
@@ -262,25 +271,13 @@ export default function SalaryComponentListPage() {
               onDelete={() => deleteSalaryComponent(dicRow.intID)}
             />
           ),
-          strComponentCode: dicRow.strComponentCode,
           strComponentName: dicRow.strComponentName,
           strComponentCategory: getCategoryLabel(dicRow.strComponentCategory),
           strComponentGroup: dicRow.strComponentGroup ?? "-",
-          strWageType: dicRow.blnIsWages ? t("wages", getWageTypeLabel(true)) : t("non_wages", getWageTypeLabel(false)),
           strCalcMethod: dicRow.strCalcMethod,
-          strRoundingRule: dicRow.strRoundingRule ?? "-",
-          strDefaultPeriodicity: dicRow.strDefaultPeriodicity,
           strTaxTreatment: getTaxTreatmentLabel(dicRow.strTaxTreatment),
-          blnIncludeInPF: dicRow.blnIncludeInPF ? t("yes", "Yes") : t("no", "No"),
-          blnIncludeInESIC: dicRow.blnIncludeInESIC ? t("yes", "Yes") : t("no", "No"),
-          blnIncludeInGratuity: dicRow.blnIncludeInGratuity ? t("yes", "Yes") : t("no", "No"),
-          blnIncludeInPayslip: dicRow.blnIncludeInPayslip ? t("yes", "Yes") : t("no", "No"),
-          strPayslipSection: dicRow.strPayslipSection ?? "-",
-          intDisplayOrder: String(dicRow.intDisplayOrder),
-          blnAllowManualOverride: dicRow.blnAllowManualOverride ? t("yes", "Yes") : t("no", "No"),
+          strPfEsic: getPfEsicLabel(dicRow.blnIncludeInPF, dicRow.blnIncludeInESIC),
           blnDeclarationRequired: dicRow.blnDeclarationRequired ? t("yes", "Yes") : t("no", "No"),
-          blnProofRequired: dicRow.blnProofRequired ? t("yes", "Yes") : t("no", "No"),
-          intDependencyCount: String(dicRow.intDependencyCount),
           blnIsActive: (
             <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
               {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
@@ -310,26 +307,14 @@ export default function SalaryComponentListPage() {
         exportable: false,
         width: 56
       },
-      { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strComponentCode", headerName: t("code", "Code") },
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strComponentName", headerName: t("component_name", "Component Name") },
       { field: "strComponentCategory", headerName: t("category", "Category") },
-      { field: "strComponentGroup", headerName: t("group", "Group") },
-      { field: "strWageType", headerName: t("wage_type", "Wage Type") },
+      { field: "strComponentGroup", headerName: t("payroll_group", "Payroll Group") },
       { field: "strCalcMethod", headerName: t("calc_method", "Calc Method") },
-      { field: "strRoundingRule", headerName: t("rounding", "Rounding") },
-      { field: "strDefaultPeriodicity", headerName: t("periodicity", "Periodicity") },
       { field: "strTaxTreatment", headerName: t("tax_treatment", "Tax Treatment") },
-      { field: "blnIncludeInPF", headerName: t("include_in_pf", "Include In PF") },
-      { field: "blnIncludeInESIC", headerName: t("include_in_esic", "Include In ESIC") },
-      { field: "blnIncludeInGratuity", headerName: t("include_in_gratuity", "Include In Gratuity") },
-      { field: "blnIncludeInPayslip", headerName: t("include_in_payslip", "Include In Payslip") },
-      { field: "strPayslipSection", headerName: t("payslip_section", "Payslip Section") },
-      { field: "intDisplayOrder", headerName: t("display_order", "Display Order") },
-      { field: "blnAllowManualOverride", headerName: t("manual_override", "Manual Override") },
+      { field: "strPfEsic", headerName: t("pf_esic", "PF / ESIC") },
       { field: "blnDeclarationRequired", headerName: t("declaration", "Declaration") },
-      { field: "blnProofRequired", headerName: t("proof", "Proof") },
-      { field: "intDependencyCount", headerName: t("dependencies", "Dependencies") },
       { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
     ],
     [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length, t]
@@ -447,7 +432,7 @@ export default function SalaryComponentListPage() {
               </Box>
             )}
             testIdPrefix="salary-components.list"
-            getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}

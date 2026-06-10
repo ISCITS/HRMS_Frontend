@@ -43,6 +43,7 @@ type RoleBasedDashboardProps = {
 
 type KpiPayload = {
   intValue?: number;
+  intRunEmployeeCount?: number;
   decValue?: number;
   strSubtitle?: string;
   decTrendValue?: number | null;
@@ -109,6 +110,7 @@ type RecentRunRow = {
   net_pay_total: number;
   run_status: string;
   validation_status?: string | null;
+  processed_on?: string | null;
 };
 
 type ChartPoint = {
@@ -149,13 +151,9 @@ const lstPayrollCardPalette = [
   { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft },
 ];
 
-const lstSummaryChartBars = [2, 2];
-
-const lstFallbackTaxSparklinePoints = [18, 20, 12, 42, 28, 30, 48, 32, 50, 22, 38, 56, 46, 72];
-
-export default function RoleBasedDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardProps) {
+export default function RoleBasedDashboard({ objDashboard, objUserContext, t, onPayrollMonthChange }: RoleBasedDashboardProps) {
   if (objDashboard.strDashboardType === "PAYROLL") {
-    return <PayrollDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
+    return <PayrollDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} onPayrollMonthChange={onPayrollMonthChange} />;
   }
   if (objDashboard.strDashboardType === "ESS") {
     return <EssDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
@@ -482,9 +480,11 @@ function PayrollKpiPanel({
   const decTrendValue = objPayload.decTrendValue;
   const strComparisonMonth = formatComparisonMonth(strSelectedMonth === strAllMonthsValue ? "" : strSelectedMonth, t);
   const blnNegativeMetric = objWidget.strWidgetCode === "pending_approvals" || objWidget.strWidgetCode === "payroll_validation_errors";
-  const strTrendIcon = decTrendValue == null ? (blnNegativeMetric ? "v" : "^") : decTrendValue >= 0 ? "^" : "v";
+  const strTrendIcon = decTrendValue == null ? "" : decTrendValue >= 0 ? "^" : "v";
   const strTrendText = decTrendValue == null
-    ? `${strTrendIcon} 0 ${t("vs_previous", "vs")} ${strComparisonMonth}`
+    ? objWidget.strWidgetCode === "employees_in_payroll"
+      ? `${t("employees_in_selected_run", "Employees in selected run")}: ${formatInteger(Number(objPayload.intRunEmployeeCount || 0))}`
+      : t("current_snapshot", "Current Snapshot")
     : `${strTrendIcon} ${Math.abs(decTrendValue)}% ${t("vs_previous", "vs")} ${strComparisonMonth}`;
   const objIcon = getKpiIcon(objWidget.strWidgetCode);
   const strSubtitle = objWidget.strWidgetCode === "net_payroll_amount"
@@ -492,6 +492,9 @@ function PayrollKpiPanel({
       ? t("all_months_generated_payslips", "All Months (Generated Payslips)")
       : `This Month (${formatLongMonth(strSelectedMonth)})`
     : objPayload.strSubtitle || t("current_snapshot", "Current Snapshot");
+  const strTitle = objWidget.strWidgetCode === "employees_in_payroll"
+    ? t("total_employees", "Total Employees")
+    : objWidget.strWidgetName;
 
   return (
     <Paper
@@ -530,7 +533,7 @@ function PayrollKpiPanel({
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: DASHBOARD_COLORS.muted }}>
-                {objWidget.strWidgetName}
+                {strTitle}
               </Typography>
               <Typography sx={{ mt: 1.05, fontSize: "1.95rem", lineHeight: 1.08, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
                 {strValue}
@@ -552,8 +555,15 @@ function PayrollKpiPanel({
 }
 
 function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleBasedDashboardProps["t"] }) {
-  const lstStages = (((objWidget?.objPayload as { lstStages?: TrackerStage[] } | undefined)?.lstStages) || []) as TrackerStage[];
-  const objCurrentStage = lstStages.find((objStage) => objStage.strStatus === "in_progress") || lstStages.find((objStage) => objStage.strStatus === "pending");
+  const objPayload = ((objWidget?.objPayload as { lstStages?: TrackerStage[] } | undefined) || {});
+  const lstStages = (objPayload.lstStages || []) as TrackerStage[];
+  const objCurrentStage = lstStages.find((objStage) => objStage.strStatus === "in_progress")
+    || lstStages.find((objStage) => objStage.strStatus === "pending")
+    || lstStages[lstStages.length - 1];
+  const decCompletedStageUnits = lstStages.reduce((decSum, objStage) => (
+    decSum + (objStage.strStatus === "completed" ? 1 : objStage.strStatus === "in_progress" ? 0.5 : 0)
+  ), 0);
+  const decProgressPercent = lstStages.length ? Math.max(0, Math.min(100, (decCompletedStageUnits / lstStages.length) * 100)) : 0;
 
   return (
     <PanelShell
@@ -564,8 +574,8 @@ function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
       <Box sx={{ pt: 0.25 }}>
         <Box sx={{ display: { xs: "none", md: "block" }, position: "relative", height: 30, mb: 1.65 }}>
           <Box sx={{ position: "absolute", left: 0, right: 0, top: 14, height: 2, backgroundColor: "#DDE7F0" }} />
-          <Box sx={{ position: "absolute", left: 0, width: "79%", top: 14, height: 2, backgroundColor: DASHBOARD_COLORS.green }} />
-          <Box sx={{ position: "absolute", left: "79%", right: 0, top: 14, height: 2, background: "repeating-linear-gradient(90deg, #FB923C 0 5px, transparent 5px 9px)" }} />
+          <Box sx={{ position: "absolute", left: 0, width: `${decProgressPercent}%`, top: 14, height: 2, backgroundColor: DASHBOARD_COLORS.green }} />
+          <Box sx={{ position: "absolute", left: `${decProgressPercent}%`, right: 0, top: 14, height: 2, background: "repeating-linear-gradient(90deg, #FB923C 0 5px, transparent 5px 9px)" }} />
           {lstStages.map((objStage, intIndex) => {
             const decLeft = lstStages.length > 1 ? (intIndex / (lstStages.length - 1)) * 100 : 0;
             const strAccent = objStage.strStatus === "completed"
@@ -772,7 +782,7 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Grid>
             ))}
           </Grid>
-          <MiniBarChart lstBars={lstSummaryChartBars} />
+          <MiniBarChart lstBars={lstStats.map((objStat) => Number(objStat.intValue || 0))} />
         </Stack>
       ) : null}
       {blnTax ? (
@@ -783,7 +793,7 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               {formatCurrency(decPrimary)}
             </Typography>
           </Box>
-          <Sparkline lstPoints={resolveSummarySparklinePoints(objWidget, lstFallbackTaxSparklinePoints)} strColor={objTone.accent} blnCompact />
+          <Sparkline lstPoints={resolveSummarySparklinePoints(objWidget)} strColor={objTone.accent} blnCompact />
         </Stack>
       ) : null}
     </PanelShell>
@@ -852,7 +862,7 @@ function RecentRunsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
               </Box>
               <Box>
                 <Typography sx={{ display: { xs: "block", md: "none" }, color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", mb: 0.2 }}>Processed On</Typography>
-                <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 600 }}>{buildProcessedOnLabel(objRow.payroll_month)}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 600 }}>{formatDateTimeLabel(objRow.processed_on)}</Typography>
               </Box>
               <Box>
                 <Typography sx={{ display: { xs: "block", md: "none" }, color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", mb: 0.2 }}>Run</Typography>
@@ -1761,10 +1771,10 @@ function resolveChartPointsFromPayload(objPayload: unknown) {
   return [];
 }
 
-function resolveSummarySparklinePoints(objWidget: DashboardWidget, lstFallback: number[]) {
+function resolveSummarySparklinePoints(objWidget: DashboardWidget) {
   const lstResolvedPoints = resolveChartPointsFromPayload(objWidget.objPayload).map(chartPointValue);
   if (lstResolvedPoints.length < 2) {
-    return lstFallback;
+    return [];
   }
   const decMin = Math.min(...lstResolvedPoints);
   const decMax = Math.max(...lstResolvedPoints);
@@ -1796,12 +1806,18 @@ function shortChartLabel(strValue: string) {
   return lstParts.length > 1 ? `${lstParts[0].slice(0, 3)} ${lstParts.at(-1)?.slice(0, 2) || ""}`.trim() : strTrimmed.slice(0, 6);
 }
 
-function buildProcessedOnLabel(strValue: string) {
+function formatDateTimeLabel(strValue?: string | null) {
+  if (!strValue) return "-";
   const objDate = new Date(strValue);
   if (Number.isNaN(objDate.getTime())) return "-";
-  objDate.setDate(24);
-  objDate.setHours(10, 24, 0, 0);
-  return objDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " 10:24 AM";
+  return objDate.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function Sparkline({ lstPoints, strColor, blnCompact = false }: { lstPoints: number[]; strColor: string; blnCompact?: boolean }) {

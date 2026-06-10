@@ -23,6 +23,26 @@ function isReimbursementCategory(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "") === "reimbursement";
 }
 
+function resolveClaimLimitType(dicRecord: SalaryComponentApiRecord): "none" | "monthly" | "yearly" {
+  if (dicRecord.decReimbursementMaxClaimMonthlyLimit != null) {
+    return "monthly";
+  }
+  if (dicRecord.decReimbursementMaxClaimYearlyLimit != null) {
+    return "yearly";
+  }
+  return "none";
+}
+
+function resolveMaximumClaimAmount(dicRecord: SalaryComponentApiRecord): string {
+  if (dicRecord.decReimbursementMaxClaimMonthlyLimit != null) {
+    return String(dicRecord.decReimbursementMaxClaimMonthlyLimit);
+  }
+  if (dicRecord.decReimbursementMaxClaimYearlyLimit != null) {
+    return String(dicRecord.decReimbursementMaxClaimYearlyLimit);
+  }
+  return "";
+}
+
 function normalizeIntegerList(lstValues: Array<number | string>) {
   return Array.from(
     new Set(
@@ -69,8 +89,9 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     strPayslipSection: dicRecord.strPayslipSection ?? null,
     intDisplayOrder: Number(dicRecord.intDisplayOrder ?? 10),
     blnIsReimbursement: Boolean(dicRecord.blnIsReimbursement),
-    decReimbursementMaxClaimMonthlyLimit: dicRecord.decReimbursementMaxClaimMonthlyLimit ?? null,
-    decReimbursementMaxClaimYearlyLimit: dicRecord.decReimbursementMaxClaimYearlyLimit ?? null,
+    intUsedInSalaryStructures: Number(dicRecord.intUsedInSalaryStructures ?? 0),
+    intAssignedEmployees: Number(dicRecord.intAssignedEmployees ?? 0),
+    intFormulaReferences: Number(dicRecord.intFormulaReferences ?? 0),
     blnIsEmployerContribution: Boolean(dicRecord.blnIsEmployerContribution),
     blnIsEmployeeDeduction: Boolean(dicRecord.blnIsEmployeeDeduction),
     blnDeclarationRequired: Boolean(dicRecord.blnDeclarationRequired),
@@ -120,8 +141,8 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnIncludeInPayslip: true,
     strPayslipSection: "Earnings",
     strDisplayOrder: "10",
-    strReimbursementMaxClaimMonthlyLimit: "",
-    strReimbursementMaxClaimYearlyLimit: "",
+    strClaimLimitType: "none",
+    strMaximumClaimAmount: "",
     blnIsEmployerContribution: false,
     blnIsEmployeeDeduction: false,
     blnDeclarationRequired: false,
@@ -154,8 +175,8 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnIncludeInPayslip: Boolean(dicRecord.blnIncludeInPayslip),
     strPayslipSection: dicRecord.strPayslipSection ?? "",
     strDisplayOrder: String(dicRecord.intDisplayOrder ?? 10),
-    strReimbursementMaxClaimMonthlyLimit: dicRecord.decReimbursementMaxClaimMonthlyLimit == null ? "" : String(dicRecord.decReimbursementMaxClaimMonthlyLimit),
-    strReimbursementMaxClaimYearlyLimit: dicRecord.decReimbursementMaxClaimYearlyLimit == null ? "" : String(dicRecord.decReimbursementMaxClaimYearlyLimit),
+    strClaimLimitType: resolveClaimLimitType(dicRecord),
+    strMaximumClaimAmount: resolveMaximumClaimAmount(dicRecord),
     blnIsEmployerContribution: Boolean(dicRecord.blnIsEmployerContribution),
     blnIsEmployeeDeduction: Boolean(dicRecord.blnIsEmployeeDeduction),
     blnDeclarationRequired: Boolean(dicRecord.blnDeclarationRequired),
@@ -177,6 +198,9 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
 
 function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: number) {
   const blnIsReimbursement = isReimbursementCategory(dicValues.strComponentCategory);
+  const decMaximumClaimAmount = blnIsReimbursement && dicValues.strMaximumClaimAmount.trim()
+    ? Number(dicValues.strMaximumClaimAmount)
+    : null;
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -197,11 +221,11 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnIncludeInPayslip: dicValues.blnIncludeInPayslip,
     strPayslipSection: formatOptionalText(dicValues.strPayslipSection),
     intDisplayOrder: Number(dicValues.strDisplayOrder) || 10,
-    decReimbursementMaxClaimMonthlyLimit: blnIsReimbursement && dicValues.strReimbursementMaxClaimMonthlyLimit.trim()
-      ? Number(dicValues.strReimbursementMaxClaimMonthlyLimit)
+    decReimbursementMaxClaimMonthlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "monthly"
+      ? decMaximumClaimAmount
       : null,
-    decReimbursementMaxClaimYearlyLimit: blnIsReimbursement && dicValues.strReimbursementMaxClaimYearlyLimit.trim()
-      ? Number(dicValues.strReimbursementMaxClaimYearlyLimit)
+    decReimbursementMaxClaimYearlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "yearly"
+      ? decMaximumClaimAmount
       : null,
     blnIsEmployerContribution: dicValues.blnIsEmployerContribution,
     blnIsEmployeeDeduction: dicValues.blnIsEmployeeDeduction,
@@ -249,8 +273,6 @@ export const salaryComponentService = {
         strPayslipSection: dicDetail.strPayslipSection,
         intDisplayOrder: dicDetail.intDisplayOrder,
         blnIsReimbursement: dicDetail.blnIsReimbursement,
-        decReimbursementMaxClaimMonthlyLimit: dicDetail.decReimbursementMaxClaimMonthlyLimit,
-        decReimbursementMaxClaimYearlyLimit: dicDetail.decReimbursementMaxClaimYearlyLimit,
         blnIsEmployerContribution: dicDetail.blnIsEmployerContribution,
         blnIsEmployeeDeduction: dicDetail.blnIsEmployeeDeduction,
         blnDeclarationRequired: dicDetail.blnDeclarationRequired,
