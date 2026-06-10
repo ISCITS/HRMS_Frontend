@@ -31,6 +31,7 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
     strRunCode: "",
     strRunName: "",
     strScopeType: "All",
+    strProcessFor: "PayrollGroup",
     intScopedEmployeeID: "",
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
     strRunStatus: "Open",

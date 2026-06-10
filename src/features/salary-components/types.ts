@@ -18,8 +18,6 @@ export type SalaryComponentListRecord = {
   strPayslipSection: string | null;
   intDisplayOrder: number;
   blnIsReimbursement: boolean;
-  decReimbursementMaxClaimMonthlyLimit: number | null;
-  decReimbursementMaxClaimYearlyLimit: number | null;
   blnIsEmployerContribution: boolean;
   blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
@@ -63,8 +61,8 @@ export type SalaryComponentFormValues = {
   blnIncludeInPayslip: boolean;
   strPayslipSection: string;
   strDisplayOrder: string;
-  strReimbursementMaxClaimMonthlyLimit: string;
-  strReimbursementMaxClaimYearlyLimit: string;
+  strClaimLimitType: "none" | "monthly" | "yearly";
+  strMaximumClaimAmount: string;
   blnIsEmployerContribution: boolean;
   blnIsEmployeeDeduction: boolean;
   blnDeclarationRequired: boolean;
@@ -81,6 +79,9 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   strFormulaExpression: string | null;
   strRoundingRule: string | null;
   strTaxTreatment: string | null;
+  intUsedInSalaryStructures: number;
+  intAssignedEmployees: number;
+  intFormulaReferences: number;
   lstDependencyComponentIDs: number[];
   lstTexts: Array<{
     intLanguageID: number;

@@ -160,6 +160,7 @@ export type PayrollRunFormValues = {
   strRunCode: string;
   strRunName: string;
   strScopeType: PayrollRunScopeType;
+  strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
   intScopedEmployeeID: number | "";
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;

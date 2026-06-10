@@ -27,7 +27,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 type SearchForm = {
   strSearch: string;
   strSearchMonth: string;
-  strStatus: "All" | "Open" | "Submitted" | "Approved" | "Processed" | "Closed";
+  strStatus: "All" | "Open" | "Approved" | "Processed" | "Closed";
 };
 
 const dicEmptySearch: SearchForm = {
@@ -56,27 +56,35 @@ function getStatusPillSx(strStatus: string) {
   return dicToneByStatus[strStatus] ?? { background: "#2563eb", color: "#fff" };
 }
 
+function getPayrollRunStatusLabel(strStatus: string) {
+  const dicLabels: Record<string, string> = {
+    Open: "Draft",
+    Approved: "Validated",
+    Processed: "Processed",
+    Closed: "Closed",
+  };
+  return dicLabels[strStatus] ?? strStatus;
+}
+
 function downloadCsv(strFileName: string, lstRows: PayrollRunListRecord[]) {
   const lstHeaders = [
-    "Run Code",
-    "Run Name",
+    "Payroll Run",
     "Payroll Month",
+    "Employees",
     "Status",
     "Locked",
-    "Inputs",
-    "Submitted",
+    "Processed",
   ];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
       [
-        dicRow.strRunCode,
         dicRow.strRunName,
         dicRow.dtPayrollMonth,
-        dicRow.strRunStatus,
-        dicRow.blnIsLocked ? "Yes" : "No",
         dicRow.dicSummary.intInputCount,
-        dicRow.dicSummary.intSubmittedCount,
+        getPayrollRunStatusLabel(dicRow.strRunStatus),
+        dicRow.blnIsLocked ? "Yes" : "No",
+        dicRow.dicSummary.intProcessedCount,
       ]
         .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
         .join(",")
@@ -102,12 +110,12 @@ function exportPdf(strTitle: string, lstRows: PayrollRunListRecord[]) {
     .map(
       (dicRow) => `
     <tr>
-      <td>${dicRow.strRunCode}</td>
       <td>${dicRow.strRunName}</td>
       <td>${dicRow.dtPayrollMonth}</td>
-      <td>${dicRow.strRunStatus}</td>
-      <td>${dicRow.blnIsLocked ? "Yes" : "No"}</td>
       <td>${dicRow.dicSummary.intInputCount}</td>
+      <td>${getPayrollRunStatusLabel(dicRow.strRunStatus)}</td>
+      <td>${dicRow.blnIsLocked ? "Yes" : "No"}</td>
+      <td>${dicRow.dicSummary.intProcessedCount}</td>
     </tr>
   `
     )
@@ -129,12 +137,12 @@ function exportPdf(strTitle: string, lstRows: PayrollRunListRecord[]) {
         <table>
           <thead>
             <tr>
-              <th>Run Code</th>
-              <th>Run Name</th>
+              <th>Payroll Run</th>
               <th>Payroll Month</th>
+              <th>Employees</th>
               <th>Status</th>
               <th>Locked</th>
-              <th>Inputs</th>
+              <th>Processed</th>
             </tr>
           </thead>
           <tbody>${strRows}</tbody>
@@ -271,9 +279,8 @@ export default function PayrollRunListPage() {
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-            <MenuItem value="Open">{t("status_open", "Open")}</MenuItem>
-            <MenuItem value="Submitted">{t("status_submitted", "Submitted")}</MenuItem>
-            <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
+            <MenuItem value="Open">{t("status_open", "Draft")}</MenuItem>
+            <MenuItem value="Approved">{t("status_approved", "Validated")}</MenuItem>
             <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
             <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
           </TextField>
@@ -381,19 +388,18 @@ export default function PayrollRunListPage() {
             <thead>
               <tr>
                 <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
-                <th>{t("run_code", "Run Code")}</th>
-                <th>{t("run_name", "Run Name")}</th>
+                <th>{t("run_name", "Payroll Run")}</th>
                 <th>{t("payroll_month", "Payroll Month")}</th>
+                <th>{t("inputs", "Employees")}</th>
                 <th>{t("status", "Status")}</th>
                 <th>{t("locked", "Locked")}</th>
-                <th>{t("inputs", "Inputs")}</th>
-                <th>{t("submitted", "Submitted")}</th>
+                <th>{t("submitted", "Processed")}</th>
               </tr>
             </thead>
             <tbody>
               {lstVisibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.emptyState}>
+                  <td colSpan={7} className={styles.emptyState}>
                     {t("empty_message", "No payroll runs found for the current filters.")}
                   </td>
                 </tr>
@@ -410,20 +416,19 @@ export default function PayrollRunListPage() {
                       />
                     </Box>
                   </td>
-                  <td>{dicRow.strRunCode}</td>
                   <td>{dicRow.strRunName}</td>
                   <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
+                  <td>{dicRow.dicSummary.intInputCount}</td>
                   <td>
                     <span
                       className={styles.statusPill}
                       style={getStatusPillSx(dicRow.strRunStatus)}
                     >
-                      {dicRow.strRunStatus}
+                      {getPayrollRunStatusLabel(dicRow.strRunStatus)}
                     </span>
                   </td>
                   <td>{dicRow.blnIsLocked ? t("yes", "Yes") : t("no", "No")}</td>
-                  <td>{dicRow.dicSummary.intInputCount}</td>
-                  <td>{dicRow.dicSummary.intSubmittedCount}</td>
+                  <td>{dicRow.dicSummary.intProcessedCount}</td>
                 </tr>
               ))}
             </tbody>
