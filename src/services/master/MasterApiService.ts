@@ -480,6 +480,9 @@ export type SalaryComponentApiRecord = {
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;
   blnIsActive: boolean;
+  intUsedInSalaryStructures?: number;
+  intAssignedEmployees?: number;
+  intFormulaReferences?: number;
   lstDependencyComponentIDs: number[];
   lstTexts?: Array<{
     intLanguageID: number;
