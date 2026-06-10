@@ -2,10 +2,12 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -14,13 +16,14 @@ import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } fr
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
 import { formatCurrency, formatDateLabel } from "@/features/reimbursements/formatters";
 import { claimHasProofPending } from "@/features/reimbursements/hrRules";
+import { canEditReimbursementClaim } from "@/features/reimbursements/rules";
 import { createInitialPayrollReimbursementFilters, payrollReimbursementService, type PayrollReimbursementFilters } from "@/features/reimbursements/services/payrollReimbursementService";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved", "partially_approved", "rejected", "released", "locked", "pushed_to_payroll", "paid"];
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
-const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
+const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS", "REIMBURSEMENT", "REIMBURSEMENTS"];
 const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
 const objHeaderActionButtonBaseSx = {
   minHeight: 30,
@@ -128,8 +131,11 @@ function getClaimLocationName(objClaim: ReimbursementClaimDto, mapEmployees: Map
 
 export default function ReimbursementReviewListPage() {
   const objRouter = useRouter();
+  const strPathname = usePathname();
+  const objSearchParams = useSearchParams();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
   const { blnLoading: blnCreateRightsLoading, canDoAny: canCreateEssAny } = useModuleActionAccess(lstCreateEssReimbursementModuleCodes);
+  const { blnLoading: blnEssRightsLoading, objRights: objEssRights, canDoAny: canDoEssAny, canViewAny: canViewEssAny } = useModuleActionAccess(lstEssReimbursementModuleCodes);
   const [dicFilters, setDicFilters] = useState<PayrollReimbursementFilters>(createInitialPayrollReimbursementFilters());
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
@@ -139,8 +145,22 @@ export default function ReimbursementReviewListPage() {
   const [strCreateError, setStrCreateError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const blnEmployeeReimbursementContext =
+    strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
+    objSearchParams.get("source") === "employee-reimbursement";
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
-  const blnCanCreateEssReimbursement = canCreateEssAny("ess_reimbursement_create");
+  const blnCanCreateEssReimbursement = canCreateEssAny("create") || canCreateEssAny("add") || canCreateEssAny("ess_reimbursement_create");
+  function hasEssPermissionCode(strPermissionCode: string) {
+    const strNormalizedPermissionCode = strPermissionCode.trim().toLowerCase();
+    return Object.entries(objEssRights.dicAllowedActions || {}).some(([strModuleCode, lstActions]) =>
+      strModuleCode.trim().toLowerCase() === strNormalizedPermissionCode ||
+      lstActions.some((strActionCode) => strActionCode.trim().toLowerCase() === strNormalizedPermissionCode),
+    );
+  }
+
+  const blnCanViewEssReimbursement = canViewEssAny() || canDoEssAny("list") || canDoEssAny("view") || canDoEssAny("ess_reimbursement_view") || hasEssPermissionCode("ESS_REIMBURSEMENT_VIEW");
+  const blnCanEditEssReimbursement = canDoEssAny("edit") || canDoEssAny("ess_reimbursement_edit") || hasEssPermissionCode("ESS_REIMBURSEMENT_EDIT");
+  const strPageLabel = blnEmployeeReimbursementContext ? "Employee Reimbursements" : "Reimbursement Review";
 
   async function loadClaims(dicNextFilters = dicFilters) {
     if (!blnCanView) {
@@ -249,17 +269,24 @@ export default function ReimbursementReviewListPage() {
     objRouter.push(`/ess/reimbursements/new?employee_id=${encodeURIComponent(String(intEmployeeID))}`);
   }
 
+  function getEssReimbursementRoute(objClaim: ReimbursementClaimDto, strMode: "view" | "edit") {
+    const strEmployeeQuery = objClaim.intEmployeeID ? `?employee_id=${encodeURIComponent(String(objClaim.intEmployeeID))}` : "";
+    return strMode === "edit"
+      ? `/ess/reimbursements/${objClaim.intID}/edit${strEmployeeQuery}`
+      : `/ess/reimbursements/${objClaim.intID}${strEmployeeQuery}`;
+  }
+
   return (
     <Stack spacing={1.4}>
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1}>
           <Box>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>Reimbursement Review</Typography>
+            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{strPageLabel}</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
           </Box>
           <Stack direction="row" alignItems="center" spacing={0.7}>
             {blnCanCreateEssReimbursement ? (
-              <Button size="small" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} sx={objHeaderPrimaryButtonSx}>Create ESS/Reimbursement</Button>
+              <Button size="small" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} sx={objHeaderPrimaryButtonSx}>Add Reimbursement</Button>
             ) : null}
             <Button size="small" variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} sx={objHeaderPrimaryButtonSx}>Search</Button>
             <Button size="small" variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objHeaderSecondaryButtonSx}>Clear</Button>
@@ -305,7 +332,7 @@ export default function ReimbursementReviewListPage() {
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnCreateRightsLoading} strLabel="Loading reimbursement review queue..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnCreateRightsLoading || blnEssRightsLoading} strLabel="Loading reimbursement review queue..." />
 
       {!blnCanView ? (
         <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
@@ -316,7 +343,7 @@ export default function ReimbursementReviewListPage() {
 
       {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
         <TableContainer>
-          <Table size="small" sx={{ minWidth: 980 }}>
+          <Table size="small" sx={{ minWidth: blnEmployeeReimbursementContext ? 1180 : 980 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
               <TableRow>
                 <TableCell align="right" sx={{ fontWeight: 800 }}>Action</TableCell>
@@ -325,7 +352,7 @@ export default function ReimbursementReviewListPage() {
                 <TableCell sx={{ fontWeight: 800 }}>Employee</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Proof</TableCell>
+                {/* <TableCell sx={{ fontWeight: 800 }}>Proof</TableCell> */}
                 <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed Amount 
                   <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
                   </TableCell>
@@ -338,11 +365,24 @@ export default function ReimbursementReviewListPage() {
             </TableHead>
             <TableBody>
               {lstFilteredClaims.length === 0 && !blnLoading ? (
-                <TableRow><TableCell colSpan={9}><Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>No reimbursement claims found.</Typography></TableCell></TableRow>
+                <TableRow><TableCell colSpan={10}><Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>No reimbursement claims found.</Typography></TableCell></TableRow>
               ) : null}
               {lstFilteredClaims.map((objClaim) => (
                 <TableRow key={objClaim.intID} hover>
-                  <TableCell align="right"><IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton></TableCell>
+                  <TableCell align="right">
+                    {blnEmployeeReimbursementContext ? (
+                      <Stack direction="row" spacing={0.6} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+                        {blnCanViewEssReimbursement ? (
+                          <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))} aria-label="View reimbursement claim" data-testid="reimbursements.review-list.row.view-ess.button" data-row-key={objClaim.intID}><VisibilityRoundedIcon fontSize="small" /></IconButton>
+                          ) : null} 
+                        {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
+                          <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" data-testid="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
+                         ) : null} 
+                      </Stack>
+                    ) : (
+                      <IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim) || "-"}</Typography>
                     {/* <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objClaim.strClaimTitle || "-"}</Typography> */}
@@ -351,7 +391,7 @@ export default function ReimbursementReviewListPage() {
                   <TableCell>{getEmployeeLabel(objClaim, mapEmployees) || "-"}</TableCell>
                   <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
                   <TableCell><ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
-                  <TableCell>{claimHasProofPending(objClaim) ? "Pending" : "Clear"}</TableCell>
+                  {/* <TableCell>{claimHasProofPending(objClaim) ? "Pending" : "Clear"}</TableCell> */}
                   <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
                   <TableCell>{["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
@@ -362,7 +402,7 @@ export default function ReimbursementReviewListPage() {
         </TableContainer>
       </Paper> : null}
       <Dialog open={blnCreateDialogOpen} onClose={() => setBlnCreateDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Create ESS/Reimbursement</DialogTitle>
+        <DialogTitle>Add Reimbursement</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 1.4 }}>Select an employee to create the reimbursement for.</DialogContentText>
           <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} data-testid="reimbursements.review-list.create.employee.select">

@@ -126,7 +126,8 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
   if (!strCandidateRoute) {
     return false;
   }
-  return strPathname === strCandidateRoute || strPathname.startsWith(`${strCandidateRoute}/`);
+  const strCandidatePath = strCandidateRoute.split("?")[0];
+  return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 
 function resolveMenuRoute(objItem: MenuItem): string | null {
