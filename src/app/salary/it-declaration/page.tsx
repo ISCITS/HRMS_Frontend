@@ -49,7 +49,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import { itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
+import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
 import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type FlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
@@ -355,6 +355,14 @@ function formatApiErrorForUi(objError: unknown, strFallback: string) {
   return strMessage;
 }
 
+function isValidReturnPath(strPath: string, blnHrMode: boolean) {
+  const strValue = strPath.trim();
+  if (!strValue) return false;
+  return blnHrMode
+    ? strValue.startsWith("/hr/it-declaration")
+    : strValue.startsWith("/salary/ess-declarations");
+}
+
 function SummaryCard({
   strLabel,
   strValue,
@@ -412,6 +420,13 @@ export default function SalaryEssDeclarationsPage() {
   const strRouteRegime = (objSearchParams.get("regime") || "").trim();
   const blnRouteCompare = (objSearchParams.get("compare") || "").trim() === "1";
   const strInitialRegime = (strRouteRegime.toLowerCase().includes("new") ? "New Regime" : "Old Regime") as Regime;
+  const intHrEmployeeID = Number(objSearchParams.get("employeeId") || 0);
+  const intRouteDeclarationID = Number(objSearchParams.get("declarationId") || 0);
+  const blnHrMode = intHrEmployeeID > 0 || intRouteDeclarationID > 0;
+  const strRouteReturnTo = (objSearchParams.get("returnTo") || "").trim();
+  const strDefaultBackPath = blnHrMode ? "/hr/it-declaration" : "/salary/ess-declarations";
+  const strReturnToStorageKey = blnHrMode ? "hrms.it-declaration.hr.return-to" : "hrms.it-declaration.ess.return-to";
+  const [strBackPath, setStrBackPath] = useState(strDefaultBackPath);
 
   const [intDeclarationID, setIntDeclarationID] = useState<number | null>(null);
   const [strFlowStatus, setStrFlowStatus] = useState<FlowStatus>("NOT_STARTED");
@@ -466,6 +481,22 @@ export default function SalaryEssDeclarationsPage() {
     strDefaultRegime: "Old Regime" as Regime,
     blnAllowEmployeeOptOut: true,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isValidReturnPath(strRouteReturnTo, blnHrMode)) {
+      window.sessionStorage.setItem(strReturnToStorageKey, strRouteReturnTo);
+      setStrBackPath(strRouteReturnTo);
+      return;
+    }
+    const strStoredReturnTo = window.sessionStorage.getItem(strReturnToStorageKey) || "";
+    if (isValidReturnPath(strStoredReturnTo, blnHrMode)) {
+      setStrBackPath(strStoredReturnTo);
+      return;
+    }
+    window.sessionStorage.setItem(strReturnToStorageKey, strDefaultBackPath);
+    setStrBackPath(strDefaultBackPath);
+  }, [blnHrMode, strDefaultBackPath, strReturnToStorageKey, strRouteReturnTo]);
 
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
@@ -799,16 +830,85 @@ export default function SalaryEssDeclarationsPage() {
     return [];
   }
 
+  async function getCurrentDeclaration(intPreferredDeclarationID?: number | null) {
+    if (blnHrMode) {
+      const intResolvedDeclarationID = intPreferredDeclarationID || intDeclarationID || intRouteDeclarationID;
+      if (!intResolvedDeclarationID) {
+        throw new Error("Declaration ID is required for HR IT declaration.");
+      }
+      return hrItDeclarationService.getDeclaration(intResolvedDeclarationID);
+    }
+    return itDeclarationService.getDeclaration(strFinancialYearCode);
+  }
+
+  async function startCurrentDeclaration(strRegime: Regime) {
+    if (blnHrMode) {
+      if (!intHrEmployeeID) {
+        throw new Error("Employee is required for HR IT declaration.");
+      }
+      return hrItDeclarationService.startDeclaration(intHrEmployeeID, strFinancialYearCode, strRegime);
+    }
+    return itDeclarationService.startDeclaration(strFinancialYearCode, strRegime);
+  }
+
+  async function changeCurrentRegime(intResolvedDeclarationID: number, strRegime: Regime) {
+    return blnHrMode
+      ? hrItDeclarationService.changeRegime(intResolvedDeclarationID, strRegime)
+      : itDeclarationService.changeRegime(intResolvedDeclarationID, strRegime);
+  }
+
+  async function saveCurrentItem(
+    intResolvedDeclarationID: number,
+    objPayload: { intItemID?: number | null; strSection: string; strInvestmentName: string; decDeclaredAmount: number }
+  ) {
+    return blnHrMode
+      ? hrItDeclarationService.saveItem(intResolvedDeclarationID, objPayload)
+      : itDeclarationService.saveItem(intResolvedDeclarationID, objPayload);
+  }
+
+  async function deleteCurrentItem(intResolvedDeclarationID: number, intItemIDToDelete: number) {
+    return blnHrMode
+      ? hrItDeclarationService.deleteItem(intResolvedDeclarationID, intItemIDToDelete)
+      : itDeclarationService.deleteItem(intResolvedDeclarationID, intItemIDToDelete);
+  }
+
+  async function uploadCurrentProof(intResolvedDeclarationID: number, intItemIDToUpload: number, objFile: File) {
+    return blnHrMode
+      ? hrItDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile)
+      : itDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile);
+  }
+
+  async function listCurrentInvestmentOptions(strSection: string) {
+    return blnHrMode
+      ? hrItDeclarationService.listInvestmentOptions(strSection)
+      : itDeclarationService.listInvestmentOptions(strSection);
+  }
+
+  async function compareCurrentTax(intResolvedDeclarationID: number) {
+    return blnHrMode
+      ? hrItDeclarationService.compareTax(intResolvedDeclarationID)
+      : itDeclarationService.compareTax(intResolvedDeclarationID);
+  }
+
+  async function submitCurrentDeclaration(intResolvedDeclarationID: number) {
+    return blnHrMode
+      ? hrItDeclarationService.submitDeclaration(intResolvedDeclarationID)
+      : itDeclarationService.submitDeclaration(intResolvedDeclarationID);
+  }
+
+  async function copyPreviousCurrentDeclaration(intResolvedDeclarationID: number) {
+    return blnHrMode
+      ? hrItDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID)
+      : itDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID);
+  }
+
   async function loadDeclaration() {
     setBlnLoading(true);
     setStrError("");
     setStrWarning("");
     setBlnRetryRefresh(false);
     try {
-      const objData =
-        strRouteRegime
-          ? await itDeclarationService.startDeclaration(strFinancialYearCode, strInitialRegime)
-          : await itDeclarationService.getDeclaration(strFinancialYearCode);
+      const objData = strRouteRegime ? await startCurrentDeclaration(strInitialRegime) : await getCurrentDeclaration();
       hydrateFromApi(objData);
       const lstMasterRows = await loadRowsFromCategoryMaster().catch(() => []);
       if (!objData.lstItems?.length) {
@@ -848,11 +948,15 @@ export default function SalaryEssDeclarationsPage() {
 
   useEffect(() => {
     if (!objSearchParams.get("fy")) {
-      objRouter.replace("/salary/ess-declarations");
+      objRouter.replace(strBackPath);
+      return;
+    }
+    if (blnHrMode && !intHrEmployeeID && !intRouteDeclarationID) {
+      objRouter.replace("/hr/it-declaration");
       return;
     }
     void loadDeclaration();
-  }, [strFinancialYearCode, strRouteRegime, blnRouteCompare]);
+  }, [strFinancialYearCode, strRouteRegime, blnRouteCompare, blnHrMode, intHrEmployeeID, intRouteDeclarationID, strBackPath]);
 
   useEffect(() => {
     if (!blnDraftSaved) return;
@@ -886,7 +990,7 @@ export default function SalaryEssDeclarationsPage() {
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
       if (!intResolvedDeclarationID) return;
-      const objData = await itDeclarationService.compareTax(intResolvedDeclarationID);
+      const objData = await compareCurrentTax(intResolvedDeclarationID);
       hydrateFromApi(objData);
       setBlnCompared(true);
       setBlnCompareModalOpen(true);
@@ -904,8 +1008,14 @@ export default function SalaryEssDeclarationsPage() {
     setStrSavingLabel("Saving draft...");
     setStrError("");
     try {
+      if (objEditRow) {
+        await saveDeclarationEdit();
+        setStrSuccessToast("Draft saved successfully.");
+        return;
+      }
       await persistDraftToDb();
       setBlnDraftSaved(true);
+      setStrSuccessToast("Draft saved successfully.");
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, "Unable to save declaration draft."));
     } finally {
@@ -951,7 +1061,7 @@ export default function SalaryEssDeclarationsPage() {
     setLstInvestmentOptionsForRow(lstSeedOptions);
     void (async () => {
       try {
-        const lstOptions = await itDeclarationService.listInvestmentOptions(objRow.strSection);
+        const lstOptions = await listCurrentInvestmentOptions(objRow.strSection);
         const lstApiOptions = lstOptions
           .map((objOption) => objOption.strOptionName?.trim() || objOption.strOptionCode?.trim())
           .filter((strValue): strValue is string => Boolean(strValue));
@@ -1005,17 +1115,17 @@ export default function SalaryEssDeclarationsPage() {
     let objLatestData: ItDeclarationDto | null = null;
 
     if (!intResolvedDeclarationID) {
-      objLatestData = await itDeclarationService.startDeclaration(strFinancialYearCode, strRegimeToSave);
+      objLatestData = await startCurrentDeclaration(strRegimeToSave);
       intResolvedDeclarationID = objLatestData.intDeclarationID ?? null;
     } else if (blnRegimeDirty) {
-      objLatestData = await itDeclarationService.changeRegime(intResolvedDeclarationID, strRegimeToSave);
+      objLatestData = await changeCurrentRegime(intResolvedDeclarationID, strRegimeToSave);
     }
 
     if (!intResolvedDeclarationID) {
       throw new Error("Unable to resolve declaration ID for proof upload.");
     }
 
-    objLatestData = await itDeclarationService.saveItem(intResolvedDeclarationID, objPayload);
+    objLatestData = await saveCurrentItem(intResolvedDeclarationID, objPayload);
     hydrateFromApi(objLatestData);
 
     const objSavedItem = objLatestData.lstItems?.find((objItem) =>
@@ -1037,6 +1147,7 @@ export default function SalaryEssDeclarationsPage() {
     try {
       setStrSavingLabel("Saving declaration rows...");
       setBlnSaving(true);
+      let intLastResolvedDeclarationID = intDeclarationID;
 
       const lstRowsToDelete = lstSectionEditEntries.filter((objEntry) =>
         objEntry.intItemID != null &&
@@ -1045,7 +1156,7 @@ export default function SalaryEssDeclarationsPage() {
       );
       for (const objDeleteEntry of lstRowsToDelete) {
         if (intDeclarationID && objDeleteEntry.intItemID) {
-          const objData = await itDeclarationService.deleteItem(intDeclarationID, objDeleteEntry.intItemID);
+          const objData = await deleteCurrentItem(intDeclarationID, objDeleteEntry.intItemID);
           hydrateFromApi(objData);
         }
       }
@@ -1060,14 +1171,15 @@ export default function SalaryEssDeclarationsPage() {
           strInvestmentName,
           decDeclaredAmount: decAmount,
         });
+        intLastResolvedDeclarationID = objPersisted.intDeclarationID;
         if (objEntry.objProofFileInput && objPersisted.intItemID) {
-          const objData = await itDeclarationService.uploadItemProof(objPersisted.intDeclarationID, objPersisted.intItemID, objEntry.objProofFileInput);
+          const objData = await uploadCurrentProof(objPersisted.intDeclarationID, objPersisted.intItemID, objEntry.objProofFileInput);
           hydrateFromApi(objData);
         }
       }
 
       // Always re-fetch declaration once all row operations are done, so modal reopen reflects persisted server rows.
-      const objRefreshed = await itDeclarationService.getDeclaration(strFinancialYearCode);
+      const objRefreshed = await getCurrentDeclaration(intLastResolvedDeclarationID);
       hydrateFromApi(objRefreshed);
 
       setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : "IN_PROGRESS"));
@@ -1105,11 +1217,14 @@ export default function SalaryEssDeclarationsPage() {
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
       if (!intResolvedDeclarationID) return;
-      const objData = await itDeclarationService.submitDeclaration(intResolvedDeclarationID);
+      const objData = await submitCurrentDeclaration(intResolvedDeclarationID);
       hydrateFromApi(objData);
       setBlnSubmitModalOpen(false);
       setBlnDraftSaved(true);
       setStrSuccessToast("Declaration submitted successfully.");
+      if (blnHrMode) {
+        objRouter.push(strBackPath);
+      }
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, "Unable to submit declaration."));
     } finally {
@@ -1126,7 +1241,7 @@ export default function SalaryEssDeclarationsPage() {
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
       if (!intResolvedDeclarationID) return;
-      const objData = await itDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID);
+      const objData = await copyPreviousCurrentDeclaration(intResolvedDeclarationID);
       hydrateFromApi(objData);
       setStrSuccessToast("Previous FY declaration copied.");
       setBlnCompared(false);
@@ -1152,10 +1267,10 @@ export default function SalaryEssDeclarationsPage() {
     }
 
     if (!intResolvedDeclarationID) {
-      objLatestData = await itDeclarationService.startDeclaration(strFinancialYearCode, strRegimeToSave);
+      objLatestData = await startCurrentDeclaration(strRegimeToSave);
       intResolvedDeclarationID = objLatestData.intDeclarationID ?? null;
     } else if (blnRegimeDirty) {
-      objLatestData = await itDeclarationService.changeRegime(intResolvedDeclarationID, strRegimeToSave);
+      objLatestData = await changeCurrentRegime(intResolvedDeclarationID, strRegimeToSave);
     }
 
     if (!intResolvedDeclarationID) {
@@ -1163,7 +1278,7 @@ export default function SalaryEssDeclarationsPage() {
     }
 
     for (const objPendingRow of lstPendingRows) {
-      objLatestData = await itDeclarationService.saveItem(intResolvedDeclarationID, objPendingRow);
+      objLatestData = await saveCurrentItem(intResolvedDeclarationID, objPendingRow);
     }
 
     if (objLatestData) {
@@ -1184,7 +1299,7 @@ export default function SalaryEssDeclarationsPage() {
               size="small"
               startIcon={<ArrowBackRoundedIcon />}
               sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
-              onClick={() => objRouter.push("/salary/ess-declarations")}
+              onClick={() => objRouter.push(strBackPath)}
             >
               Back
             </Button>
@@ -1552,7 +1667,7 @@ export default function SalaryEssDeclarationsPage() {
                               onClick={async () => {
                                 if (objEntry.intItemID && intDeclarationID) {
                                   try {
-                                    const objData = await itDeclarationService.deleteItem(intDeclarationID, objEntry.intItemID);
+                                    const objData = await deleteCurrentItem(intDeclarationID, objEntry.intItemID);
                                     hydrateFromApi(objData);
                                   } catch (objError) {
                                     setStrError(formatApiErrorForUi(objError, "Unable to delete investment row."));

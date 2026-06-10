@@ -774,7 +774,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
-    if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+    if (strRoute.includes("/hr/it-declaration") || strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
       return "IT Declaration";
     }
 
