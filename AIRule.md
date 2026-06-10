@@ -142,4 +142,4 @@ Always check `ResultCode` before using `Data`.
 - Gate UI actions behind `useActionRights` hook (RBAC).
 - No `console.log` in committed code.
 - Path alias `@/` → `src/` — always use it, never `../../` relative traversals.
-- Comments only for non-obvious WHY, never for what the code does.
+- Add proper comments in code while working on anything new or modifying any existing code.
