@@ -1,14 +1,14 @@
 "use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } from "@/features/employee/types";
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
@@ -20,6 +20,37 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 
 const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved", "partially_approved", "rejected", "released", "locked", "pushed_to_payroll", "paid"];
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
+const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
+const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
+const objHeaderActionButtonBaseSx = {
+  minHeight: 30,
+  maxHeight: 30,
+  px: 1.2,
+  py: 0.25,
+  borderRadius: "8px !important",
+  fontWeight: 800,
+  boxShadow: "none",
+  textTransform: "none",
+};
+const objHeaderPrimaryButtonSx = {
+  ...objHeaderActionButtonBaseSx,
+  backgroundColor: "var(--app-primary-color)",
+  color: "#ffffff",
+  "&:hover": {
+    backgroundColor: "var(--app-primary-color)",
+    boxShadow: "none",
+  },
+};
+const objHeaderSecondaryButtonSx = {
+  ...objHeaderActionButtonBaseSx,
+  border: "1px solid var(--app-secondary-border)",
+  backgroundColor: "rgba(255, 255, 255, 0.86)",
+  color: "var(--app-primary-color)",
+  "&:hover": {
+    border: "1px solid var(--app-secondary-border)",
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+  },
+};
 
 type FilterOption = {
   strValue: string;
@@ -98,13 +129,18 @@ function getClaimLocationName(objClaim: ReimbursementClaimDto, mapEmployees: Map
 export default function ReimbursementReviewListPage() {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
+  const { blnLoading: blnCreateRightsLoading, canDoAny: canCreateEssAny } = useModuleActionAccess(lstCreateEssReimbursementModuleCodes);
   const [dicFilters, setDicFilters] = useState<PayrollReimbursementFilters>(createInitialPayrollReimbursementFilters());
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objEmployeeOptions, setObjEmployeeOptions] = useState<EmployeeFormOptions>(objEmptyEmployeeOptions);
+  const [blnCreateDialogOpen, setBlnCreateDialogOpen] = useState(false);
+  const [strCreateEmployeeID, setStrCreateEmployeeID] = useState("");
+  const [strCreateError, setStrCreateError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
+  const blnCanCreateEssReimbursement = canCreateEssAny("ess_reimbursement_create");
 
   async function loadClaims(dicNextFilters = dicFilters) {
     if (!blnCanView) {
@@ -150,7 +186,7 @@ export default function ReimbursementReviewListPage() {
   const mapEmployees = useMemo(() => new Map(lstEmployees.map((objEmployee) => [objEmployee.intID, objEmployee])), [lstEmployees]);
 
   const lstEmployeeOptions = useMemo(
-    () => createUniqueOptions(lstEmployees.map((objEmployee) => ({
+    () => createUniqueOptions(lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => ({
       strValue: String(objEmployee.intID),
       strLabel: objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName,
     }))),
@@ -199,17 +235,34 @@ export default function ReimbursementReviewListPage() {
     void loadClaims(dicReset);
   }
 
+  function proceedToCreateForEmployee() {
+    const intEmployeeID = Number(strCreateEmployeeID);
+    const objEmployee = lstEmployees.find((objRecord) => objRecord.intID === intEmployeeID);
+    if (!intEmployeeID || !objEmployee) {
+      setStrCreateError("Select an employee before creating reimbursement.");
+      return;
+    }
+    if (objEmployee.blnIsPartialSave) {
+      setStrCreateError("Select a valid employee.");
+      return;
+    }
+    objRouter.push(`/ess/reimbursements/new?employee_id=${encodeURIComponent(String(intEmployeeID))}`);
+  }
+
   return (
     <Stack spacing={1.4}>
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1}>
           <Box>
             <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>Reimbursement Review</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
           </Box>
-          <Stack direction="row" spacing={0.7}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>Clear</Button>
+          <Stack direction="row" alignItems="center" spacing={0.7}>
+            {blnCanCreateEssReimbursement ? (
+              <Button size="small" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} sx={objHeaderPrimaryButtonSx}>Create ESS/Reimbursement</Button>
+            ) : null}
+            <Button size="small" variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} sx={objHeaderPrimaryButtonSx}>Search</Button>
+            <Button size="small" variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objHeaderSecondaryButtonSx}>Clear</Button>
           </Stack>
         </Stack>
       </Paper>
@@ -252,7 +305,7 @@ export default function ReimbursementReviewListPage() {
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement review queue..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnCreateRightsLoading} strLabel="Loading reimbursement review queue..." />
 
       {!blnCanView ? (
         <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
@@ -308,6 +361,20 @@ export default function ReimbursementReviewListPage() {
           </Table>
         </TableContainer>
       </Paper> : null}
+      <Dialog open={blnCreateDialogOpen} onClose={() => setBlnCreateDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Create ESS/Reimbursement</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1.4 }}>Select an employee to create the reimbursement for.</DialogContentText>
+          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} data-testid="reimbursements.review-list.create.employee.select">
+            <MenuItem value="">Select employee</MenuItem>
+            {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button size="small" onClick={() => setBlnCreateDialogOpen(false)} variant="outlined" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
+          <Button size="small" onClick={proceedToCreateForEmployee} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Proceed</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

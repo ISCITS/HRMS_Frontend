@@ -790,11 +790,11 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
         tEmployeePayrollInput(
           "page_title",
           getLastBreadcrumbSegment(
-            tEmployeePayrollInput("breadcrumbs", "Payroll / Employee Payroll Input")
+            tEmployeePayrollInput("breadcrumbs", "Payroll / Payroll Input")
           )
         ),
         strModuleName,
-        "Employee Payroll Input"
+        "Payroll Input"
       );
     }
 

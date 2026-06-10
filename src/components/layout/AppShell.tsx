@@ -110,16 +110,16 @@ function getLocalizedHeaderTitle(
 
   if (strHeaderModuleName === "employee-payroll-input") {
     if (strLowerPath.endsWith("/new")) {
-      return tHeader("add_title", "Create Employee Payroll Input");
+      return tHeader("add_title", "Create Payroll Input");
     }
     if (strLowerPath.includes("/edit")) {
-      return tHeader("edit_title", "Edit Employee Payroll Input");
+      return tHeader("edit_title", "Edit Payroll Input");
     }
     return stripMasterTitle(
       tHeader(
         "page_title",
         getLastBreadcrumbSegment(
-          tHeader("breadcrumbs", "Payroll / Employee Payroll Input")
+          tHeader("breadcrumbs", "Payroll / Payroll Input")
         )
       )
     );

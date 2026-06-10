@@ -10,7 +10,7 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -70,6 +70,7 @@ function getClaimReferenceNumber(objClaim?: ReimbursementClaimDto | null) {
 
 export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { intClaimID?: number | null; strMode: EditorMode }) {
   const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementModuleCodes);
   const [objClaim, setObjClaim] = useState<ReimbursementClaimDto | null>(null);
   const [objOptions, setObjOptions] = useState<ReimbursementOptionsDto>(objEmptyOptions);
@@ -84,10 +85,15 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [intClaimIDToLoadAfterSuccess, setIntClaimIDToLoadAfterSuccess] = useState<number | null>(null);
+  const intSelectedEmployeeID = useMemo(() => {
+    const intEmployeeID = Number(objSearchParams.get("employee_id") || 0);
+    return intEmployeeID > 0 ? intEmployeeID : null;
+  }, [objSearchParams]);
 
   const blnCanView = canViewAny() || canDoAny("list");
-  const blnCanAdd = canDoAny("add");
-  const blnCanEdit = canDoAny("edit");
+  const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create"));
+  const blnCanAdd = canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create");
+  const blnCanEdit = canDoAny("edit") || blnCanCreateOnBehalf;
   const blnCanSubmit = canDoAny("submit");
   const blnExistingClaim = Boolean(objClaim?.intID);
   const blnCanDeleteClaim = Boolean(objClaim?.intID && objClaim.strClaimStatus === "draft" && blnCanEdit);
@@ -151,7 +157,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setStrError("");
 
       try {
-        const objLoadedClaim = intClaimID ? await reimbursementService.getClaim(intClaimID) : null;
+        const objLoadedClaim = intClaimID ? await reimbursementService.getClaimForEmployee(intClaimID, intSelectedEmployeeID) : null;
         if (!blnMounted) return;
         setObjClaim(objLoadedClaim);
         setObjHeader(buildHeaderState(objLoadedClaim));
@@ -163,7 +169,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       }
 
       try {
-        const objLoadedOptions = await reimbursementService.getOptions();
+        const objLoadedOptions = await reimbursementService.getOptions(intSelectedEmployeeID);
         if (!blnMounted) return;
         setObjOptions(objLoadedOptions);
       } catch (objError) {
@@ -178,11 +184,12 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     return () => {
       blnMounted = false;
     };
-  }, [intClaimID, strMode, blnRightsLoading, blnCanView, blnCanAdd, blnCanEdit]);
+  }, [intClaimID, intSelectedEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanAdd, blnCanEdit]);
 
   function buildClaimPayload(): ReimbursementClaimRequest {
     // Purpose: Converts header fields into the ESS claim create/update payload.
     return {
+      intEmployeeID: intSelectedEmployeeID,
       strClaimTitle: objHeader.strClaimTitle.trim() || null,
       strFinancialYearCode: objHeader.strFinancialYearCode.trim() || null,
       dtClaimDate: objHeader.dtClaimDate || null,
@@ -205,7 +212,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setObjClaim(objSavedClaim);
       setObjHeader(buildHeaderState(objSavedClaim));
       if (strMode === "create") {
-        window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit`);
+        window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`);
       }
       if (blnShowSuccessMessage) {
         setStrSuccess("Claim saved.");
@@ -240,7 +247,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         setObjClaim(objClaimForSave);
         setObjHeader(buildHeaderState(objClaimForSave));
         if (strMode === "create") {
-          window.history.replaceState(null, "", `/ess/reimbursements/${objClaimForSave.intID}/edit`);
+          window.history.replaceState(null, "", `/ess/reimbursements/${objClaimForSave.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`);
         }
       } else if (blnHeaderDirty) {
         const objSavedHeader = await reimbursementService.updateClaim(objClaimForSave.intID, buildClaimPayload());
@@ -248,7 +255,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         setObjHeader(buildHeaderState(objSavedHeader));
         objClaimForSave = objSavedHeader;
       }
-      const objUpdatedClaim = await reimbursementService.saveItem(objClaimForSave.intID, objPayload, intItemID);
+      const objUpdatedClaim = await reimbursementService.saveItem(objClaimForSave.intID, objPayload, intItemID, intSelectedEmployeeID);
       let objFinalClaim = objUpdatedClaim;
       if (objProofFile) {
         const setPreviousItemIDs = new Set((objClaimForSave.lstItems ?? []).map((objItem) => objItem.intID));
@@ -256,7 +263,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           ? objUpdatedClaim.lstItems?.find((objItem) => objItem.intID === intItemID)
           : objUpdatedClaim.lstItems?.find((objItem) => !setPreviousItemIDs.has(objItem.intID)) ?? objUpdatedClaim.lstItems?.at(-1);
         if (objSavedItem?.intID) {
-          objFinalClaim = await reimbursementService.uploadProof(objClaimForSave.intID, objSavedItem.intID, objProofFile);
+          objFinalClaim = await reimbursementService.uploadProof(objClaimForSave.intID, objSavedItem.intID, objProofFile, intSelectedEmployeeID);
         }
       }
       setObjClaim(objFinalClaim);
@@ -282,7 +289,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setBlnSaving(true);
     setStrError("");
     try {
-      setObjClaim(await reimbursementService.deleteItem(objClaim.intID, intItemID));
+      setObjClaim(await reimbursementService.deleteItem(objClaim.intID, intItemID, intSelectedEmployeeID));
       setObjDeletingItem(null);
       setStrSuccess("Claim item deleted.");
     } catch (objError) {
@@ -300,7 +307,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setBlnSaving(true);
     setStrError("");
     try {
-      await reimbursementService.deleteClaim(objClaim.intID);
+      await reimbursementService.deleteClaim(objClaim.intID, intSelectedEmployeeID);
       setBlnDeleteClaimDialogOpen(false);
       setStrSuccess("Claim deleted.");
       setIntClaimIDToLoadAfterSuccess(-1);
@@ -314,14 +321,14 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   async function uploadProof(intItemID: number, objFile: File) {
     // Purpose: Adds employee proof to an editable item before submission.
     if (!objClaim?.intID) return;
-    setObjClaim(await reimbursementService.uploadProof(objClaim.intID, intItemID, objFile));
+    setObjClaim(await reimbursementService.uploadProof(objClaim.intID, intItemID, objFile, intSelectedEmployeeID));
     setStrSuccess("Proof uploaded.");
   }
 
   async function deleteProof(intItemID: number, intProofID: number) {
     // Purpose: Deletes a proof from an editable item when the employee replaces or corrects evidence.
     if (!objClaim?.intID) return;
-    setObjClaim(await reimbursementService.deleteProof(objClaim.intID, intItemID, intProofID));
+    setObjClaim(await reimbursementService.deleteProof(objClaim.intID, intItemID, intProofID, intSelectedEmployeeID));
     setStrSuccess("Proof deleted.");
   }
 
@@ -354,7 +361,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setBlnSaving(true);
     setStrError("");
     try {
-      const objSubmittedClaim = await reimbursementService.submitClaim(objClaimForSubmit.intID);
+      const objSubmittedClaim = await reimbursementService.submitClaim(objClaimForSubmit.intID, intSelectedEmployeeID);
       setObjClaim(objSubmittedClaim);
       setObjHeader(buildHeaderState(objSubmittedClaim));
       setIntClaimIDToLoadAfterSuccess(objSubmittedClaim.intID);
@@ -376,7 +383,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     if (intClaimIDToLoadAfterSuccess) {
       const intSubmittedClaimID = intClaimIDToLoadAfterSuccess;
       setIntClaimIDToLoadAfterSuccess(null);
-      window.location.href = `/ess/reimbursements/${intSubmittedClaimID}`;
+      window.location.href = `/ess/reimbursements/${intSubmittedClaimID}${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`;
     }
   }
 
@@ -417,7 +424,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
             {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" /> : null}
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-              <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit`)} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
+              <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`)} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
             ) : null}
             {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.withdraw.button" sx={{ ...objDetailActionButtonSx, borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
@@ -431,7 +438,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             {blnShowSubmit ? (
               <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.submit.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>Submit</Button>
             ) : null}
-            <Button variant="outlined" size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements")} data-testid="reimbursements.claim-editor.back.button" sx={{ ...objDetailActionButtonSx, borderColor: "rgba(248,252,255,0.78)", color: "#f8fcff", fontWeight: 800, "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }}>Back</Button>
+            <Button variant="outlined" size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => window.history.back()} data-testid="reimbursements.claim-editor.back.button" sx={{ ...objDetailActionButtonSx, borderColor: "rgba(248,252,255,0.78)", color: "#f8fcff", fontWeight: 800, "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }}>Back</Button>
           </Stack>
         </Stack>
       </Paper>
@@ -513,7 +520,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         </TableContainer>
       </Paper>
 
-      <ReimbursementClaimItemForm intClaimID={objClaim?.intID ?? null} objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} onDeleteProof={deleteProof} />
+      <ReimbursementClaimItemForm intClaimID={objClaim?.intID ?? null} intEmployeeID={intSelectedEmployeeID} objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} onDeleteProof={deleteProof} />
       <Dialog open={Boolean(!blnRightsLoading && (strRightsError || (!blnCanView && !blnCanAdd && !blnCanEdit)))} maxWidth="xs" fullWidth>
         <DialogTitle>Alert</DialogTitle>
         <DialogContent>
@@ -522,7 +529,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button size="small" onClick={() => objRouter.push("/ess/reimbursements")} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>OK</Button>
+          <Button size="small" onClick={() => window.history.back()} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>OK</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(strError)} onClose={() => setStrError("")} maxWidth="xs" fullWidth>

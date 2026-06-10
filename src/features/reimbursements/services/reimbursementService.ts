@@ -51,6 +51,16 @@ export const reimbursementService = {
     return objResult.Data;
   },
 
+  async getClaimForEmployee(intClaimID: number, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
+    const objResult = await requestApi<ReimbursementClaimDto>({
+      strPath: `/ess/reimbursements/${intClaimID}${strEmployeeQuery}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_VIEW",
+    });
+    return objResult.Data;
+  },
+
   async createClaim(objPayload: ReimbursementClaimRequest): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
       strPath: "/ess/reimbursements",
@@ -62,58 +72,64 @@ export const reimbursementService = {
   },
 
   async updateClaim(intClaimID: number, objPayload: ReimbursementClaimRequest): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = objPayload.intEmployeeID ? `?employee_id=${encodeURIComponent(String(objPayload.intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}`,
+      strPath: `/ess/reimbursements/${intClaimID}${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Put,
       objBody: objPayload,
-      strMenuAction: "ESS_REIMBURSEMENT_EDIT",
+      strMenuAction: objPayload.intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_EDIT",
     });
     return objResult.Data;
   },
 
-  async deleteClaim(intClaimID: number): Promise<void> {
+  async deleteClaim(intClaimID: number, intEmployeeID?: number | null): Promise<void> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     await requestApi<null>({
-      strPath: `/ess/reimbursements/${intClaimID}`,
+      strPath: `/ess/reimbursements/${intClaimID}${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Delete,
-      strMenuAction: "ESS_REIMBURSEMENT_EDIT",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_EDIT",
     });
   },
 
   async saveItem(
     intClaimID: number,
     objPayload: ReimbursementClaimItemRequest,
-    intItemID?: number | null
+    intItemID?: number | null,
+    intEmployeeID?: number | null
   ): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
       strPath: intItemID
-        ? `/ess/reimbursements/${intClaimID}/items/${intItemID}`
-        : `/ess/reimbursements/${intClaimID}/items`,
+        ? `/ess/reimbursements/${intClaimID}/items/${intItemID}${strEmployeeQuery}`
+        : `/ess/reimbursements/${intClaimID}/items${strEmployeeQuery}`,
       strMethod: intItemID ? ApiRequestMethod.Put : ApiRequestMethod.Post,
       objBody: objPayload,
-      strMenuAction: "ESS_REIMBURSEMENT_EDIT",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_EDIT",
     });
     return objResult.Data;
   },
 
-  async deleteItem(intClaimID: number, intItemID: number): Promise<ReimbursementClaimDto> {
+  async deleteItem(intClaimID: number, intItemID: number, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}`,
+      strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Delete,
-      strMenuAction: "ESS_REIMBURSEMENT_EDIT",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_EDIT",
     });
     return objResult.Data;
   },
 
-  async uploadProof(intClaimID: number, intItemID: number, objFile: File): Promise<ReimbursementClaimDto> {
+  async uploadProof(intClaimID: number, intItemID: number, objFile: File, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     objFormData.append("strDocumentType", "reimbursement_proof");
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     try {
       const objResponse = await axiosInstance.request<ReimbursementClaimDto | { Data: ReimbursementClaimDto }>({
         method: ApiRequestMethod.Post,
-        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs`,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs${strEmployeeQuery}`,
         data: objFormData,
-        csrfMenuAction: "ESS_REIMBURSEMENT_UPLOAD_PROOF",
+        csrfMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_UPLOAD_PROOF",
       } as ApiRequestConfig);
       return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
     } catch (objError) {
@@ -121,22 +137,24 @@ export const reimbursementService = {
     }
   },
 
-  async deleteProof(intClaimID: number, intItemID: number, intProofID: number): Promise<ReimbursementClaimDto> {
+  async deleteProof(intClaimID: number, intItemID: number, intProofID: number, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}`,
+      strPath: `/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Delete,
-      strMenuAction: "ESS_REIMBURSEMENT_UPLOAD_PROOF",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_UPLOAD_PROOF",
     });
     return objResult.Data;
   },
 
-  async previewProof(intClaimID: number, intItemID: number, intProofID: number): Promise<Blob> {
+  async previewProof(intClaimID: number, intItemID: number, intProofID: number, intEmployeeID?: number | null): Promise<Blob> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     try {
       const objResponse = await axiosInstance.request<Blob>({
         method: ApiRequestMethod.Get,
-        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}/preview`,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}/preview${strEmployeeQuery}`,
         responseType: "blob",
-        csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+        csrfMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_VIEW",
       } as ApiRequestConfig);
       return objResponse.data;
     } catch (objError) {
@@ -145,29 +163,31 @@ export const reimbursementService = {
       }
       const objResponse = await axiosInstance.request<Blob>({
         method: ApiRequestMethod.Get,
-        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+        url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview${strEmployeeQuery}`,
         responseType: "blob",
-        csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+        csrfMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_VIEW",
       } as ApiRequestConfig);
       return objResponse.data;
     }
   },
 
-  async previewProofByID(intClaimID: number, intProofID: number): Promise<Blob> {
+  async previewProofByID(intClaimID: number, intProofID: number, intEmployeeID?: number | null): Promise<Blob> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResponse = await axiosInstance.request<Blob>({
       method: ApiRequestMethod.Get,
-      url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+      url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/proofs/${intProofID}/preview${strEmployeeQuery}`,
       responseType: "blob",
-      csrfMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      csrfMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_VIEW",
     } as ApiRequestConfig);
     return objResponse.data;
   },
 
-  async submitClaim(intClaimID: number): Promise<ReimbursementClaimDto> {
+  async submitClaim(intClaimID: number, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}/submit`,
+      strPath: `/ess/reimbursements/${intClaimID}/submit${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Post,
-      strMenuAction: "ESS_REIMBURSEMENT_SUBMIT",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_SUBMIT",
     });
     return objResult.Data;
   },
@@ -181,11 +201,12 @@ export const reimbursementService = {
     return objResult.Data;
   },
 
-  async getOptions(): Promise<ReimbursementOptionsDto> {
+  async getOptions(intEmployeeID?: number | null): Promise<ReimbursementOptionsDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementOptionsDto>({
-      strPath: "/ess/reimbursements/options",
+      strPath: `/ess/reimbursements/options${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: "ESS_REIMBURSEMENT_VIEW",
+      strMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_VIEW",
     });
     return normalizeOptions(objResult.Data);
   },

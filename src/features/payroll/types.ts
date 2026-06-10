@@ -29,12 +29,13 @@ export type StatutoryRuleFormValues = {
   blnIsActive: boolean;
 };
 
-export type EmployeePayrollInputStatus = "Draft" | "Submitted" | "Locked";
+export type EmployeePayrollInputStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 export type EmployeePayrollInputLineType =
   | "addition"
   | "deduction"
+  | "recovery"
   | "arrear"
-  | "recovery";
+  | "reimbursement";
 
 export type PayrollSelectOption = {
   intID: number;

@@ -36,6 +36,14 @@ import type {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
+const lstEmployeePayrollInputStatuses: EmployeePayrollInputFormValues["strStatus"][] = ["Draft", "Submitted", "Approved", "Locked"];
+const lstEmployeePayrollInputLineTypes: Array<{ strCode: EmployeePayrollInputFormLine["strLineType"]; strLabelKey: string; strLabel: string }> = [
+  { strCode: "addition", strLabelKey: "line_type_addition", strLabel: "Addition" },
+  { strCode: "deduction", strLabelKey: "line_type_deduction", strLabel: "Deduction" },
+  { strCode: "recovery", strLabelKey: "line_type_recovery", strLabel: "Recovery" },
+  { strCode: "arrear", strLabelKey: "line_type_arrear", strLabel: "Arrear" },
+  { strCode: "reimbursement", strLabelKey: "line_type_reimbursement", strLabel: "Reimbursement" },
+];
 
 type EmployeePayrollInputEditorPageProps = {
   strMode: "add" | "edit" | "view";
@@ -135,7 +143,7 @@ export default function EmployeePayrollInputEditorPage({
             const strMessage =
               objResult.status === "rejected" && objResult.reason instanceof Error
                 ? objResult.reason.message
-                : "Unable to load employee payroll input workspace.";
+                : "Unable to load payroll input workspace.";
             return `${strLabel}: ${strMessage}`;
           });
         if (lstLoadErrors.length) {
@@ -146,7 +154,7 @@ export default function EmployeePayrollInputEditorPage({
           setStrError(
             objError instanceof Error
               ? objError.message
-              : "Unable to load employee payroll input workspace."
+              : "Unable to load payroll input workspace."
           );
         }
       } finally {
@@ -310,12 +318,12 @@ export default function EmployeePayrollInputEditorPage({
           dicForm
         );
         setStrSuccess(
-          t("update_success", "Employee payroll input updated successfully.")
+          t("update_success", "Payroll input updated successfully.")
         );
       } else {
         await employeePayrollInputService.createEmployeePayrollInput(dicForm);
         setStrSuccess(
-          t("save_success", "Employee payroll input saved successfully.")
+          t("save_success", "Payroll input saved successfully.")
         );
         setDicForm(createInitialEmployeePayrollInputForm());
       }
@@ -326,7 +334,7 @@ export default function EmployeePayrollInputEditorPage({
       setStrError(
         objError instanceof Error
           ? objError.message
-          : "Unable to save employee payroll input."
+          : "Unable to save payroll input."
       );
     } finally {
       setBlnSaving(false);
@@ -339,7 +347,7 @@ export default function EmployeePayrollInputEditorPage({
         blnOpen
         strLabel={t(
           "loading_employee_payroll_input",
-          "Loading employee payroll input..."
+          "Loading payroll input..."
         )}
       />
     );
@@ -372,13 +380,13 @@ export default function EmployeePayrollInputEditorPage({
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
                 {strMode === "view"
-                  ? t("view_title", "View Employee Payroll Input")
+                  ? t("view_title", "View Payroll Input")
                   : strMode === "edit"
-                  ? t("edit_title", "Edit Employee Payroll Input")
-                  : t("add_title", "Create Employee Payroll Input")}
+                  ? t("edit_title", "Edit Payroll Input")
+                  : t("add_title", "Create Payroll Input")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("subtitle", "Move employee payroll input maintenance out of popup mode and into a dedicated full screen.")}
+                {t("subtitle", "Capture payroll adjustments and attendance-related inputs before payroll processing.")}
               </Typography>
             </Box>
             <Stack
@@ -414,7 +422,7 @@ export default function EmployeePayrollInputEditorPage({
       </Paper>
 
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Employee payroll input access is not available for your user group.")}</Alert> : null}
+      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
@@ -468,8 +476,8 @@ export default function EmployeePayrollInputEditorPage({
           {t("section_attendance", "2. Attendance / LWP / LOP")}
         </Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
-          <TextField label={t("lwp_days", "LWP Days")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
-          <TextField label={t("lop_days", "LOP Days")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth />
+          <TextField label={t("lwp_days", "LWP Days")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" helperText={t("lwp_days_help", "Leave Without Pay days to be considered for payroll calculation.")} fullWidth />
+          <TextField label={t("lop_days", "LOP Days")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" helperText={t("lop_days_help", "Additional Loss of Pay days impacting salary calculation.")} fullWidth />
         </Box>
       </Paper>
 
@@ -480,7 +488,7 @@ export default function EmployeePayrollInputEditorPage({
               {t("section_lines", "3. Input Lines")}
             </Typography>
             <Typography sx={{ color: "#64748b", mt: 0.25 }}>
-              {t("line_help", "Capture additions, deductions, arrears, and recoveries at salary component level.")}
+              {t("line_help", "Add additions, deductions, recoveries, arrears, reimbursements, and other payroll-impacting adjustments.")}
             </Typography>
           </Box>
           {blnCanSave ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked}>
@@ -513,16 +521,16 @@ export default function EmployeePayrollInputEditorPage({
                       <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
                       {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
                         <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
-                          {dicComponent.strCode} - {dicComponent.strLabel}
+                          {dicComponent.strLabel}
                         </MenuItem>
                       ))}
                     </TextField>
                   </td>
                   <td>
                     <TextField select value={dicLine.strLineType} onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])} disabled={blnFormLocked} fullWidth>
-                      {(objOptions?.lstLineTypes ?? []).map((dicType) => (
+                      {lstEmployeePayrollInputLineTypes.map((dicType) => (
                         <MenuItem key={dicType.strCode} value={dicType.strCode}>
-                          {dicType.strLabel}
+                          {t(dicType.strLabelKey, dicType.strLabel)}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -556,9 +564,9 @@ export default function EmployeePayrollInputEditorPage({
         </Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
           <TextField select label={t("status", "Status")} value={dicForm.strStatus} onChange={(objEvent) => updateField("strStatus", objEvent.target.value as EmployeePayrollInputFormValues["strStatus"])} disabled={blnFormLocked} fullWidth>
-            {(objOptions?.lstStatuses ?? []).map((dicStatus) => (
-              <MenuItem key={dicStatus.strCode} value={dicStatus.strCode}>
-                {dicStatus.strLabel}
+            {lstEmployeePayrollInputStatuses.map((strStatus) => (
+              <MenuItem key={strStatus} value={strStatus}>
+                {translateStatus(strStatus)}
               </MenuItem>
             ))}
           </TextField>

@@ -206,7 +206,7 @@ export default function EmployeePayrollInputListPage() {
       setStrError(
         objError instanceof Error
           ? objError.message
-          : "Unable to load employee payroll inputs."
+          : "Unable to load payroll inputs."
       );
     } finally {
       setBlnLoading(false);
@@ -269,7 +269,7 @@ export default function EmployeePayrollInputListPage() {
         blnOpen
         strLabel={t(
           "loading_employee_payroll_inputs",
-          "Loading employee payroll inputs..."
+          "Loading payroll inputs..."
         )}
       />
     );
@@ -278,7 +278,7 @@ export default function EmployeePayrollInputListPage() {
   return (
     <Box className={styles.page}>
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
-        {t("breadcrumbs", "Payroll / Employee Payroll Input")}
+        {t("breadcrumbs", "Payroll / Payroll Input")}
       </Typography>
 
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
@@ -293,7 +293,7 @@ export default function EmployeePayrollInputListPage() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
+        <Box className={`${styles.searchRow} ${styles.employeePayrollInputSearchRow}`}>
           <TextField
             data-testid="employee-payroll-input.list.employee-search.input"
             value={dicSearchDraft.strSearchEmployee}
@@ -387,7 +387,7 @@ export default function EmployeePayrollInputListPage() {
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() =>
-                exportPdf("Employee Payroll Input", lstFilteredRows)
+                exportPdf("Payroll Input", lstFilteredRows)
               }
             >
               {t("export_pdf", "Export PDF")}
@@ -432,7 +432,7 @@ export default function EmployeePayrollInputListPage() {
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         {!blnCanView ? (
           <Box className={styles.emptyState}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Employee payroll input access is not available for your user group.")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll input access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll input visibility.")}</Typography>
           </Box>
         ) : null}
@@ -441,8 +441,8 @@ export default function EmployeePayrollInputListPage() {
             <thead>
               <tr>
                 <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
-                <th>{t("employee_code", "Employee Code")}</th>
                 <th>{t("employee_name", "Employee Name")}</th>
+                <th>{t("employee_code", "Employee Code")}</th>
                 <th>{t("payroll_run", "Payroll Run")}</th>
                 <th>{t("payroll_month", "Payroll Month")}</th>
                 <th>{t("lwp_days", "LWP")}</th>
@@ -456,7 +456,7 @@ export default function EmployeePayrollInputListPage() {
                   <td colSpan={8} className={styles.emptyState}>
                     {t(
                       "empty_message",
-                      "No employee payroll inputs found for the current filters."
+                      "No payroll inputs found for the current filters."
                     )}
                   </td>
                 </tr>
@@ -483,8 +483,8 @@ export default function EmployeePayrollInputListPage() {
                       />
                     </Box>
                   </td>
-                  <td>{dicRow.strEmployeeCode}</td>
                   <td>{dicRow.strEmployeeName}</td>
+                  <td>{dicRow.strEmployeeCode}</td>
                   <td>{dicRow.strRunName}</td>
                   <td>{formatDate(dicRow.dtPayrollMonth)}</td>
                   <td>{formatNumber(dicRow.decLwpDays)}</td>

@@ -36,6 +36,7 @@ type ItemFormProps = {
   blnOpen: boolean;
   blnSaving: boolean;
   blnReadOnly?: boolean;
+  intEmployeeID?: number | null;
   onClose: () => void;
   onSave: (objPayload: ReimbursementClaimItemRequest, intItemID?: number | null, objProofFile?: File | null) => Promise<void>;
   onDeleteProof?: (intItemID: number, intProofID: number) => Promise<void>;
@@ -80,7 +81,7 @@ function isSupportingDocumentRequired(objComponent?: ReimbursementOptionsDto["ls
   return Boolean(objComponent?.blnDeclarationRequired ?? objComponent?.blnProofRequired ?? blnFallbackProofRequired);
 }
 
-export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, blnReadOnly = false, onClose, onSave, onDeleteProof }: ItemFormProps) {
+export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, blnReadOnly = false, intEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
   const [objForm, setObjForm] = useState<ItemFormState>(buildStateFromItem(objItem));
   const [objProofFile, setObjProofFile] = useState<File | null>(null);
   const [intPreviewingProofID, setIntPreviewingProofID] = useState<number | null>(null);
@@ -145,8 +146,8 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
     setStrProofError("");
     try {
       const objPreview = objItem?.intID
-        ? await reimbursementService.previewProof(intClaimID, objItem.intID, objProof.intID)
-        : await reimbursementService.previewProofByID(intClaimID, objProof.intID);
+        ? await reimbursementService.previewProof(intClaimID, objItem.intID, objProof.intID, intEmployeeID)
+        : await reimbursementService.previewProofByID(intClaimID, objProof.intID, intEmployeeID);
       openBlobInNewTab(objPreview);
     } catch (objError) {
       setStrProofError(objError instanceof Error ? objError.message : "Unable to open proof file.");

@@ -97,6 +97,7 @@ export type ReimbursementClaimDto = {
 };
 
 export type ReimbursementClaimRequest = {
+  intEmployeeID?: number | null;
   strClaimTitle?: string | null;
   strFinancialYearCode?: string | null;
   intPayrollRunID?: number | null;

@@ -23,7 +23,7 @@ function ensureEmployeePayrollInputDetail(
     typeof objValue.intID !== "number" ||
     !Array.isArray(objValue.lstLines)
   ) {
-    throw new Error("Employee payroll input detail was not returned by the API.");
+    throw new Error("Payroll input detail was not returned by the API.");
   }
 
   return objValue as EmployeePayrollInputDetailRecord;
@@ -39,8 +39,9 @@ function normalizeLineType(
   if (
     strNormalizedValue === "addition" ||
     strNormalizedValue === "deduction" ||
+    strNormalizedValue === "recovery" ||
     strNormalizedValue === "arrear" ||
-    strNormalizedValue === "recovery"
+    strNormalizedValue === "reimbursement"
   ) {
     return strNormalizedValue;
   }
