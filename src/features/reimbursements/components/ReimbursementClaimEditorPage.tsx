@@ -124,11 +124,12 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     : strMode === "edit"
       ? "Edit Claim Reimbursement"
       : "View Claim Reimbursement";
+  const strClaimReferenceLabel = `Claim Ref #: ${objClaim?.intID ? getClaimReferenceNumber(objClaim) || "-" : "-"}`;
   const strPageTitle = normalizeHeaderValue(
     intSelectedEmployeeID
-      ? `${strEmployeeReimbursementTitle}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
+      ? `${strEmployeeReimbursementTitle} - ${strClaimReferenceLabel}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
       : objClaim?.intID
-      ? `Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`
+      ? strClaimReferenceLabel
       : "New Reimbursement Claim"
   );
   const objDetailActionButtonSx = { minHeight: 30, px: 1.15, py: 0.25, borderRadius: "8px", fontSize: "0.75rem", textTransform: "none" };
