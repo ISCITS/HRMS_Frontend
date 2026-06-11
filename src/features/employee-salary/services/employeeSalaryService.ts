@@ -59,6 +59,16 @@ export const employeeSalaryService = {
           dicOverride.decAmountAnnual !== null ||
           dicOverride.decPercentageValue !== null ||
           dicOverride.strRemarks !== null
+        ),
+      lstFlexiAllocations: dicValues.lstFlexiAllocations
+        .map((dicAllocation) => ({
+          intSalaryComponentID: dicAllocation.intSalaryComponentID,
+          decAllocationMonthly: parseOptionalDecimal(dicAllocation.decAllocationMonthly),
+          decAllocationAnnual: parseOptionalDecimal(dicAllocation.decAllocationAnnual)
+        }))
+        .filter((dicAllocation) =>
+          dicAllocation.decAllocationMonthly !== null ||
+          dicAllocation.decAllocationAnnual !== null
         )
     });
     return objResult.Data;

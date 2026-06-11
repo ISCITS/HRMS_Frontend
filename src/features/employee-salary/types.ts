@@ -29,10 +29,19 @@ export type EmployeeSalaryStructureComponentOption = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  blnIsFlexiBenefit?: boolean;
+  blnIsFlexiBasket?: boolean;
+  blnIncludedInCtc?: boolean;
+  blnProofRequired?: boolean;
+  strTaxTreatment?: string | null;
   strValueSource: string;
   decFixedAmount?: number | null;
   decPercentageValue?: number | null;
   strFormulaExpression?: string | null;
+  strFlexiComponentRole?: string | null;
+  blnIsFlexiBasketLine?: boolean;
+  decFlexiMaxMonthlyAmount?: number | null;
+  decFlexiMaxYearlyAmount?: number | null;
   blnAllowManualOverride: boolean;
   intLineOrder: number;
 };
@@ -48,6 +57,11 @@ export type EmployeeSalaryComponentLine = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  blnIsFlexiBenefit?: boolean;
+  blnIsFlexiBasket?: boolean;
+  blnIncludedInCtc?: boolean;
+  blnProofRequired?: boolean;
+  strTaxTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
   decAmountMonthly: number | null;
@@ -70,8 +84,42 @@ export type EmployeeSalaryHistoryRecord = {
   dtEffectiveTo: string | null;
   decCtcAnnual: number | null;
   decGrossMonthly: number | null;
+  decFlexiBasketAnnualAmount?: number | null;
+  decFlexiAllocatedAnnualAmount?: number | null;
+  decFlexiBalanceAnnualAmount?: number | null;
+  intFlexiBalanceComponentID?: number | null;
   strRevisionReason: string | null;
   blnIsCurrent: boolean;
+};
+
+export type EmployeeSalaryFlexiAllocationLine = {
+  intSalaryComponentID: number;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decAnnualLimit: number | null;
+  decMonthlyLimit: number | null;
+  decAllocationAnnual: number;
+  decAllocationMonthly: number;
+  blnProofRequired: boolean;
+  strTaxTreatment: string | null;
+  decBalanceAnnual: number | null;
+};
+
+export type EmployeeSalaryFlexiAllocationSummary = {
+  blnHasFlexiBasket: boolean;
+  intFlexiBasketComponentID?: number | null;
+  intResidualComponentID?: number | null;
+  strResidualComponentCode?: string | null;
+  strResidualComponentName?: string | null;
+  decFlexiBasketAvailableAnnual?: number | null;
+  decFlexiBasketAvailableMonthly?: number | null;
+  decAllocatedFlexiAnnual?: number | null;
+  decAllocatedFlexiMonthly?: number | null;
+  decBalanceFlexiAnnual?: number | null;
+  decBalanceFlexiMonthly?: number | null;
+  decResidualTaxableAllowanceAnnual?: number | null;
+  decResidualTaxableAllowanceMonthly?: number | null;
+  lstAllocationLines: EmployeeSalaryFlexiAllocationLine[];
 };
 
 export type EmployeeSalaryDetailRecord = {
@@ -85,6 +133,10 @@ export type EmployeeSalaryDetailRecord = {
   objCurrentSalarySnapshot: {
     decCtcAnnual: number | null;
     decGrossMonthly: number | null;
+    decFlexiBasketAnnualAmount?: number | null;
+    decFlexiAllocatedAnnualAmount?: number | null;
+    decFlexiBalanceAnnualAmount?: number | null;
+    intFlexiBalanceComponentID?: number | null;
     strRevisionReason: string | null;
     dtEffectiveFrom: string;
   } | null;
@@ -95,6 +147,7 @@ export type EmployeeSalaryDetailRecord = {
     strCurrencyCode: string;
     dtEffectiveFrom: string;
   } | null;
+  objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];
 };
@@ -119,9 +172,22 @@ export type EmployeeSalaryOverrideFormValue = {
   strRemarks: string;
 };
 
+export type EmployeeSalaryFlexiAllocationFormValue = {
+  intSalaryComponentID: number;
+  strComponentName: string;
+  strComponentCode: string;
+  strTaxTreatment: string;
+  blnProofRequired: boolean;
+  decAnnualLimit: number | null;
+  decMonthlyLimit: number | null;
+  decAllocationMonthly: string;
+  decAllocationAnnual: string;
+};
+
 export type EmployeeSalaryRevisionFormValues = {
   intSalaryStructureID: number | "";
   dtEffectiveFrom: string;
   strRevisionReason: string;
   lstOverrides: EmployeeSalaryOverrideFormValue[];
+  lstFlexiAllocations: EmployeeSalaryFlexiAllocationFormValue[];
 };
