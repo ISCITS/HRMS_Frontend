@@ -267,6 +267,195 @@ export const itDeclarationService = {
 
 export type ItDeclarationEnvelope = ApiEnvelope<ItDeclarationDto>;
 
+export type HrItDeclarationEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strFullName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
+  boolHasDeclaration: boolean;
+};
+
+export type HrEmployeeItDeclarationListRecord = {
+  strDeclarationCode: string;
+  intDeclarationID: number;
+  strFinancialYearCode: string;
+  strTaxRegime: string;
+  decDeclaredTotalAmount: number;
+  decApprovedTotalAmount: number;
+  intProofPendingCount: number;
+  strStatus: string;
+  strSubmittedOn?: string | null;
+  strLastUpdated?: string | null;
+};
+
+export type HrEmployeeItDeclarationListDto = {
+  objEmployee: {
+    intEmployeeID: number;
+    strEmployeeCode: string;
+    strFullName: string;
+  };
+  lstRows: HrEmployeeItDeclarationListRecord[];
+};
+
+export const hrItDeclarationService = {
+  async listEmployees(objFilters?: { strSearch?: string; strFinancialYearCode?: string }): Promise<HrItDeclarationEmployeeOption[]> {
+    const objQueryParams = {
+      ...(objFilters?.strSearch?.trim() ? { search: objFilters.strSearch.trim() } : {}),
+      ...(objFilters?.strFinancialYearCode?.trim() ? { financial_year_code: objFilters.strFinancialYearCode.trim() } : {}),
+    };
+    const objResult = await requestApi<HrItDeclarationEmployeeOption[]>({
+      strPath: "/hr/it-declaration/employees",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams,
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? [];
+  },
+
+  async getEmployeeDeclarations(intEmployeeID: number, strFinancialYearCode?: string): Promise<HrEmployeeItDeclarationListDto> {
+    const objQueryParams = {
+      employee_id: intEmployeeID,
+      ...(strFinancialYearCode?.trim() ? { financial_year_code: strFinancialYearCode.trim() } : {}),
+    };
+    const objResult = await requestApi<HrEmployeeItDeclarationListDto>({
+      strPath: "/hr/it-declaration",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams,
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? { objEmployee: { intEmployeeID, strEmployeeCode: "", strFullName: "" }, lstRows: [] };
+  },
+
+  async getDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/declaration/${intDeclarationID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async startDeclaration(intEmployeeID: number, strFinancialYearCode: string, strRegime: ItDeclarationRegime): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: "/hr/it-declaration/start",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intEmployeeID, strFinancialYearCode, strSelectedRegime: strRegime },
+      strMenuAction: "HR_IT_DECLARATION_ADD",
+    });
+    return objResult.Data;
+  },
+
+  async changeRegime(intDeclarationID: number, strRegime: ItDeclarationRegime): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/regime`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strSelectedRegime: strRegime },
+      strMenuAction: "HR_IT_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+
+  async saveItem(
+    intDeclarationID: number,
+    objItem: { intItemID?: number | null; strSection: string; strInvestmentName: string; decDeclaredAmount: number }
+  ): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/items/save`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objItem,
+      strMenuAction: "HR_IT_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+
+  async deleteItem(intDeclarationID: number, intItemID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/items/${intItemID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "HR_IT_DECLARATION_DELETE",
+    });
+    return objResult.Data;
+  },
+
+  async uploadItemProof(intDeclarationID: number, intItemID: number, objFile: File, strDocumentType = "investment_proof"): Promise<ItDeclarationDto> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    objFormData.append("strDocumentType", strDocumentType);
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objFormData,
+      strMenuAction: "HR_IT_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+
+  async previewItemProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
+    const objResult = await requestApi<ItDeclarationProofPreviewDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async deleteItemProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationDto | null> {
+    const objResult = await requestApi<ItDeclarationDto | null>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "HR_IT_DECLARATION_DELETE",
+    });
+    return objResult.Data;
+  },
+
+  async listInvestmentOptions(strSectionCode: string): Promise<ItDeclarationInvestmentOptionDto[]> {
+    const objResult = await requestApi<ItDeclarationInvestmentOptionDto[]>({
+      strPath: "/hr/it-declaration/investment-options",
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { section_code: strSectionCode },
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data ?? [];
+  },
+
+  async compareTax(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/compare`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "HR_IT_DECLARATION_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async submitDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/submit`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "HR_IT_DECLARATION_SUBMIT",
+    });
+    return objResult.Data;
+  },
+
+  async withdrawDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/withdraw`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "HR_IT_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+
+  async copyPreviousDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
+    const objResult = await requestApi<ItDeclarationDto>({
+      strPath: `/hr/it-declaration/${intDeclarationID}/copy-previous`,
+      strMethod: ApiRequestMethod.Post,
+      strMenuAction: "HR_IT_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+};
+
 export type HrItDeclarationListRecord = {
   strDeclarationCode: string;
   intDeclarationID: number;
