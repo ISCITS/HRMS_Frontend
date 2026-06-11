@@ -47,7 +47,7 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
   if (strRoute.includes("/ess/my-payslip") || strRoute.includes("/ess/my-payslips")) {
     return "Payslips";
   }
-  if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+  if (strRoute.includes("/hr/it-declaration") || strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
     return "IT Declaration";
   }
   if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {

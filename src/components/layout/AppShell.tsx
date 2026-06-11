@@ -26,7 +26,7 @@ import {
   Typography
 } from "@mui/material";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -259,6 +259,7 @@ function extractLinkedEmployeeName(objUserContext: CurrentUserContext | null) {
 export default function AppShell({ children }: { children: ReactNode }) {
   const objRouter = useRouter();
   const strPathname = usePathname();
+  const objSearchParams = useSearchParams();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
   const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -574,12 +575,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
-  const strPageTitle = getLocalizedHeaderTitle(
-    strPathname,
-    strHeaderModuleName,
-    tHeader,
-    tCommon
-  );
+  const blnEmployeeReimbursementContext =
+    strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
+    objSearchParams.get("source") === "employee-reimbursement";
+  const blnAddEmployeeReimbursementContext =
+    Boolean(strPathname?.toLowerCase().match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
+    Boolean(objSearchParams.get("employee_id"));
+  const strPageTitle = blnAddEmployeeReimbursementContext
+      ? "Add Reimbursement"
+    : blnEmployeeReimbursementContext
+      ? "Employee Reimbursements"
+    : getLocalizedHeaderTitle(
+        strPathname,
+        strHeaderModuleName,
+        tHeader,
+        tCommon
+      );
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);

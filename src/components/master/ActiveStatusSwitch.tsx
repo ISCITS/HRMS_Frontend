@@ -16,7 +16,7 @@ export default function ActiveStatusSwitch({
   inputProps,
   testId,
   title,
-  size = "medium",
+  size,
   sx,
   ...objProps
 }: ActiveStatusSwitchProps) {
@@ -39,7 +39,33 @@ export default function ActiveStatusSwitch({
       title={title ?? strStateLabel}
       inputProps={objResolvedInputProps}
       onChange={(_, blnChecked) => onChange?.(blnChecked)}
-      sx={sx}
+      sx={{
+        "& .MuiSwitch-switchBase": {
+          color: "#dc2626",
+          transitionDuration: "180ms",
+          "&.Mui-checked": {
+            color: "#16a34a",
+            "& + .MuiSwitch-track": {
+              backgroundColor: "#16a34a",
+              opacity: 1,
+            },
+          },
+          "&.Mui-disabled": {
+            color: blnIsActive ? "#86efac" : "#fca5a5",
+            "& + .MuiSwitch-track": {
+              opacity: 0.55,
+            },
+          },
+        },
+        "& .MuiSwitch-thumb": {
+          boxShadow: "0 1px 3px rgba(15, 23, 42, 0.22)",
+        },
+        "& .MuiSwitch-track": {
+          backgroundColor: "#dc2626",
+          opacity: 1,
+        },
+        ...sx,
+      }}
     />
   );
 }

@@ -76,6 +76,7 @@ export function resolveRouteModuleName(strPathname: string) {
     return "tax-regimes";
   }
   if (
+    strLowerPath.startsWith("/hr/it-declaration") ||
     strLowerPath.startsWith("/salary/it-declaration") ||
     strLowerPath.startsWith("/salary/ess-declarations")
   ) {

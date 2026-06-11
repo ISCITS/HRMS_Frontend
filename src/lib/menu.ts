@@ -43,6 +43,8 @@ const dicRouteAliases: Record<string, string> = {
   "/ess/reimbursements": "/ess/reimbursements",
   "/payroll/reimbursement-review": "/payroll/reimbursements",
   "/payroll/reimbursement-claims": "/payroll/reimbursements",
+  "/payroll/employee-reimbursement": "/payroll/reimbursements?source=employee-reimbursement",
+  "/payroll/employee-reimbursements": "/payroll/reimbursements?source=employee-reimbursement",
   "/payroll/reimbursements": "/payroll/reimbursements",
   "/payroll/reimbursement": "/payroll/reimbursements",
   "/payroll/fnf": "/payroll/fnf-settlements",

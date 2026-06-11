@@ -126,7 +126,8 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
   if (!strCandidateRoute) {
     return false;
   }
-  return strPathname === strCandidateRoute || strPathname.startsWith(`${strCandidateRoute}/`);
+  const strCandidatePath = strCandidateRoute.split("?")[0];
+  return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 
 function resolveMenuRoute(objItem: MenuItem): string | null {
@@ -773,7 +774,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       );
     }
 
-    if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+    if (strRoute.includes("/hr/it-declaration") || strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
       return "IT Declaration";
     }
 

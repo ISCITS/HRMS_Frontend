@@ -5,6 +5,7 @@ import axios from "axios";
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 import type {
   ReimbursementClaimDto,
   ReimbursementClaimItemRequest,
@@ -192,12 +193,18 @@ export const reimbursementService = {
     return objResult.Data;
   },
 
-  async withdrawClaim(intClaimID: number): Promise<ReimbursementClaimDto> {
+  async withdrawClaim(intClaimID: number, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+    const strEmployeeQuery = intEmployeeID ? `?employee_id=${encodeURIComponent(String(intEmployeeID))}` : "";
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/ess/reimbursements/${intClaimID}/withdraw`,
+      strPath: `/ess/reimbursements/${intClaimID}/withdraw${strEmployeeQuery}`,
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "ESS_REIMBURSEMENT_WITHDRAW",
     });
+    return objResult.Data;
+  },
+
+  async getEmployeeDetail(intEmployeeID: number): Promise<EmployeeDetailApiRecord> {
+    const objResult = await masterApiService.getEmployeeById(intEmployeeID);
     return objResult.Data;
   },
 
