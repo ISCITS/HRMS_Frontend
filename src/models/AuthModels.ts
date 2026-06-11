@@ -183,6 +183,17 @@ export type DashboardResponse = {
   lstWidgets: DashboardWidget[];
   lstQuickActions: DashboardQuickAction[];
   dtGeneratedOn: string;
+  payrollReadiness?: Record<string, unknown> | null;
+  exceptions?: Record<string, unknown> | unknown[] | null;
+  approvalAging?: Record<string, unknown> | unknown[] | null;
+  variance?: Record<string, unknown> | null;
+  highRiskEmployees?: Record<string, unknown> | unknown[] | null;
+  itDeclarationDetails?: Record<string, unknown> | null;
+  reimbursementDetails?: Record<string, unknown> | null;
+  statutoryDetails?: Record<string, unknown> | null;
+  taxDetails?: Record<string, unknown> | null;
+  outputReadiness?: Record<string, unknown> | null;
+  audit?: Record<string, unknown> | null;
 };
 
 export type MenuItem = {

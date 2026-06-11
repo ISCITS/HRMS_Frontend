@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -915,11 +916,11 @@ export default function EssDeclarationCategoryMasterPanel({
                 <Typography className={styles.switchLabel} sx={{ fontSize: "0.84rem" }}>
                   {dicLabels.fieldIsActive}
                 </Typography>
-                <Switch
+                <ActiveStatusSwitch
                   size="small"
-                  checked={dicForm.status === "Active"}
+                  blnIsActive={dicForm.status === "Active"}
                   disabled={blnDialogReadOnly}
-                  onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+                  onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
                 />
               </Box>
             </Stack>,

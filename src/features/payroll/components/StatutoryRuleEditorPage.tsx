@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -328,9 +329,9 @@ export default function StatutoryRuleEditorPage({
 
           <FormControlLabel
             control={
-              <Switch
-                checked={dicForm.blnIsActive}
-                onChange={(_, blnChecked) => updateField("blnIsActive", blnChecked)}
+              <ActiveStatusSwitch
+                blnIsActive={dicForm.blnIsActive}
+                onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
                 disabled={blnFieldDisabled}
               />
             }

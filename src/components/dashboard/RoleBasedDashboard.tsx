@@ -25,12 +25,14 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
-import { Avatar, Box, Chip, Grid, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Button, Chip, Grid, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from "@mui/material";
 
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
 
@@ -39,6 +41,9 @@ type RoleBasedDashboardProps = {
   objUserContext: CurrentUserContext;
   t: (strKey: string, strFallback?: string) => string;
   onPayrollMonthChange?: (strPayrollMonth: string | null) => void;
+  onRefresh?: () => void;
+  blnRefreshing?: boolean;
+  strError?: string;
 };
 
 type KpiPayload = {
@@ -76,6 +81,73 @@ type SummaryStat = {
   decValue?: number;
 };
 
+type DrilldownStat = SummaryStat & {
+  strRoutePath?: string;
+};
+
+type ReadinessPayload = {
+  decScore?: number;
+  strStatus?: string;
+  intBlockingCount?: number;
+  intWarningCount?: number;
+  intInfoCount?: number;
+  lstBreakdown?: Array<{ strLabel: string; intValue?: number; decValue?: number }>;
+};
+
+type ExceptionGroup = {
+  strSeverity: "Blocking" | "Warning" | "Info";
+  lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strRoutePath?: string; strReason?: string; strCategory?: string }>;
+};
+
+type ApprovalAgingRow = {
+  strLabel: string;
+  intPendingCount: number;
+  intOverdueCount?: number;
+  decAverageDays?: number;
+  strRoutePath?: string;
+};
+
+type VarianceMetric = {
+  strLabel: string;
+  decCurrent?: number;
+  decPrevious?: number;
+  decVariancePercent?: number | null;
+  blnCurrency?: boolean;
+};
+
+type HighRiskEmployeeRow = {
+  intEmployeeID?: number;
+  strEmployeeCode?: string;
+  strEmployeeName: string;
+  strRiskType: string;
+  strSeverity?: "Blocking" | "Warning" | "Info";
+  strDetail: string;
+  strRoutePath?: string;
+};
+
+type OutputReadinessPayload = {
+  intProcessedResults?: number;
+  intPayslipsGenerated?: number;
+  intPayslipsPending?: number;
+  intPayslipsFailed?: number;
+  intBankReady?: number;
+  intMissingBank?: number;
+  strBankFileStatus?: string;
+  strPayrollRegisterStatus?: string;
+};
+
+type AuditPayload = {
+  strLastValidatedBy?: string;
+  dtLastValidatedOn?: string;
+  strLastProcessedBy?: string;
+  dtLastProcessedOn?: string;
+  intReprocessCount?: number;
+  strLastReprocessReason?: string;
+  strClosedBy?: string;
+  dtClosedOn?: string;
+  intFailedEmployeeCount?: number;
+};
+
 type EssProfileCheck = {
   strCode: string;
   strLabel: string;
@@ -111,6 +183,18 @@ type RecentRunRow = {
   run_status: string;
   validation_status?: string | null;
   processed_on?: string | null;
+  company_name?: string | null;
+  cycle_name?: string | null;
+  processed_by?: string | null;
+};
+
+type PayrollActionItem = {
+  strCode: string;
+  strLabel: string;
+  strRoutePath: string;
+  strVariant: "primary" | "secondary";
+  blnEnabled: boolean;
+  strReason: string;
 };
 
 type ChartPoint = {
@@ -151,9 +235,9 @@ const lstPayrollCardPalette = [
   { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft },
 ];
 
-export default function RoleBasedDashboard({ objDashboard, objUserContext, t, onPayrollMonthChange }: RoleBasedDashboardProps) {
+export default function RoleBasedDashboard({ objDashboard, objUserContext, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
   if (objDashboard.strDashboardType === "PAYROLL") {
-    return <PayrollDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} onPayrollMonthChange={onPayrollMonthChange} />;
+    return <PayrollDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} onPayrollMonthChange={onPayrollMonthChange} onRefresh={onRefresh} blnRefreshing={blnRefreshing} strError={strError} />;
   }
   if (objDashboard.strDashboardType === "ESS") {
     return <EssDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
@@ -177,7 +261,7 @@ function normalizeDashboardWidget(objWidget: DashboardWidget): DashboardWidget {
   };
 }
 
-function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDashboardProps) {
+function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
   const lstWidgets = objDashboard.lstWidgets.map(normalizeDashboardWidget);
   const dicWidgetMap = new Map(lstWidgets.map((objWidget) => [objWidget.strWidgetCode, objWidget]));
   const lstKpiWidgets = [
@@ -204,31 +288,6 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
       { strCode: "missing_salary_structure", strLabel: "Missing Salary Structure", intCount: 0, strRoutePath: "/employee-salary" },
     ],
   });
-  const lstSummaryWidgets = [
-    ensureWidget(dicWidgetMap.get("it_declaration_summary"), "it_declaration_summary", "IT Declaration Summary", "summary", {
-      lstStats: [
-        { strLabel: "Filed", intValue: 0 },
-        { strLabel: "Pending", intValue: 0 },
-      ],
-    }),
-    ensureWidget(dicWidgetMap.get("reimbursement_summary"), "reimbursement_summary", "Reimbursement Summary", "summary", {
-      lstStats: [
-        { strLabel: "Total Claims", intValue: 0 },
-        { strLabel: "Pending", intValue: 0 },
-      ],
-    }),
-    ensureWidget(dicWidgetMap.get("statutory_summary"), "statutory_summary", "Statutory Summary", "summary", {
-      lstStats: [
-        { strLabel: "PF Employees", intValue: 0 },
-        { strLabel: "ESI Employees", intValue: 0 },
-      ],
-    }),
-    ensureWidget(dicWidgetMap.get("tax_summary_tds"), "tax_summary_tds", "Tax Summary (TDS)", "summary", {
-      lstStats: [
-        { strLabel: "TDS Deducted", decValue: 0 },
-      ],
-    }),
-  ];
   const objRecentRunsWidget = ensureWidget(dicWidgetMap.get("recent_payroll_runs"), "recent_payroll_runs", "Recent Payroll Runs", "table", { lstRows: [] });
   const objQuickActionsWidget = ensureWidget(dicWidgetMap.get("quick_actions"), "quick_actions", "Quick Actions", "actions", {
     lstActions: objDashboard.lstQuickActions || [],
@@ -267,7 +326,23 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
   const intValidationErrorCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
   const intActionRequiredCount = intPendingApprovalCount + intValidationErrorCount;
   const strPayrollStatus = formatStatusText(String(objTrackerPayload.strRunStatus || ""));
+  const objSelectedRun = resolveSelectedRun(lstRecentRunRows, strSelectedMonth, strAllMonthsValue);
+  const strRunStatusRaw = String(objSelectedRun?.run_status || objTrackerPayload.strRunStatus || "");
+  const lstLifecycleStages = buildLifecycleStages(strRunStatusRaw);
+  const objRunDetailItems = buildPayrollRunDetailItems(objSelectedRun, t);
+  const lstActionPanelItems = buildPayrollActionItems(strRunStatusRaw, objDashboard.lstQuickActions || [], t);
+  const lstValidationCards = buildValidationCards(lstKpiWidgets, objSelectedRun, t);
+  const lstExceptionItems = buildExceptionItems(lstAlerts, intPendingApprovalCount, intValidationErrorCount, objSelectedRun, t);
+  const objReadiness = (objDashboard.payrollReadiness || {}) as ReadinessPayload;
+  const lstApprovalAging = resolveApprovalAgingRows(objDashboard.approvalAging);
+  const lstVarianceMetrics = resolveVarianceMetrics(objDashboard.variance);
+  const lstHighRiskEmployees = resolveHighRiskEmployees(objDashboard.highRiskEmployees);
+  const lstDetailedSummarySections = buildDetailedSummarySections(objDashboard);
+  const objOutputReadiness = (objDashboard.outputReadiness || {}) as OutputReadinessPayload;
+  const objAudit = (objDashboard.audit || {}) as AuditPayload;
+  const lstExceptionGroups = resolveExceptionGroups(objDashboard.exceptions, lstExceptionItems);
   const objDashboardGridSpacing = { xs: 1.5, md: 2, xl: 2.25 };
+  const strLastUpdated = formatDateTimeLabel(objDashboard.dtGeneratedOn);
 
   return (
     <Stack
@@ -340,6 +415,9 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
                   <Typography sx={{ mt: 0.35, color: "#5B6B87", fontSize: "0.92rem" }}>
                     {t("payroll_dashboard_subtitle", "Track payroll status, workflow progress, and items that need action.")}
                   </Typography>
+                  <Typography sx={{ mt: 0.55, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 600 }}>
+                    {t("last_updated", "Last Updated")}: {strLastUpdated}
+                  </Typography>
                 </Box>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} flexWrap="wrap" useFlexGap>
                 <StatusBadge
@@ -350,7 +428,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
                 />
                 <StatusBadge
                   strLabel={t("workflow", "Workflow")}
-                  strValue={formatStageStatus(objCurrentStage?.strStatus || "pending", t)}
+                  strValue={formatLifecycleLabel(strRunStatusRaw) || formatStageStatus(objCurrentStage?.strStatus || "pending", t)}
                   strAccent={DASHBOARD_COLORS.blue}
                   strBackground="rgba(255,255,255,0.72)"
                 />
@@ -381,9 +459,25 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
                 <CalendarMonthRoundedIcon sx={{ fontSize: 24 }} />
               </Box>
               <Box sx={{ width: "100%" }}>
-                <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", fontWeight: 700, mb: 1 }}>
+                <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", fontWeight: 700 }}>
                   {t("payroll_month", "Payroll Month")}
-                </Typography>
+                  </Typography>
+                  <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
+                    <span>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
+                        onClick={onRefresh}
+                        disabled={blnRefreshing}
+                        sx={{ minWidth: "auto", px: 1.1, py: 0.35, borderRadius: "10px", textTransform: "none" }}
+                      >
+                        {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Stack>
                 <Select
                   value={strSelectedMonth}
                   onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
@@ -413,9 +507,41 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
                     </MenuItem>
                   ))}
                 </Select>
+                <Typography sx={{ mt: 1.1, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", lineHeight: 1.45 }}>
+                  {objSelectedRun
+                    ? `${t("run_selected", "Selected Run")}: ${objSelectedRun.run_name || "-"}`
+                    : t("no_run_selected_hint", "No payroll run found for the selected month in the current dashboard feed.")}
+                </Typography>
               </Box>
             </Stack>
           </Paper>
+        </Grid>
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="start">
+        <Grid item xs={12} xl={4}>
+          <ReadinessPanel objReadiness={objReadiness} t={t} />
+        </Grid>
+        <Grid item xs={12} xl={8}>
+          <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
+        </Grid>
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
+        <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
+          <RunOverviewPanel
+            objRun={objSelectedRun}
+            lstDetails={objRunDetailItems}
+            strRunStatus={strRunStatusRaw}
+            t={t}
+          />
+        </Grid>
+        <Grid item xs={12} md={6} xl={5} sx={{ display: "flex" }}>
+          <RunActionPanel
+            lstActions={lstActionPanelItems}
+            strRunStatus={strRunStatusRaw}
+            t={t}
+          />
         </Grid>
       </Grid>
 
@@ -435,19 +561,46 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
 
       <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
         <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
-          <WorkflowPanel objWidget={objTrackerWidget} t={t} />
+          <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
         </Grid>
         <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
-          <AlertsPanel objWidget={objAlertsWidget} t={t} />
+          <ValidationSummaryPanel lstCards={lstValidationCards} t={t} />
         </Grid>
       </Grid>
 
       <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        {lstSummaryWidgets.map((objWidget) => (
-          <Grid key={objWidget.strWidgetCode} item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
-            <SummaryPanel objWidget={objWidget} t={t} />
+        <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
+          <AlertsPanel objWidget={objAlertsWidget} t={t} />
+        </Grid>
+        <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
+          <ExceptionPanel lstItems={lstExceptionItems} lstGroups={lstExceptionGroups} t={t} />
+        </Grid>
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
+        <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+          <HighRiskEmployeesPanel lstEmployees={lstHighRiskEmployees} t={t} />
+        </Grid>
+        <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+          <ApprovalAgingPanel lstRows={lstApprovalAging} t={t} />
+        </Grid>
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
+        {lstDetailedSummarySections.map((objSection) => (
+          <Grid key={objSection.strCode} item xs={12} md={6} xl={3} sx={{ display: "flex" }}>
+            <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
           </Grid>
         ))}
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
+        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          <OutputReadinessPanel objOutputReadiness={objOutputReadiness} t={t} />
+        </Grid>
+        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          <AuditPanel objAudit={objAudit} t={t} />
+        </Grid>
       </Grid>
 
       <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
@@ -456,6 +609,15 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange }: RoleBasedDa
         </Grid>
         <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
           <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
+        </Grid>
+      </Grid>
+
+      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
+        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
+        </Grid>
+        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
         </Grid>
       </Grid>
     </Stack>
@@ -554,7 +716,127 @@ function PayrollKpiPanel({
   );
 }
 
-function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleBasedDashboardProps["t"] }) {
+function RunOverviewPanel({
+  objRun,
+  lstDetails,
+  strRunStatus,
+  t,
+}: {
+  objRun?: RecentRunRow;
+  lstDetails: Array<{ strLabel: string; strValue: string }>;
+  strRunStatus: string;
+  t: RoleBasedDashboardProps["t"];
+}) {
+  return (
+    <PanelShell
+      strTitle={t("payroll_run_overview", "Payroll Run Overview")}
+      strSubtitle={objRun ? `${objRun.run_name || "-"} • ${formatLongMonth(objRun.payroll_month || "")}` : t("no_payroll_run_available", "No payroll run available for the selected month")}
+      strAccent={DASHBOARD_COLORS.blue}
+    >
+      {objRun ? (
+        <Stack spacing={1.4}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between">
+            <Box>
+              <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "1.08rem" }}>
+                {objRun.run_name || "-"}
+              </Typography>
+              <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.82rem" }}>
+                {t("selected_month_cycle", "Selected month, company, cycle and last processing context")}
+              </Typography>
+            </Box>
+            <Chip
+              label={formatLifecycleLabel(strRunStatus)}
+              size="small"
+              sx={{
+                fontWeight: 700,
+                borderRadius: "999px",
+                backgroundColor: chipBackground(strRunStatus),
+                color: statusAccentColor(strRunStatus),
+                fontSize: "0.72rem",
+              }}
+            />
+          </Stack>
+          <Grid container spacing={1.2}>
+            {lstDetails.map((objDetail, intIndex) => (
+              <Grid key={`${objDetail.strLabel}-${objDetail.strValue}-${intIndex}`} item xs={12} sm={6} lg={4}>
+                <Box sx={{ p: 1.2, borderRadius: "14px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF", minHeight: 74 }}>
+                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>
+                    {objDetail.strLabel}
+                  </Typography>
+                  <Typography sx={{ mt: 0.45, color: DASHBOARD_COLORS.text, fontSize: "0.88rem", fontWeight: 700, lineHeight: 1.35 }}>
+                    {objDetail.strValue}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Stack>
+      ) : (
+        <Stack spacing={1.1} sx={{ minHeight: 180, justifyContent: "center" }}>
+          <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.98rem" }}>
+            {t("no_run_for_selected_month", "No payroll run found for the selected month")}
+          </Typography>
+          <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.84rem", maxWidth: 560 }}>
+            {t("no_run_for_selected_month_hint", "The current dashboard feed does not include a payroll run for this selection. Use the existing payroll run screen to create or review the cycle.")}
+          </Typography>
+          <Link href="/payroll/runs" style={{ color: DASHBOARD_COLORS.blue, fontWeight: 700, textDecoration: "none", fontSize: "0.84rem" }}>
+            {t("open_payroll_runs", "Open Payroll Runs")}
+          </Link>
+        </Stack>
+      )}
+    </PanelShell>
+  );
+}
+
+function RunActionPanel({ lstActions, strRunStatus, t }: { lstActions: PayrollActionItem[]; strRunStatus: string; t: RoleBasedDashboardProps["t"] }) {
+  return (
+    <PanelShell
+      strTitle={t("run_actions", "Run Actions")}
+      strSubtitle={`${t("status", "Status")}: ${formatLifecycleLabel(strRunStatus)}`}
+      strAccent={DASHBOARD_COLORS.blue}
+    >
+      <Grid container spacing={1.15}>
+        {lstActions.map((objAction) => (
+          <Grid key={objAction.strCode} item xs={12} sm={6}>
+            {objAction.blnEnabled ? (
+              <Link href={objAction.strRoutePath} style={{ textDecoration: "none", display: "block" }}>
+                <Box sx={{ p: 1.2, borderRadius: "14px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: objAction.strVariant === "primary" ? DASHBOARD_COLORS.blueSoft : "#FBFDFF", minHeight: 84 }}>
+                  <Typography sx={{ color: objAction.strVariant === "primary" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.84rem" }}>
+                    {objAction.strLabel}
+                  </Typography>
+                  <Typography sx={{ mt: 0.55, color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", lineHeight: 1.4 }}>
+                    {objAction.strReason}
+                  </Typography>
+                </Box>
+              </Link>
+            ) : (
+              <Box sx={{ p: 1.2, borderRadius: "14px", border: `1px dashed ${DASHBOARD_COLORS.border}`, backgroundColor: "#F8FAFC", minHeight: 84, opacity: 0.86 }}>
+                <Typography sx={{ color: "#94A3B8", fontWeight: 800, fontSize: "0.84rem" }}>
+                  {objAction.strLabel}
+                </Typography>
+                <Typography sx={{ mt: 0.55, color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", lineHeight: 1.4 }}>
+                  {objAction.strReason}
+                </Typography>
+              </Box>
+            )}
+          </Grid>
+        ))}
+      </Grid>
+    </PanelShell>
+  );
+}
+
+function WorkflowPanel({
+  objWidget,
+  lstLifecycleStages,
+  strRunStatus,
+  t,
+}: {
+  objWidget?: DashboardWidget;
+  lstLifecycleStages: Array<{ strLabel: string; strState: "completed" | "active" | "upcoming" | "locked" }>;
+  strRunStatus: string;
+  t: RoleBasedDashboardProps["t"];
+}) {
   const objPayload = ((objWidget?.objPayload as { lstStages?: TrackerStage[] } | undefined) || {});
   const lstStages = (objPayload.lstStages || []) as TrackerStage[];
   const objCurrentStage = lstStages.find((objStage) => objStage.strStatus === "in_progress")
@@ -568,10 +850,35 @@ function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
   return (
     <PanelShell
       strTitle={t("payroll_workflow", "Payroll Workflow")}
-      strSubtitle={objCurrentStage ? `${t("current_stage", "Current Stage")}: ${objCurrentStage.strLabel}` : undefined}
+      strSubtitle={objCurrentStage ? `${t("current_stage", "Current Stage")}: ${objCurrentStage.strLabel} • ${t("run_status", "Run Status")}: ${formatLifecycleLabel(strRunStatus)}` : undefined}
       strAccent={DASHBOARD_COLORS.blue}
     >
-      <Box sx={{ pt: 0.25 }}>
+      <Stack spacing={2}>
+        <Grid container spacing={1.1}>
+          {lstLifecycleStages.map((objStage, intIndex) => {
+            const objTone = lifecycleTone(objStage.strState);
+            return (
+              <Grid key={`${objStage.strLabel}-${intIndex}`} item xs={12} sm={6} lg={4}>
+                <Box sx={{ p: 1.1, borderRadius: "14px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface, minHeight: 92 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Box sx={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#fff", border: `2px solid ${objTone.accent}`, color: objTone.accent, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "0.75rem", flexShrink: 0 }}>
+                      {intIndex + 1}
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.78rem" }}>
+                        {objStage.strLabel}
+                      </Typography>
+                      <Typography sx={{ mt: 0.28, color: objTone.accent, fontWeight: 700, fontSize: "0.72rem" }}>
+                        {formatLifecycleState(objStage.strState, t)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+              </Grid>
+            );
+          })}
+        </Grid>
+        <Box sx={{ pt: 0.25 }}>
         <Box sx={{ display: { xs: "none", md: "block" }, position: "relative", height: 30, mb: 1.65 }}>
           <Box sx={{ position: "absolute", left: 0, right: 0, top: 14, height: 2, backgroundColor: "#DDE7F0" }} />
           <Box sx={{ position: "absolute", left: 0, width: `${decProgressPercent}%`, top: 14, height: 2, backgroundColor: DASHBOARD_COLORS.green }} />
@@ -590,7 +897,7 @@ function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
             );
           })}
         </Box>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 1.35, md: 1.25 }} sx={{ pt: 0.2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 1.35, md: 1.25 }} sx={{ pt: 0.2 }}>
         {lstStages.map((objStage, intIndex) => {
           const strAccent = objStage.strStatus === "completed"
             ? DASHBOARD_COLORS.green
@@ -661,8 +968,167 @@ function WorkflowPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
             </Stack>
           );
         })}
+        </Stack>
+        </Box>
       </Stack>
-      </Box>
+    </PanelShell>
+  );
+}
+
+function ValidationSummaryPanel({ lstCards, t }: { lstCards: Array<{ strLabel: string; strValue: string; strRoutePath: string; strTone: "red" | "amber" | "blue" | "green"; strHint: string }>; t: RoleBasedDashboardProps["t"] }) {
+  return (
+    <PanelShell strTitle={t("validation_summary", "Validation Summary")} strSubtitle={t("validation_summary_subtitle", "Current run validation, blockers and review shortcuts")} strAccent={DASHBOARD_COLORS.red}>
+      <Grid container spacing={1.1}>
+        {lstCards.map((objCard, intIndex) => {
+          const objTone = validationTone(objCard.strTone);
+          return (
+            <Grid key={`${objCard.strLabel}-${objCard.strValue}-${intIndex}`} item xs={12} sm={6}>
+              <Link href={objCard.strRoutePath} style={{ textDecoration: "none", display: "block" }}>
+                <Box sx={{ p: 1.2, borderRadius: "14px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface, minHeight: 92 }}>
+                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>
+                    {objCard.strLabel}
+                  </Typography>
+                  <Typography sx={{ mt: 0.55, color: objTone.accent, fontSize: "1.15rem", fontWeight: 800 }}>
+                    {objCard.strValue}
+                  </Typography>
+                  <Typography sx={{ mt: 0.4, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", lineHeight: 1.4 }}>
+                    {objCard.strHint}
+                  </Typography>
+                </Box>
+              </Link>
+            </Grid>
+          );
+        })}
+      </Grid>
+    </PanelShell>
+  );
+}
+
+function ReadinessPanel({ objReadiness, t }: { objReadiness: ReadinessPayload; t: RoleBasedDashboardProps["t"] }) {
+  const decScore = Math.max(0, Math.min(100, Number(objReadiness.decScore || 0)));
+  const strStatus = String(objReadiness.strStatus || "Not Ready");
+  const lstBreakdown = objReadiness.lstBreakdown || [];
+  return (
+    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)}>
+      <Stack spacing={1.4}>
+        <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
+          <Stack spacing={0.45}>
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "1.8rem" }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
+            <Chip label={strStatus} size="small" sx={{ width: "fit-content", fontWeight: 700, borderRadius: "999px", backgroundColor: softColor(readinessAccent(strStatus)), color: readinessAccent(strStatus) }} />
+          </Stack>
+          <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={t("ready", "Ready")} />
+        </Stack>
+        <MiniProgressBar decValue={decScore} strColor={readinessAccent(strStatus)} />
+        <Grid container spacing={1}>
+          <Grid item xs={4}>
+            <MetricPill strLabel={t("blocking", "Blocking")} strValue={formatInteger(Number(objReadiness.intBlockingCount || 0))} strTone={DASHBOARD_COLORS.red} />
+          </Grid>
+          <Grid item xs={4}>
+            <MetricPill strLabel={t("warning", "Warning")} strValue={formatInteger(Number(objReadiness.intWarningCount || 0))} strTone={DASHBOARD_COLORS.amber} />
+          </Grid>
+          <Grid item xs={4}>
+            <MetricPill strLabel={t("info", "Info")} strValue={formatInteger(Number(objReadiness.intInfoCount || 0))} strTone={DASHBOARD_COLORS.blue} />
+          </Grid>
+        </Grid>
+        {lstBreakdown.length ? (
+          <Stack spacing={0.8}>
+            {lstBreakdown.slice(0, 4).map((objItem, intIndex) => (
+              <CompactStatRow key={`${objItem.strLabel}-${intIndex}`} strLabel={objItem.strLabel} strValue={objItem.decValue != null ? formatCurrency(Number(objItem.decValue || 0)) : formatInteger(Number(objItem.intValue || 0))} />
+            ))}
+          </Stack>
+        ) : (
+          <CompactEmptyState strTitle={t("no_readiness_breakdown", "No readiness breakdown yet")} strSubtitle={t("no_readiness_breakdown_hint", "Readiness details will appear after the dashboard validations run.")} />
+        )}
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function VariancePanel({ lstMetrics, t }: { lstMetrics: VarianceMetric[]; t: RoleBasedDashboardProps["t"] }) {
+  return (
+    <PanelShell
+      strTitle={t("month_on_month_variance", "Month-on-Month Variance")}
+      strSubtitle={t("month_on_month_variance_subtitle", "Compare current month output against the previous payroll month")}
+      strAccent={DASHBOARD_COLORS.blue}
+      blnAutoHeight
+    >
+      {lstMetrics.length ? (
+        <Grid container spacing={1.1}>
+          {lstMetrics.map((objMetric, intIndex) => (
+            <Grid key={`${objMetric.strLabel}-${intIndex}`} item xs={12} sm={6} lg={3}>
+              <Box sx={{ p: 1.1, borderRadius: "14px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF", minHeight: 92 }}>
+                <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{objMetric.strLabel}</Typography>
+                <Typography sx={{ mt: 0.45, color: DASHBOARD_COLORS.text, fontSize: "0.98rem", fontWeight: 800 }}>
+                  {formatMetricValue(objMetric.decCurrent, objMetric.blnCurrency)}
+                </Typography>
+                <Typography sx={{ mt: 0.2, color: DASHBOARD_COLORS.muted, fontSize: "0.73rem" }}>
+                  {t("previous", "Previous")}: {formatMetricValue(objMetric.decPrevious, objMetric.blnCurrency)}
+                </Typography>
+                <Typography sx={{ mt: 0.4, color: varianceColor(objMetric.decVariancePercent), fontSize: "0.75rem", fontWeight: 700 }}>
+                  {formatTrendText(objMetric.decVariancePercent)}
+                </Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <CompactEmptyState strTitle={t("no_previous_month_data", "No previous month data")} strSubtitle={t("no_previous_month_data_hint", "Variance will appear after at least two payroll months are available.")} />
+      )}
+    </PanelShell>
+  );
+}
+
+function ExceptionPanel({ lstItems, lstGroups, t }: { lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>; lstGroups: ExceptionGroup[]; t: RoleBasedDashboardProps["t"] }) {
+  const [strFilter, setStrFilter] = useState<"All" | "Blocking" | "Warning" | "Info">("All");
+  const [blnExpanded, setBlnExpanded] = useState(false);
+  const lstVisibleGroups = lstGroups.filter((objGroup) => strFilter === "All" || objGroup.strSeverity === strFilter);
+  const lstVisibleItems = lstVisibleGroups.flatMap((objGroup) => objGroup.lstItems.map((objItem) => ({ ...objItem, strSeverity: objGroup.strSeverity })));
+  const lstRenderedItems = blnExpanded ? lstVisibleItems : lstVisibleItems.slice(0, 5);
+  return (
+    <PanelShell strTitle={t("exception_first", "Exception-First View")} strSubtitle={t("exception_first_subtitle", "The highest-priority issues are surfaced before tables and charts")} strAccent={DASHBOARD_COLORS.red}>
+      <Stack spacing={1}>
+        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+          {(["All", "Blocking", "Warning", "Info"] as const).map((strItem) => (
+            <Chip key={strItem} label={strItem} size="small" clickable onClick={() => setStrFilter(strItem)} sx={{ borderRadius: "999px", fontWeight: 700, backgroundColor: strFilter === strItem ? softColor(exceptionTone(strItem === "All" ? "Info" : strItem).accent) : "#F8FAFC", color: strFilter === strItem ? exceptionTone(strItem === "All" ? "Info" : strItem).accent : DASHBOARD_COLORS.muted }} />
+          ))}
+        </Stack>
+        {lstRenderedItems.map((objItem) => {
+          const objTone = exceptionTone(objItem.strSeverity);
+          return (
+            <Link key={objItem.strCode} href={objItem.strRoutePath || "/payroll/runs"} style={{ textDecoration: "none" }}>
+              <Box sx={{ p: 1.15, borderRadius: "14px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface }}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexWrap: "wrap" }} useFlexGap>
+                      <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.82rem" }}>
+                        {objItem.strLabel}
+                      </Typography>
+                      <Chip label={objItem.strSeverity} size="small" sx={{ height: 22, borderRadius: "999px", backgroundColor: objTone.surface, color: objTone.accent, fontWeight: 700, fontSize: "0.67rem", border: `1px solid ${objTone.border}` }} />
+                    </Stack>
+                    <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.75rem" }}>
+                      {objItem.strReason}
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ color: objTone.accent, fontWeight: 800, fontSize: "0.84rem", whiteSpace: "nowrap" }}>
+                    {formatInteger(objItem.intCount)} {t("items", "Items")}
+                  </Typography>
+                </Stack>
+              </Box>
+            </Link>
+          );
+        })}
+        {!lstRenderedItems.length ? <CompactEmptyState strTitle={t("no_exceptions", "No exceptions")} strSubtitle={t("no_exceptions_hint", "There are no issues for the current filter.")} /> : null}
+        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
+          <Link href="/payroll/runs" style={{ color: DASHBOARD_COLORS.blue, textDecoration: "none", fontWeight: 700, fontSize: "0.82rem" }}>
+            {t("view_all_issues", "View All Issues")}
+          </Link>
+          {lstVisibleItems.length > 5 ? (
+            <Button size="small" onClick={() => setBlnExpanded((blnValue) => !blnValue)} sx={{ textTransform: "none" }}>
+              {blnExpanded ? t("show_less", "Show Less") : t("show_more", "Show More")}
+            </Button>
+          ) : null}
+        </Stack>
+      </Stack>
     </PanelShell>
   );
 }
@@ -733,14 +1199,19 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
   const intSecondary = Number(lstStats[1]?.intValue || 0);
   const decPrimary = Number(lstStats[0]?.decValue || 0);
   const decPercent = intTotal > 0 ? Math.round((intSecondary / intTotal) * 1000) / 10 : 0;
+  const lstSparklinePoints = resolveSummarySparklinePoints(objWidget);
+  const blnShowItRing = intPrimary > 0 || intSecondary > 0 || Number(lstStats[2]?.intValue || 0) > 0;
+  const blnShowReimbursementRing = intTotal > 0;
+  const blnShowStatutoryBars = lstStats.some((objStat) => Number(objStat.intValue || 0) > 0);
+  const blnShowTaxSparkline = lstSparklinePoints.length >= 2;
 
   return (
     <PanelShell strTitle={resolveWidgetTitle(t, objWidget.strWidgetCode, objWidget.strWidgetName)} strAccent={objTone.accent}>
       {blnItSummary ? (
-        <Stack direction="row" spacing={1.4} alignItems="center">
+        <Stack direction="row" spacing={1.4} alignItems={blnShowItRing ? "center" : "stretch"}>
           <Stack spacing={0.9} sx={{ flex: 1 }}>
             {lstStats.map((objStat, intIndex) => (
-              <Box key={objStat.strLabel} sx={{ p: 1.05, minHeight: intIndex === 2 ? 42 : 54, borderRadius: "10px", backgroundColor: intIndex === 2 ? "#FFFFFF" : objTone.surface, border: `1px solid ${objTone.border}` }}>
+              <Box key={`${objStat.strLabel}-${intIndex}`} sx={{ p: 1.05, minHeight: intIndex === 2 ? 42 : 54, borderRadius: "10px", backgroundColor: intIndex === 2 ? "#FFFFFF" : objTone.surface, border: `1px solid ${objTone.border}` }}>
                 <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem" }}>{objStat.strLabel}</Typography>
                 <Typography sx={{ mt: 0.15, fontSize: "1.2rem", fontWeight: 800, color: DASHBOARD_COLORS.text }}>
                   {formatInteger(objStat.intValue || 0)}
@@ -748,14 +1219,14 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Box>
             ))}
           </Stack>
-          <ProgressRing decPercent={intPrimary > 0 || intSecondary > 0 ? (intPrimary / Math.max(intPrimary + intSecondary, 1)) * 100 : 0} strColor={objTone.accent} strLabel="Filed" />
+          {blnShowItRing ? <ProgressRing decPercent={(intPrimary / Math.max(intPrimary + intSecondary, 1)) * 100} strColor={objTone.accent} strLabel="Filed" /> : null}
         </Stack>
       ) : null}
       {blnReimbursement ? (
-        <Stack direction="row" spacing={1.4} alignItems="center">
+        <Stack direction="row" spacing={1.4} alignItems={blnShowReimbursementRing ? "center" : "stretch"}>
           <Grid container spacing={1.05} sx={{ flex: 1 }}>
-            {lstStats.map((objStat) => (
-              <Grid key={objStat.strLabel} item xs={objStat.strLabel.toLowerCase().includes("pending") ? 12 : 6}>
+            {lstStats.map((objStat, intIndex) => (
+              <Grid key={`${objStat.strLabel}-${intIndex}`} item xs={objStat.strLabel.toLowerCase().includes("pending") ? 12 : 6}>
                 <Box sx={{ p: 1.05, minHeight: 54, borderRadius: "10px", backgroundColor: objTone.surface, border: `1px solid ${objTone.border}` }}>
                   <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem" }}>{objStat.strLabel}</Typography>
                   <Typography sx={{ mt: 0.15, fontSize: "1.2rem", fontWeight: 800, color: DASHBOARD_COLORS.text }}>
@@ -765,14 +1236,14 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Grid>
             ))}
           </Grid>
-          <ProgressRing decPercent={decPercent} strColor={objTone.accent} strLabel="Approved" />
+          {blnShowReimbursementRing ? <ProgressRing decPercent={decPercent} strColor={objTone.accent} strLabel="Approved" /> : null}
         </Stack>
       ) : null}
       {blnStatutory ? (
         <Stack spacing={1.2}>
           <Grid container spacing={1.05}>
-            {lstStats.map((objStat) => (
-              <Grid key={objStat.strLabel} item xs={6}>
+            {lstStats.map((objStat, intIndex) => (
+              <Grid key={`${objStat.strLabel}-${intIndex}`} item xs={6}>
                 <Box sx={{ p: 1.05, minHeight: 54, borderRadius: "10px", backgroundColor: objTone.surface, border: `1px solid ${objTone.border}` }}>
                   <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem" }}>{objStat.strLabel}</Typography>
                   <Typography sx={{ mt: 0.15, fontSize: "1.2rem", fontWeight: 800, color: DASHBOARD_COLORS.text }}>
@@ -782,7 +1253,7 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Grid>
             ))}
           </Grid>
-          <MiniBarChart lstBars={lstStats.map((objStat) => Number(objStat.intValue || 0))} />
+          {blnShowStatutoryBars ? <MiniBarChart lstBars={lstStats.map((objStat) => Number(objStat.intValue || 0))} /> : null}
         </Stack>
       ) : null}
       {blnTax ? (
@@ -793,9 +1264,148 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               {formatCurrency(decPrimary)}
             </Typography>
           </Box>
-          <Sparkline lstPoints={resolveSummarySparklinePoints(objWidget)} strColor={objTone.accent} blnCompact />
+          {blnShowTaxSparkline ? <Sparkline lstPoints={lstSparklinePoints} strColor={objTone.accent} blnCompact /> : null}
         </Stack>
       ) : null}
+    </PanelShell>
+  );
+}
+
+function HighRiskEmployeesPanel({ lstEmployees, t }: { lstEmployees: HighRiskEmployeeRow[]; t: RoleBasedDashboardProps["t"] }) {
+  const [strFilter, setStrFilter] = useState("All");
+  const [strSearch, setStrSearch] = useState("");
+  const lstCategories = ["All", "Salary", "Bank", "Tax", "Payroll", "Reimbursement"];
+  const lstFilteredRows = lstEmployees.filter((objEmployee) => {
+    const blnCategoryMatch = strFilter === "All" || objEmployee.strRiskType.toLowerCase().includes(strFilter.toLowerCase());
+    const strQuery = strSearch.trim().toLowerCase();
+    const blnSearchMatch = !strQuery || `${objEmployee.strEmployeeName} ${objEmployee.strEmployeeCode || ""} ${objEmployee.strDetail}`.toLowerCase().includes(strQuery);
+    return blnCategoryMatch && blnSearchMatch;
+  });
+  return (
+    <PanelShell strTitle={t("high_risk_employees", "High-Risk Employees")} strSubtitle={t("high_risk_employees_subtitle", "Employees needing payroll intervention before processing or release")} strAccent={DASHBOARD_COLORS.red}>
+      <Stack spacing={1}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
+          <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+            {lstCategories.map((strCategory) => (
+              <Chip key={strCategory} label={strCategory} size="small" clickable onClick={() => setStrFilter(strCategory)} sx={{ borderRadius: "999px", fontWeight: 700, backgroundColor: strFilter === strCategory ? DASHBOARD_COLORS.redSoft : "#F8FAFC", color: strFilter === strCategory ? DASHBOARD_COLORS.red : DASHBOARD_COLORS.muted }} />
+            ))}
+          </Stack>
+          <TextField size="small" value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} placeholder={t("search_employees", "Search employees")} InputProps={{ startAdornment: <SearchRoundedIcon sx={{ fontSize: 16, color: DASHBOARD_COLORS.muted, mr: 0.8 }} /> }} sx={{ minWidth: { xs: "100%", md: 220 }, "& .MuiOutlinedInput-root": { borderRadius: "12px" } }} />
+        </Stack>
+        {lstFilteredRows.length ? lstFilteredRows.slice(0, 8).map((objEmployee, intIndex) => (
+          <Link key={`${objEmployee.strEmployeeName}-${intIndex}`} href={objEmployee.strRoutePath || "/employees"} style={{ textDecoration: "none" }}>
+            <Box sx={{ p: 1.1, borderRadius: "12px", border: `1px solid ${exceptionTone(objEmployee.strSeverity || "Warning").border}`, backgroundColor: exceptionTone(objEmployee.strSeverity || "Warning").surface }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                <Box>
+                  <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.84rem" }}>{objEmployee.strEmployeeName}</Typography>
+                    {objEmployee.strEmployeeCode ? <Chip label={objEmployee.strEmployeeCode} size="small" sx={{ height: 22, borderRadius: "999px", fontSize: "0.66rem" }} /> : null}
+                    <Chip label={objEmployee.strRiskType} size="small" sx={{ height: 22, borderRadius: "999px", backgroundColor: "#fff", fontSize: "0.66rem", fontWeight: 700 }} />
+                  </Stack>
+                  <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.76rem" }}>{objEmployee.strDetail}</Typography>
+                </Box>
+                <Chip label={objEmployee.strSeverity || "Warning"} size="small" sx={{ borderRadius: "999px", backgroundColor: "#fff", color: exceptionTone(objEmployee.strSeverity || "Warning").accent, fontWeight: 700 }} />
+              </Stack>
+            </Box>
+          </Link>
+        )) : <CompactEmptyState strTitle={t("no_high_risk_employees", "No high-risk employees")} strSubtitle={t("no_high_risk_employees_hint", "No employee-level blockers matched the current filter.")} />}
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function ApprovalAgingPanel({ lstRows, t }: { lstRows: ApprovalAgingRow[]; t: RoleBasedDashboardProps["t"] }) {
+  return (
+    <PanelShell strTitle={t("approval_aging", "Approval Aging")} strSubtitle={t("approval_aging_subtitle", "Pending queues across payroll, IT declarations, reimbursements and proof checks")} strAccent={DASHBOARD_COLORS.amber}>
+      <Stack spacing={1}>
+        {lstRows.length ? lstRows.map((objRow, intIndex) => (
+          <Link key={`${objRow.strLabel}-${intIndex}`} href={objRow.strRoutePath || "/payroll/runs"} style={{ textDecoration: "none" }}>
+            <Box sx={{ p: 1.1, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF" }}>
+              <Stack direction="row" justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.82rem" }}>{objRow.strLabel}</Typography>
+                  <Typography sx={{ mt: 0.25, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem" }}>
+                    {t("average_age", "Average Age")}: {formatDays(objRow.decAverageDays)}
+                  </Typography>
+                </Box>
+                <Stack alignItems="flex-end">
+                  <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.9rem" }}>{formatInteger(objRow.intPendingCount)}</Typography>
+                  <Typography sx={{ color: DASHBOARD_COLORS.red, fontSize: "0.72rem", fontWeight: 700 }}>{formatInteger(Number(objRow.intOverdueCount || 0))} {t("overdue", "overdue")}</Typography>
+                </Stack>
+              </Stack>
+            </Box>
+          </Link>
+        )) : <CompactEmptyState strTitle={t("no_pending_approvals", "No pending approvals")} strSubtitle={t("no_pending_approvals_hint", "Approval aging will appear when there are pending records.")} />}
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function DetailedSummaryPanel({ strTitle, strSubtitle, lstStats, strAccent }: { strTitle: string; strSubtitle?: string; lstStats: DrilldownStat[]; strAccent: string }) {
+  return (
+    <PanelShell strTitle={strTitle} strSubtitle={strSubtitle} strAccent={strAccent}>
+      <Stack spacing={0.8}>
+        {lstStats.length ? lstStats.map((objStat, intIndex) => {
+          const objContent = (
+            <Box sx={{ p: 1, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF" }}>
+              <Stack direction="row" justifyContent="space-between" spacing={1}>
+                <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{objStat.strLabel}</Typography>
+                <Typography sx={{ color: DASHBOARD_COLORS.text, fontSize: "0.82rem", fontWeight: 800 }}>{objStat.decValue != null ? formatCurrency(Number(objStat.decValue || 0)) : formatInteger(Number(objStat.intValue || 0))}</Typography>
+              </Stack>
+            </Box>
+          );
+          return objStat.strRoutePath ? <Link key={`${objStat.strLabel}-${intIndex}`} href={objStat.strRoutePath} style={{ textDecoration: "none" }}>{objContent}</Link> : <Box key={`${objStat.strLabel}-${intIndex}`}>{objContent}</Box>;
+        }) : <CompactEmptyState strTitle="No data" strSubtitle="This section will populate when source transactions are available." />}
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function OutputReadinessPanel({ objOutputReadiness, t }: { objOutputReadiness: OutputReadinessPayload; t: RoleBasedDashboardProps["t"] }) {
+  const intPayslipTotal = Number(objOutputReadiness.intPayslipsGenerated || 0) + Number(objOutputReadiness.intPayslipsPending || 0) + Number(objOutputReadiness.intPayslipsFailed || 0);
+  const decPayslipPercent = intPayslipTotal > 0 ? (Number(objOutputReadiness.intPayslipsGenerated || 0) / intPayslipTotal) * 100 : 0;
+  const intBankTotal = Number(objOutputReadiness.intBankReady || 0) + Number(objOutputReadiness.intMissingBank || 0);
+  const decBankPercent = intBankTotal > 0 ? (Number(objOutputReadiness.intBankReady || 0) / intBankTotal) * 100 : 0;
+  return (
+    <PanelShell strTitle={t("payslip_payout_readiness", "Payslip and Payout Readiness")} strSubtitle={t("payslip_payout_readiness_subtitle", "Post-processing output status for results, payslips and bank file preparation")} strAccent={DASHBOARD_COLORS.green}>
+      <Stack spacing={1.2}>
+        <Grid container spacing={1}>
+          <Grid item xs={6}><MetricPill strLabel={t("processed_results", "Processed Results")} strValue={formatInteger(Number(objOutputReadiness.intProcessedResults || 0))} strTone={DASHBOARD_COLORS.blue} /></Grid>
+          <Grid item xs={6}><MetricPill strLabel={t("payslips_generated", "Payslips Generated")} strValue={formatInteger(Number(objOutputReadiness.intPayslipsGenerated || 0))} strTone={DASHBOARD_COLORS.green} /></Grid>
+          <Grid item xs={6}><MetricPill strLabel={t("payslips_pending", "Payslips Pending")} strValue={formatInteger(Number(objOutputReadiness.intPayslipsPending || 0))} strTone={DASHBOARD_COLORS.amber} /></Grid>
+          <Grid item xs={6}><MetricPill strLabel={t("missing_bank", "Missing Bank")} strValue={formatInteger(Number(objOutputReadiness.intMissingBank || 0))} strTone={DASHBOARD_COLORS.red} /></Grid>
+        </Grid>
+        <Box>
+          <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{t("payslip_generation", "Payslip Generation")}</Typography>
+          <MiniProgressBar decValue={decPayslipPercent} strColor={DASHBOARD_COLORS.green} />
+        </Box>
+        <Box>
+          <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{t("bank_readiness", "Bank Readiness")}</Typography>
+          <MiniProgressBar decValue={decBankPercent} strColor={DASHBOARD_COLORS.blue} />
+        </Box>
+        <CompactStatRow strLabel={t("bank_file_status", "Bank File Status")} strValue={String(objOutputReadiness.strBankFileStatus || "-")} />
+        <CompactStatRow strLabel={t("payroll_register_status", "Payroll Register Status")} strValue={String(objOutputReadiness.strPayrollRegisterStatus || "-")} />
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function AuditPanel({ objAudit, t }: { objAudit: AuditPayload; t: RoleBasedDashboardProps["t"] }) {
+  const lstRows = [
+    { strLabel: t("last_validated", "Last Validated"), strValue: joinActorDate(objAudit.strLastValidatedBy, objAudit.dtLastValidatedOn) },
+    { strLabel: t("last_processed", "Last Processed"), strValue: joinActorDate(objAudit.strLastProcessedBy, objAudit.dtLastProcessedOn) },
+    { strLabel: t("reprocess_count", "Reprocess Count"), strValue: formatInteger(Number(objAudit.intReprocessCount || 0)) },
+    { strLabel: t("reprocess_reason", "Last Reprocess Reason"), strValue: String(objAudit.strLastReprocessReason || "-") },
+    { strLabel: t("closed_on", "Closed By / On"), strValue: joinActorDate(objAudit.strClosedBy, objAudit.dtClosedOn) },
+    { strLabel: t("failed_employees", "Failed Employee Count"), strValue: formatInteger(Number(objAudit.intFailedEmployeeCount || 0)) },
+  ];
+  return (
+    <PanelShell strTitle={t("payroll_audit", "Payroll Audit Panel")} strSubtitle={t("payroll_audit_subtitle", "Validation, processing and reprocess history for the current dashboard context")} strAccent={DASHBOARD_COLORS.blue}>
+      <Stack spacing={0.8}>
+        {lstRows.map((objRow, intIndex) => (
+          <CompactStatRow key={`${objRow.strLabel}-${intIndex}`} strLabel={objRow.strLabel} strValue={objRow.strValue} />
+        ))}
+      </Stack>
     </PanelShell>
   );
 }
@@ -1580,6 +2190,44 @@ function DonutChartPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
   );
 }
 
+function CompactEmptyState({ strTitle, strSubtitle }: { strTitle: string; strSubtitle: string }) {
+  return (
+    <Stack spacing={0.45} sx={{ py: 1.2 }}>
+      <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.84rem" }}>{strTitle}</Typography>
+      <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem" }}>{strSubtitle}</Typography>
+    </Stack>
+  );
+}
+
+function CompactStatRow({ strLabel, strValue }: { strLabel: string; strValue: string }) {
+  return (
+    <Box sx={{ p: 1, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF" }}>
+      <Stack direction="row" justifyContent="space-between" spacing={1}>
+        <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{strLabel}</Typography>
+        <Typography sx={{ color: DASHBOARD_COLORS.text, fontSize: "0.8rem", fontWeight: 800, textAlign: "right" }}>{strValue}</Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+function MetricPill({ strLabel, strValue, strTone }: { strLabel: string; strValue: string; strTone: string }) {
+  return (
+    <Box sx={{ p: 1, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: softColor(strTone), height: "100%" }}>
+      <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>{strLabel}</Typography>
+      <Typography sx={{ mt: 0.25, color: strTone, fontSize: "0.92rem", fontWeight: 800 }}>{strValue}</Typography>
+    </Box>
+  );
+}
+
+function MiniProgressBar({ decValue, strColor }: { decValue: number; strColor: string }) {
+  const decSafeValue = Math.max(0, Math.min(100, decValue));
+  return (
+    <Box sx={{ mt: 0.55, width: "100%", backgroundColor: "#E2E8F0", borderRadius: "999px", height: 8 }}>
+      <Box sx={{ width: `${decSafeValue}%`, backgroundColor: strColor, borderRadius: "999px", height: 8 }} />
+    </Box>
+  );
+}
+
 function MiniDonutChart({ lstPoints, t, blnCompact = false }: { lstPoints: ChartPoint[]; t: RoleBasedDashboardProps["t"]; blnCompact?: boolean }) {
   const intTotal = lstPoints.reduce((intSum, objPoint) => intSum + Number(objPoint.intValue || objPoint.decValue || 0), 0);
   const lstSegments = lstPoints.map((objPoint) => ({
@@ -1659,11 +2307,13 @@ function PanelShell({
   strTitle,
   strSubtitle,
   strAccent = DASHBOARD_COLORS.blue,
+  blnAutoHeight = false,
   children,
 }: {
   strTitle: string;
   strSubtitle?: string;
   strAccent?: string;
+  blnAutoHeight?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -1671,7 +2321,7 @@ function PanelShell({
       sx={{
         p: 2.25,
         width: "100%",
-        height: "100%",
+        height: blnAutoHeight ? "auto" : "100%",
         borderRadius: "18px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         backgroundColor: DASHBOARD_COLORS.surface,
@@ -1712,16 +2362,237 @@ function getKpiIcon(strWidgetCode: string) {
   return <AccessTimeRoundedIcon sx={{ fontSize: 22 }} />;
 }
 
+function resolveSelectedRun(lstRecentRunRows: RecentRunRow[], strSelectedMonth: string, strAllMonthsValue: string) {
+  if (!lstRecentRunRows.length) return undefined;
+  if (strSelectedMonth === strAllMonthsValue) {
+    return lstRecentRunRows[0];
+  }
+  return lstRecentRunRows.find((objRow) => String(objRow.payroll_month || "").trim() === strSelectedMonth) || lstRecentRunRows[0];
+}
+
+function normalizeRunStatus(strStatus: string) {
+  return String(strStatus || "").trim().toLowerCase();
+}
+
+function buildLifecycleStages(strRunStatus: string) {
+  const strNormalizedStatus = normalizeRunStatus(strRunStatus);
+  const lstStatuses = ["open", "submitted", "approved", "processed", "closed"];
+  const intActiveIndex = Math.max(lstStatuses.indexOf(strNormalizedStatus), 0);
+  return lstStatuses.map((strStatus, intIndex) => ({
+    strLabel: formatLifecycleLabel(strStatus),
+    strState: intIndex < intActiveIndex
+      ? "completed"
+      : intIndex === intActiveIndex
+        ? (strNormalizedStatus === "closed" ? "completed" : "active")
+        : strNormalizedStatus === "closed"
+          ? "locked"
+          : "upcoming",
+  })) as Array<{ strLabel: string; strState: "completed" | "active" | "upcoming" | "locked" }>;
+}
+
+function buildPayrollRunDetailItems(objRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
+  return [
+    { strLabel: t("run_name", "Run Name"), strValue: objRun?.run_name || "-" },
+    { strLabel: t("payroll_month", "Payroll Month"), strValue: objRun?.payroll_month ? formatLongMonth(objRun.payroll_month) : "-" },
+    { strLabel: t("company", "Company"), strValue: objRun?.company_name || "-" },
+    { strLabel: t("payroll_cycle", "Payroll Cycle"), strValue: objRun?.cycle_name || "-" },
+    { strLabel: t("last_processed_time", "Last Processed Time"), strValue: formatDateTimeLabel(objRun?.processed_on) },
+    { strLabel: t("last_processed_by", "Last Processed By"), strValue: objRun?.processed_by || "-" },
+  ];
+}
+
+function buildPayrollActionItems(strRunStatus: string, lstQuickActions: DashboardQuickAction[], t: RoleBasedDashboardProps["t"]): PayrollActionItem[] {
+  const setAvailableRoutes = new Set(lstQuickActions.map((objAction) => objAction.strRoutePath).filter(Boolean));
+  const strNormalizedStatus = normalizeRunStatus(strRunStatus) || "open";
+  const lstCandidates: PayrollActionItem[] = [
+    { strCode: "validate", strLabel: t("validate_run", "Validate Run"), strRoutePath: "/payroll/runs", strVariant: "primary", blnEnabled: ["open", "submitted", "approved"].includes(strNormalizedStatus), strReason: t("validate_run_hint", "Review blockers, warnings and run readiness.") },
+    { strCode: "edit_inputs", strLabel: t("edit_inputs", "Edit Inputs"), strRoutePath: "/payroll/runs", strVariant: "secondary", blnEnabled: ["open", "submitted"].includes(strNormalizedStatus), strReason: t("edit_inputs_hint", "Inputs remain editable only before processing and lock.") },
+    { strCode: "process", strLabel: t("process_payroll", "Process Payroll"), strRoutePath: "/payroll/runs", strVariant: "primary", blnEnabled: strNormalizedStatus === "approved", strReason: t("process_payroll_hint", "Processing is enabled only after run approval.") },
+    { strCode: "payslips", strLabel: t("generate_payslips", "Generate Payslips"), strRoutePath: "/payroll/payslips", strVariant: "secondary", blnEnabled: ["processed", "closed"].includes(strNormalizedStatus), strReason: t("generate_payslips_hint", "Use payroll results to publish payslips once processing is complete.") },
+    { strCode: "reports", strLabel: t("download_reports", "Download Reports"), strRoutePath: "/reports", strVariant: "secondary", blnEnabled: ["processed", "closed"].includes(strNormalizedStatus), strReason: t("download_reports_hint", "Use standard payroll reporting and reconciliation outputs.") },
+    { strCode: "results", strLabel: t("view_results", "View Results"), strRoutePath: "/payroll/results", strVariant: "secondary", blnEnabled: ["processed", "closed"].includes(strNormalizedStatus), strReason: t("view_results_hint", "Inspect processed employees, net pay and payslip readiness.") },
+  ];
+
+  return lstCandidates.map((objAction) => {
+    const blnRouteVisible = setAvailableRoutes.has(objAction.strRoutePath) || objAction.strRoutePath === "/payroll/runs" || objAction.strRoutePath === "/payroll/results";
+    const strReason = objAction.blnEnabled
+      ? objAction.strReason
+      : disabledActionReason(objAction.strCode, strNormalizedStatus, t);
+    return {
+      ...objAction,
+      blnEnabled: blnRouteVisible && objAction.blnEnabled,
+      strReason,
+    };
+  }).filter((objAction) => objAction.blnEnabled || setAvailableRoutes.has(objAction.strRoutePath) || objAction.strRoutePath === "/payroll/runs");
+}
+
+function buildValidationCards(lstKpiWidgets: DashboardWidget[], objSelectedRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
+  const objValidationPayload = (lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload || {}) as KpiPayload;
+  const objApprovalsPayload = (lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload || {}) as KpiPayload;
+  return [
+    { strLabel: t("blocking_issues", "Blocking Issues"), strValue: formatInteger(Number(objValidationPayload.intBlockingCount || 0)), strRoutePath: "/payroll/runs", strTone: "red" as const, strHint: t("blocking_issues_hint", "Open validation blockers that can stop payroll processing.") },
+    { strLabel: t("warnings", "Warnings"), strValue: formatInteger(Number(objValidationPayload.intWarningCount || 0)), strRoutePath: "/payroll/runs", strTone: "amber" as const, strHint: t("warnings_hint", "Warnings should be reviewed before final payroll approval.") },
+    { strLabel: t("pending_approvals", "Pending Approvals"), strValue: formatInteger(Number(objApprovalsPayload.intValue || 0)), strRoutePath: "/payroll/runs", strTone: "blue" as const, strHint: t("pending_approvals_hint", "Approval workload across payroll, tax and reimbursements.") },
+    { strLabel: t("last_validation", "Last Validation"), strValue: formatDateTimeLabel(objSelectedRun?.processed_on), strRoutePath: "/payroll/runs", strTone: "green" as const, strHint: t("last_validation_hint", "Current dashboard feed does not expose a separate validation timestamp, so the latest run timestamp is shown.") },
+  ];
+}
+
+function buildExceptionItems(lstAlerts: AlertRow[], intPendingApprovalCount: number, intValidationErrorCount: number, objSelectedRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
+  const lstAlertItems = lstAlerts
+    .filter((objAlert) => Number(objAlert.intCount || 0) > 0)
+    .map((objAlert) => ({
+      strCode: objAlert.strCode,
+      strLabel: objAlert.strLabel,
+      intCount: Number(objAlert.intCount || 0),
+      strSeverity: objAlert.strCode.includes("missing") ? "Warning" : "Info" as "Blocking" | "Warning" | "Info",
+      strRoutePath: objAlert.strRoutePath || "/employees",
+      strReason: t("exception_route_hint", "Open the related page to resolve this dashboard exception."),
+    }));
+  const lstPriorityItems = [
+    { strCode: "validation_blockers", strLabel: t("validation_blockers", "Validation Blockers"), intCount: intValidationErrorCount, strSeverity: "Blocking" as const, strRoutePath: "/payroll/runs", strReason: t("validation_blockers_reason", "Unresolved issues can block payroll processing or closure.") },
+    { strCode: "approval_queue", strLabel: t("approval_queue", "Approval Queue"), intCount: intPendingApprovalCount, strSeverity: "Warning" as const, strRoutePath: "/payroll/runs", strReason: t("approval_queue_reason", "Pending approvals still require payroll review or sign-off.") },
+    { strCode: "payslip_pending", strLabel: t("payslip_pending", "Payslip Generation Pending"), intCount: ["processed", "closed"].includes(normalizeRunStatus(objSelectedRun?.run_status || "")) ? Math.max(Number(objSelectedRun?.employee_count || 0), 0) : 0, strSeverity: "Info" as const, strRoutePath: "/payroll/payslips", strReason: t("payslip_pending_reason", "Payslips become actionable only after payroll results are available.") },
+  ];
+  return [...lstPriorityItems, ...lstAlertItems].filter((objItem) => objItem.intCount > 0);
+}
+
+function resolveExceptionGroups(objExceptions: DashboardResponse["exceptions"], lstFallbackItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>) {
+  const objValue = (objExceptions || {}) as { lstGroups?: ExceptionGroup[] };
+  if (objValue.lstGroups?.length) {
+    return objValue.lstGroups;
+  }
+  const dicGroups = new Map<ExceptionGroup["strSeverity"], ExceptionGroup>();
+  lstFallbackItems.forEach((objItem) => {
+    const objGroup = dicGroups.get(objItem.strSeverity) || { strSeverity: objItem.strSeverity, lstItems: [] };
+    objGroup.lstItems.push(objItem);
+    dicGroups.set(objItem.strSeverity, objGroup);
+  });
+  return Array.from(dicGroups.values());
+}
+
+function resolveApprovalAgingRows(objApprovalAging: DashboardResponse["approvalAging"]) {
+  const objValue = (objApprovalAging || {}) as { lstRows?: ApprovalAgingRow[] };
+  return objValue.lstRows || [];
+}
+
+function resolveVarianceMetrics(objVariance: DashboardResponse["variance"]) {
+  const objValue = (objVariance || {}) as { lstMetrics?: VarianceMetric[] };
+  return objValue.lstMetrics || [];
+}
+
+function resolveHighRiskEmployees(objHighRiskEmployees: DashboardResponse["highRiskEmployees"]) {
+  const objValue = (objHighRiskEmployees || {}) as { lstEmployees?: HighRiskEmployeeRow[] };
+  return objValue.lstEmployees || [];
+}
+
+function buildDetailedSummarySections(objDashboard: DashboardResponse) {
+  const objIt = (objDashboard.itDeclarationDetails || {}) as { lstStats?: DrilldownStat[] };
+  const objReimbursement = (objDashboard.reimbursementDetails || {}) as { lstStats?: DrilldownStat[] };
+  const objStatutory = (objDashboard.statutoryDetails || {}) as { lstStats?: DrilldownStat[] };
+  const objTax = (objDashboard.taxDetails || {}) as { lstStats?: DrilldownStat[] };
+  return [
+    { strCode: "it", strTitle: "IT Declaration Summary", strSubtitle: "Status, amount, proofs and approval posture", lstStats: objIt.lstStats || [], strAccent: DASHBOARD_COLORS.amber },
+    { strCode: "reimbursement", strTitle: "Reimbursement Summary", strSubtitle: "Claims, proof checks, approval and payroll push status", lstStats: objReimbursement.lstStats || [], strAccent: DASHBOARD_COLORS.green },
+    { strCode: "statutory", strTitle: "Statutory Summary", strSubtitle: "PF, ESI, PT, LWF and contribution overview", lstStats: objStatutory.lstStats || [], strAccent: DASHBOARD_COLORS.blue },
+    { strCode: "tax", strTitle: "Tax Summary", strSubtitle: "Taxable payroll, TDS posture and regime coverage", lstStats: objTax.lstStats || [], strAccent: DASHBOARD_COLORS.red },
+  ];
+}
+
 function getStageColor(strStatus: TrackerStage["strStatus"]) {
   if (strStatus === "completed") return "#16A34A";
   if (strStatus === "in_progress") return "#2563EB";
   return "#94a3b8";
 }
 
+function lifecycleTone(strState: "completed" | "active" | "upcoming" | "locked") {
+  if (strState === "completed") return { accent: DASHBOARD_COLORS.green, surface: DASHBOARD_COLORS.greenSoft, border: "#BFE7CC" };
+  if (strState === "active") return { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft, border: "#D6E4FF" };
+  if (strState === "locked") return { accent: "#94A3B8", surface: "#F8FAFC", border: "#E2E8F0" };
+  return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
+}
+
+function validationTone(strTone: "red" | "amber" | "blue" | "green") {
+  if (strTone === "red") return { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft, border: "#F9D2D2" };
+  if (strTone === "amber") return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
+  if (strTone === "green") return { accent: DASHBOARD_COLORS.green, surface: DASHBOARD_COLORS.greenSoft, border: "#BFE7CC" };
+  return { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft, border: "#D6E4FF" };
+}
+
+function exceptionTone(strSeverity: "Blocking" | "Warning" | "Info") {
+  if (strSeverity === "Blocking") return { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft, border: "#F9D2D2" };
+  if (strSeverity === "Warning") return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
+  return { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft, border: "#D6E4FF" };
+}
+
 function formatStageStatus(strStatus: TrackerStage["strStatus"], t: RoleBasedDashboardProps["t"]) {
   if (strStatus === "completed") return t("completed", "Completed");
   if (strStatus === "in_progress") return t("in_progress", "In Progress");
   return t("pending", "Pending");
+}
+
+function formatLifecycleLabel(strStatus: string) {
+  const strNormalized = normalizeRunStatus(strStatus);
+  if (strNormalized === "open") return "Open";
+  if (strNormalized === "submitted") return "Submitted";
+  if (strNormalized === "approved") return "Approved";
+  if (strNormalized === "processed") return "Processed";
+  if (strNormalized === "closed") return "Closed";
+  return formatStatusText(strStatus || "pending");
+}
+
+function formatLifecycleState(strState: "completed" | "active" | "upcoming" | "locked", t: RoleBasedDashboardProps["t"]) {
+  if (strState === "completed") return t("completed", "Completed");
+  if (strState === "active") return t("active", "Active");
+  if (strState === "locked") return t("locked", "Locked");
+  return t("upcoming", "Upcoming");
+}
+
+function disabledActionReason(strActionCode: string, strRunStatus: string, t: RoleBasedDashboardProps["t"]) {
+  const strNormalizedStatus = normalizeRunStatus(strRunStatus);
+  if (strActionCode === "process") return t("process_requires_approved", "Process Payroll stays disabled until the run reaches Approved.");
+  if (strActionCode === "payslips") return t("payslips_require_processed", "Payslips become available only after payroll is processed.");
+  if (strActionCode === "reports") return t("reports_require_processed", "Reports are intended for processed or closed payroll runs.");
+  if (strActionCode === "results") return t("results_require_processed", "Results are available only after payroll processing completes.");
+  if (strActionCode === "edit_inputs" && ["processed", "closed"].includes(strNormalizedStatus)) return t("edit_locked_after_processing", "Input editing is disabled after processing unless a controlled reprocess flow is used.");
+  return t("action_not_available_for_status", "This action is not available for the current run status.");
+}
+
+function readinessAccent(strStatus: string) {
+  const strNormalized = String(strStatus || "").trim().toLowerCase();
+  if (strNormalized.includes("ready with warnings")) return DASHBOARD_COLORS.amber;
+  if (strNormalized.includes("ready")) return DASHBOARD_COLORS.green;
+  return DASHBOARD_COLORS.red;
+}
+
+function formatMetricValue(decValue: number | undefined, blnCurrency?: boolean) {
+  if (blnCurrency) {
+    return formatCurrency(Number(decValue || 0));
+  }
+  return formatInteger(Math.round(Number(decValue || 0)));
+}
+
+function varianceColor(decVariancePercent: number | null | undefined) {
+  if (decVariancePercent == null) return DASHBOARD_COLORS.muted;
+  if (decVariancePercent > 0) return DASHBOARD_COLORS.green;
+  if (decVariancePercent < 0) return DASHBOARD_COLORS.red;
+  return DASHBOARD_COLORS.muted;
+}
+
+function formatTrendText(decVariancePercent: number | null | undefined) {
+  if (decVariancePercent == null) return "No previous month data";
+  const strSymbol = decVariancePercent > 0 ? "^" : decVariancePercent < 0 ? "v" : "-";
+  return `${strSymbol} ${Math.abs(decVariancePercent).toFixed(1)}%`;
+}
+
+function formatDays(decValue?: number) {
+  if (decValue == null) return "-";
+  return `${Number(decValue).toFixed(1)} days`;
+}
+
+function joinActorDate(strActor?: string, dtValue?: string) {
+  const strDate = formatDateTimeLabel(dtValue);
+  if (strActor && strDate !== "-") return `${strActor} • ${strDate}`;
+  return strActor || strDate;
 }
 
 function formatInteger(intValue: number) {
