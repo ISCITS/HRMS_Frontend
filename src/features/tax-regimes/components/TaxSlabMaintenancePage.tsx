@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
@@ -377,9 +378,9 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
                       />
                     </td>
                     <td>
-                      <Switch
-                        checked={dicLine.blnIsActive}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "blnIsActive", objEvent.target.checked)}
+                      <ActiveStatusSwitch
+                        blnIsActive={dicLine.blnIsActive}
+                        onChange={(blnChecked) => updateLine(dicLine.strRowID, "blnIsActive", blnChecked)}
                         disabled={blnFieldDisabled}
                       />
                     </td>

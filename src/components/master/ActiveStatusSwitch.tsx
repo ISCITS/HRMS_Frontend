@@ -34,6 +34,7 @@ export default function ActiveStatusSwitch({
       data-testid={strResolvedTestId}
       checked={blnIsActive}
       disabled={disabled}
+      color="primary"
       size={size}
       title={title ?? strStateLabel}
       inputProps={objResolvedInputProps}

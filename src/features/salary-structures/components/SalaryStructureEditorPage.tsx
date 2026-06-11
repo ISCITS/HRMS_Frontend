@@ -939,9 +939,9 @@ export default function SalaryStructureEditorPage({
                       />
                     </td>
                     <td>
-                      <Switch
-                        checked={dicLine.blnIsActive}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsActive", objEvent.target.checked)}
+                      <ActiveStatusSwitch
+                        blnIsActive={dicLine.blnIsActive}
+                        onChange={(blnChecked) => updateLineRow(dicLine.strRowID, "blnIsActive", blnChecked)}
                         disabled={blnFieldDisabled}
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.active.switch", { "data-row-key": dicLine.strRowID })}
                       />

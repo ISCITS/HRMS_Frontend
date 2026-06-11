@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Box, Button, Stack, Typography } from "@mui/material";
+
 import RoleBasedDashboard from "@/components/dashboard/RoleBasedDashboard";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
@@ -16,9 +18,12 @@ export default function DashboardPage() {
   const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
   const [strError, setStrError] = useState("");
   const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
+  const [intReloadKey, setIntReloadKey] = useState(0);
 
   useEffect(() => {
     let blnMounted = true;
+    setBlnLoading(true);
+    setStrError("");
 
     Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard(strSelectedPayrollMonth)])
       .then(([objUserResult, objDashboardResult]) => {
@@ -42,17 +47,34 @@ export default function DashboardPage() {
     return () => {
       blnMounted = false;
     };
-  }, [strSelectedPayrollMonth]);
+  }, [intReloadKey, strSelectedPayrollMonth, t]);
 
-  if (blnLoading || !objUserContext || !objDashboard) {
-    if (!blnLoading && strError) {
-      return (
-        <div style={{ padding: "24px", color: "#b91c1c" }}>{strError}</div>
-      );
-    }
+  if ((!objUserContext || !objDashboard) && blnLoading) {
     return (
       <BlockingLoader blnOpen strLabel={t("loading", dicConstant.dashboard.loading)} />
     );
+  }
+
+  if (!objUserContext || !objDashboard) {
+    if (strError) {
+      return (
+        <Box sx={{ p: 3 }}>
+          <Stack spacing={1.5} sx={{ maxWidth: 560 }}>
+            <Typography sx={{ color: "#b91c1c", fontWeight: 800 }}>
+              {strError}
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => setIntReloadKey((intValue) => intValue + 1)}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              {t("retry", "Retry")}
+            </Button>
+          </Stack>
+        </Box>
+      );
+    }
+    return null;
   }
 
   return (
@@ -61,6 +83,9 @@ export default function DashboardPage() {
       objUserContext={objUserContext}
       t={t}
       onPayrollMonthChange={setStrSelectedPayrollMonth}
+      onRefresh={() => setIntReloadKey((intValue) => intValue + 1)}
+      blnRefreshing={blnLoading}
+      strError={strError}
     />
   );
 }

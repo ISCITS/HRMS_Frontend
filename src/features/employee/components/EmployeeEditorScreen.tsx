@@ -1371,7 +1371,7 @@ export default function EmployeeEditorScreen({
                   <FormControlLabel control={<Switch checked={dicBankForm.blnIsPrimary} onChange={(_, blnChecked) => updateBankField("blnIsPrimary", blnChecked)} disabled={blnViewOnly} />} label={t("field_is_primary", dicConstant.employeeMaster.fields.isPrimary)} />
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                  <FormControlLabel control={<Switch checked={dicBankForm.blnIsActive} onChange={(_, blnChecked) => updateBankField("blnIsActive", blnChecked)} disabled={blnViewOnly} />} label={t("field_bank_active", dicConstant.employeeMaster.fields.bankActive)} />
+                  <FormControlLabel control={<ActiveStatusSwitch blnIsActive={dicBankForm.blnIsActive} onChange={(blnChecked) => updateBankField("blnIsActive", blnChecked)} disabled={blnViewOnly} />} label={t("field_bank_active", dicConstant.employeeMaster.fields.bankActive)} />
                 </Box>
               </Box>
             </Stack>
@@ -1490,7 +1490,7 @@ export default function EmployeeEditorScreen({
                           <TextField size="small" data-testid="employee.editor.experience.responsibilities.input" inputProps={{ "data-testid": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
                         </TableCell>
                         <TableCell align="center">
-                          <Switch checked={dicExperienceForm.blnIsActive} onChange={(_, blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                          <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
@@ -1538,7 +1538,7 @@ export default function EmployeeEditorScreen({
                                 <TextField size="small" data-testid="employee.editor.experience.responsibilities.input" inputProps={{ "data-testid": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
                               </TableCell>
                               <TableCell align="center">
-                                <Switch checked={dicExperienceForm.blnIsActive} onChange={(_, blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                                <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
@@ -1693,7 +1693,7 @@ export default function EmployeeEditorScreen({
                           <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell align="center">
-                          <Switch checked={dicQualificationForm.blnIsActive} onChange={(_, blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                          <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
@@ -1741,7 +1741,7 @@ export default function EmployeeEditorScreen({
                                 <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell align="center">
-                                <Switch checked={dicQualificationForm.blnIsActive} onChange={(_, blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                                <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
