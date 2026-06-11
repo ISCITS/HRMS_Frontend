@@ -217,6 +217,14 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
   const blnIsReimbursement = dicValues.blnIsReimbursement || isReimbursementCategory(dicValues.strComponentCategory);
   const decAnnualLimitAmount = dicValues.strAnnualLimitAmount.trim() ? Number(dicValues.strAnnualLimitAmount) : null;
   const decMonthlyLimitAmount = dicValues.strMonthlyLimitAmount.trim() ? Number(dicValues.strMonthlyLimitAmount) : null;
+  const strClaimLimitType =
+    decMonthlyLimitAmount != null && decAnnualLimitAmount != null
+      ? "both"
+      : decMonthlyLimitAmount != null
+        ? "monthly"
+        : decAnnualLimitAmount != null
+          ? "yearly"
+          : dicValues.strClaimLimitType;
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -245,14 +253,20 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnRequiresBills: dicValues.blnRequiresBills,
     decAnnualLimitAmount,
     decMonthlyLimitAmount,
-    strClaimLimitType: dicValues.strClaimLimitType,
+    strClaimLimitType,
     blnAllowExcessClaim: dicValues.blnAllowExcessClaim,
     blnExcessClaimTaxable: dicValues.blnExcessClaimTaxable,
     intResidualComponentID: dicValues.intResidualComponentID === "" ? null : Number(dicValues.intResidualComponentID),
     blnAutoPushToPayroll: dicValues.blnAutoPushToPayroll,
     blnFinanceSettlementRequired: dicValues.blnFinanceSettlementRequired,
-    decReimbursementMaxClaimMonthlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "monthly" ? decMonthlyLimitAmount : null,
-    decReimbursementMaxClaimYearlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "yearly" ? decAnnualLimitAmount : null,
+    decReimbursementMaxClaimMonthlyLimit:
+      blnIsReimbursement && (strClaimLimitType === "monthly" || strClaimLimitType === "both")
+        ? decMonthlyLimitAmount
+        : null,
+    decReimbursementMaxClaimYearlyLimit:
+      blnIsReimbursement && (strClaimLimitType === "yearly" || strClaimLimitType === "both")
+        ? decAnnualLimitAmount
+        : null,
     blnIsEmployerContribution: dicValues.blnIsEmployerContribution,
     blnIsEmployeeDeduction: dicValues.blnIsEmployeeDeduction,
     blnDeclarationRequired: dicValues.blnDeclarationRequired,
