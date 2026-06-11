@@ -266,11 +266,22 @@ export default function ReimbursementReviewListPage() {
       setStrCreateError("Select a valid employee.");
       return;
     }
-    objRouter.push(`/ess/reimbursements/new?employee_id=${encodeURIComponent(String(intEmployeeID))}`);
+    const objParams = new URLSearchParams({ employee_id: String(intEmployeeID) });
+    if (blnEmployeeReimbursementContext) {
+      objParams.set("source", "employee-reimbursement");
+    }
+    objRouter.push(`/ess/reimbursements/new?${objParams.toString()}`);
   }
 
   function getEssReimbursementRoute(objClaim: ReimbursementClaimDto, strMode: "view" | "edit") {
-    const strEmployeeQuery = objClaim.intEmployeeID ? `?employee_id=${encodeURIComponent(String(objClaim.intEmployeeID))}` : "";
+    const objParams = new URLSearchParams();
+    if (objClaim.intEmployeeID) {
+      objParams.set("employee_id", String(objClaim.intEmployeeID));
+    }
+    if (blnEmployeeReimbursementContext) {
+      objParams.set("source", "employee-reimbursement");
+    }
+    const strEmployeeQuery = objParams.toString() ? `?${objParams.toString()}` : "";
     return strMode === "edit"
       ? `/ess/reimbursements/${objClaim.intID}/edit${strEmployeeQuery}`
       : `/ess/reimbursements/${objClaim.intID}${strEmployeeQuery}`;

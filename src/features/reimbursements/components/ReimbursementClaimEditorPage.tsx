@@ -21,6 +21,7 @@ import { canEditReimbursementClaim, canWithdrawReimbursementClaim, getMissingPro
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
 import type { ReimbursementClaimDto, ReimbursementClaimItemDto, ReimbursementClaimItemRequest, ReimbursementClaimRequest, ReimbursementOptionsDto, ReimbursementSalaryComponentOption } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import type { EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 
 type EditorMode = "create" | "edit" | "detail";
 
@@ -84,11 +85,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [objSelectedEmployee, setObjSelectedEmployee] = useState<EmployeeDetailApiRecord | null>(null);
   const [intClaimIDToLoadAfterSuccess, setIntClaimIDToLoadAfterSuccess] = useState<number | null>(null);
   const intSelectedEmployeeID = useMemo(() => {
     const intEmployeeID = Number(objSearchParams.get("employee_id") || 0);
     return intEmployeeID > 0 ? intEmployeeID : null;
   }, [objSearchParams]);
+  const strSourceContext = normalizeHeaderValue(objSearchParams.get("source"));
 
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create"));
@@ -109,7 +112,20 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     }
     return lstOptions;
   }, [objHeader.strFinancialYearCode]);
-  const strPageTitle = normalizeHeaderValue(objClaim?.intID ? `Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}` : "New Reimbursement Claim");
+  const strSelectedEmployeeName = normalizeHeaderValue(objSelectedEmployee?.strFullName || objClaim?.strEmployeeName);
+  const strSelectedEmployeeCode = normalizeHeaderValue(objSelectedEmployee?.strEmployeeCode || objClaim?.strEmployeeCode);
+  const strSelectedEmployeeLabel = strSelectedEmployeeName
+    ? `${strSelectedEmployeeName}${strSelectedEmployeeCode ? ` - (${strSelectedEmployeeCode})` : ""}`
+    : intSelectedEmployeeID
+      ? `Employee #${intSelectedEmployeeID}`
+      : "";
+  const strPageTitle = normalizeHeaderValue(
+    intSelectedEmployeeID
+      ? `Add Reimbursement Claim for ${strSelectedEmployeeLabel}`
+      : objClaim?.intID
+      ? `Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`
+      : "New Reimbursement Claim"
+  );
   const objDetailActionButtonSx = { minHeight: 30, px: 1.15, py: 0.25, borderRadius: "8px", fontSize: "0.75rem", textTransform: "none" };
 
   const blnHeaderDirty = useMemo(() => {
@@ -121,6 +137,20 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       normalizeHeaderValue(objHeader.strEmployeeRemarks) !== normalizeHeaderValue(objClaim.strEmployeeRemarks)
     );
   }, [objClaim, objHeader]);
+
+  function buildEssClaimRoute(intClaimID: number, strRouteMode: "view" | "edit") {
+    const objParams = new URLSearchParams();
+    if (intSelectedEmployeeID) {
+      objParams.set("employee_id", String(intSelectedEmployeeID));
+    }
+    if (strSourceContext) {
+      objParams.set("source", strSourceContext);
+    }
+    const strQuery = objParams.toString() ? `?${objParams.toString()}` : "";
+    return strRouteMode === "edit"
+      ? `/ess/reimbursements/${intClaimID}/edit${strQuery}`
+      : `/ess/reimbursements/${intClaimID}${strQuery}`;
+  }
   const objEffectiveOptions = useMemo<ReimbursementOptionsDto>(() => {
     const lstSalaryComponents = [...objOptions.lstSalaryComponents];
     const setComponentIDs = new Set(lstSalaryComponents.map((objComponent) => objComponent.intID));
@@ -186,6 +216,31 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     };
   }, [intClaimID, intSelectedEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanAdd, blnCanEdit]);
 
+  useEffect(() => {
+    let blnMounted = true;
+
+    async function loadSelectedEmployee() {
+      if (!intSelectedEmployeeID) {
+        setObjSelectedEmployee(null);
+        return;
+      }
+      try {
+        const objEmployee = await reimbursementService.getEmployeeDetail(intSelectedEmployeeID);
+        if (blnMounted) setObjSelectedEmployee(objEmployee);
+      } catch (objError) {
+        if (!blnMounted) return;
+        setObjSelectedEmployee(null);
+        setStrError((strCurrent) => strCurrent || getErrorMessage(objError));
+      }
+    }
+
+    void loadSelectedEmployee();
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [intSelectedEmployeeID]);
+
   function buildClaimPayload(): ReimbursementClaimRequest {
     // Purpose: Converts header fields into the ESS claim create/update payload.
     return {
@@ -212,7 +267,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setObjClaim(objSavedClaim);
       setObjHeader(buildHeaderState(objSavedClaim));
       if (strMode === "create") {
-        window.history.replaceState(null, "", `/ess/reimbursements/${objSavedClaim.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`);
+        window.history.replaceState(null, "", buildEssClaimRoute(objSavedClaim.intID, "edit"));
       }
       if (blnShowSuccessMessage) {
         setStrSuccess("Claim saved.");
@@ -247,7 +302,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         setObjClaim(objClaimForSave);
         setObjHeader(buildHeaderState(objClaimForSave));
         if (strMode === "create") {
-          window.history.replaceState(null, "", `/ess/reimbursements/${objClaimForSave.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`);
+          window.history.replaceState(null, "", buildEssClaimRoute(objClaimForSave.intID, "edit"));
         }
       } else if (blnHeaderDirty) {
         const objSavedHeader = await reimbursementService.updateClaim(objClaimForSave.intID, buildClaimPayload());
@@ -383,7 +438,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     if (intClaimIDToLoadAfterSuccess) {
       const intSubmittedClaimID = intClaimIDToLoadAfterSuccess;
       setIntClaimIDToLoadAfterSuccess(null);
-      window.location.href = `/ess/reimbursements/${intSubmittedClaimID}${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`;
+      window.location.href = buildEssClaimRoute(intSubmittedClaimID, "view");
     }
   }
 
@@ -393,7 +448,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     setBlnSaving(true);
     setStrError("");
     try {
-      const objWithdrawnClaim = await reimbursementService.withdrawClaim(objClaim.intID);
+      const objWithdrawnClaim = await reimbursementService.withdrawClaim(objClaim.intID, intSelectedEmployeeID);
       setObjClaim(objWithdrawnClaim);
       setObjHeader(buildHeaderState(objWithdrawnClaim));
       setStrSuccess("Claim withdrawn. You can update and submit it again.");
@@ -424,7 +479,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
             {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" /> : null}
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-              <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/reimbursements/${objClaim.intID}/edit${intSelectedEmployeeID ? `?employee_id=${intSelectedEmployeeID}` : ""}`)} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
+              <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(buildEssClaimRoute(objClaim.intID, "edit"))} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Edit</Button>
             ) : null}
             {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} data-testid="reimbursements.claim-editor.withdraw.button" sx={{ ...objDetailActionButtonSx, borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>Withdraw</Button>
