@@ -15,6 +15,13 @@ export type SalaryStructureOption = {
   intID: number;
   strLabel: string;
   strCode?: string;
+  blnIsFlexiBasket?: boolean;
+  blnIsFlexiBenefit?: boolean;
+  blnIncludedInCtc?: boolean;
+  strFlexiComponentType?: string;
+  strComponentGroup?: string | null;
+  strComponentCategory?: string | null;
+  blnIsEmployerContribution?: boolean;
 };
 
 export type SalaryStructureLineFormValue = {
@@ -24,6 +31,10 @@ export type SalaryStructureLineFormValue = {
   strValueSource: string;
   strComponentCode: string;
   strComponentName: string;
+  blnIsFlexiBasketLine: boolean;
+  strFlexiComponentRole: string;
+  blnIncludedInCtc: boolean;
+  strComponentCategory: string;
   fltFixedAmount: string;
   fltPercentageValue: string;
   intBasisComponentID: number | "";
@@ -64,6 +75,13 @@ export type SalaryStructureCloneValues = {
 };
 
 export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
+  dicStructureSummary: {
+    fltTotalCtc: number;
+    fltFixedPay: number;
+    fltVariablePay: number;
+    fltFlexiBasket: number;
+    fltEmployerContribution: number;
+  };
   lstTexts: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -75,6 +93,10 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     intSalaryComponentID: number;
     strComponentCode: string | null;
     strComponentName: string;
+    blnIsFlexiBasketLine: boolean;
+    strFlexiComponentRole: string | null;
+    blnIncludedInCtc: boolean;
+    strComponentCategory: string | null;
     intLineOrder: number;
     strValueSource: string;
     fltFixedAmount: number | null;

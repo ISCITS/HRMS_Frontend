@@ -23,26 +23,6 @@ function isReimbursementCategory(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "") === "reimbursement";
 }
 
-function resolveClaimLimitType(dicRecord: SalaryComponentApiRecord): "none" | "monthly" | "yearly" {
-  if (dicRecord.decReimbursementMaxClaimMonthlyLimit != null) {
-    return "monthly";
-  }
-  if (dicRecord.decReimbursementMaxClaimYearlyLimit != null) {
-    return "yearly";
-  }
-  return "none";
-}
-
-function resolveMaximumClaimAmount(dicRecord: SalaryComponentApiRecord): string {
-  if (dicRecord.decReimbursementMaxClaimMonthlyLimit != null) {
-    return String(dicRecord.decReimbursementMaxClaimMonthlyLimit);
-  }
-  if (dicRecord.decReimbursementMaxClaimYearlyLimit != null) {
-    return String(dicRecord.decReimbursementMaxClaimYearlyLimit);
-  }
-  return "";
-}
-
 function normalizeIntegerList(lstValues: Array<number | string>) {
   return Array.from(
     new Set(
@@ -85,10 +65,23 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     blnIncludeInGratuity: Boolean(dicRecord.blnIncludeInGratuity),
     blnIncludeInRemuneration: Boolean(dicRecord.blnIncludeInRemuneration ?? true),
     blnIncludeInTaxableIncome: Boolean(dicRecord.blnIncludeInTaxableIncome ?? true),
+    blnIncludedInCtc: Boolean(dicRecord.blnIncludedInCtc ?? true),
     blnIncludeInPayslip: Boolean(dicRecord.blnIncludeInPayslip ?? true),
     strPayslipSection: dicRecord.strPayslipSection ?? null,
     intDisplayOrder: Number(dicRecord.intDisplayOrder ?? 10),
     blnIsReimbursement: Boolean(dicRecord.blnIsReimbursement),
+    blnIsFlexiBenefit: Boolean(dicRecord.blnIsFlexiBenefit),
+    strReimbursementType: dicRecord.strReimbursementType ?? null,
+    strSettlementMethod: dicRecord.strSettlementMethod ?? null,
+    blnRequiresBills: Boolean(dicRecord.blnRequiresBills),
+    decAnnualLimitAmount: dicRecord.decAnnualLimitAmount ?? null,
+    decMonthlyLimitAmount: dicRecord.decMonthlyLimitAmount ?? null,
+    strClaimLimitType: dicRecord.strClaimLimitType ?? null,
+    blnAllowExcessClaim: Boolean(dicRecord.blnAllowExcessClaim),
+    blnExcessClaimTaxable: Boolean(dicRecord.blnExcessClaimTaxable),
+    intResidualComponentID: dicRecord.intResidualComponentID ?? null,
+    blnAutoPushToPayroll: Boolean(dicRecord.blnAutoPushToPayroll),
+    blnFinanceSettlementRequired: Boolean(dicRecord.blnFinanceSettlementRequired),
     intUsedInSalaryStructures: Number(dicRecord.intUsedInSalaryStructures ?? 0),
     intAssignedEmployees: Number(dicRecord.intAssignedEmployees ?? 0),
     intFormulaReferences: Number(dicRecord.intFormulaReferences ?? 0),
@@ -138,11 +131,23 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnIncludeInGratuity: false,
     blnIncludeInRemuneration: true,
     blnIncludeInTaxableIncome: true,
+    blnIncludedInCtc: true,
     blnIncludeInPayslip: true,
     strPayslipSection: "Earnings",
     strDisplayOrder: "10",
+    blnIsFlexiBenefit: false,
+    blnIsReimbursement: false,
+    strReimbursementType: "none",
+    strSettlementMethod: "none",
+    blnRequiresBills: false,
     strClaimLimitType: "none",
-    strMaximumClaimAmount: "",
+    strAnnualLimitAmount: "",
+    strMonthlyLimitAmount: "",
+    blnAllowExcessClaim: false,
+    blnExcessClaimTaxable: false,
+    intResidualComponentID: "",
+    blnAutoPushToPayroll: false,
+    blnFinanceSettlementRequired: false,
     blnIsEmployerContribution: false,
     blnIsEmployeeDeduction: false,
     blnDeclarationRequired: false,
@@ -172,11 +177,23 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnIncludeInGratuity: Boolean(dicRecord.blnIncludeInGratuity),
     blnIncludeInRemuneration: Boolean(dicRecord.blnIncludeInRemuneration),
     blnIncludeInTaxableIncome: Boolean(dicRecord.blnIncludeInTaxableIncome),
+    blnIncludedInCtc: Boolean(dicRecord.blnIncludedInCtc),
     blnIncludeInPayslip: Boolean(dicRecord.blnIncludeInPayslip),
     strPayslipSection: dicRecord.strPayslipSection ?? "",
     strDisplayOrder: String(dicRecord.intDisplayOrder ?? 10),
-    strClaimLimitType: resolveClaimLimitType(dicRecord),
-    strMaximumClaimAmount: resolveMaximumClaimAmount(dicRecord),
+    blnIsFlexiBenefit: Boolean(dicRecord.blnIsFlexiBenefit),
+    blnIsReimbursement: Boolean(dicRecord.blnIsReimbursement),
+    strReimbursementType: (dicRecord.strReimbursementType as SalaryComponentFormValues["strReimbursementType"]) ?? "none",
+    strSettlementMethod: (dicRecord.strSettlementMethod as SalaryComponentFormValues["strSettlementMethod"]) ?? "none",
+    blnRequiresBills: Boolean(dicRecord.blnRequiresBills),
+    strClaimLimitType: (dicRecord.strClaimLimitType as SalaryComponentFormValues["strClaimLimitType"]) ?? "none",
+    strAnnualLimitAmount: dicRecord.decAnnualLimitAmount != null ? String(dicRecord.decAnnualLimitAmount) : "",
+    strMonthlyLimitAmount: dicRecord.decMonthlyLimitAmount != null ? String(dicRecord.decMonthlyLimitAmount) : "",
+    blnAllowExcessClaim: Boolean(dicRecord.blnAllowExcessClaim),
+    blnExcessClaimTaxable: Boolean(dicRecord.blnExcessClaimTaxable),
+    intResidualComponentID: dicRecord.intResidualComponentID ?? "",
+    blnAutoPushToPayroll: Boolean(dicRecord.blnAutoPushToPayroll),
+    blnFinanceSettlementRequired: Boolean(dicRecord.blnFinanceSettlementRequired),
     blnIsEmployerContribution: Boolean(dicRecord.blnIsEmployerContribution),
     blnIsEmployeeDeduction: Boolean(dicRecord.blnIsEmployeeDeduction),
     blnDeclarationRequired: Boolean(dicRecord.blnDeclarationRequired),
@@ -197,10 +214,9 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
 }
 
 function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: number) {
-  const blnIsReimbursement = isReimbursementCategory(dicValues.strComponentCategory);
-  const decMaximumClaimAmount = blnIsReimbursement && dicValues.strMaximumClaimAmount.trim()
-    ? Number(dicValues.strMaximumClaimAmount)
-    : null;
+  const blnIsReimbursement = dicValues.blnIsReimbursement || isReimbursementCategory(dicValues.strComponentCategory);
+  const decAnnualLimitAmount = dicValues.strAnnualLimitAmount.trim() ? Number(dicValues.strAnnualLimitAmount) : null;
+  const decMonthlyLimitAmount = dicValues.strMonthlyLimitAmount.trim() ? Number(dicValues.strMonthlyLimitAmount) : null;
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -218,15 +234,25 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnIncludeInGratuity: dicValues.blnIncludeInGratuity,
     blnIncludeInRemuneration: dicValues.blnIncludeInRemuneration,
     blnIncludeInTaxableIncome: dicValues.blnIncludeInTaxableIncome,
+    blnIncludedInCtc: dicValues.blnIncludedInCtc,
     blnIncludeInPayslip: dicValues.blnIncludeInPayslip,
     strPayslipSection: formatOptionalText(dicValues.strPayslipSection),
     intDisplayOrder: Number(dicValues.strDisplayOrder) || 10,
-    decReimbursementMaxClaimMonthlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "monthly"
-      ? decMaximumClaimAmount
-      : null,
-    decReimbursementMaxClaimYearlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "yearly"
-      ? decMaximumClaimAmount
-      : null,
+    blnIsFlexiBenefit: dicValues.blnIsFlexiBenefit,
+    blnIsReimbursement: blnIsReimbursement,
+    strReimbursementType: blnIsReimbursement ? dicValues.strReimbursementType : "none",
+    strSettlementMethod: blnIsReimbursement || dicValues.blnIsFlexiBenefit ? dicValues.strSettlementMethod : "none",
+    blnRequiresBills: dicValues.blnRequiresBills,
+    decAnnualLimitAmount,
+    decMonthlyLimitAmount,
+    strClaimLimitType: dicValues.strClaimLimitType,
+    blnAllowExcessClaim: dicValues.blnAllowExcessClaim,
+    blnExcessClaimTaxable: dicValues.blnExcessClaimTaxable,
+    intResidualComponentID: dicValues.intResidualComponentID === "" ? null : Number(dicValues.intResidualComponentID),
+    blnAutoPushToPayroll: dicValues.blnAutoPushToPayroll,
+    blnFinanceSettlementRequired: dicValues.blnFinanceSettlementRequired,
+    decReimbursementMaxClaimMonthlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "monthly" ? decMonthlyLimitAmount : null,
+    decReimbursementMaxClaimYearlyLimit: blnIsReimbursement && dicValues.strClaimLimitType === "yearly" ? decAnnualLimitAmount : null,
     blnIsEmployerContribution: dicValues.blnIsEmployerContribution,
     blnIsEmployeeDeduction: dicValues.blnIsEmployeeDeduction,
     blnDeclarationRequired: dicValues.blnDeclarationRequired,
@@ -269,10 +295,23 @@ export const salaryComponentService = {
         blnIncludeInGratuity: dicDetail.blnIncludeInGratuity,
         blnIncludeInRemuneration: dicDetail.blnIncludeInRemuneration,
         blnIncludeInTaxableIncome: dicDetail.blnIncludeInTaxableIncome,
+        blnIncludedInCtc: dicDetail.blnIncludedInCtc,
         blnIncludeInPayslip: dicDetail.blnIncludeInPayslip,
         strPayslipSection: dicDetail.strPayslipSection,
         intDisplayOrder: dicDetail.intDisplayOrder,
         blnIsReimbursement: dicDetail.blnIsReimbursement,
+        blnIsFlexiBenefit: dicDetail.blnIsFlexiBenefit,
+        strReimbursementType: dicDetail.strReimbursementType,
+        strSettlementMethod: dicDetail.strSettlementMethod,
+        blnRequiresBills: dicDetail.blnRequiresBills,
+        decAnnualLimitAmount: dicDetail.decAnnualLimitAmount,
+        decMonthlyLimitAmount: dicDetail.decMonthlyLimitAmount,
+        strClaimLimitType: dicDetail.strClaimLimitType,
+        blnAllowExcessClaim: dicDetail.blnAllowExcessClaim,
+        blnExcessClaimTaxable: dicDetail.blnExcessClaimTaxable,
+        intResidualComponentID: dicDetail.intResidualComponentID,
+        blnAutoPushToPayroll: dicDetail.blnAutoPushToPayroll,
+        blnFinanceSettlementRequired: dicDetail.blnFinanceSettlementRequired,
         blnIsEmployerContribution: dicDetail.blnIsEmployerContribution,
         blnIsEmployeeDeduction: dicDetail.blnIsEmployeeDeduction,
         blnDeclarationRequired: dicDetail.blnDeclarationRequired,
@@ -291,7 +330,13 @@ export const salaryComponentService = {
 
   async getFormOptions(): Promise<SalaryComponentFormOptions> {
     const objResult = await masterApiService.getSalaryComponentFormOptions();
-    return objResult.Data;
+    return {
+      ...objResult.Data,
+      lstResidualComponents: objResult.Data.lstResidualComponents ?? [],
+      lstReimbursementTypes: objResult.Data.lstReimbursementTypes ?? [],
+      lstSettlementMethods: objResult.Data.lstSettlementMethods ?? [],
+      lstClaimLimitTypes: objResult.Data.lstClaimLimitTypes ?? [],
+    };
   },
 
   async createSalaryComponent(dicValues: SalaryComponentFormValues): Promise<SalaryComponentDetailRecord> {

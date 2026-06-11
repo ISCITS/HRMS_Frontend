@@ -80,6 +80,10 @@ function parseOptionalSelectNumber(strValue: string) {
   return Number.isInteger(intValue) && intValue > 0 ? intValue : "";
 }
 
+function formatSummaryAmount(fltValue: number) {
+  return fltValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export default function SalaryStructureEditorPage({
   strMode,
   intSalaryStructureID
@@ -165,6 +169,37 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
+  const dicStructureSummary = useMemo(() => {
+    return dicForm.lstComponents.reduce(
+      (dicTotals, dicLine) => {
+        if (dicLine.intSalaryComponentID === "") {
+          return dicTotals;
+        }
+        const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+        const fltAmount = Number(dicLine.fltFixedAmount || 0);
+        const blnIncludedInCtc = Boolean(dicComponent?.blnIncludedInCtc ?? dicLine.blnIncludedInCtc);
+        const blnIsFlexiBasket = Boolean(dicLine.blnIsFlexiBasketLine || dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY");
+        const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
+        const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
+        const blnIsEmployerContribution = Boolean(dicComponent?.blnIsEmployerContribution);
+        const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
+        if (blnIncludedInCtc) {
+          dicTotals.fltTotalCtc += fltAmount;
+        }
+        if (blnIsFlexiBasket || strFlexiType === "basket") {
+          dicTotals.fltFlexiBasket += fltAmount;
+        } else if (blnIsEmployerContribution || strCategory === "contribution" || strCategory === "employercontribution") {
+          dicTotals.fltEmployerContribution += fltAmount;
+        } else if (strGroup === "variablepay") {
+          dicTotals.fltVariablePay += fltAmount;
+        } else {
+          dicTotals.fltFixedPay += fltAmount;
+        }
+        return dicTotals;
+      },
+      { fltTotalCtc: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
+    );
+  }, [dicComponentByID, dicForm.lstComponents]);
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID()
@@ -286,11 +321,16 @@ export default function SalaryStructureEditorPage({
         }
         if (strField === "intSalaryComponentID") {
           const dicComponent = dicComponentByID.get(Number(objValue));
+          const blnIsFlexiBasket = Boolean(dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY" || dicComponent?.strFlexiComponentType === "basket");
           return {
             ...dicLine,
             intSalaryComponentID: Number(objValue),
             strComponentCode: dicComponent?.strCode ?? "",
-            strComponentName: dicComponent?.strLabel ?? ""
+            strComponentName: dicComponent?.strLabel ?? "",
+            blnIsFlexiBasketLine: blnIsFlexiBasket,
+            strFlexiComponentRole: blnIsFlexiBasket ? "basket" : (dicComponent?.strFlexiComponentType ?? "normal"),
+            blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
+            strComponentCategory: ""
           };
         }
         if (strField === "strValueSource") {
@@ -439,6 +479,12 @@ export default function SalaryStructureEditorPage({
       setStrError("At least one component line is required.");
       return;
     }
+    const lstSelectedComponents = dicForm.lstComponents.filter((dicLine) => dicLine.intSalaryComponentID !== "");
+    const intFlexiBasketCount = lstSelectedComponents.filter((dicLine) => dicLine.strComponentCode === "FLEXI_PAY" || dicLine.blnIsFlexiBasketLine).length;
+    if (intFlexiBasketCount > 1) {
+      setStrError(t("single_flexi_pay_only", "Only one FLEXI_PAY component is allowed in one salary structure."));
+      return;
+    }
     setBlnSaving(true);
     setStrError("");
     try {
@@ -446,7 +492,11 @@ export default function SalaryStructureEditorPage({
         ? await salaryStructureService.updateSalaryStructure(intSalaryStructureID, dicForm)
         : await salaryStructureService.createSalaryStructure(dicForm);
       setDicForm(toSalaryStructureFormValues(dicSavedRecord));
-      setStrSuccess(`Salary structure ${strMode === "edit" ? "updated" : "created"} successfully.`);
+      setStrSuccess(
+        strMode === "edit"
+          ? t("salary_structure_updated", "Salary structure updated successfully.")
+          : t("salary_structure_created", "Salary structure created successfully.")
+      );
       if (strMode === "add") {
         objRouter.push(`/salary-structures/edit/${dicSavedRecord.intID}`);
       }
@@ -783,6 +833,29 @@ export default function SalaryStructureEditorPage({
           </Button>
         </Stack>
 
+        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" }, mb: 1.5 }}>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("total_ctc", "Total CTC")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltTotalCtc)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("fixed_pay", "Fixed Pay")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFixedPay)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("variable_pay", "Variable Pay")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltVariablePay)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("flexi_basket", "Flexi Basket")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFlexiBasket)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("employer_contributions", "Employer Contributions")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltEmployerContribution)}</Typography>
+          </Paper>
+        </Box>
+
         <Box className={styles.tableCard}>
           <Box className={styles.tableWrap}>
             <table className={styles.table}>
@@ -790,6 +863,7 @@ export default function SalaryStructureEditorPage({
                 <tr>
                   <th>{t("line_order", "Line Order")}</th>
                   <th>{t("salary_component", "Salary Component")}</th>
+                  <th>{t("flexi_role", "Flexi Role")}</th>
                   <th>{t("value_source", "Value Source")}</th>
                   <th>{t("fixed_amount", "Fixed Amount")}</th>
                   <th>{t("percentage_value", "% Value")}</th>
@@ -835,6 +909,11 @@ export default function SalaryStructureEditorPage({
                           </MenuItem>
                         ))}
                       </TextField>
+                    </td>
+                    <td>
+                      <Typography sx={{ minWidth: 110, fontSize: "0.82rem", fontWeight: dicLine.blnIsFlexiBasketLine ? 800 : 600, color: dicLine.blnIsFlexiBasketLine ? "#0f766e" : "#64748b" }}>
+                        {dicLine.blnIsFlexiBasketLine ? t("flexi_basket", "Flexi Basket") : t("normal_component", "Normal")}
+                      </Typography>
                     </td>
                     <td>
                       <TextField

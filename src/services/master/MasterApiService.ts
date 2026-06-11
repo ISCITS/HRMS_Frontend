@@ -468,10 +468,23 @@ export type SalaryComponentApiRecord = {
   blnIncludeInGratuity: boolean;
   blnIncludeInRemuneration: boolean;
   blnIncludeInTaxableIncome: boolean;
+  blnIncludedInCtc?: boolean;
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
   intDisplayOrder: number;
   blnIsReimbursement?: boolean;
+  blnIsFlexiBenefit?: boolean;
+  strReimbursementType?: string | null;
+  strSettlementMethod?: string | null;
+  blnRequiresBills?: boolean;
+  decAnnualLimitAmount?: number | null;
+  decMonthlyLimitAmount?: number | null;
+  strClaimLimitType?: string | null;
+  blnAllowExcessClaim?: boolean;
+  blnExcessClaimTaxable?: boolean;
+  intResidualComponentID?: number | null;
+  blnAutoPushToPayroll?: boolean;
+  blnFinanceSettlementRequired?: boolean;
   decReimbursementMaxClaimMonthlyLimit?: number | null;
   decReimbursementMaxClaimYearlyLimit?: number | null;
   blnIsEmployerContribution: boolean;
@@ -500,12 +513,16 @@ export type SalaryComponentApiRecord = {
 export type SalaryComponentFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstDependencyComponents: EmployeeLookupOptionApiRecord[];
+  lstResidualComponents?: EmployeeLookupOptionApiRecord[];
   lstComponentCategories: string[];
   lstComponentGroups: string[];
   lstCalcMethods: string[];
   lstRoundingRules: string[];
   lstDefaultPeriodicities: string[];
   lstTaxTreatments: string[];
+  lstReimbursementTypes?: string[];
+  lstSettlementMethods?: string[];
+  lstClaimLimitTypes?: string[];
 };
 
 export type SalaryStructureComponentApiRecord = {
@@ -513,6 +530,10 @@ export type SalaryStructureComponentApiRecord = {
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName: string;
+  blnIsFlexiBasketLine?: boolean;
+  strFlexiComponentRole?: string | null;
+  blnIncludedInCtc?: boolean;
+  strComponentCategory?: string | null;
   intLineOrder: number;
   strValueSource: string;
   fltFixedAmount: number | null;
@@ -544,12 +565,28 @@ export type SalaryStructureApiRecord = {
   blnIsActive: boolean;
   strScopeLabel?: string;
   intComponentCount?: number;
+  dicStructureSummary?: {
+    fltTotalCtc?: number;
+    fltFixedPay?: number;
+    fltVariablePay?: number;
+    fltFlexiBasket?: number;
+    fltEmployerContribution?: number;
+  };
+  dicWageAdjustmentPreview?: Record<string, unknown>;
   lstComponents: SalaryStructureComponentApiRecord[];
   lstTexts: SalaryStructureTextApiRecord[];
 };
 
 export type SalaryStructureFormOptionsApiRecord = {
-  lstSalaryComponents: EmployeeLookupOptionApiRecord[];
+  lstSalaryComponents: Array<EmployeeLookupOptionApiRecord & {
+    blnIsFlexiBasket?: boolean;
+    blnIsFlexiBenefit?: boolean;
+    blnIncludedInCtc?: boolean;
+    strFlexiComponentType?: string;
+    strComponentGroup?: string | null;
+    strComponentCategory?: string | null;
+    blnIsEmployerContribution?: boolean;
+  }>;
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstValueSources: string[];
   lstCurrencies: string[];
