@@ -578,11 +578,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnEmployeeReimbursementContext =
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
-  const blnAddEmployeeReimbursementContext =
-    Boolean(strPathname?.toLowerCase().match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
+  const strLowerPathname = strPathname?.toLowerCase() || "";
+  const blnEmployeeReimbursementFormContext =
+    Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
-  const strPageTitle = blnAddEmployeeReimbursementContext
-      ? "Add Reimbursement"
+  const strEmployeeReimbursementFormTitle = strLowerPathname === "/ess/reimbursements/new"
+    ? "Add Reimbursement"
+    : strLowerPathname.match(/^\/ess\/reimbursements\/\d+\/edit$/)
+      ? "Edit Reimbursement"
+      : "View Reimbursement";
+  const strPageTitle = blnEmployeeReimbursementFormContext
+    ? strEmployeeReimbursementFormTitle
     : blnEmployeeReimbursementContext
       ? "Employee Reimbursements"
     : getLocalizedHeaderTitle(

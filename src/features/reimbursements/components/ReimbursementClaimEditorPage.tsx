@@ -115,13 +115,18 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const strSelectedEmployeeName = normalizeHeaderValue(objSelectedEmployee?.strFullName || objClaim?.strEmployeeName);
   const strSelectedEmployeeCode = normalizeHeaderValue(objSelectedEmployee?.strEmployeeCode || objClaim?.strEmployeeCode);
   const strSelectedEmployeeLabel = strSelectedEmployeeName
-    ? `${strSelectedEmployeeName}${strSelectedEmployeeCode ? ` - (${strSelectedEmployeeCode})` : ""}`
+    ? `${strSelectedEmployeeName}${strSelectedEmployeeCode ? ` - ${strSelectedEmployeeCode}` : ""}`
     : intSelectedEmployeeID
       ? `Employee #${intSelectedEmployeeID}`
       : "";
+  const strEmployeeReimbursementTitle = strMode === "create"
+    ? "Add Reimbursement"
+    : strMode === "edit"
+      ? "Edit Reimbursement"
+      : "View Reimbursement";
   const strPageTitle = normalizeHeaderValue(
     intSelectedEmployeeID
-      ? `Add Reimbursement Claim for ${strSelectedEmployeeLabel}`
+      ? `${strEmployeeReimbursementTitle}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
       : objClaim?.intID
       ? `Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`
       : "New Reimbursement Claim"
