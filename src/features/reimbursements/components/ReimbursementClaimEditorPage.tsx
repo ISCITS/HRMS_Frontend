@@ -120,10 +120,10 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       ? `Employee #${intSelectedEmployeeID}`
       : "";
   const strEmployeeReimbursementTitle = strMode === "create"
-    ? "Add Reimbursement"
+    ? "Add Claim Reimbursement"
     : strMode === "edit"
-      ? "Edit Reimbursement"
-      : "View Reimbursement";
+      ? "Edit Claim Reimbursement"
+      : "View Claim Reimbursement";
   const strPageTitle = normalizeHeaderValue(
     intSelectedEmployeeID
       ? `${strEmployeeReimbursementTitle}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`

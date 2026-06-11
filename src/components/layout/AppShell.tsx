@@ -583,10 +583,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
   const strEmployeeReimbursementFormTitle = strLowerPathname === "/ess/reimbursements/new"
-    ? "Add Reimbursement"
+    ? "Add Claim Reimbursement"
     : strLowerPathname.match(/^\/ess\/reimbursements\/\d+\/edit$/)
-      ? "Edit Reimbursement"
-      : "View Reimbursement";
+      ? "Edit Claim Reimbursement"
+      : "View Claim Reimbursement";
   const strPageTitle = blnEmployeeReimbursementFormContext
     ? strEmployeeReimbursementFormTitle
     : blnEmployeeReimbursementContext
