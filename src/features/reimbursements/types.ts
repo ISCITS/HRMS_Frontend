@@ -26,6 +26,8 @@ export type ReimbursementItemStatus =
 
 export type ReimbursementProofStatus = "pending" | "verified" | "rejected";
 export type ReimbursementTaxTreatment = "taxable" | "exempt" | "proof_based";
+export type ReimbursementType = "ctc_based" | "non_ctc_based" | "none";
+export type ReimbursementSettlementMode = "payroll" | "finance" | "none";
 
 export type ReimbursementSalaryComponentOption = {
   intID: number;
@@ -34,6 +36,13 @@ export type ReimbursementSalaryComponentOption = {
   strTaxTreatment?: ReimbursementTaxTreatment | null;
   blnDeclarationRequired?: boolean | null;
   blnProofRequired?: boolean | null;
+  strReimbursementType?: ReimbursementType | null;
+  strSettlementMode?: ReimbursementSettlementMode | null;
+  decAnnualLimit?: number | null;
+  decMonthlyLimit?: number | null;
+  decAllocatedLimit?: number | null;
+  decAlreadyClaimed?: number | null;
+  decBalanceAvailable?: number | null;
 };
 
 export type ReimbursementOptionsDto = {
@@ -54,6 +63,17 @@ export type ReimbursementClaimItemDto = {
   intID: number;
   intSalaryComponentID?: number | null;
   strReimbursementTypeName?: string | null;
+  strReimbursementType?: ReimbursementType | null;
+  strSettlementMode?: ReimbursementSettlementMode | null;
+  decAnnualLimit?: number | null;
+  decMonthlyLimit?: number | null;
+  decAllocatedLimit?: number | null;
+  decAlreadyClaimed?: number | null;
+  decBalanceAvailable?: number | null;
+  decEligibleBalance?: number | null;
+  strProofStatus?: string | null;
+  strPayrollImpact?: string | null;
+  strFinanceStatus?: string | null;
   dtExpenseDate?: string | null;
   strExpenseDescription?: string | null;
   decClaimedAmount: number;
@@ -94,6 +114,11 @@ export type ReimbursementClaimDto = {
   strReviewerRemarks?: string | null;
   dtSubmittedOn?: string | null;
   lstItems?: ReimbursementClaimItemDto[];
+  strReimbursementType?: ReimbursementType | null;
+  strSettlementMode?: ReimbursementSettlementMode | null;
+  strFinanceStatus?: string | null;
+  strPayrollImpact?: string | null;
+  strFinanceSettlement?: string | null;
 };
 
 export type ReimbursementClaimRequest = {

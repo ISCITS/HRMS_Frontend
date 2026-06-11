@@ -5,10 +5,10 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState, type InputHTMLAttributes } from "react";
 
-import { toInputDate } from "@/features/reimbursements/formatters";
+import { formatCurrency, toInputDate } from "@/features/reimbursements/formatters";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
 import type {
@@ -79,6 +79,22 @@ function getReimbursementTypeLabel(strComponentName?: string | null) {
 
 function isSupportingDocumentRequired(objComponent?: ReimbursementOptionsDto["lstSalaryComponents"][number] | null, blnFallbackProofRequired = false) {
   return Boolean(objComponent?.blnDeclarationRequired ?? objComponent?.blnProofRequired ?? blnFallbackProofRequired);
+}
+
+function formatChoiceLabel(strValue?: string | null) {
+  return (strValue || "-")
+    .split("_")
+    .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
+    .join(" ");
+}
+
+function ComponentInfoMetric({ strLabel, strValue, blnAccent = false }: { strLabel: string; strValue: string; blnAccent?: boolean }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 700 }}>{strLabel}</Typography>
+      <Typography sx={{ color: blnAccent ? "#2563eb" : "#0f172a", fontSize: "0.86rem", fontWeight: 900, lineHeight: 1.25, overflowWrap: "anywhere" }}>{strValue}</Typography>
+    </Box>
+  );
 }
 
 export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, blnReadOnly = false, intEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
@@ -174,6 +190,13 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
 
   const objSelectedSalaryComponent = objOptions.lstSalaryComponents.find((dicComponent) => String(dicComponent.intID) === objForm.intSalaryComponentID) ?? null;
   const blnSelectedComponentProofRequired = isSupportingDocumentRequired(objSelectedSalaryComponent, objForm.blnProofRequired);
+  const strReimbursementType = objItem?.strReimbursementType ?? objSelectedSalaryComponent?.strReimbursementType ?? "ctc_based";
+  const strSettlementMode = objItem?.strSettlementMode ?? objSelectedSalaryComponent?.strSettlementMode ?? (strReimbursementType === "non_ctc_based" ? "finance" : "payroll");
+  const decAnnualLimit = objItem?.decAnnualLimit ?? objSelectedSalaryComponent?.decAnnualLimit ?? 0;
+  const decMonthlyLimit = objItem?.decMonthlyLimit ?? objSelectedSalaryComponent?.decMonthlyLimit ?? 0;
+  const decAllocatedLimit = objItem?.decAllocatedLimit ?? objSelectedSalaryComponent?.decAllocatedLimit ?? 0;
+  const decAlreadyClaimed = objItem?.decAlreadyClaimed ?? objSelectedSalaryComponent?.decAlreadyClaimed ?? 0;
+  const decBalanceAvailable = objItem?.decBalanceAvailable ?? objSelectedSalaryComponent?.decBalanceAvailable ?? Math.max(decAllocatedLimit - decAlreadyClaimed, 0);
   const objReadOnlyProps = { readOnly: blnReadOnly };
   const blnProofUploadRequired = blnSelectedComponentProofRequired && !objItem?.lstProofs?.length;
   const blnSaveDisabled = blnReadOnly || blnSaving || !objForm.decClaimedAmount || !objForm.intSalaryComponentID || (blnProofUploadRequired && !objProofFile);
@@ -199,12 +222,45 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
                 </Typography>
               </Typography>
             </Grid>
+         
             <Grid item xs={12} md={3}>
               <TextField required fullWidth size="small" type="date" data-testid="reimbursements.claim-item.expense-date.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-date.input" }} label="Expense Date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField required fullWidth size="small" type="number" data-testid="reimbursements.claim-item.claimed-amount.input" label="Claimed Amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly, "data-testid": "reimbursements.claim-item.claimed-amount.input" }} />
             </Grid>
+               {objSelectedSalaryComponent || objItem ? (
+              <Grid item xs={12}>
+                <Box data-testid="reimbursements.claim-item.component-info.panel" sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1.2, py: 1, bgcolor: "#f8fafc" }}>
+                  <Grid container spacing={1.1}>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Reimbursement Type" strValue={formatChoiceLabel(strReimbursementType)} blnAccent />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Annual Limit" strValue={formatCurrency(decAnnualLimit)} />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Monthly Limit" strValue={formatCurrency(decMonthlyLimit)} />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Allocated Limit" strValue={formatCurrency(decAllocatedLimit)} />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Already Claimed" strValue={formatCurrency(decAlreadyClaimed)} />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Balance Available" strValue={formatCurrency(decBalanceAvailable)} blnAccent />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Proof Required" strValue={blnSelectedComponentProofRequired ? "Yes" : "No"} />
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <ComponentInfoMetric strLabel="Settlement Method" strValue={formatChoiceLabel(strSettlementMode)} />
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Grid>
+            ) : null}
             <Grid item xs={12}>
               <TextField fullWidth multiline minRows={2} size="small" data-testid="reimbursements.claim-item.expense-description.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-description.input" }} label="Expense Description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>

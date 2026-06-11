@@ -129,6 +129,13 @@ function getClaimLocationName(objClaim: ReimbursementClaimDto, mapEmployees: Map
   return normalizeFilterValue(objClaim.strLocationName || (objClaim.intEmployeeID ? mapEmployees.get(objClaim.intEmployeeID)?.strLocationName : ""));
 }
 
+function getPaymentStatusLabel(objClaim: ReimbursementClaimDto) {
+  if (objClaim.strSettlementMode === "finance") {
+    return ["paid", "settled"].includes(objClaim.strFinanceStatus || "") ? "Finance Settled" : "Finance Pending";
+  }
+  return ["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) ? "In payroll" : "-";
+}
+
 export default function ReimbursementReviewListPage() {
   const objRouter = useRouter();
   const strPathname = usePathname();
@@ -405,7 +412,7 @@ export default function ReimbursementReviewListPage() {
                   {/* <TableCell>{claimHasProofPending(objClaim) ? "Pending" : "Clear"}</TableCell> */}
                   <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
-                  <TableCell>{["locked", "pushed_to_payroll", "paid"].includes(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
+                  <TableCell>{getPaymentStatusLabel(objClaim)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

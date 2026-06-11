@@ -46,6 +46,19 @@ export default function ReimbursementItemReviewPanel({
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
   const strDisplayName = objItem.strReimbursementTypeName || strReimbursementTypeName;
 
+  function formatChoiceLabel(strValue?: string | null) {
+    return (strValue || "-")
+      .split("_")
+      .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
+      .join(" ");
+  }
+
+  function formatFinanceStatus(strValue?: string | null) {
+    if (strValue === "paid") return "Settled";
+    if (strValue === "pending") return "Pending";
+    return formatChoiceLabel(strValue);
+  }
+
   function approveItem() {
     // Purpose: Sends the reviewer-selected approved amount and remarks for full or partial item approval.
     const decApprovedAmount = Number(strApprovedAmount);
@@ -67,8 +80,34 @@ export default function ReimbursementItemReviewPanel({
         </Grid>
         <Grid item xs={12} md={6} sx={{ pr: { xs: 0, md: 1.2 } }}>
           <Stack spacing={0.8} sx={{ mr: { xs: 0, md: 1 } }}>
-            <Typography sx={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 700 }}>Claimed</Typography>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(objItem.decClaimedAmount)}</Typography>
+            <Grid container spacing={0.8}>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Claimed Amount</Typography>
+                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(objItem.decClaimedAmount)}</Typography>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Approved Amount</Typography>
+                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(objItem.decApprovedAmount)}</Typography>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Eligible Balance</Typography>
+                <Typography sx={{ fontWeight: 900, color: "#2563eb" }}>{formatCurrency(objItem.decEligibleBalance ?? objItem.decBalanceAvailable ?? 0)}</Typography>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Proof Status</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatChoiceLabel(objItem.strProofStatus || (objItem.blnProofRequired ? "required" : "not_required"))}</Typography>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Settlement Method</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatChoiceLabel(objItem.strSettlementMode)}</Typography>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700 }}>Payroll Impact / Finance</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                  {objItem.strSettlementMode === "finance" ? formatFinanceStatus(objItem.strFinanceStatus) : formatChoiceLabel(objItem.strPayrollImpact)}
+                </Typography>
+              </Grid>
+            </Grid>
             <TextField size="small" type="number" label="Approved amount" value={strApprovedAmount} onChange={(objEvent) => setStrApprovedAmount(objEvent.target.value)} inputProps={{ min: 0, max: objItem.decClaimedAmount, step: "0.01" }} disabled={blnActionsDisabled || !blnCanApprove} sx={{ width: { xs: "100%", sm: 200 } }} />
             <TextField fullWidth size="small" multiline minRows={2} label="Review remarks" value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} disabled={blnActionsDisabled || (!blnCanApprove && !blnCanReject && !blnCanProofReview)} />
           </Stack>

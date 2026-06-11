@@ -45,6 +45,11 @@ export type ReimbursementPushPayload = {
   strRemarks?: string | null;
 };
 
+export type ReimbursementFinanceSettlementPayload = {
+  strPaymentReference?: string | null;
+  strRemarks?: string | null;
+};
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: ApiRequestMethod;
@@ -154,6 +159,16 @@ export const payrollReimbursementService = {
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_PUSH_TO_PAYROLL",
+    });
+    return objResult.Data;
+  },
+
+  async markFinanceSettled(intClaimID: number, objPayload: ReimbursementFinanceSettlementPayload): Promise<ReimbursementClaimDto> {
+    const objResult = await requestApi<ReimbursementClaimDto>({
+      strPath: `/payroll/reimbursements/${intClaimID}/mark-finance-settled`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "PAYROLL_REIMBURSEMENT_RELEASE",
     });
     return objResult.Data;
   },

@@ -25,6 +25,7 @@ type DialogAction =
   | "reject_claim"
   | "release_claim"
   | "push_payroll"
+  | "finance_settle"
   | "reject_item"
   | "proof_pending"
   | "reject_proof"
@@ -57,6 +58,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
   const [strSuccess, setStrSuccess] = useState("");
   const [strRemarks, setStrRemarks] = useState("");
   const [strPayrollRunID, setStrPayrollRunID] = useState("");
+  const [strPaymentReference, setStrPaymentReference] = useState("");
   const [strDialogError, setStrDialogError] = useState("");
   const [lstPayrollRuns, setLstPayrollRuns] = useState<PayrollRunOption[]>([]);
   const [blnPayrollRunsLoading, setBlnPayrollRunsLoading] = useState(false);
@@ -135,6 +137,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrDialogError("");
     setStrRemarks("");
     setStrPayrollRunID("");
+    setStrPaymentReference("");
     setBlnConfirmed(false);
     if (strAction === "push_payroll") {
       void loadPayrollRunOptions();
@@ -175,6 +178,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrDialogError("");
     setStrRemarks("");
     setStrPayrollRunID("");
+    setStrPaymentReference("");
     setBlnConfirmed(false);
   }
 
@@ -200,7 +204,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     }
   }
 
-  async function handleActionBar(strAction: "start" | "approve" | "reject" | "release" | "lock" | "push") {
+  async function handleActionBar(strAction: "start" | "approve" | "reject" | "release" | "lock" | "push" | "finance_settle") {
     if (!objClaim) return;
     if (strAction === "start") await runAction(() => payrollReimbursementService.startReview(objClaim.intID), "Review started.");
     if (strAction === "approve") openReasonDialog("approve_claim");
@@ -208,6 +212,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     if (strAction === "release") openReasonDialog("release_claim");
     if (strAction === "lock") await runAction(() => payrollReimbursementService.lockClaim(objClaim.intID), "Claim locked for payroll.");
     if (strAction === "push") openReasonDialog("push_payroll");
+    if (strAction === "finance_settle") openReasonDialog("finance_settle");
   }
 
   async function approveItem(objItem: ReimbursementClaimItemDto, decApprovedAmount: number, strItemRemarks: string) {
@@ -249,6 +254,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     if (strDialogAction === "reject_claim") await runAction(() => payrollReimbursementService.rejectClaim(objClaim.intID, { strRemarks: strCleanRemarks }), "Claim rejected.");
     if (strDialogAction === "release_claim") await runAction(() => payrollReimbursementService.releaseClaim(objClaim.intID, { strRemarks: strCleanRemarks }), "Claim released to employee.");
     if (strDialogAction === "push_payroll") await runAction(() => payrollReimbursementService.pushToPayroll(objClaim.intID, { intPayrollRunID: strPayrollRunID ? Number(strPayrollRunID) : null, strRemarks: strCleanRemarks || null }), "Claim pushed to payroll.");
+    if (strDialogAction === "finance_settle") await runAction(() => payrollReimbursementService.markFinanceSettled(objClaim.intID, { strPaymentReference: strPaymentReference.trim() || null, strRemarks: strCleanRemarks || null }), "Finance settlement marked.");
     if (strDialogAction === "reject_item" && objSelectedItem) await runAction(() => payrollReimbursementService.rejectItem(objClaim.intID, objSelectedItem.intID, { strRemarks: strCleanRemarks }), "Item rejected.");
     if (strDialogAction === "proof_pending" && objSelectedItem) await runAction(() => payrollReimbursementService.markProofPending(objClaim.intID, objSelectedItem.intID, { strRemarks: strCleanRemarks || null }), "Item marked proof pending.");
     if (strDialogAction === "reject_proof" && intSelectedProofID) await runAction(() => payrollReimbursementService.rejectProof(objClaim.intID, intSelectedProofID, { strRemarks: strCleanRemarks }), "Proof rejected.");
@@ -259,6 +265,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     reject_claim: "Reject Claim",
     release_claim: "Release Claim",
     push_payroll: "Push to Payroll",
+    finance_settle: "Mark Finance Settled",
     reject_item: "Reject Item",
     proof_pending: "Mark Proof Pending",
     reject_proof: "Reject Proof",
@@ -288,6 +295,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                 blnCanRelease={blnCanRelease}
                 blnCanLock={blnCanLock}
                 blnCanPush={blnCanPush}
+                blnCanFinanceSettle={blnCanRelease}
                 onAction={(strAction) => void handleActionBar(strAction)}
               />
               </>
@@ -359,6 +367,15 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                 </TextField>
                 <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} inputProps={{ "data-testid": "reimbursements.review-detail.confirm-payroll.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="I confirm this reimbursement should be pushed to payroll input." />
               </>
+            ) : null}
+            {strDialogAction === "finance_settle" ? (
+              <TextField
+                size="small"
+                label="Finance payment reference"
+                value={strPaymentReference}
+                onChange={(objEvent) => setStrPaymentReference(objEvent.target.value)}
+                data-testid="reimbursements.review-detail.finance-reference.input"
+              />
             ) : null}
             <TextField fullWidth multiline minRows={3} label={["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction || "") ? "Reason" : "Remarks"} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} data-testid="reimbursements.review-detail.remarks.input" />
           </Stack>
