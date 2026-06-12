@@ -2,6 +2,8 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
   FNFAuditRecord,
+  FNFDefaultPayrollRunOption,
+  FNFEmployeeOption,
   FNFLineFormValues,
   FNFSettlementFormValues,
   FNFSettlementLineRecord,
@@ -45,7 +47,16 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
 }
 
 function toSettlementPayload(dicValues: FNFSettlementFormValues) {
+  const lstLeaveEncashments = (dicValues.lstLeaveEncashments || [])
+    .filter((dicLeave) => Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0) > 0)
+    .map((dicLeave) => ({
+      strLeaveTypeCode: dicLeave.strLeaveTypeCode,
+      strLeaveTypeName: dicLeave.strLeaveTypeName,
+      decBalanceDays: Number(dicLeave.decBalanceDays || 0),
+      decEncashableDays: Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0),
+    }));
   return {
+    intEmployeeID: dicValues.intEmployeeID ? Number(dicValues.intEmployeeID) : undefined,
     strEmployeeCode: dicValues.strEmployeeCode.trim(),
     strSettlementNumber: dicValues.strSettlementNumber.trim() || undefined,
     intPayrollRunID: dicValues.intPayrollRunID ? Number(dicValues.intPayrollRunID) : undefined,
@@ -60,14 +71,17 @@ function toSettlementPayload(dicValues: FNFSettlementFormValues) {
     decNoticeShortfallDays: Number(dicValues.decNoticeShortfallDays || 0),
     strCurrencyCode: dicValues.strCurrencyCode.trim() || "INR",
     strRemarks: dicValues.strRemarks.trim() || undefined,
+    lstLeaveEncashments,
   };
 }
 
 function toLinePayload(dicValues: FNFLineFormValues) {
   return {
     strLineType: dicValues.strLineType,
+    strRecoveryType: dicValues.strLineType === "RECOVERY" ? dicValues.strRecoveryType : undefined,
     strLineCode: dicValues.strLineCode.trim(),
     strLineName: dicValues.strLineName.trim(),
+    decActualAmount: Number(dicValues.decActualAmount || dicValues.decAmount || 0),
     decAmount: Number(dicValues.decAmount || 0),
     blnIsManualOverride: dicValues.blnIsManualOverride,
     strOverrideReason: dicValues.strOverrideReason.trim() || undefined,
@@ -76,6 +90,22 @@ function toLinePayload(dicValues: FNFLineFormValues) {
 }
 
 export const fnfSettlementService = {
+  async listEmployeeOptions(): Promise<FNFEmployeeOption[]> {
+    const objResult = await requestApi<FNFEmployeeOption[]>({
+      strPath: "/payroll/fnf-settlements/employee-options",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getDefaultPayrollRunForEmployee(intEmployeeID: number): Promise<FNFDefaultPayrollRunOption | null> {
+    const objResult = await requestApi<FNFDefaultPayrollRunOption | null>({
+      strPath: `/payroll/fnf-settlements/employee-options/${intEmployeeID}/default-payroll-run`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
   async listSettlements(objFilters?: Record<string, string>): Promise<FNFSettlementRecord[]> {
     const objParams = new URLSearchParams();
     Object.entries(objFilters || {}).forEach(([strKey, strValue]) => {
@@ -123,6 +153,7 @@ export const fnfSettlementService = {
       release: "PAYROLL_FNF_RELEASE",
       lock: "PAYROLL_FNF_LOCK",
       "mark-paid": "PAYROLL_FNF_MARK_PAID",
+      "mark-recovered": "PAYROLL_FNF_MARK_PAID",
       cancel: "PAYROLL_FNF_CANCEL",
     };
     const objResult = await requestApi<FNFSettlementRecord>({
