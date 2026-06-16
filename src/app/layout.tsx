@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import * as React from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import ThemeRegistry from "@/components/shared/ThemeRegistry";
@@ -19,9 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Emotion cache + MUI theme providers for all routes */}
         <ThemeRegistry>
           <ThemeModeProvider>
-            <Suspense fallback={null}>
+            <React.Suspense fallback={null}>
               <AppLayoutBoundary>{children}</AppLayoutBoundary>
-            </Suspense>
+            </React.Suspense>
           </ThemeModeProvider>
         </ThemeRegistry>
       </body>
