@@ -1,0 +1,650 @@
+{
+    "common": {
+        "cancel": "Cancel",
+        "clear": "Clear",
+        "close": "Close",
+        "delete": "Delete",
+        "exportExcel": "Export Excel",
+        "exportPdf": "Export PDF",
+        "multilingualText": "Multilingual Text",
+        "addLanguage": "Add Language",
+        "translate": "AI Translate",
+        "language": "Language",
+        "fieldIsActive": "Is Active",
+        "reset": "Reset",
+        "save": "Save",
+        "search": "Search",
+        "update": "Update",
+        "statusActive": "Active",
+        "statusInactive": "Inactive",
+        "rowsPerPage": "Rows per page",
+        "paginationSeparator": "of"
+    },
+    "appShell": {
+        "brand": "HRMS",
+        "title": "Human Resource Management System",
+        "logout": "Logout",
+        "logoutDialogTitle": "Confirm Logout",
+        "logoutDialogMessage": "Are you sure you want to logout from the application?",
+        "logoutConfirmButton": "Confirm Logout",
+        "nav": {
+            "dashboard": "Dashboard",
+            "employees": "Employees",
+            "employeeList": "Employee List",
+            "addEmployee": "Add Employee",
+            "userMaster": "User",
+            "departmentMaster": "Department",
+            "bankMaster": "Bank",
+            "costCenterMaster": "Cost Center",
+            "gradeMaster": "Grade",
+            "locationMaster": "Location",
+            "departmentMasterInline": "Department Master Inline",
+            "leave": "Leave",
+            "leaveRequests": "Leave Requests",
+            "applyLeave": "Apply Leave",
+            "payroll": "Payroll",
+            "payrollOverview": "Payroll Overview",
+            "runPayroll": "Run Payroll",
+            "payslips": "Payroll Results",
+            "attendance": "Attendance",
+            "theme": "Theme",
+            "profile": "Profile",
+            "settings": "Settings"
+        }
+    },
+    "commonDataGrid": {
+        "filterPlaceholder": "Filter records...",
+        "emptyMessage": "No records found.",
+        "exportExcel": "Excel",
+        "exportPdf": "PDF",
+        "defaultExportFileName": "grid-data"
+    },
+    "login": {
+        "title": "Sign In",
+        "subtitle": "Welcome back. Please login to continue.",
+        "userIdLabel": "User ID",
+        "passwordLabel": "Password",
+        "loginButton": "Login",
+        "userIdRequired": "User ID is required.",
+        "userIdMin": "User ID must be at least 4 characters.",
+        "passwordRequired": "Password is required.",
+        "passwordMin": "Password must be at least 6 characters.",
+        "imageAlt": "HRMS illustration for login screen",
+        "rememberMe": "Remember me",
+        "forgotPassword": "Forgot Password?"
+    },
+    "employees": {
+        "pageTitle": "Employees",
+        "addButton": "Add Employee",
+        "actionView": "View",
+        "grid": {
+            "id": "ID",
+            "name": "Name",
+            "department": "Department",
+            "role": "Role",
+            "action": "Action"
+        },
+        "form": {
+            "fullName": "Full Name",
+            "email": "Email",
+            "role": "Role",
+            "department": "Department",
+            "status": "Status",
+            "fullNameRequired": "Full Name is required.",
+            "emailRequired": "Email is required.",
+            "emailInvalid": "Enter a valid email address.",
+            "roleRequired": "Role is required.",
+            "departmentRequired": "Department is required.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "employeeMaster": {
+        "pageTitle": "Employees",
+        "backButton": "Back",
+        "addButton": "Add Employee",
+        "dialogAddTitle": "Add Employee",
+        "dialogEditTitle": "Edit Employee",
+        "dialogViewTitle": "View Employee",
+        "addPageTitle": "Add Employee",
+        "editPageTitle": "Edit Employee",
+        "loading": "Loading employees...",
+        "editorLoading": "Loading employee workspace...",
+        "emptyMessage": "No employee records found.",
+        "saveSuccess": "Employee saved successfully.",
+        "updateSuccess": "Employee updated successfully.",
+        "addressSaveSuccess": "Employee address saved successfully.",
+        "bankSaveSuccess": "Employee bank details saved successfully.",
+        "statutorySaveSuccess": "Employee statutory details saved successfully.",
+        "experienceSaveSuccess": "Employee experience saved successfully.",
+        "qualificationSaveSuccess": "Employee qualification saved successfully.",
+        "familySaveSuccess": "Employee family detail saved successfully.",
+        "statusSuccess": "Employee status updated successfully.",
+        "deleteSuccess": "Employee deactivated successfully.",
+        "createFirstHint": "Save Basic Info first to enable the remaining tabs.",
+        "confirmDeactivate": "Selected employees will be marked inactive. Continue?",
+        "confirmDeleteSingle": "This employee will be marked inactive. Continue?",
+        "tabs": {
+            "basicInfo": "Basic Info",
+            "address": "Address",
+            "bankDetails": "Bank Details",
+            "statutory": "Statutory",
+            "experience": "Experience",
+            "qualification": "Qualification",
+            "familyDetails": "Family Details"
+        },
+        "fields": {
+            "employeeCode": "Employee Code",
+            "title": "Title",
+            "firstName": "First Name",
+            "middleName": "Middle Name",
+            "lastName": "Last Name",
+            "dateOfBirth": "Date of Birth",
+            "dateOfJoining": "Joining Date",
+            "employmentType": "Employment Type",
+            "department": "Department",
+            "designation": "Designation",
+            "grade": "Grade",
+            "costCenter": "Cost Center",
+            "location": "Location",
+            "payrollGroup": "Payroll Group",
+            "manager": "Reporting Manager",
+            "workEmail": "Work Email",
+            "personalEmail": "Personal Email",
+            "mobileNumber": "Mobile Number",
+            "gender": "Gender",
+            "preferredLanguage": "Preferred Language",
+            "employmentStatus": "Status",
+            "dateOfExit": "Exit Date",
+            "essEnabled": "ESS Enabled",
+            "addressType": "Address Type",
+            "addressLine1": "Address Line 1",
+            "addressLine2": "Address Line 2",
+            "cityName": "City",
+            "state": "State",
+            "postalCode": "Postal Code",
+            "country": "Country",
+            "bank": "Bank",
+            "accountHolderName": "Account Holder Name",
+            "accountNumber": "Account Number",
+            "ifscCode": "IFSC Code",
+            "isPrimary": "Primary Account",
+            "bankActive": "Bank Record Active",
+            "panNumber": "PAN Number",
+            "uanNumber": "UAN Number",
+            "esiNumber": "ESI Number",
+            "pfNumber": "PF Number",
+            "taxRegimeCode": "Tax Regime"
+        },
+        "grid": {
+            "employeeCode": "Employee Code",
+            "fullName": "Name",
+            "workEmail": "Email",
+            "mobileNumber": "Phone",
+            "department": "Department",
+            "designation": "Role",
+            "joiningDate": "Joining Date",
+            "status": "Status",
+            "actions": "Actions"
+        },
+        "search": {
+            "namePlaceholder": "Search employee name",
+            "codePlaceholder": "Search employee code",
+            "statusPlaceholder": "Status"
+        },
+        "validation": {
+            "employeeCodeRequired": "Employee Code is required.",
+            "employeeCodeFormat": "Use 2-50 uppercase letters, numbers, slash, underscore, or hyphen.",
+            "employeeCodeDuplicate": "Employee Code already exists in the current list.",
+            "firstNameRequired": "First Name is required.",
+            "joiningDateRequired": "Joining Date is required.",
+            "employmentTypeRequired": "Employment Type is required.",
+            "locationRequired": "Location is required.",
+            "workEmailInvalid": "Enter a valid work email address.",
+            "personalEmailInvalid": "Enter a valid personal email address.",
+            "mobileNumberInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
+            "birthDateInvalid": "Date of Birth must be earlier than Joining Date.",
+            "exitDateInvalid": "Exit Date cannot be earlier than Joining Date.",
+            "addressLine1Required": "Address Line 1 is required.",
+            "countryRequired": "Country is required.",
+            "bankRequired": "Bank is required.",
+            "accountHolderRequired": "Account Holder Name is required.",
+            "accountNumberRequired": "Account Number is required.",
+            "pfNumberRequired": "PF Number is required when PF Applicable is on."
+        }
+    },
+    "leave": {
+        "pageTitle": "Leave Management",
+        "applyButton": "Apply Leave",
+        "actionApprove": "Approve",
+        "grid": {
+            "id": "ID",
+            "employee": "Employee",
+            "type": "Type",
+            "status": "Status",
+            "action": "Action"
+        },
+        "form": {
+            "type": "Leave Type",
+            "startDate": "Start Date",
+            "endDate": "End Date",
+            "reason": "Reason",
+            "submit": "Submit Request",
+            "typeCasual": "Casual Leave",
+            "typeSick": "Sick Leave",
+            "typeEarned": "Earned Leave"
+        }
+    },
+    "attendance": {
+        "pageTitle": "Attendance Tracker",
+        "grid": {
+            "date": "Date",
+            "status": "Status",
+            "checkIn": "Check In",
+            "checkOut": "Check Out"
+        }
+    },
+    "payroll": {
+        "runForm": {
+            "month": "Payroll Month",
+            "department": "Department",
+            "cycle": "Pay Cycle",
+            "note": "Processing Note",
+            "notePlaceholder": "Optional note for payroll approvers",
+            "generateButton": "Generate Payroll",
+            "previewButton": "Preview Summary",
+            "monthMarch": "March 2026",
+            "monthFebruary": "February 2026",
+            "monthJanuary": "January 2026",
+            "departmentAll": "All Departments",
+            "departmentEngineering": "Engineering",
+            "departmentHr": "HR",
+            "departmentFinance": "Finance",
+            "cycleMonthly": "Monthly",
+            "cycleBiWeekly": "Bi-Weekly"
+        },
+        "payslips": {
+            "title": "Payroll Results",
+            "download": "View",
+            "grid": {
+                "id": "Result ID",
+                "employee": "Employee",
+                "month": "Payroll Month",
+                "amount": "Net Amount",
+                "status": "Status",
+                "action": "Action"
+            }
+        }
+    },
+    "profile": {
+        "fullName": "Full Name",
+        "email": "Email",
+        "phone": "Phone",
+        "designation": "Designation",
+        "updateButton": "Update Profile",
+        "sectionPersonal": "Personal Information",
+        "sectionWork": "Work Information",
+        "sectionSecurity": "Security Settings",
+        "changePhoto": "Change photo",
+        "twoFactor": "Two-factor authentication",
+        "twoFactorStatus": "Disabled (placeholder)",
+        "lastLogin": "Last login: Today at 09:12 AM"
+    },
+    "settings": {
+        "description": "Settings in this template are UI-only placeholders.",
+        "darkMode": "Enable dark mode",
+        "emailNotifications": "Email notifications",
+        "attendanceSummary": "Weekly attendance summary",
+        "saveButton": "Save Settings"
+    },
+    "theme": {
+        "description": "Select a color theme for the entire website.",
+        "applyButton": "Apply Theme",
+        "appliedButton": "Applied",
+        "presets": {
+            "ocean": "Ocean Blue",
+            "emerald": "Emerald Green",
+            "sunset": "Sunset Orange",
+            "violet": "Violet Purple",
+            "rose": "Rose Red",
+            "cyan": "Cyan Teal",
+            "amber": "Amber Gold",
+            "slate": "Slate Gray",
+            "indigo": "Indigo Deep",
+            "lime": "Lime Green",
+            "vibgyorLight": "Light VIBGYOR",
+            "softLight": "Soft Light"
+        }
+    },
+    "departments": {
+        "pageTitle": "Department",
+        "inlinePageTitle": "Department Master (Inline)",
+        "addButton": "Add Department",
+        "backButton": "Back",
+        "inlineAddButton": "Add Department In Grid",
+        "editButton": "Edit",
+        "saveDepartment": "Save",
+        "updateDepartment": "Update Department",
+        "dialogAddTitle": "Add Department",
+        "dialogEditTitle": "Edit Department",
+        "fields": {
+            "code": "Department Code",
+            "name": "Department Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Department Name",
+            "status": "Status",
+            "employees": "Employees",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Department Code is required.",
+            "codeFormat": "Code must be 2-20 chars, uppercase letters, numbers, or hyphen.",
+            "codeDuplicate": "Department Code already exists.",
+            "nameRequired": "Department Name is required.",
+            "nameMin": "Department Name must be at least 3 characters.",
+            "nameDuplicate": "Department Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "designations": {
+        "pageTitle": "Designation",
+        "addButton": "Add Designation",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveDesignation": "Save",
+        "updateDesignation": "Update Designation",
+        "dialogAddTitle": "Add Designation",
+        "dialogEditTitle": "Edit Designation",
+        "helperText": "Based on `tbldesignation`, this master exposes designation code, designation name, and active status.",
+        "fields": {
+            "code": "Designation Code",
+            "name": "Designation Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Designation Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Designation Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, or underscore.",
+            "codeDuplicate": "Designation Code already exists.",
+            "nameRequired": "Designation Name is required.",
+            "nameMin": "Designation Name must be at least 3 characters.",
+            "nameDuplicate": "Designation Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "banks": {
+        "pageTitle": "Bank",
+        "addButton": "Add Bank",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveBank": "Save",
+        "updateBank": "Update Bank",
+        "dialogAddTitle": "Add Bank",
+        "dialogEditTitle": "Edit Bank",
+        "helperText": "Based on `tblbank`, this master exposes bank code, bank name, and active status.",
+        "fields": {
+            "code": "Bank Code",
+            "name": "Bank Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Bank Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Bank Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Bank Code already exists.",
+            "nameRequired": "Bank Name is required.",
+            "nameMin": "Bank Name must be at least 3 characters.",
+            "nameDuplicate": "Bank Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "users": {
+        "pageTitle": "User",
+        "addButton": "Add User",
+        "backButton": "Back",
+        "saveUser": "Save",
+        "updateUser": "Update User",
+        "dialogAddTitle": "Add User",
+        "dialogEditTitle": "Edit User",
+        "dialogViewTitle": "View User",
+        "fields": {
+            "loginName": "Login Name",
+            "email": "Email Address",
+            "mobile": "Mobile Number",
+            "password": "Password",
+            "authSource": "Auth Source",
+            "ssoEnabled": "SSO Enabled",
+            "ssoLoginMapping": "SSO Login Mapping",
+            "status": "Status",
+            "locked": "Locked"
+        },
+        "grid": {
+            "loginName": "Login Name",
+            "email": "Email Address",
+            "mobile": "Mobile Number",
+            "authSource": "Auth Source",
+            "ssoEnabled": "SSO",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "loginNameRequired": "Login Name is required.",
+            "loginNameMin": "Login Name must be at least 3 characters.",
+            "emailRequired": "Email Address is required.",
+            "emailInvalid": "Enter a valid email address.",
+            "passwordRequired": "Password is required for new users.",
+            "passwordMin": "Password must be at least 8 characters.",
+            "mobileInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
+            "authSourceRequired": "Auth Source is required."
+        }
+    },
+    "costCenters": {
+        "pageTitle": "Cost Center",
+        "addButton": "Add Cost Center",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveCostCenter": "Save",
+        "updateCostCenter": "Update Cost Center",
+        "dialogAddTitle": "Add Cost Center",
+        "dialogEditTitle": "Edit Cost Center",
+        "fields": {
+            "code": "Cost Center Code",
+            "name": "Cost Center Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Cost Center Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Cost Center Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Cost Center Code already exists.",
+            "nameRequired": "Cost Center Name is required.",
+            "nameMin": "Cost Center Name must be at least 3 characters.",
+            "nameDuplicate": "Cost Center Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "countries": {
+        "pageTitle": "Country",
+        "addButton": "Add Country",
+        "backButton": "Back",
+        "dialogAddTitle": "Add Country",
+        "dialogEditTitle": "Edit Country",
+        "dialogViewTitle": "View Country",
+        "fields": {
+            "code": "Country Code",
+            "name": "Country Name",
+            "currencyCode": "Currency Code",
+            "phoneCode": "Phone Code",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Country Name",
+            "currencyCode": "Currency",
+            "phoneCode": "Phone Code",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Country Code is required.",
+            "codeFormat": "Country Code must be exactly 2 letters.",
+            "nameRequired": "Country Name is required.",
+            "nameMin": "Country Name must be at least 2 characters.",
+            "currencyRequired": "Currency Code is required.",
+            "currencyFormat": "Currency Code must be exactly 3 letters.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "grades": {
+        "pageTitle": "Grade",
+        "addButton": "Add Grade",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveGrade": "Save",
+        "updateGrade": "Update Grade",
+        "dialogAddTitle": "Add Grade",
+        "dialogEditTitle": "Edit Grade",
+        "fields": {
+            "code": "Grade Code",
+            "name": "Grade Name",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Grade Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Grade Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Grade Code already exists.",
+            "nameRequired": "Grade Name is required.",
+            "nameMin": "Grade Name must be at least 3 characters.",
+            "nameDuplicate": "Grade Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "states": {
+        "pageTitle": "State",
+        "addButton": "Add State",
+        "backButton": "Back",
+        "dialogAddTitle": "Add State",
+        "dialogEditTitle": "Edit State",
+        "dialogViewTitle": "View State",
+        "fields": {
+            "country": "Country",
+            "code": "State Code",
+            "name": "State Name",
+            "status": "Status"
+        },
+        "grid": {
+            "country": "Country",
+            "code": "Code",
+            "name": "State Name",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Grade Code is required.",
+            "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "codeDuplicate": "Grade Code already exists.",
+            "nameRequired": "Grade Name is required.",
+            "nameMin": "Grade Name must be at least 3 characters.",
+            "nameDuplicate": "Grade Name already exists.",
+            "statusRequired": "Status is required."
+        }
+    },
+    "locations": {
+        "pageTitle": "Location",
+        "addButton": "Add Location",
+        "backButton": "Back",
+        "editButton": "Edit",
+        "saveLocation": "Save",
+        "updateLocation": "Update Location",
+        "dialogAddTitle": "Add Location",
+        "dialogEditTitle": "Edit Location",
+        "fields": {
+            "code": "Location Code",
+            "name": "Location Name",
+            "state": "State",
+            "city": "City",
+            "status": "Status"
+        },
+        "grid": {
+            "code": "Code",
+            "name": "Location Name",
+            "state": "State",
+            "city": "City",
+            "status": "Status",
+            "action": "Action"
+        },
+        "validation": {
+            "codeRequired": "Location Code is required.",
+            "codeDuplicate": "Location Code already exists.",
+            "nameDuplicate": "Location Name already exists.",
+            "cityMax": "City can be at most 100 characters.",
+            "statusRequired": "Status is required.",
+            "countryRequired": "Country is required.",
+            "codeFormat": "Location Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, underscore, or dot.",
+            "nameRequired": "Location Name is required.",
+            "nameMin": "Location Name must be at least 3 characters."
+        }
+    },
+    "dashboard": {
+        "loading": "Loading dashboard...",
+        "loadError": "Unable to load dashboard.",
+        "payrollEyebrow": "PAYROLL / HR DASHBOARD",
+        "payrollTitle": "Overview of payroll operations and HR activities",
+        "essEyebrow": "EMPLOYEE SELF SERVICE DASHBOARD",
+        "essTitle": "Welcome back, here's what's happening with you",
+        "generated": "Generated",
+        "activeEmployees": "Active Employees",
+        "currentSnapshot": "Current Snapshot",
+        "currentCycle": "Current Cycle",
+        "requiresAction": "Requires Action",
+        "needsAttention": "Needs Attention",
+        "noPriorComparison": "No prior comparison",
+        "vsPrevious": "vs previous",
+        "completed": "Completed",
+        "inProgress": "In Progress",
+        "pending": "Pending",
+        "noPendingActions": "No pending actions.",
+        "noPayrollRuns": "No payroll runs available yet.",
+        "noPayslips": "No payslips generated yet.",
+        "currentMonth": "Current Month",
+        "complete": "Complete",
+        "view_payslips": "View Payslips",
+        "improveProfile": "Improve Profile",
+        "viewUpdate": "View / Update",
+        "download": "Download",
+        "action": "Action",
+        "verified": "Verified",
+        "draft": "Draft",
+        "approved": "Approved",
+        "status": "Status",
+        "declared": "Declared",
+        "profileChecklist": "Profile Checklist",
+        "departmentCost": "Department-wise Payroll Cost",
+        "costTrend": "Payroll Cost Trend",
+        "profileProgress": "Profile Progress",
+        "fallbackMessage": "This dashboard type is still using the foundation shell."
+    }
+}
