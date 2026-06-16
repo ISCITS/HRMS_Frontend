@@ -5,6 +5,8 @@ import ThemeRegistry from "@/components/shared/ThemeRegistry";
 import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "HRMS Template",
   description: "HRMS template using Next.js App Router and Material UI"
