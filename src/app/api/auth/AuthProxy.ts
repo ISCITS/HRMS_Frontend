@@ -211,3 +211,11 @@ export async function proxyLogout(strAccessToken: string, objRequestHeaders?: He
 
 
 
+
+export async function proxyResendOtp(objBody: unknown) {
+  return callBackendApi<ApiEnvelope<AuthSuccessData | GoogleMfaChallengeData>>("/api/v1/auth/resend-otp", {
+    method: "POST",
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_RESEND_OTP")
+  });
+}

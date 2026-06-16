@@ -26,6 +26,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryStructureLabels } from "@/features/salary-structures/hooks/useSalaryStructureLabels";
 import {
+  createEmptyFlexiMappingRow,
   createEmptyLineRow,
   createEmptyTextRow,
   createInitialSalaryStructureForm,
@@ -36,6 +37,7 @@ import { authHelpers } from "@/lib/auth";
 import type {
   SalaryStructureFormOptions,
   SalaryStructureFormValues,
+  SalaryStructureFlexiMappingFormValue,
   SalaryStructureLineFormValue,
   SalaryStructureTextFormValue
 } from "@/features/salary-structures/types";
@@ -55,14 +57,14 @@ function buildInputTestIdProps(strTestId: string, objExtraProps?: Record<string,
   return {
     "data-testid": strTestId,
     ...objExtraProps,
-  };
+  } as Record<string, string>;
 }
 
 function buildSelectDisplayTestIdProps(strTestId: string, objExtraProps?: Record<string, string>) {
   return {
     "data-testid": strTestId,
     ...objExtraProps,
-  };
+  } as Record<string, string>;
 }
 
 function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
@@ -82,6 +84,66 @@ function parseOptionalSelectNumber(strValue: string) {
 
 function formatSummaryAmount(fltValue: number) {
   return fltValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatOptionalLimit(fltValue: number | null) {
+  return fltValue == null ? "" : formatSummaryAmount(fltValue);
+}
+
+function isFlexiBasketLine(dicLine: SalaryStructureLineFormValue) {
+  return Boolean(
+    dicLine.blnIsFlexiBasketLine
+    || normalizeSelectToken(dicLine.strFlexiComponentRole) === "basket"
+    || normalizeSelectToken(dicLine.strFlexiComponentRole) === "flexibasket"
+    || normalizeSelectToken(dicLine.strComponentCode) === "flexipay"
+  );
+}
+
+function isFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return Boolean(
+    dicOption.blnIsFlexiBenefit
+    && dicOption.blnIncludedInCtc
+    && normalizeSelectToken(dicOption.strCode ?? "") !== "flexipay"
+  );
+}
+
+function getComponentMonthlyLimit(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return dicComponent?.decReimbursementMaxClaimMonthlyLimit
+    ?? dicComponent?.decMonthlyLimit
+    ?? dicComponent?.decFlexiMaxMonthlyAmount
+    ?? dicComponent?.decMonthlyLimitAmount
+    ?? null;
+}
+
+function getComponentAnnualLimit(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return dicComponent?.decReimbursementMaxClaimYearlyLimit
+    ?? dicComponent?.decAnnualLimit
+    ?? dicComponent?.decFlexiMaxYearlyAmount
+    ?? dicComponent?.decAnnualLimitAmount
+    ?? null;
+}
+
+function getComponentID(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return dicComponent?.intID ?? "";
+}
+
+function clampAmountToLimit(strValue: string | number | boolean, fltLimit: number | null) {
+  const strAmount = String(strValue ?? "").trim();
+  if (!strAmount) {
+    return "";
+  }
+  const fltAmount = Number(strAmount);
+  if (!Number.isFinite(fltAmount)) {
+    return strAmount;
+  }
+  if (fltLimit != null && fltAmount > fltLimit) {
+    return Number(fltLimit.toFixed(2)).toString();
+  }
+  return strAmount;
+}
+
+function sanitizeFormulaVariable(strCode: string) {
+  return strCode.trim().replace(/[^A-Za-z0-9_]/g, "_");
 }
 
 export default function SalaryStructureEditorPage({
@@ -135,7 +197,7 @@ export default function SalaryStructureEditorPage({
           if (!blnMounted) {
             return;
           }
-          setDicForm(toSalaryStructureFormValues(dicDetail));
+          setDicForm(recalculateSalaryStructureForm(toSalaryStructureFormValues(dicDetail)));
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => ({
@@ -169,6 +231,12 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
+  const lstFlexiEligibleComponents = useMemo(() => {
+    return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
+  }, [objFormOptions]);
+  const lstFlexiBasketLines = useMemo(() => {
+    return dicForm.lstComponents.filter(isFlexiBasketLine);
+  }, [dicForm.lstComponents]);
   const dicStructureSummary = useMemo(() => {
     return dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
@@ -176,7 +244,8 @@ export default function SalaryStructureEditorPage({
           return dicTotals;
         }
         const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-        const fltAmount = Number(dicLine.fltFixedAmount || 0);
+        const fltMonthlyAmount = Number(dicLine.fltFixedAmount || 0);
+        const fltYearlyAmount = fltMonthlyAmount * 12;
         const blnIncludedInCtc = Boolean(dicComponent?.blnIncludedInCtc ?? dicLine.blnIncludedInCtc);
         const blnIsFlexiBasket = Boolean(dicLine.blnIsFlexiBasketLine || dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY");
         const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
@@ -184,16 +253,16 @@ export default function SalaryStructureEditorPage({
         const blnIsEmployerContribution = Boolean(dicComponent?.blnIsEmployerContribution);
         const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
         if (blnIncludedInCtc) {
-          dicTotals.fltTotalCtc += fltAmount;
+          dicTotals.fltTotalCtc += fltYearlyAmount;
         }
         if (blnIsFlexiBasket || strFlexiType === "basket") {
-          dicTotals.fltFlexiBasket += fltAmount;
+          dicTotals.fltFlexiBasket += fltYearlyAmount;
         } else if (blnIsEmployerContribution || strCategory === "contribution" || strCategory === "employercontribution") {
-          dicTotals.fltEmployerContribution += fltAmount;
+          dicTotals.fltEmployerContribution += fltYearlyAmount;
         } else if (strGroup === "variablepay") {
-          dicTotals.fltVariablePay += fltAmount;
+          dicTotals.fltVariablePay += fltYearlyAmount;
         } else {
-          dicTotals.fltFixedPay += fltAmount;
+          dicTotals.fltFixedPay += fltYearlyAmount;
         }
         return dicTotals;
       },
@@ -312,10 +381,191 @@ export default function SalaryStructureEditorPage({
     }));
   }
 
+  function formatCalculatedLineAmount(fltValue: number) {
+    if (!Number.isFinite(fltValue)) {
+      return "";
+    }
+    return Number(fltValue.toFixed(2)).toString();
+  }
+
+  function parseLineAmount(objValue: string | number | boolean | "") {
+    const strValue = String(objValue ?? "").trim();
+    if (!strValue) {
+      return null;
+    }
+    const fltValue = Number(strValue);
+    return Number.isFinite(fltValue) ? fltValue : null;
+  }
+
+  function evaluateFormulaExpression(strExpression: string, dicVariables: Record<string, number>) {
+    const lstTokens = strExpression.match(/[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?|[()+\-*/,]/g) ?? [];
+    let intIndex = 0;
+
+    function peekToken() {
+      return lstTokens[intIndex] ?? "";
+    }
+
+    function consumeToken(strExpected?: string) {
+      const strToken = lstTokens[intIndex] ?? "";
+      if (strExpected && strToken !== strExpected) {
+        throw new Error("Unexpected token.");
+      }
+      intIndex += 1;
+      return strToken;
+    }
+
+    function parseExpression(): number {
+      let fltValue = parseTerm();
+      while (peekToken() === "+" || peekToken() === "-") {
+        const strOperator = consumeToken();
+        const fltRight = parseTerm();
+        fltValue = strOperator === "+" ? fltValue + fltRight : fltValue - fltRight;
+      }
+      return fltValue;
+    }
+
+    function parseTerm(): number {
+      let fltValue = parseFactor();
+      while (peekToken() === "*" || peekToken() === "/") {
+        const strOperator = consumeToken();
+        const fltRight = parseFactor();
+        fltValue = strOperator === "*"
+          ? fltValue * fltRight
+          : (fltRight !== 0 ? fltValue / fltRight : 0);
+      }
+      return fltValue;
+    }
+
+    function parseFunction(strFunctionName: string) {
+      consumeToken("(");
+      const lstArgs: number[] = [];
+      if (peekToken() !== ")") {
+        lstArgs.push(parseExpression());
+        while (peekToken() === ",") {
+          consumeToken(",");
+          lstArgs.push(parseExpression());
+        }
+      }
+      consumeToken(")");
+      if (strFunctionName === "min") {
+        return Math.min(...lstArgs);
+      }
+      if (strFunctionName === "max") {
+        return Math.max(...lstArgs);
+      }
+      if (strFunctionName === "round") {
+        return Number((lstArgs[0] ?? 0).toFixed(Math.trunc(lstArgs[1] ?? 0)));
+      }
+      throw new Error("Unsupported function.");
+    }
+
+    function parseFactor(): number {
+      const strToken = peekToken();
+      if (strToken === "+") {
+        consumeToken("+");
+        return parseFactor();
+      }
+      if (strToken === "-") {
+        consumeToken("-");
+        return -parseFactor();
+      }
+      if (strToken === "(") {
+        consumeToken("(");
+        const fltValue = parseExpression();
+        consumeToken(")");
+        return fltValue;
+      }
+      if (/^\d/.test(strToken)) {
+        consumeToken();
+        return Number(strToken);
+      }
+      if (/^[A-Za-z_]/.test(strToken)) {
+        const strName = consumeToken();
+        if (peekToken() === "(") {
+          return parseFunction(strName.toLowerCase());
+        }
+        if (typeof dicVariables[strName] === "undefined") {
+          throw new Error("Unknown variable.");
+        }
+        return dicVariables[strName];
+      }
+      throw new Error("Unexpected formula expression.");
+    }
+
+    try {
+      const fltValue = parseExpression();
+      return intIndex === lstTokens.length && Number.isFinite(fltValue) ? fltValue : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function recalculateDerivedLineAmounts(lstComponents: SalaryStructureLineFormValue[]) {
+    const dicComputedMonthlyByComponentID = new Map<number, number>();
+    const dicFormulaVariables: Record<string, number> = {};
+    return [...lstComponents]
+      .sort((dicLeft, dicRight) =>
+        Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
+        || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
+      )
+      .reduce((lstCalculated, dicLine) => {
+        let fltCalculatedAmount = parseLineAmount(dicLine.fltFixedAmount);
+        const strValueSource = normalizeSelectToken(dicLine.strValueSource);
+
+        if (strValueSource === "percentage") {
+          const fltPercentage = parseLineAmount(dicLine.fltPercentageValue);
+          const fltBasisAmount = dicComputedMonthlyByComponentID.get(Number(dicLine.intBasisComponentID));
+          fltCalculatedAmount = fltPercentage !== null && fltBasisAmount !== undefined
+            ? (fltBasisAmount * fltPercentage) / 100
+            : null;
+        } else if (strValueSource === "formula") {
+          fltCalculatedAmount = dicLine.strFormulaExpression.trim()
+            ? evaluateFormulaExpression(dicLine.strFormulaExpression, dicFormulaVariables)
+            : null;
+        }
+
+        const dicCalculatedLine = strValueSource === "percentage" || strValueSource === "formula"
+          ? { ...dicLine, fltFixedAmount: fltCalculatedAmount !== null ? formatCalculatedLineAmount(fltCalculatedAmount) : "" }
+          : dicLine;
+        const fltResolvedAmount = parseLineAmount(dicCalculatedLine.fltFixedAmount);
+        if (dicCalculatedLine.intSalaryComponentID !== "" && fltResolvedAmount !== null) {
+          dicComputedMonthlyByComponentID.set(Number(dicCalculatedLine.intSalaryComponentID), fltResolvedAmount);
+          const strRawCode = dicCalculatedLine.strComponentCode.trim();
+          const strSanitizedCode = sanitizeFormulaVariable(strRawCode);
+          if (strRawCode) {
+            dicFormulaVariables[strRawCode] = fltResolvedAmount;
+            dicFormulaVariables[strRawCode.toLowerCase()] = fltResolvedAmount;
+          }
+          if (strSanitizedCode) {
+            dicFormulaVariables[strSanitizedCode] = fltResolvedAmount;
+            dicFormulaVariables[strSanitizedCode.toLowerCase()] = fltResolvedAmount;
+          }
+        }
+        return lstCalculated.map((dicExistingLine) =>
+          dicExistingLine.strRowID === dicCalculatedLine.strRowID ? dicCalculatedLine : dicExistingLine
+        );
+      }, lstComponents);
+  }
+
+  function recalculateSalaryStructureForm(dicValues: SalaryStructureFormValues) {
+    return {
+      ...dicValues,
+      lstComponents: recalculateDerivedLineAmounts(dicValues.lstComponents)
+    };
+  }
+
+  function getAutofilledFlexiYearlyAmount(strMonthlyAmount: string | number | boolean, fltAnnualLimit: number | null) {
+    const fltMonthlyAmount = parseLineAmount(strMonthlyAmount);
+    if (fltMonthlyAmount === null) {
+      return "";
+    }
+    const fltYearlyAmount = fltMonthlyAmount * 12;
+    return clampAmountToLimit(formatCalculatedLineAmount(fltYearlyAmount), fltAnnualLimit);
+  }
+
   function updateLineRow(strRowID: string, strField: keyof SalaryStructureLineFormValue, objValue: string | number | boolean) {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstComponents: dicPrevious.lstComponents.map((dicLine) => {
+    setDicForm((dicPrevious) => {
+      const lstUpdatedComponents: SalaryStructureLineFormValue[] = dicPrevious.lstComponents.map((dicLine) => {
         if (dicLine.strRowID !== strRowID) {
           return dicLine;
         }
@@ -330,7 +580,8 @@ export default function SalaryStructureEditorPage({
             blnIsFlexiBasketLine: blnIsFlexiBasket,
             strFlexiComponentRole: blnIsFlexiBasket ? "basket" : (dicComponent?.strFlexiComponentType ?? "normal"),
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
-            strComponentCategory: ""
+            strComponentCategory: "",
+            lstFlexiMappings: blnIsFlexiBasket ? dicLine.lstFlexiMappings : []
           };
         }
         if (strField === "strValueSource") {
@@ -347,7 +598,6 @@ export default function SalaryStructureEditorPage({
             return {
               ...dicLine,
               strValueSource: "Percentage",
-              fltFixedAmount: "",
               strFormulaExpression: ""
             };
           }
@@ -356,12 +606,16 @@ export default function SalaryStructureEditorPage({
             strValueSource: "Formula",
             fltFixedAmount: "",
             fltPercentageValue: "",
-            intBasisComponentID: ""
+            intBasisComponentID: "" as const
           };
         }
-        return { ...dicLine, [strField]: objValue };
-      })
-    }));
+        return { ...dicLine, [strField]: objValue } as SalaryStructureLineFormValue;
+      });
+      return {
+        ...dicPrevious,
+        lstComponents: recalculateDerivedLineAmounts(lstUpdatedComponents)
+      };
+    });
   }
 
   function handleAddLanguageRow() {
@@ -453,6 +707,76 @@ export default function SalaryStructureEditorPage({
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
+  function updateFlexiMappingRow(
+    strLineRowID: string,
+    strMappingRowID: string,
+    strField: keyof SalaryStructureFlexiMappingFormValue,
+    objValue: string | number | boolean
+  ) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstComponents: dicPrevious.lstComponents.map((dicLine) => {
+        if (dicLine.strRowID !== strLineRowID) {
+          return dicLine;
+        }
+        return {
+          ...dicLine,
+          lstFlexiMappings: dicLine.lstFlexiMappings.map((dicMapping) => {
+            if (dicMapping.strRowID !== strMappingRowID) {
+              return dicMapping;
+            }
+            if (strField === "intFlexiComponentID") {
+              const dicComponent = dicComponentByID.get(Number(objValue));
+              const strMonthlyAmount = clampAmountToLimit(dicMapping.fltDefaultAmount, getComponentMonthlyLimit(dicComponent));
+              return {
+                ...dicMapping,
+                intFlexiComponentID: parseOptionalSelectNumber(String(objValue)),
+                strFlexiComponentCode: dicComponent?.strCode ?? "",
+                strFlexiComponentName: dicComponent?.strLabel ?? "",
+                fltDefaultAmount: strMonthlyAmount,
+                fltMaxAmount: strMonthlyAmount
+                  ? getAutofilledFlexiYearlyAmount(strMonthlyAmount, getComponentAnnualLimit(dicComponent))
+                  : clampAmountToLimit(dicMapping.fltMaxAmount, getComponentAnnualLimit(dicComponent))
+              };
+            }
+            if (strField === "fltDefaultAmount") {
+              const dicComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
+              const strMonthlyAmount = clampAmountToLimit(objValue, getComponentMonthlyLimit(dicComponent));
+              return {
+                ...dicMapping,
+                fltDefaultAmount: strMonthlyAmount,
+                fltMaxAmount: getAutofilledFlexiYearlyAmount(strMonthlyAmount, getComponentAnnualLimit(dicComponent))
+              };
+            }
+            if (strField === "fltMaxAmount") {
+              const dicComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
+              return { ...dicMapping, fltMaxAmount: clampAmountToLimit(objValue, getComponentAnnualLimit(dicComponent)) };
+            }
+            return { ...dicMapping, [strField]: objValue };
+          })
+        };
+      })
+    }));
+  }
+
+  function handleAddFlexiMappingRow(strLineRowID: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstComponents: dicPrevious.lstComponents.map((dicLine) => dicLine.strRowID === strLineRowID
+        ? { ...dicLine, lstFlexiMappings: [...dicLine.lstFlexiMappings, createEmptyFlexiMappingRow()] }
+        : dicLine)
+    }));
+  }
+
+  function handleRemoveFlexiMappingRow(strLineRowID: string, strMappingRowID: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstComponents: dicPrevious.lstComponents.map((dicLine) => dicLine.strRowID === strLineRowID
+        ? { ...dicLine, lstFlexiMappings: dicLine.lstFlexiMappings.filter((dicMapping) => dicMapping.strRowID !== strMappingRowID) }
+        : dicLine)
+    }));
+  }
+
   function handleAddLineRow() {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
@@ -465,6 +789,56 @@ export default function SalaryStructureEditorPage({
       ...dicPrevious,
       lstComponents: dicPrevious.lstComponents.length === 1 ? dicPrevious.lstComponents : dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
     }));
+  }
+
+  function validateFlexiMappings() {
+    for (const dicLine of dicForm.lstComponents.filter(isFlexiBasketLine)) {
+      const setFlexiComponentIDs = new Set<number>();
+      let fltTotalDefaultAmount = 0;
+      let fltTotalYearlyAmount = 0;
+      const fltBasketAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
+      const fltBasketYearlyAmount = fltBasketAmount * 12;
+
+      for (const dicMapping of dicLine.lstFlexiMappings) {
+        if (dicMapping.intFlexiComponentID === "") {
+          continue;
+        }
+
+        const intFlexiComponentID = Number(dicMapping.intFlexiComponentID);
+        if (setFlexiComponentIDs.has(intFlexiComponentID)) {
+          return t("duplicate_flexi_components_not_allowed", "Duplicate flexi components are not allowed.");
+        }
+        setFlexiComponentIDs.add(intFlexiComponentID);
+
+        const fltDefaultAmount = parseLineAmount(dicMapping.fltDefaultAmount);
+        const fltMaxAmount = parseLineAmount(dicMapping.fltMaxAmount);
+        const dicComponent = dicComponentByID.get(intFlexiComponentID);
+        const fltMonthlyLimit = getComponentMonthlyLimit(dicComponent);
+        const fltAnnualLimit = getComponentAnnualLimit(dicComponent);
+        if (fltDefaultAmount === null || fltDefaultAmount < 0) {
+          return t("flexi_default_amount_non_negative", "Flexi default amount must be 0 or greater.");
+        }
+        if (fltMaxAmount === null || fltMaxAmount < 0) {
+          return t("flexi_yearly_amount_non_negative", "Flexi yearly amount must be 0 or greater.");
+        }
+        if (fltMonthlyLimit != null && fltDefaultAmount > fltMonthlyLimit) {
+          return t("flexi_monthly_amount_exceeds_limit", "Flexi monthly amount cannot exceed the salary component monthly limit.");
+        }
+        if (fltAnnualLimit != null && fltMaxAmount > fltAnnualLimit) {
+          return t("flexi_yearly_amount_exceeds_limit", "Flexi yearly amount cannot exceed the salary component annual limit.");
+        }
+        fltTotalDefaultAmount += fltDefaultAmount;
+        fltTotalYearlyAmount += fltMaxAmount;
+      }
+
+      if (fltTotalDefaultAmount > fltBasketAmount) {
+        return t("flexi_default_total_exceeds_basket", "Total flexi default amount cannot exceed Flexi Basket amount.");
+      }
+      if (fltTotalYearlyAmount > fltBasketYearlyAmount) {
+        return t("flexi_yearly_total_exceeds_basket", "Total flexi yearly amount cannot exceed Flexi Basket yearly amount.");
+      }
+    }
+    return "";
   }
 
   async function handleSave() {
@@ -483,6 +857,11 @@ export default function SalaryStructureEditorPage({
     const intFlexiBasketCount = lstSelectedComponents.filter((dicLine) => dicLine.strComponentCode === "FLEXI_PAY" || dicLine.blnIsFlexiBasketLine).length;
     if (intFlexiBasketCount > 1) {
       setStrError(t("single_flexi_pay_only", "Only one FLEXI_PAY component is allowed in one salary structure."));
+      return;
+    }
+    const strFlexiMappingError = validateFlexiMappings();
+    if (strFlexiMappingError) {
+      setStrError(strFlexiMappingError);
       return;
     }
     setBlnSaving(true);
@@ -538,21 +917,21 @@ export default function SalaryStructureEditorPage({
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "22px",
+          p: { xs: 1.5, md: 2 },
           border: "1px solid rgba(148,163,184,0.18)",
           background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)"
         }}
       >
-        <Stack spacing={2}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+        <Stack spacing={1.25}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.25}>
             <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+              <Typography sx={{ fontSize: { xs: "1.35rem", md: "1.5rem" }, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1.15 }}>
                 {strMode === "edit"
                   ? t("edit_salary_structure", "Edit Salary Structure")
                   : t("add_salary_structure", "Add Salary Structure")}
               </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+              <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.9rem", lineHeight: 1.35 }}>
                 {t(
                   "editor_description",
                   "Define structure header, company scope dates, multilingual text, and component-wise calculation rules in one workflow."
@@ -567,8 +946,8 @@ export default function SalaryStructureEditorPage({
                 onClick={() => objRouter.push("/salary-structures")}
                 sx={{
                   borderRadius: "14px",
-                  height: 38,
-                  minHeight: 38,
+                  height: 34,
+                  minHeight: 34,
                   py: 0,
                   px: 2.25,
                   minWidth: 100,
@@ -593,8 +972,8 @@ export default function SalaryStructureEditorPage({
                 disabled={!blnCanSave || blnSaving}
                 sx={{
                   borderRadius: "14px",
-                  height: 38,
-                  minHeight: 38,
+                  height: 34,
+                  minHeight: 34,
                   py: 0,
                   px: 2.25,
                   minWidth: 100,
@@ -620,92 +999,525 @@ export default function SalaryStructureEditorPage({
         </Stack>
       </Paper>
 
-      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
-          1. {t("structure_header", "Structure Header")}
-        </Typography>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-          <TextField
-            label={t("structure_code", "Structure Code")}
-            value={dicForm.strStructureCode}
-            onChange={(objEvent) => updateRootField("strStructureCode", objEvent.target.value.toUpperCase())}
-            disabled={blnFieldDisabled}
-            fullWidth
-            data-testid="salary-structures.editor.structure-code.input"
-            inputProps={buildInputTestIdProps("salary-structures.editor.structure-code.input")}
-          />
-          <TextField
-            label={t("structure_name", "Structure Name")}
-            value={dicForm.strStructureName}
-            onChange={(objEvent) => syncDefaultStructureText(objEvent.target.value)}
-            disabled={blnFieldDisabled}
-            fullWidth
-            data-testid="salary-structures.editor.structure-name.input"
-            inputProps={buildInputTestIdProps("salary-structures.editor.structure-name.input")}
-          />
-        </Box>
-      </Paper>
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+        <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
+            1. {t("structure_header", "Structure Header")}
+          </Typography>
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
+            <TextField
+              label={t("structure_code", "Structure Code")}
+              value={dicForm.strStructureCode}
+              onChange={(objEvent) => updateRootField("strStructureCode", objEvent.target.value.toUpperCase())}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-structures.editor.structure-code.input"
+              inputProps={buildInputTestIdProps("salary-structures.editor.structure-code.input")}
+            />
+            <TextField
+              label={t("structure_name", "Structure Name")}
+              value={dicForm.strStructureName}
+              onChange={(objEvent) => syncDefaultStructureText(objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-structures.editor.structure-name.input"
+              inputProps={buildInputTestIdProps("salary-structures.editor.structure-name.input")}
+            />
+          </Box>
+        </Paper>
 
-      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
-          2. {t("scope_and_dates", "Scope and Dates")}
-        </Typography>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField
-            select
-            label={t("currency", "Currency")}
-            value={dicForm.strCurrencyCode}
-            onChange={(objEvent) => updateRootField("strCurrencyCode", objEvent.target.value)}
-            disabled={blnFieldDisabled}
-            fullWidth
-            data-testid="salary-structures.editor.currency.select"
-            inputProps={buildInputTestIdProps("salary-structures.editor.currency.select")}
-            SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.currency.select") }}
-          >
-            {(objFormOptions?.lstCurrencies ?? []).map((strCurrencyCode) => (
-              <MenuItem key={strCurrencyCode} value={strCurrencyCode} data-testid={`salary-structures.editor.currency.${normalizeSelectToken(strCurrencyCode)}.option`}>{strCurrencyCode}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            type="date"
-            label={t("effective_from", "Effective From")}
-            value={dicForm.dtEffectiveFrom}
-            onChange={(objEvent) => updateRootField("dtEffectiveFrom", objEvent.target.value)}
-            InputLabelProps={{ shrink: true }}
-            disabled={blnFieldDisabled}
-            fullWidth
-            data-testid="salary-structures.editor.effective-from.input"
-            inputProps={buildInputTestIdProps("salary-structures.editor.effective-from.input")}
-          />
-          <TextField
-            type="date"
-            label={t("effective_to", "Effective To")}
-            value={dicForm.dtEffectiveTo}
-            onChange={(objEvent) => updateRootField("dtEffectiveTo", objEvent.target.value)}
-            InputLabelProps={{ shrink: true }}
-            disabled={blnFieldDisabled}
-            fullWidth
-            data-testid="salary-structures.editor.effective-to.input"
-            inputProps={buildInputTestIdProps("salary-structures.editor.effective-to.input")}
-          />
-        </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
-          <FormControlLabel
-            control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-structures.editor.default-structure.switch")} />}
-            label={t("default_structure", "Default Structure")}
-          />
-          <FormControlLabel
-            control={<ActiveStatusSwitch testId="salary-structures.editor.active-structure.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-            label={t("active_structure", "Active Structure")}
-          />
+        <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
+            2. {t("scope_and_dates", "Scope and Dates")}
+          </Typography>
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" } }}>
+            <TextField
+              select
+              label={t("currency", "Currency")}
+              value={dicForm.strCurrencyCode}
+              onChange={(objEvent) => updateRootField("strCurrencyCode", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-structures.editor.currency.select"
+              inputProps={buildInputTestIdProps("salary-structures.editor.currency.select")}
+              SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.currency.select") }}
+            >
+              {(objFormOptions?.lstCurrencies ?? []).map((strCurrencyCode) => (
+                <MenuItem key={strCurrencyCode} value={strCurrencyCode} data-testid={`salary-structures.editor.currency.${normalizeSelectToken(strCurrencyCode)}.option`}>{strCurrencyCode}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              type="date"
+              label={t("effective_from", "Effective From")}
+              value={dicForm.dtEffectiveFrom}
+              onChange={(objEvent) => updateRootField("dtEffectiveFrom", objEvent.target.value)}
+              InputLabelProps={{ shrink: true }}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-structures.editor.effective-from.input"
+              inputProps={buildInputTestIdProps("salary-structures.editor.effective-from.input")}
+            />
+            <TextField
+              type="date"
+              label={t("effective_to", "Effective To")}
+              value={dicForm.dtEffectiveTo}
+              onChange={(objEvent) => updateRootField("dtEffectiveTo", objEvent.target.value)}
+              InputLabelProps={{ shrink: true }}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-structures.editor.effective-to.input"
+              inputProps={buildInputTestIdProps("salary-structures.editor.effective-to.input")}
+            />
+          </Box>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
+            <FormControlLabel
+              control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-structures.editor.default-structure.switch")} />}
+              label={t("default_structure", "Default Structure")}
+            />
+            <FormControlLabel
+              control={<ActiveStatusSwitch testId="salary-structures.editor.active-structure.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+              label={t("active_structure", "Active Structure")}
+            />
+          </Stack>
+        </Paper>
+      </Box>
+
+      <Box>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.25 }}>
+          <Box>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              3. {t("component_line_configuration", "Component Line Configuration")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
+              {t(
+                "component_line_configuration_help",
+                "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
+              )}
+            </Typography>
+          </Box>
+          <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
+            data-testid="salary-structures.editor.add-line.button"
+            onClick={handleAddLineRow} disabled={blnFieldDisabled}
+            sx={{
+              borderRadius: "14px",
+              height: 38,
+              minHeight: 38,
+              py: 0,
+              px: 2.25,
+              minWidth: 100,
+              fontSize: "0.9rem",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              "& .MuiButton-startIcon": {
+                mr: 0.75,
+                "& svg": {
+                  fontSize: "1rem"
+                }
+              }
+            }}>
+            {t("add_line", "Add Line")}
+          </Button>
         </Stack>
-      </Paper>
+
+        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" }, mb: 1.5 }}>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("total_ctc", "Total CTC")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltTotalCtc)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("fixed_pay", "Fixed Pay")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFixedPay)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("variable_pay", "Variable Pay")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltVariablePay)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("flexi_basket", "Flexi Basket")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFlexiBasket)}</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("employer_contributions", "Employer Contributions")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltEmployerContribution)}</Typography>
+          </Paper>
+        </Box>
+
+        <Box className={styles.tableCard}>
+          <Box className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>{t("line_order", "Line Order")}</th>
+                  <th>{t("salary_component", "Salary Component")}</th>
+                  <th>{t("flexi_role", "Flexi Role")}</th>
+                  <th>{t("value_source", "Value Source")}</th>
+                  <th>{t("monthly_amount", "Monthly Amount")}</th>
+                  <th>{t("yearly_amount", "Yearly Amount")}</th>
+                  <th>{t("percentage_value", "% Value")}</th>
+                  <th>{t("basis_component", "Basis Component")}</th>
+                  <th>{t("formula", "Formula")}</th>
+                  <th>{t("min_amount", "Min")}</th>
+                  <th>{t("max_amount", "Max")}</th>
+                  <th>{t("mandatory", "Mandatory")}</th>
+                  <th>{t("active", "Active")}</th>
+                  <th>{t("action", "Action")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dicForm.lstComponents.map((dicLine) => {
+                  const fltLineMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
+                  const strLineYearlyAmount = formatSummaryAmount(fltLineMonthlyAmount * 12);
+                  return (
+                  <tr key={dicLine.strRowID}>
+                    <td>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={dicLine.intLineOrder}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
+                        disabled={blnFieldDisabled}
+                        data-testid="salary-structures.editor.line.line-order.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ width: 86 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        select
+                        size="small"
+                        value={dicLine.intSalaryComponentID}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                        disabled={blnFieldDisabled}
+                        data-testid="salary-structures.editor.line.salary-component.select"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
+                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
+                        sx={{ width: 260 }}
+                      >
+                        {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
+                          <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                            {dicOption.strLabel}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </td>
+                    <td>
+                      <Typography sx={{ width: 76, fontSize: "0.8rem", fontWeight: dicLine.blnIsFlexiBasketLine ? 800 : 600, color: dicLine.blnIsFlexiBasketLine ? "#0f766e" : "#64748b" }}>
+                        {dicLine.blnIsFlexiBasketLine ? t("flexi_basket", "Flexi Basket") : t("normal_component", "Normal")}
+                      </Typography>
+                    </td>
+                    <td>
+                      <TextField
+                        select
+                        size="small"
+                        value={dicLine.strValueSource}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
+                        disabled={blnFieldDisabled}
+                        data-testid="salary-structures.editor.line.value-source.select"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID })}
+                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID }) }}
+                        sx={{ minWidth: 150 }}
+                      >
+                        {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
+                          <MenuItem key={strValueSource} value={strValueSource} data-testid={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
+                        ))}
+                      </TextField>
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={dicLine.fltFixedAmount}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Fixed"}
+                        data-testid="salary-structures.editor.line.fixed-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 130 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={strLineYearlyAmount}
+                        disabled
+                        data-testid="salary-structures.editor.line.yearly-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 140 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={dicLine.fltPercentageValue}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltPercentageValue", objEvent.target.value)}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
+                        data-testid="salary-structures.editor.line.percentage-value.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.percentage-value.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ width: 88 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        select
+                        size="small"
+                        value={dicLine.intBasisComponentID}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
+                        data-testid="salary-structures.editor.line.basis-component.select"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
+                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
+                        sx={{ minWidth: 210 }}
+                      >
+                        <MenuItem value="" data-testid="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
+                        {dicForm.lstComponents
+                          .filter((dicBasis) => dicBasis.strRowID !== dicLine.strRowID && dicBasis.intSalaryComponentID !== "")
+                          .map((dicBasis) => (
+                            <MenuItem key={dicBasis.strRowID} value={Number(dicBasis.intSalaryComponentID)} data-testid={`salary-structures.editor.line.basis-component.${normalizeSelectToken(dicBasis.strComponentCode || dicBasis.strComponentName)}.option`}>
+                              {dicBasis.strComponentCode ? `${dicBasis.strComponentCode} - ${dicBasis.strComponentName}` : dicBasis.strComponentName}
+                            </MenuItem>
+                          ))}
+                      </TextField>
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={dicLine.strFormulaExpression}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
+                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Formula"}
+                        data-testid="salary-structures.editor.line.formula.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 210 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={dicLine.fltMinAmount}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMinAmount", objEvent.target.value)}
+                        disabled={blnFieldDisabled}
+                        data-testid="salary-structures.editor.line.min-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.min-amount.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 120 }}
+                      />
+                    </td>
+                    <td>
+                      <TextField
+                        size="small"
+                        value={dicLine.fltMaxAmount}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMaxAmount", objEvent.target.value)}
+                        disabled={blnFieldDisabled}
+                        data-testid="salary-structures.editor.line.max-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.max-amount.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 120 }}
+                      />
+                    </td>
+                    <td>
+                      <Switch
+                        checked={dicLine.blnIsMandatory}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsMandatory", objEvent.target.checked)}
+                        disabled={blnFieldDisabled}
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.mandatory.switch", { "data-row-key": dicLine.strRowID })}
+                      />
+                    </td>
+                    <td>
+                      <ActiveStatusSwitch
+                        blnIsActive={dicLine.blnIsActive}
+                        onChange={(blnChecked) => updateLineRow(dicLine.strRowID, "blnIsActive", blnChecked)}
+                        disabled={blnFieldDisabled}
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.active.switch", { "data-row-key": dicLine.strRowID })}
+                      />
+                    </td>
+                    <td>
+                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLineRow(dicLine.strRowID)} disabled={blnFieldDisabled} data-testid="salary-structures.editor.line.remove.button" data-row-key={dicLine.strRowID}>
+                        {t("remove_button", "Remove")}
+                      </Button>
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Box>
+        </Box>
+
+        {lstFlexiBasketLines.length > 0 ? (
+          <Box sx={{ mt: 2.5 }}>
+            <Stack spacing={1.5}>
+              {lstFlexiBasketLines.map((dicLine) => {
+                const fltBasketMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
+                const fltBasketYearlyAmount = fltBasketMonthlyAmount * 12;
+                const fltAllocatedMonthlyAmount = dicLine.lstFlexiMappings.reduce((fltTotal, dicMapping) => fltTotal + (parseLineAmount(dicMapping.fltDefaultAmount) ?? 0), 0);
+                const fltAllocatedYearlyAmount = dicLine.lstFlexiMappings.reduce((fltTotal, dicMapping) => fltTotal + (parseLineAmount(dicMapping.fltMaxAmount) ?? 0), 0);
+                const fltPendingMonthlyAmount = Math.max(fltBasketMonthlyAmount - fltAllocatedMonthlyAmount, 0);
+                const fltPendingYearlyAmount = Math.max(fltBasketYearlyAmount - fltAllocatedYearlyAmount, 0);
+                const dicFlexiPayComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+                const intResidualComponentID = Number(dicFlexiPayComponent?.intResidualComponentID);
+                const dicResidualComponent = Number.isFinite(intResidualComponentID) && intResidualComponentID > 0
+                  ? (dicComponentByID.get(intResidualComponentID)
+                    ?? (objFormOptions?.lstSalaryComponents ?? []).find((dicComponent) => Number(getComponentID(dicComponent)) === intResidualComponentID))
+                  : undefined;
+                const strResidualComponentName = dicResidualComponent?.strLabel
+                  ?? (dicFlexiPayComponent?.intResidualComponentID ? t("residual_component_not_found", "Residual component not found") : "")
+                  ?? "";
+                return (
+                <Box key={dicLine.strRowID}>
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.25 }}>
+                    4. {t("flexi_component_mapping", "Flexi Component Mapping")}
+                  </Typography>
+                  <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.25 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+                          <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("residual_component", "Flexi Basket")}</Typography>
+                          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{'Flexi Pay'}</Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+                          <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("flexi_basket_amount", "Flexi Basket Amount")}</Typography>
+                          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(parseLineAmount(dicLine.fltFixedAmount) ?? 0)}</Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
+                          <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("pending_allocation", "Pending Allocation")}</Typography>
+                          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                            {formatSummaryAmount(fltPendingMonthlyAmount)} / {formatSummaryAmount(fltPendingYearlyAmount)}
+                          </Typography>
+                        </Paper>
+                      </Box>
+                    </Box>
+                    <Button
+                      className={styles.primaryButton}
+                      startIcon={<AddRoundedIcon />}
+                      onClick={() => handleAddFlexiMappingRow(dicLine.strRowID)}
+                      disabled={blnFieldDisabled || lstFlexiEligibleComponents.length === 0}
+                      data-testid="salary-structures.editor.flexi-mapping.add.button"
+                      data-row-key={dicLine.strRowID}
+                      sx={{ alignSelf: { xs: "stretch", md: "center" }, minHeight: 38 }}
+                    >
+                      {t("add_flexi_component", "Add Flexi Component")}
+                    </Button>
+                  </Stack>
+                  <Box className={styles.tableCard}>
+                  <Box className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>{t("flexi_component", "Flexi Component")}</th>
+                          <th>{t("monthly_amount", "Monthly Amount")}</th>
+                          <th>{t("yearly_amount", "Yearly Amount")}</th>
+                          <th>{t("active", "Active")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dicLine.lstFlexiMappings.length === 0 ? (
+                          <tr>
+                            <td className={styles.emptyState} colSpan={4}>{t("no_flexi_components_mapped", "No flexi components mapped.")}</td>
+                          </tr>
+                        ) : dicLine.lstFlexiMappings.map((dicMapping) => {
+                          const dicFlexiComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
+                          const fltMonthlyLimit = getComponentMonthlyLimit(dicFlexiComponent);
+                          const fltAnnualLimit = getComponentAnnualLimit(dicFlexiComponent);
+                          return (
+                          <tr key={dicMapping.strRowID}>
+                            <td>
+                              <TextField
+                                select
+                                size="small"
+                                value={dicMapping.intFlexiComponentID}
+                                onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", objEvent.target.value)}
+                                disabled={blnFieldDisabled}
+                                data-testid="salary-structures.editor.flexi-mapping.component.select"
+                                inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID })}
+                                SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID }) }}
+                                sx={{ minWidth: 260 }}
+                              >
+                                <MenuItem value="" data-testid="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
+                                {lstFlexiEligibleComponents.map((dicOption) => (
+                                  <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                                    {dicOption.strLabel}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            </td>
+                            <td>
+                              <TextField
+                                size="small"
+                                value={dicMapping.fltDefaultAmount}
+                                onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltDefaultAmount", objEvent.target.value)}
+                                disabled={blnFieldDisabled}
+                                helperText={fltMonthlyLimit != null ? `${t("monthly_limit_amount", "Monthly Limit Amount")}: ${formatOptionalLimit(fltMonthlyLimit)}` : " "}
+                                data-testid="salary-structures.editor.flexi-mapping.default-amount.input"
+                                inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.default-amount.input", {
+                                  "data-row-key": dicMapping.strRowID,
+                                  ...(fltMonthlyLimit != null ? { max: String(fltMonthlyLimit) } : {})
+                                })}
+                                sx={{ minWidth: 150 }}
+                              />
+                            </td>
+                            <td>
+                              <TextField
+                                size="small"
+                                value={dicMapping.fltMaxAmount}
+                                onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltMaxAmount", objEvent.target.value)}
+                                disabled={blnFieldDisabled}
+                                helperText={fltAnnualLimit != null ? `${t("annual_limit_amount", "Annual Limit Amount")}: ${formatOptionalLimit(fltAnnualLimit)}` : " "}
+                                data-testid="salary-structures.editor.flexi-mapping.max-amount.input"
+                                inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.max-amount.input", {
+                                  "data-row-key": dicMapping.strRowID,
+                                  ...(fltAnnualLimit != null ? { max: String(fltAnnualLimit) } : {})
+                                })}
+                                sx={{ minWidth: 150 }}
+                              />
+                            </td>
+                            <td>
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 160 }}>
+                                <ActiveStatusSwitch
+                                  blnIsActive={dicMapping.blnIsActive}
+                                  onChange={(blnChecked) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "blnIsActive", blnChecked)}
+                                  disabled={blnFieldDisabled}
+                                  inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.active.switch", { "data-row-key": dicMapping.strRowID })}
+                                />
+                                <Button
+                                  color="error"
+                                  startIcon={<DeleteOutlineRoundedIcon />}
+                                  onClick={() => handleRemoveFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID)}
+                                  disabled={blnFieldDisabled}
+                                  data-testid="salary-structures.editor.flexi-mapping.remove.button"
+                                  data-row-key={dicMapping.strRowID}
+                                >
+                                  {t("remove_button", "Remove")}
+                                </Button>
+                              </Stack>
+                            </td>
+                          </tr>
+                          );
+                        })}
+                        <tr>
+                          <td>
+                            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                              {t("residual_component", "Residual Component")}
+                            </Typography>
+                            <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>
+                              {strResidualComponentName }
+                            </Typography>
+                          </td>
+                          <td>{formatSummaryAmount(fltPendingMonthlyAmount)}</td>
+                          <td>{formatSummaryAmount(fltPendingYearlyAmount)}</td>
+                          <td />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </Box>
+                  </Box>
+                </Box>
+                );
+              })}
+            </Stack>
+          </Box>
+        ) : null}
+      </Box>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              3. {t("multilingual_text", "Multilingual Text")}
+              5. {t("multilingual_text", "Multilingual Text")}
             </Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
               {t(
@@ -795,248 +1607,6 @@ export default function SalaryStructureEditorPage({
           ))}
         </Stack>
       </Paper>
-
-      <Box>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              4. {t("component_line_configuration", "Component Line Configuration")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
-              {t(
-                "component_line_configuration_help",
-                "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
-              )}
-            </Typography>
-          </Box>
-          <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
-            data-testid="salary-structures.editor.add-line.button"
-            onClick={handleAddLineRow} disabled={blnFieldDisabled}
-            sx={{
-              borderRadius: "14px",
-              height: 38,
-              minHeight: 38,
-              py: 0,
-              px: 2.25,
-              minWidth: 100,
-              fontSize: "0.9rem",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              "& .MuiButton-startIcon": {
-                mr: 0.75,
-                "& svg": {
-                  fontSize: "1rem"
-                }
-              }
-            }}>
-            {t("add_line", "Add Line")}
-          </Button>
-        </Stack>
-
-        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" }, mb: 1.5 }}>
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("total_ctc", "Total CTC")}</Typography>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltTotalCtc)}</Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("fixed_pay", "Fixed Pay")}</Typography>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFixedPay)}</Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("variable_pay", "Variable Pay")}</Typography>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltVariablePay)}</Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("flexi_basket", "Flexi Basket")}</Typography>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltFlexiBasket)}</Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "16px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{t("employer_contributions", "Employer Contributions")}</Typography>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{formatSummaryAmount(dicStructureSummary.fltEmployerContribution)}</Typography>
-          </Paper>
-        </Box>
-
-        <Box className={styles.tableCard}>
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t("line_order", "Line Order")}</th>
-                  <th>{t("salary_component", "Salary Component")}</th>
-                  <th>{t("flexi_role", "Flexi Role")}</th>
-                  <th>{t("value_source", "Value Source")}</th>
-                  <th>{t("fixed_amount", "Fixed Amount")}</th>
-                  <th>{t("percentage_value", "% Value")}</th>
-                  <th>{t("basis_component", "Basis Component")}</th>
-                  <th>{t("formula", "Formula")}</th>
-                  <th>{t("min_amount", "Min")}</th>
-                  <th>{t("max_amount", "Max")}</th>
-                  <th>{t("mandatory", "Mandatory")}</th>
-                  <th>{t("active", "Active")}</th>
-                  <th>{t("action", "Action")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dicForm.lstComponents.map((dicLine) => (
-                  <tr key={dicLine.strRowID}>
-                    <td>
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={dicLine.intLineOrder}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.line-order.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 110 }}
-                      />
-                    </td>
-                    <td>
-                      <TextField
-                        select
-                        size="small"
-                        value={dicLine.intSalaryComponentID}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.salary-component.select"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
-                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ minWidth: 220 }}
-                      >
-                        {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
-                          <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                            {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <Typography sx={{ minWidth: 110, fontSize: "0.82rem", fontWeight: dicLine.blnIsFlexiBasketLine ? 800 : 600, color: dicLine.blnIsFlexiBasketLine ? "#0f766e" : "#64748b" }}>
-                        {dicLine.blnIsFlexiBasketLine ? t("flexi_basket", "Flexi Basket") : t("normal_component", "Normal")}
-                      </Typography>
-                    </td>
-                    <td>
-                      <TextField
-                        select
-                        size="small"
-                        value={dicLine.strValueSource}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.value-source.select"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID })}
-                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ minWidth: 150 }}
-                      >
-                        {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
-                          <MenuItem key={strValueSource} value={strValueSource} data-testid={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltFixedAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Fixed"}
-                        data-testid="salary-structures.editor.line.fixed-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 130 }}
-                      />
-                    </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltPercentageValue}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltPercentageValue", objEvent.target.value)}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
-                        data-testid="salary-structures.editor.line.percentage-value.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.percentage-value.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 120 }}
-                      />
-                    </td>
-                    <td>
-                      <TextField
-                        select
-                        size="small"
-                        value={dicLine.intBasisComponentID}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
-                        data-testid="salary-structures.editor.line.basis-component.select"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
-                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ minWidth: 210 }}
-                      >
-                        <MenuItem value="" data-testid="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
-                        {dicForm.lstComponents
-                          .filter((dicBasis) => dicBasis.strRowID !== dicLine.strRowID && dicBasis.intSalaryComponentID !== "")
-                          .map((dicBasis) => (
-                            <MenuItem key={dicBasis.strRowID} value={Number(dicBasis.intSalaryComponentID)} data-testid={`salary-structures.editor.line.basis-component.${normalizeSelectToken(dicBasis.strComponentCode || dicBasis.strComponentName)}.option`}>
-                              {dicBasis.strComponentCode ? `${dicBasis.strComponentCode} - ${dicBasis.strComponentName}` : dicBasis.strComponentName}
-                            </MenuItem>
-                          ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.strFormulaExpression}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Formula"}
-                        data-testid="salary-structures.editor.line.formula.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 210 }}
-                      />
-                    </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltMinAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMinAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.min-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.min-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 120 }}
-                      />
-                    </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltMaxAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMaxAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.max-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.max-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 120 }}
-                      />
-                    </td>
-                    <td>
-                      <Switch
-                        checked={dicLine.blnIsMandatory}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsMandatory", objEvent.target.checked)}
-                        disabled={blnFieldDisabled}
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.mandatory.switch", { "data-row-key": dicLine.strRowID })}
-                      />
-                    </td>
-                    <td>
-                      <ActiveStatusSwitch
-                        blnIsActive={dicLine.blnIsActive}
-                        onChange={(blnChecked) => updateLineRow(dicLine.strRowID, "blnIsActive", blnChecked)}
-                        disabled={blnFieldDisabled}
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.active.switch", { "data-row-key": dicLine.strRowID })}
-                      />
-                    </td>
-                    <td>
-                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLineRow(dicLine.strRowID)} disabled={blnFieldDisabled} data-testid="salary-structures.editor.line.remove.button" data-row-key={dicLine.strRowID}>
-                        {t("remove_button", "Remove")}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
-        </Box>
-      </Box>
     </Stack>
   );
 }

@@ -10,6 +10,7 @@ import type {
   SalaryStructureDetailRecord,
   SalaryStructureFormOptions,
   SalaryStructureFormValues,
+  SalaryStructureFlexiMappingFormValue,
   SalaryStructureLineFormValue,
   SalaryStructureListRecord,
   SalaryStructureTextFormValue
@@ -54,6 +55,25 @@ function mapTextToFormValue(dicText: SalaryStructureTextApiRecord): SalaryStruct
   };
 }
 
+function mapFlexiMappingToFormValue(dicMapping: {
+  intFlexiComponentID: number;
+  strFlexiComponentCode?: string | null;
+  strFlexiComponentName?: string | null;
+  fltDefaultAmount?: number | null;
+  fltMaxAmount?: number | null;
+  blnIsActive?: boolean;
+}): SalaryStructureFlexiMappingFormValue {
+  return {
+    strRowID: createRowID(),
+    intFlexiComponentID: dicMapping.intFlexiComponentID,
+    strFlexiComponentCode: dicMapping.strFlexiComponentCode ?? "",
+    strFlexiComponentName: dicMapping.strFlexiComponentName ?? "",
+    fltDefaultAmount: dicMapping.fltDefaultAmount?.toString() ?? "",
+    fltMaxAmount: dicMapping.fltMaxAmount?.toString() ?? "",
+    blnIsActive: Boolean(dicMapping.blnIsActive ?? true)
+  };
+}
+
 function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryStructureLineFormValue {
   return {
     strRowID: createRowID(),
@@ -73,7 +93,8 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     fltMinAmount: dicLine.fltMinAmount?.toString() ?? "",
     fltMaxAmount: dicLine.fltMaxAmount?.toString() ?? "",
     blnIsMandatory: dicLine.blnIsMandatory,
-    blnIsActive: dicLine.blnIsActive
+    blnIsActive: dicLine.blnIsActive,
+    lstFlexiMappings: (dicLine.lstFlexiMappings ?? []).map(mapFlexiMappingToFormValue)
   };
 }
 
@@ -121,7 +142,15 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       fltMinAmount: dicLine.fltMinAmount,
       fltMaxAmount: dicLine.fltMaxAmount,
       blnIsMandatory: dicLine.blnIsMandatory,
-      blnIsActive: dicLine.blnIsActive
+      blnIsActive: dicLine.blnIsActive,
+      lstFlexiMappings: (dicLine.lstFlexiMappings ?? []).map((dicMapping) => ({
+        intFlexiComponentID: dicMapping.intFlexiComponentID,
+        strFlexiComponentCode: dicMapping.strFlexiComponentCode ?? null,
+        strFlexiComponentName: dicMapping.strFlexiComponentName ?? null,
+        fltDefaultAmount: dicMapping.fltDefaultAmount ?? null,
+        fltMaxAmount: dicMapping.fltMaxAmount ?? null,
+        blnIsActive: Boolean(dicMapping.blnIsActive ?? true)
+      }))
     }))
   };
 }
@@ -155,14 +184,26 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         strValueSource: dicLine.strValueSource,
         blnIsFlexiBasketLine: dicLine.blnIsFlexiBasketLine,
         strFlexiComponentRole: dicLine.strFlexiComponentRole,
-        fltFixedAmount: formatOptionalNumber(dicLine.fltFixedAmount),
-        fltPercentageValue: formatOptionalNumber(dicLine.fltPercentageValue),
-        intBasisComponentID: dicLine.intBasisComponentID,
-        strFormulaExpression: formatOptionalText(dicLine.strFormulaExpression),
+        fltFixedAmount: dicLine.strValueSource === "Fixed" ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
+        fltPercentageValue: dicLine.strValueSource === "Percentage" ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
+        intBasisComponentID: dicLine.strValueSource === "Percentage" ? dicLine.intBasisComponentID : null,
+        strFormulaExpression: dicLine.strValueSource === "Formula" ? formatOptionalText(dicLine.strFormulaExpression) : null,
         fltMinAmount: formatOptionalNumber(dicLine.fltMinAmount),
         fltMaxAmount: formatOptionalNumber(dicLine.fltMaxAmount),
         blnIsMandatory: dicLine.blnIsMandatory,
-        blnIsActive: dicLine.blnIsActive
+        blnIsActive: dicLine.blnIsActive,
+        lstFlexiMappings: dicLine.lstFlexiMappings
+          .map((dicMapping) => ({
+            ...dicMapping,
+            intFlexiComponentID: formatOptionalInteger(dicMapping.intFlexiComponentID)
+          }))
+          .filter((dicMapping) => dicMapping.intFlexiComponentID !== null)
+          .map((dicMapping) => ({
+            intFlexiComponentID: dicMapping.intFlexiComponentID,
+            fltDefaultAmount: formatOptionalNumber(dicMapping.fltDefaultAmount),
+            fltMaxAmount: formatOptionalNumber(dicMapping.fltMaxAmount),
+            blnIsActive: dicMapping.blnIsActive
+          }))
       }))
   };
 }
@@ -213,6 +254,19 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
     fltMinAmount: "",
     fltMaxAmount: "",
     blnIsMandatory: true,
+    blnIsActive: true,
+    lstFlexiMappings: []
+  };
+}
+
+export function createEmptyFlexiMappingRow(): SalaryStructureFlexiMappingFormValue {
+  return {
+    strRowID: createRowID(),
+    intFlexiComponentID: "",
+    strFlexiComponentCode: "",
+    strFlexiComponentName: "",
+    fltDefaultAmount: "",
+    fltMaxAmount: "",
     blnIsActive: true
   };
 }

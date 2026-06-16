@@ -27,6 +27,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
+import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
   EmployeeSalaryComponentLine,
   EmployeeSalaryDetailRecord,
@@ -178,13 +179,25 @@ type ExistingOverrideLine = {
 };
 
 type FlexiSourceLine = {
+  intID?: number;
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName?: string | null;
   decAnnualLimit?: number | null;
   decMonthlyLimit?: number | null;
+  decAnnualLimitAmount?: number | null;
+  decMonthlyLimitAmount?: number | null;
+  decReimbursementMaxClaimYearlyLimit?: number | null;
+  decReimbursementMaxClaimMonthlyLimit?: number | null;
+  decFlexiMaxYearlyAmount?: number | null;
+  decFlexiMaxMonthlyAmount?: number | null;
   strTaxTreatment?: string | null;
   blnProofRequired?: boolean;
+  blnIsFlexiBenefit?: boolean;
+  IsFlexiBenefit?: boolean;
+  blnIsFlexiBasket?: boolean;
+  blnIsFlexiBasketLine?: boolean;
+  strFlexiComponentRole?: string | null;
 };
 
 function formatOptionalDefaultValue(objValue: number | string | null | undefined) {
@@ -200,6 +213,35 @@ function formatOptionalCurrencyValue(objValue: number | null | undefined, strCur
     return "-";
   }
   return formatCurrency(objValue, strCurrencyCode);
+}
+
+function parseOptionalAmount(strValue: string) {
+  const decValue = Number(strValue);
+  return strValue.trim() && Number.isFinite(decValue) ? decValue : null;
+}
+
+function isFlexiPayComponentName(strValue: string) {
+  return normalizeSelectToken(strValue) === "flexipay";
+}
+
+function getOverrideAnnualAmount(dicOverride: EmployeeSalaryOverrideFormValue | undefined) {
+  if (!dicOverride) {
+    return 0;
+  }
+  const decAnnual = parseOptionalAmount(dicOverride.decAmountAnnual);
+  if (decAnnual !== null) {
+    return decAnnual;
+  }
+  const decMonthly = parseOptionalAmount(dicOverride.decAmountMonthly);
+  if (decMonthly !== null) {
+    return decMonthly * 12;
+  }
+  const decDefaultAnnual = parseOptionalAmount(dicOverride.strDefaultAnnual);
+  if (decDefaultAnnual !== null) {
+    return decDefaultAnnual;
+  }
+  const decDefaultMonthly = parseOptionalAmount(dicOverride.strDefaultMonthly);
+  return decDefaultMonthly !== null ? decDefaultMonthly * 12 : 0;
 }
 
 function getFlexiAllocationSummary(
@@ -269,17 +311,115 @@ function buildFlexiAllocationRows(
       strComponentCode: dicLine.strComponentCode ?? "",
       strTaxTreatment: dicLine.strTaxTreatment ?? "",
       blnProofRequired: Boolean(dicLine.blnProofRequired),
-      decAnnualLimit: dicLine.decAnnualLimit ?? null,
-      decMonthlyLimit: dicLine.decMonthlyLimit ?? null,
+      decAnnualLimit:
+        dicLine.decAnnualLimit ??
+        dicLine.decFlexiMaxYearlyAmount ??
+        dicLine.decAnnualLimitAmount ??
+        dicLine.decReimbursementMaxClaimYearlyLimit ??
+        null,
+      decMonthlyLimit:
+        dicLine.decMonthlyLimit ??
+        dicLine.decFlexiMaxMonthlyAmount ??
+        dicLine.decMonthlyLimitAmount ??
+        dicLine.decReimbursementMaxClaimMonthlyLimit ??
+        null,
       decAllocationMonthly: formatOptionalDefaultValue(dicExisting?.decAllocationMonthly),
       decAllocationAnnual: formatOptionalDefaultValue(dicExisting?.decAllocationAnnual)
     };
   });
 }
 
+function getFlexiBenefitAllocationLines(lstSourceLines: FlexiSourceLine[]) {
+  return lstSourceLines.filter((dicLine) =>
+    (dicLine.blnIsFlexiBenefit === true || dicLine.IsFlexiBenefit === true) &&
+    !dicLine.blnIsFlexiBasket &&
+    !dicLine.blnIsFlexiBasketLine &&
+    dicLine.strFlexiComponentRole !== "basket" &&
+    normalizeSelectToken(dicLine.strComponentCode ?? "") !== "flexipay"
+  );
+}
+
+function buildSalaryComponentMap(lstSalaryComponents: SalaryComponentApiRecord[] = []) {
+  return new Map(lstSalaryComponents.map((dicComponent) => [dicComponent.intID, dicComponent]));
+}
+
+function mergeFlexiMetadata(
+  dicLine: FlexiSourceLine,
+  dicSalaryComponentByID: Map<number, SalaryComponentApiRecord>
+): FlexiSourceLine {
+  const dicComponent = dicSalaryComponentByID.get(dicLine.intSalaryComponentID);
+  if (!dicComponent) {
+    return dicLine;
+  }
+  return {
+    ...dicLine,
+    strComponentCode: dicLine.strComponentCode ?? dicComponent.strComponentCode,
+    strComponentName: dicLine.strComponentName ?? dicComponent.strComponentName,
+    strTaxTreatment: dicLine.strTaxTreatment ?? dicComponent.strTaxTreatment,
+    blnProofRequired: dicLine.blnProofRequired ?? dicComponent.blnProofRequired,
+    blnIsFlexiBenefit: dicLine.blnIsFlexiBenefit ?? dicComponent.blnIsFlexiBenefit,
+    decAnnualLimitAmount: dicLine.decAnnualLimitAmount ?? dicComponent.decAnnualLimitAmount,
+    decMonthlyLimitAmount: dicLine.decMonthlyLimitAmount ?? dicComponent.decMonthlyLimitAmount,
+    decReimbursementMaxClaimYearlyLimit: dicLine.decReimbursementMaxClaimYearlyLimit ?? dicComponent.decReimbursementMaxClaimYearlyLimit,
+    decReimbursementMaxClaimMonthlyLimit: dicLine.decReimbursementMaxClaimMonthlyLimit ?? dicComponent.decReimbursementMaxClaimMonthlyLimit
+  };
+}
+
+function buildFlexiSourceFromSalaryComponents(lstSalaryComponents: SalaryComponentApiRecord[] = []): FlexiSourceLine[] {
+  return lstSalaryComponents.map((dicComponent) => ({
+    intID: dicComponent.intID,
+    intSalaryComponentID: dicComponent.intID,
+    strComponentCode: dicComponent.strComponentCode,
+    strComponentName: dicComponent.strComponentName,
+    strTaxTreatment: dicComponent.strTaxTreatment,
+    blnProofRequired: dicComponent.blnProofRequired,
+    blnIsFlexiBenefit: dicComponent.blnIsFlexiBenefit,
+    decAnnualLimitAmount: dicComponent.decAnnualLimitAmount,
+    decMonthlyLimitAmount: dicComponent.decMonthlyLimitAmount,
+    decReimbursementMaxClaimYearlyLimit: dicComponent.decReimbursementMaxClaimYearlyLimit,
+    decReimbursementMaxClaimMonthlyLimit: dicComponent.decReimbursementMaxClaimMonthlyLimit
+  }));
+}
+
+function resolveFlexiBenefitAllocationSourceLines(
+  lstStructureComponents: FlexiSourceLine[],
+  lstCurrentComponentLines: FlexiSourceLine[] = [],
+  lstSalaryComponents: SalaryComponentApiRecord[] = []
+) {
+  const dicSalaryComponentByID = buildSalaryComponentMap(lstSalaryComponents);
+  const lstStructureFlexiBenefitLines = getFlexiBenefitAllocationLines(
+    lstStructureComponents.map((dicLine) => mergeFlexiMetadata(dicLine, dicSalaryComponentByID))
+  );
+  if (lstStructureFlexiBenefitLines.length > 0) {
+    return lstStructureFlexiBenefitLines;
+  }
+  const lstCurrentFlexiBenefitLines = getFlexiBenefitAllocationLines(
+    lstCurrentComponentLines.map((dicLine) => mergeFlexiMetadata(dicLine, dicSalaryComponentByID))
+  );
+  if (lstCurrentFlexiBenefitLines.length > 0) {
+    return lstCurrentFlexiBenefitLines;
+  }
+  return getFlexiBenefitAllocationLines(buildFlexiSourceFromSalaryComponents(lstSalaryComponents));
+}
+
+function getEmployeeSalaryErrorMessage(
+  objError: unknown,
+  strFallback: string,
+  fnTranslate: (strKey: string, strFallback: string) => string
+) {
+  const strMessage = objError instanceof Error ? objError.message : strFallback;
+  return strMessage.toLowerCase().includes("flexi allocation component is not eligible")
+    ? fnTranslate(
+        "employee_salary_flexi_allocation_component_not_eligible",
+        "Flexi allocation component is not eligible for the selected salary structure. Select a structure that contains this flexi benefit component, or leave that allocation blank before saving."
+      )
+    : strMessage;
+}
+
 function buildRevisionForm(
   objDetail: EmployeeSalaryDetailRecord | null,
   objFormOptions?: EmployeeSalaryFormOptions | null,
+  lstSalaryComponents: SalaryComponentApiRecord[] = [],
   fnTranslate?: (strKey: string, strFallback: string) => string
 ): EmployeeSalaryRevisionFormValues {
   const intSalaryStructureID = objDetail?.objAssignedStructure?.intSalaryStructureID ?? "";
@@ -297,7 +437,11 @@ function buildRevisionForm(
       fnTranslate
     ),
     lstFlexiAllocations: buildFlexiAllocationRows(
-      getFlexiAllocationSummary(objDetail).lstAllocationLines,
+      resolveFlexiBenefitAllocationSourceLines(
+        lstStructureComponents,
+        objDetail?.lstComponentLines ?? [],
+        lstSalaryComponents
+      ),
       getFlexiAllocationSummary(objDetail).lstAllocationLines,
       fnTranslate
     )
@@ -310,6 +454,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
+  const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -344,16 +489,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setBlnLoading(true);
       setStrError("");
       try {
-        const [dicDetail, dicFormOptions] = await Promise.all([
+        const [dicDetail, dicFormOptions, dicSalaryComponents] = await Promise.all([
           employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID),
-          employeeSalaryService.getFormOptions()
+          employeeSalaryService.getFormOptions(),
+          masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] }))
         ]);
         if (!blnMounted) {
           return;
         }
         setObjDetail(dicDetail);
         setObjFormOptions(dicFormOptions);
-        setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, t));
+        setLstSalaryComponents(dicSalaryComponents.Data);
+        setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, dicSalaryComponents.Data, t));
       } catch (objError) {
         if (blnMounted) {
           setStrError(
@@ -412,27 +559,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     () => getFlexiAllocationSummary(objDetail),
     [objDetail]
   );
-  const objSelectedStructure = useMemo(
-    () =>
-      typeof dicRevisionForm.intSalaryStructureID === "number"
-        ? objFormOptions?.lstSalaryStructures.find(
-            (dicStructure) => dicStructure.intID === dicRevisionForm.intSalaryStructureID
-          ) ?? null
-        : null,
-    [dicRevisionForm.intSalaryStructureID, objFormOptions]
+  const dicFlexiPayOverride = useMemo(
+    () => dicRevisionForm.lstOverrides.find((dicOverride) => isFlexiPayComponentName(dicOverride.strComponentName)),
+    [dicRevisionForm.lstOverrides]
   );
-  const decDialogFlexiBasketAvailable = useMemo(() => {
-    const dicBasketLine = objSelectedStructure?.lstComponents?.find(
-      (dicComponent) => dicComponent.blnIsFlexiBasket || dicComponent.blnIsFlexiBasketLine
-    );
-    if (!dicBasketLine) {
-      return objFlexiAllocation.decFlexiBasketAvailableAnnual ?? 0;
-    }
-    if (typeof dicBasketLine.decFixedAmount === "number") {
-      return dicBasketLine.decFixedAmount * 12;
-    }
-    return objFlexiAllocation.decFlexiBasketAvailableAnnual ?? 0;
-  }, [objFlexiAllocation.decFlexiBasketAvailableAnnual, objSelectedStructure]);
+  const decFlexiPayAllocationAnnual = useMemo(
+    () => getOverrideAnnualAmount(dicFlexiPayOverride),
+    [dicFlexiPayOverride]
+  );
   const decDialogFlexiAllocated = useMemo(
     () =>
       dicRevisionForm.lstFlexiAllocations.reduce((decTotal, dicAllocation) => {
@@ -441,6 +575,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         return decTotal + (Number.isFinite(decAnnual) && decAnnual > 0 ? decAnnual : (Number.isFinite(decMonthly) ? decMonthly * 12 : 0));
       }, 0),
     [dicRevisionForm.lstFlexiAllocations]
+  );
+  const blnShowFlexiBenefitAllocation = useMemo(
+    () =>
+      dicRevisionForm.lstFlexiAllocations.length > 0 &&
+      Boolean(dicFlexiPayOverride),
+    [dicFlexiPayOverride, dicRevisionForm.lstFlexiAllocations.length]
   );
 
   const lstFlexiRows: FlexiGridRow[] = useMemo(() => {
@@ -477,7 +617,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         return {
           ...dicPrev,
           intSalaryStructureID,
-          lstOverrides: []
+          lstOverrides: [],
+          lstFlexiAllocations: []
         };
       }
 
@@ -499,8 +640,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           t
         ),
         lstFlexiAllocations: buildFlexiAllocationRows(
-          lstStructureComponents.filter(
-            (dicComponent) => dicComponent.blnIsFlexiBenefit && dicComponent.blnIncludedInCtc
+          resolveFlexiBenefitAllocationSourceLines(
+            lstStructureComponents,
+            lstFallbackCurrentLines,
+            lstSalaryComponents
           ),
           intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID
             ? objFlexiAllocation.lstAllocationLines
@@ -529,25 +672,35 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       );
       return;
     }
-    if (dicRevisionForm.lstFlexiAllocations.length > 0 && decDialogFlexiAllocated > decDialogFlexiBasketAvailable) {
-      setStrError(t("employee_salary_flexi_total_exceeds_basket", "Total flexi allocation cannot exceed Flexi Basket Available."));
+    if (blnShowFlexiBenefitAllocation && decDialogFlexiAllocated - decFlexiPayAllocationAnnual > 0.01) {
+      setStrError(
+        t(
+          "employee_salary_flexi_total_cannot_exceed_flexi_pay",
+          `Total flexi allocation cannot exceed Flexi Pay allocation (${formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}).`
+        )
+      );
       return;
     }
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedDetail = await employeeSalaryService.createRevision(intEmployeeID, dicRevisionForm);
+      const dicSavedDetail = await employeeSalaryService.createRevision(intEmployeeID, {
+        ...dicRevisionForm,
+        lstFlexiAllocations: blnShowFlexiBenefitAllocation ? dicRevisionForm.lstFlexiAllocations : []
+      });
       setObjDetail(dicSavedDetail);
-      setDicRevisionForm(buildRevisionForm(dicSavedDetail, objFormOptions, t));
+      setDicRevisionForm(buildRevisionForm(dicSavedDetail, objFormOptions, lstSalaryComponents, t));
       setStrSuccess(
         t("employee_salary_revision_saved_success", "Employee salary revision saved successfully.")
       );
       setBlnDialogOpen(false);
     } catch (objError) {
       setStrError(
-        objError instanceof Error
-          ? objError.message
-          : t("employee_salary_save_revision_failed", "Unable to save salary revision.")
+        getEmployeeSalaryErrorMessage(
+          objError,
+          t("employee_salary_save_revision_failed", "Unable to save salary revision."),
+          t
+        )
       );
     } finally {
       setBlnSaving(false);
@@ -560,7 +713,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     try {
       const dicSavedDetail = await employeeSalaryService.unassignSalary(intEmployeeID);
       setObjDetail(dicSavedDetail);
-      setDicRevisionForm(buildRevisionForm(dicSavedDetail, objFormOptions, t));
+      setDicRevisionForm(buildRevisionForm(dicSavedDetail, objFormOptions, lstSalaryComponents, t));
       setStrSuccess(
         t("employee_salary_unassign_success", "Employee salary assignment removed successfully.")
       );
@@ -736,7 +889,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Stack>
           </Stack>
 
-          {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
+          {strError && !blnDialogOpen ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
           {blnEffectiveViewMode ? <Alert severity="info">{t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}</Alert> : null}
         </Stack>
@@ -1000,6 +1153,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <DialogTitle>{t("employee_salary_dialog_title", "Assign / Revise Salary")}</DialogTitle>
         <DialogContent sx={{ pb: 3 }}>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
             <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
               <TextField
                 data-testid="employee-salary.detail.dialog.salary-structure.select"
@@ -1037,74 +1191,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               minRows={2}
             />
 
-            {dicRevisionForm.lstFlexiAllocations.length > 0 ? (
-              <Paper sx={{ borderRadius: "20px", border: "1px solid rgba(148,163,184,0.18)", p: 2, background: "#fffdf8" }}>
-                <Typography sx={{ fontWeight: 700, mb: 1.5 }}>{t("employee_salary_flexi_benefit_allocation", "Flexi Benefit Allocation")}</Typography>
-                <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, mb: 1.5 }}>
-                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_flexi_basket_available", "Flexi Basket Available")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decDialogFlexiBasketAvailable, strCurrencyCode)}</Typography></Box>
-                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_allocated_flexi_amount", "Allocated Flexi Amount")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decDialogFlexiAllocated, strCurrencyCode)}</Typography></Box>
-                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_balance_flexi_amount", "Balance Flexi Amount")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decDialogFlexiBasketAvailable - decDialogFlexiAllocated, strCurrencyCode)}</Typography></Box>
-                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography><Typography sx={{ fontWeight: 700 }}>{objFlexiAllocation.strResidualComponentName ?? t("employee_salary_auto_calculated", "Auto calculated")}</Typography></Box>
-                </Box>
-                <Stack spacing={1.25}>
-                  {dicRevisionForm.lstFlexiAllocations.map((dicAllocation, intIndex) => (
-                    <Box
-                      key={dicAllocation.intSalaryComponentID}
-                      sx={{
-                        display: "grid",
-                        gap: 1,
-                        gridTemplateColumns: { xs: "1fr", lg: "1.2fr 0.9fr 0.9fr 1fr 1fr" },
-                        p: 1.5,
-                        borderRadius: "16px",
-                        border: "1px solid rgba(148,163,184,0.14)",
-                        bgcolor: "#ffffff"
-                      }}
-                    >
-                      <Stack spacing={0.45}>
-                        <TextField label={t("employee_salary_flexi_component", "Flexi Component")} value={dicAllocation.strComponentName} disabled />
-                        <Typography sx={{ color: "#64748b", fontSize: "0.75rem", pl: 1.5 }}>
-                          {`${t("employee_salary_tax_treatment", "Tax Treatment")}: ${dicAllocation.strTaxTreatment || "-"} | ${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
-                        </Typography>
-                      </Stack>
-                      <Stack spacing={0.45}>
-                        <TextField label={t("employee_salary_annual_limit", "Annual Limit")} value={formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)} disabled />
-                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{t("employee_salary_limit", "Limit")}</Typography>
-                      </Stack>
-                      <Stack spacing={0.45}>
-                        <TextField label={t("employee_salary_monthly_limit", "Monthly Limit")} value={formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)} disabled />
-                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{t("employee_salary_limit", "Limit")}</Typography>
-                      </Stack>
-                      <Stack spacing={0.45}>
-                        <TextField
-                          label={t("employee_salary_employee_allocation_monthly", "Employee Allocation Monthly")}
-                          value={dicAllocation.decAllocationMonthly}
-                          placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
-                          InputLabelProps={{ shrink: true }}
-                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                            ...dicPrev,
-                            lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAllocationMonthly: objEvent.target.value } : dicRow)
-                          }))}
-                        />
-                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</Typography>
-                      </Stack>
-                      <Stack spacing={0.45}>
-                        <TextField
-                          label={t("employee_salary_employee_allocation_annual", "Employee Allocation Annual")}
-                          value={dicAllocation.decAllocationAnnual}
-                          placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
-                          InputLabelProps={{ shrink: true }}
-                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                            ...dicPrev,
-                            lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => intRowIndex === intIndex ? { ...dicRow, decAllocationAnnual: objEvent.target.value } : dicRow)
-                          }))}
-                        />
-                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</Typography>
-                      </Stack>
-                    </Box>
-                  ))}
-                </Stack>
-              </Paper>
-            ) : null}
+
 
             <Paper sx={{ borderRadius: "20px", border: "1px solid rgba(148,163,184,0.18)", p: 2 }}>
               <Typography sx={{ fontWeight: 700, mb: 1.5 }}>{t("employee_salary_override_handling", "Override handling")}</Typography>
@@ -1213,6 +1300,95 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 ))}
               </Stack>
             </Paper>
+
+              {blnShowFlexiBenefitAllocation ? (
+              <Paper sx={{ borderRadius: "20px", border: "1px solid rgba(148,163,184,0.18)", p: 2, background: "#fffdf8" }}>
+                <Typography sx={{ fontWeight: 700, mb: 1.5 }}>{t("employee_salary_flexi_benefit_allocation", "Flexi Benefit Allocation")}</Typography>
+                <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, mb: 1.5 }}>
+                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_flexi_pay_allocation", "Flexi Pay Allocation")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography></Box>
+                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_allocated_flexi_amount", "Allocated Flexi Amount")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decDialogFlexiAllocated, strCurrencyCode)}</Typography></Box>
+                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_balance_flexi_amount", "Balance Flexi Amount")}</Typography><Typography sx={{ fontWeight: 700 }}>{formatOptionalCurrencyValue(decFlexiPayAllocationAnnual - decDialogFlexiAllocated, strCurrencyCode)}</Typography></Box>
+                  <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography><Typography sx={{ fontWeight: 700 }}>{objFlexiAllocation.strResidualComponentName ?? t("employee_salary_auto_calculated", "Auto calculated")}</Typography></Box>
+                </Box>
+                <Stack spacing={1.25}>
+                  {dicRevisionForm.lstFlexiAllocations.map((dicAllocation, intIndex) => (
+                    <Box
+                      key={dicAllocation.intSalaryComponentID}
+                      sx={{
+                        display: "grid",
+                        gap: 1,
+                        gridTemplateColumns: { xs: "1fr", lg: "1.2fr 0.9fr 0.9fr 1fr 1fr" },
+                        p: 1.5,
+                        borderRadius: "16px",
+                        border: "1px solid rgba(148,163,184,0.14)",
+                        bgcolor: "#ffffff"
+                      }}
+                    >
+                      <Stack spacing={0.45}>
+                        <TextField label={t("employee_salary_flexi_component", "Flexi Component")} value={dicAllocation.strComponentName} disabled />
+                        <Typography sx={{ color: "#64748b", fontSize: "0.75rem", pl: 1.5 }}>
+                          {`${t("employee_salary_tax_treatment", "Tax Treatment")}: ${dicAllocation.strTaxTreatment || "-"} | ${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
+                        </Typography>
+                      </Stack>
+                      <Stack spacing={0.45}>
+                        <TextField label={t("employee_salary_annual_limit", "Annual Limit")} value={formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)} disabled />
+                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{t("employee_salary_limit", "Limit")}</Typography>
+                      </Stack>
+                      <Stack spacing={0.45}>
+                        <TextField label={t("employee_salary_monthly_limit", "Monthly Limit")} value={formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)} disabled />
+                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{t("employee_salary_limit", "Limit")}</Typography>
+                      </Stack>
+                      <Stack spacing={0.45}>
+                        <TextField
+                          label={t("employee_salary_employee_allocation_monthly", "Employee Allocation Monthly")}
+                          value={dicAllocation.decAllocationMonthly}
+                          placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
+                          InputLabelProps={{ shrink: true }}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
+                              if (intRowIndex !== intIndex) {
+                                return dicRow;
+                              }
+                              const decMonthly = parseOptionalAmount(objEvent.target.value);
+                              return {
+                                ...dicRow,
+                                decAllocationMonthly: objEvent.target.value,
+                                decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
+                              };
+                            })
+                          }))}
+                        />
+                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</Typography>
+                      </Stack>
+                      <Stack spacing={0.45}>
+                        <TextField
+                          label={t("employee_salary_employee_allocation_annual", "Employee Allocation Annual")}
+                          value={dicAllocation.decAllocationAnnual}
+                          placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
+                          InputLabelProps={{ shrink: true }}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
+                              if (intRowIndex !== intIndex) {
+                                return dicRow;
+                              }
+                              const decAnnual = parseOptionalAmount(objEvent.target.value);
+                              return {
+                                ...dicRow,
+                                decAllocationAnnual: objEvent.target.value,
+                                decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                              };
+                            })
+                          }))}
+                        />
+                        <Typography sx={{ color: "#475569", fontSize: "0.75rem", pl: 1.5 }}>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</Typography>
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              </Paper>
+            ) : null}
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
               <Button data-testid="employee-salary.detail.dialog.cancel.button" className={styles.secondaryButton} onClick={() => setBlnDialogOpen(false)} disabled={blnSaving}>

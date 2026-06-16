@@ -449,6 +449,42 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
   });
 }
 
+function appendGeneratedLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/payroll/loans-advances")) {
+    return lstItems;
+  }
+
+  let blnInserted = false;
+  return lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedLoansAdvancesMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isPayrollContainerMenu(objItem) &&
+      !hasRoute(lstChildren, "/payroll/loans-advances");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [
+        ...lstChildren,
+        {
+          strModuleCode: "PAYROLL_LOANS_ADVANCES",
+          strModuleName: "Loans & Advances",
+          strRoute: "/payroll/loans-advances",
+          lstPermissionCodes: ["PAYROLL_LOANS_ADVANCES_VIEW"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    };
+  });
+}
+
 function getMenuIdentityKey(objItem: MenuItem): string {
   const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
@@ -558,9 +594,11 @@ function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
     removeReportsFromPayrollBranches(
       appendGeneratedReportsMenu(
         appendGeneratedFNFMenu(
-          appendGeneratedReimbursementsMenu(
-            appendGeneratedPayslipMenu(
-              promoteDashboardMenu(lstItems),
+          appendGeneratedLoansAdvancesMenu(
+            appendGeneratedReimbursementsMenu(
+              appendGeneratedPayslipMenu(
+                promoteDashboardMenu(lstItems),
+              ),
             ),
           ),
         ),
@@ -865,6 +903,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
 
     if (strRoute.includes("/payroll/fnf-settlements") || strModuleCode.includes("fnf")) {
       return strModuleName || "Full and Final Settlement";
+    }
+
+    if (strRoute.includes("/payroll/loans-advances") || (strModuleCode.includes("loan") && strModuleCode.includes("advance"))) {
+      return strModuleName || "Loans & Advances";
     }
 
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {

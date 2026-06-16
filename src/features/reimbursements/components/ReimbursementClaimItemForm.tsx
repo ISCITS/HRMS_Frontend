@@ -88,6 +88,12 @@ function formatChoiceLabel(strValue?: string | null) {
     .join(" ");
 }
 
+function getDisplayAmount(decItemValue?: number | null, decOptionValue?: number | null) {
+  if (decItemValue != null && decItemValue > 0) return decItemValue;
+  if (decOptionValue != null) return decOptionValue;
+  return decItemValue ?? 0;
+}
+
 function ComponentInfoMetric({ strLabel, strValue, blnAccent = false }: { strLabel: string; strValue: string; blnAccent?: boolean }) {
   return (
     <Box sx={{ minWidth: 0 }}>
@@ -192,11 +198,14 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
   const blnSelectedComponentProofRequired = isSupportingDocumentRequired(objSelectedSalaryComponent, objForm.blnProofRequired);
   const strReimbursementType = objItem?.strReimbursementType ?? objSelectedSalaryComponent?.strReimbursementType ?? "ctc_based";
   const strSettlementMode = objItem?.strSettlementMode ?? objSelectedSalaryComponent?.strSettlementMode ?? (strReimbursementType === "non_ctc_based" ? "finance" : "payroll");
-  const decAnnualLimit = objItem?.decAnnualLimit ?? objSelectedSalaryComponent?.decAnnualLimit ?? 0;
-  const decMonthlyLimit = objItem?.decMonthlyLimit ?? objSelectedSalaryComponent?.decMonthlyLimit ?? 0;
-  const decAllocatedLimit = objItem?.decAllocatedLimit ?? objSelectedSalaryComponent?.decAllocatedLimit ?? 0;
-  const decAlreadyClaimed = objItem?.decAlreadyClaimed ?? objSelectedSalaryComponent?.decAlreadyClaimed ?? 0;
-  const decBalanceAvailable = objItem?.decBalanceAvailable ?? objSelectedSalaryComponent?.decBalanceAvailable ?? Math.max(decAllocatedLimit - decAlreadyClaimed, 0);
+  const decAnnualLimit = getDisplayAmount(objItem?.decAnnualLimit, objSelectedSalaryComponent?.decAnnualLimit);
+  const decMonthlyLimit = getDisplayAmount(objItem?.decMonthlyLimit, objSelectedSalaryComponent?.decMonthlyLimit);
+  const decAllocatedLimit = getDisplayAmount(objItem?.decAllocatedLimit, objSelectedSalaryComponent?.decAllocatedLimit);
+  const decAlreadyClaimed = getDisplayAmount(objItem?.decAlreadyClaimed, objSelectedSalaryComponent?.decAlreadyClaimed);
+  const decBalanceAvailable = getDisplayAmount(
+    objItem?.decBalanceAvailable ?? objItem?.decEligibleBalance,
+    objSelectedSalaryComponent?.decBalanceAvailable
+  ) || Math.max(decAllocatedLimit - decAlreadyClaimed, 0);
   const objReadOnlyProps = { readOnly: blnReadOnly };
   const blnProofUploadRequired = blnSelectedComponentProofRequired && !objItem?.lstProofs?.length;
   const blnSaveDisabled = blnReadOnly || blnSaving || !objForm.decClaimedAmount || !objForm.intSalaryComponentID || (blnProofUploadRequired && !objProofFile);

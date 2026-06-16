@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
-import { DefaultContextValue } from "@/Common/enums/AppEnums";
+import { ApiResultCode } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
 import { generateCSRFToken } from "@/lib/csrfToken";
@@ -9,6 +9,32 @@ import { getServerAppOrigin, getServerCsrfSecretKey } from "@/lib/serverSecurity
 import type { ApiEnvelope, DashboardResponse } from "@/models/AuthModels";
 
 import { getAccessTokenFromCookie, getAccessTokenFromRequest } from "@/app/api/auth/AuthProxy";
+
+function buildFallbackDashboard(): ApiEnvelope<DashboardResponse> {
+  return {
+    ResultCode: ApiResultCode.Success,
+    Msg: "Dashboard service is not available in the configured backend image.",
+    Data: {
+      strDashboardType: "MANAGEMENT",
+      lstWidgets: [],
+      lstQuickActions: [
+        {
+          strActionCode: "OPEN_EMPLOYEES",
+          strActionName: "Employees",
+          strRoutePath: "/employees",
+          strIconName: "PeopleAlt",
+        },
+        {
+          strActionCode: "OPEN_PAYROLL",
+          strActionName: "Payroll",
+          strRoutePath: "/payroll",
+          strIconName: "Payments",
+        },
+      ],
+      dtGeneratedOn: new Date().toISOString(),
+    },
+  };
+}
 
 function buildProtectedProxyHeaders(strAccessToken: string, objRequestHeaders?: Headers) {
   const strFrontendOrigin = getServerAppOrigin();
@@ -45,6 +71,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(objResult, { status: 200 });
   } catch (objError) {
     const intStatusCode = objError instanceof ApiRequestError ? objError.intStatusCode ?? 400 : 400;
+    if (intStatusCode === 404) {
+      return NextResponse.json(buildFallbackDashboard(), { status: 200 });
+    }
     return NextResponse.json(
       {
         ResultCode: 0,

@@ -16,6 +16,22 @@ function parseOptionalDecimal(strValue: string): number | null {
   return Number.isFinite(decValue) ? decValue : null;
 }
 
+function normalizeFlexiAllocationAmounts(dicAllocation: {
+  decAllocationMonthly: string;
+  decAllocationAnnual: string;
+}) {
+  const decAllocationMonthly = parseOptionalDecimal(dicAllocation.decAllocationMonthly);
+  const decAllocationAnnual = parseOptionalDecimal(dicAllocation.decAllocationAnnual);
+  return {
+    decAllocationMonthly:
+      decAllocationMonthly ??
+      (decAllocationAnnual !== null ? decAllocationAnnual / 12 : null),
+    decAllocationAnnual:
+      decAllocationAnnual ??
+      (decAllocationMonthly !== null ? decAllocationMonthly * 12 : null)
+  };
+}
+
 export const employeeSalaryService = {
   async getEmployeeSalaries(): Promise<EmployeeSalaryListRecord[]> {
     const objResult = await masterApiService.getEmployeeSalaries();
@@ -63,8 +79,7 @@ export const employeeSalaryService = {
       lstFlexiAllocations: dicValues.lstFlexiAllocations
         .map((dicAllocation) => ({
           intSalaryComponentID: dicAllocation.intSalaryComponentID,
-          decAllocationMonthly: parseOptionalDecimal(dicAllocation.decAllocationMonthly),
-          decAllocationAnnual: parseOptionalDecimal(dicAllocation.decAllocationAnnual)
+          ...normalizeFlexiAllocationAmounts(dicAllocation)
         }))
         .filter((dicAllocation) =>
           dicAllocation.decAllocationMonthly !== null ||
