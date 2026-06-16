@@ -166,10 +166,17 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         const objComponent: ReimbursementSalaryComponentOption = {
           intID: objItem.intSalaryComponentID,
           strComponentCode: `COMPONENT_${objItem.intSalaryComponentID}`,
-          strComponentName: `Payroll Component #${objItem.intSalaryComponentID}`,
+          strComponentName: objItem.strReimbursementTypeName || `Payroll Component #${objItem.intSalaryComponentID}`,
           strTaxTreatment: objItem.strTaxTreatment ?? "proof_based",
           blnDeclarationRequired: false,
           blnProofRequired: objItem.blnProofRequired,
+          strReimbursementType: objItem.strReimbursementType,
+          strSettlementMode: objItem.strSettlementMode,
+          decAnnualLimit: objItem.decAnnualLimit,
+          decMonthlyLimit: objItem.decMonthlyLimit,
+          decAllocatedLimit: objItem.decAllocatedLimit,
+          decAlreadyClaimed: objItem.decAlreadyClaimed,
+          decBalanceAvailable: objItem.decBalanceAvailable ?? objItem.decEligibleBalance,
         };
         lstSalaryComponents.push(objComponent);
         setComponentIDs.add(objComponent.intID);
