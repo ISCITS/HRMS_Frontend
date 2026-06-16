@@ -22,6 +22,25 @@ export type SalaryStructureOption = {
   strComponentGroup?: string | null;
   strComponentCategory?: string | null;
   blnIsEmployerContribution?: boolean;
+  intResidualComponentID?: number | null;
+  decAnnualLimit?: number | null;
+  decMonthlyLimit?: number | null;
+  decAnnualLimitAmount?: number | null;
+  decMonthlyLimitAmount?: number | null;
+  decFlexiMaxYearlyAmount?: number | null;
+  decFlexiMaxMonthlyAmount?: number | null;
+  decReimbursementMaxClaimMonthlyLimit?: number | null;
+  decReimbursementMaxClaimYearlyLimit?: number | null;
+};
+
+export type SalaryStructureFlexiMappingFormValue = {
+  strRowID: string;
+  intFlexiComponentID: number | "";
+  strFlexiComponentCode: string;
+  strFlexiComponentName: string;
+  fltDefaultAmount: string;
+  fltMaxAmount: string;
+  blnIsActive: boolean;
 };
 
 export type SalaryStructureLineFormValue = {
@@ -43,6 +62,7 @@ export type SalaryStructureLineFormValue = {
   fltMaxAmount: string;
   blnIsMandatory: boolean;
   blnIsActive: boolean;
+  lstFlexiMappings: SalaryStructureFlexiMappingFormValue[];
 };
 
 export type SalaryStructureTextFormValue = {
@@ -108,6 +128,14 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     fltMaxAmount: number | null;
     blnIsMandatory: boolean;
     blnIsActive: boolean;
+    lstFlexiMappings?: Array<{
+      intFlexiComponentID: number;
+      strFlexiComponentCode: string | null;
+      strFlexiComponentName: string | null;
+      fltDefaultAmount: number | null;
+      fltMaxAmount: number | null;
+      blnIsActive: boolean;
+    }>;
   }>;
 };
 

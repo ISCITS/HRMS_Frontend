@@ -545,6 +545,14 @@ export type SalaryStructureComponentApiRecord = {
   fltMaxAmount: number | null;
   blnIsMandatory: boolean;
   blnIsActive: boolean;
+  lstFlexiMappings?: Array<{
+    intFlexiComponentID: number;
+    strFlexiComponentCode?: string | null;
+    strFlexiComponentName?: string | null;
+    fltDefaultAmount?: number | null;
+    fltMaxAmount?: number | null;
+    blnIsActive?: boolean;
+  }>;
 };
 
 export type SalaryStructureTextApiRecord = {
@@ -586,6 +594,15 @@ export type SalaryStructureFormOptionsApiRecord = {
     strComponentGroup?: string | null;
     strComponentCategory?: string | null;
     blnIsEmployerContribution?: boolean;
+    intResidualComponentID?: number | null;
+    decAnnualLimit?: number | null;
+    decMonthlyLimit?: number | null;
+    decAnnualLimitAmount?: number | null;
+    decMonthlyLimitAmount?: number | null;
+    decFlexiMaxYearlyAmount?: number | null;
+    decFlexiMaxMonthlyAmount?: number | null;
+    decReimbursementMaxClaimMonthlyLimit?: number | null;
+    decReimbursementMaxClaimYearlyLimit?: number | null;
   }>;
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstValueSources: string[];
