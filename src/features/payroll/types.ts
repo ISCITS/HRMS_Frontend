@@ -189,14 +189,36 @@ export type FNFSettlementStatus =
   | "cancelled";
 
 export type FNFLineType = "EARNING" | "DEDUCTION" | "RECOVERY" | "STATUTORY" | "TAX";
+export type FNFRecoveryType = "NOTICE" | "LOAN" | "ADVANCE" | "ASSET" | "EXCESS_SALARY" | "OTHER";
+
+export type FNFEmployeeOption = {
+  intID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strLabel: string;
+};
+
+export type FNFDefaultPayrollRunOption = {
+  intID: number;
+  strRunCode: string;
+  strRunName: string;
+  strScopeType: PayrollRunScopeType;
+  intScopedEmployeeID?: number | null;
+  dtPayrollMonth: string;
+  strRunStatus: string;
+  blnIsLocked: boolean;
+  blnIsFinalSettlementRun: boolean;
+};
 
 export type FNFSettlementLineRecord = {
   intID: number;
   strLineType: FNFLineType;
+  strRecoveryType?: FNFRecoveryType | null;
   strLineCode: string;
   strLineName: string;
   intSalaryComponentID?: number | null;
   decAmount: number;
+  decActualAmount?: number | null;
   decTaxableAmount?: number;
   decExemptAmount?: number;
   decStatutoryAmount?: number;
@@ -216,6 +238,7 @@ export type FNFSettlementRecord = {
   intID: number;
   intEmployeeID: number;
   strEmployeeCode?: string | null;
+  strDepartmentName?: string | null;
   intCompanyID?: number;
   strSettlementNumber?: string | null;
   intPayrollRunID?: number | null;
@@ -241,14 +264,18 @@ export type FNFSettlementRecord = {
   decFinalTdsAmount?: number;
   objCalculationSnapshot?: Record<string, unknown> | null;
   strRemarks?: string | null;
+  dtAddedOn?: string | null;
+  dtLastModifiedOn?: string | null;
   lstLines?: FNFSettlementLineRecord[];
   lstAudit?: FNFAuditRecord[];
 };
 
 export type FNFSettlementFormValues = {
+  intEmployeeID?: number | "";
   strEmployeeCode: string;
   strSettlementNumber: string;
   intPayrollRunID: number | "";
+  strPayrollCycleCode?: string;
   strExitType: string;
   strExitReason: string;
   dtResignationDate: string;
@@ -258,15 +285,27 @@ export type FNFSettlementFormValues = {
   decNoticePeriodDays: string;
   decNoticeServedDays: string;
   decNoticeShortfallDays: string;
+  decWorkDays?: string;
+  decDaysWorked?: string;
   strCurrencyCode: string;
   strRemarks: string;
+  lstLeaveEncashments?: FNFLeaveEncashmentFormValue[];
+};
+
+export type FNFLeaveEncashmentFormValue = {
+  strLeaveTypeCode: string;
+  strLeaveTypeName: string;
+  decBalanceDays: string;
+  decEncashableDays: string;
 };
 
 export type FNFLineFormValues = {
   intID?: number;
   strLineType: FNFLineType;
+  strRecoveryType: FNFRecoveryType | "";
   strLineCode: string;
   strLineName: string;
+  decActualAmount: string;
   decAmount: string;
   blnIsManualOverride: boolean;
   strOverrideReason: string;
@@ -290,6 +329,120 @@ export type FNFStatementRecord = {
   objStatementJson?: Record<string, unknown> | null;
   dtGeneratedOn?: string | null;
   blnIsLatest?: boolean;
+};
+
+export type LoanAdvanceStatus = "draft" | "sent_back" | "pending_approval" | "approved" | "disbursed" | "active" | "closed" | "rejected" | "cancelled";
+export type LoanAdvanceRequestType = "loan" | "advance";
+
+export type LoanAdvanceCategoryRecord = {
+  intID: number;
+  strCategoryCode: string;
+  strCategoryName: string;
+  strRequestType: LoanAdvanceRequestType;
+  strCategoryDescription?: string | null;
+  decMaxRequestAmount?: number | null;
+  intMaxInstallments?: number | null;
+  decMinInstallmentAmount?: number | null;
+  decDeductionCapPercent?: number | null;
+  blnPreventDuplicateActive?: boolean;
+  blnDocumentRequired?: boolean;
+  blnInterestApplicable?: boolean;
+  decCompanyInterestRatePercent?: number;
+  blnPerquisiteTaxApplicable?: boolean;
+  decBenchmarkInterestRatePercent?: number;
+  strCalculationBasis?: string;
+  strInterestRecoveryMode?: string;
+  blnAutoDeductInPayroll?: boolean;
+  blnFNFRecoveryEnabled?: boolean;
+};
+
+export type LoanAdvanceEmployeeRecord = {
+  intID: number;
+  strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
+  strDepartmentName?: string | null;
+};
+
+export type LoanAdvanceScheduleRecord = {
+  intID: number;
+  intInstallmentNo: number;
+  dtPayrollMonth: string;
+  decOpeningPrincipalBalance: number;
+  decPrincipalDueAmount: number;
+  decActualInterestAmount?: number;
+  decBenchmarkInterestAmount?: number;
+  decTaxablePerquisiteAmount?: number;
+  decTotalDueAmount: number;
+  decRecoveredTotalAmount?: number;
+  decClosingPrincipalBalance: number;
+  strScheduleStatus: string;
+};
+
+export type LoanAdvanceLedgerRecord = {
+  intID: number;
+  strLedgerEvent: string;
+  strFromStatus?: string | null;
+  strToStatus?: string | null;
+  decEventAmount: number;
+  decBalanceAfterEvent?: number;
+  strRemarks?: string | null;
+  dtEventOn: string;
+};
+
+export type LoanAdvanceRecord = {
+  intID: number;
+  intEmployeeID: number;
+  strLoanAdvanceNumber?: string | null;
+  strRequestType: LoanAdvanceRequestType;
+  intCategoryID: number;
+  dtRequestDate: string;
+  decRequestedAmount: number;
+  decApprovedAmount: number;
+  decDisbursedAmount?: number;
+  decTotalOutstandingAmount?: number;
+  strReason?: string | null;
+  strEmployeeRemarks?: string | null;
+  strApproverRemarks?: string | null;
+  strPayrollRemarks?: string | null;
+  strRecoveryMode: string;
+  dtRecoveryStartMonth?: string | null;
+  intNumberOfInstallments: number;
+  decInstallmentAmount: number;
+  blnLastInstallmentAdjustment?: boolean;
+  blnAutoDeductInPayroll?: boolean;
+  blnPerquisiteTaxApplicable?: boolean;
+  decBenchmarkInterestRatePercent?: number;
+  decTaxablePerquisiteYTD?: number;
+  strWorkflowStatus: LoanAdvanceStatus;
+  dtDisbursementDate?: string | null;
+  strPaymentMode?: string | null;
+  strTransactionReferenceNo?: string | null;
+  objEmployee?: LoanAdvanceEmployeeRecord | null;
+  objCategory?: LoanAdvanceCategoryRecord | null;
+  objPolicySnapshot?: LoanAdvanceCategoryRecord | Record<string, unknown> | null;
+  objCalculationSnapshot?: Record<string, unknown> | unknown[] | null;
+  lstSchedule?: LoanAdvanceScheduleRecord[];
+  lstLedger?: LoanAdvanceLedgerRecord[];
+};
+
+export type LoanAdvanceFormValues = {
+  intEmployeeID: number | "";
+  strEmployeeCode: string;
+  strRequestType: LoanAdvanceRequestType;
+  intCategoryID: number | "";
+  dtRequestDate: string;
+  decRequestedAmount: string;
+  decApprovedAmount: string;
+  strReason: string;
+  strEmployeeRemarks: string;
+  strApproverRemarks: string;
+  strPayrollRemarks: string;
+  strRecoveryMode: string;
+  dtRecoveryStartMonth: string;
+  intNumberOfInstallments: string;
+  decInstallmentAmount: string;
+  blnLastInstallmentAdjustment: boolean;
+  blnAutoDeductInPayroll: boolean;
 };
 
 export type EmployeePayrollInputLineRecord = {

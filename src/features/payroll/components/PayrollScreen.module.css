@@ -135,6 +135,26 @@
   width: auto;
 }
 
+.fnfWizardSingleField {
+  max-width: 520px;
+  width: 100%;
+}
+
+.fnfWizardGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fnfWizardActions {
+  align-items: center;
+  border-top: 1px solid #d9e6ef;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
 .fnfActionButton {
   border-radius: 9px !important;
   box-shadow: 0 12px 24px rgba(29, 93, 150, 0.22) !important;
@@ -388,6 +408,71 @@
   font-weight: 900;
 }
 
+.fnfStepperShell {
+  border-bottom: 1px solid #d9e6ef;
+  padding: 0 0 14px;
+}
+
+.fnfStepperShell :global(.MuiStepLabel-label) {
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.fnfStepperShell :global(.MuiStepIcon-root.Mui-active),
+.fnfStepperShell :global(.MuiStepIcon-root.Mui-completed) {
+  color: var(--app-primary-color);
+}
+
+.fnfWorkflowGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fnfWorkflowPanel {
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  min-height: 94px;
+  padding: 12px;
+}
+
+.fnfWorkflowTitle {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.fnfWorkflowValue {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.fnfWorkflowMeta {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fnfEditDetailsGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fnfEditDetailsFull {
+  grid-column: 1 / -1;
+}
+
 .selectedRow {
   background: rgba(220, 229, 239, 0.76);
 }
@@ -623,6 +708,15 @@
   }
 
   .fnfCreateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fnfWizardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fnfWorkflowGrid,
+  .fnfEditDetailsGrid {
     grid-template-columns: 1fr;
   }
 

@@ -2,7 +2,9 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import type { FNFAuditRecord, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -53,16 +55,16 @@ function LineTable({ lstLines, blnReadOnly, onEdit, onDelete }: { lstLines: FNFS
   return (
     <Box className={styles.tableWrap}>
       <table className={`${styles.table} ${styles.fnfDenseTable}`}>
-        <thead><tr><th>Code</th><th>Name</th><th>Basis</th><th>Amount</th><th>Source</th><th className={styles.actionsColumn}>Actions</th></tr></thead>
+        <thead><tr><th>Type</th><th>Code</th><th>Name</th><th>Basis</th><th>Actual</th><th>Final</th><th>Source</th><th className={styles.actionsColumn}>Actions</th></tr></thead>
         <tbody>
           {lstLines.length ? lstLines.map((line) => (
             <tr key={line.intID}>
-              <td>{line.strLineCode}</td><td>{line.strLineName}</td><td>{line.strCalculationBasis || "-"}</td><td>{formatCurrency(line.decAmount)}</td><td>{line.strSourceType || (line.blnIsSystemCalculated ? "system" : "manual")}</td>
+              <td>{line.strLineType}{line.strRecoveryType ? ` / ${line.strRecoveryType}` : ""}</td><td>{line.strLineCode}</td><td>{line.strLineName}</td><td>{line.strCalculationBasis || "-"}</td><td>{formatCurrency(line.decActualAmount ?? line.decAmount)}</td><td>{formatCurrency(line.decAmount)}</td><td>{line.strSourceType || (line.blnIsSystemCalculated ? "system" : "manual")}</td>
               <td className={styles.actionsColumn}>
                 {!blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} data-testid="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} data-testid="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
               </td>
             </tr>
-          )) : <tr><td colSpan={6} className={styles.emptyState}>No settlement lines yet.</td></tr>}
+          )) : <tr><td colSpan={8} className={styles.emptyState}>No settlement lines yet.</td></tr>}
         </tbody>
       </table>
     </Box>
@@ -74,9 +76,9 @@ export function FNFSettlementCalculationPanel({ objSettlement, blnReadOnly, onAd
   return <Section strTitle="Earnings, Deductions & Recoveries" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} data-testid="payroll.fnf-settlement.add-line.button">Add Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
 }
 
-export function FNFLeaveEncashmentPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
+export function FNFLeaveEncashmentPanel({ objSettlement, blnReadOnly = true, onAdd, onEdit, onDelete }: { objSettlement: FNFSettlementRecord; blnReadOnly?: boolean; onAdd?: () => void; onEdit?: (line: FNFSettlementLineRecord) => void; onDelete?: (line: FNFSettlementLineRecord) => void }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strCalculationBasis?.includes("leave") || line.strLineCode.includes("LEAVE"));
-  return <Section strTitle="Leave Encashment"><LineTable lstLines={lstLines} blnReadOnly /></Section>;
+  return <Section strTitle="Leave Encashment" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} data-testid="payroll.fnf-settlement.leave-add-line.button">Add Leave Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
 }
 
 export function FNFNoticePayPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
@@ -99,7 +101,7 @@ export function FNFReimbursementPanel({ objSettlement }: { objSettlement: FNFSet
 }
 
 export function FNFStatementPreview({ objStatement }: { objStatement: FNFStatementRecord | null }) {
-  return <Section strTitle="Statement Preview">{objStatement?.strStatementHTML ? <Box className={styles.fnfStatementPreview} sx={{ border: "1px solid #d9e6ef", p: 2 }} dangerouslySetInnerHTML={{ __html: formatStatementHTML(objStatement.strStatementHTML) }} /> : <Typography sx={{ color: "#64748b" }}>No statement generated yet.</Typography>}</Section>;
+  return <Section strTitle="Statement & Documents"><Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1 }}><Button size="small" startIcon={<DownloadRoundedIcon />} disabled>Download Statement</Button><Button size="small" startIcon={<WorkHistoryRoundedIcon />} disabled>Relieving Letter</Button><Button size="small" startIcon={<WorkHistoryRoundedIcon />} disabled>Experience Letter</Button></Stack>{objStatement?.strStatementHTML ? <Box className={styles.fnfStatementPreview} sx={{ border: "1px solid #d9e6ef", p: 2 }} dangerouslySetInnerHTML={{ __html: formatStatementHTML(objStatement.strStatementHTML) }} /> : <Typography sx={{ color: "#64748b" }}>No statement generated yet.</Typography>}</Section>;
 }
 
 export function FNFAuditTimeline({ lstAudit }: { lstAudit: FNFAuditRecord[] }) {

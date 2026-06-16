@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import dicConstant from "@/constants/Constant.json";
 import { labelService } from "@/features/labels/services/labelService";
@@ -230,7 +230,7 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
     };
   }, [intLanguageID, strFallbackError, strModuleName]);
 
-  function t(strKey: string, strFallback?: string) {
+  const t = useCallback((strKey: string, strFallback?: string) => {
     if (dicLabels[strKey]) {
       return dicLabels[strKey];
     }
@@ -241,7 +241,7 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
       return strFallback;
     }
     return resolveConstantFallback(strModuleName, strKey);
-  }
+  }, [blnLoadingLabels, dicLabels, strModuleName]);
 
   return {
     intLanguageID,
