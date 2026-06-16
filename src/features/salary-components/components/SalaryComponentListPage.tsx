@@ -63,6 +63,8 @@ function getCategoryLabel(strValue: string) {
     case "employercontribution":
     case "contribution":
       return "Employer Contribution";
+    case "flexibasket":
+      return "Flexi Basket";
     case "reimbursement":
       return "Reimbursement";
     default:

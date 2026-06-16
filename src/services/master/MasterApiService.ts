@@ -474,9 +474,13 @@ export type SalaryComponentApiRecord = {
   intDisplayOrder: number;
   blnIsReimbursement?: boolean;
   blnIsFlexiBenefit?: boolean;
+  blnIsFlexiBasket?: boolean;
+  strFlexiComponentType?: string | null;
   strReimbursementType?: string | null;
   strSettlementMethod?: string | null;
   blnRequiresBills?: boolean;
+  blnExpenseDateRequired?: boolean;
+  blnAllowPartialApproval?: boolean;
   decAnnualLimitAmount?: number | null;
   decMonthlyLimitAmount?: number | null;
   strClaimLimitType?: string | null;
