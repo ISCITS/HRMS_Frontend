@@ -685,13 +685,6 @@ export default function SalaryComponentEditorPage({
                   "Configure calculation rules, compliance flags, multilingual labels, and dependency mapping in one reusable component master."
                 )}
               </Typography>
-              <Box sx={{ mt: 1.25 }}>
-                <FormControlLabel
-                  sx={{ m: 0 }}
-                  control={<ActiveStatusSwitch testId="salary-components.editor.active-component.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-                  label={t("active_component", "Active Component")}
-                />
-              </Box>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
               <Button
@@ -757,7 +750,20 @@ export default function SalaryComponentEditorPage({
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>1. {t("basic_information", "Basic Information")}</Typography>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          spacing={1}
+          sx={{ mb: 1.5 }}
+        >
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>1. {t("basic_information", "Basic Information")}</Typography>
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={<ActiveStatusSwitch testId="salary-components.editor.active-component.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+            label={t("active_component", "Active Component")}
+          />
+        </Stack>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <TextField
             label={t("component_name", "Component Name")}

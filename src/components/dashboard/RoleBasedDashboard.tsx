@@ -18,17 +18,23 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import GppGoodRoundedIcon from "@mui/icons-material/GppGoodRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
+import RuleFolderRoundedIcon from "@mui/icons-material/RuleFolderRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import SummarizeRoundedIcon from "@mui/icons-material/SummarizeRounded";
+import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
@@ -211,28 +217,47 @@ type ChartSeries = {
 };
 
 type WidgetType = DashboardWidget["strWidgetType"];
+type PayrollDashboardTabCode =
+  | "overview"
+  | "run_overview"
+  | "workflow"
+  | "exceptions"
+  | "employees"
+  | "pay_payout"
+  | "compliance"
+  | "cost_analytics"
+  | "reports"
+  | "audit_actions"
+  | "settings";
 
 const DASHBOARD_COLORS = {
+  purple: "#9333EA",
+  violet: "#6366F1",
   blue: "#2563EB",
-  green: "#16A34A",
+  cyan: "#0891B2",
+  green: "#10B981",
+  emerald: "#22C55E",
   amber: "#F97316",
-  red: "#EF4444",
-  text: "#0F1F3D",
-  muted: "#64748b",
-  border: "#DDE7F0",
+  red: "#F43F5E",
+  pink: "#FB7185",
+  text: "#0F172A",
+  muted: "#475569",
+  border: "#E2E8F0",
   surface: "#FFFFFF",
-  page: "#F8FBFF",
-  blueSoft: "#EEF4FF",
+  page: "#F6F8FC",
+  blueSoft: "#EFF6FF",
   greenSoft: "#ECFDF5",
   amberSoft: "#FFF7ED",
-  redSoft: "#FEF2F2",
+  redSoft: "#FFF5F5",
+  gradient: "linear-gradient(90deg, #9333EA 0%, #6366F1 28%, #2563EB 56%, #0891B2 78%, #10B981 100%)",
+  navGradient: "linear-gradient(90deg, #C026D3 0%, #7C3AED 24%, #2563EB 54%, #0891B2 77%, #10B981 100%)",
 };
 
 const lstPayrollCardPalette = [
-  { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft },
-  { accent: DASHBOARD_COLORS.green, surface: DASHBOARD_COLORS.greenSoft },
-  { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft },
-  { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft },
+  { accent: DASHBOARD_COLORS.purple, surface: "linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)" },
+  { accent: DASHBOARD_COLORS.blue, surface: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)" },
+  { accent: DASHBOARD_COLORS.amber, surface: "linear-gradient(135deg, #FB923C 0%, #F97316 100%)" },
+  { accent: DASHBOARD_COLORS.red, surface: "linear-gradient(135deg, #FB7185 0%, #F43F5E 100%)" },
 ];
 
 export default function RoleBasedDashboard({ objDashboard, objUserContext, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
@@ -319,13 +344,8 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
   useEffect(() => {
     onPayrollMonthChange?.(strSelectedMonth === strAllMonthsValue ? null : strSelectedMonth);
   }, [strSelectedMonth, onPayrollMonthChange]);
-  const objCurrentStage = lstStages.find((objStage) => objStage.strStatus === "in_progress")
-    || lstStages.find((objStage) => objStage.strStatus === "pending")
-    || lstStages[lstStages.length - 1];
   const intPendingApprovalCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
   const intValidationErrorCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
-  const intActionRequiredCount = intPendingApprovalCount + intValidationErrorCount;
-  const strPayrollStatus = formatStatusText(String(objTrackerPayload.strRunStatus || ""));
   const objSelectedRun = resolveSelectedRun(lstRecentRunRows, strSelectedMonth, strAllMonthsValue);
   const strRunStatusRaw = String(objSelectedRun?.run_status || objTrackerPayload.strRunStatus || "");
   const lstLifecycleStages = buildLifecycleStages(strRunStatusRaw);
@@ -341,285 +361,315 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
   const objOutputReadiness = (objDashboard.outputReadiness || {}) as OutputReadinessPayload;
   const objAudit = (objDashboard.audit || {}) as AuditPayload;
   const lstExceptionGroups = resolveExceptionGroups(objDashboard.exceptions, lstExceptionItems);
-  const objDashboardGridSpacing = { xs: 1.5, md: 2, xl: 2.25 };
+  const objDashboardGridSpacing = { xs: 1.25, md: 1.5, xl: 1.75 };
   const strLastUpdated = formatDateTimeLabel(objDashboard.dtGeneratedOn);
+  const [strActiveTab, setStrActiveTab] = useState<PayrollDashboardTabCode>("overview");
+  const lstTabs: Array<{ strCode: PayrollDashboardTabCode; strLabel: string; objIcon: ReactNode }> = [
+    { strCode: "overview", strLabel: t("overview", "Overview"), objIcon: <HomeRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "run_overview", strLabel: t("run_overview", "Run Overview"), objIcon: <AssignmentRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "workflow", strLabel: t("workflow", "Workflow"), objIcon: <TimelineRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "exceptions", strLabel: t("exceptions", "Exceptions"), objIcon: <WarningAmberRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "employees", strLabel: t("employees", "Employees"), objIcon: <PeopleAltRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "pay_payout", strLabel: t("pay_payout", "Pay & Payout"), objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "compliance", strLabel: t("compliance", "Compliance"), objIcon: <GppGoodRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "cost_analytics", strLabel: t("cost_analytics", "Cost & Analytics"), objIcon: <InsightsRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "reports", strLabel: t("reports", "Reports"), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "audit_actions", strLabel: t("audit_actions", "Audit & Actions"), objIcon: <RuleFolderRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "settings", strLabel: t("settings", "Settings"), objIcon: <TuneRoundedIcon sx={{ fontSize: 16 }} /> },
+  ];
+  const lstOverviewKpis = [
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_payroll_amount"),
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "employees_in_payroll"),
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals"),
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors"),
+  ].filter(Boolean) as DashboardWidget[];
 
   return (
     <Stack
-      spacing={2.5}
+      spacing={1.6}
       sx={{
         width: "100%",
-        p: { xs: 0.25, md: 0.5 },
-        background: "linear-gradient(180deg, #F6FAFF 0%, #F8FBFF 100%)",
+        p: { xs: 0.4, md: 0.55 },
+        background: DASHBOARD_COLORS.page,
         boxSizing: "border-box",
       }}
     >
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={8}>
-          <Paper
+      <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", lg: "center" }} spacing={1.25} sx={{ px: 0.2, py: 0.15 }}>
+        <Stack direction="row" spacing={1.25} alignItems="flex-start">
+          <Box sx={{ width: 48, height: 48, borderRadius: "16px", background: DASHBOARD_COLORS.gradient, color: "#fff", display: "grid", placeItems: "center", boxShadow: "0 12px 28px rgba(99,102,241,0.28)", flexShrink: 0 }}>
+            <CalendarMonthRoundedIcon sx={{ fontSize: 21 }} />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, letterSpacing: "-0.02em", fontSize: { xs: "1.12rem", md: "1.35rem" }, lineHeight: 1.15 }}>
+              {t("payroll_dashboard", "Payroll Dashboard")}
+            </Typography>
+            <Typography sx={{ mt: 0.25, color: "#5B6B87", fontSize: "0.83rem" }}>
+              {t("payroll_dashboard_subtitle", "Real-time overview of payroll health and key insights")}
+            </Typography>
+          </Box>
+        </Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={0.9} alignItems={{ xs: "stretch", sm: "center" }}>
+          <Select
+            value={strSelectedMonth}
+            onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
+            variant="standard"
+            disableUnderline
+            IconComponent={KeyboardArrowDownRoundedIcon}
             sx={{
-              p: { xs: 2, md: 2.5 },
-              height: "100%",
-              borderRadius: "18px",
+              minWidth: { xs: "100%", sm: 305 },
+              px: 1.15,
+              py: 0.15,
+              borderRadius: "16px",
               border: `1px solid ${DASHBOARD_COLORS.border}`,
-              boxShadow: "0 10px 28px rgba(15,31,61,0.06)",
-              background: "linear-gradient(110deg, #EBF4FF 0%, #F5F9FF 46%, #EEF5FF 100%)",
-              position: "relative",
-              overflow: "hidden",
+              backgroundColor: "#FFFFFF",
+              fontWeight: 700,
+              color: DASHBOARD_COLORS.text,
+              minHeight: 38,
+              "& .MuiSelect-select": { py: 0.95, pr: 4 },
+              "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 10 },
             }}
+            renderValue={(strValue) => `${t("payroll_month", "Payroll Month")}    ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
           >
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                pointerEvents: "none",
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  inset: 0,
-                  background: "radial-gradient(circle at 18% -10%, rgba(255,255,255,0.88), rgba(255,255,255,0) 42%)",
-                },
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  right: -42,
-                  top: -20,
-                  width: 560,
-                  height: 240,
-                  backgroundImage: "repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,0.65) 0 2px, rgba(255,255,255,0) 2px 16px)",
-                  opacity: 0.75,
-                },
-              }}
-            />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.8} sx={{ position: "relative", zIndex: 1 }}>
-              <Box
+            <MenuItem value={strAllMonthsValue}>
+              {t("all_months", "All Months")}
+            </MenuItem>
+            {objNormalizedMonthOptions.map((strMonth) => (
+              <MenuItem key={strMonth} value={strMonth}>
+                {formatLongMonth(strMonth)} Payroll
+              </MenuItem>
+            ))}
+          </Select>
+          <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
+                onClick={onRefresh}
+                disabled={blnRefreshing}
+                sx={{ minWidth: 104, height: 46, borderRadius: "16px", textTransform: "none", borderColor: DASHBOARD_COLORS.border, color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff", boxShadow: "0 8px 24px rgba(15,23,42,0.08)" }}
+              >
+                {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
+      </Stack>
+
+      <Paper sx={{ px: 0.55, py: 0.45, borderRadius: "16px", border: "none", boxShadow: "0 10px 30px rgba(99,102,241,0.25)", background: DASHBOARD_COLORS.navGradient, overflowX: "auto" }}>
+        <Stack direction="row" spacing={0.25} sx={{ minWidth: "max-content" }}>
+          {lstTabs.map((objTab) => {
+            const blnActive = strActiveTab === objTab.strCode;
+            return (
+              <Button
+                key={objTab.strCode}
+                onClick={() => setStrActiveTab(objTab.strCode)}
+                startIcon={objTab.objIcon}
                 sx={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: "linear-gradient(180deg, #4E8FFF 0%, #2563EB 100%)",
-                  color: "#ffffff",
-                  display: "grid",
-                  placeItems: "center",
-                  boxShadow: "0 14px 26px rgba(37,99,235,0.24)",
-                  flexShrink: 0,
+                  px: 1.02,
+                  py: 1.02,
+                  minWidth: "auto",
+                  borderRadius: "12px",
+                  borderBottom: "none",
+                  color: blnActive ? "#6D28D9" : "#FFFFFF",
+                  fontWeight: blnActive ? 800 : 700,
+                  textTransform: "none",
+                  fontSize: "0.74rem",
+                  whiteSpace: "nowrap",
+                  backgroundColor: blnActive ? "#FFFFFF" : "transparent",
+                  boxShadow: blnActive ? "0 8px 24px rgba(0,0,0,0.12)" : "none",
+                  transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
+                  "& .MuiButton-startIcon": {
+                    marginRight: 0.55,
+                    marginLeft: 0,
+                  },
+                  "&:hover": {
+                    transform: "scale(1.03)",
+                    backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.12)",
+                  },
+                  "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
+                    color: blnActive ? "#6D28D9" : "#FFFFFF",
+                  },
                 }}
               >
-                <CalendarMonthRoundedIcon sx={{ fontSize: 28 }} />
-              </Box>
-              <Stack spacing={1.35} sx={{ width: "100%" }}>
-                <Box>
-                  <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, letterSpacing: "-0.02em", fontSize: { xs: "1.2rem", md: "1.55rem" } }}>
-                    {t("payroll_dashboard", "Payroll Dashboard")}
-                  </Typography>
-                  <Typography sx={{ mt: 0.35, color: "#5B6B87", fontSize: "0.92rem" }}>
-                    {t("payroll_dashboard_subtitle", "Track payroll status, workflow progress, and items that need action.")}
-                  </Typography>
-                  <Typography sx={{ mt: 0.55, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 600 }}>
-                    {t("last_updated", "Last Updated")}: {strLastUpdated}
-                  </Typography>
-                </Box>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} flexWrap="wrap" useFlexGap>
-                <StatusBadge
-                  strLabel={t("payroll_status", "Payroll Status")}
-                  strValue={strPayrollStatus || t("pending", "Pending")}
-                  strAccent="#0E9FA8"
-                  strBackground="rgba(255,255,255,0.62)"
-                />
-                <StatusBadge
-                  strLabel={t("workflow", "Workflow")}
-                  strValue={formatLifecycleLabel(strRunStatusRaw) || formatStageStatus(objCurrentStage?.strStatus || "pending", t)}
-                  strAccent={DASHBOARD_COLORS.blue}
-                  strBackground="rgba(255,255,255,0.72)"
-                />
-                <StatusBadge
-                  strLabel={t("action_required", "Action Required")}
-                  strValue={`${formatInteger(intActionRequiredCount)} ${t("items", "Items")}`}
-                  strAccent={intActionRequiredCount > 0 ? DASHBOARD_COLORS.red : DASHBOARD_COLORS.green}
-                  strBackground="rgba(255,255,255,0.62)"
-                />
-                </Stack>
-              </Stack>
-            </Stack>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={4}>
-          <Paper
+                {objTab.strLabel}
+              </Button>
+            );
+          })}
+        </Stack>
+      </Paper>
+
+      {strActiveTab === "overview" ? (
+        <>
+          <Box
             sx={{
-              p: 2,
-              height: "100%",
-              borderRadius: "18px",
-              border: `1px solid ${DASHBOARD_COLORS.border}`,
-              boxShadow: "0 10px 28px rgba(15,31,61,0.06)",
-              backgroundColor: DASHBOARD_COLORS.surface,
+              display: "grid",
+              gap: { xs: 1.25, md: 1.5 },
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(5, minmax(0, 1fr))",
+              },
+              alignItems: "stretch",
             }}
           >
-            <Stack direction="row" spacing={1.4} alignItems="flex-start">
-              <Box sx={{ width: 48, height: 48, borderRadius: "14px", backgroundColor: "#F1F6FF", border: `1px solid ${DASHBOARD_COLORS.border}`, display: "grid", placeItems: "center", color: DASHBOARD_COLORS.blue, flexShrink: 0 }}>
-                <CalendarMonthRoundedIcon sx={{ fontSize: 24 }} />
+            {lstOverviewKpis.map((objWidget, intIndex) => (
+              <Box key={objWidget.strWidgetCode} sx={{ display: "flex", minWidth: 0 }}>
+                <PayrollKpiPanel
+                  objWidget={objWidget}
+                  objTone={lstPayrollCardPalette[intIndex % lstPayrollCardPalette.length]}
+                  strSelectedMonth={strSelectedMonth}
+                  strAllMonthsValue={strAllMonthsValue}
+                  t={t}
+                />
               </Box>
-              <Box sx={{ width: "100%" }}>
-                <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", fontWeight: 700 }}>
-                  {t("payroll_month", "Payroll Month")}
-                  </Typography>
-                  <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
-                    <span>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
-                        onClick={onRefresh}
-                        disabled={blnRefreshing}
-                        sx={{ minWidth: "auto", px: 1.1, py: 0.35, borderRadius: "10px", textTransform: "none" }}
-                      >
-                        {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                </Stack>
-                <Select
-                  value={strSelectedMonth}
-                  onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
-                  fullWidth
-                  variant="standard"
-                  disableUnderline
-                  IconComponent={KeyboardArrowDownRoundedIcon}
-                  sx={{
-                    px: 1.5,
-                    py: 0.35,
-                    borderRadius: "14px",
-                    border: `1px solid ${DASHBOARD_COLORS.border}`,
-                    backgroundColor: "#FFFFFF",
-                    fontWeight: 700,
-                    color: DASHBOARD_COLORS.text,
-                    "& .MuiSelect-select": { py: 1.15, pr: 4 },
-                    "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 12 },
-                  }}
-                  renderValue={(strValue) => formatPayrollMonthSelectionLabel(String(strValue), t)}
-                >
-                  <MenuItem value={strAllMonthsValue}>
-                    {t("all_months", "All Months")}
-                  </MenuItem>
-                  {objNormalizedMonthOptions.map((strMonth) => (
-                    <MenuItem key={strMonth} value={strMonth}>
-                      {formatLongMonth(strMonth)} Payroll
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Typography sx={{ mt: 1.1, color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", lineHeight: 1.45 }}>
-                  {objSelectedRun
-                    ? `${t("run_selected", "Selected Run")}: ${objSelectedRun.run_name || "-"}`
-                    : t("no_run_selected_hint", "No payroll run found for the selected month in the current dashboard feed.")}
-                </Typography>
-              </Box>
-            </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+            ))}
+            <Box sx={{ display: "flex", minWidth: 0 }}>
+              <ReadinessPanel objReadiness={objReadiness} t={t} blnCompact />
+            </Box>
+          </Box>
 
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="start">
-        <Grid item xs={12} xl={4}>
-          <ReadinessPanel objReadiness={objReadiness} t={t} />
-        </Grid>
-        <Grid item xs={12} xl={8}>
-          <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
-        </Grid>
-      </Grid>
-
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
-          <RunOverviewPanel
-            objRun={objSelectedRun}
-            lstDetails={objRunDetailItems}
-            strRunStatus={strRunStatusRaw}
-            t={t}
-          />
-        </Grid>
-        <Grid item xs={12} md={6} xl={5} sx={{ display: "flex" }}>
-          <RunActionPanel
-            lstActions={lstActionPanelItems}
-            strRunStatus={strRunStatusRaw}
-            t={t}
-          />
-        </Grid>
-      </Grid>
-
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        {lstKpiWidgets.map((objWidget, intIndex) => (
-          <Grid key={objWidget.strWidgetCode} item xs={12} sm={6} xl={3} sx={{ display: "flex" }}>
-            <PayrollKpiPanel
-              objWidget={objWidget}
-              objTone={lstPayrollCardPalette[intIndex % lstPayrollCardPalette.length]}
-              strSelectedMonth={strSelectedMonth}
-              strAllMonthsValue={strAllMonthsValue}
-              t={t}
-            />
+          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+            <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
+              <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
+            </Grid>
+            <Grid item xs={12} xl={5} sx={{ display: "flex" }}>
+              <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
+            </Grid>
           </Grid>
-        ))}
-      </Grid>
 
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
-          <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
-        </Grid>
-        <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
-          <ValidationSummaryPanel lstCards={lstValidationCards} t={t} />
-        </Grid>
-      </Grid>
-
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
-          <AlertsPanel objWidget={objAlertsWidget} t={t} />
-        </Grid>
-        <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
-          <ExceptionPanel lstItems={lstExceptionItems} lstGroups={lstExceptionGroups} t={t} />
-        </Grid>
-      </Grid>
-
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
-          <HighRiskEmployeesPanel lstEmployees={lstHighRiskEmployees} t={t} />
-        </Grid>
-        <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
-          <ApprovalAgingPanel lstRows={lstApprovalAging} t={t} />
-        </Grid>
-      </Grid>
-
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        {lstDetailedSummarySections.map((objSection) => (
-          <Grid key={objSection.strCode} item xs={12} md={6} xl={3} sx={{ display: "flex" }}>
-            <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
+          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+            <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+              <AlertsPanel objWidget={objAlertsWidget} t={t} />
+            </Grid>
+            <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+              <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
+            </Grid>
           </Grid>
-        ))}
-      </Grid>
 
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
-          <OutputReadinessPanel objOutputReadiness={objOutputReadiness} t={t} />
-        </Grid>
-        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
-          <AuditPanel objAudit={objAudit} t={t} />
-        </Grid>
-      </Grid>
+          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+            <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+              <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
+            </Grid>
+            <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+              <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
+            </Grid>
+          </Grid>
+        </>
+      ) : null}
 
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
-          <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
+      {strActiveTab === "run_overview" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
+            <RunOverviewPanel objRun={objSelectedRun} lstDetails={objRunDetailItems} strRunStatus={strRunStatusRaw} t={t} />
+          </Grid>
+          <Grid item xs={12} xl={5} sx={{ display: "flex" }}>
+            <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
+          </Grid>
         </Grid>
-        <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
-          <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-        </Grid>
-      </Grid>
+      ) : null}
 
-      <Grid container columnSpacing={{ xs: 1.5, md: 2, lg: 0 }} rowSpacing={objDashboardGridSpacing} alignItems="stretch">
-        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
-          <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
+      {strActiveTab === "workflow" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
+            <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
+            <ReadinessPanel objReadiness={objReadiness} t={t} />
+          </Grid>
         </Grid>
-        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
-          <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
+      ) : null}
+
+      {strActiveTab === "exceptions" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
+            <ValidationSummaryPanel lstCards={lstValidationCards} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
+            <ExceptionPanel lstItems={lstExceptionItems} lstGroups={lstExceptionGroups} t={t} />
+          </Grid>
         </Grid>
-      </Grid>
+      ) : null}
+
+      {strActiveTab === "employees" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} sx={{ display: "flex" }}>
+            <HighRiskEmployeesPanel lstEmployees={lstHighRiskEmployees} t={t} />
+          </Grid>
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "pay_payout" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+            <ApprovalAgingPanel lstRows={lstApprovalAging} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+            <OutputReadinessPanel objOutputReadiness={objOutputReadiness} t={t} />
+          </Grid>
+          {lstDetailedSummarySections.filter((objSection) => objSection.strCode === "reimbursement").map((objSection) => (
+            <Grid key={objSection.strCode} item xs={12} lg={6} sx={{ display: "flex" }}>
+              <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
+            </Grid>
+          ))}
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "compliance" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          {lstDetailedSummarySections.filter((objSection) => ["it", "statutory", "tax"].includes(objSection.strCode)).map((objSection) => (
+            <Grid key={objSection.strCode} item xs={12} md={6} xl={4} sx={{ display: "flex" }}>
+              <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
+            </Grid>
+          ))}
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "cost_analytics" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+            <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+            <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
+          </Grid>
+          <Grid item xs={12} sx={{ display: "flex" }}>
+            <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
+          </Grid>
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "reports" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+            <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+            <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
+          </Grid>
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "audit_actions" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+            <RunActionPanel lstActions={lstActionPanelItems} strRunStatus={strRunStatusRaw} t={t} />
+          </Grid>
+          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+            <AuditPanel objAudit={objAudit} t={t} />
+          </Grid>
+          <Grid item xs={12} sx={{ display: "flex" }}>
+            <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
+          </Grid>
+        </Grid>
+      ) : null}
+
+      {strActiveTab === "settings" ? (
+        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+          <Grid item xs={12} sx={{ display: "flex" }}>
+            <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
+          </Grid>
+        </Grid>
+      ) : null}
     </Stack>
   );
 }
@@ -661,56 +711,55 @@ function PayrollKpiPanel({
   return (
     <Paper
       sx={{
-        p: 2.25,
+        p: 1.45,
         width: "100%",
-        minHeight: 144,
-        height: "100%",
+        minWidth: 0,
+        minHeight: 104,
+        height: "auto",
         borderRadius: "18px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
-        boxShadow: "0 10px 28px rgba(15,31,61,0.06)",
-        background: "linear-gradient(180deg, #FFFFFF 0%, #FBFDFF 100%)",
+        boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+        background: "#FFFFFF",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid ${objTone.accent}`, pointerEvents: "none" }} />
-      <Stack justifyContent="space-between" sx={{ height: "100%" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5}>
-          <Stack direction="row" spacing={1.2} sx={{ minWidth: 0, flex: 1 }}>
+      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid rgba(255,255,255,0)`, pointerEvents: "none" }} />
+      <Stack spacing={0.85} alignItems="flex-start" sx={{ minWidth: 0 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5} sx={{ width: "100%" }}>
+          <Stack direction="row" spacing={0.9} sx={{ minWidth: 0, flex: 1 }}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 flexShrink: 0,
-                borderRadius: "12px",
+                borderRadius: "9px",
                 display: "grid",
                 placeItems: "center",
-                backgroundColor: objTone.surface,
-                color: objTone.accent,
-                border: `1px solid ${DASHBOARD_COLORS.border}`,
-                boxShadow: "0 8px 18px rgba(15,31,61,0.05)",
+                background: objTone.surface,
+                color: "#FFFFFF",
+                border: "none",
+                boxShadow: "0 12px 24px rgba(15,23,42,0.14)",
               }}
             >
               {objIcon}
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: DASHBOARD_COLORS.muted }}>
+              <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: DASHBOARD_COLORS.muted }}>
                 {strTitle}
               </Typography>
-              <Typography sx={{ mt: 1.05, fontSize: "1.95rem", lineHeight: 1.08, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
+              <Typography sx={{ mt: 0.55, fontSize: "1.45rem", lineHeight: 1.03, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
                 {strValue}
               </Typography>
-              <Typography sx={{ mt: 0.55, fontSize: "0.82rem", color: DASHBOARD_COLORS.muted }}>
+              <Typography sx={{ mt: 0.28, fontSize: "0.72rem", color: DASHBOARD_COLORS.muted }}>
                 {strSubtitle}
               </Typography>
             </Box>
           </Stack>
         </Stack>
-        <Box sx={{ mt: 2 }}>
-          <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: objTone.accent }}>
-            {strTrendText}
-          </Typography>
-        </Box>
+        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: objWidget.strWidgetCode === "payroll_validation_errors" ? DASHBOARD_COLORS.red : objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
+          {strTrendText}
+        </Typography>
       </Stack>
     </Paper>
   );
@@ -839,137 +888,78 @@ function WorkflowPanel({
 }) {
   const objPayload = ((objWidget?.objPayload as { lstStages?: TrackerStage[] } | undefined) || {});
   const lstStages = (objPayload.lstStages || []) as TrackerStage[];
-  const objCurrentStage = lstStages.find((objStage) => objStage.strStatus === "in_progress")
-    || lstStages.find((objStage) => objStage.strStatus === "pending")
-    || lstStages[lstStages.length - 1];
   const decCompletedStageUnits = lstStages.reduce((decSum, objStage) => (
     decSum + (objStage.strStatus === "completed" ? 1 : objStage.strStatus === "in_progress" ? 0.5 : 0)
   ), 0);
   const decProgressPercent = lstStages.length ? Math.max(0, Math.min(100, (decCompletedStageUnits / lstStages.length) * 100)) : 0;
+  const lstWorkflowSummary = [
+    { strLabel: t("blocking_issues", "Blocking Issues"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intBlockingCount || 0)), strTone: "red" as const },
+    { strLabel: t("warnings", "Warnings"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intWarningCount || 0)), strTone: "amber" as const },
+    { strLabel: t("info", "Info"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intInfoCount || 0)), strTone: "blue" as const },
+    { strLabel: t("pending_approvals", "Pending Approvals"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intPendingApprovalCount || 0)), strTone: "blue" as const },
+  ];
 
   return (
     <PanelShell
       strTitle={t("payroll_workflow", "Payroll Workflow")}
-      strSubtitle={objCurrentStage ? `${t("current_stage", "Current Stage")}: ${objCurrentStage.strLabel} • ${t("run_status", "Run Status")}: ${formatLifecycleLabel(strRunStatus)}` : undefined}
       strAccent={DASHBOARD_COLORS.blue}
     >
-      <Stack spacing={2}>
-        <Grid container spacing={1.1}>
-          {lstLifecycleStages.map((objStage, intIndex) => {
-            const objTone = lifecycleTone(objStage.strState);
+      <Stack spacing={1.45}>
+        <Stack direction="row" alignItems="center" spacing={0} sx={{ display: { xs: "none", md: "flex" } }}>
+          {lstStages.map((objStage, intIndex) => {
+            const objTone = lifecycleTone(lstLifecycleStages[intIndex]?.strState || "upcoming");
             return (
-              <Grid key={`${objStage.strLabel}-${intIndex}`} item xs={12} sm={6} lg={4}>
-                <Box sx={{ p: 1.1, borderRadius: "14px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface, minHeight: 92 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#fff", border: `2px solid ${objTone.accent}`, color: objTone.accent, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "0.75rem", flexShrink: 0 }}>
-                      {intIndex + 1}
-                    </Box>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.78rem" }}>
-                        {objStage.strLabel}
-                      </Typography>
-                      <Typography sx={{ mt: 0.28, color: objTone.accent, fontWeight: 700, fontSize: "0.72rem" }}>
-                        {formatLifecycleState(objStage.strState, t)}
-                      </Typography>
-                    </Box>
-                  </Stack>
+              <Stack key={objStage.strCode} direction="row" alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                  <Box sx={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${objTone.accent}`, backgroundColor: "#fff", color: objTone.accent, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "0.74rem", flexShrink: 0 }}>
+                    {intIndex + 1}
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.78rem", lineHeight: 1.18 }}>
+              {formatLifecycleLabel(objStage.strCode)}
+            </Typography>
+                    <Typography sx={{ mt: 0.16, color: objTone.accent, fontWeight: 700, fontSize: "0.72rem", lineHeight: 1.15 }}>
+                      {formatStageStatus(objStage.strStatus, t)}
+                    </Typography>
+                  </Box>
+                </Stack>
+                {intIndex < lstStages.length - 1 ? (
+                  <Box sx={{ flex: 1, mx: 1.15, height: 2, backgroundColor: "#CBD5E1" }} />
+                ) : null}
+              </Stack>
+            );
+          })}
+        </Stack>
+        <Stack spacing={0.55}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontSize: "0.78rem", fontWeight: 700 }}>
+              {t("stage_progress", "Stage Progress")}
+            </Typography>
+            <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", fontWeight: 700 }}>
+              {`${Math.max(Math.floor(decCompletedStageUnits), 0)} of ${lstStages.length} Completed`}
+            </Typography>
+          </Stack>
+          <Box sx={{ width: "100%", height: 6, borderRadius: "999px", backgroundColor: "#E2E8F0", overflow: "hidden" }}>
+            <Box sx={{ width: `${decProgressPercent}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, #9333EA 0%, #6366F1 100%)" }} />
+          </Box>
+        </Stack>
+        <Grid container spacing={1}>
+          {lstWorkflowSummary.map((objItem, intIndex) => {
+            const objTone = validationTone(objItem.strTone);
+            return (
+              <Grid key={`${objItem.strLabel}-${intIndex}`} item xs={12} sm={6} lg={3}>
+                <Box sx={{ p: 1.05, borderRadius: "12px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface }}>
+                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>
+                    {objItem.strLabel}
+                  </Typography>
+                  <Typography sx={{ mt: 0.42, color: objTone.accent, fontSize: "1.04rem", fontWeight: 800 }}>
+                    {objItem.strValue}
+                  </Typography>
                 </Box>
               </Grid>
             );
           })}
         </Grid>
-        <Box sx={{ pt: 0.25 }}>
-        <Box sx={{ display: { xs: "none", md: "block" }, position: "relative", height: 30, mb: 1.65 }}>
-          <Box sx={{ position: "absolute", left: 0, right: 0, top: 14, height: 2, backgroundColor: "#DDE7F0" }} />
-          <Box sx={{ position: "absolute", left: 0, width: `${decProgressPercent}%`, top: 14, height: 2, backgroundColor: DASHBOARD_COLORS.green }} />
-          <Box sx={{ position: "absolute", left: `${decProgressPercent}%`, right: 0, top: 14, height: 2, background: "repeating-linear-gradient(90deg, #FB923C 0 5px, transparent 5px 9px)" }} />
-          {lstStages.map((objStage, intIndex) => {
-            const decLeft = lstStages.length > 1 ? (intIndex / (lstStages.length - 1)) * 100 : 0;
-            const strAccent = objStage.strStatus === "completed"
-              ? DASHBOARD_COLORS.green
-              : objStage.strStatus === "in_progress"
-                ? DASHBOARD_COLORS.green
-                : DASHBOARD_COLORS.amber;
-            return (
-              <Box key={`${objStage.strCode}-marker`} sx={{ position: "absolute", left: `calc(${decLeft}% - 14px)`, top: 0, width: 28, height: 28, borderRadius: "50%", border: `2px solid ${strAccent}`, backgroundColor: "#fff", color: strAccent, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "0.78rem", boxShadow: "0 4px 10px rgba(15,31,61,0.05)" }}>
-                {intIndex + 1}
-              </Box>
-            );
-          })}
-        </Box>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 1.35, md: 1.25 }} sx={{ pt: 0.2 }}>
-        {lstStages.map((objStage, intIndex) => {
-          const strAccent = objStage.strStatus === "completed"
-            ? DASHBOARD_COLORS.green
-            : objStage.strStatus === "in_progress"
-              ? DASHBOARD_COLORS.green
-              : DASHBOARD_COLORS.amber;
-          const objStageIcon = objStage.strCode === "data_collection"
-            ? <PaymentsRoundedIcon sx={{ fontSize: 18 }} />
-            : objStage.strCode === "validation"
-              ? <AssignmentTurnedInRoundedIcon sx={{ fontSize: 18 }} />
-              : objStage.strCode === "processing"
-                ? <SettingsRoundedIcon sx={{ fontSize: 18 }} />
-                : objStage.strCode === "approval"
-                  ? <PeopleAltRoundedIcon sx={{ fontSize: 18 }} />
-                  : <AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} />;
-
-          return (
-            <Stack key={objStage.strCode} direction={{ xs: "row", md: "column" }} spacing={1.1} sx={{ flex: 1, minWidth: 0, alignItems: { xs: "center", md: "stretch" } }}>
-              <Stack direction={{ xs: "row", md: "column" }} spacing={1.1} sx={{ flex: 1, minWidth: 0 }}>
-                <Box
-                  sx={{
-                    minWidth: { xs: 40, md: "auto" },
-                    width: { xs: 40, md: "auto" },
-                    height: { xs: 40, md: 0 },
-                    px: { xs: 0, md: 1.1 },
-                    py: { xs: 0, md: 0.8 },
-                    borderRadius: { xs: "50%", md: "14px" },
-                    border: `2px solid ${strAccent}`,
-                    backgroundColor: { xs: "#fff", md: "#fff" },
-                    color: strAccent,
-                    fontWeight: 800,
-                    fontSize: "0.78rem",
-                    textAlign: "center",
-                    display: { xs: "grid", md: "none" },
-                    placeItems: "center",
-                  }}
-                >
-                  {intIndex + 1}
-                </Box>
-                <Box
-                  sx={{
-                    p: 1.25,
-                    minHeight: { xs: 82, md: 92 },
-                    borderRadius: "12px",
-                    border: `1px solid ${objStage.strStatus === "pending" ? "#F7C99D" : objStage.strStatus === "completed" ? "#BFE7CC" : "#F3D0AE"}`,
-                    backgroundColor: objStage.strStatus === "pending" ? "#FFFDFC" : "#FBFFFC",
-                    boxShadow: "0 6px 14px rgba(15,31,61,0.04)",
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Stack direction="row" spacing={0.85} alignItems="center" sx={{ minWidth: 0 }}>
-                      <Box sx={{ width: 24, height: 24, borderRadius: "8px", display: "grid", placeItems: "center", color: strAccent }}>
-                        {objStageIcon}
-                      </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.8rem", lineHeight: 1.25 }}>
-                          {objStage.strLabel}
-                        </Typography>
-                        <Typography sx={{ mt: 0.35, fontSize: "0.76rem", color: strAccent, fontWeight: 700 }}>
-                          {formatStageStatus(objStage.strStatus, t)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    <CheckCircleRoundedIcon sx={{ color: objStage.strStatus === "pending" ? DASHBOARD_COLORS.amber : strAccent, fontSize: 16, flexShrink: 0 }} />
-                  </Stack>
-                </Box>
-              </Stack>
-            </Stack>
-          );
-        })}
-        </Stack>
-        </Box>
       </Stack>
     </PanelShell>
   );
@@ -1004,21 +994,43 @@ function ValidationSummaryPanel({ lstCards, t }: { lstCards: Array<{ strLabel: s
   );
 }
 
-function ReadinessPanel({ objReadiness, t }: { objReadiness: ReadinessPayload; t: RoleBasedDashboardProps["t"] }) {
+function ReadinessPanel({ objReadiness, t, blnCompact = false }: { objReadiness: ReadinessPayload; t: RoleBasedDashboardProps["t"]; blnCompact?: boolean }) {
   const decScore = Math.max(0, Math.min(100, Number(objReadiness.decScore || 0)));
   const strStatus = String(objReadiness.strStatus || "Not Ready");
   const lstBreakdown = objReadiness.lstBreakdown || [];
   return (
-    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)}>
-      <Stack spacing={1.4}>
-        <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
-          <Stack spacing={0.45}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "1.8rem" }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
-            <Chip label={strStatus} size="small" sx={{ width: "fit-content", fontWeight: 700, borderRadius: "999px", backgroundColor: softColor(readinessAccent(strStatus)), color: readinessAccent(strStatus) }} />
+    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={blnCompact ? undefined : t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)}>
+      <Stack spacing={blnCompact ? 0.8 : 1.4} alignItems="stretch" sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" justifyContent="space-between" sx={{ minWidth: 0 }}>
+          <Stack spacing={0.4} sx={{ minWidth: 0, flex: 1 }}>
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompact ? "1.45rem" : "1.8rem" }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
+            <Chip
+              label={strStatus}
+              size="small"
+              sx={{
+                width: blnCompact ? "100%" : "fit-content",
+                maxWidth: "100%",
+                height: blnCompact ? 24 : 32,
+                fontWeight: 700,
+                borderRadius: "999px",
+                backgroundColor: softColor(readinessAccent(strStatus)),
+                color: readinessAccent(strStatus),
+                fontSize: blnCompact ? "0.7rem" : "0.78rem",
+                "& .MuiChip-label": {
+                  px: blnCompact ? 1.05 : 1.4,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                },
+              }}
+            />
           </Stack>
-          <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={t("ready", "Ready")} />
+          <Box sx={{ transform: blnCompact ? "scale(0.68)" : "none", transformOrigin: "right center", flexShrink: 0 }}>
+            <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={t("ready", "Ready")} />
+          </Box>
         </Stack>
         <MiniProgressBar decValue={decScore} strColor={readinessAccent(strStatus)} />
+        {!blnCompact ? (
         <Grid container spacing={1}>
           <Grid item xs={4}>
             <MetricPill strLabel={t("blocking", "Blocking")} strValue={formatInteger(Number(objReadiness.intBlockingCount || 0))} strTone={DASHBOARD_COLORS.red} />
@@ -1030,15 +1042,16 @@ function ReadinessPanel({ objReadiness, t }: { objReadiness: ReadinessPayload; t
             <MetricPill strLabel={t("info", "Info")} strValue={formatInteger(Number(objReadiness.intInfoCount || 0))} strTone={DASHBOARD_COLORS.blue} />
           </Grid>
         </Grid>
-        {lstBreakdown.length ? (
+        ) : null}
+        {!blnCompact && lstBreakdown.length ? (
           <Stack spacing={0.8}>
             {lstBreakdown.slice(0, 4).map((objItem, intIndex) => (
               <CompactStatRow key={`${objItem.strLabel}-${intIndex}`} strLabel={objItem.strLabel} strValue={objItem.decValue != null ? formatCurrency(Number(objItem.decValue || 0)) : formatInteger(Number(objItem.intValue || 0))} />
             ))}
           </Stack>
-        ) : (
+        ) : !blnCompact ? (
           <CompactEmptyState strTitle={t("no_readiness_breakdown", "No readiness breakdown yet")} strSubtitle={t("no_readiness_breakdown_hint", "Readiness details will appear after the dashboard validations run.")} />
-        )}
+        ) : null}
       </Stack>
     </PanelShell>
   );
@@ -1046,25 +1059,20 @@ function ReadinessPanel({ objReadiness, t }: { objReadiness: ReadinessPayload; t
 
 function VariancePanel({ lstMetrics, t }: { lstMetrics: VarianceMetric[]; t: RoleBasedDashboardProps["t"] }) {
   return (
-    <PanelShell
-      strTitle={t("month_on_month_variance", "Month-on-Month Variance")}
-      strSubtitle={t("month_on_month_variance_subtitle", "Compare current month output against the previous payroll month")}
-      strAccent={DASHBOARD_COLORS.blue}
-      blnAutoHeight
-    >
+    <PanelShell strTitle={t("month_on_month_variance", "Month-on-Month Variance")} strAccent={DASHBOARD_COLORS.blue} blnAutoHeight>
       {lstMetrics.length ? (
-        <Grid container spacing={1.1}>
+        <Grid container spacing={1}>
           {lstMetrics.map((objMetric, intIndex) => (
             <Grid key={`${objMetric.strLabel}-${intIndex}`} item xs={12} sm={6} lg={3}>
-              <Box sx={{ p: 1.1, borderRadius: "14px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF", minHeight: 92 }}>
-                <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.74rem", fontWeight: 700 }}>{objMetric.strLabel}</Typography>
-                <Typography sx={{ mt: 0.45, color: DASHBOARD_COLORS.text, fontSize: "0.98rem", fontWeight: 800 }}>
+              <Box sx={{ p: 1.05, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF", minHeight: 84 }}>
+                <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.71rem", fontWeight: 700 }}>{objMetric.strLabel}</Typography>
+                <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.text, fontSize: "1rem", fontWeight: 800 }}>
                   {formatMetricValue(objMetric.decCurrent, objMetric.blnCurrency)}
                 </Typography>
-                <Typography sx={{ mt: 0.2, color: DASHBOARD_COLORS.muted, fontSize: "0.73rem" }}>
+                <Typography sx={{ mt: 0.24, color: DASHBOARD_COLORS.muted, fontSize: "0.72rem" }}>
                   {t("previous", "Previous")}: {formatMetricValue(objMetric.decPrevious, objMetric.blnCurrency)}
                 </Typography>
-                <Typography sx={{ mt: 0.4, color: varianceColor(objMetric.decVariancePercent), fontSize: "0.75rem", fontWeight: 700 }}>
+                <Typography sx={{ mt: 0.34, color: varianceColor(objMetric.decVariancePercent), fontSize: "0.74rem", fontWeight: 700 }}>
                   {formatTrendText(objMetric.decVariancePercent)}
                 </Typography>
               </Box>
@@ -1160,8 +1168,8 @@ function AlertsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleBas
                 borderRadius: "12px",
                 px: 1.25,
                 py: 0.72,
-                border: `1px solid ${blnHasCount ? "#F9D2D2" : DASHBOARD_COLORS.border}`,
-                backgroundColor: "#FFF8F8",
+                border: `1px solid ${blnHasCount ? "#FECACA" : DASHBOARD_COLORS.border}`,
+                backgroundColor: blnHasCount ? "#FFF5F5" : "#FFFFFF",
               }}
             >
               <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
@@ -1414,15 +1422,15 @@ function RecentRunsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
   const lstRows = (((objWidget?.objPayload as { lstRows?: RecentRunRow[] } | undefined)?.lstRows) || []) as RecentRunRow[];
   return (
     <PanelShell strTitle={resolveWidgetTitle(t, objWidget?.strWidgetCode, objWidget?.strWidgetName || "Recent Payroll Runs")} strAccent={DASHBOARD_COLORS.blue}>
-      <Stack spacing={1}>
+      <Stack spacing={0.8}>
         <Box
           sx={{
             display: { xs: "none", md: "grid" },
             gridTemplateColumns: "1.1fr 1fr 0.95fr 1fr 0.72fr 1.25fr 0.95fr 32px",
             gap: 1,
-            px: 1,
+            px: 0.8,
             color: DASHBOARD_COLORS.muted,
-            fontSize: "0.72rem",
+            fontSize: "0.68rem",
             fontWeight: 700,
           }}
         >
@@ -1442,12 +1450,18 @@ function RecentRunsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
               sx={{
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr", md: "1.1fr 1fr 0.95fr 1fr 0.72fr 1.25fr 0.95fr 32px" },
-                gap: { xs: 0.65, md: 1 },
-                borderRadius: "12px",
-                px: 1.1,
-                py: 0.9,
+                gap: { xs: 0.55, md: 0.8 },
+                borderRadius: "10px",
+                px: 0.95,
+                py: 0.72,
                 border: `1px solid ${DASHBOARD_COLORS.border}`,
                 backgroundColor: "#FFFFFF",
+                transition: "transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
+                "&:hover": {
+                  transform: "translateY(-1px)",
+                  backgroundColor: "#FCFCFF",
+                  boxShadow: "0 8px 20px rgba(15,23,42,0.08)",
+                },
               }}
             >
               <Box>
@@ -2138,14 +2152,14 @@ function TrendChartPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
   const decMax = Math.max(...lstPoints.map((objPoint) => Number(objPoint.decValue || objPoint.intValue || 0)), 0);
   return (
     <PanelShell strTitle={resolveWidgetTitle(t, objWidget?.strWidgetCode, objWidget?.strWidgetName || "Payroll Cost Trend")}>
-      <Stack direction="row" alignItems="end" spacing={1.2} sx={{ minHeight: 220 }}>
+      <Stack direction="row" alignItems="end" spacing={1.1} sx={{ minHeight: 180 }}>
         {lstPoints.map((objPoint, intIndex) => {
           const decValue = Number(objPoint.decValue || objPoint.intValue || 0);
-          const decHeight = decMax > 0 ? Math.max((decValue / decMax) * 160, 16) : 16;
+          const decHeight = decMax > 0 ? Math.max((decValue / decMax) * 128, 14) : 14;
           return (
             <Stack key={`${objPoint.strCode || "point"}-${objPoint.strLabel}-${intIndex}`} spacing={1} sx={{ flex: 1, alignItems: "center" }}>
-              <Typography sx={{ fontSize: "0.72rem", color: "#0f766e", fontWeight: 700 }}>{formatCurrency(decValue)}</Typography>
-              <Box sx={{ width: "100%", borderRadius: "16px 16px 6px 6px", height: decHeight, background: "linear-gradient(180deg, #0ea5e9 0%, #2563eb 100%)" }} />
+              <Typography sx={{ fontSize: "0.68rem", color: "#475569", fontWeight: 700 }}>{formatCurrency(decValue)}</Typography>
+              <Box sx={{ width: "72%", borderRadius: "10px 10px 4px 4px", height: decHeight, background: "linear-gradient(180deg, #A855F7 0%, #3B82F6 100%)", boxShadow: "0 10px 18px rgba(99,102,241,0.18)" }} />
               <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>{objPoint.strLabel}</Typography>
             </Stack>
           );
@@ -2160,7 +2174,7 @@ function BarChartPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
   const decMax = Math.max(...lstPoints.map((objPoint) => Number(objPoint.decValue || objPoint.intValue || 0)), 0);
   return (
     <PanelShell strTitle={resolveWidgetTitle(t, objWidget?.strWidgetCode, objWidget?.strWidgetName || "Department-wise Payroll Cost")}>
-      <Stack spacing={1.4}>
+      <Stack spacing={1.1}>
         {lstPoints.map((objPoint, intIndex) => {
           const decValue = Number(objPoint.decValue || objPoint.intValue || 0);
           const decWidth = decMax > 0 ? `${Math.max((decValue / decMax) * 100, 6)}%` : "6%";
@@ -2170,8 +2184,8 @@ function BarChartPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: RoleB
                 <Typography sx={{ color: "#111827", fontWeight: 600, fontSize: "0.85rem" }}>{objPoint.strLabel}</Typography>
                 <Typography sx={{ color: "#2563eb", fontWeight: 700, fontSize: "0.82rem" }}>{formatCurrency(decValue)}</Typography>
               </Stack>
-              <Box sx={{ width: "100%", backgroundColor: "#e2e8f0", borderRadius: "999px", height: 10 }}>
-                <Box sx={{ width: decWidth, background: "linear-gradient(90deg, #38bdf8 0%, #2563eb 100%)", borderRadius: "999px", height: 10 }} />
+              <Box sx={{ width: "100%", backgroundColor: "#e2e8f0", borderRadius: "999px", height: 9 }}>
+                <Box sx={{ width: decWidth, background: "linear-gradient(90deg, #9333EA 0%, #2563EB 56%, #0891B2 100%)", borderRadius: "999px", height: 9, boxShadow: "0 8px 18px rgba(37,99,235,0.16)" }} />
               </Box>
             </Box>
           );
@@ -2319,24 +2333,24 @@ function PanelShell({
   return (
     <Paper
       sx={{
-        p: 2.25,
+        p: 1.7,
         width: "100%",
         height: blnAutoHeight ? "auto" : "100%",
         borderRadius: "18px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         backgroundColor: DASHBOARD_COLORS.surface,
-        boxShadow: "0 10px 28px rgba(15,31,61,0.06)",
+        boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <Box sx={{ position: "absolute", inset: 0, borderTop: `4px solid ${strAccent}`, pointerEvents: "none" }} />
-      <Box sx={{ mb: 1.75 }}>
-        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "1rem" }}>
+      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
+      <Box sx={{ mb: 1.2 }}>
+        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.96rem" }}>
           {strTitle}
         </Typography>
         {strSubtitle ? (
-          <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.8rem" }}>
+          <Typography sx={{ mt: 0.25, color: DASHBOARD_COLORS.muted, fontSize: "0.76rem" }}>
             {strSubtitle}
           </Typography>
         ) : null}
@@ -2753,9 +2767,10 @@ function getInitials(strValue: string) {
 
 function statusAccentColor(strStatus: string) {
   const strNormalized = String(strStatus || "").trim().toLowerCase();
-  if (["submitted", "approved", "partially approved", "locked", "processed", "completed"].includes(strNormalized)) return DASHBOARD_COLORS.green;
-  if (["released", "resubmitted", "under_review", "under review", "in progress", "in_progress"].includes(strNormalized)) return DASHBOARD_COLORS.amber;
-  return DASHBOARD_COLORS.red;
+  if (["closed", "processed", "approved", "completed", "passed"].includes(strNormalized)) return "#15803D";
+  if (["submitted", "released", "resubmitted", "under_review", "under review", "in progress", "in_progress"].includes(strNormalized)) return "#EA580C";
+  if (["open", "active", "info"].includes(strNormalized)) return "#2563EB";
+  return "#DC2626";
 }
 
 function pendingActionIcon(strCode: string) {
@@ -2771,9 +2786,10 @@ function pendingActionIcon(strCode: string) {
 
 function chipBackground(strStatus: string) {
   const strNormalized = String(strStatus || "").toLowerCase();
-  if (["closed", "processed", "approved", "completed"].includes(strNormalized)) return DASHBOARD_COLORS.greenSoft;
-  if (["submitted", "released", "in_progress", "in progress", "under review"].includes(strNormalized)) return DASHBOARD_COLORS.amberSoft;
-  return DASHBOARD_COLORS.redSoft;
+  if (["closed", "processed", "approved", "completed", "passed"].includes(strNormalized)) return "#DCFCE7";
+  if (["submitted", "released", "in_progress", "in progress", "under review"].includes(strNormalized)) return "#FFEDD5";
+  if (["open", "active", "info"].includes(strNormalized)) return "#DBEAFE";
+  return "#FEE2E2";
 }
 
 function formatStatusText(strStatus: string) {
