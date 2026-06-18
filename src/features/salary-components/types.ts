@@ -20,9 +20,13 @@ export type SalaryComponentListRecord = {
   intDisplayOrder: number;
   blnIsReimbursement: boolean;
   blnIsFlexiBenefit: boolean;
+  blnIsFlexiBasket?: boolean;
+  strFlexiComponentType?: string | null;
   strReimbursementType: string | null;
   strSettlementMethod: string | null;
   blnRequiresBills: boolean;
+  blnExpenseDateRequired?: boolean;
+  blnAllowPartialApproval?: boolean;
   decAnnualLimitAmount: number | null;
   decMonthlyLimitAmount: number | null;
   strClaimLimitType: string | null;
@@ -80,7 +84,9 @@ export type SalaryComponentFormValues = {
   blnIncludedInCtc: boolean;
   strSettlementMethod: "none" | "payroll" | "finance";
   blnRequiresBills: boolean;
-  strClaimLimitType: "none" | "monthly" | "yearly";
+  blnExpenseDateRequired: boolean;
+  blnAllowPartialApproval: boolean;
+  strClaimLimitType: "none" | "monthly" | "yearly" | "both";
   strAnnualLimitAmount: string;
   strMonthlyLimitAmount: string;
   blnAllowExcessClaim: boolean;
