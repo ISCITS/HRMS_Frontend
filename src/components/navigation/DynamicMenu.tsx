@@ -816,6 +816,10 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
       return "IT Declaration";
     }
 
+    if (strRoute.includes("/salary/flexi-pay-declarations") || strRoute.includes("/salary/flexi-pay-declaration")) {
+      return "Flexi Pay Declaration";
+    }
+
     if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
       return preferResolvedLabel(
         tPayrollCycles(

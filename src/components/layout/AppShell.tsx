@@ -192,6 +192,10 @@ function getLocalizedHeaderTitle(
     return "IT Declaration";
   }
 
+  if (strHeaderModuleName === "flexi-pay-declaration") {
+    return "Flexi Pay Declaration";
+  }
+
   return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
 }
 

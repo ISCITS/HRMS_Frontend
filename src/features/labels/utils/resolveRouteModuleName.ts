@@ -82,6 +82,12 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "it-declaration";
   }
+  if (
+    strLowerPath.startsWith("/salary/flexi-pay-declaration") ||
+    strLowerPath.startsWith("/salary/flexi-pay-declarations")
+  ) {
+    return "flexi-pay-declaration";
+  }
 
   return "";
 }
