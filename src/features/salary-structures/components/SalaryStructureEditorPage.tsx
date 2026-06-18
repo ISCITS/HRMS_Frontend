@@ -1054,6 +1054,7 @@ export default function SalaryStructureEditorPage({
               fullWidth
               data-testid="salary-structures.editor.structure-code.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.structure-code.input")}
+              required
             />
             <TextField
               label={t("structure_name", "Structure Name")}
@@ -1063,6 +1064,7 @@ export default function SalaryStructureEditorPage({
               fullWidth
               data-testid="salary-structures.editor.structure-name.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.structure-name.input")}
+              required
             />
           </Box>
         </Paper>
@@ -1097,6 +1099,7 @@ export default function SalaryStructureEditorPage({
               fullWidth
               data-testid="salary-structures.editor.effective-from.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.effective-from.input")}
+              required
             />
             <TextField
               type="date"

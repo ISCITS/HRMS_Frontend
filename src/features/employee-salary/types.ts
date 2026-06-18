@@ -36,6 +36,10 @@ export type EmployeeSalaryStructureComponentOption = {
   strTaxTreatment?: string | null;
   strValueSource: string;
   decFixedAmount?: number | null;
+  decAmountMonthly?: number | null;
+  decAmountAnnual?: number | null;
+  decDefaultAmountMonthly?: number | null;
+  decDefaultAmountAnnual?: number | null;
   decPercentageValue?: number | null;
   strFormulaExpression?: string | null;
   strFlexiComponentRole?: string | null;
