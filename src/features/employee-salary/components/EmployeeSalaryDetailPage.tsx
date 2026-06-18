@@ -6,6 +6,9 @@ import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import {
@@ -121,6 +124,13 @@ const objOverrideValueFieldSx = {
   },
 };
 
+const objSummaryValueRowSx = {
+  alignItems: "center",
+  columnGap: 2,
+  display: "grid",
+  gridTemplateColumns: { xs: "minmax(120px, 42%) minmax(0, 1fr)", sm: "minmax(132px, 44%) minmax(0, 1fr)" },
+};
+
 type ComponentGridRow = {
   intEmployeeSalaryComponentID: number;
   strComponentName: string;
@@ -155,6 +165,13 @@ type FlexiGridRow = {
   strProofRequired: string;
   strTaxTreatment: string;
   strBalance: string;
+};
+
+type RevisionBreakdownComponentRow = {
+  intSalaryComponentID: number;
+  strComponentName: string;
+  decAnnualAmount: number;
+  decPercentOfCtc: number | null;
 };
 
 type OverrideSourceLine = {
@@ -220,6 +237,10 @@ function formatOptionalCurrencyValue(objValue: number | null | undefined, strCur
 function parseOptionalAmount(strValue: string) {
   const decValue = Number(strValue);
   return strValue.trim() && Number.isFinite(decValue) ? decValue : null;
+}
+
+function formatPercentValue(decValue: number | null) {
+  return decValue === null || !Number.isFinite(decValue) ? "" : `(${decValue.toFixed(2)}%)`;
 }
 
 function isFlexiPayComponentName(strValue: string) {
@@ -462,6 +483,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
   const [intComponentPage, setIntComponentPage] = useState(1);
   const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
@@ -583,6 +605,66 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       Boolean(dicFlexiPayOverride),
     [dicFlexiPayOverride, dicRevisionForm.lstFlexiAllocations.length]
   );
+  const decRevisionCurrentCtcAnnual = useMemo(() => {
+    const decSnapshotCtcAnnual = objDetail?.objCurrentSalarySnapshot?.decCtcAnnual;
+    if (typeof decSnapshotCtcAnnual === "number" && Number.isFinite(decSnapshotCtcAnnual) && decSnapshotCtcAnnual > 0) {
+      return decSnapshotCtcAnnual;
+    }
+
+    const decCurrentLineTotal = (objDetail?.lstComponentLines ?? []).reduce((decTotal, dicLine) => {
+      const decAnnualAmount = Number(dicLine.decAmountAnnual ?? 0);
+      return decTotal + (Number.isFinite(decAnnualAmount) && decAnnualAmount > 0 ? decAnnualAmount : 0);
+    }, 0);
+    if (decCurrentLineTotal > 0) {
+      return decCurrentLineTotal;
+    }
+
+    return dicRevisionForm.lstOverrides.reduce((decTotal, dicOverride) => {
+      const decAnnualAmount = getOverrideAnnualAmount(dicOverride);
+      return decTotal + (Number.isFinite(decAnnualAmount) && decAnnualAmount > 0 ? decAnnualAmount : 0);
+    }, 0);
+  }, [dicRevisionForm.lstOverrides, objDetail]);
+  const lstRevisionBreakdownComponentRows: RevisionBreakdownComponentRow[] = useMemo(() => {
+    const setFlexiAllocationComponentIDs = new Set(
+      dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
+    );
+    const lstRowsFromRevisionForm = dicRevisionForm.lstOverrides
+      .filter((dicOverride) =>
+        !setFlexiAllocationComponentIDs.has(dicOverride.intSalaryComponentID) &&
+        !isFlexiPayComponentName(dicOverride.strComponentName)
+      )
+      .map((dicOverride) => {
+        const decAnnualAmount = getOverrideAnnualAmount(dicOverride);
+        return {
+          intSalaryComponentID: dicOverride.intSalaryComponentID,
+          strComponentName: dicOverride.strComponentName,
+          decAnnualAmount,
+          decPercentOfCtc: decRevisionCurrentCtcAnnual > 0 ? (decAnnualAmount / decRevisionCurrentCtcAnnual) * 100 : null
+        };
+      })
+      .filter((dicRow) => dicRow.decAnnualAmount > 0);
+
+    if (lstRowsFromRevisionForm.length > 0) {
+      return lstRowsFromRevisionForm;
+    }
+
+    return (objDetail?.lstComponentLines ?? [])
+      .filter((dicLine) =>
+        !isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
+        Number(dicLine.decAmountAnnual ?? 0) > 0
+      )
+      .map((dicLine) => {
+        const decAnnualAmount = Number(dicLine.decAmountAnnual ?? 0);
+        return {
+          intSalaryComponentID: dicLine.intSalaryComponentID,
+          strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
+          decAnnualAmount,
+          decPercentOfCtc: decRevisionCurrentCtcAnnual > 0 ? (decAnnualAmount / decRevisionCurrentCtcAnnual) * 100 : null
+        };
+      });
+  }, [decRevisionCurrentCtcAnnual, dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides, objDetail]);
+  const decRevisionFlexiBalanceAnnual = Math.max(decFlexiPayAllocationAnnual - decDialogFlexiAllocated, 0);
+  const decRevisionNetPayrollImpactMonthly = decDialogFlexiAllocated > 0 ? -(decDialogFlexiAllocated / 12) : 0;
   const lstRevisionOverrideRows = useMemo(() => {
     const setFlexiAllocationComponentIDs = new Set(
       dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
@@ -702,7 +784,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setStrSuccess(
         t("employee_salary_revision_saved_success", "Employee salary revision saved successfully.")
       );
-      objRouter.push(`/employee-salary/${intEmployeeID}`);
+      setBlnIsRevisionMode(false);
     } catch (objError) {
       setStrError(
         getEmployeeSalaryErrorMessage(
@@ -741,7 +823,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   function handleOpenRevisionDialog() {
     setStrError("");
     setStrSuccess("");
-    objRouter.push(`/employee-salary/${intEmployeeID}/revise`);
+    setDicRevisionForm(buildRevisionForm(objDetail, objFormOptions, lstSalaryComponents, t));
+    setBlnIsRevisionMode(true);
+  }
+
+  function handleCancelRevision() {
+    setStrError("");
+    setStrSuccess("");
+    setDicRevisionForm(buildRevisionForm(objDetail, objFormOptions, lstSalaryComponents, t));
+    setBlnIsRevisionMode(false);
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -778,7 +868,25 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnCanUnassignSalary =
     !blnEffectiveViewMode && blnHasAssignedSalary && (blnCanEdit || blnCanSubmit);
 
-  if (blnRevisionMode) {
+  if (blnIsRevisionMode && !blnCanOpenAssignRevise) {
+    return (
+      <Box className={styles.emptyState}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+          {t("employee_salary_revision_access_denied", "Salary revision is not available for your user group.")}
+        </Typography>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={handleCancelRevision}
+          sx={{ mt: 2 }}
+        >
+          {t("employee_salary_back_button", "Back")}
+        </Button>
+      </Box>
+    );
+  }
+
+  if (false && blnRevisionMode) {
     if (!blnCanOpenAssignRevise) {
       return (
         <Box className={styles.emptyState}>
@@ -993,7 +1101,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         </Box>
 
         {blnShowFlexiBenefitAllocation ? (
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
+          <Box>
             <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
               <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -1076,29 +1184,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 </table>
               </Box>
             </Box>
-            <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
-              <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
-                {t("employee_salary_flexi_basket_summary", "Flexi Basket Summary")}
-              </Typography>
-              <Stack spacing={1.6}>
-                {[
-                  { strKey: "available", strLabel: t("employee_salary_flexi_pay_allocation", "Flexi Pay Allocation"), strValue: formatOptionalCurrencyValue(decFlexiPayAllocationAnnual, strCurrencyCode), strColor: "#0f172a" },
-                  { strKey: "allocated", strLabel: t("employee_salary_allocated_flexi_amount", "Allocated Flexi Amount"), strValue: formatOptionalCurrencyValue(decDialogFlexiAllocated, strCurrencyCode), strColor: "#067647" },
-                  { strKey: "balance", strLabel: t("employee_salary_balance_flexi_amount", "Balance Flexi Amount"), strValue: formatOptionalCurrencyValue(decFlexiPayAllocationAnnual - decDialogFlexiAllocated, strCurrencyCode), strColor: "#0f172a" },
-                ].map(({ strKey, strLabel, strValue, strColor }) => (
-                  <Stack key={strKey} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                    <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
-                    <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>{strValue}</Typography>
-                  </Stack>
-                ))}
-                <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 1.6 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                    <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography>
-                    <Typography sx={{ color: "#0757b8", fontSize: "0.84rem", fontWeight: 800 }}>{objFlexiAllocation.strResidualComponentName ?? t("employee_salary_auto_calculated", "Auto calculated")}</Typography>
-                  </Stack>
-                </Box>
-              </Stack>
-            </Paper>
           </Box>
         ) : null}
       </Stack>
@@ -1123,9 +1208,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   ? t("employee_salary_view_title", "View Employee Salary Detail")
                   : t("employee_salary_detail_title", "Employee Salary Detail")}
               </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.25 }}>
+              {/* <Typography sx={{ color: "#64748b", mt: 0.25 }}>
                 {objDetail?.objEmployeeSummary.strEmployeeName} ({objDetail?.objEmployeeSummary.strEmployeeCode})
-              </Typography>
+              </Typography> */}
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
@@ -1153,7 +1238,52 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               >
                 {t("employee_salary_back_button", "Back")}
               </Button>
-              {!blnEffectiveViewMode ? (
+              {blnIsRevisionMode ? (
+                <>
+                  <Button
+                    data-testid="employee-salary.revision.cancel.button"
+                    className={styles.secondaryButton}
+                    variant="outlined"
+                    onClick={handleCancelRevision}
+                    disabled={blnSaving}
+                    sx={{
+                      borderRadius: "14px",
+                      height: 38,
+                      minHeight: 38,
+                      py: 0,
+                      px: 2.25,
+                      minWidth: 100,
+                      fontSize: "0.9rem",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    }}
+                  >
+                    {t("cancel", "Cancel")}
+                  </Button>
+                  <Button
+                    data-testid="employee-salary.revision.save.button"
+                    className={styles.primaryButton}
+                    startIcon={<SaveRoundedIcon />}
+                    onClick={handleSaveRevision}
+                    disabled={blnSaving}
+                    sx={{
+                      borderRadius: "14px",
+                      height: 38,
+                      minHeight: 38,
+                      py: 0,
+                      px: 2.25,
+                      minWidth: 100,
+                      fontSize: "0.9rem",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    }}
+                  >
+                    {blnSaving
+                      ? t("employee_salary_saving", "Saving...")
+                      : t("employee_salary_save_revision", "Save Revision")}
+                  </Button>
+                </>
+              ) : !blnEffectiveViewMode ? (
                 <>
                   {blnCanUnassignSalary ? (
                     <Button
@@ -1199,6 +1329,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       className={styles.primaryButton}
                       startIcon={<HistoryRoundedIcon />}
                       onClick={handleOpenRevisionDialog}
+                      disabled={blnSaving}
                       sx={{
                         borderRadius: "14px",
                         height: 38,
@@ -1250,24 +1381,24 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </Typography>
             </Stack>
             <Box sx={{ display: "grid", gap: 1.65 }}>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_employee", "Employee")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{objDetail?.objEmployeeSummary.strEmployeeName}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700 }}>{objDetail?.objEmployeeSummary.strEmployeeName}</Typography>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_code", "Employee Code")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{objDetail?.objEmployeeSummary.strEmployeeCode}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700 }}>{objDetail?.objEmployeeSummary.strEmployeeCode}</Typography>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_employment_status", "Employment Status")}</Typography>
                 <Box sx={{ bgcolor: "#dcfce7", borderRadius: "8px", color: "#15803d", fontSize: "0.75rem", fontWeight: 700, px: 1, py: 0.25 }}>
                   {objDetail?.objEmployeeSummary.strEmploymentStatus}
                 </Box>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_email", "Email")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, maxWidth: "62%", overflow: "hidden", textAlign: "right", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objDetail?.objEmployeeSummary.strWorkEmail ?? "-"}</Typography>
-              </Stack>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objDetail?.objEmployeeSummary.strWorkEmail ?? "-"}</Typography>
+              </Box>
             </Box>
           </Box>
 
@@ -1319,29 +1450,358 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </Typography>
             </Stack>
             <Box sx={{ display: "grid", gap: 1.65 }}>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_structure", "Structure")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, maxWidth: "58%", overflow: "hidden", textAlign: "right", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objDetail?.objAssignedStructure?.strStructureName ?? t("employee_salary_not_assigned", "Not assigned")}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objDetail?.objAssignedStructure?.strStructureName ?? t("employee_salary_not_assigned", "Not assigned")}</Typography>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_structure_code", "Structure Code")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{objDetail?.objAssignedStructure?.strStructureCode ?? "-"}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700 }}>{objDetail?.objAssignedStructure?.strStructureCode ?? "-"}</Typography>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_effective_from", "Effective From")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{formatDate(objDetail?.objAssignedStructure?.dtEffectiveFrom ?? null)}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700 }}>{formatDate(objDetail?.objAssignedStructure?.dtEffectiveFrom ?? null)}</Typography>
+              </Box>
+              <Box sx={objSummaryValueRowSx}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_currency", "Currency")}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{objDetail?.objAssignedStructure?.strCurrencyCode === "INR" ? "\u20B9" : objDetail?.objAssignedStructure?.strCurrencyCode ?? "-"}</Typography>
-              </Stack>
+                <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700 }}>{objDetail?.objAssignedStructure?.strCurrencyCode === "INR" ? "\u20B9" : objDetail?.objAssignedStructure?.strCurrencyCode ?? "-"}</Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
       </Paper>
 
-      <Box>
-        <Box className={styles.tableCard}>
+    {blnIsRevisionMode ? (
+        <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+            <TextField
+              data-testid="employee-salary.revision.salary-structure.select"
+              inputProps={{ "data-testid": "employee-salary.revision.salary-structure.select" }}
+              select
+              label={t("employee_salary_structure_field", "Salary structure")}
+              value={dicRevisionForm.intSalaryStructureID}
+              sx={{ mt: 1 }}
+              onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
+            >
+              <MenuItem data-testid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
+              {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                  {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              data-testid="employee-salary.revision.effective-from.input"
+              inputProps={{ "data-testid": "employee-salary.revision.effective-from.input" }}
+              type="date"
+              label={t("employee_salary_effective_from_field", "Effective from")}
+              value={dicRevisionForm.dtEffectiveFrom}
+              onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+          <TextField
+            data-testid="employee-salary.revision.revision-reason.input"
+            inputProps={{ "data-testid": "employee-salary.revision.revision-reason.input" }}
+            label={t("employee_salary_revision_reason_field", "Revision reason")}
+            value={dicRevisionForm.strRevisionReason}
+            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, strRevisionReason: objEvent.target.value }))}
+            multiline
+            sx={{ mt: 1.5, mb: 1 }}
+            fullWidth
+          />
+        </Box>
+      ) : null}
+
+      {blnIsRevisionMode ? (
+        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 4fr) minmax(0, 1fr)" } }}>
+        <Stack spacing={1.5} sx={{ minWidth: 0 }}>
+          <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                  {t("employee_salary_override_handling", "Override handling")}
+                </Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem", mt: 0.25 }}>
+                  {t(
+                    "employee_salary_override_help",
+                    "Only components marked for manual override can be edited here. Leave values unchanged if the revision should inherit structure defaults."
+                  )}
+                </Typography>
+              </Box>
+            </Stack>
+            <Box className={`${styles.tableWrap} ${styles.revisionTableWrap}`}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>{t("employee_salary_component", "Component")}</th>
+                    <th>{t("employee_salary_default_monthly", "Default Monthly")}</th>
+                    <th>{t("employee_salary_monthly", "Monthly")}</th>
+                    <th>{t("employee_salary_default_annual", "Default Annual")}</th>
+                    <th>{t("employee_salary_annual", "Annual")}</th>
+                    <th>{t("employee_salary_percentage_value", "% Value")}</th>
+                    <th>{t("employee_salary_remarks", "Remarks")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lstRevisionOverrideRows.length === 0 ? (
+                    <tr>
+                      <td className={styles.emptyState} colSpan={7}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
+                    </tr>
+                  ) : lstRevisionOverrideRows.map(({ dicOverride, intOverrideIndex }) => (
+                    <tr key={dicOverride.intSalaryComponentID}>
+                      <td>
+                        <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strComponentName}</Typography>
+                      </td>
+                      <td>
+                        <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultMonthly || "-"}</Typography>
+                      </td>
+                      <td>
+                        <TextField
+                          data-testid="employee-salary.revision.override.monthly.input"
+                          inputProps={{ "data-testid": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          value={dicOverride.decAmountMonthly}
+                          size="small"
+                          sx={objOverrideValueFieldSx}
+                          disabled={!dicOverride.blnAllowManualOverride}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, decAmountMonthly: objEvent.target.value } : dicRow)
+                          }))}
+                        />
+                      </td>
+                      <td>
+                        <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
+                      </td>
+                      <td>
+                        <TextField
+                          data-testid="employee-salary.revision.override.annual.input"
+                          inputProps={{ "data-testid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          value={dicOverride.decAmountAnnual}
+                          size="small"
+                          sx={objOverrideValueFieldSx}
+                          disabled={!dicOverride.blnAllowManualOverride}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, decAmountAnnual: objEvent.target.value } : dicRow)
+                          }))}
+                        />
+                      </td>
+                      <td>
+                        <TextField
+                          data-testid="employee-salary.revision.override.percentage.input"
+                          inputProps={{ "data-testid": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          value={dicOverride.decPercentageValue}
+                          size="small"
+                          sx={objOverrideValueFieldSx}
+                          disabled={!dicOverride.blnAllowManualOverride}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, decPercentageValue: objEvent.target.value } : dicRow)
+                          }))}
+                        />
+                      </td>
+                      <td>
+                        <TextField
+                          data-testid="employee-salary.revision.override.remarks.input"
+                          inputProps={{ "data-testid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          value={dicOverride.strRemarks}
+                          size="small"
+                          sx={objOverrideValueFieldSx}
+                          disabled={!dicOverride.blnAllowManualOverride}
+                          onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                            ...dicPrev,
+                            lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, strRemarks: objEvent.target.value } : dicRow)
+                          }))}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+          {blnShowFlexiBenefitAllocation ? (
+            <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                  {t("employee_salary_flexi_benefit_allocation", "Flexi Benefit Allocation")}
+                </Typography>
+              </Stack>
+              <Box className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>{t("employee_salary_flexi_component", "Flexi Component")}</th>
+                      <th>{t("employee_salary_annual_limit", "Annual Limit")}</th>
+                      <th>{t("employee_salary_monthly_limit", "Monthly Limit")}</th>
+                      <th>{t("employee_salary_employee_allocation_monthly", "Employee Allocation Monthly")}</th>
+                      <th>{t("employee_salary_employee_allocation_annual", "Employee Allocation Annual")}</th>
+                      <th>{t("employee_salary_tax_treatment", "Tax Treatment")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dicRevisionForm.lstFlexiAllocations.length === 0 ? (
+                      <tr>
+                        <td className={styles.emptyState} colSpan={6}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
+                      </tr>
+                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation, intIndex) => (
+                      <tr key={dicAllocation.intSalaryComponentID}>
+                        <td>
+                          <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
+                          <Typography sx={{ color: "#64748b", fontSize: "0.75rem" }}>
+                            {`${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
+                          </Typography>
+                        </td>
+                        <td>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</td>
+                        <td>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</td>
+                        <td>
+                          <TextField
+                            value={dicAllocation.decAllocationMonthly}
+                            placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
+                            size="small"
+                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                              ...dicPrev,
+                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
+                                if (intRowIndex !== intIndex) {
+                                  return dicRow;
+                                }
+                                const decMonthly = parseOptionalAmount(objEvent.target.value);
+                                return {
+                                  ...dicRow,
+                                  decAllocationMonthly: objEvent.target.value,
+                                  decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
+                                };
+                              })
+                            }))}
+                          />
+                        </td>
+                        <td>
+                          <TextField
+                            value={dicAllocation.decAllocationAnnual}
+                            placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
+                            size="small"
+                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
+                              ...dicPrev,
+                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
+                                if (intRowIndex !== intIndex) {
+                                  return dicRow;
+                                }
+                                const decAnnual = parseOptionalAmount(objEvent.target.value);
+                                return {
+                                  ...dicRow,
+                                  decAllocationAnnual: objEvent.target.value,
+                                  decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                                };
+                              })
+                            }))}
+                          />
+                        </td>
+                        <td style={{ textTransform: "capitalize" }}>{dicAllocation.strTaxTreatment || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </Box>
+          ) : null}
+        </Stack>
+        <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
+            <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
+              {t("employee_salary_breakdown_impact", "Salary Breakdown Impact")}
+            </Typography>
+            <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
+          </Stack>
+
+          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
+            <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+              {t("employee_salary_current_before_declaration", "Current (Before Declaration)")}
+            </Typography>
+          </Box>
+
+          <Stack spacing={1.25}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionCurrentCtcAnnual, strCurrencyCode)}</Typography>
+            </Stack>
+
+            {lstRevisionBreakdownComponentRows.map((dicRow) => (
+              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
+                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
+                  {dicRow.decPercentOfCtc !== null ? (
+                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
+                  ) : null}
+                </Stack>
+              </Stack>
+            ))}
+
+            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+              <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+              </Typography>
+            </Box>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_flexi_basket_available", "Flexi Basket Available")}</Typography>
+              <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_declared_flexi", "Declared Flexi")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: "#dc2626", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(-decDialogFlexiAllocated, strCurrencyCode)}</Typography>
+                <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
+              </Stack>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_remaining_balance", "Remaining Balance")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionFlexiBalanceAnnual, strCurrencyCode)}</Typography>
+                <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
+              </Stack>
+            </Stack>
+
+            <Box sx={{ borderTop: "1px solid #d9e6ef", mt: 0.25, pt: 1.25 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Stack direction="row" alignItems="center" spacing={0.6}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography>
+                  <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 15 }} />
+                </Stack>
+                <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionFlexiBalanceAnnual, strCurrencyCode)}</Typography>
+              </Stack>
+            </Box>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_net_payroll_impact_monthly", "Net Payroll Impact (Monthly)")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: decRevisionNetPayrollImpactMonthly < 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionNetPayrollImpactMonthly, strCurrencyCode)}</Typography>
+                {decRevisionNetPayrollImpactMonthly < 0 ? (
+                  <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
+                ) : (
+                  <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
+                )}
+              </Stack>
+            </Stack>
+
+            <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
+              <Stack direction="row" spacing={0.8} alignItems="flex-start">
+                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
+                <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                  {t("employee_salary_breakdown_impact_help", "Amounts are recalculated in real time based on your declarations. Final impact will be reflected in employee payslip.")}
+                </Typography>
+              </Stack>
+            </Box>
+          </Stack>
+        </Paper>
+        </Box>
+      ) : null}
+
+      {!blnIsRevisionMode ? (
+      <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(260px, 1fr)" }, alignItems: "start" }}>
+        <Stack spacing={1.5} sx={{ minWidth: 0 }}>
+          <Box className={styles.tableCard}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_component_lines", "Component Lines")}
@@ -1421,10 +1881,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </table>
           </Box>
         </Box>
-      </Box>
 
-      {objFlexiAllocation.blnHasFlexiBasket ? (
-        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
+        {objFlexiAllocation.blnHasFlexiBasket ? (
           <Box className={styles.tableCard}>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -1466,35 +1924,98 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </table>
             </Box>
           </Box>
-          <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
-            <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
-              {t("employee_salary_flexi_basket_summary", "Flexi Basket Summary")}
+        ) : null}
+        </Stack>
+        <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
+            <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
+              {t("employee_salary_breakdown_impact", "Salary Breakdown Impact")}
             </Typography>
-            <Stack spacing={1.6}>
-              {[
-                { strKey: "available", strLabel: t("employee_salary_flexi_basket_available", "Flexi Basket Available"), strValue: formatOptionalCurrencyValue(objFlexiAllocation.decFlexiBasketAvailableAnnual, strCurrencyCode), strColor: "#0f172a" },
-                { strKey: "allocated", strLabel: t("employee_salary_allocated_flexi_amount", "Allocated Flexi Amount"), strValue: formatOptionalCurrencyValue(objFlexiAllocation.decAllocatedFlexiAnnual, strCurrencyCode), strColor: "#067647" },
-                { strKey: "balance", strLabel: t("employee_salary_balance_flexi_amount", "Balance Flexi Amount"), strValue: formatOptionalCurrencyValue(objFlexiAllocation.decBalanceFlexiAnnual, strCurrencyCode), strColor: "#0f172a" },
-              ].map(({ strKey, strLabel, strValue, strColor }) => (
-                <Stack key={strKey} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                  <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
-                  <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>{strValue}</Typography>
-                </Stack>
-              ))}
-              <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 1.6 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                  <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography>
-                  <Typography sx={{ color: "#0757b8", fontSize: "0.84rem", fontWeight: 800 }}>{formatOptionalCurrencyValue(objFlexiAllocation.decResidualTaxableAllowanceAnnual, strCurrencyCode)}</Typography>
-                </Stack>
-                <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.6 }}>
-                  {objFlexiAllocation.strResidualComponentName
-                    ? `${t("employee_salary_residual_component", "Residual component")}: ${objFlexiAllocation.strResidualComponentName}`
-                    : t("employee_salary_residual_component_not_configured", "Residual component is not configured.")}
-                </Typography>
-              </Box>
+            <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
+          </Stack>
+
+          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
+            <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+              {t("employee_salary_current_before_declaration", "Current Declaration")}
+            </Typography>
+          </Box>
+
+          <Stack spacing={1.25}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionCurrentCtcAnnual, strCurrencyCode)}</Typography>
             </Stack>
-          </Paper>
-        </Box>
+
+            {lstRevisionBreakdownComponentRows.map((dicRow) => (
+              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
+                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
+                  {dicRow.decPercentOfCtc !== null ? (
+                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
+                  ) : null}
+                </Stack>
+              </Stack>
+            ))}
+
+            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+              <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+                {t("employee_salary_after_declaration_live_impact", "Flexi Pay Declaration")}
+              </Typography>
+            </Box>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_flexi_basket_available", "Flexi Basket Available")}</Typography>
+              <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_declared_flexi", "Declared Flexi")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: "#dc2626", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(-decDialogFlexiAllocated, strCurrencyCode)}</Typography>
+                <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
+              </Stack>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_remaining_balance", "Remaining Balance")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionFlexiBalanceAnnual, strCurrencyCode)}</Typography>
+                <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
+              </Stack>
+            </Stack>
+
+            <Box sx={{ borderTop: "1px solid #d9e6ef", mt: 0.25, pt: 1.25 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Stack direction="row" alignItems="center" spacing={0.6}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Allowance")}</Typography>
+                  <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 15 }} />
+                </Stack>
+                <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionFlexiBalanceAnnual, strCurrencyCode)}</Typography>
+              </Stack>
+            </Box>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_net_payroll_impact_monthly", "Net Payroll Impact (Monthly)")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={0.25}>
+                <Typography sx={{ color: decRevisionNetPayrollImpactMonthly < 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decRevisionNetPayrollImpactMonthly, strCurrencyCode)}</Typography>
+                {decRevisionNetPayrollImpactMonthly < 0 ? (
+                  <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
+                ) : (
+                  <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
+                )}
+              </Stack>
+            </Stack>
+
+            <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
+              <Stack direction="row" spacing={0.8} alignItems="flex-start">
+                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
+                <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                  {t("employee_salary_breakdown_impact_help", "Amounts are recalculated in real time based on your declarations. Final impact will be reflected in employee payslip.")}
+                </Typography>
+              </Stack>
+            </Box>
+          </Stack>
+        </Paper>
+      </Box>
       ) : null}
 
       <Box>
