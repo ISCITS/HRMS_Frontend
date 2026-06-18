@@ -18,6 +18,7 @@ export type SalaryStructureOption = {
   blnIsFlexiBasket?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIncludedInCtc?: boolean;
+  blnProofRequired?: boolean;
   strFlexiComponentType?: string;
   strComponentGroup?: string | null;
   strComponentCategory?: string | null;
