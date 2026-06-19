@@ -37,6 +37,7 @@ import {
   createEmptyLineRow,
   createEmptyTextRow,
   createInitialSalaryStructureForm,
+  normalizeSalaryStructureFlexiRole,
   salaryStructureService,
   toSalaryStructureFormValues
 } from "@/features/salary-structures/services/salaryStructureService";
@@ -102,9 +103,13 @@ function formatOptionalLimit(fltValue: number | null) {
 }
 
 function sanitizeDecimalInput(strValue: string) {
-  const strSanitized = strValue.replace(/[^\d.]/g, "");
+  const strSanitized = strValue.replace(/[^\d.,]/g, "");
   const [strFirstPart, ...lstRestParts] = strSanitized.split(".");
   return lstRestParts.length === 0 ? strFirstPart : `${strFirstPart}.${lstRestParts.join("")}`;
+}
+
+function parseCommaAmount(strValue: string) {
+  return Number(strValue.replace(/,/g, ""));
 }
 
 function getFlexiComponentIcon(strValue: string) {
@@ -169,7 +174,7 @@ function clampAmountToLimit(strValue: string | number | boolean, fltLimit: numbe
   if (!strAmount) {
     return "";
   }
-  const fltAmount = Number(strAmount);
+  const fltAmount = parseCommaAmount(strAmount);
   if (!Number.isFinite(fltAmount)) {
     return strAmount;
   }
@@ -281,7 +286,7 @@ export default function SalaryStructureEditorPage({
           return dicTotals;
         }
         const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-        const fltMonthlyAmount = Number(dicLine.fltFixedAmount || 0);
+        const fltMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
         const fltYearlyAmount = fltMonthlyAmount * 12;
         const blnIncludedInCtc = Boolean(dicComponent?.blnIncludedInCtc ?? dicLine.blnIncludedInCtc);
         const blnIsFlexiBasket = Boolean(dicLine.blnIsFlexiBasketLine || dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY");
@@ -294,7 +299,14 @@ export default function SalaryStructureEditorPage({
         }
         if (blnIsFlexiBasket || strFlexiType === "basket") {
           dicTotals.fltFlexiBasket += fltYearlyAmount;
-        } else if (blnIsEmployerContribution || strCategory === "contribution" || strCategory === "employercontribution") {
+        } else if (
+          blnIsEmployerContribution
+          || strCategory === "contribution"
+          || strCategory === "employercontribution"
+          || strGroup === "contribution"
+          || strGroup === "employercontribution"
+          || strGroup === "employeecontribution"
+        ) {
           dicTotals.fltEmployerContribution += fltYearlyAmount;
         } else if (strGroup === "variablepay") {
           dicTotals.fltVariablePay += fltYearlyAmount;
@@ -430,7 +442,7 @@ export default function SalaryStructureEditorPage({
     if (!strValue) {
       return null;
     }
-    const fltValue = Number(strValue);
+    const fltValue = parseCommaAmount(strValue);
     return Number.isFinite(fltValue) ? fltValue : null;
   }
 
@@ -615,7 +627,7 @@ export default function SalaryStructureEditorPage({
             strComponentCode: dicComponent?.strCode ?? "",
             strComponentName: dicComponent?.strLabel ?? "",
             blnIsFlexiBasketLine: blnIsFlexiBasket,
-            strFlexiComponentRole: blnIsFlexiBasket ? "basket" : (dicComponent?.strFlexiComponentType ?? "normal"),
+            strFlexiComponentRole: blnIsFlexiBasket ? "basket" : normalizeSalaryStructureFlexiRole(dicComponent?.strFlexiComponentType),
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
             strComponentCategory: "",
             lstFlexiMappings: blnIsFlexiBasket ? dicLine.lstFlexiMappings : []

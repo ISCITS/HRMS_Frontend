@@ -29,7 +29,7 @@ function formatOptionalText(strValue: string) {
 }
 
 function formatOptionalNumber(strValue: string) {
-  const strTrimmedValue = strValue.trim();
+  const strTrimmedValue = strValue.trim().replace(/,/g, "");
   if (!strTrimmedValue) {
     return null;
   }
@@ -43,6 +43,11 @@ function formatOptionalInteger(objValue: number | string | "") {
   }
   const intValue = Number(objValue);
   return Number.isInteger(intValue) && intValue > 0 ? intValue : null;
+}
+
+export function normalizeSalaryStructureFlexiRole(strValue?: string | null) {
+  const strRole = (strValue ?? "").trim().toLowerCase();
+  return strRole && strRole !== "none" ? strRole : "normal";
 }
 
 function mapTextToFormValue(dicText: SalaryStructureTextApiRecord): SalaryStructureTextFormValue {
@@ -83,7 +88,7 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     strComponentCode: dicLine.strComponentCode ?? "",
     strComponentName: dicLine.strComponentName,
     blnIsFlexiBasketLine: Boolean(dicLine.blnIsFlexiBasketLine),
-    strFlexiComponentRole: dicLine.strFlexiComponentRole ?? "normal",
+    strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
     blnIncludedInCtc: Boolean(dicLine.blnIncludedInCtc ?? true),
     strComponentCategory: dicLine.strComponentCategory ?? "",
     fltFixedAmount: dicLine.fltFixedAmount?.toString() ?? "",
@@ -129,7 +134,7 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       strComponentCode: dicLine.strComponentCode ?? null,
       strComponentName: dicLine.strComponentName,
       blnIsFlexiBasketLine: Boolean(dicLine.blnIsFlexiBasketLine),
-      strFlexiComponentRole: dicLine.strFlexiComponentRole ?? null,
+      strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
       blnIncludedInCtc: Boolean(dicLine.blnIncludedInCtc ?? true),
       strComponentCategory: dicLine.strComponentCategory ?? null,
       intLineOrder: dicLine.intLineOrder,
@@ -183,7 +188,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         intLineOrder: dicLine.intLineOrder,
         strValueSource: dicLine.strValueSource,
         blnIsFlexiBasketLine: dicLine.blnIsFlexiBasketLine,
-        strFlexiComponentRole: dicLine.strFlexiComponentRole,
+        strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
         fltFixedAmount: dicLine.strValueSource === "Fixed" ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
         fltPercentageValue: dicLine.strValueSource === "Percentage" ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
         intBasisComponentID: dicLine.strValueSource === "Percentage" ? dicLine.intBasisComponentID : null,
