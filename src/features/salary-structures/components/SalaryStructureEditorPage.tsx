@@ -1379,14 +1379,14 @@ export default function SalaryStructureEditorPage({
           </Paper>
           <Paper variant="outlined" sx={{ alignSelf: "start", borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
             <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
-              {t("salary_breakdown_impact", "Salary Breakdown Impact")}
+              {t("salary_breakdown_impact", "Compensation Summary")}
             </Typography>
             <Stack spacing={1.6}>
               {[
                 [t("annual_ctc", "Annual CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
                 [t("fixed_pay", "Fixed Pay"), formatFlexiAmount(dicStructureSummary.fltFixedPay), "#0f172a"],
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
-                [t("flexi_basket", "Flexi Basket"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
+                [t("flexi_basket", "Flexi Budget"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
                 [t("employee_contribution", "Employee Contribution"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
               ].map(([strLabel, strValue, strColor]) => (
                 <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
@@ -1454,10 +1454,10 @@ export default function SalaryStructureEditorPage({
                           <Box component="thead" sx={{ "& th": { borderBottom: "1px solid #d9e6ef", color: "#0f172a", fontSize: "0.77rem", fontWeight: 700, px: 2, py: 1.2, textAlign: "left", whiteSpace: "nowrap" } }}>
                             <tr>
                               <th>{t("component", "Component")}</th>
-                              <th>{t("monthly_equivalent", "Monthly Equivalent")} (₹)</th>
-                              <th>{t("declared_annual", "Declared Annual")} (₹)</th>
-                              <th>{t("proof_required", "Proof Required")}</th>
-                              <th>{t("status", "Status")}</th>
+                              <th>{t("monthly_equivalent", "Monthly Allocation")} (₹)</th>
+                              <th>{t("declared_annual", "Annual Allocation")} (₹)</th>
+                              <th>{t("proof_required", "Proof Submission Required")}</th>
+                              <th>{t("status", "Allocation Status")}</th>
                               <th>{t("action", "Action")}</th>
                             </tr>
                           </Box>
@@ -1556,13 +1556,13 @@ export default function SalaryStructureEditorPage({
                     </Paper>
                     <Paper variant="outlined" sx={{ alignSelf: "start", borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
                       <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
-                        {t("flexi_basket_summary", "Flexi Basket Summary")}
+                        {t("flexi_basket_summary", "Flexi Allocation Summary")}
                       </Typography>
                       <Stack spacing={1.6}>
                         {[
-                          [t("basket_available", "Basket Available"), formatFlexiAmount(fltBasketYearlyAmount), "#0f172a"],
-                          [t("allocated", "Allocated"), formatFlexiAmount(fltAllocatedYearlyAmount), "#067647"],
-                          [t("balance", "Balance"), formatFlexiAmount(fltPendingYearlyAmount), "#0f172a"],
+                          [t("basket_available", "Flexi Budget"), formatFlexiAmount(fltBasketYearlyAmount), "#0f172a"],
+                          [t("allocated", "Allocated Amount"), formatFlexiAmount(fltAllocatedYearlyAmount), "#067647"],
+                          [t("balance", "Available Balance"), formatFlexiAmount(fltPendingYearlyAmount), "#0f172a"],
                         ].map(([strLabel, strValue, strColor]) => (
                           <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
                             <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
@@ -1572,7 +1572,7 @@ export default function SalaryStructureEditorPage({
                         <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 1.6 }}>
                           <Stack direction="row" justifyContent="space-between" alignItems="center">
                             <Stack direction="row" spacing={0.5} alignItems="center">
-                              <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{t("residual_taxable_amount", "Residual Taxable Amount")}</Typography>
+                              <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{t("residual_taxable_amount", "Taxable Residual")}</Typography>
                               <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 16 }} />
                             </Stack>
                             <Typography sx={{ color: "#0757b8", fontSize: "0.84rem", fontWeight: 800 }}>₹ {formatFlexiAmount(fltPendingYearlyAmount)}</Typography>
