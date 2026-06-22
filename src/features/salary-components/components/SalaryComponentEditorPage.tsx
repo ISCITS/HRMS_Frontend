@@ -47,6 +47,7 @@ import type {
 type SalaryComponentEditorPageProps = {
   strMode: "add" | "edit";
   intSalaryComponentID?: number;
+  strBackRoute?: string;
 };
 
 const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
@@ -143,7 +144,8 @@ function getTaxTreatmentLabel(strValue: string) {
 
 export default function SalaryComponentEditorPage({
   strMode,
-  intSalaryComponentID
+  intSalaryComponentID,
+  strBackRoute
 }: SalaryComponentEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useSalaryComponentLabels();
@@ -165,6 +167,7 @@ export default function SalaryComponentEditorPage({
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
+  const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
 
   useEffect(() => {
     let blnMounted = true;
@@ -632,7 +635,7 @@ export default function SalaryComponentEditorPage({
           : t("salary_component_created", "Salary component created successfully.")
       );
       if (strMode === "add") {
-        objRouter.push(`/salary-components/edit/${dicSavedRecord.intID}`);
+        objRouter.push(`/salary-components/edit/${dicSavedRecord.intID}?backRoute=${encodeURIComponent(strResolvedBackRoute)}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to save salary component.");
@@ -691,7 +694,7 @@ export default function SalaryComponentEditorPage({
                 data-testid="salary-components.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/salary-components")}
+                onClick={() => objRouter.push(strResolvedBackRoute)}
                  sx={{
                   borderRadius: "14px",
                   height: 38,
