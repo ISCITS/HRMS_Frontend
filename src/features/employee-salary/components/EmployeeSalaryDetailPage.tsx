@@ -334,6 +334,19 @@ function isFlexiBucketLine(dicLine: EmployeeSalaryComponentLine | FlexiSourceLin
   );
 }
 
+function isFlexiBucketAllocationLine(
+  dicLine: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number] | FlexiAllocationLineWithStatus,
+  objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary
+) {
+  const strName = normalizeSelectToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
+  return Boolean(
+    (objFlexiAllocation?.intFlexiBasketComponentID &&
+      dicLine.intSalaryComponentID === objFlexiAllocation.intFlexiBasketComponentID) ||
+    strName === "flexipay" ||
+    strName === "flexibucket"
+  );
+}
+
 function isFlexiAllocationLine(dicLine: EmployeeSalaryComponentLine | FlexiSourceLine | FlexiAllocationLineWithStatus) {
   const strRole = normalizeSelectToken("strFlexiComponentRole" in dicLine ? dicLine.strFlexiComponentRole ?? "" : "");
   const strCategory = normalizeSelectToken("strComponentCategory" in dicLine ? dicLine.strComponentCategory ?? "" : "");
@@ -374,6 +387,32 @@ function normalizeFlexiSource(strSource: string | null | undefined) {
   if (strToken === "payrolllock" || strToken === "locked") return "Payroll Lock";
   if (strToken === "imported" || strToken === "import") return "Imported";
   return "Structure Default";
+}
+
+function getFlexiMonthlyCap(dicLine: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number]) {
+  const decMonthlyLimit = getNumberValue(dicLine.decMonthlyLimit);
+  if (decMonthlyLimit > 0) {
+    return decMonthlyLimit;
+  }
+  const decAnnualLimit = getNumberValue(dicLine.decAnnualLimit);
+  return decAnnualLimit > 0 ? decAnnualLimit / 12 : null;
+}
+
+function getEmployeeFlexiBucketAmounts(objDetail: EmployeeSalaryDetailRecord | null) {
+  const objFlexiAllocation = getFlexiAllocationSummary(objDetail);
+  const decAnnualAmount =
+    getNumberValue(objFlexiAllocation.decFlexiBasketAvailableAnnual) ||
+    getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiBasketAnnualAmount) ||
+    getNumberValue(objFlexiAllocation.decBalanceFlexiAnnual) + getNumberValue(objFlexiAllocation.decAllocatedFlexiAnnual) ||
+    getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiBalanceAnnualAmount) + getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiAllocatedAnnualAmount);
+  const decMonthlyAmount =
+    getNumberValue(objFlexiAllocation.decFlexiBasketAvailableMonthly) ||
+    (decAnnualAmount > 0 ? decAnnualAmount / 12 : 0);
+
+  return {
+    decAnnualAmount,
+    decMonthlyAmount
+  };
 }
 
 function calculateFlexiTotals(objFlexiAllocation: EmployeeSalaryFlexiAllocationSummary): FlexiTotals {
@@ -447,7 +486,9 @@ function getValidationMessages(
 ) {
   const lstMessages: string[] = [];
   const blnHasFlexiBucket = dicFlexiTotals.decFlexiBucketAvailableAnnual > 0;
-  const blnHasFlexiAllocations = objFlexiAllocation.lstAllocationLines.length > 0;
+  const blnHasFlexiAllocations = objFlexiAllocation.lstAllocationLines.some(
+    (dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation)
+  );
   if (!blnHasFlexiBucket && blnHasFlexiAllocations) {
     lstMessages.push("Flexi allocation cannot exist without Flexi Bucket amount.");
   }
@@ -461,12 +502,15 @@ function getValidationMessages(
     lstMessages.push("Residual amount is negative.");
   }
   objFlexiAllocation.lstAllocationLines.forEach((dicLine) => {
+    if (isFlexiBucketAllocationLine(dicLine, objFlexiAllocation)) {
+      return;
+    }
     const dicAllocationLine = dicLine as FlexiAllocationLineWithStatus;
     const strComponentName = dicLine.strComponentName ?? dicLine.strComponentCode ?? "Flexi component";
     if (getNumberValue(dicLine.decAllocationAnnual) - getNumberValue(dicLine.decAnnualLimit) > 0.01) {
       lstMessages.push(`${strComponentName} allocation exceeds annual component cap.`);
     }
-    if (getNumberValue(dicLine.decAllocationMonthly) - getNumberValue(dicLine.decMonthlyLimit) > 0.01) {
+    if (getNumberValue(dicLine.decAllocationMonthly) - getNumberValue(getFlexiMonthlyCap(dicLine)) > 0.01) {
       lstMessages.push(`${strComponentName} allocation exceeds monthly component cap.`);
     }
     if (dicAllocationLine.blnIsActive === false) {
@@ -786,23 +830,36 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
-    return (objDetail?.lstComponentLines ?? []).map((dicLine: EmployeeSalaryComponentLine) => ({
-      intEmployeeSalaryComponentID: dicLine.intEmployeeSalaryComponentID,
-      strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
-      strCategory: dicLine.strComponentCategory ?? "-",
-      strValueType: dicLine.strComponentValueType,
-      strMonthly: formatCurrency(dicLine.decAmountMonthly, strCurrencyCode),
-      strAnnual: formatCurrency(dicLine.decAmountAnnual, strCurrencyCode),
-      blnIsOverride: dicLine.blnIsOverride,
-      strOverride: dicLine.blnIsOverride
-        ? t("employee_salary_override", "HR Override")
-        : t("employee_salary_structure_source", "Structure"),
-      strRemarks: dicLine.strRemarks ?? "-",
-      blnIsFlexiBucket: isFlexiBucketLine(dicLine),
-      blnIsFlexiReimbursementOption: isFlexiAllocationLine(dicLine),
-      blnIsNonCtcReimbursement: isNonCtcReimbursementLine(dicLine)
-    }));
-  }, [objDetail, t]);
+    const dicFlexiBucketAmounts = getEmployeeFlexiBucketAmounts(objDetail);
+    return (objDetail?.lstComponentLines ?? []).map((dicLine: EmployeeSalaryComponentLine) => {
+      const blnIsFlexiBucket = isFlexiBucketLine(dicLine);
+      const decLineMonthlyAmount = getNumberValue(dicLine.decAmountMonthly);
+      const decLineAnnualAmount = getNumberValue(dicLine.decAmountAnnual);
+      const decMonthlyAmount = blnIsFlexiBucket && decLineMonthlyAmount <= 0
+        ? dicFlexiBucketAmounts.decMonthlyAmount
+        : dicLine.decAmountMonthly;
+      const decAnnualAmount = blnIsFlexiBucket && decLineAnnualAmount <= 0
+        ? dicFlexiBucketAmounts.decAnnualAmount
+        : dicLine.decAmountAnnual;
+
+      return {
+        intEmployeeSalaryComponentID: dicLine.intEmployeeSalaryComponentID,
+        strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
+        strCategory: dicLine.strComponentCategory ?? "-",
+        strValueType: dicLine.strComponentValueType,
+        strMonthly: formatCurrency(decMonthlyAmount, strCurrencyCode),
+        strAnnual: formatCurrency(decAnnualAmount, strCurrencyCode),
+        blnIsOverride: dicLine.blnIsOverride,
+        strOverride: dicLine.blnIsOverride
+          ? t("employee_salary_override", "HR Override")
+          : t("employee_salary_structure_source", "Structure"),
+        strRemarks: dicLine.strRemarks ?? "-",
+        blnIsFlexiBucket,
+        blnIsFlexiReimbursementOption: isFlexiAllocationLine(dicLine),
+        blnIsNonCtcReimbursement: isNonCtcReimbursementLine(dicLine)
+      };
+    });
+  }, [objDetail, strCurrencyCode, t]);
 
   const lstHistoryRows: HistoryGridRow[] = useMemo(() => {
     return (objDetail?.lstRevisionHistory ?? []).map((dicRow: EmployeeSalaryHistoryRecord) => ({
@@ -829,7 +886,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     [objFlexiAllocation]
   );
   const blnHasFlexiBucket = dicFlexiTotals.decFlexiBucketAvailableAnnual > 0;
-  const blnHasFlexiAllocations = objFlexiAllocation.lstAllocationLines.length > 0;
+  const blnHasFlexiAllocations = objFlexiAllocation.lstAllocationLines.some(
+    (dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation)
+  );
   const strPayrollLockMessage = useMemo(() => getPayrollLockMessage(objDetail), [objDetail]);
   const lstValidationMessages = useMemo(
     () => getValidationMessages(objFlexiAllocation, dicFlexiTotals, objDetail?.lstComponentLines ?? []),
@@ -928,7 +987,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   }, [dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides]);
 
   const lstFlexiRows: FlexiGridRow[] = useMemo(() => {
-    return objFlexiAllocation.lstAllocationLines.map((dicLine) => {
+    return objFlexiAllocation.lstAllocationLines
+      .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
+      .map((dicLine) => {
       const dicAllocationLine = dicLine as FlexiAllocationLineWithStatus;
       const decApprovedAnnual = getNumberValue(dicAllocationLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
       const decApprovedMonthly = getNumberValue(dicAllocationLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly);
@@ -936,7 +997,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         intSalaryComponentID: dicLine.intSalaryComponentID,
         strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
         strAnnualLimit: formatOptionalCurrencyValue(dicLine.decAnnualLimit, strCurrencyCode),
-        strMonthlyLimit: formatOptionalCurrencyValue(dicLine.decMonthlyLimit, strCurrencyCode),
+        strMonthlyLimit: formatOptionalCurrencyValue(getFlexiMonthlyCap(dicLine), strCurrencyCode),
         strAllocationAnnual: formatCurrency(dicLine.decAllocationAnnual, strCurrencyCode),
         strAllocationMonthly: formatCurrency(dicLine.decAllocationMonthly, strCurrencyCode),
         strApprovedAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
@@ -1742,10 +1803,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_current_since", "Current Since")}</Typography>
                 <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{formatDate(objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom ?? null)}</Typography>
               </Stack>
-              <Stack direction="row" justifyContent="space-between" spacing={2}>
+              {/* <Stack direction="row" justifyContent="space-between" spacing={2}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_effective_from", "Salary Effective Date")}</Typography>
                 <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{formatDate(objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom ?? null)}</Typography>
-              </Stack>
+              </Stack> */}
               <Stack direction="row" justifyContent="space-between" spacing={2}>
                 <Typography sx={{ color: "#586987", fontSize: "0.78rem", fontWeight: 700 }}>{t("employee_salary_revision_status", "Revision Status")}</Typography>
                 <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 700, textAlign: "right" }}>{strRevisionStatus}</Typography>
