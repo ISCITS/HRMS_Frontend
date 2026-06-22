@@ -32,6 +32,7 @@ export type DataGridColumn<T extends Record<string, ReactNode>> = {
   align?: CellAlign;
   width?: number;
   sortable?: boolean;
+  sortAccessor?: (row: T) => string | number;
   filterable?: boolean;
   exportable?: boolean;
 };
@@ -129,8 +130,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     }
 
     const sorted = [...rows].sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
+      const sortColumn = orderedColumns.find((column) => column.field === sortBy);
+      const aValue = sortColumn?.sortAccessor ? sortColumn.sortAccessor(a) : a[sortBy];
+      const bValue = sortColumn?.sortAccessor ? sortColumn.sortAccessor(b) : b[sortBy];
 
       if (
         (typeof aValue !== "string" && typeof aValue !== "number") ||
@@ -149,7 +151,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     });
 
     return sorted;
-  }, [rows, sortBy, sortDirection]);
+  }, [orderedColumns, rows, sortBy, sortDirection]);
 
   const handleSort = (field: keyof T, sortable: boolean | undefined) => {
     if (sortable === false) {

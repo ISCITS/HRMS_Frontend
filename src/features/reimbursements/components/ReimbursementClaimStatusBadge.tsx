@@ -10,21 +10,29 @@ type StatusBadgeProps = {
   size?: "small" | "medium";
 };
 
-function getStatusColor(strStatus?: string | null) {
-  if (["approved", "partially_approved", "verified", "paid"].includes(strStatus || "")) return "success";
-  if (["submitted", "resubmitted", "under_review", "locked", "pushed_to_payroll", "pending"].includes(strStatus || "")) return "warning";
-  if (["rejected"].includes(strStatus || "")) return "error";
-  if (["released", "proof_pending"].includes(strStatus || "")) return "info";
-  return "default";
+function getStatusTextColor(strStatus?: string | null) {
+  if (["approved", "partially_approved", "verified", "paid"].includes(strStatus || "")) return "#15803d";
+  if (["submitted", "resubmitted", "under_review", "locked", "pushed_to_payroll", "pending"].includes(strStatus || "")) return "#b45309";
+  if (["rejected"].includes(strStatus || "")) return "#b91c1c";
+  if (["released", "proof_pending"].includes(strStatus || "")) return "#0369a1";
+  return "#475569";
 }
 
 export default function ReimbursementClaimStatusBadge({ strStatus, size = "small" }: StatusBadgeProps) {
   return (
     <Chip
       size={size}
-      color={getStatusColor(strStatus)}
       label={formatStatusLabel(strStatus)}
-      sx={{ minWidth: 94, height: 30, fontWeight: 700, borderRadius: "8px" }}
+      sx={{
+        minWidth: 0,
+        height: 30,
+        border: "none",
+        backgroundColor: "transparent",
+        color: getStatusTextColor(strStatus),
+        justifyContent: "flex-start",
+        fontWeight: 800,
+        "& .MuiChip-label": { px: 0 },
+      }}
     />
   );
 }
