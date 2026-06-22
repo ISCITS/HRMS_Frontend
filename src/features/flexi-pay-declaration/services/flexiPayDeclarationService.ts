@@ -102,6 +102,20 @@ export type HrFlexiDeclarationApprovePayload = {
   strRemarks?: string | null;
 };
 
+export type FlexiDeclarationSavePayload = {
+  strFinancialYearCode?: string | null;
+  strEmployeeRemarks?: string | null;
+  lstItems: Array<{
+    intSalaryComponentID: number;
+    decDeclaredAnnual?: number | null;
+    decDeclaredMonthly?: number | null;
+  }>;
+  lstAnswers?: Array<{
+    strAnswerCode: string;
+    strAnswerValue?: string | null;
+  }>;
+};
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: ApiRequestMethod;
@@ -142,6 +156,9 @@ export const flexiPayDeclarationService = {
   async saveDraft(strFinancialYearCode: string, lstItems: FlexiDeclarationItemPayload[], strRemarks?: string | null, objEligibilityAnswers?: Record<string, string | number | boolean | null>): Promise<FlexiDeclarationContextRecord> {
     const objResult = await requestApi<FlexiDeclarationContextRecord>({
       strPath: "/ess/flexi-declaration/save-draft",
+  async getDetail(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+    const objResult = await requestApi<EmployeeSalaryDetailRecord>({
+      strPath: "/employee-salary/flexi-declaration/detail",
       strMethod: ApiRequestMethod.Post,
       objBody: { ...buildSavePayload(strFinancialYearCode, lstItems, strRemarks), objEligibilityAnswers: objEligibilityAnswers || {} },
       strMenuAction: strEssFlexiMenuAction,
@@ -253,6 +270,32 @@ export const hrFlexiDeclarationReviewService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { strRemarks: strRemarks?.trim() || null },
       strMenuAction: strPayrollFlexiMenuAction,
+    });
+    return objResult.Data;
+  },
+
+  async saveDraft(
+    intEmployeeID: number,
+    objPayload: FlexiDeclarationSavePayload,
+  ): Promise<EmployeeSalaryDetailRecord> {
+    const objResult = await requestApi<EmployeeSalaryDetailRecord>({
+      strPath: `/employee-salary/${intEmployeeID}/flexi-declaration/draft`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "ESS_FLEXI_PAY_DECLARATION_EDIT",
+    });
+    return objResult.Data;
+  },
+
+  async submit(
+    intEmployeeID: number,
+    objPayload: FlexiDeclarationSavePayload,
+  ): Promise<EmployeeSalaryDetailRecord> {
+    const objResult = await requestApi<EmployeeSalaryDetailRecord>({
+      strPath: `/employee-salary/${intEmployeeID}/flexi-declaration/submit`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "ESS_FLEXI_PAY_DECLARATION_SUBMIT",
     });
     return objResult.Data;
   },
