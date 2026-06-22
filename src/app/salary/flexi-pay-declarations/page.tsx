@@ -144,7 +144,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
               endIcon={<ArrowForwardRoundedIcon />}
               onClick={() => objRouter.push("/salary/flexi-pay-declaration")}
             >
-              Open Declaration
+              {blnHasFlexi ? "Open Declaration" : "View Declaration"}
             </Button>
           </Stack>
         </Stack>
