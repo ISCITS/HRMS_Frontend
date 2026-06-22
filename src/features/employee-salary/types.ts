@@ -124,6 +124,45 @@ export type EmployeeSalaryFlexiAllocationSummary = {
   decResidualTaxableAllowanceAnnual?: number | null;
   decResidualTaxableAllowanceMonthly?: number | null;
   lstAllocationLines: EmployeeSalaryFlexiAllocationLine[];
+  lstAvailableComponents?: EmployeeSalaryFlexiAllocationLine[];
+};
+
+export type EmployeeFlexiDeclarationItemRecord = {
+  intDeclarationItemID: number;
+  intSalaryComponentID: number;
+  decDeclaredAnnual: number;
+  decDeclaredMonthly: number;
+  decApprovedAnnual: number | null;
+  decApprovedMonthly: number | null;
+  decAnnualCap: number | null;
+  decMonthlyCap: number | null;
+  blnProofRequired: boolean;
+  strTaxTreatment: string | null;
+  strLineStatus: string;
+  intDisplayOrder: number;
+};
+
+export type EmployeeFlexiDeclarationAnswerRecord = {
+  intAnswerID: number;
+  strAnswerCode: string;
+  strAnswerValue: string | null;
+};
+
+export type EmployeeFlexiDeclarationRecord = {
+  intDeclarationID: number | null;
+  strFinancialYearCode: string;
+  strStatus: string;
+  blnWindowOpen: boolean;
+  blnCanEdit: boolean;
+  strReadOnlyReason: string | null;
+  dtDueDate: string | null;
+  dtSubmittedOn: string | null;
+  dtApprovedOn: string | null;
+  dtLockedOn: string | null;
+  strEmployeeRemarks: string | null;
+  strReviewerRemarks: string | null;
+  lstItems: EmployeeFlexiDeclarationItemRecord[];
+  lstAnswers: EmployeeFlexiDeclarationAnswerRecord[];
 };
 
 export type EmployeeSalaryDetailRecord = {
@@ -152,6 +191,7 @@ export type EmployeeSalaryDetailRecord = {
     dtEffectiveFrom: string;
   } | null;
   objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
+  objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];
 };
@@ -160,6 +200,7 @@ export type EmployeeSalarySummaryRecord = {
   objEmployeeSummary: EmployeeSalaryDetailRecord["objEmployeeSummary"];
   objCurrentSalarySnapshot: EmployeeSalaryDetailRecord["objCurrentSalarySnapshot"];
   objAssignedStructure: EmployeeSalaryDetailRecord["objAssignedStructure"];
+  objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
   intRevisionCount: number;
 };
 
