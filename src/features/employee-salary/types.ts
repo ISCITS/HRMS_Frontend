@@ -40,6 +40,12 @@ export type EmployeeSalaryStructureComponentOption = {
   decAmountAnnual?: number | null;
   decDefaultAmountMonthly?: number | null;
   decDefaultAmountAnnual?: number | null;
+  decAnnualLimit?: number | null;
+  decMonthlyLimit?: number | null;
+  decAnnualLimitAmount?: number | null;
+  decMonthlyLimitAmount?: number | null;
+  decReimbursementMaxClaimMonthlyLimit?: number | null;
+  decReimbursementMaxClaimYearlyLimit?: number | null;
   decPercentageValue?: number | null;
   strFormulaExpression?: string | null;
   strFlexiComponentRole?: string | null;
@@ -107,6 +113,7 @@ export type EmployeeSalaryFlexiAllocationLine = {
   blnProofRequired: boolean;
   strTaxTreatment: string | null;
   decBalanceAnnual: number | null;
+  strSource?: string | null;
 };
 
 export type EmployeeSalaryFlexiAllocationSummary = {

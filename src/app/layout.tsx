@@ -7,7 +7,10 @@ import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";
 
 export const metadata: Metadata = {
   title: "HRMS Template",
-  description: "HRMS template using Next.js App Router and Material UI"
+  description: "HRMS template using Next.js App Router and Material UI",
+  icons: {
+    icon: "/favicon.svg"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
