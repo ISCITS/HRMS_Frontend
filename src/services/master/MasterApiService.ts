@@ -593,11 +593,18 @@ export type SalaryStructureFormOptionsApiRecord = {
   lstSalaryComponents: Array<EmployeeLookupOptionApiRecord & {
     blnIsFlexiBasket?: boolean;
     blnIsFlexiBenefit?: boolean;
+    blnIsActive?: boolean;
     blnIncludedInCtc?: boolean;
+    blnIncludeInPayslip?: boolean;
+    blnIsWages?: boolean;
+    blnIsReimbursement?: boolean;
+    strReimbursementType?: string | null;
+    strReimbursementSettlementMode?: string | null;
     strFlexiComponentType?: string;
     strComponentGroup?: string | null;
     strComponentCategory?: string | null;
     blnIsEmployerContribution?: boolean;
+    blnIsEmployeeDeduction?: boolean;
     intResidualComponentID?: number | null;
     decAnnualLimit?: number | null;
     decMonthlyLimit?: number | null;

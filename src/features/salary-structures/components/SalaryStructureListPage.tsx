@@ -319,14 +319,6 @@ export default function SalaryStructureListPage() {
 
         <Box className={styles.searchRow}>
           <TextField
-            data-testid="salary-structures.list.search-name.input"
-            inputProps={{ "data-testid": "salary-structures.list.search-name.input" }}
-            value={dicSearchDraft.strName}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
-            placeholder={t("search_structure_name", "Search structure name")}
-            fullWidth
-          />
-          <TextField
             data-testid="salary-structures.list.search-code.input"
             inputProps={{ "data-testid": "salary-structures.list.search-code.input" }}
             value={dicSearchDraft.strCode}
@@ -334,6 +326,16 @@ export default function SalaryStructureListPage() {
             placeholder={t("search_structure_code", "Search structure code")}
             fullWidth
           />
+          
+          <TextField
+            data-testid="salary-structures.list.search-name.input"
+            inputProps={{ "data-testid": "salary-structures.list.search-name.input" }}
+            value={dicSearchDraft.strName}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
+            placeholder={t("search_structure_name", "Search structure name")}
+            fullWidth
+          />
+
           <TextField
             data-testid="salary-structures.list.search-status.select"
             inputProps={{ "data-testid": "salary-structures.list.search-status.select" }}

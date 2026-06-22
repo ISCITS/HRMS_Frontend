@@ -188,7 +188,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         intLineOrder: dicLine.intLineOrder,
         strValueSource: dicLine.strValueSource,
         blnIsFlexiBasketLine: dicLine.blnIsFlexiBasketLine,
-        strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
+        strFlexiComponentRole: "normal",
         fltFixedAmount: dicLine.strValueSource === "Fixed" ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
         fltPercentageValue: dicLine.strValueSource === "Percentage" ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
         intBasisComponentID: dicLine.strValueSource === "Percentage" ? dicLine.intBasisComponentID : null,

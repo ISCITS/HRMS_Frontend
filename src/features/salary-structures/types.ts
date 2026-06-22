@@ -18,11 +18,18 @@ export type SalaryStructureOption = {
   blnIsFlexiBasket?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIncludedInCtc?: boolean;
+  blnIsActive?: boolean;
   blnProofRequired?: boolean;
+  blnIncludeInPayslip?: boolean;
+  blnIsWages?: boolean;
+  blnIsReimbursement?: boolean;
+  strReimbursementType?: string | null;
+  strReimbursementSettlementMode?: string | null;
   strFlexiComponentType?: string;
   strComponentGroup?: string | null;
   strComponentCategory?: string | null;
   blnIsEmployerContribution?: boolean;
+  blnIsEmployeeDeduction?: boolean;
   intResidualComponentID?: number | null;
   decAnnualLimit?: number | null;
   decMonthlyLimit?: number | null;

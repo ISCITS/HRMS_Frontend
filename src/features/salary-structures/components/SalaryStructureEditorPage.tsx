@@ -141,10 +141,33 @@ function isFlexiBasketLine(dicLine: SalaryStructureLineFormValue) {
   );
 }
 
+function getFlexiRoleForComponent(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
+  const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
+  const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
+  if (dicComponent?.blnIsFlexiBasket || strFlexiType === "basket" || strFlexiType === "flexibucket" || strCategory === "flexibucket" || strCategory === "flexibasket") {
+    return "Flexi Bucket";
+  }
+  if (dicComponent?.blnIsEmployerContribution || strCategory === "employercontribution" || strGroup === "employercontribution" || strGroup === "contribution") {
+    return "Employer Contribution";
+  }
+  if (dicComponent?.blnIsEmployeeDeduction || strCategory === "deduction" || strGroup === "deduction") {
+    return "Deduction";
+  }
+  if (strCategory === "information" || strGroup === "information") {
+    return "Information";
+  }
+  return "Normal";
+}
+
 function isFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
   return Boolean(
-    dicOption.blnIsFlexiBenefit
-    && dicOption.blnIncludedInCtc
+    dicOption.blnIsActive !== false
+    && dicOption.blnIsReimbursement
+    && dicOption.blnIsFlexiBenefit
+    && normalizeSelectToken(String(dicOption.strReimbursementType ?? "")) === "ctcbased"
+    && normalizeSelectToken(String(dicOption.strReimbursementSettlementMode ?? "")) === "payroll"
+    && getFlexiRoleForComponent(dicOption) === "Normal"
     && normalizeSelectToken(dicOption.strCode ?? "") !== "flexipay"
   );
 }
@@ -277,8 +300,13 @@ export default function SalaryStructureEditorPage({
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
   const lstFlexiBasketLines = useMemo(() => {
-    return dicForm.lstComponents.filter(isFlexiBasketLine);
-  }, [dicForm.lstComponents]);
+    return dicForm.lstComponents.filter((dicLine) => {
+      const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+      return dicLine.blnIsActive
+        && getFlexiRoleForComponent(dicComponent) === "Flexi Bucket"
+        && (parseLineAmount(dicLine.fltFixedAmount) ?? 0) > 0;
+    });
+  }, [dicComponentByID, dicForm.lstComponents]);
   const dicStructureSummary = useMemo(() => {
     return dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
@@ -318,6 +346,23 @@ export default function SalaryStructureEditorPage({
       { fltTotalCtc: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
     );
   }, [dicComponentByID, dicForm.lstComponents]);
+  const dicFlexiSummary = useMemo(() => {
+    const dicBucketLine = lstFlexiBasketLines[0];
+    const fltBucketAnnual = dicBucketLine ? (parseLineAmount(dicBucketLine.fltFixedAmount) ?? 0) * 12 : 0;
+    const fltDefaultAllocatedAnnual = (dicBucketLine?.lstFlexiMappings ?? []).reduce((fltTotal, dicMapping) => {
+      if (!dicMapping.blnIsActive) {
+        return fltTotal;
+      }
+      return fltTotal + ((parseLineAmount(dicMapping.fltDefaultAmount) ?? 0) * 12);
+    }, 0);
+    const dicBucketComponent = dicComponentByID.get(Number(dicBucketLine?.intSalaryComponentID));
+    const dicResidualComponent = dicComponentByID.get(Number(dicBucketComponent?.intResidualComponentID));
+    return {
+      fltDefaultAllocatedAnnual,
+      fltDefaultBalanceAnnual: Math.max(0, fltBucketAnnual - fltDefaultAllocatedAnnual),
+      strResidualComponentName: dicResidualComponent?.strLabel ?? "",
+    };
+  }, [dicComponentByID, lstFlexiBasketLines]);
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID()
@@ -620,16 +665,16 @@ export default function SalaryStructureEditorPage({
         }
         if (strField === "intSalaryComponentID") {
           const dicComponent = dicComponentByID.get(Number(objValue));
-          const blnIsFlexiBasket = Boolean(dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY" || dicComponent?.strFlexiComponentType === "basket");
+          const blnIsFlexiBasket = getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
           return {
             ...dicLine,
             intSalaryComponentID: Number(objValue),
             strComponentCode: dicComponent?.strCode ?? "",
             strComponentName: dicComponent?.strLabel ?? "",
             blnIsFlexiBasketLine: blnIsFlexiBasket,
-            strFlexiComponentRole: blnIsFlexiBasket ? "basket" : normalizeSalaryStructureFlexiRole(dicComponent?.strFlexiComponentType),
+            strFlexiComponentRole: blnIsFlexiBasket ? "basket" : "normal",
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
-            strComponentCategory: "",
+            strComponentCategory: dicComponent?.strComponentCategory ?? "",
             lstFlexiMappings: blnIsFlexiBasket ? dicLine.lstFlexiMappings : []
           };
         }
@@ -868,11 +913,17 @@ export default function SalaryStructureEditorPage({
         const dicComponent = dicComponentByID.get(intFlexiComponentID);
         const fltMonthlyLimit = getComponentMonthlyLimit(dicComponent);
         const fltAnnualLimit = getComponentAnnualLimit(dicComponent);
+        if (!dicComponent || !isFlexiEligibleComponent(dicComponent)) {
+          return t("flexi_component_not_eligible", "Allowed Flexi Options must be active CTC-based payroll reimbursement components marked as flexi reimbursement.");
+        }
         if (fltDefaultAmount === null || fltDefaultAmount < 0) {
-          return t("flexi_default_amount_non_negative", "Flexi default amount must be 0 or greater.");
+          return t("flexi_default_amount_non_negative", "Default monthly allocation must be 0 or greater.");
         }
         if (fltMaxAmount === null || fltMaxAmount < 0) {
-          return t("flexi_yearly_amount_non_negative", "Flexi yearly amount must be 0 or greater.");
+          return t("flexi_yearly_amount_non_negative", "Annual cap must be 0 or greater.");
+        }
+        if (fltDefaultAmount * 12 > fltMaxAmount) {
+          return t("flexi_default_exceeds_cap", "Default annual allocation cannot exceed annual cap.");
         }
         if (fltMonthlyLimit != null && fltDefaultAmount > fltMonthlyLimit) {
           return t("flexi_monthly_amount_exceeds_limit", "Flexi monthly amount cannot exceed the salary component monthly limit.");
@@ -907,10 +958,22 @@ export default function SalaryStructureEditorPage({
       return;
     }
     const lstSelectedComponents = dicForm.lstComponents.filter((dicLine) => dicLine.intSalaryComponentID !== "");
-    const intFlexiBasketCount = lstSelectedComponents.filter((dicLine) => dicLine.strComponentCode === "FLEXI_PAY" || dicLine.blnIsFlexiBasketLine).length;
+    const lstActiveFlexiBasketLines = lstSelectedComponents.filter((dicLine) => {
+      const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+      return dicLine.blnIsActive && getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
+    });
+    const intFlexiBasketCount = lstActiveFlexiBasketLines.length;
     if (intFlexiBasketCount > 1) {
-      setStrError(t("single_flexi_pay_only", "Only one FLEXI_PAY component is allowed in one salary structure."));
+      setStrError(t("single_flexi_pay_only", "Only one active Flexi Bucket line is allowed in one salary structure."));
       return;
+    }
+    for (const dicLine of lstActiveFlexiBasketLines) {
+      const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+      const fltAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
+      if (!dicLine.blnIncludedInCtc || fltAmount <= 0 || dicComponent?.blnIsWages || dicComponent?.blnIncludeInPayslip) {
+        setStrError(t("invalid_flexi_bucket_configuration", "Flexi Bucket must be active, included in CTC, greater than 0, non-wage, and hidden from payslip earnings by default."));
+        return;
+      }
     }
     const strFlexiMappingError = validateFlexiMappings();
     if (strFlexiMappingError) {
@@ -1144,7 +1207,7 @@ export default function SalaryStructureEditorPage({
             <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  3. {t("component_line_configuration", "Component Line Configuration")}
+                  3. {t("component_line_configuration", "Salary Component Lines")}
                 </Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
                   {t(
@@ -1234,8 +1297,8 @@ export default function SalaryStructureEditorPage({
                       </TextField>
                     </td>
                     <td>
-                      <Typography sx={{ width: 76, fontSize: "0.8rem", fontWeight: dicLine.blnIsFlexiBasketLine ? 800 : 600, color: dicLine.blnIsFlexiBasketLine ? "#0f766e" : "#64748b" }}>
-                        {dicLine.blnIsFlexiBasketLine ? t("flexi_basket", "Flexi Basket") : t("normal_component", "Normal")}
+                      <Typography sx={{ width: 130, fontSize: "0.8rem", fontWeight: 700, color: getFlexiRoleForComponent(dicComponentByID.get(Number(dicLine.intSalaryComponentID))) === "Flexi Bucket" ? "#0f766e" : "#64748b" }}>
+                        {getFlexiRoleForComponent(dicComponentByID.get(Number(dicLine.intSalaryComponentID)))}
                       </Typography>
                     </td>
                     <td>
@@ -1386,8 +1449,12 @@ export default function SalaryStructureEditorPage({
                 [t("annual_ctc", "Annual CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
                 [t("fixed_pay", "Fixed Pay"), formatFlexiAmount(dicStructureSummary.fltFixedPay), "#0f172a"],
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
-                [t("flexi_basket", "Flexi Budget"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
-                [t("employee_contribution", "Employee Contribution"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
+                [t("flexi_basket", "Flexi Bucket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
+                [t("employer_contribution", "Employer Contribution"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
+                [t("default_flexi_allocated", "Default Flexi Allocated"), formatFlexiAmount(dicFlexiSummary.fltDefaultAllocatedAnnual), "#067647"],
+                [t("default_flexi_balance", "Default Flexi Balance"), formatFlexiAmount(dicFlexiSummary.fltDefaultBalanceAnnual), "#0f172a"],
+                [t("residual_component", "Residual Component"), dicFlexiSummary.strResidualComponentName || "-", "#0f172a"],
+                [t("estimated_payroll_impact", "Estimated Payroll Impact"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
               ].map(([strLabel, strValue, strColor]) => (
                 <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
                   <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
@@ -1432,7 +1499,7 @@ export default function SalaryStructureEditorPage({
                       <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
                         <Box>
                           <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
-                            4. {t("flexi_components", "Flexi Components")}
+                            4. {t("flexi_components", "Allowed Flexi Options")}
                           </Typography>
                           <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mt: 0.35 }}>
                             {t("flexi_components_declaration_standard_help", "Map employee-selectable flexi benefits and monthly declaration limits as per payroll and tax declaration policy.")}
@@ -1454,8 +1521,8 @@ export default function SalaryStructureEditorPage({
                           <Box component="thead" sx={{ "& th": { borderBottom: "1px solid #d9e6ef", color: "#0f172a", fontSize: "0.77rem", fontWeight: 700, px: 2, py: 1.2, textAlign: "left", whiteSpace: "nowrap" } }}>
                             <tr>
                               <th>{t("component", "Component")}</th>
-                              <th>{t("monthly_equivalent", "Monthly Allocation")} (₹)</th>
-                              <th>{t("declared_annual", "Annual Allocation")} (₹)</th>
+                              <th>{t("monthly_equivalent", "Default Monthly Allocation")} (₹)</th>
+                              <th>{t("declared_annual", "Default Annual Allocation")} (₹)</th>
                               <th>{t("proof_required", "Proof Submission Required")}</th>
                               <th>{t("status", "Allocation Status")}</th>
                               <th>{t("action", "Action")}</th>
@@ -1560,7 +1627,7 @@ export default function SalaryStructureEditorPage({
                       </Typography>
                       <Stack spacing={1.6}>
                         {[
-                          [t("basket_available", "Flexi Budget"), formatFlexiAmount(fltBasketYearlyAmount), "#0f172a"],
+                          [t("basket_available", "Flexi Bucket Amount"), formatFlexiAmount(fltBasketYearlyAmount), "#0f172a"],
                           [t("allocated", "Allocated Amount"), formatFlexiAmount(fltAllocatedYearlyAmount), "#067647"],
                           [t("balance", "Available Balance"), formatFlexiAmount(fltPendingYearlyAmount), "#0f172a"],
                         ].map(([strLabel, strValue, strColor]) => (
@@ -1588,7 +1655,7 @@ export default function SalaryStructureEditorPage({
                             <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
                             <Box>
                               <Typography sx={{ color: "#0757b8", fontSize: "0.82rem", fontWeight: 800 }}>
-                                {t("payroll_impact", "Payroll Impact")}
+                                {t("payroll_impact", "Estimated Payroll Impact")}
                               </Typography>
                               <Typography sx={{ color: "#172554", fontSize: "0.78rem", lineHeight: 1.45, mt: 0.4 }}>
                                 {t("flexi_payroll_impact_help", "Final allocated amount will be considered for payroll calculation and payroll processing.")}
