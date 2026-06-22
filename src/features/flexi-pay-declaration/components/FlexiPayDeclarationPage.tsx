@@ -283,9 +283,31 @@ function createSelectionRow(intSalaryComponentID: number | null = null): FlexiSe
   };
 }
 
+function deriveAnswersFromDeclaration(objDetail: EmployeeSalaryDetailRecord): EligibilityAnswers {
+  const dicAnswers = new Map(
+    (objDetail.objFlexiDeclaration?.lstAnswers || []).map((objAnswer) => [
+      normalizeText(objAnswer.strAnswerCode),
+      String(objAnswer.strAnswerValue || ""),
+    ]),
+  );
+  const getBooleanAnswer = (strCode: string, blnDefault: boolean) => {
+    const strValue = normalizeText(dicAnswers.get(normalizeText(strCode)));
+    if (!strValue) return blnDefault;
+    return ["1", "true", "yes", "y"].includes(strValue);
+  };
+
+  return {
+    blnHasCar: getBooleanAnswer("HAS_CAR", false),
+    blnMealVoucherRequired: getBooleanAnswer("MEAL_VOUCHER_REQUIRED", true),
+    intChildrenCount: toChildrenCount(dicAnswers.get("children_count") || "1"),
+    blnHostelApplicable: getBooleanAnswer("HOSTEL_APPLICABLE", false),
+  };
+}
+
 export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
@@ -300,6 +322,42 @@ export default function FlexiPayDeclarationPage() {
   const [dicDraftInputs, setDicDraftInputs] = useState<Record<number, string>>({});
   const [lstSelectedFlexiRows, setLstSelectedFlexiRows] = useState<FlexiSelectionRow[]>([]);
   const [strToast, setStrToast] = useState("");
+
+  function applyDetailState(objSalaryDetail: EmployeeSalaryDetailRecord) {
+    const objInitialAnswers = deriveAnswersFromDeclaration(objSalaryDetail);
+    const lstInitialDraftRows = buildDraftRows(objSalaryDetail, objInitialAnswers);
+    const dicDeclaredAmounts = new Map(
+      (objSalaryDetail.objFlexiDeclaration?.lstItems || []).map((objItem) => [
+        objItem.intSalaryComponentID,
+        Number(objItem.decDeclaredAnnual || 0),
+      ]),
+    );
+    const dicInitialInputs = lstInitialDraftRows.reduce<Record<number, string>>((dicAcc, objRow) => {
+      const decDeclaredAmount = dicDeclaredAmounts.has(objRow.intSalaryComponentID)
+        ? Number(dicDeclaredAmounts.get(objRow.intSalaryComponentID) || 0)
+        : Number(objRow.decCurrentAnnual || 0);
+      dicAcc[objRow.intSalaryComponentID] = decDeclaredAmount > 0 ? String(decDeclaredAmount) : "";
+      return dicAcc;
+    }, {});
+    const lstDeclaredSelections = (objSalaryDetail.objFlexiDeclaration?.lstItems || [])
+      .sort((a, b) => a.intDisplayOrder - b.intDisplayOrder)
+      .map((objItem) => createSelectionRow(objItem.intSalaryComponentID));
+    const lstAllocatedSelections = lstInitialDraftRows
+      .filter((objRow) => Number(objRow.decCurrentAnnual || 0) > 0)
+      .map((objRow) => createSelectionRow(objRow.intSalaryComponentID));
+
+    setObjDetail(objSalaryDetail);
+    setObjEmployeeContext(deriveEmployeeContext(objSalaryDetail));
+    setObjAnswers(objInitialAnswers);
+    setDicDraftInputs(dicInitialInputs);
+    setLstSelectedFlexiRows(
+      lstDeclaredSelections.length > 0
+        ? lstDeclaredSelections
+        : lstAllocatedSelections.length > 0
+          ? lstAllocatedSelections
+          : [createSelectionRow(null)],
+    );
+  }
 
   useEffect(() => {
     let blnMounted = true;
@@ -320,16 +378,8 @@ export default function FlexiPayDeclarationPage() {
         ]);
         if (!blnMounted) return;
 
-        setObjDetail(objSalaryDetail);
         setObjFormOptions(objSalaryFormOptions);
-        setObjEmployeeContext(deriveEmployeeContext(objSalaryDetail));
-        const dicInitialInputs = buildDraftRows(objSalaryDetail, objAnswers).reduce<Record<number, string>>((dicAcc, objRow) => {
-          dicAcc[objRow.intSalaryComponentID] = objRow.decDeclaredAnnual > 0 ? String(objRow.decDeclaredAnnual) : "";
-          return dicAcc;
-        }, {});
-        setDicDraftInputs(dicInitialInputs);
-        const lstInitialSelections = buildDraftRows(objSalaryDetail, objAnswers).map((objRow) => createSelectionRow(objRow.intSalaryComponentID));
-        setLstSelectedFlexiRows(lstInitialSelections.length > 0 ? lstInitialSelections : [createSelectionRow(null)]);
+        applyDetailState(objSalaryDetail);
 
         const intSalaryStructureID = objSalaryDetail?.objAssignedStructure?.intSalaryStructureID ?? null;
         if (intSalaryStructureID) {
@@ -357,6 +407,7 @@ export default function FlexiPayDeclarationPage() {
   const blnHasAssignedStructure = Boolean(objDetail?.objAssignedStructure);
   const blnHasFlexiBasket = Boolean(objDetail?.objFlexiAllocation?.blnHasFlexiBasket);
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode || "INR";
+  const objDeclarationState = objDetail?.objFlexiDeclaration || null;
 
   const lstDraftRows = useMemo(() => {
     if (!objDetail) return [];
@@ -443,11 +494,23 @@ export default function FlexiPayDeclarationPage() {
     }
 
     const lstDetailComponents = objSalaryStructureDetail?.lstComponents
-      ?.filter((objComponent) => Boolean(objComponent.blnIsFlexiBenefit) && !Boolean(objComponent.blnIsFlexiBasket))
-      .map((objComponent) => ({
-        intSalaryComponentID: objComponent.intSalaryComponentID,
-        strComponentName: getComponentLabel(objComponent.strComponentName, objComponent.strComponentCode),
-      })) ?? [];
+      ?.flatMap((objComponent) => {
+        if (objComponent.lstFlexiMappings?.length) {
+          return objComponent.lstFlexiMappings
+            .filter((objMapping) => objMapping.blnIsActive !== false)
+            .map((objMapping) => ({
+              intSalaryComponentID: objMapping.intFlexiComponentID,
+              strComponentName: getComponentLabel(objMapping.strFlexiComponentName, objMapping.strFlexiComponentCode),
+            }));
+        }
+        const blnFlexiLine = Boolean(objComponent.strFlexiComponentRole) && !Boolean(objComponent.blnIsFlexiBasketLine);
+        return blnFlexiLine
+          ? [{
+              intSalaryComponentID: objComponent.intSalaryComponentID,
+              strComponentName: getComponentLabel(objComponent.strComponentName, objComponent.strComponentCode),
+            }]
+          : [];
+      }) ?? [];
 
     if (lstDetailComponents.length > 0) {
       return lstDetailComponents;
@@ -476,6 +539,20 @@ export default function FlexiPayDeclarationPage() {
         strComponentName: objRow.strComponentName,
       }));
   const intConfiguredFlexiOptionCount = lstAvailableFlexiOptions.length;
+  const blnHasAllowedOptions = intConfiguredFlexiOptionCount > 0;
+  const blnDeclarationEditable = Boolean(
+    objDeclarationState?.blnCanEdit ?? (blnHasAssignedStructure && blnHasFlexiBasket && blnHasAllowedOptions),
+  );
+  const strDeclarationStatus = objDeclarationState?.strStatus || (blnHasFlexiBasket ? "Draft" : "View Only");
+  const strReadOnlyReason =
+    objDeclarationState?.strReadOnlyReason ||
+    (!blnHasAssignedStructure
+      ? "No active salary structure is assigned to this employee."
+      : !blnHasFlexiBasket
+        ? "No flexi pay is configured in your salary structure."
+        : !blnHasAllowedOptions
+          ? "No flexi components are configured in the assigned salary structure."
+          : "");
   const lstRenderedFlexiRows = lstSelectedFlexiRows
     .map((objSelectedRow) => ({
       objSelectedRow,
@@ -483,11 +560,33 @@ export default function FlexiPayDeclarationPage() {
     }))
     .filter((objRow) => objRow.objSelectedRow.intSalaryComponentID == null || objRow.objDraftRow);
 
+  function buildDeclarationPayload() {
+    return {
+      strFinancialYearCode: objDeclarationState?.strFinancialYearCode || getCurrentFinancialYearCode(),
+      strEmployeeRemarks: objDeclarationState?.strEmployeeRemarks || null,
+      lstItems: lstRenderedFlexiRows
+        .filter((objRow): objRow is { objSelectedRow: FlexiSelectionRow; objDraftRow: FlexiDraftRow } => Boolean(objRow.objDraftRow))
+        .map(({ objDraftRow }) => ({
+          intSalaryComponentID: objDraftRow.intSalaryComponentID,
+          decDeclaredAnnual: objDraftRow.decDeclaredAnnual,
+          decDeclaredMonthly: objDraftRow.decDeclaredMonthly,
+        })),
+      lstAnswers: [
+        { strAnswerCode: "HAS_CAR", strAnswerValue: objAnswers.blnHasCar ? "true" : "false" },
+        { strAnswerCode: "MEAL_VOUCHER_REQUIRED", strAnswerValue: objAnswers.blnMealVoucherRequired ? "true" : "false" },
+        { strAnswerCode: "CHILDREN_COUNT", strAnswerValue: String(objAnswers.intChildrenCount) },
+        { strAnswerCode: "HOSTEL_APPLICABLE", strAnswerValue: objAnswers.blnHostelApplicable ? "true" : "false" },
+      ],
+    };
+  }
+
   function handleAddFlexiRow() {
+    if (!blnDeclarationEditable) return;
     setLstSelectedFlexiRows((lstPrev) => [...lstPrev, createSelectionRow(null)]);
   }
 
   function handleDeleteFlexiRow(strRowID: string) {
+    if (!blnDeclarationEditable) return;
     setLstSelectedFlexiRows((lstPrev) => {
       const lstNext = lstPrev.filter((objRow) => objRow.strRowID !== strRowID);
       return lstNext.length > 0 ? lstNext : [createSelectionRow(null)];
@@ -495,11 +594,48 @@ export default function FlexiPayDeclarationPage() {
   }
 
   function handleSelectFlexiComponent(strRowID: string, intSalaryComponentID: number) {
+    if (!blnDeclarationEditable) return;
     setLstSelectedFlexiRows((lstPrev) =>
       lstPrev.map((objRow) =>
         objRow.strRowID === strRowID ? { ...objRow, intSalaryComponentID } : objRow
       )
     );
+  }
+
+  async function handleSaveDraft() {
+    if (!objDetail || !blnDeclarationEditable || blnAllocationExceeded) return;
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      const objUpdatedDetail = await flexiPayDeclarationService.saveDraft(
+        objDetail.objEmployeeSummary.intEmployeeID,
+        buildDeclarationPayload(),
+      );
+      applyDetailState(objUpdatedDetail);
+      setStrToast("Flexi declaration draft saved.");
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to save flexi declaration draft.");
+    } finally {
+      setBlnSaving(false);
+    }
+  }
+
+  async function handleSubmitDeclaration() {
+    if (!objDetail || !blnDeclarationEditable || blnAllocationExceeded) return;
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      const objUpdatedDetail = await flexiPayDeclarationService.submit(
+        objDetail.objEmployeeSummary.intEmployeeID,
+        buildDeclarationPayload(),
+      );
+      applyDetailState(objUpdatedDetail);
+      setStrToast("Flexi declaration submitted successfully.");
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to submit flexi declaration.");
+    } finally {
+      setBlnSaving(false);
+    }
   }
 
   if (blnLoading) {
@@ -544,7 +680,7 @@ export default function FlexiPayDeclarationPage() {
           </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={`FY ${getCurrentFinancialYearCode()}`} sx={{ height: 24, bgcolor: "rgba(255,255,255,0.16)", color: "#fff", fontWeight: 700 }} />
-            <Chip size="small" label={blnHasFlexiBasket ? "Draft" : "View Only"} sx={{ height: 24, bgcolor: blnHasFlexiBasket ? "#fef3c7" : "#e2e8f0", color: "#0f172a", fontWeight: 800 }} />
+            <Chip size="small" label={strDeclarationStatus} sx={{ height: 24, bgcolor: blnDeclarationEditable ? "#fef3c7" : "#e2e8f0", color: "#0f172a", fontWeight: 800 }} />
           </Stack>
         </Stack>
       </Paper>
@@ -559,6 +695,16 @@ export default function FlexiPayDeclarationPage() {
         <Alert severity="info" icon={<EditOffRoundedIcon fontSize="inherit" />}>
           No flexi pay is configured in your salary structure. You can view your salary breakdown, but add or edit is not available.
         </Alert>
+      ) : null}
+
+      {blnHasAssignedStructure && blnHasFlexiBasket && !blnHasAllowedOptions ? (
+        <Alert severity="warning">
+          No flexi components are currently configured in the assigned salary structure, so the declaration list cannot be populated yet.
+        </Alert>
+      ) : null}
+
+      {!blnDeclarationEditable && strReadOnlyReason ? (
+        <Alert severity="info">{strReadOnlyReason}</Alert>
       ) : null}
 
       {blnAllocationExceeded ? (
@@ -613,7 +759,7 @@ export default function FlexiPayDeclarationPage() {
                           <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.22, mt: 0.14 }}>Enables car-linked flexi</Typography>
                         </Box>
                       </Stack>
-                      <Switch size="small" checked={objAnswers.blnHasCar} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket} onChange={(e) => setObjAnswers((d) => ({ ...d, blnHasCar: e.target.checked }))} />
+                      <Switch size="small" checked={objAnswers.blnHasCar} disabled={!blnDeclarationEditable} onChange={(e) => setObjAnswers((d) => ({ ...d, blnHasCar: e.target.checked }))} />
                     </Stack>
                   </Paper>
 
@@ -626,7 +772,7 @@ export default function FlexiPayDeclarationPage() {
                           <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.22, mt: 0.14 }}>Controls meal voucher flexi</Typography>
                         </Box>
                       </Stack>
-                      <Switch size="small" checked={objAnswers.blnMealVoucherRequired} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket} onChange={(e) => setObjAnswers((d) => ({ ...d, blnMealVoucherRequired: e.target.checked }))} />
+                      <Switch size="small" checked={objAnswers.blnMealVoucherRequired} disabled={!blnDeclarationEditable} onChange={(e) => setObjAnswers((d) => ({ ...d, blnMealVoucherRequired: e.target.checked }))} />
                     </Stack>
                   </Paper>
 
@@ -640,7 +786,7 @@ export default function FlexiPayDeclarationPage() {
                           fullWidth
                           type="number"
                           value={String(objAnswers.intChildrenCount)}
-                          disabled={!blnHasAssignedStructure || !blnHasFlexiBasket}
+                          disabled={!blnDeclarationEditable}
                           onChange={(e) => setObjAnswers((d) => ({ ...d, intChildrenCount: toChildrenCount(e.target.value) }))}
                           inputProps={{ min: 0, max: 20, step: 1 }}
                           sx={{ "& .MuiInputBase-root": { minHeight: 36 }, "& .MuiInputBase-input": { py: 0.62, fontSize: "0.82rem" } }}
@@ -655,7 +801,7 @@ export default function FlexiPayDeclarationPage() {
                         <Typography sx={{ fontWeight: 700, fontSize: "0.81rem", lineHeight: 1.22 }}>Hostel applicable</Typography>
                         <Typography sx={{ color: "#64748b", fontSize: "0.7rem", lineHeight: 1.22, mt: 0.14 }}>For eligible dependent cases</Typography>
                       </Box>
-                      <Switch size="small" checked={objAnswers.blnHostelApplicable} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket || objAnswers.intChildrenCount === 0} onChange={(e) => setObjAnswers((d) => ({ ...d, blnHostelApplicable: e.target.checked }))} />
+                      <Switch size="small" checked={objAnswers.blnHostelApplicable} disabled={!blnDeclarationEditable || objAnswers.intChildrenCount === 0} onChange={(e) => setObjAnswers((d) => ({ ...d, blnHostelApplicable: e.target.checked }))} />
                     </Stack>
                   </Paper>
                 </Box>
@@ -675,7 +821,7 @@ export default function FlexiPayDeclarationPage() {
                       variant="contained"
                       startIcon={<AddRoundedIcon />}
                       sx={{ minHeight: 32, px: 1.15, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.45 } }}
-                      disabled={!blnHasAssignedStructure || !blnHasFlexiBasket}
+                      disabled={!blnDeclarationEditable}
                       onClick={handleAddFlexiRow}
                     >
                       Add
@@ -703,7 +849,7 @@ export default function FlexiPayDeclarationPage() {
                         </TableRow>
                       ) : (
                         lstRenderedFlexiRows.map(({ objSelectedRow, objDraftRow }) => {
-                          const blnDisabled = !blnHasAssignedStructure || !blnHasFlexiBasket || !objDraftRow?.blnEligible;
+                          const blnDisabled = !blnDeclarationEditable || !objDraftRow?.blnEligible;
                           return (
                             <TableRow key={objSelectedRow.strRowID} sx={{ opacity: objDraftRow && blnDisabled ? 0.62 : 1 }}>
                               <TableCell sx={{ py: 0.75 }}>
@@ -712,7 +858,7 @@ export default function FlexiPayDeclarationPage() {
                                   fullWidth
                                   displayEmpty
                                   value={objSelectedRow.intSalaryComponentID ?? ""}
-                                  disabled={!blnHasAssignedStructure || !blnHasFlexiBasket}
+                                  disabled={!blnDeclarationEditable}
                                   onChange={(e) => handleSelectFlexiComponent(objSelectedRow.strRowID, Number(e.target.value))}
                                   MenuProps={{ PaperProps: { sx: { maxHeight: 320 } } }}
                                   sx={{ minWidth: 240, "& .MuiSelect-select": { py: 0.72, fontSize: "0.79rem" } }}
@@ -766,7 +912,7 @@ export default function FlexiPayDeclarationPage() {
                               <TableCell align="center" sx={{ py: 0.75 }}>
                                 <IconButton
                                   size="small"
-                                  disabled={!blnHasAssignedStructure || !blnHasFlexiBasket}
+                                  disabled={!blnDeclarationEditable}
                                   onClick={() => handleDeleteFlexiRow(objSelectedRow.strRowID)}
                                   sx={{ color: "#dc2626" }}
                                 >
@@ -784,12 +930,12 @@ export default function FlexiPayDeclarationPage() {
             </Stack>
 
             <Paper className={styles.controlsCard} sx={{ p: 1.3, borderRadius: "14px", border: "1px solid #dbe3ef", height: "fit-content" }}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1, fontSize: "0.92rem", lineHeight: 1.2 }}>Salary Breakdown Impact</Typography>
-              <Stack spacing={1.05}>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.15, fontSize: "0.92rem", lineHeight: 1.24 }}>Salary Breakdown Impact</Typography>
+              <Stack spacing={1.2}>
                 {lstImpactMetrics.map((objMetric) => (
                   <Stack key={objMetric.strLabel} direction="row" justifyContent="space-between" alignItems="center" spacing={1.2}>
-                    <Typography sx={{ color: "#334155", fontSize: "0.79rem", fontWeight: 500, lineHeight: 1.28 }}>{objMetric.strLabel}</Typography>
-                    <Typography sx={{ fontWeight: 800, color: objMetric.strColor || "#0f172a", fontSize: "0.89rem", lineHeight: 1.18 }}>{formatCurrency(objMetric.decValue, strCurrencyCode)}</Typography>
+                    <Typography sx={{ color: "#334155", fontSize: "0.8rem", fontWeight: 500, lineHeight: 1.4 }}>{objMetric.strLabel}</Typography>
+                    <Typography sx={{ fontWeight: 800, color: objMetric.strColor || "#0f172a", fontSize: "0.9rem", lineHeight: 1.28 }}>{formatCurrency(objMetric.decValue, strCurrencyCode)}</Typography>
                   </Stack>
                 ))}
               </Stack>
@@ -879,9 +1025,9 @@ export default function FlexiPayDeclarationPage() {
       >
         <Stack direction="row" spacing={0.55} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
           <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} sx={{ minHeight: 30, px: 1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} onClick={() => objRouter.push("/salary/flexi-pay-declarations")}>Back</Button>
-          <Button size="small" variant="outlined" startIcon={<ContentCopyRoundedIcon />} sx={{ minHeight: 30, px: 1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket} onClick={() => setStrToast("Previous year copy flow is not available yet for flexi declarations.")}>Copy Previous Year</Button>
-          <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} sx={{ minHeight: 30, px: 1.1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket || blnAllocationExceeded} onClick={() => setStrToast("Declaration save is temporarily disabled until final persistence rules are confirmed.")}>Save Draft</Button>
-          <Button size="small" variant="contained" color="warning" startIcon={<SendRoundedIcon />} sx={{ minHeight: 30, px: 1.1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnHasAssignedStructure || !blnHasFlexiBasket || blnAllocationExceeded} onClick={() => setStrToast("Declaration submit is temporarily disabled until final persistence rules are confirmed.")}>Submit</Button>
+          <Button size="small" variant="outlined" startIcon={<ContentCopyRoundedIcon />} sx={{ minHeight: 30, px: 1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnDeclarationEditable || blnSaving} onClick={() => setStrToast("Previous year copy flow is not available yet for flexi declarations.")}>Copy Previous Year</Button>
+          <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} sx={{ minHeight: 30, px: 1.1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnDeclarationEditable || blnAllocationExceeded || blnSaving} onClick={handleSaveDraft}>{blnSaving ? "Saving..." : "Save Draft"}</Button>
+          <Button size="small" variant="contained" color="warning" startIcon={<SendRoundedIcon />} sx={{ minHeight: 30, px: 1.1, fontSize: "0.74rem", "& .MuiButton-startIcon": { mr: 0.5 } }} disabled={!blnDeclarationEditable || blnAllocationExceeded || blnSaving} onClick={handleSubmitDeclaration}>{blnSaving ? "Submitting..." : "Submit"}</Button>
         </Stack>
       </Paper>
 

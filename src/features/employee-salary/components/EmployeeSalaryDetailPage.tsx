@@ -695,14 +695,40 @@ function resolveFlexiBenefitAllocationSourceLines(
   const lstStructureFlexiBenefitLines = getFlexiBenefitAllocationLines(
     lstStructureComponents.map((dicLine) => mergeFlexiMetadata(dicLine, dicSalaryComponentByID))
   );
-  if (lstStructureFlexiBenefitLines.length > 0) {
-    return lstStructureFlexiBenefitLines;
-  }
   const lstCurrentFlexiBenefitLines = getFlexiBenefitAllocationLines(
     lstCurrentComponentLines.map((dicLine) => mergeFlexiMetadata(dicLine, dicSalaryComponentByID))
   );
-  if (lstCurrentFlexiBenefitLines.length > 0) {
-    return lstCurrentFlexiBenefitLines;
+
+  const lstMergedFlexiBenefitLines = [...lstStructureFlexiBenefitLines, ...lstCurrentFlexiBenefitLines];
+  if (lstMergedFlexiBenefitLines.length > 0) {
+    const dicResolvedByComponentID = new Map<number, FlexiSourceLine>();
+    for (const dicLine of lstMergedFlexiBenefitLines) {
+      const dicExistingLine = dicResolvedByComponentID.get(dicLine.intSalaryComponentID);
+      if (!dicExistingLine) {
+        dicResolvedByComponentID.set(dicLine.intSalaryComponentID, dicLine);
+        continue;
+      }
+      dicResolvedByComponentID.set(dicLine.intSalaryComponentID, {
+        ...dicExistingLine,
+        ...dicLine,
+        strComponentCode: dicExistingLine.strComponentCode ?? dicLine.strComponentCode,
+        strComponentName: dicExistingLine.strComponentName ?? dicLine.strComponentName,
+        strTaxTreatment: dicExistingLine.strTaxTreatment ?? dicLine.strTaxTreatment,
+        blnProofRequired: dicExistingLine.blnProofRequired ?? dicLine.blnProofRequired,
+        blnIsFlexiBenefit: dicExistingLine.blnIsFlexiBenefit ?? dicLine.blnIsFlexiBenefit,
+        decAnnualLimit: dicExistingLine.decAnnualLimit ?? dicLine.decAnnualLimit,
+        decMonthlyLimit: dicExistingLine.decMonthlyLimit ?? dicLine.decMonthlyLimit,
+        decAnnualLimitAmount: dicExistingLine.decAnnualLimitAmount ?? dicLine.decAnnualLimitAmount,
+        decMonthlyLimitAmount: dicExistingLine.decMonthlyLimitAmount ?? dicLine.decMonthlyLimitAmount,
+        decReimbursementMaxClaimYearlyLimit:
+          dicExistingLine.decReimbursementMaxClaimYearlyLimit ?? dicLine.decReimbursementMaxClaimYearlyLimit,
+        decReimbursementMaxClaimMonthlyLimit:
+          dicExistingLine.decReimbursementMaxClaimMonthlyLimit ?? dicLine.decReimbursementMaxClaimMonthlyLimit,
+        decFlexiMaxYearlyAmount: dicExistingLine.decFlexiMaxYearlyAmount ?? dicLine.decFlexiMaxYearlyAmount,
+        decFlexiMaxMonthlyAmount: dicExistingLine.decFlexiMaxMonthlyAmount ?? dicLine.decFlexiMaxMonthlyAmount
+      });
+    }
+    return [...dicResolvedByComponentID.values()];
   }
   return getFlexiBenefitAllocationLines(buildFlexiSourceFromSalaryComponents(lstSalaryComponents));
 }
