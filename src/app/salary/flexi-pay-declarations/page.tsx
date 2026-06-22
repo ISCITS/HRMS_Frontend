@@ -12,12 +12,14 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import styles from "@/components/master/MasterScreen.module.css";
-import { flexiPayDeclarationService } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
-import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
-import { authApiService } from "@/services/auth/AuthApiService";
+import {
+  flexiPayDeclarationService,
+  type FlexiDeclarationContextRecord,
+  type FlexiDeclarationHistoryRecord,
+} from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
@@ -36,26 +38,33 @@ function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "
   }).format(decValue);
 }
 
+function formatStatus(strStatus?: string | null) {
+  return String(strStatus || "draft")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
 export default function SalaryFlexiPayDeclarationsRoute() {
   const objRouter = useRouter();
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
-  const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
+  const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(null);
+  const [lstHistory, setLstHistory] = useState<FlexiDeclarationHistoryRecord[]>([]);
 
   useEffect(() => {
     let blnMounted = true;
-    async function loadSummary() {
+    async function loadData() {
       setBlnLoading(true);
       setStrError("");
       try {
-        const objCurrentUserResult = await authApiService.getCurrentUser();
-        const intEmployeeID = objCurrentUserResult.Data.objUser.intEmployeeID ?? null;
-        if (!intEmployeeID) {
-          throw new Error("Current login is not linked to an employee record.");
-        }
-        const objSalaryDetail = await flexiPayDeclarationService.getSummary(intEmployeeID);
+        const strFinancialYearCode = getCurrentFinancialYearCode();
+        const [objDeclarationContext, lstHistoryRows] = await Promise.all([
+          flexiPayDeclarationService.getCurrentDeclaration(strFinancialYearCode),
+          flexiPayDeclarationService.getHistory(),
+        ]);
         if (!blnMounted) return;
-        setObjSummary(objSalaryDetail);
+        setObjContext(objDeclarationContext);
+        setLstHistory(lstHistoryRows || []);
       } catch (objError) {
         if (!blnMounted) return;
         setStrError(objError instanceof Error ? objError.message : "Unable to load Flexi Pay Declaration.");
@@ -64,21 +73,11 @@ export default function SalaryFlexiPayDeclarationsRoute() {
       }
     }
 
-    void loadSummary();
-    return () => { blnMounted = false; };
+    void loadData();
+    return () => {
+      blnMounted = false;
+    };
   }, []);
-
-  const strCurrencyCode = objSummary?.objAssignedStructure?.strCurrencyCode || "INR";
-  const decBasket = objSummary?.objCurrentSalarySnapshot?.decFlexiBasketAnnualAmount || 0;
-  const decAllocated = objSummary?.objCurrentSalarySnapshot?.decFlexiAllocatedAnnualAmount || 0;
-  const decBalance = objSummary?.objCurrentSalarySnapshot?.decFlexiBalanceAnnualAmount || 0;
-  const blnHasFlexi = decBasket > 0;
-
-  const strEmployeeLabel = useMemo(() => {
-    if (!objSummary) return "Employee";
-    const objEmployee = objSummary.objEmployeeSummary;
-    return `${objEmployee.strEmployeeName || "Employee"}${objEmployee.strEmployeeCode ? ` (${objEmployee.strEmployeeCode})` : ""}`;
-  }, [objSummary]);
 
   if (blnLoading) {
     return (
@@ -87,6 +86,16 @@ export default function SalaryFlexiPayDeclarationsRoute() {
       </Box>
     );
   }
+
+  const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
+  const decBasket = Number(objContext?.objFlexiAllocation?.decFlexiBasketAvailableAnnual || 0);
+  const decDeclared = (objContext?.lstDeclarationLines || []).reduce(
+    (decTotal, objRow) => decTotal + Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0),
+    0,
+  );
+  const decBalance = Math.max(decBasket - decDeclared, 0);
+  const blnHasFlexi = Boolean(objContext?.blnCanDeclare);
+  const objCurrentDeclaration = objContext?.objDeclaration;
 
   return (
     <Box className={styles.page}>
@@ -109,36 +118,41 @@ export default function SalaryFlexiPayDeclarationsRoute() {
       <Paper className={styles.controlsCard} sx={{ p: 2.25, borderRadius: "16px", border: "1px solid #dbe3ef" }}>
         <Stack spacing={1.5}>
           <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.02rem" }}>{strEmployeeLabel}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: "1.02rem" }}>
+              {objContext?.objEmployeeSummary?.strEmployeeName || "Employee"}
+              {objContext?.objEmployeeSummary?.strEmployeeCode ? ` (${objContext.objEmployeeSummary.strEmployeeCode})` : ""}
+            </Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.84rem" }}>
-              Financial year {getCurrentFinancialYearCode()} flexi declaration with live salary impact preview
+              Financial year {getCurrentFinancialYearCode()} flexi declaration workflow
             </Typography>
           </Box>
-          {!objSummary?.objAssignedStructure ? (
-            <Alert severity="info">
-              No active salary structure is assigned to this employee, so flexi declaration cannot be opened.
-            </Alert>
-          ) : null}
           {!blnHasFlexi ? (
             <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
-              No flexi pay is configured in your salary structure. The declaration screen will open in view mode with add and edit disabled.
+              {objContext?.strIneligibilityReason || "No flexi pay is configured for the current salary structure."}
             </Alert>
           ) : null}
-          <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+          <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" } }}>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Flexi Basket Available</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Current Status</Typography>
+              <Typography sx={{ fontWeight: 800 }}>{formatStatus(objCurrentDeclaration?.strWorkflowStatus)}</Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Flexi Basket</Typography>
               <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decBasket, strCurrencyCode)}</Typography>
             </Paper>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Allocated Flexi</Typography>
-              <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decAllocated, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Declared / Draft Total</Typography>
+              <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decDeclared, strCurrencyCode)}</Typography>
             </Paper>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Balance Amount</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Residual Balance</Typography>
               <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decBalance, strCurrencyCode)}</Typography>
             </Paper>
           </Box>
-          <Stack direction="row" justifyContent="flex-end">
+          <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} flexWrap="wrap" useFlexGap>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>
+              History records: {lstHistory.length}
+            </Typography>
             <Button
               variant="contained"
               endIcon={<ArrowForwardRoundedIcon />}
