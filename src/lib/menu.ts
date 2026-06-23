@@ -174,6 +174,7 @@ function ensureTopLevelDashboard(lstMenuItems: MenuItem[]): MenuItem[] {
             strModuleCode: "DASHBOARD",
             strModuleName: "Dashboard",
             strRoute: "/dashboard",
+            strIconName: objItem.strIconName ?? "Dashboard",
             blnIsHome: true,
             lstChildren: [],
           };
@@ -195,6 +196,7 @@ function ensureTopLevelDashboard(lstMenuItems: MenuItem[]): MenuItem[] {
     strModuleCode: "DASHBOARD",
     strModuleName: "Dashboard",
     strRoute: "/dashboard",
+    strIconName: "Dashboard",
     lstPermissionCodes: [],
     blnIsHome: true,
     lstChildren: [],
