@@ -23,6 +23,24 @@ function isReimbursementCategory(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "") === "reimbursement";
 }
 
+function normalizeCategory(strValue: string) {
+  return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function deriveIncludedInCtc(dicValues: SalaryComponentFormValues) {
+  const strCategory = normalizeCategory(dicValues.strComponentCategory);
+  if (strCategory === "deduction" || strCategory === "information") {
+    return false;
+  }
+  if (["earning", "employercontribution", "contribution", "flexibucket", "flexibasket"].includes(strCategory)) {
+    return true;
+  }
+  if (strCategory === "reimbursement") {
+    return dicValues.blnIsFlexiBenefit || dicValues.strReimbursementType === "ctc_based";
+  }
+  return Boolean(dicValues.blnIncludedInCtc);
+}
+
 function normalizeIntegerList(lstValues: Array<number | string>) {
   return Array.from(
     new Set(
@@ -224,6 +242,15 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
 function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: number) {
   const blnIsReimbursement = dicValues.blnIsReimbursement || isReimbursementCategory(dicValues.strComponentCategory);
   const blnIsFlexiReimbursement = isReimbursementCategory(dicValues.strComponentCategory) && dicValues.blnIsFlexiBenefit;
+  const strReimbursementType = blnIsReimbursement ? (blnIsFlexiReimbursement ? "ctc_based" : dicValues.strReimbursementType) : "none";
+  const strSettlementMethod = blnIsReimbursement
+    ? (strReimbursementType === "non_ctc_based" ? "finance" : "payroll")
+    : "none";
+  const blnIncludedInCtc = deriveIncludedInCtc({
+    ...dicValues,
+    strReimbursementType,
+    strSettlementMethod,
+  });
   const decAnnualLimitAmount = dicValues.strAnnualLimitAmount.trim() ? Number(dicValues.strAnnualLimitAmount) : null;
   const decMonthlyLimitAmount = dicValues.strMonthlyLimitAmount.trim() ? Number(dicValues.strMonthlyLimitAmount) : null;
   const strClaimLimitType =
@@ -251,14 +278,14 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnIncludeInGratuity: dicValues.blnIncludeInGratuity,
     blnIncludeInRemuneration: dicValues.blnIncludeInRemuneration,
     blnIncludeInTaxableIncome: dicValues.blnIncludeInTaxableIncome,
-    blnIncludedInCtc: dicValues.blnIncludedInCtc,
+    blnIncludedInCtc,
     blnIncludeInPayslip: dicValues.blnIncludeInPayslip,
-    strPayslipSection: formatOptionalText(dicValues.strPayslipSection),
-    intDisplayOrder: Number(dicValues.strDisplayOrder) || 10,
+    strPayslipSection: dicValues.blnIncludeInPayslip ? formatOptionalText(dicValues.strPayslipSection) : null,
+    intDisplayOrder: dicValues.blnIncludeInPayslip ? Number(dicValues.strDisplayOrder) || 10 : 10,
     blnIsFlexiBenefit: dicValues.blnIsFlexiBenefit,
     blnIsReimbursement: blnIsReimbursement,
-    strReimbursementType: blnIsReimbursement ? (blnIsFlexiReimbursement ? "ctc_based" : dicValues.strReimbursementType) : "none",
-    strSettlementMethod: blnIsReimbursement || dicValues.blnIsFlexiBenefit ? (blnIsReimbursement ? "payroll" : dicValues.strSettlementMethod) : "none",
+    strReimbursementType,
+    strSettlementMethod,
     blnRequiresBills: dicValues.blnRequiresBills,
     blnExpenseDateRequired: dicValues.blnExpenseDateRequired,
     decAnnualLimitAmount,

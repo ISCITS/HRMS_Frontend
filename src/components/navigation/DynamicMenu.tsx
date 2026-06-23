@@ -11,6 +11,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import GradeRoundedIcon from "@mui/icons-material/GradeRounded";
 import Groups2RoundedIcon from "@mui/icons-material/Groups2Rounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
+import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
@@ -40,9 +41,67 @@ function toMenuTestSegment(strValue: string) {
 }
 
 function getMenuIcon(objItem: MenuItem) {
-  const strIconName = (objItem as MenuItem & { strIconName?: string | null }).strIconName?.toLowerCase() ?? "";
+  const strIconName = objItem.strIconName?.toLowerCase() ?? "";
   if (objItem.blnIsHome) {
     return <DashboardRoundedIcon sx={objMenuIconSx} />;
+  }
+
+  const strNormalizedIconName = strIconName.replace(/[^a-z0-9]/g, "");
+
+
+  if (["dashboard", "layoutdashboard", "spacedashboard"].includes(strNormalizedIconName)) {
+    return <DashboardRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["accountbalance", "bank"].includes(strNormalizedIconName)) {
+    return <AccountBalanceRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["accounttree", "costcenter", "tree"].includes(strNormalizedIconName)) {
+    return <AccountTreeRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["apartment", "department"].includes(strNormalizedIconName)) {
+    return <ApartmentRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["badge", "designation"].includes(strNormalizedIconName)) {
+    return <BadgeRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["calendarmonth", "calendar"].includes(strNormalizedIconName)) {
+    return <CalendarMonthRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["grade", "star"].includes(strNormalizedIconName)) {
+    return <GradeRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["groups", "groups2", "users", "people"].includes(strNormalizedIconName)) {
+    return <Groups2RoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["manageaccounts", "manageaccount", "useraccount", "useraccounts"].includes(strNormalizedIconName)) {
+    return <ManageAccountsRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["location", "locationon"].includes(strNormalizedIconName)) {
+    return <LocationOnRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["payments", "payment", "payroll"].includes(strNormalizedIconName)) {
+    return <PaymentsRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["person", "profile"].includes(strNormalizedIconName)) {
+    return <PersonRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["public", "country", "state"].includes(strNormalizedIconName)) {
+    return <PublicRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["receiptlong", "receipt", "claim", "reimbursement"].includes(strNormalizedIconName)) {
+    return <ReceiptLongRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["settings", "setting"].includes(strNormalizedIconName)) {
+    return <SettingsRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["source", "report", "reports"].includes(strNormalizedIconName)) {
+    return <SourceRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["tune", "theme"].includes(strNormalizedIconName)) {
+    return <TuneRoundedIcon sx={objMenuIconSx} />;
+  }
+  if (["workspaces", "workspace", "module"].includes(strNormalizedIconName)) {
+    return <WorkspacesRoundedIcon sx={objMenuIconSx} />;
   }
 
   const strRoute = (objItem.strRoute ?? "").toLowerCase();
@@ -231,6 +290,7 @@ function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
             strModuleCode: "DASHBOARD",
             strModuleName: "Dashboard",
             strRoute: "/dashboard",
+            strIconName: objItem.strIconName ?? "Dashboard",
             blnIsHome: true,
             lstChildren: [],
           };
@@ -252,6 +312,7 @@ function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
     strModuleCode: "DASHBOARD",
     strModuleName: "Dashboard",
     strRoute: "/dashboard",
+    strIconName: "Dashboard",
     lstPermissionCodes: [],
     blnIsHome: true,
     lstChildren: [],
@@ -323,6 +384,7 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
           strModuleCode: "PAYSLIPS",
           strModuleName: "Payslips",
           strRoute: "/reports/payslips",
+          strIconName: "ReceiptLong",
           lstPermissionCodes: ["PAYSLIP_LIST"],
           blnIsHome: false,
           lstChildren: [],
@@ -404,6 +466,7 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
           strModuleCode: "PAYROLL_REIMBURSEMENTS",
           strModuleName: "Reimbursements",
           strRoute: "/payroll/reimbursements",
+          strIconName: "ReceiptLong",
           lstPermissionCodes: ["PAYROLL_REIMBURSEMENTS_VIEW"],
           blnIsHome: false,
           lstChildren: [],
@@ -440,6 +503,7 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
           strModuleCode: "PAYROLL_FNF_SETTLEMENTS",
           strModuleName: "Full and Final Settlement",
           strRoute: "/payroll/fnf-settlements",
+          strIconName: "Payments",
           lstPermissionCodes: ["PAYROLL_FNF_VIEW"],
           blnIsHome: false,
           lstChildren: [],
@@ -489,6 +553,7 @@ function appendGeneratedLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
           strModuleCode: "PAYROLL_LOANS_ADVANCES",
           strModuleName: "Loans & Advances",
           strRoute: "/payroll/loans-advances",
+          strIconName: "Payments",
           lstPermissionCodes: ["PAYROLL_LOANS_ADVANCES_VIEW"],
           blnIsHome: false,
           lstChildren: [],
@@ -598,6 +663,7 @@ function mergeUniqueMenuChildren(lstExisting: MenuItem[], lstIncoming: MenuItem[
     const objExisting = lstMerged[intExistingIndex];
     lstMerged[intExistingIndex] = {
       ...objExisting,
+      strIconName: objChild.strIconName ?? objExisting.strIconName,
       lstChildren: mergeUniqueMenuChildren(objExisting.lstChildren, objChild.lstChildren),
     };
   });
@@ -626,6 +692,7 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
     const objExisting = lstCollapsedItems[intExistingIndex];
     lstCollapsedItems[intExistingIndex] = {
       ...objExisting,
+      strIconName: objItemWithCollapsedChildren.strIconName ?? objExisting.strIconName,
       lstChildren: mergeUniqueMenuChildren(
         objExisting.lstChildren,
         objItemWithCollapsedChildren.lstChildren,
@@ -691,6 +758,7 @@ const objGeneratedStatutoryReportMenu: MenuItem = {
   strModuleCode: "STATUTORY_REPORT",
   strModuleName: "Statutory Reports",
   strRoute: "/reports/statutory",
+  strIconName: "Source",
   lstPermissionCodes: ["STATUTORY_REPORT_VIEW", "STATUTORY_REPORT_EXPORT"],
   blnIsHome: false,
   lstChildren: [],

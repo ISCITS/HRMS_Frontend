@@ -142,6 +142,42 @@ function getTaxTreatmentLabel(strValue: string) {
   }
 }
 
+function getPayslipSectionLabel(strValue: string) {
+  switch (normalizeSelectToken(strValue)) {
+    case "earnings":
+      return "Earnings";
+    case "deductions":
+      return "Deductions";
+    case "reimbursements":
+      return "Reimbursements";
+    case "information":
+      return "Information";
+    case "employercontributions":
+      return "Employer Contributions";
+    default:
+      return strValue;
+  }
+}
+
+function deriveCtcTreatment(dicValues: SalaryComponentFormValues) {
+  if (isCategory(dicValues.strComponentCategory, "deduction") || isCategory(dicValues.strComponentCategory, "information")) {
+    return false;
+  }
+  if (
+    isCategory(dicValues.strComponentCategory, "earning")
+    || isCategory(dicValues.strComponentCategory, "employer contribution")
+    || isCategory(dicValues.strComponentCategory, "contribution")
+    || isCategory(dicValues.strComponentCategory, "flexi bucket")
+    || isCategory(dicValues.strComponentCategory, "flexi basket")
+  ) {
+    return true;
+  }
+  if (isCategory(dicValues.strComponentCategory, "reimbursement")) {
+    return dicValues.blnIsFlexiBenefit || dicValues.strReimbursementType === "ctc_based";
+  }
+  return Boolean(dicValues.blnIncludedInCtc);
+}
+
 export default function SalaryComponentEditorPage({
   strMode,
   intSalaryComponentID,
@@ -230,7 +266,7 @@ export default function SalaryComponentEditorPage({
   }, [objFormOptions]);
   const lstCategoryOptions = objFormOptions?.lstComponentCategories ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroups ?? [];
-  const lstPayslipSections = ["Earnings", "Deductions", "Information", "Employer Contributions"];
+  const lstPayslipSections = ["Earnings", "Deductions", "Reimbursements", "Information", "Employer Contributions"];
   const blnIsEarningCategory = isCategory(dicForm.strComponentCategory, "earning");
   const blnIsDeductionCategory = isCategory(dicForm.strComponentCategory, "deduction");
   const blnIsEmployerContributionCategory = isCategory(dicForm.strComponentCategory, "employer contribution") || isCategory(dicForm.strComponentCategory, "contribution");
@@ -241,8 +277,7 @@ export default function SalaryComponentEditorPage({
   const blnShowFlexiBucketConfiguration = blnIsFlexiBucketCategory;
   const blnShowFlexiReimbursementConfiguration = blnIsReimbursementCategory;
   const blnIsFlexiReimbursement = blnIsReimbursementCategory && dicForm.blnIsFlexiBenefit;
-  const blnShowIncludedInCtc = !blnIsDeductionCategory;
-  const blnIncludedInCtcDisabled = !blnIsEarningCategory && !blnIsEmployerContributionCategory && !blnIsInformationCategory;
+  const blnDerivedIncludedInCtc = deriveCtcTreatment(dicForm);
   const blnWageTypeDisabled = blnFieldDisabled || !blnIsEarningCategory;
   const blnHideWageType = blnIsDeductionCategory || blnIsEmployerContributionCategory;
   const blnShowExpenseDateRequired = blnIsReimbursementCategory;
@@ -518,14 +553,20 @@ export default function SalaryComponentEditorPage({
         dicNext.strReimbursementType = "ctc_based";
         dicNext.blnIncludedInCtc = true;
         dicNext.strSettlementMethod = "payroll";
+        dicNext.blnIncludeInPayslip = true;
+        dicNext.strPayslipSection = "Reimbursements";
       } else if (dicNext.strReimbursementType === "ctc_based") {
         dicNext.blnIncludedInCtc = true;
         dicNext.strSettlementMethod = "payroll";
+        if (blnReimbursementCategory) {
+          dicNext.blnIncludeInPayslip = true;
+          dicNext.strPayslipSection = "Reimbursements";
+        }
       } else if (dicNext.strReimbursementType === "non_ctc_based") {
         dicNext.blnIncludedInCtc = false;
-        if (dicNext.strSettlementMethod === "none") {
-          dicNext.strSettlementMethod = "finance";
-        }
+        dicNext.strSettlementMethod = "finance";
+        dicNext.blnIncludeInPayslip = false;
+        dicNext.strPayslipSection = "";
       }
       if (dicNext.strSettlementMethod === "finance") {
         dicNext.blnAutoPushToPayroll = false;
@@ -549,12 +590,30 @@ export default function SalaryComponentEditorPage({
       if (blnDeductionCategory) {
         dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInRemuneration = false;
+        dicNext.blnIncludeInPayslip = true;
+        dicNext.strPayslipSection = "Deductions";
+      }
+      if (blnEarningCategory) {
+        dicNext.blnIncludedInCtc = true;
+        dicNext.blnIncludeInPayslip = true;
+        dicNext.strPayslipSection = "Earnings";
+      }
+      if (blnEmployerContributionCategory) {
+        dicNext.blnIncludedInCtc = true;
+        if (!dicNext.strPayslipSection) {
+          dicNext.strPayslipSection = "Employer Contributions";
+        }
       }
       if (blnInformationCategory) {
+        dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInPF = false;
         dicNext.blnIncludeInESIC = false;
         dicNext.blnIncludeInGratuity = false;
         dicNext.blnIncludeInRemuneration = false;
+        dicNext.strPayslipSection = dicNext.blnIncludeInPayslip ? "Information" : "";
+      }
+      if (!dicNext.blnIncludeInPayslip) {
+        dicNext.strPayslipSection = "";
       }
       if (!blnReimbursementCategory) {
         dicNext.blnIsFlexiBenefit = blnFlexiBucketCategory;
@@ -586,12 +645,14 @@ export default function SalaryComponentEditorPage({
         && dicNext.blnIsEmployerContribution === dicPrevious.blnIsEmployerContribution
         && dicNext.blnIsWages === dicPrevious.blnIsWages
         && dicNext.strComponentGroup === dicPrevious.strComponentGroup
+        && dicNext.blnIncludeInPayslip === dicPrevious.blnIncludeInPayslip
+        && dicNext.strPayslipSection === dicPrevious.strPayslipSection
       ) {
         return dicPrevious;
       }
       return dicNext;
     });
-  }, [dicForm.strComponentCategory, dicForm.strReimbursementType, dicForm.strSettlementMethod, dicForm.blnRequiresBills]);
+  }, [dicForm.strComponentCategory, dicForm.strReimbursementType, dicForm.strSettlementMethod, dicForm.blnRequiresBills, dicForm.blnIncludeInPayslip, dicForm.blnIsFlexiBenefit]);
 
   async function handleSave() {
     if (!blnCanSave) {
@@ -613,12 +674,20 @@ export default function SalaryComponentEditorPage({
       setStrError(t("finance_cannot_auto_push", "Finance settlement cannot auto-push to payroll."));
       return;
     }
+    if (dicForm.blnIncludeInPayslip && !dicForm.strPayslipSection.trim()) {
+      setStrError(t("payslip_section_required", "Payslip Section is required when Show on Payslip is enabled."));
+      return;
+    }
+    if (dicForm.blnIncludeInPayslip && (!dicForm.strDisplayOrder.trim() || Number(dicForm.strDisplayOrder) <= 0)) {
+      setStrError(t("display_order_required", "Display Order is required when Show on Payslip is enabled."));
+      return;
+    }
     if (blnApplyMonthlyLimit && (!dicForm.strMonthlyLimitAmount.trim() || Number(dicForm.strMonthlyLimitAmount) <= 0)) {
-      setStrError(t("monthly_limit_required", "Monthly Limit Amount is required and must be greater than 0."));
+      setStrError(t("monthly_limit_required", "Policy Monthly Limit Amount is required and must be greater than 0."));
       return;
     }
     if (blnApplyYearlyLimit && (!dicForm.strAnnualLimitAmount.trim() || Number(dicForm.strAnnualLimitAmount) <= 0)) {
-      setStrError(t("yearly_limit_required", "Yearly Limit Amount is required and must be greater than 0."));
+      setStrError(t("yearly_limit_required", "Policy Yearly Limit Amount is required and must be greater than 0."));
       return;
     }
     setBlnSaving(true);
@@ -776,7 +845,6 @@ export default function SalaryComponentEditorPage({
             fullWidth
             data-testid="salary-components.editor.component-name.input"
             inputProps={buildInputTestIdProps("salary-components.editor.component-name.input")}
-            sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }}
           />
 
           <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
@@ -784,6 +852,23 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{getCategoryLabel(strOption)}</MenuItem>
             ))}
           </TextField>
+          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.75, minHeight: 56 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+                {t("ctc_treatment", "CTC Treatment")}:
+              </Typography>
+              <Chip
+                size="small"
+                color={blnDerivedIncludedInCtc ? "success" : "default"}
+                label={blnDerivedIncludedInCtc ? t("included_in_ctc", "Included in CTC") : t("not_included_in_ctc", "Not Included in CTC")}
+                sx={{ flexShrink: 0, fontWeight: 700 }}
+                data-testid="salary-components.editor.ctc-treatment.chip"
+              />
+            </Box>
+            <Typography sx={{ color: "#64748b", fontSize: "0.78rem", lineHeight: 1.35 }}>
+              {t("ctc_treatment_help", "CTC Treatment is derived from component category and reimbursement configuration.")}
+            </Typography>
+          </Box>
           <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
             <MenuItem value="" data-testid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
             {lstGroupOptions.map((strOption) => (
@@ -803,8 +888,8 @@ export default function SalaryComponentEditorPage({
             inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
           />
           {!blnHideWageType ? (
-            <>
-              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5, minHeight: 56 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minHeight: 56 }}>
+              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
                 <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
                   {t("wage_type", "Wage Type")}
                 </Typography>
@@ -828,16 +913,10 @@ export default function SalaryComponentEditorPage({
                   />
                 </RadioGroup>
               </Box>
-              <Typography sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" }, mt: -1, color: "#64748b", fontSize: "0.84rem" }}>
+              <Typography sx={{ color: "#64748b", fontSize: "0.75rem", lineHeight: 1.66 }}>
                 {t("wage_type_help", "Determines whether the component is considered part of wages for statutory calculations.")}
               </Typography>
-            </>
-          ) : null}
-          {blnShowIncludedInCtc ? (
-            <FormControlLabel
-              control={<Switch checked={dicForm.blnIncludedInCtc} onChange={(objEvent) => updateRootField("blnIncludedInCtc", objEvent.target.checked)} disabled={blnFieldDisabled || blnIncludedInCtcDisabled} inputProps={buildInputTestIdProps("salary-components.editor.included-in-ctc.switch")} />}
-              label={t("included_in_ctc", "Included in CTC")}
-            />
+            </Box>
           ) : null}
           <TextField
             label={t("description", "Description")}
@@ -932,7 +1011,7 @@ export default function SalaryComponentEditorPage({
               label={t("settlement_method", "Settlement Method")}
               value={dicForm.strSettlementMethod}
               onChange={(objEvent) => updateRootField("strSettlementMethod", objEvent.target.value as SalaryComponentFormValues["strSettlementMethod"])}
-              disabled={blnFieldDisabled || blnIsFlexiReimbursement || dicForm.strReimbursementType === "ctc_based"}
+              disabled={blnFieldDisabled || blnIsFlexiReimbursement || dicForm.strReimbursementType !== "none"}
               fullWidth
               {...buildSelectTestIdProps("salary-components.editor.settlement-method.select")}
             >
@@ -942,11 +1021,11 @@ export default function SalaryComponentEditorPage({
               ))}
             </TextField>
             <Box sx={{ display: "grid", gap: 1.25 }}>
-              <FormControlLabel control={<Switch checked={blnApplyMonthlyLimit} onChange={(objEvent) => updateClaimLimitToggle("monthly", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.apply-monthly-limit.switch")} />} label={t("apply_monthly_limit", "Apply Monthly Limit")} />
+              <FormControlLabel control={<Switch checked={blnApplyMonthlyLimit} onChange={(objEvent) => updateClaimLimitToggle("monthly", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.apply-monthly-limit.switch")} />} label={t("apply_policy_monthly_limit", "Apply Policy Monthly Limit")} />
               {blnApplyMonthlyLimit ? (
                 <TextField
                   type="number"
-                  label={t("monthly_limit_amount", "Monthly Limit Amount")}
+                  label={t("policy_monthly_limit_amount", "Policy Monthly Limit Amount")}
                   value={dicForm.strMonthlyLimitAmount}
                   onChange={(objEvent) => updateRootField("strMonthlyLimitAmount", objEvent.target.value)}
                   disabled={blnFieldDisabled}
@@ -957,11 +1036,11 @@ export default function SalaryComponentEditorPage({
               ) : null}
             </Box>
             <Box sx={{ display: "grid", gap: 1.25 }}>
-              <FormControlLabel control={<Switch checked={blnApplyYearlyLimit} onChange={(objEvent) => updateClaimLimitToggle("yearly", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.apply-yearly-limit.switch")} />} label={t("apply_yearly_limit", "Apply Yearly Limit")} />
+              <FormControlLabel control={<Switch checked={blnApplyYearlyLimit} onChange={(objEvent) => updateClaimLimitToggle("yearly", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.apply-yearly-limit.switch")} />} label={t("apply_policy_yearly_limit", "Apply Policy Yearly Limit")} />
               {blnApplyYearlyLimit ? (
                 <TextField
                   type="number"
-                  label={t("yearly_limit_amount", "Yearly Limit Amount")}
+                  label={t("policy_yearly_limit_amount", "Policy Yearly Limit Amount")}
                   value={dicForm.strAnnualLimitAmount}
                   onChange={(objEvent) => updateRootField("strAnnualLimitAmount", objEvent.target.value)}
                   disabled={blnFieldDisabled}
@@ -972,6 +1051,9 @@ export default function SalaryComponentEditorPage({
               ) : null}
             </Box>
           </Box>
+          <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 1.25 }}>
+            {t("policy_limit_help", "These are organisation-level maximum limits. Salary Structure or Employee Salary can define lower employee-specific entitlement.")}
+          </Typography>
           <Box
             sx={{
               display: "grid",
@@ -1059,7 +1141,7 @@ export default function SalaryComponentEditorPage({
           <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-testid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
             {lstPayslipSections.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{t(`payslip_section_${normalizeSelectToken(strOption)}`, getPayslipSectionLabel(strOption))}</MenuItem>
             ))}
           </TextField>
           <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth data-testid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
@@ -1197,15 +1279,15 @@ export default function SalaryComponentEditorPage({
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "9." : "8."} {t("usage_information", "Usage Information")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Used In Salary Structures</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("used_in_salary_structures", "Used In Salary Structures")}</Typography>
             <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.4rem" }}>{objDetail?.intUsedInSalaryStructures ?? 0}</Typography>
           </Paper>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Assigned Employees</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("assigned_employees", "Assigned Employees")}</Typography>
             <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.4rem" }}>{objDetail?.intAssignedEmployees ?? 0}</Typography>
           </Paper>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
-            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Formula References</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("formula_references", "Formula References")}</Typography>
             <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.4rem" }}>{objDetail?.intFormulaReferences ?? 0}</Typography>
           </Paper>
         </Box>

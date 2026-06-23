@@ -6,8 +6,8 @@ import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";
 
 export const metadata: Metadata = {
-  title: "HRMS Template",
-  description: "HRMS template using Next.js App Router and Material UI",
+  title: "HRMS",
+  description: "HRMS is a comprehensive human resource management system for managing employees, payroll and organizational workflows efficiently",
   icons: {
     icon: "/favicon.svg"
   }
