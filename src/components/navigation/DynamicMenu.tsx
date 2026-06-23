@@ -513,6 +513,19 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
   });
 }
 
+function isEssContainerMenu(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    strRoute === "/ess" ||
+    strModuleCode === "ess" ||
+    strModuleCode.includes("employee_self_service") ||
+    strModuleName === "ess" ||
+    strModuleName.includes("employee self service")
+  );
+}
+
 function appendGeneratedLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
   if (hasRoute(lstItems, "/payroll/loans-advances")) {
     return lstItems;
@@ -548,6 +561,44 @@ function appendGeneratedLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
       ],
     };
   });
+}
+
+function appendGeneratedEssLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
+  if (hasRoute(lstItems, "/ess/loans-advances")) {
+    return lstItems;
+  }
+
+  let blnInserted = false;
+  const lstUpdatedItems = lstItems.map((objItem) => {
+    const lstChildren = appendGeneratedEssLoansAdvancesMenu(objItem.lstChildren);
+    const blnShouldAppendHere =
+      !blnInserted &&
+      objItem.lstChildren.length > 0 &&
+      isEssContainerMenu(objItem) &&
+      !hasRoute(lstChildren, "/ess/loans-advances");
+
+    if (!blnShouldAppendHere) {
+      return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
+    }
+
+    blnInserted = true;
+    return {
+      ...objItem,
+      lstChildren: [
+        ...lstChildren,
+        {
+          strModuleCode: "ESS_LOANS_ADVANCES",
+          strModuleName: "My Loans & Advances",
+          strRoute: "/ess/loans-advances",
+          lstPermissionCodes: ["ESS_LOAN_ADV_VIEW"],
+          blnIsHome: false,
+          lstChildren: [],
+        },
+      ],
+    };
+  });
+
+  return lstUpdatedItems;
 }
 
 function getMenuIdentityKey(objItem: MenuItem): string {
@@ -661,10 +712,12 @@ function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
     removeReportsFromPayrollBranches(
       appendGeneratedReportsMenu(
         appendGeneratedFNFMenu(
-          appendGeneratedLoansAdvancesMenu(
-            appendGeneratedReimbursementsMenu(
-              appendGeneratedPayslipMenu(
-                promoteDashboardMenu(lstItems),
+          appendGeneratedEssLoansAdvancesMenu(
+            appendGeneratedLoansAdvancesMenu(
+              appendGeneratedReimbursementsMenu(
+                appendGeneratedPayslipMenu(
+                  promoteDashboardMenu(lstItems),
+                ),
               ),
             ),
           ),

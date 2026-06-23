@@ -41,6 +41,11 @@ const dicRouteAliases: Record<string, string> = {
   "/ess/my-reimbursements": "/ess/reimbursements",
   "/ess/reimbursement-claims": "/ess/reimbursements",
   "/ess/reimbursements": "/ess/reimbursements",
+  "/ess/my-loans-advances": "/ess/loans-advances",
+  "/ess/my-loans-and-advances": "/ess/loans-advances",
+  "/ess/loan-advance": "/ess/loans-advances",
+  "/ess/loans-advances": "/ess/loans-advances",
+  "/ess/loans-and-advances": "/ess/loans-advances",
   "/payroll/reimbursement-review": "/payroll/reimbursements",
   "/payroll/reimbursement-claims": "/payroll/reimbursements",
   "/payroll/employee-reimbursement": "/payroll/reimbursements?source=employee-reimbursement",
@@ -93,19 +98,6 @@ function shouldHideMenuItem(objItem: MenuItem): boolean {
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = (normalizeRoute(objItem.strRoute) ?? "").trim().toLowerCase();
-  const blnIsEssLoansAdvancesItem =
-    (
-      strModuleName.includes("my loans") ||
-      strModuleName.includes("my loan") ||
-      strModuleCode.includes("my_loans") ||
-      strModuleCode.includes("my-loans") ||
-      strModuleCode.includes("my_loan") ||
-      strModuleCode.includes("my-loan")
-    ) &&
-    (
-      strModuleName.includes("advance") ||
-      strModuleCode.includes("advance")
-    );
 
   if (strModuleCode === "settings" || strModuleName === "settings") {
     return true;
@@ -116,9 +108,6 @@ function shouldHideMenuItem(objItem: MenuItem): boolean {
   }
 
   return (
-    blnIsEssLoansAdvancesItem ||
-    strRoute === "/ess/loans-advances" ||
-    strRoute.startsWith("/ess/loans-advances/") ||
     strRoute === "/settings" ||
     strRoute.startsWith("/settings/") ||
     strRoute.includes("/tenants/onboarding")

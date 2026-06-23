@@ -17,6 +17,7 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
+const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstStatuses = ["All", "draft", "sent_back", "pending_approval", "approved", "disbursed", "active", "closed", "rejected", "cancelled"];
 
 function formatCurrency(decValue?: number | null) {
@@ -31,10 +32,10 @@ function getEmployeeName(objRow: LoanAdvanceRecord) {
   return objRow.objEmployee?.strEmployeeName || objRow.objEmployee?.strEmployeeCode || "-";
 }
 
-export default function LoanAdvanceListPage() {
+export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
-  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstModuleCodes);
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [lstRows, setLstRows] = useState<LoanAdvanceRecord[]>([]);
   const [lstCategories, setLstCategories] = useState<LoanAdvanceCategoryRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -49,8 +50,9 @@ export default function LoanAdvanceListPage() {
     date_to: "",
     payroll_month: "",
   });
-  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
-  const blnCanCreate = canDoAny("add") || canDoAny("create");
+  const blnIsEssMode = strMode === "ess";
+  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || (blnIsEssMode && canDoAny("ess_loan_adv_view"));
+  const blnCanCreate = canDoAny("add") || canDoAny("create") || (blnIsEssMode && canDoAny("ess_loan_adv_create"));
 
   async function loadRows(dicNextFilters = dicFilters) {
     if (!blnCanView) {
@@ -62,7 +64,7 @@ export default function LoanAdvanceListPage() {
     setStrError("");
     try {
       const dicApiFilters = { ...dicNextFilters, payroll_month: dicNextFilters.payroll_month ? `${dicNextFilters.payroll_month}-01` : "" };
-      setLstRows(await loanAdvanceService.listLoans(dicApiFilters));
+      setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicApiFilters) : loanAdvanceService.listLoans(dicApiFilters)));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_load_list", "Unable to load loans and advances."));
     } finally {
@@ -77,8 +79,8 @@ export default function LoanAdvanceListPage() {
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanView) return;
-    loanAdvanceService.listCategories().then(setLstCategories).catch(() => setLstCategories([]));
-  }, [blnRightsLoading, blnCanView]);
+    (blnIsEssMode ? loanAdvanceService.listEssCategories() : loanAdvanceService.listCategories()).then(setLstCategories).catch(() => setLstCategories([]));
+  }, [blnRightsLoading, blnCanView, blnIsEssMode]);
 
   const lstVisibleRows = useMemo(() => lstRows, [lstRows]);
 
@@ -93,10 +95,10 @@ export default function LoanAdvanceListPage() {
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
           <Box>
-            <Typography className={styles.breadcrumbs}>{t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
-            <Typography className={styles.title}>{t("page_title", "Loans & Advances")}</Typography>
+            <Typography className={styles.breadcrumbs}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
+            <Typography className={styles.title}>{blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}</Typography>
           </Box>
-          {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/loans-advances/new")}>{t("add_button", "New Request")}</Button> : null}
+          {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new" : "/payroll/loans-advances/new")}>{t("add_button", "New Request")}</Button> : null}
         </Box>
         <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", mt: 1 }}>
           <TextField size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} />
@@ -122,7 +124,7 @@ export default function LoanAdvanceListPage() {
       </Box>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
+      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
       {blnCanView ? (
         <Box className={styles.tableCard}>
           <Box className={styles.tableWrap}>
@@ -144,7 +146,7 @@ export default function LoanAdvanceListPage() {
               <tbody>
                 {lstVisibleRows.length ? lstVisibleRows.map((objRow) => (
                   <tr key={objRow.intID}>
-                    <td className={styles.actionsColumn}><IconButton size="small" onClick={() => objRouter.push(`/payroll/loans-advances/${objRow.intID}`)} aria-label={t("open", "Open")}><OpenInNewRoundedIcon fontSize="small" /></IconButton></td>
+                    <td className={styles.actionsColumn}><IconButton size="small" onClick={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)} aria-label={t("open", "Open")}><OpenInNewRoundedIcon fontSize="small" /></IconButton></td>
                     <td><Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography><Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography></td>
                     <td>{objRow.objEmployee?.strDepartmentName || "-"}</td>
                     <td>{t(`type_${objRow.strRequestType}`, objRow.strRequestType)}</td>
