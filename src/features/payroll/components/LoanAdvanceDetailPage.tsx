@@ -24,6 +24,7 @@ import type { LoanAdvanceCategoryRecord, LoanAdvanceFormValues, LoanAdvanceRecor
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
+const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstWorkflow = ["draft", "pending_approval", "approved", "disbursed", "active", "closed"];
 const lstReadonlyStatuses = ["approved", "disbursed", "active", "closed", "rejected", "cancelled", "pending_approval"];
 
@@ -87,10 +88,10 @@ function getEmployeeLabel(objEmployee: EmployeeListRecord) {
   return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
 }
 
-export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdvanceID?: number }) {
+export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
-  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstModuleCodes);
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [objRecord, setObjRecord] = useState<LoanAdvanceRecord | null>(null);
   const [dicValues, setDicValues] = useState<LoanAdvanceFormValues>(() => createInitialLoanAdvanceForm());
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
@@ -105,12 +106,13 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
   const [objActionDialog, setObjActionDialog] = useState<ActionDialogState>(null);
   const [dicActionValues, setDicActionValues] = useState({ decApprovedAmount: "", dtDisbursementDate: "", strPaymentMode: "", strTransactionReferenceNo: "", strRemarks: "", strReason: "" });
 
-  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
-  const blnCanEdit = canDoAny("edit");
-  const blnCanAdd = canDoAny("add") || canDoAny("create");
+  const blnIsEssMode = strMode === "ess";
+  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || (blnIsEssMode && canDoAny("ess_loan_adv_view"));
+  const blnCanEdit = canDoAny("edit") || (blnIsEssMode && canDoAny("ess_loan_adv_edit"));
+  const blnCanAdd = canDoAny("add") || canDoAny("create") || (blnIsEssMode && canDoAny("ess_loan_adv_create"));
   const blnCanApprove = canDoAny("approve");
-  const blnCanSubmit = canDoAny("submit");
-  const blnCanCancel = canDoAny("delete") || canDoAny("cancel");
+  const blnCanSubmit = canDoAny("submit") || (blnIsEssMode && canDoAny("ess_loan_adv_submit"));
+  const blnCanCancel = canDoAny("delete") || canDoAny("cancel") || (blnIsEssMode && canDoAny("ess_loan_adv_cancel"));
   const strStatus = objRecord?.strWorkflowStatus || "draft";
   const blnReadonly = Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) || (!intLoanAdvanceID && !blnCanAdd) || (Boolean(intLoanAdvanceID) && !blnCanEdit);
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
@@ -132,7 +134,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
     setBlnLoading(true);
     setStrError("");
     try {
-      const objNextRecord = await loanAdvanceService.getLoan(intLoanAdvanceID);
+      const objNextRecord = await (blnIsEssMode ? loanAdvanceService.getEssLoan(intLoanAdvanceID) : loanAdvanceService.getLoan(intLoanAdvanceID));
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjPolicy(objNextRecord.objCategory || null);
@@ -147,32 +149,32 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
     if (blnRightsLoading || !blnCanView) return;
     void loadRecord();
     Promise.all([
-      employeeService.getEmployees().catch(() => []),
-      loanAdvanceService.listCategories().catch(() => []),
-      loanAdvanceService.listLoans().catch(() => []),
+      blnIsEssMode ? Promise.resolve([]) : employeeService.getEmployees().catch(() => []),
+      (blnIsEssMode ? loanAdvanceService.listEssCategories() : loanAdvanceService.listCategories()).catch(() => []),
+      (blnIsEssMode ? loanAdvanceService.listEssLoans() : loanAdvanceService.listLoans()).catch(() => []),
     ]).then(([lstEmployeeRows, lstCategoryRows, lstLoanRows]) => {
       setLstEmployees(lstEmployeeRows);
       setLstCategories(lstCategoryRows);
       setLstExistingLoans(lstLoanRows);
     });
-  }, [blnRightsLoading, blnCanView, intLoanAdvanceID]);
+  }, [blnRightsLoading, blnCanView, intLoanAdvanceID, blnIsEssMode]);
 
   useEffect(() => {
     if (!dicValues.intCategoryID) {
       setObjPolicy(null);
       return;
     }
-    loanAdvanceService.getCategoryPolicy(Number(dicValues.intCategoryID)).then(setObjPolicy).catch(() => {
+    (blnIsEssMode ? loanAdvanceService.getEssCategoryPolicy(Number(dicValues.intCategoryID)) : loanAdvanceService.getCategoryPolicy(Number(dicValues.intCategoryID))).then(setObjPolicy).catch(() => {
       setObjPolicy(lstCategories.find((objCategory) => objCategory.intID === Number(dicValues.intCategoryID)) || null);
     });
-  }, [dicValues.intCategoryID, lstCategories]);
+  }, [dicValues.intCategoryID, lstCategories, blnIsEssMode]);
 
   function updateValue<TKey extends keyof LoanAdvanceFormValues>(strKey: TKey, objValue: LoanAdvanceFormValues[TKey]) {
     setDicValues((dicPrevious) => ({ ...dicPrevious, [strKey]: objValue }));
   }
 
   function validateForm() {
-    if (!dicValues.intEmployeeID && !dicValues.strEmployeeCode.trim()) return t("validation_employee_required", "Employee is required.");
+    if (!blnIsEssMode && !dicValues.intEmployeeID && !dicValues.strEmployeeCode.trim()) return t("validation_employee_required", "Employee is required.");
     if (!dicValues.intCategoryID) return t("validation_category_required", "Category is required.");
     if (Number(dicValues.decRequestedAmount || 0) <= 0) return t("validation_amount_required", "Requested amount must be greater than zero.");
     if (Number(dicValues.intNumberOfInstallments || 0) <= 0) return t("validation_installments_required", "Installments must be greater than zero.");
@@ -193,13 +195,13 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
     try {
       const objSnapshot = { lstPreviewSchedule: lstSchedulePreview, objPolicy };
       const objSaved = intLoanAdvanceID
-        ? await loanAdvanceService.updateLoan(intLoanAdvanceID, dicValues, objSnapshot)
-        : await loanAdvanceService.createLoan(dicValues, objSnapshot);
-      const objFinal = blnSubmit ? await loanAdvanceService.action(objSaved.intID, "submit") : objSaved;
+        ? await (blnIsEssMode ? loanAdvanceService.updateEssLoan(intLoanAdvanceID, dicValues, objSnapshot) : loanAdvanceService.updateLoan(intLoanAdvanceID, dicValues, objSnapshot))
+        : await (blnIsEssMode ? loanAdvanceService.createEssLoan(dicValues, objSnapshot) : loanAdvanceService.createLoan(dicValues, objSnapshot));
+      const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.intID, "submit") : loanAdvanceService.action(objSaved.intID, "submit")) : objSaved;
       setObjRecord(objFinal);
       setDicValues(toLoanAdvanceForm(objFinal));
       setStrSuccess(blnSubmit ? t("message_submitted", "Request submitted for approval.") : t("message_saved", "Request saved."));
-      if (!intLoanAdvanceID) objRouter.replace(`/payroll/loans-advances/${objFinal.intID}`);
+      if (!intLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.intID}` : `/payroll/loans-advances/${objFinal.intID}`);
       return objFinal;
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save loan or advance."));
@@ -223,7 +225,9 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
         strRemarks: dicActionValues.strRemarks || undefined,
         strReason: dicActionValues.strReason || undefined,
       };
-      const objNextRecord = await loanAdvanceService.action(objRecord.intID, objActionDialog.strAction, objPayload);
+      const objNextRecord = blnIsEssMode && ["submit", "cancel"].includes(objActionDialog.strAction)
+        ? await loanAdvanceService.essAction(objRecord.intID, objActionDialog.strAction as "submit" | "cancel", objPayload)
+        : await loanAdvanceService.action(objRecord.intID, objActionDialog.strAction, objPayload);
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjActionDialog(null);
@@ -248,6 +252,27 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
   }
 
   function renderWorkflowActions() {
+    if (blnIsEssMode) {
+      if (!objRecord) {
+        return (
+          <>
+            {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={() => void saveRecord(false)}>{t("button_save_draft", "Save Draft")}</Button> : null}
+            {blnCanAdd && blnCanSubmit ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={() => void saveRecord(true)}>{t("button_submit", "Submit for Approval")}</Button> : null}
+            <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => objRouter.push("/ess/loans-advances")}>{t("cancel", "Cancel")}</Button>
+          </>
+        );
+      }
+      if (["draft", "sent_back"].includes(strStatus)) {
+        return (
+          <>
+            {blnCanEdit ? <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={() => void saveRecord(false)}>{t("button_save_draft", "Save Draft")}</Button> : null}
+            {blnCanSubmit ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={() => openAction({ strAction: "submit", strTitle: t("button_submit", "Submit for Approval") })}>{t("button_submit", "Submit for Approval")}</Button> : null}
+            {blnCanCancel ? <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => openAction({ strAction: "cancel", strTitle: t("button_cancel_request", "Cancel Request"), blnNeedsReason: true })}>{t("cancel", "Cancel")}</Button> : null}
+          </>
+        );
+      }
+      return <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => window.print()}>{t("button_print", "Print")}</Button>;
+    }
     if (!objRecord) {
       return (
         <>
@@ -343,12 +368,12 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
           <Box>
-            <Typography className={styles.breadcrumbs}>{t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
-            <Typography className={styles.title}>{objRecord ? `${objRecord.objEmployee?.strEmployeeName || t("page_title", "Loans & Advances")}` : t("new_title", "New Loan or Advance")}</Typography>
+            <Typography className={styles.breadcrumbs}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
+            <Typography className={styles.title}>{objRecord ? `${objRecord.objEmployee?.strEmployeeName || (blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances"))}` : t("new_title", "New Loan or Advance")}</Typography>
             {objRecord?.objEmployee?.strEmployeeCode ? <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objRecord.objEmployee.strEmployeeCode}</Typography> : null}
           </Box>
           <Box className={styles.headerActions}>
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
+            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
             {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} /> : null}
             {renderWorkflowActions()}
           </Box>
@@ -358,7 +383,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnHasActiveWarning ? <Alert severity="warning">{t("warning_active_loans", "This employee already has active or pending loans/advances. Review outstanding recoveries before submitting.")}</Alert> : null}
-      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
+      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
       {blnCanView ? (
         <Box className={`${styles.tableCard} ${styles.detailScrollCard}`}>
           <Stepper activeStep={intWorkflowStep} alternativeLabel className={styles.fnfStepperShell}>
@@ -377,15 +402,15 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID }: { intLoanAdv
                 {[t("step_employee", "Employee Details"), t("step_details", "Loan / Advance Details"), t("step_recovery", "Recovery & Notional Tax"), t("step_review", "Review & Submit")].map((strStep) => <Step key={strStep}><StepLabel>{strStep}</StepLabel></Step>)}
               </Stepper>
               <Box className={styles.fnfEditDetailsGrid}>
-                <TextField select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} disabled={blnReadonly} onChange={(e) => {
+                {!blnIsEssMode ? <TextField select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} disabled={blnReadonly} onChange={(e) => {
                   const objEmployee = lstEmployees.find((objRow) => objRow.intID === Number(e.target.value));
                   updateValue("intEmployeeID", e.target.value ? Number(e.target.value) : "");
                   updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
                 }}>
                   <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
                   {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => <MenuItem key={objEmployee.intID} value={objEmployee.intID}>{getEmployeeLabel(objEmployee)}</MenuItem>)}
-                </TextField>
-                <TextField size="small" label={t("field_department", "Department")} value={objSelectedEmployee?.strDepartmentName || objRecord?.objEmployee?.strDepartmentName || ""} disabled />
+                </TextField> : null}
+                <TextField size="small" label={blnIsEssMode ? t("field_employee", "Employee") : t("field_department", "Department")} value={blnIsEssMode ? (objRecord?.objEmployee?.strEmployeeName || t("current_employee", "Current employee")) : (objSelectedEmployee?.strDepartmentName || objRecord?.objEmployee?.strDepartmentName || "")} disabled />
                 <TextField select size="small" label={t("field_request_type", "Request Type")} value={dicValues.strRequestType} disabled={blnReadonly} onChange={(e) => { updateValue("strRequestType", e.target.value as LoanAdvanceFormValues["strRequestType"]); updateValue("intCategoryID", ""); }}>
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>
                   <MenuItem value="advance">{t("type_advance", "Advance")}</MenuItem>

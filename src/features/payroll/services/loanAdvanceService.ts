@@ -89,16 +89,21 @@ function toPayload(dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: un
   };
 }
 
+function buildListQuery(objFilters?: Record<string, string>) {
+  const objParams = new URLSearchParams();
+  Object.entries(objFilters || {}).forEach(([strKey, strValue]) => {
+    if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+  });
+  const strQuery = objParams.toString();
+  return strQuery ? `?${strQuery}` : "";
+}
+
 export const loanAdvanceService = {
   async listLoans(objFilters?: Record<string, string>): Promise<LoanAdvanceRecord[]> {
-    const objParams = new URLSearchParams();
-    Object.entries(objFilters || {}).forEach(([strKey, strValue]) => {
-      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
-    });
-    const strQuery = objParams.toString();
+    const strQuery = buildListQuery(objFilters);
     try {
       const objResult = await requestApi<LoanAdvanceRecord[]>({
-        strPath: `/payroll/loans-advances${strQuery ? `?${strQuery}` : ""}`,
+        strPath: `/payroll/loans-advances${strQuery}`,
         strMethod: "GET",
         strMenuAction: "PAYROLL_LOANS_ADVANCES_VIEW",
       });
@@ -177,6 +182,72 @@ export const loanAdvanceService = {
       strMethod: "POST",
       objBody,
       strMenuAction: dicActionCodeByAction[strAction] || "PAYROLL_LOANS_ADVANCES_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listEssLoans(objFilters?: Record<string, string>): Promise<LoanAdvanceRecord[]> {
+    const objResult = await requestApi<LoanAdvanceRecord[]>({
+      strPath: `/ess/loans-advances${buildListQuery(objFilters)}`,
+      strMethod: "GET",
+      strMenuAction: "ESS_LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listEssCategories(strRequestType?: string): Promise<LoanAdvanceCategoryRecord[]> {
+    const strQuery = strRequestType ? `?request_type=${encodeURIComponent(strRequestType)}` : "";
+    const objResult = await requestApi<LoanAdvanceCategoryRecord[]>({
+      strPath: `/ess/loans-advances/categories${strQuery}`,
+      strMethod: "GET",
+      strMenuAction: "ESS_LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getEssCategoryPolicy(intCategoryID: number): Promise<LoanAdvanceCategoryRecord> {
+    const objResult = await requestApi<LoanAdvanceCategoryRecord>({
+      strPath: `/ess/loans-advances/categories/${intCategoryID}/policy`,
+      strMethod: "GET",
+      strMenuAction: "ESS_LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getEssLoan(intID: number): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/ess/loans-advances/${intID}`,
+      strMethod: "GET",
+      strMenuAction: "ESS_LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async createEssLoan(dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
+    const objPayload = toPayload(dicValues, objCalculationSnapshot);
+    delete (objPayload as { intEmployeeID?: number }).intEmployeeID;
+    delete (objPayload as { strEmployeeCode?: string }).strEmployeeCode;
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: "/ess/loans-advances",
+      strMethod: "POST",
+      objBody: objPayload,
+      strMenuAction: "ESS_LOAN_ADV_CREATE",
+    });
+    return objResult.Data;
+  },
+  async updateEssLoan(intID: number, dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
+    const objPayload = toPayload(dicValues, objCalculationSnapshot);
+    delete (objPayload as { intEmployeeID?: number }).intEmployeeID;
+    delete (objPayload as { strEmployeeCode?: string }).strEmployeeCode;
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/ess/loans-advances/${intID}`,
+      strMethod: "PUT",
+      objBody: objPayload,
+      strMenuAction: "ESS_LOAN_ADV_EDIT",
+    });
+    return objResult.Data;
+  },
+  async essAction(intID: number, strAction: "submit" | "cancel", objBody?: unknown): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/ess/loans-advances/${intID}/${strAction}`,
+      strMethod: "POST",
+      objBody,
+      strMenuAction: strAction === "submit" ? "ESS_LOAN_ADV_SUBMIT" : "ESS_LOAN_ADV_CANCEL",
     });
     return objResult.Data;
   },
