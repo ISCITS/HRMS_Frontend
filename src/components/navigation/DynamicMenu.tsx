@@ -1,26 +1,9 @@
 "use client";
 
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
-import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
-import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
-import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import GradeRoundedIcon from "@mui/icons-material/GradeRounded";
-import Groups2RoundedIcon from "@mui/icons-material/Groups2Rounded";
-import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
-import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
-import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
-import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import SourceRoundedIcon from "@mui/icons-material/SourceRounded";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import WorkspacesRoundedIcon from "@mui/icons-material/WorkspacesRounded";
 import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
+import Icon from "@mui/material/Icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
@@ -40,136 +23,20 @@ function toMenuTestSegment(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
 
+function toMaterialIconName(strValue: string) {
+  return strValue
+    .trim()
+    .replace(/Rounded$/i, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^a-zA-Z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .toLowerCase();
+}
+
 function getMenuIcon(objItem: MenuItem) {
-  const strIconName = objItem.strIconName?.toLowerCase() ?? "";
-  if (objItem.blnIsHome) {
-    return <DashboardRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  const strNormalizedIconName = strIconName.replace(/[^a-z0-9]/g, "");
-
-
-  if (["dashboard", "layoutdashboard", "spacedashboard"].includes(strNormalizedIconName)) {
-    return <DashboardRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["accountbalance", "bank"].includes(strNormalizedIconName)) {
-    return <AccountBalanceRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["accounttree", "costcenter", "tree"].includes(strNormalizedIconName)) {
-    return <AccountTreeRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["apartment", "department"].includes(strNormalizedIconName)) {
-    return <ApartmentRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["badge", "designation"].includes(strNormalizedIconName)) {
-    return <BadgeRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["calendarmonth", "calendar"].includes(strNormalizedIconName)) {
-    return <CalendarMonthRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["grade", "star"].includes(strNormalizedIconName)) {
-    return <GradeRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["groups", "groups2", "users", "people"].includes(strNormalizedIconName)) {
-    return <Groups2RoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["manageaccounts", "manageaccount", "useraccount", "useraccounts"].includes(strNormalizedIconName)) {
-    return <ManageAccountsRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["location", "locationon"].includes(strNormalizedIconName)) {
-    return <LocationOnRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["payments", "payment", "payroll"].includes(strNormalizedIconName)) {
-    return <PaymentsRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["person", "profile"].includes(strNormalizedIconName)) {
-    return <PersonRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["public", "country", "state"].includes(strNormalizedIconName)) {
-    return <PublicRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["receiptlong", "receipt", "claim", "reimbursement"].includes(strNormalizedIconName)) {
-    return <ReceiptLongRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["settings", "setting"].includes(strNormalizedIconName)) {
-    return <SettingsRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["source", "report", "reports"].includes(strNormalizedIconName)) {
-    return <SourceRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["tune", "theme"].includes(strNormalizedIconName)) {
-    return <TuneRoundedIcon sx={objMenuIconSx} />;
-  }
-  if (["workspaces", "workspace", "module"].includes(strNormalizedIconName)) {
-    return <WorkspacesRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  const strRoute = (objItem.strRoute ?? "").toLowerCase();
-  const strModuleName = objItem.strModuleName.toLowerCase();
-  const strModuleCode = objItem.strModuleCode.toLowerCase();
-  const strLookupKey = `${strIconName} ${strModuleCode} ${strModuleName} ${strRoute}`;
-
-  if (strLookupKey.includes("bank")) {
-    return <AccountBalanceRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("location")) {
-    return <LocationOnRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("country") || strLookupKey.includes("state")) {
-    return <PublicRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("grade")) {
-    return <GradeRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("cost center") || strLookupKey.includes("cost-center") || strLookupKey.includes("costcenter")) {
-    return <AccountTreeRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("department")) {
-    return <ApartmentRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("designation")) {
-    return <BadgeRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("payroll")) {
-    return <PaymentsRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("reimbursement") || strLookupKey.includes("claim")) {
-    return <ReceiptLongRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("calendar")) {
-    return <CalendarMonthRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("employee") || strLookupKey.includes("user")) {
-    return <Groups2RoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("profile")) {
-    return <PersonRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("report")) {
-    return <SourceRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("setting")) {
-    return <SettingsRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  if (strLookupKey.includes("theme")) {
-    return <TuneRoundedIcon sx={objMenuIconSx} />;
-  }
-
-  return <WorkspacesRoundedIcon sx={objMenuIconSx} />;
+  const strIconName = objItem.blnIsHome ? "dashboard" : toMaterialIconName(objItem.strIconName ?? "");
+  return <Icon sx={objMenuIconSx}>{strIconName || "workspaces"}</Icon>;
 }
 
 function getLastBreadcrumbSegment(strValue: string) {
