@@ -6,7 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Stack,
   Typography,
@@ -44,32 +43,69 @@ function formatStatus(strStatus?: string | null) {
     .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
+function buildFallbackContext(strFinancialYearCode: string): FlexiDeclarationContextRecord {
+  return {
+    strFinancialYearCode,
+    blnCanDeclare: false,
+    strIneligibilityReason: "Flexi declaration details are taking longer than expected. You can still open the declaration screen.",
+    objDeclaration: null,
+    objEmployeeSummary: null,
+    objAssignedStructure: null,
+    objCurrentSalarySnapshot: null,
+    objFlexiAllocation: {
+      blnHasFlexiBasket: false,
+      decFlexiBasketAvailableAnnual: 0,
+      decResidualTaxableAllowanceAnnual: 0,
+      strResidualComponentName: null,
+      lstAvailableComponents: [],
+    },
+    lstComponentLines: [],
+    lstEligibilityQuestions: [],
+    objEligibilityAnswers: {},
+    lstDeclarationLines: [],
+  };
+}
+
+async function withTimeout<TData>(objPromise: Promise<TData>, intTimeoutMs: number): Promise<TData> {
+  let intTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      objPromise,
+      new Promise<TData>((_, reject) => {
+        intTimer = setTimeout(() => reject(new Error("Flexi declaration request timed out.")), intTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (intTimer) clearTimeout(intTimer);
+  }
+}
+
 export default function SalaryFlexiPayDeclarationsRoute() {
   const objRouter = useRouter();
-  const [blnLoading, setBlnLoading] = useState(true);
+  const strCurrentFinancialYearCode = getCurrentFinancialYearCode();
   const [strError, setStrError] = useState("");
-  const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(null);
+  const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(() => buildFallbackContext(strCurrentFinancialYearCode));
   const [lstHistory, setLstHistory] = useState<FlexiDeclarationHistoryRecord[]>([]);
 
   useEffect(() => {
     let blnMounted = true;
     async function loadData() {
-      setBlnLoading(true);
       setStrError("");
+      const strFinancialYearCode = strCurrentFinancialYearCode;
+      setObjContext(buildFallbackContext(strFinancialYearCode));
+      setLstHistory([]);
       try {
-        const strFinancialYearCode = getCurrentFinancialYearCode();
-        const [objDeclarationContext, lstHistoryRows] = await Promise.all([
+        const objDeclarationContext = await withTimeout(
           flexiPayDeclarationService.getCurrentDeclaration(strFinancialYearCode),
-          flexiPayDeclarationService.getHistory(),
-        ]);
+          10000,
+        ).catch(() => buildFallbackContext(strFinancialYearCode));
+        const lstHistoryRows = await withTimeout(flexiPayDeclarationService.getHistory(), 8000).catch(() => []);
         if (!blnMounted) return;
         setObjContext(objDeclarationContext);
         setLstHistory(lstHistoryRows || []);
       } catch (objError) {
         if (!blnMounted) return;
         setStrError(objError instanceof Error ? objError.message : "Unable to load Flexi Pay Declaration.");
-      } finally {
-        if (blnMounted) setBlnLoading(false);
       }
     }
 
@@ -77,15 +113,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     return () => {
       blnMounted = false;
     };
-  }, []);
-
-  if (blnLoading) {
-    return (
-      <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
-        <CircularProgress size={30} />
-      </Box>
-    );
-  }
+  }, [strCurrentFinancialYearCode]);
 
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const decBasket = Number(objContext?.objFlexiAllocation?.decFlexiBasketAvailableAnnual || 0);
@@ -98,7 +126,16 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   const objCurrentDeclaration = objContext?.objDeclaration;
 
   return (
-    <Stack spacing={0.8} className={styles.page}>
+    <Stack
+      spacing={0.8}
+      className={styles.page}
+      sx={{
+        height: "auto",
+        minHeight: "100%",
+        overflow: "visible",
+        pb: 2,
+      }}
+    >
       <Box sx={{ borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", overflow: "hidden" }}>
         <Box sx={{ p: 1.1, background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1, flexWrap: "wrap" }}>
