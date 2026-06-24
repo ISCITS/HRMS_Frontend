@@ -3,7 +3,6 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import DoNotDisturbOnRoundedIcon from "@mui/icons-material/DoNotDisturbOnRounded";
 import FamilyRestroomRoundedIcon from "@mui/icons-material/FamilyRestroomRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LunchDiningRoundedIcon from "@mui/icons-material/LunchDiningRounded";
@@ -29,8 +28,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type {
   EmployeeSalaryDetailRecord,
@@ -125,6 +125,10 @@ function normalizeText(strValue?: string | null) {
   return String(strValue || "").trim().toLowerCase();
 }
 
+function normalizeSelectToken(strValue?: string | null) {
+  return String(strValue || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
 function toChildrenCount(strValue: string | number | boolean | null | undefined) {
   const intValue = Number(strValue);
   if (!Number.isFinite(intValue) || intValue < 0) return 0;
@@ -139,9 +143,9 @@ function getBooleanAnswer(dicAnswers: Record<string, string | number | boolean |
 }
 
 function getFlexiRoleForOption(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
-  const strFlexiType = normalizeText(String(dicComponent?.strFlexiComponentType ?? "")).replace(/\s+/g, "");
-  const strCategory = normalizeText(String(dicComponent?.strComponentCategory ?? "")).replace(/\s+/g, "");
-  const strGroup = normalizeText(String(dicComponent?.strComponentGroup ?? "")).replace(/\s+/g, "");
+  const strFlexiType = normalizeSelectToken(dicComponent?.strFlexiComponentType);
+  const strCategory = normalizeSelectToken(dicComponent?.strComponentCategory);
+  const strGroup = normalizeSelectToken(dicComponent?.strComponentGroup);
   if (dicComponent?.blnIsFlexiBasket || strFlexiType === "basket" || strFlexiType === "flexibucket" || strCategory === "flexibucket" || strCategory === "flexibasket") {
     return "Flexi Bucket";
   }
@@ -158,12 +162,16 @@ function getFlexiRoleForOption(dicComponent?: SalaryStructureFormOptions["lstSal
 }
 
 function isSalaryStructureFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
-  const strReimbursementType = normalizeText(String(dicOption.strReimbursementType ?? "")).replace(/\s+/g, "");
+  const strReimbursementType = normalizeSelectToken(dicOption.strReimbursementType);
+  const strSettlementMode = normalizeSelectToken(dicOption.strReimbursementSettlementMode);
   return Boolean(
     dicOption.blnIsActive !== false &&
-    (dicOption.blnIsFlexiBenefit || dicOption.blnIsReimbursement || strReimbursementType === "ctcbased") &&
+    dicOption.blnIsReimbursement &&
+    dicOption.blnIsFlexiBenefit &&
+    strReimbursementType === "ctcbased" &&
+    strSettlementMode === "payroll" &&
     getFlexiRoleForOption(dicOption) === "Normal" &&
-    normalizeText(dicOption.strCode ?? "") !== "flexipay"
+    normalizeSelectToken(dicOption.strCode) !== "flexipay"
   );
 }
 
@@ -201,7 +209,11 @@ function buildLineFromOption(objOption: FlexiComponentOption): FlexiDeclarationL
 }
 
 function isFlexiBucketCode(strComponentCode?: string | null) {
-  return normalizeText(strComponentCode) === "flexipay";
+  return normalizeSelectToken(strComponentCode) === "flexipay";
+}
+
+function isFlexiBucketLike(strComponentCode?: string | null, strComponentName?: string | null) {
+  return isFlexiBucketCode(strComponentCode) || normalizeSelectToken(strComponentName) === "flexipay";
 }
 
 function mapSalaryFlexiLineToDeclarationLine(
@@ -258,19 +270,25 @@ function mergeEmployeeSalaryDetailIntoContext(
       strEmployeeCode: objDetail.objEmployeeSummary.strEmployeeCode,
       strEmployeeName: objDetail.objEmployeeSummary.strEmployeeName,
     },
-    objAssignedStructure: objContext.objAssignedStructure || (objDetail.objAssignedStructure ? {
+    objAssignedStructure: objDetail.objAssignedStructure ? {
       intSalaryStructureID: objDetail.objAssignedStructure.intSalaryStructureID,
       strSalaryStructureName: objDetail.objAssignedStructure.strStructureName,
       strCurrencyCode: objDetail.objAssignedStructure.strCurrencyCode,
-    } : null),
-    objCurrentSalarySnapshot: objContext.objCurrentSalarySnapshot || objDetail.objCurrentSalarySnapshot as Record<string, unknown> | null,
+    } : objContext.objAssignedStructure,
+    objCurrentSalarySnapshot: (objDetail.objCurrentSalarySnapshot as Record<string, unknown> | null) ?? objContext.objCurrentSalarySnapshot,
     objFlexiAllocation: {
       ...objContext.objFlexiAllocation,
-      blnHasFlexiBasket: objContext.objFlexiAllocation?.blnHasFlexiBasket ?? objDetail.objFlexiAllocation?.blnHasFlexiBasket ?? false,
-      decFlexiBasketAvailableAnnual: objContext.objFlexiAllocation?.decFlexiBasketAvailableAnnual ?? objDetail.objFlexiAllocation?.decFlexiBasketAvailableAnnual ?? 0,
-      decResidualTaxableAllowanceAnnual: objContext.objFlexiAllocation?.decResidualTaxableAllowanceAnnual ?? objDetail.objFlexiAllocation?.decResidualTaxableAllowanceAnnual ?? 0,
-      strResidualComponentName: objContext.objFlexiAllocation?.strResidualComponentName ?? objDetail.objFlexiAllocation?.strResidualComponentName ?? null,
-      lstAvailableComponents: objContext.objFlexiAllocation?.lstAvailableComponents?.length
+      blnHasFlexiBasket: objDetail.objFlexiAllocation?.blnHasFlexiBasket ?? objContext.objFlexiAllocation?.blnHasFlexiBasket ?? false,
+      decFlexiBasketAvailableAnnual: objDetail.objFlexiAllocation?.decFlexiBasketAvailableAnnual ?? objContext.objFlexiAllocation?.decFlexiBasketAvailableAnnual ?? 0,
+      decResidualTaxableAllowanceAnnual: objDetail.objFlexiAllocation?.decResidualTaxableAllowanceAnnual ?? objContext.objFlexiAllocation?.decResidualTaxableAllowanceAnnual ?? 0,
+      strResidualComponentName: objDetail.objFlexiAllocation?.strResidualComponentName ?? objContext.objFlexiAllocation?.strResidualComponentName ?? null,
+      lstAvailableComponents: objDetail.objFlexiAllocation?.lstAvailableComponents?.length
+        ? objDetail.objFlexiAllocation.lstAvailableComponents.map((objLine) => ({
+          intSalaryComponentID: objLine.intSalaryComponentID,
+          strComponentCode: objLine.strComponentCode,
+          strComponentName: objLine.strComponentName,
+        }))
+        : objContext.objFlexiAllocation?.lstAvailableComponents?.length
         ? objContext.objFlexiAllocation.lstAvailableComponents
         : lstSalaryFlexiLines.map((objLine) => ({
           intSalaryComponentID: objLine.intSalaryComponentID,
@@ -287,7 +305,9 @@ function mergeEmployeeSalaryDetailIntoContext(
       dtApprovedOn: objSalaryDeclaration.dtApprovedOn,
       strRemarks: objSalaryDeclaration.strEmployeeRemarks,
     } : objContext.objDeclaration),
-    lstComponentLines: objContext.lstComponentLines?.length ? objContext.lstComponentLines : objDetail.lstComponentLines as unknown as Array<Record<string, unknown>>,
+    lstComponentLines: objDetail.lstComponentLines?.length
+      ? objDetail.lstComponentLines as unknown as Array<Record<string, unknown>>
+      : objContext.lstComponentLines,
     objEligibilityAnswers: objContext.objEligibilityAnswers || {},
     lstDeclarationLines,
   };
@@ -354,6 +374,8 @@ async function enrichContextWithLoggedInEmployeeSalary(objContext: FlexiDeclarat
 export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const strFinancialYearCode = getCurrentFinancialYearCode();
+  const intLoadSequenceRef = useRef(0);
+  const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strToast, setStrToast] = useState("");
@@ -363,10 +385,13 @@ export default function FlexiPayDeclarationPage() {
   const [dicEligibilityAnswers, setDicEligibilityAnswers] = useState<Record<string, string | number | boolean | null>>({});
   const [objSalaryStructureFormOptions, setObjSalaryStructureFormOptions] = useState<SalaryStructureFormOptions | null>(null);
   const [objAssignedSalaryStructureDetail, setObjAssignedSalaryStructureDetail] = useState<SalaryStructureDetailRecord | null>(null);
+  const [blnAssignedStructureDetailResolved, setBlnAssignedStructureDetailResolved] = useState(false);
   const [objEmployeeSalaryFormOptions, setObjEmployeeSalaryFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentListRecord[]>([]);
 
   const loadContext = useCallback(async function loadContext() {
+    const intLoadSequence = ++intLoadSequenceRef.current;
+    setBlnLoading(true);
     setStrError("");
     const objFallbackContext = buildFallbackContext(strFinancialYearCode);
     setObjContext(objFallbackContext);
@@ -374,25 +399,11 @@ export default function FlexiPayDeclarationPage() {
     setStrRemarks("");
     setDicEligibilityAnswers({});
     setObjAssignedSalaryStructureDetail(null);
+    setBlnAssignedStructureDetailResolved(false);
     try {
-      const objSalaryStructureOptionsPromise = withTimeout(salaryStructureService.getFormOptions(), 10000)
-        .then((objFormOptions) => {
-          setObjSalaryStructureFormOptions(objFormOptions);
-          return objFormOptions;
-        })
-        .catch(() => null);
-      const objEmployeeSalaryOptionsPromise = withTimeout(employeeSalaryService.getFormOptions(), 10000)
-        .then((objFormOptions) => {
-          setObjEmployeeSalaryFormOptions(objFormOptions);
-          return objFormOptions;
-        })
-        .catch(() => null);
-      const lstSalaryComponentsPromise = withTimeout(salaryComponentService.getSalaryComponents(), 10000)
-        .then((lstRows) => {
-          setLstSalaryComponents(lstRows);
-          return lstRows;
-        })
-        .catch(() => []);
+      const objSalaryStructureOptionsPromise = withTimeout(salaryStructureService.getFormOptions(), 10000).catch(() => null);
+      const objEmployeeSalaryOptionsPromise = withTimeout(employeeSalaryService.getFormOptions(), 10000).catch(() => null);
+      const lstSalaryComponentsPromise = withTimeout(salaryComponentService.getSalaryComponents(), 10000).catch(() => []);
       const objData = await withTimeout(
         flexiPayDeclarationService.getCurrentDeclaration(strFinancialYearCode),
         10000,
@@ -407,16 +418,25 @@ export default function FlexiPayDeclarationPage() {
       const objAssignedStructureDetail = intAssignedStructureID
         ? await withTimeout(salaryStructureService.getSalaryStructureById(intAssignedStructureID), 10000).catch(() => null)
         : null;
+      if (intLoadSequenceRef.current !== intLoadSequence) {
+        return;
+      }
       setObjContext(objEnrichedData);
       setObjSalaryStructureFormOptions(objFormOptions);
       setObjAssignedSalaryStructureDetail(objAssignedStructureDetail);
+      setBlnAssignedStructureDetailResolved(true);
       setObjEmployeeSalaryFormOptions(objEmployeeFormOptions);
       setLstSalaryComponents(lstSalaryComponentRows);
       setDicDraftInputs(buildInitialDraftInputs(objEnrichedData));
       setStrRemarks(objEnrichedData.objDeclaration?.strRemarks || "");
       setDicEligibilityAnswers(objEnrichedData.objEligibilityAnswers || {});
+      setBlnLoading(false);
     } catch (objError) {
+      if (intLoadSequenceRef.current !== intLoadSequence) {
+        return;
+      }
       setStrError(objError instanceof Error ? objError.message : "Unable to load flexi declaration.");
+      setBlnLoading(false);
     }
   }, [strFinancialYearCode]);
 
@@ -425,15 +445,32 @@ export default function FlexiPayDeclarationPage() {
   }, [loadContext]);
 
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
+  const blnCompulsoryDataPending = blnLoading || (
+    Number(objContext?.objAssignedStructure?.intSalaryStructureID || 0) > 0
+    && !blnAssignedStructureDetailResolved
+  );
   const decBasketAnnual = Number(objContext?.objFlexiAllocation?.decFlexiBasketAvailableAnnual || 0);
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || "draft";
   const blnWorkflowEditable = ["draft", "returned", "rejected"].includes(strWorkflowStatus);
   const blnCanCancel = ["draft", "returned", "rejected"].includes(strWorkflowStatus);
   const lstFlexiComponentOptions = useMemo(() => {
     const dicOptions = new Map<number, FlexiComponentOption>();
+    const lstMasterEligibleOptions = (objSalaryStructureFormOptions?.lstSalaryComponents || [])
+      .filter(isSalaryStructureFlexiEligibleComponent);
+    const lstFallbackEligibleSalaryComponents = lstSalaryComponents
+      .filter((objComponent) =>
+        objComponent.blnIsActive !== false &&
+        objComponent.blnIsReimbursement &&
+        objComponent.blnIsFlexiBenefit &&
+        normalizeSelectToken(objComponent.strReimbursementType) === "ctcbased" &&
+        normalizeSelectToken(objComponent.strSettlementMethod) === "payroll" &&
+        !Boolean(objComponent.blnIsFlexiBasket) &&
+        !isFlexiBucketLike(objComponent.strComponentCode, objComponent.strComponentName),
+      );
+    const setMasterEligibleComponentIDs = new Set(lstMasterEligibleOptions.map((objOption) => Number(objOption.intID)));
     const addOption = (objOption: FlexiComponentOption) => {
       if (!objOption.intSalaryComponentID) return;
-      if (isFlexiBucketCode(objOption.strComponentCode)) return;
+      if (isFlexiBucketLike(objOption.strComponentCode, objOption.strComponentName)) return;
       const objExisting = dicOptions.get(objOption.intSalaryComponentID);
       dicOptions.set(objOption.intSalaryComponentID, {
         ...objExisting,
@@ -446,6 +483,33 @@ export default function FlexiPayDeclarationPage() {
         strTaxTreatment: objOption.strTaxTreatment ?? objExisting?.strTaxTreatment ?? null,
       });
     };
+
+    lstMasterEligibleOptions.forEach((objOption) => addOption({
+      intSalaryComponentID: Number(objOption.intID),
+      strComponentCode: objOption.strCode,
+      strComponentName: objOption.strLabel,
+      decAnnualLimit: objOption.decReimbursementMaxClaimYearlyLimit ?? objOption.decAnnualLimit ?? objOption.decFlexiMaxYearlyAmount ?? objOption.decAnnualLimitAmount ?? null,
+      decMonthlyLimit: objOption.decReimbursementMaxClaimMonthlyLimit ?? objOption.decMonthlyLimit ?? objOption.decFlexiMaxMonthlyAmount ?? objOption.decMonthlyLimitAmount ?? null,
+      decAllocationAnnual: 0,
+      decAllocationMonthly: 0,
+      blnProofRequired: Boolean(objOption.blnProofRequired),
+      strTaxTreatment: null,
+      strSource: "Salary structure dropdown",
+    }));
+    if (lstMasterEligibleOptions.length === 0) {
+      lstFallbackEligibleSalaryComponents.forEach((objComponent) => addOption({
+        intSalaryComponentID: objComponent.intID,
+        strComponentCode: objComponent.strComponentCode,
+        strComponentName: objComponent.strComponentName,
+        decAnnualLimit: objComponent.decAnnualLimitAmount,
+        decMonthlyLimit: objComponent.decMonthlyLimitAmount,
+        decAllocationAnnual: 0,
+        decAllocationMonthly: 0,
+        blnProofRequired: objComponent.blnProofRequired,
+        strTaxTreatment: objComponent.strTaxTreatment,
+        strSource: "Salary component master",
+      }));
+    }
 
     (objContext?.lstDeclarationLines || []).forEach((objLine) => addOption({
       intSalaryComponentID: objLine.intSalaryComponentID,
@@ -460,28 +524,31 @@ export default function FlexiPayDeclarationPage() {
       strSource: "Declaration row",
     }));
 
-    (objContext?.objFlexiAllocation?.lstAvailableComponents || []).forEach((objLine) => addOption({
-      intSalaryComponentID: objLine.intSalaryComponentID,
-      strComponentCode: objLine.strComponentCode,
-      strComponentName: objLine.strComponentName,
-      decAnnualLimit: null,
-      decMonthlyLimit: null,
-      decAllocationAnnual: 0,
-      decAllocationMonthly: 0,
-      blnProofRequired: false,
-      strTaxTreatment: null,
-      strSource: "Salary structure flexi cap",
-    }));
+    (objContext?.objFlexiAllocation?.lstAvailableComponents || [])
+      .filter((objLine) => setMasterEligibleComponentIDs.size === 0 || setMasterEligibleComponentIDs.has(Number(objLine.intSalaryComponentID)))
+      .forEach((objLine) => addOption({
+        intSalaryComponentID: objLine.intSalaryComponentID,
+        strComponentCode: objLine.strComponentCode,
+        strComponentName: objLine.strComponentName,
+        decAnnualLimit: null,
+        decMonthlyLimit: null,
+        decAllocationAnnual: 0,
+        decAllocationMonthly: 0,
+        blnProofRequired: false,
+        strTaxTreatment: null,
+        strSource: "Salary structure flexi cap",
+      }));
 
     (objContext?.lstComponentLines || []).forEach((objLine) => {
       const blnFlexiLine = Boolean(
         objLine.blnIsFlexiBenefit
         && !objLine.blnIsFlexiBasketLine
         && !objLine.blnIsFlexiBasket
-        && !isFlexiBucketCode(String(objLine.strComponentCode || "")),
+        && !isFlexiBucketLike(String(objLine.strComponentCode || ""), String(objLine.strComponentName || "")),
       );
       if (!blnFlexiLine) return;
       const intSalaryComponentID = getComponentID(objLine);
+      if (setMasterEligibleComponentIDs.size > 0 && !setMasterEligibleComponentIDs.has(intSalaryComponentID)) return;
       addOption({
         intSalaryComponentID,
         strComponentCode: String(objLine.strComponentCode || ""),
@@ -496,23 +563,13 @@ export default function FlexiPayDeclarationPage() {
       });
     });
 
-    (objSalaryStructureFormOptions?.lstSalaryComponents || [])
-      .filter(isSalaryStructureFlexiEligibleComponent)
-      .forEach((objOption) => addOption({
-        intSalaryComponentID: Number(objOption.intID),
-        strComponentCode: objOption.strCode,
-        strComponentName: objOption.strLabel,
-        decAnnualLimit: objOption.decReimbursementMaxClaimYearlyLimit ?? objOption.decAnnualLimit ?? objOption.decFlexiMaxYearlyAmount ?? objOption.decAnnualLimitAmount ?? null,
-        decMonthlyLimit: objOption.decReimbursementMaxClaimMonthlyLimit ?? objOption.decMonthlyLimit ?? objOption.decFlexiMaxMonthlyAmount ?? objOption.decMonthlyLimitAmount ?? null,
-        decAllocationAnnual: 0,
-        decAllocationMonthly: 0,
-        blnProofRequired: Boolean(objOption.blnProofRequired),
-        strTaxTreatment: null,
-        strSource: "Salary structure dropdown",
-      }));
-
     const dicSalaryStructureComponentByID = new Map(
       (objSalaryStructureFormOptions?.lstSalaryComponents || []).map((objComponent) => [Number(objComponent.intID), objComponent]),
+    );
+    const dicAssignedStructureLineByComponentID = new Map(
+      (objAssignedSalaryStructureDetail?.lstComponents || [])
+        .filter((objLine) => Number(objLine.intSalaryComponentID) > 0)
+        .map((objLine) => [Number(objLine.intSalaryComponentID), objLine]),
     );
     (objAssignedSalaryStructureDetail?.lstComponents || []).forEach((objLine) => {
       const lstMappedOptions = (objLine.lstFlexiMappings || [])
@@ -520,12 +577,13 @@ export default function FlexiPayDeclarationPage() {
         .map((objMapping) => {
           const intSalaryComponentID = Number(objMapping.intFlexiComponentID);
           const objComponent = dicSalaryStructureComponentByID.get(intSalaryComponentID);
+          const objAssignedLine = dicAssignedStructureLineByComponentID.get(intSalaryComponentID);
           return {
             intSalaryComponentID,
-            strComponentCode: objComponent?.strCode || objMapping.strFlexiComponentCode,
-            strComponentName: objComponent?.strLabel || objMapping.strFlexiComponentName,
-            decAnnualLimit: objMapping.fltMaxAmount ?? objComponent?.decReimbursementMaxClaimYearlyLimit ?? objComponent?.decAnnualLimit ?? objComponent?.decFlexiMaxYearlyAmount ?? objComponent?.decAnnualLimitAmount ?? null,
-            decMonthlyLimit: objMapping.fltDefaultAmount ?? objComponent?.decReimbursementMaxClaimMonthlyLimit ?? objComponent?.decMonthlyLimit ?? objComponent?.decFlexiMaxMonthlyAmount ?? objComponent?.decMonthlyLimitAmount ?? null,
+            strComponentCode: objComponent?.strCode || objAssignedLine?.strComponentCode || objMapping.strFlexiComponentCode,
+            strComponentName: objComponent?.strLabel || objAssignedLine?.strComponentName || objMapping.strFlexiComponentName,
+            decAnnualLimit: objMapping.fltMaxAmount ?? objAssignedLine?.fltMaxAmount ?? objComponent?.decReimbursementMaxClaimYearlyLimit ?? objComponent?.decAnnualLimit ?? objComponent?.decFlexiMaxYearlyAmount ?? objComponent?.decAnnualLimitAmount ?? null,
+            decMonthlyLimit: objMapping.fltDefaultAmount ?? objAssignedLine?.fltFixedAmount ?? objComponent?.decReimbursementMaxClaimMonthlyLimit ?? objComponent?.decMonthlyLimit ?? objComponent?.decFlexiMaxMonthlyAmount ?? objComponent?.decMonthlyLimitAmount ?? null,
             decAllocationAnnual: objMapping.fltMaxAmount ?? (objMapping.fltDefaultAmount != null ? objMapping.fltDefaultAmount * 12 : 0),
             decAllocationMonthly: objMapping.fltDefaultAmount ?? 0,
             blnProofRequired: Boolean(objComponent?.blnProofRequired),
@@ -539,13 +597,26 @@ export default function FlexiPayDeclarationPage() {
         return;
       }
 
+      const blnLooksLikeFlexiStructureLine = Boolean(
+        objLine.blnIsActive
+        && !objLine.blnIsFlexiBasketLine
+        && !isFlexiBucketLike(objLine.strComponentCode, objLine.strComponentName)
+        && (
+          normalizeText(objLine.strFlexiComponentRole) !== ""
+          || normalizeText(objLine.strComponentCategory).includes("reimbursement")
+          || Number(objLine.fltFixedAmount || 0) > 0
+          || Number(objLine.fltMaxAmount || 0) > 0
+        ),
+      );
+      if (!blnLooksLikeFlexiStructureLine) return;
+
       const blnStandaloneFlexiLine = Boolean(
         objLine.blnIsActive
         && !objLine.blnIsFlexiBasketLine
-        && !isFlexiBucketCode(objLine.strComponentCode)
-        && normalizeText(objLine.strFlexiComponentRole) !== "",
+        && !isFlexiBucketLike(objLine.strComponentCode, objLine.strComponentName)
       );
       if (!blnStandaloneFlexiLine) return;
+      if (setMasterEligibleComponentIDs.size > 0 && !setMasterEligibleComponentIDs.has(Number(objLine.intSalaryComponentID))) return;
       addOption({
         intSalaryComponentID: objLine.intSalaryComponentID,
         strComponentCode: objLine.strComponentCode,
@@ -567,7 +638,12 @@ export default function FlexiPayDeclarationPage() {
       ? objAssignedStructureOption.lstComponents
       : lstSalaryStructureOptions.flatMap((objStructure) => objStructure.lstComponents || []);
     lstEmployeeSalaryStructureComponents
-      .filter((objLine) => Boolean(objLine.blnIsFlexiBenefit) && !Boolean(objLine.blnIsFlexiBasket) && !isFlexiBucketCode(objLine.strComponentCode))
+      .filter((objLine) =>
+        Boolean(objLine.blnIsFlexiBenefit || objLine.blnProofRequired || objLine.decAnnualLimit || objLine.decAnnualLimitAmount)
+        && !Boolean(objLine.blnIsFlexiBasket)
+        && !isFlexiBucketLike(objLine.strComponentCode, objLine.strComponentName)
+        && (setMasterEligibleComponentIDs.size === 0 || setMasterEligibleComponentIDs.has(Number(objLine.intSalaryComponentID)))
+      )
       .forEach((objLine) => addOption({
         intSalaryComponentID: objLine.intSalaryComponentID,
         strComponentCode: objLine.strComponentCode,
@@ -581,12 +657,9 @@ export default function FlexiPayDeclarationPage() {
         strSource: "Assigned salary structure",
       }));
 
-    lstSalaryComponents
+    lstFallbackEligibleSalaryComponents
       .filter((objComponent) =>
-        objComponent.blnIsActive !== false &&
-        (objComponent.blnIsFlexiBenefit || objComponent.blnIsReimbursement) &&
-        !objComponent.blnIsFlexiBasket &&
-        normalizeText(objComponent.strComponentCode) !== "flexipay"
+        setMasterEligibleComponentIDs.size === 0 || setMasterEligibleComponentIDs.has(Number(objComponent.intID))
       )
       .forEach((objComponent) => addOption({
         intSalaryComponentID: objComponent.intID,
@@ -711,12 +784,30 @@ export default function FlexiPayDeclarationPage() {
   }
 
   async function refreshFromContext(objData: FlexiDeclarationContextRecord, strMessage: string) {
+    setBlnLoading(true);
+    setBlnAssignedStructureDetailResolved(false);
     const objEnrichedData = await enrichContextWithLoggedInEmployeeSalary(objData);
+    const intAssignedStructureID = Number(objEnrichedData.objAssignedStructure?.intSalaryStructureID || 0);
+    const objAssignedStructureDetail = intAssignedStructureID
+      ? await withTimeout(salaryStructureService.getSalaryStructureById(intAssignedStructureID), 10000).catch(() => null)
+      : null;
     setObjContext(objEnrichedData);
+    setObjAssignedSalaryStructureDetail(objAssignedStructureDetail);
+    setBlnAssignedStructureDetailResolved(true);
     setDicDraftInputs(buildInitialDraftInputs(objEnrichedData));
     setDicEligibilityAnswers(objEnrichedData.objEligibilityAnswers || {});
     setStrRemarks(objEnrichedData.objDeclaration?.strRemarks || "");
     setStrToast(strMessage);
+    setBlnLoading(false);
+  }
+
+  if (blnCompulsoryDataPending) {
+    return (
+      <BlockingLoader
+        blnOpen
+        strLabel="Loading flexi declaration details..."
+      />
+    );
   }
 
   async function handleSaveDraft() {
@@ -742,19 +833,6 @@ export default function FlexiPayDeclarationPage() {
       await refreshFromContext(objData, "Declaration submitted successfully.");
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to submit declaration.");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
-  async function handleCancel() {
-    setBlnSaving(true);
-    setStrError("");
-    try {
-      const objData = await flexiPayDeclarationService.cancel(strFinancialYearCode, strRemarks);
-      await refreshFromContext(objData, "Declaration cancelled successfully.");
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to cancel declaration.");
     } finally {
       setBlnSaving(false);
     }
@@ -793,15 +871,9 @@ export default function FlexiPayDeclarationPage() {
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             <Chip label={formatStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
-            {blnCanCancel ? (
-              <Button size="small" variant="outlined" color="error" startIcon={<DoNotDisturbOnRoundedIcon />} sx={{ backgroundColor: "rgba(255,255,255,0.92)" }} disabled={blnSaving} onClick={() => void handleCancel()}>
-                Cancel
-              </Button>
-            ) : (
-              <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)", "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }} onClick={() => objRouter.push("/salary/flexi-pay-declarations")}>
-                Back
-              </Button>
-            )}
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)", "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }} onClick={() => objRouter.push("/salary/flexi-pay-declarations")}>
+              Back
+            </Button>
             <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanAttemptSave} onClick={() => void handleSaveDraft()}>
               Save Draft
             </Button>

@@ -15,6 +15,8 @@ export type SalaryStructureOption = {
   intID: number;
   strLabel: string;
   strCode?: string;
+  intFlexiComponentEligibilityID?: number | null;
+  blnIsFlexiComponentEligible?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIncludedInCtc?: boolean;
@@ -43,6 +45,7 @@ export type SalaryStructureOption = {
 
 export type SalaryStructureFlexiMappingFormValue = {
   strRowID: string;
+  intFlexiComponentEligibilityID: number | null;
   intFlexiComponentID: number | "";
   strFlexiComponentCode: string;
   strFlexiComponentName: string;
@@ -137,6 +140,7 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     blnIsMandatory: boolean;
     blnIsActive: boolean;
     lstFlexiMappings?: Array<{
+      intFlexiComponentEligibilityID?: number | null;
       intFlexiComponentID: number;
       strFlexiComponentCode: string | null;
       strFlexiComponentName: string | null;

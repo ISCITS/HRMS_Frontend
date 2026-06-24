@@ -1,5 +1,6 @@
 import {
   masterApiService,
+  type FlexiComponentEligibilityApiRecord,
   type SalaryStructureApiRecord,
   type SalaryStructureComponentApiRecord,
   type SalaryStructureTextApiRecord
@@ -61,6 +62,7 @@ function mapTextToFormValue(dicText: SalaryStructureTextApiRecord): SalaryStruct
 }
 
 function mapFlexiMappingToFormValue(dicMapping: {
+  intFlexiComponentEligibilityID?: number | null;
   intFlexiComponentID: number;
   strFlexiComponentCode?: string | null;
   strFlexiComponentName?: string | null;
@@ -70,6 +72,7 @@ function mapFlexiMappingToFormValue(dicMapping: {
 }): SalaryStructureFlexiMappingFormValue {
   return {
     strRowID: createRowID(),
+    intFlexiComponentEligibilityID: dicMapping.intFlexiComponentEligibilityID ?? null,
     intFlexiComponentID: dicMapping.intFlexiComponentID,
     strFlexiComponentCode: dicMapping.strFlexiComponentCode ?? "",
     strFlexiComponentName: dicMapping.strFlexiComponentName ?? "",
@@ -150,6 +153,7 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       blnIsActive: dicLine.blnIsActive,
       lstFlexiMappings: (dicLine.lstFlexiMappings ?? []).map((dicMapping) => ({
         intFlexiComponentID: dicMapping.intFlexiComponentID,
+        intFlexiComponentEligibilityID: dicMapping.intFlexiComponentEligibilityID ?? null,
         strFlexiComponentCode: dicMapping.strFlexiComponentCode ?? null,
         strFlexiComponentName: dicMapping.strFlexiComponentName ?? null,
         fltDefaultAmount: dicMapping.fltDefaultAmount ?? null,
@@ -267,6 +271,7 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
 export function createEmptyFlexiMappingRow(): SalaryStructureFlexiMappingFormValue {
   return {
     strRowID: createRowID(),
+    intFlexiComponentEligibilityID: null,
     intFlexiComponentID: "",
     strFlexiComponentCode: "",
     strFlexiComponentName: "",
@@ -274,6 +279,86 @@ export function createEmptyFlexiMappingRow(): SalaryStructureFlexiMappingFormVal
     fltMaxAmount: "",
     blnIsActive: true
   };
+}
+
+function getFlexiEligibilityComponentID(dicRecord: FlexiComponentEligibilityApiRecord) {
+  return Number(dicRecord.intFlexiComponentID ?? dicRecord.intSalaryComponentID ?? 0);
+}
+
+function getFlexiEligibilityRecordID(dicRecord: FlexiComponentEligibilityApiRecord) {
+  return Number(dicRecord.intFlexiComponentEligibilityID ?? dicRecord.intID ?? 0);
+}
+
+function isFlexiEligibilityActive(dicRecord: FlexiComponentEligibilityApiRecord) {
+  return Boolean(dicRecord.blnIsEligible ?? dicRecord.blnIsActive ?? false);
+}
+
+function getFlexiEligibilityCode(dicRecord: FlexiComponentEligibilityApiRecord) {
+  return dicRecord.strFlexiComponentCode ?? dicRecord.strComponentCode ?? "";
+}
+
+function getFlexiEligibilityName(dicRecord: FlexiComponentEligibilityApiRecord) {
+  return dicRecord.strFlexiComponentName ?? dicRecord.strComponentName ?? "";
+}
+
+function mergeFlexiEligibilityIntoOptions(
+  dicOptions: SalaryStructureFormOptions,
+  lstEligibilityRecords: FlexiComponentEligibilityApiRecord[]
+): SalaryStructureFormOptions {
+  const dicEligibilityByComponentID = new Map(
+    lstEligibilityRecords
+      .map((dicRecord) => [getFlexiEligibilityComponentID(dicRecord), dicRecord] as const)
+      .filter(([intComponentID]) => intComponentID > 0)
+  );
+  const setExistingComponentIDs = new Set(dicOptions.lstSalaryComponents.map((dicComponent) => dicComponent.intID));
+  const lstEligibilityOnlyComponents = lstEligibilityRecords
+    .filter((dicRecord) => {
+      const intComponentID = getFlexiEligibilityComponentID(dicRecord);
+      return intComponentID > 0 && !setExistingComponentIDs.has(intComponentID);
+    })
+    .map((dicRecord) => ({
+      intID: getFlexiEligibilityComponentID(dicRecord),
+      strCode: getFlexiEligibilityCode(dicRecord),
+      strLabel: getFlexiEligibilityName(dicRecord) || `Flexi Component #${getFlexiEligibilityComponentID(dicRecord)}`,
+      intFlexiComponentEligibilityID: getFlexiEligibilityRecordID(dicRecord) || null,
+      blnIsFlexiComponentEligible: isFlexiEligibilityActive(dicRecord),
+      blnIsActive: true,
+    }));
+  return {
+    ...dicOptions,
+    lstSalaryComponents: [
+      ...dicOptions.lstSalaryComponents.map((dicComponent) => {
+        const dicEligibility = dicEligibilityByComponentID.get(dicComponent.intID);
+        if (!dicEligibility) {
+          return dicComponent;
+        }
+        return {
+          ...dicComponent,
+          intFlexiComponentEligibilityID: getFlexiEligibilityRecordID(dicEligibility) || null,
+          blnIsFlexiComponentEligible: isFlexiEligibilityActive(dicEligibility),
+        };
+      }),
+      ...lstEligibilityOnlyComponents,
+    ],
+  };
+}
+
+async function getFlexiComponentEligibilityWithTimeout(intTimeoutMs = 1500) {
+  let intTimeoutID: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      masterApiService.getFlexiComponentEligibility(),
+      new Promise<null>((resolve) => {
+        intTimeoutID = setTimeout(() => resolve(null), intTimeoutMs);
+      }),
+    ]);
+  } catch {
+    return null;
+  } finally {
+    if (intTimeoutID) {
+      clearTimeout(intTimeoutID);
+    }
+  }
 }
 
 export function createInitialSalaryStructureForm(): SalaryStructureFormValues {
@@ -341,8 +426,28 @@ export const salaryStructureService = {
   },
 
   async getFormOptions(): Promise<SalaryStructureFormOptions> {
-    const objResult = await masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1);
-    return objResult.Data;
+    const objOptionsResult = await masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1);
+    const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
+    return mergeFlexiEligibilityIntoOptions(objOptionsResult.Data, objEligibilityResult?.Data ?? []);
+  },
+
+  async saveFlexiComponentEligibility(dicValues: SalaryStructureFormValues): Promise<void> {
+    const lstEligibilityUpdates = dicValues.lstComponents.flatMap((dicLine) =>
+      dicLine.lstFlexiMappings
+        .filter((dicMapping) => dicMapping.intFlexiComponentID !== "")
+        .map((dicMapping) => ({
+          intID: dicMapping.intFlexiComponentEligibilityID,
+          intFlexiComponentEligibilityID: dicMapping.intFlexiComponentEligibilityID,
+          intFlexiComponentID: Number(dicMapping.intFlexiComponentID),
+          intSalaryComponentID: Number(dicMapping.intFlexiComponentID),
+          blnIsEligible: dicMapping.blnIsActive,
+          blnIsActive: dicMapping.blnIsActive,
+        }))
+    );
+    if (lstEligibilityUpdates.length === 0) {
+      return;
+    }
+    await masterApiService.saveFlexiComponentEligibility({ lstFlexiComponentEligibility: lstEligibilityUpdates });
   },
 
   async createSalaryStructure(dicValues: SalaryStructureFormValues): Promise<SalaryStructureDetailRecord> {

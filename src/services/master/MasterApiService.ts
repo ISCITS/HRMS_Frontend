@@ -552,6 +552,7 @@ export type SalaryStructureComponentApiRecord = {
   blnIsMandatory: boolean;
   blnIsActive: boolean;
   lstFlexiMappings?: Array<{
+    intFlexiComponentEligibilityID?: number | null;
     intFlexiComponentID: number;
     strFlexiComponentCode?: string | null;
     strFlexiComponentName?: string | null;
@@ -566,6 +567,19 @@ export type SalaryStructureTextApiRecord = {
   strLanguageName?: string;
   strStructureName: string;
   strStructureDescription: string | null;
+};
+
+export type FlexiComponentEligibilityApiRecord = {
+  intID?: number;
+  intFlexiComponentEligibilityID?: number;
+  intFlexiComponentID?: number;
+  intSalaryComponentID?: number;
+  strFlexiComponentCode?: string | null;
+  strFlexiComponentName?: string | null;
+  strComponentCode?: string | null;
+  strComponentName?: string | null;
+  blnIsEligible?: boolean;
+  blnIsActive?: boolean;
 };
 
 export type SalaryStructureApiRecord = {
@@ -2288,6 +2302,23 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.SalaryStructureFormOptions
+    });
+  },
+
+  getFlexiComponentEligibility() {
+    return requestApi<FlexiComponentEligibilityApiRecord[]>({
+      strPath: MasterApiResource.FlexiComponentEligibility,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.FlexiComponentEligibilityList
+    });
+  },
+
+  saveFlexiComponentEligibility(objBody: Record<string, unknown>) {
+    return requestApi<FlexiComponentEligibilityApiRecord[]>({
+      strPath: MasterApiResource.FlexiComponentEligibility,
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.FlexiComponentEligibilitySave
     });
   },
 
