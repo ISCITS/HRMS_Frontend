@@ -373,6 +373,8 @@ export type LoanAdvanceScheduleRecord = {
   decBenchmarkInterestAmount?: number;
   decTaxablePerquisiteAmount?: number;
   decTotalDueAmount: number;
+  decRecoveredPrincipalAmount?: number;
+  decRecoveredInterestAmount?: number;
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;

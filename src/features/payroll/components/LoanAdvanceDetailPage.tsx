@@ -27,6 +27,7 @@ const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_A
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstWorkflow = ["draft", "pending_approval", "approved", "disbursed", "active", "closed"];
 const lstReadonlyStatuses = ["approved", "disbursed", "active", "closed", "rejected", "cancelled", "pending_approval"];
+const lstDirectActionScheduleStatuses = ["pending", "partial"];
 
 const dicPayrollActionAliases: Record<string, string[]> = {
   view: ["loan_adv_view"],
@@ -58,8 +59,28 @@ type ActionDialogState = {
   strTitle: string;
   blnNeedsAmount?: boolean;
   blnNeedsDisbursement?: boolean;
+  blnNeedsManualRecovery?: boolean;
+  blnNeedsScheduleAdjustment?: boolean;
+  blnNeedsScheduleRow?: boolean;
   blnNeedsReason?: boolean;
 } | null;
+
+type ActionValues = {
+  decApprovedAmount: string;
+  dtDisbursementDate: string;
+  strPaymentMode: string;
+  strTransactionReferenceNo: string;
+  strRemarks: string;
+  strReason: string;
+  intScheduleID: string;
+  dtRecoveryDate: string;
+  decPrincipalAmount: string;
+  decInterestAmount: string;
+  dtPayrollMonth: string;
+  decPrincipalDueAmount: string;
+  decActualInterestAmount: string;
+  decTaxablePerquisiteAmount: string;
+};
 
 function formatCurrency(decValue?: number | null) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(decValue || 0));
@@ -113,6 +134,15 @@ function getEmployeeLabel(objEmployee: EmployeeListRecord) {
   return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
 }
 
+function getScheduleOutstanding(objSchedule?: LoanAdvanceScheduleRecord | null) {
+  const decPrincipalDue = Number(objSchedule?.decPrincipalDueAmount || 0);
+  const decInterestDue = Math.max(0, Number(objSchedule?.decTotalDueAmount || 0) - decPrincipalDue);
+  return {
+    decPrincipalOutstanding: Math.max(0, decPrincipalDue - Number(objSchedule?.decRecoveredPrincipalAmount || 0)),
+    decInterestOutstanding: Math.max(0, decInterestDue - Number(objSchedule?.decRecoveredInterestAmount || 0)),
+  };
+}
+
 export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
@@ -129,7 +159,22 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objActionDialog, setObjActionDialog] = useState<ActionDialogState>(null);
-  const [dicActionValues, setDicActionValues] = useState({ decApprovedAmount: "", dtDisbursementDate: "", strPaymentMode: "", strTransactionReferenceNo: "", strRemarks: "", strReason: "" });
+  const [dicActionValues, setDicActionValues] = useState<ActionValues>({
+    decApprovedAmount: "",
+    dtDisbursementDate: "",
+    strPaymentMode: "",
+    strTransactionReferenceNo: "",
+    strRemarks: "",
+    strReason: "",
+    intScheduleID: "",
+    dtRecoveryDate: "",
+    decPrincipalAmount: "",
+    decInterestAmount: "",
+    dtPayrollMonth: "",
+    decPrincipalDueAmount: "",
+    decActualInterestAmount: "",
+    decTaxablePerquisiteAmount: "",
+  });
 
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
@@ -153,6 +198,9 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const lstFilteredCategories = useMemo(() => lstCategories.filter((objCategory) => objCategory.strRequestType === dicValues.strRequestType), [lstCategories, dicValues.strRequestType]);
   const lstSchedulePreview = useMemo(() => buildSchedulePreview(dicValues, objPolicy), [dicValues, objPolicy]);
   const lstSchedule = objRecord?.lstSchedule?.length ? objRecord.lstSchedule : lstSchedulePreview;
+  const lstDirectActionSchedules = useMemo(() => lstSchedule.filter((objSchedule) => lstDirectActionScheduleStatuses.includes(objSchedule.strScheduleStatus)), [lstSchedule]);
+  const objSelectedActionSchedule = useMemo(() => lstDirectActionSchedules.find((objSchedule) => objSchedule.intID === Number(dicActionValues.intScheduleID)) || null, [lstDirectActionSchedules, dicActionValues.intScheduleID]);
+  const objSelectedScheduleOutstanding = useMemo(() => getScheduleOutstanding(objSelectedActionSchedule), [objSelectedActionSchedule]);
   const blnHasActiveWarning = useMemo(() => {
     if (!dicValues.intEmployeeID) return false;
     return lstExistingLoans.some((objLoan) =>
@@ -247,11 +295,55 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
 
   async function runAction() {
     if (!objRecord || !objActionDialog) return;
+    if (objActionDialog.blnNeedsScheduleRow && !dicActionValues.intScheduleID) {
+      setStrError(t("validation_installment_required", "Installment is required."));
+      return;
+    }
+    if (objActionDialog.blnNeedsReason && !dicActionValues.strReason.trim()) {
+      setStrError(t("validation_reason_required", "Reason is required."));
+      return;
+    }
+    if (objActionDialog.blnNeedsManualRecovery && !dicActionValues.dtRecoveryDate) {
+      setStrError(t("validation_recovery_date_required", "Recovery date is required."));
+      return;
+    }
+    if (objActionDialog.blnNeedsManualRecovery && Number(dicActionValues.decPrincipalAmount || 0) <= 0 && Number(dicActionValues.decInterestAmount || 0) <= 0) {
+      setStrError(t("validation_recovery_amount_required", "Principal or interest recovery amount is required."));
+      return;
+    }
+    if (objActionDialog.blnNeedsManualRecovery && Number(dicActionValues.decPrincipalAmount || 0) > objSelectedScheduleOutstanding.decPrincipalOutstanding) {
+      setStrError(t("validation_principal_recovery_limit", "Principal recovery cannot exceed the selected installment principal outstanding."));
+      return;
+    }
+    if (objActionDialog.blnNeedsManualRecovery && Number(dicActionValues.decInterestAmount || 0) > objSelectedScheduleOutstanding.decInterestOutstanding) {
+      setStrError(t("validation_interest_recovery_limit", "Interest recovery cannot exceed the selected installment interest outstanding."));
+      return;
+    }
+    if (objActionDialog.blnNeedsScheduleAdjustment && !dicActionValues.dtPayrollMonth && dicActionValues.decPrincipalDueAmount === "" && dicActionValues.decActualInterestAmount === "" && dicActionValues.decTaxablePerquisiteAmount === "") {
+      setStrError(t("validation_adjustment_required", "At least one schedule adjustment value is required."));
+      return;
+    }
     setBlnSaving(true);
     setStrError("");
     setStrSuccess("");
     try {
-      const objPayload = {
+      const objPayload = objActionDialog.blnNeedsManualRecovery ? {
+        intScheduleID: Number(dicActionValues.intScheduleID),
+        dtRecoveryDate: dicActionValues.dtRecoveryDate,
+        decPrincipalAmount: dicActionValues.decPrincipalAmount ? Number(dicActionValues.decPrincipalAmount) : 0,
+        decInterestAmount: dicActionValues.decInterestAmount ? Number(dicActionValues.decInterestAmount) : 0,
+        strPaymentMode: dicActionValues.strPaymentMode || undefined,
+        strTransactionReferenceNo: dicActionValues.strTransactionReferenceNo || undefined,
+        strRemarks: dicActionValues.strRemarks || undefined,
+      } : objActionDialog.blnNeedsScheduleRow ? {
+        intScheduleID: Number(dicActionValues.intScheduleID),
+        dtPayrollMonth: objActionDialog.blnNeedsScheduleAdjustment && dicActionValues.dtPayrollMonth ? `${dicActionValues.dtPayrollMonth}-01` : undefined,
+        decPrincipalDueAmount: objActionDialog.blnNeedsScheduleAdjustment && dicActionValues.decPrincipalDueAmount !== "" ? Number(dicActionValues.decPrincipalDueAmount) : undefined,
+        decActualInterestAmount: objActionDialog.blnNeedsScheduleAdjustment && dicActionValues.decActualInterestAmount !== "" ? Number(dicActionValues.decActualInterestAmount) : undefined,
+        decTaxablePerquisiteAmount: objActionDialog.blnNeedsScheduleAdjustment && dicActionValues.decTaxablePerquisiteAmount !== "" ? Number(dicActionValues.decTaxablePerquisiteAmount) : undefined,
+        strRemarks: dicActionValues.strRemarks || undefined,
+        strReason: dicActionValues.strReason || undefined,
+      } : {
         decApprovedAmount: dicActionValues.decApprovedAmount ? Number(dicActionValues.decApprovedAmount) : undefined,
         dtDisbursementDate: dicActionValues.dtDisbursementDate || undefined,
         strPaymentMode: dicActionValues.strPaymentMode || undefined,
@@ -274,6 +366,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   }
 
   function openAction(objNextDialog: ActionDialogState) {
+    const objDefaultSchedule = lstDirectActionSchedules[0] || null;
     setDicActionValues({
       decApprovedAmount: objNextDialog?.blnNeedsAmount ? String(objRecord?.decApprovedAmount || objRecord?.decRequestedAmount || dicValues.decRequestedAmount || "") : "",
       dtDisbursementDate: objNextDialog?.blnNeedsDisbursement ? new Date().toISOString().slice(0, 10) : "",
@@ -281,8 +374,28 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       strTransactionReferenceNo: "",
       strRemarks: "",
       strReason: "",
+      intScheduleID: objNextDialog?.blnNeedsScheduleRow && objDefaultSchedule ? String(objDefaultSchedule.intID) : "",
+      dtRecoveryDate: objNextDialog?.blnNeedsManualRecovery ? new Date().toISOString().slice(0, 10) : "",
+      decPrincipalAmount: "",
+      decInterestAmount: "",
+      dtPayrollMonth: objNextDialog?.blnNeedsScheduleAdjustment && objDefaultSchedule ? formatDate(objDefaultSchedule.dtPayrollMonth).slice(0, 7) : "",
+      decPrincipalDueAmount: objNextDialog?.blnNeedsScheduleAdjustment && objDefaultSchedule ? String(objDefaultSchedule.decPrincipalDueAmount || 0) : "",
+      decActualInterestAmount: objNextDialog?.blnNeedsScheduleAdjustment && objDefaultSchedule ? String(objDefaultSchedule.decActualInterestAmount || 0) : "",
+      decTaxablePerquisiteAmount: objNextDialog?.blnNeedsScheduleAdjustment && objDefaultSchedule ? String(objDefaultSchedule.decTaxablePerquisiteAmount || 0) : "",
     });
     setObjActionDialog(objNextDialog);
+  }
+
+  function updateActionSchedule(strScheduleID: string) {
+    const objSchedule = lstDirectActionSchedules.find((objRow) => objRow.intID === Number(strScheduleID)) || null;
+    setDicActionValues((dicPrevious) => ({
+      ...dicPrevious,
+      intScheduleID: strScheduleID,
+      dtPayrollMonth: objActionDialog?.blnNeedsScheduleAdjustment && objSchedule ? formatDate(objSchedule.dtPayrollMonth).slice(0, 7) : dicPrevious.dtPayrollMonth,
+      decPrincipalDueAmount: objActionDialog?.blnNeedsScheduleAdjustment && objSchedule ? String(objSchedule.decPrincipalDueAmount || 0) : dicPrevious.decPrincipalDueAmount,
+      decActualInterestAmount: objActionDialog?.blnNeedsScheduleAdjustment && objSchedule ? String(objSchedule.decActualInterestAmount || 0) : dicPrevious.decActualInterestAmount,
+      decTaxablePerquisiteAmount: objActionDialog?.blnNeedsScheduleAdjustment && objSchedule ? String(objSchedule.decTaxablePerquisiteAmount || 0) : dicPrevious.decTaxablePerquisiteAmount,
+    }));
   }
 
   function renderWorkflowActions() {
@@ -346,9 +459,9 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       return (
         <>
           {blnCanScheduleView ? <Button className={styles.secondaryButton} onClick={() => setIntTab(3)}>{t("button_view_schedule", "View Schedule")}</Button> : null}
-          {blnCanManualRecovery ? <Button className={styles.secondaryButton} disabled>{t("button_manual_recovery", "Manual Recovery")}</Button> : null}
-          {blnCanSkipInstallment ? <Button className={styles.secondaryButton} disabled>{t("button_skip_installment", "Skip Installment")}</Button> : null}
-          {blnCanAdjustSchedule ? <Button className={styles.secondaryButton} disabled>{t("button_adjust_installment", "Adjust Installment")}</Button> : null}
+          {blnCanManualRecovery ? <Button className={styles.secondaryButton} disabled={!lstDirectActionSchedules.length} onClick={() => openAction({ strAction: "manual-recovery", strTitle: t("button_manual_recovery", "Manual Recovery"), blnNeedsManualRecovery: true, blnNeedsScheduleRow: true })}>{t("button_manual_recovery", "Manual Recovery")}</Button> : null}
+          {blnCanSkipInstallment ? <Button className={styles.secondaryButton} disabled={!lstDirectActionSchedules.length} onClick={() => openAction({ strAction: "skip-installment", strTitle: t("button_skip_installment", "Skip Installment"), blnNeedsScheduleRow: true, blnNeedsReason: true })}>{t("button_skip_installment", "Skip Installment")}</Button> : null}
+          {blnCanAdjustSchedule ? <Button className={styles.secondaryButton} disabled={!lstDirectActionSchedules.length} onClick={() => openAction({ strAction: "adjust-schedule", strTitle: t("button_adjust_installment", "Adjust Installment"), blnNeedsScheduleRow: true, blnNeedsScheduleAdjustment: true, blnNeedsReason: true })}>{t("button_adjust_installment", "Adjust Installment")}</Button> : null}
           {strStatus === "disbursed" && blnCanDisburse ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "activate", strTitle: t("button_activate", "Activate Recovery") })}>{t("button_activate", "Activate Recovery")}</Button> : null}
           {strStatus === "active" && blnCanClose ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "close", strTitle: t("button_close", "Close"), blnNeedsReason: true })}>{t("button_close", "Close")}</Button> : null}
         </>
@@ -376,7 +489,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     return (
       <Box className={styles.tableWrap}>
         <table className={`${styles.table} ${styles.fnfDenseTable}`}>
-          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th></tr></thead>
+          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_recovered", "Recovered")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th></tr></thead>
           <tbody>
             {lstRows.map((objRow) => (
               <tr key={`${objRow.intID}-${objRow.intInstallmentNo}`}>
@@ -387,6 +500,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                 <td>{formatCurrency(objRow.decActualInterestAmount)}</td>
                 <td>{formatCurrency(objRow.decTaxablePerquisiteAmount)}</td>
                 <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
+                <td>{formatCurrency(objRow.decRecoveredTotalAmount)}</td>
                 <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
                 <td>{objRow.strScheduleStatus}</td>
               </tr>
@@ -507,6 +621,35 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       <Dialog open={Boolean(objActionDialog)} onClose={() => setObjActionDialog(null)} maxWidth="xs" fullWidth>
         <DialogTitle>{objActionDialog?.strTitle}</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 1.4, pt: "12px !important" }}>
+          {objActionDialog?.blnNeedsScheduleRow ? (
+            <TextField select size="small" label={t("field_installment", "Installment")} value={dicActionValues.intScheduleID} onChange={(e) => updateActionSchedule(e.target.value)}>
+              {lstDirectActionSchedules.map((objSchedule) => (
+                <MenuItem key={objSchedule.intID} value={String(objSchedule.intID)}>
+                  {t("schedule_no", "No.")} {objSchedule.intInstallmentNo} - {formatDate(objSchedule.dtPayrollMonth).slice(0, 7)} - {formatCurrency(objSchedule.decTotalDueAmount)}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
+          {objActionDialog?.blnNeedsManualRecovery ? (
+            <>
+              <Alert severity="info" sx={{ borderRadius: "8px" }}>
+                {t("manual_recovery_outstanding", "Outstanding")}: {t("schedule_principal", "Principal")} {formatCurrency(objSelectedScheduleOutstanding.decPrincipalOutstanding)} | {t("schedule_interest", "Interest")} {formatCurrency(objSelectedScheduleOutstanding.decInterestOutstanding)}
+              </Alert>
+              <TextField size="small" type="date" label={t("field_recovery_date", "Recovery Date")} InputLabelProps={{ shrink: true }} value={dicActionValues.dtRecoveryDate} onChange={(e) => setDicActionValues((d) => ({ ...d, dtRecoveryDate: e.target.value }))} />
+              <TextField size="small" label={t("field_principal_amount", "Principal Amount")} value={dicActionValues.decPrincipalAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decPrincipalAmount: e.target.value }))} />
+              <TextField size="small" label={t("field_interest_amount", "Interest Amount")} value={dicActionValues.decInterestAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decInterestAmount: e.target.value }))} />
+              <TextField size="small" label={t("field_payment_mode", "Payment Mode")} value={dicActionValues.strPaymentMode} onChange={(e) => setDicActionValues((d) => ({ ...d, strPaymentMode: e.target.value }))} />
+              <TextField size="small" label={t("field_transaction_reference", "Transaction Reference")} value={dicActionValues.strTransactionReferenceNo} onChange={(e) => setDicActionValues((d) => ({ ...d, strTransactionReferenceNo: e.target.value }))} />
+            </>
+          ) : null}
+          {objActionDialog?.blnNeedsScheduleAdjustment ? (
+            <>
+              <TextField size="small" type="month" label={t("schedule_month", "Payroll Month")} InputLabelProps={{ shrink: true }} value={dicActionValues.dtPayrollMonth} onChange={(e) => setDicActionValues((d) => ({ ...d, dtPayrollMonth: e.target.value }))} />
+              <TextField size="small" label={t("schedule_principal", "Principal")} value={dicActionValues.decPrincipalDueAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decPrincipalDueAmount: e.target.value }))} />
+              <TextField size="small" label={t("schedule_interest", "Interest")} value={dicActionValues.decActualInterestAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decActualInterestAmount: e.target.value }))} />
+              <TextField size="small" label={t("schedule_taxable", "Taxable Perquisite")} value={dicActionValues.decTaxablePerquisiteAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decTaxablePerquisiteAmount: e.target.value }))} />
+            </>
+          ) : null}
           {objActionDialog?.blnNeedsAmount ? <TextField size="small" label={t("field_approved_amount", "Approved Amount")} value={dicActionValues.decApprovedAmount} onChange={(e) => setDicActionValues((d) => ({ ...d, decApprovedAmount: e.target.value }))} /> : null}
           {objActionDialog?.blnNeedsDisbursement ? (
             <>
