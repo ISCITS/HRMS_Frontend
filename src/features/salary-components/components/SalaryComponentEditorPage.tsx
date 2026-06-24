@@ -285,6 +285,7 @@ export default function SalaryComponentEditorPage({
     && !blnIsFlexiBucketCategory
     && (isCalculationMethod(dicForm.strCalcMethod, "formula", "percentage")
       || Boolean(dicForm.strFormulaExpression.trim()));
+  const blnShowReimbursementDependencyMapping = blnIsReimbursementCategory && dicForm.blnEnableDependencyMapping;
   const blnShowRemunerationFlag = blnIsEarningCategory;
   const blnShowStatutoryFlags = blnIsEarningCategory;
   const blnShowOnlyActiveAndOverride = blnIsDeductionCategory;
@@ -384,6 +385,14 @@ export default function SalaryComponentEditorPage({
 
   function updateRootField<TKey extends keyof SalaryComponentFormValues>(strField: TKey, objValue: SalaryComponentFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateDependencyMappingEnabled(blnEnabled: boolean) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      blnEnableDependencyMapping: blnEnabled,
+      lstFlexiEligibilityIDs: blnEnabled ? dicPrevious.lstFlexiEligibilityIDs : [],
+    }));
   }
 
   function updateClaimLimitToggle(strLimitType: "monthly" | "yearly", blnChecked: boolean) {
@@ -617,6 +626,8 @@ export default function SalaryComponentEditorPage({
       }
       if (!blnReimbursementCategory) {
         dicNext.blnIsFlexiBenefit = blnFlexiBucketCategory;
+        dicNext.blnEnableDependencyMapping = false;
+        dicNext.lstFlexiEligibilityIDs = [];
         dicNext.strReimbursementType = "none";
         dicNext.strSettlementMethod = "none";
         dicNext.blnRequiresBills = false;
@@ -647,6 +658,8 @@ export default function SalaryComponentEditorPage({
         && dicNext.strComponentGroup === dicPrevious.strComponentGroup
         && dicNext.blnIncludeInPayslip === dicPrevious.blnIncludeInPayslip
         && dicNext.strPayslipSection === dicPrevious.strPayslipSection
+        && dicNext.blnEnableDependencyMapping === dicPrevious.blnEnableDependencyMapping
+        && dicNext.lstFlexiEligibilityIDs === dicPrevious.lstFlexiEligibilityIDs
       ) {
         return dicPrevious;
       }
@@ -1066,6 +1079,56 @@ export default function SalaryComponentEditorPage({
             <FormControlLabel sx={{ m: 0 }} control={<Switch size="small" checked={dicForm.blnRequiresBills} onChange={(objEvent) => updateRootField("blnRequiresBills", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.requires-bills.switch")} />} label={t("bill_document_required", "Bill / Document Required")} />
             {blnShowExpenseDateRequired ? <FormControlLabel sx={{ m: 0 }} control={<Switch size="small" checked={dicForm.blnExpenseDateRequired} onChange={(objEvent) => updateRootField("blnExpenseDateRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.expense-date-required.switch")} />} label={t("expense_date_required", "Expense Date Required")} /> : null}
             <FormControlLabel sx={{ m: 0 }} control={<Switch size="small" checked={dicForm.blnAllowPartialApproval} onChange={(objEvent) => updateRootField("blnAllowPartialApproval", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.allow-partial-approval.switch")} />} label={t("allow_partial_approval", "Allow Partial Approval")} />
+          </Box>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+              gap: 2,
+              mt: 2,
+            }}
+          >
+            <TextField
+              select
+              label={t("enable_dependency_mapping", "Enable Dependency Mapping")}
+              value={dicForm.blnEnableDependencyMapping ? "yes" : "no"}
+              onChange={(objEvent) => updateDependencyMappingEnabled(objEvent.target.value === "yes")}
+              disabled={blnFieldDisabled}
+              fullWidth
+              {...buildSelectTestIdProps("salary-components.editor.enable-dependency-mapping.select")}
+            >
+              <MenuItem value="no">{t("no", "No")}</MenuItem>
+              <MenuItem value="yes">{t("yes", "Yes")}</MenuItem>
+            </TextField>
+            {blnShowReimbursementDependencyMapping ? (
+              <Box>
+                <TextField
+                  select
+                  label={t("dependency_component", "Dependency Component")}
+                  value={dicForm.lstFlexiEligibilityIDs[0] ?? ""}
+                  onChange={(objEvent) => {
+                    const intSelectedID = Number(objEvent.target.value);
+                    updateRootField("lstFlexiEligibilityIDs", Number.isInteger(intSelectedID) && intSelectedID > 0 ? [intSelectedID] : []);
+                  }}
+                  data-testid="salary-components.editor.reimbursement-dependency-components.select"
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                >
+                  <MenuItem value="">{t("select", "Select")}</MenuItem>
+                  {(objFormOptions?.lstFlexiComponentEligibilityOptions ?? [])
+                    .map((dicOption) => (
+                      <MenuItem
+                        key={dicOption.intID}
+                        value={dicOption.intID}
+                        data-testid={`salary-components.editor.reimbursement-dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}
+                        data-option-key={dicOption.intID}
+                      >
+                        <ListItemText primary={dicOption.strLabel} />
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </Box>
+            ) : null}
           </Box>
         </Paper>
       ) : null}

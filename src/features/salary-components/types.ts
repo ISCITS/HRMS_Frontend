@@ -100,6 +100,8 @@ export type SalaryComponentFormValues = {
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;
   blnIsActive: boolean;
+  blnEnableDependencyMapping: boolean;
+  lstFlexiEligibilityIDs: number[];
   lstDependencyComponentIDs: number[];
   lstTexts: SalaryComponentTextFormValue[];
 };
@@ -114,6 +116,7 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   intAssignedEmployees: number;
   intFormulaReferences: number;
   lstDependencyComponentIDs: number[];
+  lstFlexiEligibilityIDs: number[];
   lstTexts: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -130,6 +133,7 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
 export type SalaryComponentFormOptions = {
   lstLanguages: SalaryComponentOption[];
   lstDependencyComponents: SalaryComponentOption[];
+  lstFlexiComponentEligibilityOptions: SalaryComponentOption[];
   lstResidualComponents: SalaryComponentOption[];
   lstComponentCategories: string[];
   lstComponentGroups: string[];

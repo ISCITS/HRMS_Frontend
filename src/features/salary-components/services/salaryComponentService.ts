@@ -41,6 +41,15 @@ function deriveIncludedInCtc(dicValues: SalaryComponentFormValues) {
   return Boolean(dicValues.blnIncludedInCtc);
 }
 
+function isDependencyBackedCalculation(dicValues: SalaryComponentFormValues) {
+  const strCategory = normalizeCategory(dicValues.strComponentCategory);
+  const strCalcMethod = dicValues.strCalcMethod.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return strCategory !== "reimbursement"
+    && strCategory !== "flexibucket"
+    && strCategory !== "flexibasket"
+    && (strCalcMethod === "formula" || strCalcMethod === "percentage" || Boolean(dicValues.strFormulaExpression.trim()));
+}
+
 function normalizeIntegerList(lstValues: Array<number | string>) {
   return Array.from(
     new Set(
@@ -115,6 +124,7 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     blnIsActive: Boolean(dicRecord.blnIsActive),
     intDependencyCount: lstDependencyComponentIDs.length,
     lstDependencyComponentIDs,
+    lstFlexiEligibilityIDs: normalizeIntegerList(dicRecord.lstFlexiEligibilityIDs ?? []),
     lstTexts: (dicRecord.lstTexts ?? []).map((dicText) => ({
       intLanguageID: dicText.intLanguageID,
       strLanguageName: dicText.strLanguageName,
@@ -178,6 +188,8 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnProofRequired: false,
     blnAllowManualOverride: true,
     blnIsActive: true,
+    blnEnableDependencyMapping: false,
+    lstFlexiEligibilityIDs: [],
     lstDependencyComponentIDs: [],
     lstTexts: [createEmptySalaryComponentTextRow()]
   };
@@ -226,6 +238,8 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnProofRequired: Boolean(dicRecord.blnProofRequired),
     blnAllowManualOverride: Boolean(dicRecord.blnAllowManualOverride),
     blnIsActive: Boolean(dicRecord.blnIsActive),
+    blnEnableDependencyMapping: dicRecord.lstFlexiEligibilityIDs.length > 0,
+    lstFlexiEligibilityIDs: dicRecord.lstFlexiEligibilityIDs,
     lstDependencyComponentIDs: dicRecord.lstDependencyComponentIDs,
     lstTexts: dicRecord.lstTexts.length > 0
       ? dicRecord.lstTexts.map((dicText) => ({
@@ -261,6 +275,7 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
         : decAnnualLimitAmount != null
           ? "yearly"
           : dicValues.strClaimLimitType;
+  const blnPersistDependencyMapping = dicValues.blnEnableDependencyMapping || isDependencyBackedCalculation(dicValues);
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -313,8 +328,11 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnIsActive: dicValues.blnIsActive,
     intLanguageID: Number(dicValues.lstTexts[0]?.intLanguageID || 1),
     lstDependencyComponentIDs: sanitizeDependencyIDs(
-      dicValues.lstDependencyComponentIDs,
+      blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : [],
       intSalaryComponentID
+    ),
+    lstFlexiEligibilityIDs: normalizeIntegerList(
+      dicValues.blnEnableDependencyMapping ? dicValues.lstFlexiEligibilityIDs : []
     ),
     lstTexts: dicValues.lstTexts
       .filter((dicText) => dicText.intLanguageID !== "" && dicText.strComponentName.trim())
@@ -389,6 +407,7 @@ export const salaryComponentService = {
     return {
       ...objResult.Data,
       lstResidualComponents: objResult.Data.lstResidualComponents ?? [],
+      lstFlexiComponentEligibilityOptions: objResult.Data.lstFlexiComponentEligibilityOptions ?? [],
       lstReimbursementTypes: objResult.Data.lstReimbursementTypes ?? [],
       lstSettlementMethods: objResult.Data.lstSettlementMethods ?? [],
       lstClaimLimitTypes: objResult.Data.lstClaimLimitTypes ?? [],

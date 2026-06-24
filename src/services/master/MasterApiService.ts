@@ -501,6 +501,7 @@ export type SalaryComponentApiRecord = {
   intAssignedEmployees?: number;
   intFormulaReferences?: number;
   lstDependencyComponentIDs: number[];
+  lstFlexiEligibilityIDs?: number[];
   lstTexts?: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -517,6 +518,7 @@ export type SalaryComponentApiRecord = {
 export type SalaryComponentFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstDependencyComponents: EmployeeLookupOptionApiRecord[];
+  lstFlexiComponentEligibilityOptions?: EmployeeLookupOptionApiRecord[];
   lstResidualComponents?: EmployeeLookupOptionApiRecord[];
   lstComponentCategories: string[];
   lstComponentGroups: string[];
