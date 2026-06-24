@@ -577,19 +577,7 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
 function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
   return collapseDuplicateMenuBranches(
     removeReportsFromPayrollBranches(
-      appendGeneratedReportsMenu(
-        appendGeneratedFNFMenu(
-          appendGeneratedEssLoansAdvancesMenu(
-            appendGeneratedLoansAdvancesMenu(
-              appendGeneratedReimbursementsMenu(
-                appendGeneratedPayslipMenu(
-                  promoteDashboardMenu(lstItems),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      promoteDashboardMenu(lstItems),
     ),
   );
 }

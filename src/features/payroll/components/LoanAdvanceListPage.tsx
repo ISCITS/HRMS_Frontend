@@ -20,6 +20,16 @@ const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_A
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstStatuses = ["All", "draft", "sent_back", "pending_approval", "approved", "disbursed", "active", "closed", "rejected", "cancelled"];
 
+const dicPayrollActionAliases: Record<string, string[]> = {
+  view: ["loan_adv_view"],
+  create: ["loan_adv_create"],
+};
+
+const dicEssActionAliases: Record<string, string[]> = {
+  view: ["view", "list", "ess_loan_adv_view"],
+  create: ["create", "add", "ess_loan_adv_create"],
+};
+
 function formatCurrency(decValue?: number | null) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(decValue || 0));
 }
@@ -51,8 +61,10 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     payroll_month: "",
   });
   const blnIsEssMode = strMode === "ess";
-  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || (blnIsEssMode && canDoAny("ess_loan_adv_view"));
-  const blnCanCreate = canDoAny("add") || canDoAny("create") || (blnIsEssMode && canDoAny("ess_loan_adv_create"));
+  const canLoanAction = (strAction: "view" | "create") =>
+    (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction]).some((strAlias) => canDoAny(strAlias));
+  const blnCanView = canViewAny() || canLoanAction("view");
+  const blnCanCreate = canLoanAction("create");
 
   async function loadRows(dicNextFilters = dicFilters) {
     if (!blnCanView) {

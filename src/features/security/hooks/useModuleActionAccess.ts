@@ -4,7 +4,22 @@ import { useMemo } from "react";
 
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
-const lstMutatingActionCodes = ["add", "edit", "delete", "approve", "submit", "export"];
+const lstMutatingActionCodes = [
+  "add",
+  "create",
+  "edit",
+  "delete",
+  "approve",
+  "reject",
+  "submit",
+  "cancel",
+  "disburse",
+  "manual_recovery",
+  "skip_installment",
+  "adjust_schedule",
+  "close",
+  "export",
+];
 
 function normalizeCode(strValue: string) {
   return strValue.trim().toUpperCase().replace(/[-\s]/g, "_");

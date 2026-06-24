@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { normalizeAccessScope } from "@/features/security/utils/accessScope";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityActionRight, SecurityMenuNode, UserGroupRightSaveItem } from "@/models/SecurityModels";
 
@@ -96,7 +97,7 @@ function flattenRights(lstMenuNodes: SecurityMenuNode[]): UserGroupRightSaveItem
       intMenuID: objNode.intMenuID,
       intActionID: objAction.intActionID,
       blnIsAllowed: objAction.blnIsAllowed,
-      strAccessScope: objAction.strAccessScope,
+      strAccessScope: normalizeAccessScope(objAction.strAccessScope),
       objPolicyJson: objAction.objPolicyJson,
     })),
     ...flattenRights(objNode.lstChildren),
@@ -165,10 +166,10 @@ function mutateNodeTree(objNode: SecurityMenuNode, blnIsAllowed: boolean): Secur
       ...objAction,
       blnIsAllowed,
       strAccessScope:
-        blnIsAllowed && objAction.strAccessScope === "none"
+        blnIsAllowed && normalizeAccessScope(objAction.strAccessScope) === "none"
           ? "self"
           : blnIsAllowed
-            ? objAction.strAccessScope
+            ? normalizeAccessScope(objAction.strAccessScope)
             : "none",
     })),
     lstChildren: objNode.lstChildren.map((objChild) => mutateNodeTree(objChild, blnIsAllowed)),
@@ -187,12 +188,12 @@ function mapNodeDeep(
   );
 }
 
-function isNodeFullyAllowed(objNode: SecurityMenuNode): boolean {
-  if (objNode.lstChildren.length > 0) {
-    return objNode.lstChildren.every((objChild) => isNodeFullyAllowed(objChild));
-  }
-
-  return objNode.blnIsAllowed;
+function isNodeAllowed(objNode: SecurityMenuNode): boolean {
+  return (
+    objNode.blnIsAllowed ||
+    objNode.lstActions.some((objAction) => objAction.blnIsAllowed) ||
+    objNode.lstChildren.some((objChild) => isNodeAllowed(objChild))
+  );
 }
 
 function updateActionState(
@@ -276,7 +277,7 @@ function renderNodeRows(
   intDepth = 0,
 ) {
   const blnExpanded = objExpandedMenuIDs.has(objNode.intMenuID);
-  const blnNodeChecked = isNodeFullyAllowed(objNode);
+  const blnNodeChecked = isNodeAllowed(objNode);
   const strNormalizedMenuName = normalizeRightsMenuName(objNode);
 
   return (
@@ -388,10 +389,10 @@ export default function UserGroupRightsEditor({
         ...objAction,
         blnIsAllowed,
         strAccessScope:
-          blnIsAllowed && objAction.strAccessScope === "none"
+          blnIsAllowed && normalizeAccessScope(objAction.strAccessScope) === "none"
             ? "self"
             : blnIsAllowed
-              ? objAction.strAccessScope
+              ? normalizeAccessScope(objAction.strAccessScope)
               : "none",
       })),
     );

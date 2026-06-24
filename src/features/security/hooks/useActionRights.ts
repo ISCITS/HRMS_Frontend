@@ -95,7 +95,22 @@ export function useActionRights() {
   function isReadOnlyModule(strModuleCode: string) {
     const lstAllowedActions = dicNormalizedActions[normalizeModuleCode(strModuleCode)] ?? [];
     return lstAllowedActions.includes("view") && !lstAllowedActions.some((strActionCode) =>
-      ["add", "edit", "delete", "approve", "submit", "export"].includes(strActionCode),
+      [
+        "add",
+        "create",
+        "edit",
+        "delete",
+        "approve",
+        "reject",
+        "submit",
+        "cancel",
+        "disburse",
+        "manual_recovery",
+        "skip_installment",
+        "adjust_schedule",
+        "close",
+        "export",
+      ].includes(strActionCode),
     );
   }
 

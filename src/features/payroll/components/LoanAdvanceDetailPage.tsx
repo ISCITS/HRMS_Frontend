@@ -28,6 +28,31 @@ const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOAN
 const lstWorkflow = ["draft", "pending_approval", "approved", "disbursed", "active", "closed"];
 const lstReadonlyStatuses = ["approved", "disbursed", "active", "closed", "rejected", "cancelled", "pending_approval"];
 
+const dicPayrollActionAliases: Record<string, string[]> = {
+  view: ["loan_adv_view"],
+  create: ["loan_adv_create"],
+  edit: ["loan_adv_edit"],
+  submit: ["loan_adv_submit"],
+  approve: ["loan_adv_approve"],
+  reject: ["loan_adv_reject"],
+  disburse: ["loan_adv_disburse"],
+  scheduleView: ["loan_adv_schedule_view"],
+  manualRecovery: ["loan_adv_manual_recovery"],
+  skipInstallment: ["loan_adv_skip_installment"],
+  adjustSchedule: ["loan_adv_adjust_schedule"],
+  close: ["loan_adv_close"],
+  cancel: ["loan_adv_cancel"],
+  export: ["loan_adv_export"],
+};
+
+const dicEssActionAliases: Record<string, string[]> = {
+  view: ["view", "list", "ess_loan_adv_view"],
+  create: ["create", "add", "ess_loan_adv_create"],
+  edit: ["edit", "ess_loan_adv_edit"],
+  submit: ["submit", "ess_loan_adv_submit"],
+  cancel: ["cancel", "delete", "ess_loan_adv_cancel"],
+};
+
 type ActionDialogState = {
   strAction: string;
   strTitle: string;
@@ -107,12 +132,21 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [dicActionValues, setDicActionValues] = useState({ decApprovedAmount: "", dtDisbursementDate: "", strPaymentMode: "", strTransactionReferenceNo: "", strRemarks: "", strReason: "" });
 
   const blnIsEssMode = strMode === "ess";
-  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || (blnIsEssMode && canDoAny("ess_loan_adv_view"));
-  const blnCanEdit = canDoAny("edit") || (blnIsEssMode && canDoAny("ess_loan_adv_edit"));
-  const blnCanAdd = canDoAny("add") || canDoAny("create") || (blnIsEssMode && canDoAny("ess_loan_adv_create"));
-  const blnCanApprove = canDoAny("approve");
-  const blnCanSubmit = canDoAny("submit") || (blnIsEssMode && canDoAny("ess_loan_adv_submit"));
-  const blnCanCancel = canDoAny("delete") || canDoAny("cancel") || (blnIsEssMode && canDoAny("ess_loan_adv_cancel"));
+  const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
+    (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction])?.some((strAlias) => canDoAny(strAlias)) ?? false;
+  const blnCanView = canViewAny() || canLoanAction("view");
+  const blnCanEdit = canLoanAction("edit");
+  const blnCanAdd = canLoanAction("create");
+  const blnCanSubmit = canLoanAction("submit");
+  const blnCanApprove = canLoanAction("approve");
+  const blnCanReject = canLoanAction("reject");
+  const blnCanDisburse = canLoanAction("disburse");
+  const blnCanScheduleView = canLoanAction("scheduleView");
+  const blnCanManualRecovery = canLoanAction("manualRecovery");
+  const blnCanSkipInstallment = canLoanAction("skipInstallment");
+  const blnCanAdjustSchedule = canLoanAction("adjustSchedule");
+  const blnCanClose = canLoanAction("close");
+  const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
   const blnReadonly = Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) || (!intLoanAdvanceID && !blnCanAdd) || (Boolean(intLoanAdvanceID) && !blnCanEdit);
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
@@ -277,7 +311,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       return (
         <>
           {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={() => void saveRecord(false)}>{t("button_save_draft", "Save Draft")}</Button> : null}
-          {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={() => void saveRecord(true)}>{t("button_submit", "Submit for Approval")}</Button> : null}
+          {blnCanAdd && blnCanSubmit ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={() => void saveRecord(true)}>{t("button_submit", "Submit for Approval")}</Button> : null}
           <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => objRouter.push("/payroll/loans-advances")}>{t("cancel", "Cancel")}</Button>
         </>
       );
@@ -295,7 +329,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       return (
         <>
           {blnCanApprove ? <Button className={styles.primaryButton} startIcon={<CheckCircleRoundedIcon />} onClick={() => openAction({ strAction: "approve", strTitle: t("button_approve", "Approve"), blnNeedsAmount: true })}>{t("button_approve", "Approve")}</Button> : null}
-          {blnCanApprove ? <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => openAction({ strAction: "reject", strTitle: t("button_reject", "Reject"), blnNeedsReason: true })}>{t("button_reject", "Reject")}</Button> : null}
+          {blnCanReject ? <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => openAction({ strAction: "reject", strTitle: t("button_reject", "Reject"), blnNeedsReason: true })}>{t("button_reject", "Reject")}</Button> : null}
           {blnCanApprove ? <Button className={styles.secondaryButton} startIcon={<UndoRoundedIcon />} onClick={() => openAction({ strAction: "send-back", strTitle: t("button_send_back", "Send Back"), blnNeedsReason: true })}>{t("button_send_back", "Send Back")}</Button> : null}
         </>
       );
@@ -303,7 +337,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     if (strStatus === "approved") {
       return (
         <>
-          {blnCanApprove ? <Button className={styles.primaryButton} startIcon={<PaymentsRoundedIcon />} onClick={() => openAction({ strAction: "disburse", strTitle: t("button_disburse", "Mark as Disbursed"), blnNeedsDisbursement: true })}>{t("button_disburse", "Mark as Disbursed")}</Button> : null}
+          {blnCanDisburse ? <Button className={styles.primaryButton} startIcon={<PaymentsRoundedIcon />} onClick={() => openAction({ strAction: "disburse", strTitle: t("button_disburse", "Mark as Disbursed"), blnNeedsDisbursement: true })}>{t("button_disburse", "Mark as Disbursed")}</Button> : null}
           {blnCanCancel ? <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={() => openAction({ strAction: "cancel", strTitle: t("button_cancel_request", "Cancel Request"), blnNeedsReason: true })}>{t("cancel", "Cancel")}</Button> : null}
         </>
       );
@@ -311,12 +345,12 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     if (["disbursed", "active"].includes(strStatus)) {
       return (
         <>
-          <Button className={styles.secondaryButton} onClick={() => setIntTab(3)}>{t("button_view_schedule", "View Schedule")}</Button>
-          <Button className={styles.secondaryButton} disabled>{t("button_manual_recovery", "Manual Recovery")}</Button>
-          <Button className={styles.secondaryButton} disabled>{t("button_skip_installment", "Skip Installment")}</Button>
-          <Button className={styles.secondaryButton} disabled>{t("button_adjust_installment", "Adjust Installment")}</Button>
-          {strStatus === "disbursed" && blnCanApprove ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "activate", strTitle: t("button_activate", "Activate Recovery") })}>{t("button_activate", "Activate Recovery")}</Button> : null}
-          {strStatus === "active" && blnCanApprove ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "close", strTitle: t("button_close", "Close"), blnNeedsReason: true })}>{t("button_close", "Close")}</Button> : null}
+          {blnCanScheduleView ? <Button className={styles.secondaryButton} onClick={() => setIntTab(3)}>{t("button_view_schedule", "View Schedule")}</Button> : null}
+          {blnCanManualRecovery ? <Button className={styles.secondaryButton} disabled>{t("button_manual_recovery", "Manual Recovery")}</Button> : null}
+          {blnCanSkipInstallment ? <Button className={styles.secondaryButton} disabled>{t("button_skip_installment", "Skip Installment")}</Button> : null}
+          {blnCanAdjustSchedule ? <Button className={styles.secondaryButton} disabled>{t("button_adjust_installment", "Adjust Installment")}</Button> : null}
+          {strStatus === "disbursed" && blnCanDisburse ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "activate", strTitle: t("button_activate", "Activate Recovery") })}>{t("button_activate", "Activate Recovery")}</Button> : null}
+          {strStatus === "active" && blnCanClose ? <Button className={styles.primaryButton} startIcon={<DoneAllRoundedIcon />} onClick={() => openAction({ strAction: "close", strTitle: t("button_close", "Close"), blnNeedsReason: true })}>{t("button_close", "Close")}</Button> : null}
         </>
       );
     }
@@ -399,7 +433,12 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
           {intTab === 0 ? (
             <Box sx={{ display: "grid", gap: 2, mt: 2 }}>
               <Stepper activeStep={3} className={styles.fnfStepperShell}>
-                {[t("step_employee", "Employee Details"), t("step_details", "Loan / Advance Details"), t("step_recovery", "Recovery & Notional Tax"), t("step_review", "Review & Submit")].map((strStep) => <Step key={strStep}><StepLabel>{strStep}</StepLabel></Step>)}
+                {[
+                  ["employee", t("step_employee", "Employee Details")],
+                  ["details", t("step_details", "Loan / Advance Details")],
+                  ["recovery", t("step_recovery", "Recovery & Notional Tax")],
+                  ["review", t("step_review", "Review & Submit")],
+                ].map(([strStepKey, strStepLabel]) => <Step key={strStepKey}><StepLabel>{strStepLabel}</StepLabel></Step>)}
               </Stepper>
               <Box className={styles.fnfEditDetailsGrid}>
                 {!blnIsEssMode ? <TextField select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} disabled={blnReadonly} onChange={(e) => {
