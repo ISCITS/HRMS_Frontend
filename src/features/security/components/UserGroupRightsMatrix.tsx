@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from "react";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import type { SecurityActionRight, SecurityMenuNode, UserGroupRightSaveItem } from "@/models/SecurityModels";
 import { securityApiService } from "@/features/security/services/securityApiService";
+import { normalizeAccessScope } from "@/features/security/utils/accessScope";
 
 const lstScopes = ["none", "self", "team", "custom", "all"];
 
@@ -52,7 +53,7 @@ function flattenRights(lstNodes: SecurityMenuNode[]): UserGroupRightSaveItem[] {
         intMenuID: objNode.intMenuID,
         intActionID: objAction.intActionID,
         blnIsAllowed: objAction.blnIsAllowed,
-        strAccessScope: objAction.strAccessScope,
+        strAccessScope: normalizeAccessScope(objAction.strAccessScope),
         objPolicyJson: objAction.objPolicyJson,
       });
     }
@@ -82,12 +83,12 @@ function mapNodeDeep(
   });
 }
 
-function isNodeFullyAllowed(objNode: SecurityMenuNode): boolean {
-  if (objNode.lstChildren.length > 0) {
-    return objNode.lstChildren.every((objChild) => isNodeFullyAllowed(objChild));
-  }
-
-  return objNode.blnIsAllowed;
+function isNodeAllowed(objNode: SecurityMenuNode): boolean {
+  return (
+    objNode.blnIsAllowed ||
+    objNode.lstActions.some((objAction) => objAction.blnIsAllowed) ||
+    objNode.lstChildren.some((objChild) => isNodeAllowed(objChild))
+  );
 }
 
 function mutateNodeTree(objNode: SecurityMenuNode, blnIsAllowed: boolean): SecurityMenuNode {
@@ -97,7 +98,7 @@ function mutateNodeTree(objNode: SecurityMenuNode, blnIsAllowed: boolean): Secur
     lstActions: objNode.lstActions.map((objAction) => ({
       ...objAction,
       blnIsAllowed,
-      strAccessScope: blnIsAllowed ? (objAction.strAccessScope === "none" ? "self" : objAction.strAccessScope) : "none",
+      strAccessScope: blnIsAllowed ? (normalizeAccessScope(objAction.strAccessScope) === "none" ? "self" : normalizeAccessScope(objAction.strAccessScope)) : "none",
     })),
     lstChildren: objNode.lstChildren.map((objChild) => mutateNodeTree(objChild, blnIsAllowed)),
   };
@@ -196,7 +197,7 @@ function renderActionRow(
       <TextField
         select
         size="small"
-        value={objAction.strAccessScope}
+        value={normalizeAccessScope(objAction.strAccessScope)}
         disabled={blnReadOnly}
         onChange={(objEvent) => fnChangeScope(objNode.intMenuID, objAction.intActionID, objEvent.target.value)}
       >
@@ -221,7 +222,7 @@ function renderNodeRows(
   intDepth = 0,
 ) {
   const blnExpanded = objExpandedMenuIDs.has(objNode.intMenuID);
-  const blnNodeChecked = isNodeFullyAllowed(objNode);
+  const blnNodeChecked = isNodeAllowed(objNode);
 
   return (
     <Box key={objNode.intMenuID} sx={{ borderTop: intDepth === 0 ? "none" : "1px solid #edf2f7" }}>
@@ -315,10 +316,10 @@ export default function UserGroupRightsMatrix({
   async function loadRights() {
     setBlnLoading(true);
     try {
-      const objResult = await securityApiService.getUserGroupRights(intUserGroupID);
-      setLstNodes(objResult.Data);
-      setLstInitialNodes(objResult.Data);
-      setObjExpandedMenuIDs(new Set(collectMenuIDs(objResult.Data)));
+      const lstResult = await securityApiService.getUserGroupRights(intUserGroupID);
+      setLstNodes(lstResult);
+      setLstInitialNodes(lstResult);
+      setObjExpandedMenuIDs(new Set(collectMenuIDs(lstResult)));
     } catch (objError) {
       setObjToast({
         open: true,
@@ -343,7 +344,7 @@ export default function UserGroupRightsMatrix({
       updateActionState(lstPrevious, intMenuID, intActionID, (objAction) => ({
         ...objAction,
         blnIsAllowed,
-        strAccessScope: blnIsAllowed ? (objAction.strAccessScope === "none" ? "self" : objAction.strAccessScope) : "none",
+        strAccessScope: blnIsAllowed ? (normalizeAccessScope(objAction.strAccessScope) === "none" ? "self" : normalizeAccessScope(objAction.strAccessScope)) : "none",
       })),
     );
   }
@@ -352,8 +353,8 @@ export default function UserGroupRightsMatrix({
     setLstNodes((lstPrevious) =>
       updateActionState(lstPrevious, intMenuID, intActionID, (objAction) => ({
         ...objAction,
-        strAccessScope: strScope,
-        blnIsAllowed: strScope !== "none",
+        strAccessScope: normalizeAccessScope(strScope),
+        blnIsAllowed: normalizeAccessScope(strScope) !== "none",
       })),
     );
   }

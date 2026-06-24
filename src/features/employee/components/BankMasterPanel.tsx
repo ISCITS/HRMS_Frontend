@@ -729,10 +729,10 @@ export default function BankMasterPanel() {
 
       <Box className={styles.controlsCard}>
         {strRightsError ? (
-          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          <Typography data-testid="bank-master.list.banner.rights-error" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography data-testid="bank-master.list.banner.read-only" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Bank.")}
           </Typography>
         ) : null}
@@ -798,14 +798,14 @@ export default function BankMasterPanel() {
         ) : null}
         </Box>
         {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
+          <Box className={styles.emptyState} data-testid="bank-master.list.loading">
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicBankLabels.loadingRecords}</Typography>
           </Box>
         ) : !blnCanView ? (
-          <Box className={styles.emptyState}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
-            <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
+          <Box className={styles.emptyState} data-testid="bank-master.list.banner.no-access">
+            <Typography data-testid="bank-master.list.banner.no-access.title" sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
+            <Typography data-testid="bank-master.list.banner.no-access.message" sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
           </Box>
         ) : (
         // The table wrapper is the only scrolling region so the master header stays stable on screen.
@@ -820,18 +820,22 @@ export default function BankMasterPanel() {
                 <th>{dicBankLabels.tableStatus}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-testid="bank-master.list.table.body">
               {lstFilteredBanks.length === 0 ? (
-                <tr><td className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td></tr>
+                <tr data-testid="bank-master.list.table.empty-row">
+                  <td data-testid="bank-master.list.table.empty" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
+                </tr>
               ) : lstVisibleBanks.map((dicBank) => {
                 const blnSelected = lstSelectedIds.includes(dicBank.id);
                 return (
-                  <tr key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
+                  <tr key={dicBank.id} data-testid="bank-master.list.table.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox data-testid="bank-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} inputProps={{ "data-testid": "bank-master.list.row.select.checkbox", "data-row-key": dicBank.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
                     <td><CommonRowActions testIdPrefix="bank-master.list.row" rowKey={dicBank.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
-                    <td>{dicBank.name}</td>
-                    <td>{dicBank.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
+                    <td data-testid="bank-master.list.table.cell.name" data-row-key={dicBank.id}>{dicBank.name}</td>
+                    <td data-testid="bank-master.list.table.cell.code" data-row-key={dicBank.id}>{dicBank.code}</td>
+                    <td data-testid="bank-master.list.table.cell.status" data-row-key={dicBank.id}>
+                      <span data-testid="bank-master.list.table.status-pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
+                    </td>
                   </tr>
                 );
               })}
@@ -880,6 +884,7 @@ export default function BankMasterPanel() {
                   syncEnglishBankName(strValue);
                 }}
                 error={Boolean(dicErrors.name)}
+                FormHelperTextProps={{ "data-testid": "bank-master.dialog.name.error" }}
                 helperText={dicErrors.name}
                 fullWidth
               />
@@ -896,6 +901,7 @@ export default function BankMasterPanel() {
                   syncBankCode(strValue);
                 }}
                 error={Boolean(dicErrors.code)}
+                FormHelperTextProps={{ "data-testid": "bank-master.dialog.code.error" }}
                 helperText={dicErrors.code}
                 fullWidth
               />
@@ -903,8 +909,8 @@ export default function BankMasterPanel() {
 
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
+                <Typography data-testid="bank-master.dialog.multilingual.title" sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography data-testid="bank-master.dialog.multilingual.help" sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated bank names for supported languages.")}
                 </Typography>
               </Box>
@@ -926,7 +932,7 @@ export default function BankMasterPanel() {
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                    <CircularProgress data-testid="bank-master.dialog.translate.loading" size={18} sx={{ color: "#ffffff" }} />
                   ) : (
                     t("translate", "AI Translate")
                   )}
@@ -938,6 +944,8 @@ export default function BankMasterPanel() {
               {dicForm.lstTexts.map((dicText, intIndex) => (
                 <Box
                   key={dicText.strRowID}
+                  data-testid="bank-master.dialog.language-row"
+                  data-row-key={dicText.strRowID}
                   sx={{
                     display: "grid",
                     gap: 1.2,
@@ -995,7 +1003,7 @@ export default function BankMasterPanel() {
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? (
                             <InputAdornment position="end">
-                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                              <CircularProgress data-testid="bank-master.dialog.translated-name.loading" size={18} sx={{ color: "#2563eb" }} />
                             </InputAdornment>
                           )
                         : undefined,
@@ -1031,13 +1039,16 @@ export default function BankMasterPanel() {
         blnConfirmDisabled={blnSubmitting}
         onClose={closeConfirmDialog}
         onConfirm={executeConfirmedAction}
+        rootTestId="bank-master.confirm-dialog"
+        cancelButtonTestId="bank-master.confirm-dialog.cancel.button"
+        confirmButtonTestId="bank-master.confirm-dialog.confirm.button"
       />
 
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
-          {objToast.strMessage}
+      <Snackbar data-testid="bank-master.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert data-testid="bank-master.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+          <span data-testid="bank-master.toast.message">{objToast.strMessage}</span>
         </Alert>
       </Snackbar>
     </Box>

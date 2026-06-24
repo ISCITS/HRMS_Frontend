@@ -105,7 +105,7 @@ export const loanAdvanceService = {
       const objResult = await requestApi<LoanAdvanceRecord[]>({
         strPath: `/payroll/loans-advances${strQuery}`,
         strMethod: "GET",
-        strMenuAction: "PAYROLL_LOANS_ADVANCES_VIEW",
+        strMenuAction: "LOAN_ADV_VIEW",
       });
       return objResult.Data;
     } catch (objError) {
@@ -121,7 +121,7 @@ export const loanAdvanceService = {
       const objResult = await requestApi<LoanAdvanceCategoryRecord[]>({
         strPath: `/payroll/loans-advances/categories${strQuery}`,
         strMethod: "GET",
-        strMenuAction: "PAYROLL_LOANS_ADVANCES_VIEW",
+        strMenuAction: "LOAN_ADV_VIEW",
       });
       return objResult.Data;
     } catch (objError) {
@@ -135,7 +135,7 @@ export const loanAdvanceService = {
     const objResult = await requestApi<LoanAdvanceCategoryRecord>({
       strPath: `/payroll/loans-advances/categories/${intCategoryID}/policy`,
       strMethod: "GET",
-      strMenuAction: "PAYROLL_LOANS_ADVANCES_VIEW",
+      strMenuAction: "LOAN_ADV_VIEW",
     });
     return objResult.Data;
   },
@@ -143,7 +143,7 @@ export const loanAdvanceService = {
     const objResult = await requestApi<LoanAdvanceRecord>({
       strPath: `/payroll/loans-advances/${intID}`,
       strMethod: "GET",
-      strMenuAction: "PAYROLL_LOANS_ADVANCES_VIEW",
+      strMenuAction: "LOAN_ADV_VIEW",
     });
     return objResult.Data;
   },
@@ -152,7 +152,7 @@ export const loanAdvanceService = {
       strPath: "/payroll/loans-advances",
       strMethod: "POST",
       objBody: toPayload(dicValues, objCalculationSnapshot),
-      strMenuAction: "PAYROLL_LOANS_ADVANCES_ADD",
+      strMenuAction: "LOAN_ADV_CREATE",
     });
     return objResult.Data;
   },
@@ -161,27 +161,30 @@ export const loanAdvanceService = {
       strPath: `/payroll/loans-advances/${intID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues, objCalculationSnapshot),
-      strMenuAction: "PAYROLL_LOANS_ADVANCES_EDIT",
+      strMenuAction: "LOAN_ADV_EDIT",
     });
     return objResult.Data;
   },
   async action(intID: number, strAction: string, objBody?: unknown): Promise<LoanAdvanceRecord> {
     const dicActionCodeByAction: Record<string, string> = {
-      "save-draft": "PAYROLL_LOANS_ADVANCES_EDIT",
-      submit: "PAYROLL_LOANS_ADVANCES_SUBMIT",
-      approve: "PAYROLL_LOANS_ADVANCES_APPROVE",
-      reject: "PAYROLL_LOANS_ADVANCES_APPROVE",
-      "send-back": "PAYROLL_LOANS_ADVANCES_APPROVE",
-      cancel: "PAYROLL_LOANS_ADVANCES_DELETE",
-      disburse: "PAYROLL_LOANS_ADVANCES_APPROVE",
-      activate: "PAYROLL_LOANS_ADVANCES_APPROVE",
-      close: "PAYROLL_LOANS_ADVANCES_APPROVE",
+      "save-draft": "LOAN_ADV_EDIT",
+      submit: "LOAN_ADV_SUBMIT",
+      approve: "LOAN_ADV_APPROVE",
+      reject: "LOAN_ADV_REJECT",
+      "send-back": "LOAN_ADV_APPROVE",
+      cancel: "LOAN_ADV_CANCEL",
+      disburse: "LOAN_ADV_DISBURSE",
+      activate: "LOAN_ADV_DISBURSE",
+      close: "LOAN_ADV_CLOSE",
+      "manual-recovery": "LOAN_ADV_MANUAL_RECOVERY",
+      "skip-installment": "LOAN_ADV_SKIP_INSTALLMENT",
+      "adjust-schedule": "LOAN_ADV_ADJUST_SCHEDULE",
     };
     const objResult = await requestApi<LoanAdvanceRecord>({
       strPath: `/payroll/loans-advances/${intID}/${strAction}`,
       strMethod: "POST",
       objBody,
-      strMenuAction: dicActionCodeByAction[strAction] || "PAYROLL_LOANS_ADVANCES_VIEW",
+      strMenuAction: dicActionCodeByAction[strAction] || "LOAN_ADV_VIEW",
     });
     return objResult.Data;
   },

@@ -14,8 +14,10 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Stack,
   Switch,
+  TextField,
   Typography,
 } from "@mui/material";
 import { type InputHTMLAttributes, useEffect, useState } from "react";
@@ -33,6 +35,7 @@ import type {
   PayslipRunListRecord,
   PayrollRunDetailRecord,
   PayrollProcessSummary,
+  PayrollRunStatus,
   PayrollValidationSummary,
 } from "@/features/payroll/types";
 import {
@@ -46,6 +49,7 @@ type PayrollRunDetailPageProps = {
 };
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -90,7 +94,7 @@ function getStatusPillSx(strStatus: string) {
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
-    Approved: "Validated",
+    Approved: "Approved",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -296,8 +300,15 @@ export default function PayrollRunDetailPage({
     try {
       const dicSummary = await payrollRunService.validatePayrollRun(intRunID);
       setObjValidationSummary(dicSummary);
-      setStrSuccess(t("validation_complete", "Payroll validation completed."));
       await loadRun(false);
+      setStrSuccess(
+        dicSummary.strStatus === "Passed"
+          ? t(
+              "validation_complete_approved",
+              "Payroll validation completed. Run status updated to Approved."
+            )
+          : t("validation_complete", "Payroll validation completed.")
+      );
     } catch (objError) {
       setStrError(
         objError instanceof Error ? objError.message : "Unable to validate payroll run."
@@ -740,6 +751,30 @@ export default function PayrollRunDetailPage({
             </Typography>
             <Stack spacing={1.5}>
               <DetailValue strLabel={t("status", "Status")} strValue={getPayrollRunStatusLabel(objRun.strRunStatus)} />
+              <TextField
+                select
+                label={t("status", "Status")}
+                value={objRun.strRunStatus}
+                onChange={(objEvent) =>
+                  setObjRun((dicPrevious) =>
+                    dicPrevious
+                      ? {
+                          ...dicPrevious,
+                          strRunStatus: objEvent.target.value as PayrollRunStatus,
+                        }
+                      : dicPrevious
+                  )
+                }
+                disabled={!blnCanEdit || blnSaving || objRun.strRunStatus === "Closed"}
+                data-testid="payroll.run-detail.status.select"
+                fullWidth
+              >
+                {lstEditableRunStatuses.map((strStatus) => (
+                  <MenuItem key={strStatus} value={strStatus}>
+                    {getPayrollRunStatusLabel(strStatus)}
+                  </MenuItem>
+                ))}
+              </TextField>
               <DetailValue
                 strLabel={t("run_scope", "Process For")}
                 strValue={

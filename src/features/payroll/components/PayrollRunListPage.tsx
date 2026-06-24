@@ -59,7 +59,7 @@ function getStatusPillSx(strStatus: string) {
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
-    Approved: "Validated",
+    Approved: "Approved",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -280,7 +280,7 @@ export default function PayrollRunListPage() {
           >
             <MenuItem value="All">{t("status_all", "All")}</MenuItem>
             <MenuItem value="Open">{t("status_open", "Draft")}</MenuItem>
-            <MenuItem value="Approved">{t("status_approved", "Validated")}</MenuItem>
+            <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
             <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
             <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
           </TextField>
