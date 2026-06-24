@@ -22,10 +22,15 @@ import {
   createInitialPayrollRunForm,
   payrollRunService,
 } from "@/features/payroll/services/payrollRunService";
-import type { PayrollRunFormOptions, PayrollRunFormValues } from "@/features/payroll/types";
+import type {
+  PayrollRunFormOptions,
+  PayrollRunFormValues,
+  PayrollRunStatus,
+} from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatPayrollMonthLabel(strDate: string) {
   if (!strDate) {
@@ -310,6 +315,23 @@ export default function PayrollRunEditorPage() {
               data-testid="payroll.run-editor.run-name.input"
               fullWidth
             />
+            <TextField
+              select
+              label={t("status", "Status")}
+              value={dicForm.strRunStatus}
+              onChange={(objEvent) =>
+                updateField("strRunStatus", objEvent.target.value as PayrollRunStatus)
+              }
+              disabled={blnFieldDisabled}
+              data-testid="payroll.run-editor.status.select"
+              fullWidth
+            >
+              {lstEditableRunStatuses.map((strStatus) => (
+                <MenuItem key={strStatus} value={strStatus}>
+                  {strStatus}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               select
               label={t("run_scope", "Process For")}
