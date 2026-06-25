@@ -502,6 +502,39 @@ export type SalaryComponentApiRecord = {
   intFormulaReferences?: number;
   lstDependencyComponentIDs: number[];
   lstFlexiEligibilityIDs?: number[];
+  lstFlexiEligibilityRules?: Array<{
+    intID?: number;
+    intEligibilityQuestionID: number;
+    strOperator: string;
+    strExpectedValue?: string | null;
+    fltMinValue?: number | null;
+    fltMaxValue?: number | null;
+    strMultiplierMode: string;
+    fltMultiplierCap?: number | null;
+    strIneligibleBehavior: string;
+    strFailureMessage?: string | null;
+    blnIsRequired: boolean;
+    blnIsActive: boolean;
+    intDisplayOrder: number;
+    objQuestion?: {
+      intID: number;
+      strQuestionCode: string;
+      strAnswerType: string;
+      strDefaultLabel: string;
+      strDefaultHelpText?: string | null;
+      strValueUnit?: string | null;
+      objOptionJSON?: unknown;
+      lstTexts?: Array<{
+        intLanguageID: number;
+        strQuestionLabel: string;
+        strHelpText?: string | null;
+      }>;
+    } | null;
+    lstTexts?: Array<{
+      intLanguageID: number;
+      strFailureMessage: string;
+    }>;
+  }>;
   lstTexts?: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -519,6 +552,26 @@ export type SalaryComponentFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstDependencyComponents: EmployeeLookupOptionApiRecord[];
   lstFlexiComponentEligibilityOptions?: EmployeeLookupOptionApiRecord[];
+  lstFlexiEligibilityQuestions?: Array<{
+    intID: number;
+    strQuestionCode: string;
+    strAnswerType: string;
+    strSourceType: string;
+    blnIsEmployeeEditable: boolean;
+    strDefaultLabel: string;
+    strDefaultHelpText?: string | null;
+    strValueUnit?: string | null;
+    decMinValue?: number | null;
+    decMaxValue?: number | null;
+    objOptionJSON?: unknown;
+    intDisplayOrder: number;
+    blnIsActive: boolean;
+    lstTexts?: Array<{
+      intLanguageID: number;
+      strQuestionLabel: string;
+      strHelpText?: string | null;
+    }>;
+  }>;
   lstResidualComponents?: EmployeeLookupOptionApiRecord[];
   lstComponentCategories: string[];
   lstComponentGroups: string[];

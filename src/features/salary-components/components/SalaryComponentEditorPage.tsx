@@ -31,6 +31,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import {
+  createEmptySalaryComponentFlexiEligibilityRuleRow,
   createEmptySalaryComponentTextRow,
   createInitialSalaryComponentForm,
   salaryComponentService,
@@ -39,6 +40,7 @@ import {
 import { authHelpers } from "@/lib/auth";
 import type {
   SalaryComponentDetailRecord,
+  SalaryComponentFlexiEligibilityQuestion,
   SalaryComponentFormOptions,
   SalaryComponentFormValues,
   SalaryComponentTextFormValue
@@ -159,6 +161,23 @@ function getPayslipSectionLabel(strValue: string) {
   }
 }
 
+function resolveEligibilityQuestionLabel(dicQuestion: SalaryComponentFlexiEligibilityQuestion | undefined, intLanguageID: number) {
+  if (!dicQuestion) {
+    return "";
+  }
+  return dicQuestion.lstTexts.find((dicText) => dicText.intLanguageID === intLanguageID)?.strQuestionLabel
+    ?? dicQuestion.strDefaultLabel;
+}
+
+function resolveEligibilityQuestionHelpText(dicQuestion: SalaryComponentFlexiEligibilityQuestion | undefined, intLanguageID: number) {
+  if (!dicQuestion) {
+    return "";
+  }
+  return dicQuestion.lstTexts.find((dicText) => dicText.intLanguageID === intLanguageID)?.strHelpText
+    ?? dicQuestion.strDefaultHelpText
+    ?? "";
+}
+
 function deriveCtcTreatment(dicValues: SalaryComponentFormValues) {
   if (isCategory(dicValues.strComponentCategory, "deduction") || isCategory(dicValues.strComponentCategory, "information")) {
     return false;
@@ -264,16 +283,10 @@ export default function SalaryComponentEditorPage({
   const dicDependencyOptionByID = useMemo(() => {
     return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
-  const lstFlexiComponentEligibilityOptions = useMemo(() => {
-    return [...(objFormOptions?.lstFlexiComponentEligibilityOptions ?? [])].sort((dicFirstOption, dicSecondOption) => {
-      const intFirstNoneRank = normalizeSelectToken(dicFirstOption.strLabel) === "none" || normalizeSelectToken(dicFirstOption.strCode ?? "") === "none" ? 0 : 1;
-      const intSecondNoneRank = normalizeSelectToken(dicSecondOption.strLabel) === "none" || normalizeSelectToken(dicSecondOption.strCode ?? "") === "none" ? 0 : 1;
-      return intFirstNoneRank - intSecondNoneRank;
-    });
-  }, [objFormOptions]);
-  const dicNoneFlexiEligibilityOption = lstFlexiComponentEligibilityOptions.find(
-    (dicOption) => normalizeSelectToken(dicOption.strLabel) === "none" || normalizeSelectToken(dicOption.strCode ?? "") === "none"
-  );
+  const lstFlexiEligibilityQuestions = objFormOptions?.lstFlexiEligibilityQuestions ?? [];
+  const dicFlexiEligibilityQuestionByID = useMemo(() => {
+    return new Map(lstFlexiEligibilityQuestions.map((dicQuestion) => [dicQuestion.intID, dicQuestion]));
+  }, [lstFlexiEligibilityQuestions]);
   const lstCategoryOptions = objFormOptions?.lstComponentCategories ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroups ?? [];
   const lstPayslipSections = ["Earnings", "Deductions", "Reimbursements", "Information", "Employer Contributions"];
@@ -394,6 +407,39 @@ export default function SalaryComponentEditorPage({
 
   function updateRootField<TKey extends keyof SalaryComponentFormValues>(strField: TKey, objValue: SalaryComponentFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function updateFlexiEligibilityRule(
+    strRowID: string,
+    strField: keyof SalaryComponentFormValues["lstFlexiEligibilityRules"][number],
+    objValue: string | number | boolean,
+  ) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstFlexiEligibilityRules: dicPrevious.lstFlexiEligibilityRules.map((dicRule) => (
+        dicRule.strRowID === strRowID ? { ...dicRule, [strField]: objValue } : dicRule
+      )),
+    }));
+  }
+
+  function handleAddFlexiEligibilityRule() {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstFlexiEligibilityRules: [
+        ...dicPrevious.lstFlexiEligibilityRules,
+        {
+          ...createEmptySalaryComponentFlexiEligibilityRuleRow(),
+          intDisplayOrder: (dicPrevious.lstFlexiEligibilityRules.length + 1) * 10,
+        },
+      ],
+    }));
+  }
+
+  function handleRemoveFlexiEligibilityRule(strRowID: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstFlexiEligibilityRules: dicPrevious.lstFlexiEligibilityRules.filter((dicRule) => dicRule.strRowID !== strRowID),
+    }));
   }
 
   function updateClaimLimitToggle(strLimitType: "monthly" | "yearly", blnChecked: boolean) {
@@ -627,8 +673,7 @@ export default function SalaryComponentEditorPage({
       }
       if (!blnReimbursementCategory) {
         dicNext.blnIsFlexiBenefit = blnFlexiBucketCategory;
-        dicNext.blnEnableDependencyMapping = false;
-        dicNext.lstFlexiEligibilityIDs = [];
+        dicNext.lstFlexiEligibilityRules = [];
         dicNext.strReimbursementType = "none";
         dicNext.strSettlementMethod = "none";
         dicNext.blnRequiresBills = false;
@@ -659,8 +704,6 @@ export default function SalaryComponentEditorPage({
         && dicNext.strComponentGroup === dicPrevious.strComponentGroup
         && dicNext.blnIncludeInPayslip === dicPrevious.blnIncludeInPayslip
         && dicNext.strPayslipSection === dicPrevious.strPayslipSection
-        && dicNext.blnEnableDependencyMapping === dicPrevious.blnEnableDependencyMapping
-        && dicNext.lstFlexiEligibilityIDs === dicPrevious.lstFlexiEligibilityIDs
       ) {
         return dicPrevious;
       }
@@ -703,6 +746,46 @@ export default function SalaryComponentEditorPage({
     if (blnApplyYearlyLimit && (!dicForm.strAnnualLimitAmount.trim() || Number(dicForm.strAnnualLimitAmount) <= 0)) {
       setStrError(t("yearly_limit_required", "Policy Yearly Limit Amount is required and must be greater than 0."));
       return;
+    }
+    if (blnIsFlexiReimbursement) {
+      const setActiveQuestionIDs = new Set<number>();
+      for (const dicRule of dicForm.lstFlexiEligibilityRules) {
+        const objQuestion = dicFlexiEligibilityQuestionByID.get(Number(dicRule.intEligibilityQuestionID));
+        if (!objQuestion) {
+          setStrError(t("eligibility_question_required", "Eligibility Question is required for each rule row."));
+          return;
+        }
+        if (!dicRule.strOperator.trim()) {
+          setStrError(t("eligibility_operator_required", "Condition is required for each rule row."));
+          return;
+        }
+        if (dicRule.blnIsActive) {
+          if (setActiveQuestionIDs.has(objQuestion.intID)) {
+            setStrError(t("eligibility_duplicate_question", "Cannot add duplicate active rule for the same eligibility question."));
+            return;
+          }
+          setActiveQuestionIDs.add(objQuestion.intID);
+        }
+        if (objQuestion.strAnswerType === "boolean" && !dicRule.strExpectedValue.trim()) {
+          setStrError(t("eligibility_boolean_expected_required", "Boolean questions require an expected answer."));
+          return;
+        }
+        if (objQuestion.strAnswerType === "number") {
+          if (dicRule.strOperator === "between") {
+            if (!dicRule.strMinValue.trim() || !dicRule.strMaxValue.trim()) {
+              setStrError(t("eligibility_between_required", "Between condition requires both minimum and maximum values."));
+              return;
+            }
+          } else if (["greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal"].includes(dicRule.strOperator) && !dicRule.strMinValue.trim()) {
+            setStrError(t("eligibility_number_threshold_required", "Number condition requires a threshold value."));
+            return;
+          }
+        }
+        if (dicRule.strMultiplierMode !== "none" && (!dicRule.strMultiplierCap.trim() || Number(dicRule.strMultiplierCap) <= 0)) {
+          setStrError(t("eligibility_multiplier_cap_required", "Maximum Count is required and must be greater than 0 when multiplier is enabled."));
+          return;
+        }
+      }
     }
     setBlnSaving(true);
     setStrError("");
@@ -1008,41 +1091,6 @@ export default function SalaryComponentEditorPage({
             }))} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.is-flexi-benefit.switch")} />} label={t("is_flexi_reimbursement", blnIsReimbursementCategory ? "Is Flexi Reimbursement" : "Is Flexi Benefit")} />
             <TextField
               select
-              label={t("dependency_component", "Applicable For")}
-              value={dicForm.lstFlexiEligibilityIDs[0] ?? dicNoneFlexiEligibilityOption?.intID ?? ""}
-              onChange={(objEvent) => {
-                const intSelectedID = Number(objEvent.target.value);
-                const dicSelectedOption = lstFlexiComponentEligibilityOptions.find((dicOption) => dicOption.intID === intSelectedID);
-                const blnSelectedNone = Boolean(
-                  dicSelectedOption
-                    && (normalizeSelectToken(dicSelectedOption.strLabel) === "none"
-                      || normalizeSelectToken(dicSelectedOption.strCode ?? "") === "none")
-                );
-                const lstFlexiEligibilityIDs = !blnSelectedNone && Number.isInteger(intSelectedID) && intSelectedID > 0 ? [intSelectedID] : [];
-                setDicForm((dicPrevious) => ({
-                  ...dicPrevious,
-                  blnEnableDependencyMapping: lstFlexiEligibilityIDs.length > 0,
-                  lstFlexiEligibilityIDs,
-                }));
-              }}
-              data-testid="salary-components.editor.reimbursement-dependency-components.select"
-              disabled={blnFieldDisabled}
-              fullWidth
-            >
-              {lstFlexiComponentEligibilityOptions
-                .map((dicOption) => (
-                  <MenuItem
-                    key={dicOption.intID}
-                    value={dicOption.intID}
-                    data-testid={`salary-components.editor.reimbursement-dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}
-                    data-option-key={dicOption.intID}
-                  >
-                    {dicOption.strLabel}
-                  </MenuItem>
-                ))}
-            </TextField>
-            <TextField
-              select
               label={t("reimbursement_type", "Reimbursement Type")}
               value={dicForm.strReimbursementType}
               onChange={(objEvent) => updateRootField("strReimbursementType", objEvent.target.value as SalaryComponentFormValues["strReimbursementType"])}
@@ -1119,9 +1167,103 @@ export default function SalaryComponentEditorPage({
         </Paper>
       ) : null}
 
+      {blnIsFlexiReimbursement ? (
+        <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>4. {t("flexi_eligibility_rules", "Flexi Eligibility Rules")}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
+                {t("flexi_eligibility_rules_help", "Define employee eligibility conditions for this Flexi reimbursement. Components without eligibility rules are available by default if allowed in salary structure.")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.75 }}>
+                {t("flexi_eligibility_rules_note", "Eligibility is evaluated during ESS Flexi Declaration. Ineligible components will be hidden or disabled based on this rule.")}
+              </Typography>
+            </Box>
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddFlexiEligibilityRule} disabled={blnFieldDisabled}>
+              {t("add_rule", "Add Rule")}
+            </Button>
+          </Stack>
+          {dicForm.lstFlexiEligibilityRules.length === 0 ? (
+            <Alert severity="info">{t("flexi_eligibility_rules_empty", "No eligibility rules configured. This component will be available by default when allowed in salary structure.")}</Alert>
+          ) : (
+            <Stack spacing={1.5}>
+              {dicForm.lstFlexiEligibilityRules.map((dicRule, intIndex) => {
+                const objQuestion = dicFlexiEligibilityQuestionByID.get(Number(dicRule.intEligibilityQuestionID));
+                const lstSelectOptions = Array.isArray(objQuestion?.objOptionJSON) ? objQuestion.objOptionJSON : [];
+                const blnBooleanQuestion = objQuestion?.strAnswerType === "boolean";
+                const blnNumberQuestion = objQuestion?.strAnswerType === "number";
+                const blnSelectQuestion = objQuestion?.strAnswerType === "select";
+                return (
+                  <Box key={dicRule.strRowID} sx={{ border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
+                    <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                      <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("rule_title", "Rule")} {intIndex + 1}</Typography>
+                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveFlexiEligibilityRule(dicRule.strRowID)} disabled={blnFieldDisabled}>
+                        {t("remove_rule", "Remove Rule")}
+                      </Button>
+                    </Stack>
+                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mt: 1.25 }}>
+                      <TextField select label={t("eligibility_question", "Eligibility Question")} value={dicRule.intEligibilityQuestionID} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "intEligibilityQuestionID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth>
+                        <MenuItem value="">{t("select", "Select")}</MenuItem>
+                        {lstFlexiEligibilityQuestions.map((dicQuestion) => (
+                          <MenuItem key={dicQuestion.intID} value={dicQuestion.intID}>{resolveEligibilityQuestionLabel(dicQuestion, intDefaultLanguageID)}</MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField select label={t("condition", "Condition")} value={dicRule.strOperator} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strOperator", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                        {["equals", "not_equals", "greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal", "between"].map((strOperator) => (
+                          <MenuItem key={strOperator} value={strOperator}>{strOperator}</MenuItem>
+                        ))}
+                      </TextField>
+                      {blnBooleanQuestion ? (
+                        <TextField select label={t("expected_answer", "Expected Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                          <MenuItem value="">{t("select", "Select")}</MenuItem>
+                          <MenuItem value="true">{t("yes", "Yes")}</MenuItem>
+                          <MenuItem value="false">{t("no", "No")}</MenuItem>
+                        </TextField>
+                      ) : null}
+                      {blnSelectQuestion ? (
+                        <TextField select={lstSelectOptions.length > 0} label={t("expected_answer", "Expected Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                          {lstSelectOptions.length > 0 ? <MenuItem value="">{t("select", "Select")}</MenuItem> : null}
+                          {lstSelectOptions.map((objOption) => {
+                            const strOptionLabel = typeof objOption === "string" ? objOption : String((objOption as { label?: string; value?: string }).label ?? (objOption as { value?: string }).value ?? "");
+                            const strOptionValue = typeof objOption === "string" ? objOption : String((objOption as { value?: string; label?: string }).value ?? (objOption as { label?: string }).label ?? "");
+                            return <MenuItem key={strOptionValue} value={strOptionValue}>{strOptionLabel}</MenuItem>;
+                          })}
+                        </TextField>
+                      ) : null}
+                      {blnNumberQuestion ? (
+                        <>
+                          <TextField label={dicRule.strOperator === "between" ? t("minimum_value", "Min Value") : t("expected_number", "Expected Number")} value={dicRule.strMinValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMinValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+                          {dicRule.strOperator === "between" ? <TextField label={t("maximum_value", "Max Value")} value={dicRule.strMaxValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMaxValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
+                        </>
+                      ) : null}
+                      <TextField select label={t("multiplier", "Multiplier")} value={dicRule.strMultiplierMode} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMultiplierMode", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                        {["none", "by_answer_value", "by_dependent_child_count"].map((strMode) => (
+                          <MenuItem key={strMode} value={strMode}>{strMode}</MenuItem>
+                        ))}
+                      </TextField>
+                      {dicRule.strMultiplierMode !== "none" ? <TextField label={t("maximum_count", "Maximum Count")} value={dicRule.strMultiplierCap} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMultiplierCap", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
+                      <TextField select label={t("when_not_eligible", "When not eligible")} value={dicRule.strIneligibleBehavior} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strIneligibleBehavior", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                        <MenuItem value="show_disabled">{t("show_disabled", "Show disabled")}</MenuItem>
+                        <MenuItem value="hide">{t("hide", "Hide")}</MenuItem>
+                      </TextField>
+                      <TextField label={t("failure_message", "Failure Message")} value={dicRule.strFailureMessage} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strFailureMessage", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+                    </Box>
+                    <Box sx={{ display: "flex", gap: 2, mt: 1.25, flexWrap: "wrap" }}>
+                      <FormControlLabel control={<Switch size="small" checked={dicRule.blnIsRequired} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "blnIsRequired", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("required", "Required")} />
+                      <FormControlLabel control={<Switch size="small" checked={dicRule.blnIsActive} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "blnIsActive", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("active", "Active")} />
+                    </Box>
+                    {objQuestion ? <Typography sx={{ color: "#64748b", fontSize: "0.84rem", mt: 1 }}>{resolveEligibilityQuestionHelpText(objQuestion, intDefaultLanguageID)}</Typography> : null}
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </Paper>
+      ) : null}
+
       {blnShowFlagsSection ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "4." : "3."} {t("statutory_and_payroll_flags", "Statutory & Payroll Flags")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? (blnIsFlexiReimbursement ? "5." : "4.") : "3."} {t("statutory_and_payroll_flags", "Statutory & Payroll Flags")}</Typography>
         <Box sx={{ border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", overflow: "hidden", background: "#fff" }}>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: `repeat(${(blnShowPayrollProcessingGroup ? 1 : 0) + (blnShowContributionTypeGroup ? 1 : 0) + (blnShowStatutoryFlags ? 1 : 0)}, minmax(0, 1fr))` }, borderBottom: "1px solid rgba(203,213,225,0.8)" }}>
             {blnShowStatutoryFlags ? (

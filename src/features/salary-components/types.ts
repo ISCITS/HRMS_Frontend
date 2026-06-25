@@ -50,6 +50,44 @@ export type SalaryComponentOption = {
   strCode?: string;
 };
 
+export type SalaryComponentFlexiEligibilityQuestion = {
+  intID: number;
+  strQuestionCode: string;
+  strAnswerType: string;
+  strSourceType: string;
+  blnIsEmployeeEditable: boolean;
+  strDefaultLabel: string;
+  strDefaultHelpText: string | null;
+  strValueUnit: string | null;
+  decMinValue: number | null;
+  decMaxValue: number | null;
+  objOptionJSON?: unknown;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
+  lstTexts: Array<{
+    intLanguageID: number;
+    strQuestionLabel: string;
+    strHelpText: string | null;
+  }>;
+};
+
+export type SalaryComponentFlexiEligibilityRuleFormValue = {
+  strRowID: string;
+  intID?: number;
+  intEligibilityQuestionID: number | "";
+  strOperator: string;
+  strExpectedValue: string;
+  strMinValue: string;
+  strMaxValue: string;
+  strMultiplierMode: string;
+  strMultiplierCap: string;
+  strIneligibleBehavior: string;
+  strFailureMessage: string;
+  blnIsRequired: boolean;
+  blnIsActive: boolean;
+  intDisplayOrder: number;
+};
+
 export type SalaryComponentTextFormValue = {
   strRowID: string;
   intLanguageID: number | "";
@@ -100,9 +138,8 @@ export type SalaryComponentFormValues = {
   blnProofRequired: boolean;
   blnAllowManualOverride: boolean;
   blnIsActive: boolean;
-  blnEnableDependencyMapping: boolean;
-  lstFlexiEligibilityIDs: number[];
   lstDependencyComponentIDs: number[];
+  lstFlexiEligibilityRules: SalaryComponentFlexiEligibilityRuleFormValue[];
   lstTexts: SalaryComponentTextFormValue[];
 };
 
@@ -116,7 +153,22 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   intAssignedEmployees: number;
   intFormulaReferences: number;
   lstDependencyComponentIDs: number[];
-  lstFlexiEligibilityIDs: number[];
+  lstFlexiEligibilityRules: Array<{
+    intID?: number;
+    intEligibilityQuestionID: number;
+    strOperator: string;
+    strExpectedValue: string | null;
+    fltMinValue: number | null;
+    fltMaxValue: number | null;
+    strMultiplierMode: string;
+    fltMultiplierCap: number | null;
+    strIneligibleBehavior: string;
+    strFailureMessage: string | null;
+    blnIsRequired: boolean;
+    blnIsActive: boolean;
+    intDisplayOrder: number;
+    objQuestion?: SalaryComponentFlexiEligibilityQuestion | null;
+  }>;
   lstTexts: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -133,7 +185,7 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
 export type SalaryComponentFormOptions = {
   lstLanguages: SalaryComponentOption[];
   lstDependencyComponents: SalaryComponentOption[];
-  lstFlexiComponentEligibilityOptions: SalaryComponentOption[];
+  lstFlexiEligibilityQuestions: SalaryComponentFlexiEligibilityQuestion[];
   lstResidualComponents: SalaryComponentOption[];
   lstComponentCategories: string[];
   lstComponentGroups: string[];
