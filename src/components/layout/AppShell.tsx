@@ -265,7 +265,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strPathname = usePathname();
   const objSearchParams = useSearchParams();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
-  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
@@ -606,11 +605,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   function handleMenuToggle() {
-    if (typeof window !== "undefined" && window.innerWidth >= 1200) {
-      setBlnDesktopSidebarOpen((blnPrevious) => !blnPrevious);
-      return;
-    }
-
     setBlnDrawerOpen(true);
   }
 
@@ -704,7 +698,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           lstMenuItems={objMenu.lstMenuItems}
           onNavigate={() => {
             setBlnDrawerOpen(false);
-            setBlnDesktopSidebarOpen(false);
           }}
         />
       </Paper>
@@ -755,23 +748,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
         strLabel={tCommon("switching_language", "Switching language...")}
         intZIndex={1590}
       />
-      <Box
-        sx={{
-          width: blnDesktopSidebarOpen ? intDrawerWidth + 28 : 0,
-          flexShrink: 0,
-          height: "100vh",
-          minHeight: 0,
-          display: { xs: "none", lg: "block" },
-          p: blnDesktopSidebarOpen ? { xs: 1, md: 1.5 } : 0,
-          pr: blnDesktopSidebarOpen ? 0 : 0,
-          overflow: "hidden",
-          transition: "width 220ms ease, opacity 220ms ease, padding 220ms ease",
-          opacity: blnDesktopSidebarOpen ? 1 : 0,
-          pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
-        }}
-      >
-        {objSidebarContent}
-      </Box>
       <Drawer
         variant="temporary"
         open={blnDrawerOpen}
@@ -779,7 +755,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ModalProps={{ keepMounted: true }}
         data-testid="app-shell.mobile-drawer"
         sx={{
-          display: { xs: "block", lg: "none" },
+          display: "block",
           "& .MuiDrawer-paper": {
             width: intDrawerWidth,
             height: "100vh",

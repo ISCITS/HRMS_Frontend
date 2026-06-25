@@ -165,8 +165,18 @@ function isFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSala
     dicOption.blnIsActive !== false
     && dicOption.blnIsReimbursement
     && dicOption.blnIsFlexiBenefit
+    && dicOption.blnIncludedInCtc !== false
     && normalizeSelectToken(String(dicOption.strReimbursementType ?? "")) === "ctcbased"
     && normalizeSelectToken(String(dicOption.strReimbursementSettlementMode ?? "")) === "payroll"
+    && getFlexiRoleForComponent(dicOption) === "Normal"
+    && normalizeSelectToken(dicOption.strCode ?? "") !== "flexipay"
+  );
+}
+
+function isReimbursementComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return Boolean(
+    dicOption.blnIsActive !== false
+    && dicOption.blnIsReimbursement
     && getFlexiRoleForComponent(dicOption) === "Normal"
     && normalizeSelectToken(dicOption.strCode ?? "") !== "flexipay"
   );
@@ -186,10 +196,6 @@ function getComponentAnnualLimit(dicComponent?: SalaryStructureFormOptions["lstS
     ?? dicComponent?.decFlexiMaxYearlyAmount
     ?? dicComponent?.decAnnualLimitAmount
     ?? null;
-}
-
-function getComponentID(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
-  return dicComponent?.intID ?? "";
 }
 
 function clampAmountToLimit(strValue: string | number | boolean, fltLimit: number | null) {
@@ -299,6 +305,9 @@ export default function SalaryStructureEditorPage({
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
+  const strFlexiEligibleComponentSignature = useMemo(() => {
+    return lstFlexiEligibleComponents.map((dicComponent) => dicComponent.intID).join("|");
+  }, [lstFlexiEligibleComponents]);
   const lstFlexiBasketLines = useMemo(() => {
     return dicForm.lstComponents.filter((dicLine) => {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
@@ -307,6 +316,9 @@ export default function SalaryStructureEditorPage({
         && (parseLineAmount(dicLine.fltFixedAmount) ?? 0) > 0;
     });
   }, [dicComponentByID, dicForm.lstComponents]);
+  const strFlexiBasketLineSignature = useMemo(() => {
+    return lstFlexiBasketLines.map((dicLine) => dicLine.strRowID).join("|");
+  }, [lstFlexiBasketLines]);
   const dicStructureSummary = useMemo(() => {
     return dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
@@ -657,6 +669,22 @@ export default function SalaryStructureEditorPage({
     return clampAmountToLimit(formatCalculatedLineAmount(fltYearlyAmount), fltAnnualLimit);
   }
 
+  function getMonthlyAmountFromAnnual(strAnnualAmount: string | number | boolean) {
+    const fltAnnualAmount = parseLineAmount(strAnnualAmount);
+    if (fltAnnualAmount === null) {
+      return "";
+    }
+    return Number((fltAnnualAmount / 12).toFixed(6)).toString();
+  }
+
+  function getAnnualAmountFromMonthly(strMonthlyAmount: string | number | boolean) {
+    const fltMonthlyAmount = parseLineAmount(strMonthlyAmount);
+    if (fltMonthlyAmount === null) {
+      return "";
+    }
+    return formatCalculatedLineAmount(fltMonthlyAmount * 12);
+  }
+
   function updateLineRow(strRowID: string, strField: keyof SalaryStructureLineFormValue, objValue: string | number | boolean) {
     setDicForm((dicPrevious) => {
       const lstUpdatedComponents: SalaryStructureLineFormValue[] = dicPrevious.lstComponents.map((dicLine) => {
@@ -701,6 +729,12 @@ export default function SalaryStructureEditorPage({
             fltFixedAmount: "",
             fltPercentageValue: "",
             intBasisComponentID: "" as const
+          };
+        }
+        if (strField === "fltFixedAmount") {
+          return {
+            ...dicLine,
+            fltFixedAmount: sanitizeDecimalInput(String(objValue))
           };
         }
         return { ...dicLine, [strField]: objValue } as SalaryStructureLineFormValue;
@@ -801,6 +835,45 @@ export default function SalaryStructureEditorPage({
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
+  useEffect(() => {
+    if (strMode !== "add" || lstFlexiEligibleComponents.length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => {
+      let blnChanged = false;
+      const lstComponents = dicPrevious.lstComponents.map((dicLine) => {
+        if (!isFlexiBasketLine(dicLine)) {
+          return dicLine;
+        }
+        const setMappedComponentIDs = new Set(
+          dicLine.lstFlexiMappings
+            .map((dicMapping) => Number(dicMapping.intFlexiComponentID))
+            .filter((intComponentID) => Number.isFinite(intComponentID) && intComponentID > 0)
+        );
+        const lstMissingMappings = lstFlexiEligibleComponents
+          .filter((dicComponent) => !setMappedComponentIDs.has(dicComponent.intID))
+          .map((dicComponent) => ({
+            ...createEmptyFlexiMappingRow(),
+            intFlexiComponentID: dicComponent.intID,
+            strFlexiComponentCode: dicComponent.strCode ?? "",
+            strFlexiComponentName: dicComponent.strLabel,
+            fltDefaultAmount: "0",
+            fltMaxAmount: "0",
+            blnIsActive: true,
+          }));
+        if (lstMissingMappings.length === 0) {
+          return dicLine;
+        }
+        blnChanged = true;
+        return {
+          ...dicLine,
+          lstFlexiMappings: [...dicLine.lstFlexiMappings, ...lstMissingMappings],
+        };
+      });
+      return blnChanged ? { ...dicPrevious, lstComponents } : dicPrevious;
+    });
+  }, [strFlexiBasketLineSignature, strFlexiEligibleComponentSignature, lstFlexiEligibleComponents, strMode]);
+
   function updateFlexiMappingRow(
     strLineRowID: string,
     strMappingRowID: string,
@@ -821,16 +894,15 @@ export default function SalaryStructureEditorPage({
             }
             if (strField === "intFlexiComponentID") {
               const dicComponent = dicComponentByID.get(Number(objValue));
-              const strMonthlyAmount = clampAmountToLimit(dicMapping.fltDefaultAmount, getComponentMonthlyLimit(dicComponent));
+              const strAnnualAmount = clampAmountToLimit(dicMapping.fltMaxAmount, getComponentAnnualLimit(dicComponent));
+              const strMonthlyAmount = getMonthlyAmountFromAnnual(strAnnualAmount);
               return {
                 ...dicMapping,
                 intFlexiComponentID: parseOptionalSelectNumber(String(objValue)),
                 strFlexiComponentCode: dicComponent?.strCode ?? "",
                 strFlexiComponentName: dicComponent?.strLabel ?? "",
                 fltDefaultAmount: strMonthlyAmount,
-                fltMaxAmount: strMonthlyAmount
-                  ? getAutofilledFlexiYearlyAmount(strMonthlyAmount, getComponentAnnualLimit(dicComponent))
-                  : clampAmountToLimit(dicMapping.fltMaxAmount, getComponentAnnualLimit(dicComponent))
+                fltMaxAmount: strAnnualAmount
               };
             }
             if (strField === "fltDefaultAmount") {
@@ -844,10 +916,11 @@ export default function SalaryStructureEditorPage({
             }
             if (strField === "fltMaxAmount") {
               const dicComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
-              const strAnnualAmount = clampAmountToLimit(objValue, getComponentAnnualLimit(dicComponent));
+              const strAnnualAmount = clampAmountToLimit(sanitizeDecimalInput(String(objValue)), getComponentAnnualLimit(dicComponent));
               return {
                 ...dicMapping,
-                fltMaxAmount: strAnnualAmount
+                fltMaxAmount: strAnnualAmount,
+                fltDefaultAmount: getMonthlyAmountFromAnnual(strAnnualAmount)
               };
             }
             return { ...dicMapping, [strField]: objValue };
@@ -913,8 +986,8 @@ export default function SalaryStructureEditorPage({
         const dicComponent = dicComponentByID.get(intFlexiComponentID);
         const fltMonthlyLimit = getComponentMonthlyLimit(dicComponent);
         const fltAnnualLimit = getComponentAnnualLimit(dicComponent);
-        if (!dicComponent || !isFlexiEligibleComponent(dicComponent)) {
-          return t("flexi_component_not_eligible", "Allowed Flexi Options must be active CTC-based payroll reimbursement components marked as flexi reimbursement.");
+        if (!dicComponent || !isReimbursementComponent(dicComponent)) {
+          return t("flexi_component_not_eligible", "Allowed Flexi Options must be active reimbursement components.");
         }
         if (fltDefaultAmount === null || fltDefaultAmount < 0) {
           return t("flexi_default_amount_non_negative", "Default monthly allocation must be 0 or greater.");
@@ -1145,9 +1218,21 @@ export default function SalaryStructureEditorPage({
         </Paper>
 
         <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
-            2. {t("scope_and_dates", "Scope and Dates")}
-          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5} sx={{ mb: 1.5 }}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              2. {t("scope_and_dates", "Scope and Dates")}
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <FormControlLabel
+                control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-structures.editor.default-structure.switch")} />}
+                label={t("default_structure", "Default Structure")}
+              />
+              <FormControlLabel
+                control={<ActiveStatusSwitch testId="salary-structures.editor.active-structure.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+                label={t("active_structure", "Active Structure")}
+              />
+            </Stack>
+          </Stack>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" } }}>
             <TextField
               select
@@ -1188,16 +1273,6 @@ export default function SalaryStructureEditorPage({
               inputProps={buildInputTestIdProps("salary-structures.editor.effective-to.input")}
             />
           </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
-            <FormControlLabel
-              control={<Switch checked={dicForm.blnIsDefault} onChange={(objEvent) => updateRootField("blnIsDefault", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-structures.editor.default-structure.switch")} />}
-              label={t("default_structure", "Default Structure")}
-            />
-            <FormControlLabel
-              control={<ActiveStatusSwitch testId="salary-structures.editor.active-structure.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-              label={t("active_structure", "Active Structure")}
-            />
-          </Stack>
         </Paper>
       </Box>
 
@@ -1247,8 +1322,8 @@ export default function SalaryStructureEditorPage({
                   <th style={{ left: 106, minWidth: 250, position: "sticky", zIndex: 4 }}>{t("salary_component", "Salary Component")}</th>
                   <th>{t("flexi_role", "Flexi Role")}</th>
                   <th>{t("value_source", "Value Source")}</th>
-                  <th>{t("monthly_amount", "Monthly Amount")}</th>
                   <th>{t("yearly_amount", "Yearly Amount")}</th>
+                  <th>{t("monthly_amount", "Monthly Amount")}</th>
                   <th>{t("percentage_value", "% Value")}</th>
                   <th>{t("basis_component", "Basis Component")}</th>
                   <th>{t("formula", "Formula")}</th>
@@ -1261,8 +1336,7 @@ export default function SalaryStructureEditorPage({
               </thead>
               <tbody>
                 {dicForm.lstComponents.map((dicLine) => {
-                  const fltLineMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
-                  const strLineYearlyAmount = formatSummaryAmount(fltLineMonthlyAmount * 12);
+                  const strLineYearlyAmount = getAnnualAmountFromMonthly(dicLine.fltFixedAmount);
                   return (
                   <tr key={dicLine.strRowID}>
                     <td style={{ background: "#ffffff", left: 0, position: "sticky", zIndex: 2 }}>
@@ -1321,22 +1395,26 @@ export default function SalaryStructureEditorPage({
                     <td>
                       <TextField
                         size="small"
-                        value={dicLine.fltFixedAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
+                        value={strLineYearlyAmount}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
                         disabled={blnFieldDisabled || dicLine.strValueSource !== "Fixed"}
-                        data-testid="salary-structures.editor.line.fixed-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 130 }}
+                        data-testid="salary-structures.editor.line.yearly-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
+                          "data-row-key": dicLine.strRowID,
+                          inputMode: "decimal",
+                          pattern: "[0-9]*[.]?[0-9]*"
+                        })}
+                        sx={{ minWidth: 140 }}
                       />
                     </td>
                     <td>
                       <TextField
                         size="small"
-                        value={strLineYearlyAmount}
+                        value={dicLine.fltFixedAmount}
                         disabled
-                        data-testid="salary-structures.editor.line.yearly-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 140 }}
+                        data-testid="salary-structures.editor.line.fixed-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
+                        sx={{ minWidth: 130 }}
                       />
                     </td>
                     <td>
@@ -1451,16 +1529,18 @@ export default function SalaryStructureEditorPage({
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
                 [t("flexi_basket", "Flexi Bucket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
                 [t("employer_contribution", "Employer Contribution"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
-                [t("default_flexi_allocated", "Default Flexi Allocated"), formatFlexiAmount(dicFlexiSummary.fltDefaultAllocatedAnnual), "#067647"],
                 [t("default_flexi_balance", "Default Flexi Balance"), formatFlexiAmount(dicFlexiSummary.fltDefaultBalanceAnnual), "#0f172a"],
                 [t("residual_component", "Residual Component"), dicFlexiSummary.strResidualComponentName || "-", "#0f172a"],
                 [t("estimated_payroll_impact", "Estimated Payroll Impact"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
-              ].map(([strLabel, strValue, strColor]) => (
+              ].map(([strLabel, strValue, strColor]) => {
+                const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
+                return (
                 <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
                   <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
-                  <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>₹ {strValue}</Typography>
+                  <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
                 </Stack>
-              ))}
+                );
+              })}
               <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.4 }}>
                 <Stack direction="row" spacing={0.8} alignItems="flex-start">
                   <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
@@ -1477,24 +1557,9 @@ export default function SalaryStructureEditorPage({
           <Box sx={{ mt: 2.5 }}>
             <Stack spacing={1.5}>
               {lstFlexiBasketLines.map((dicLine) => {
-                const fltBasketMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
-                const fltBasketYearlyAmount = fltBasketMonthlyAmount * 12;
-                const fltAllocatedMonthlyAmount = dicLine.lstFlexiMappings.reduce((fltTotal, dicMapping) => fltTotal + (parseLineAmount(dicMapping.fltDefaultAmount) ?? 0), 0);
-                const fltAllocatedYearlyAmount = dicLine.lstFlexiMappings.reduce((fltTotal, dicMapping) => fltTotal + (parseLineAmount(dicMapping.fltMaxAmount) ?? 0), 0);
-                const fltPendingMonthlyAmount = Math.max(fltBasketMonthlyAmount - fltAllocatedMonthlyAmount, 0);
-                const fltPendingYearlyAmount = Math.max(fltBasketYearlyAmount - fltAllocatedYearlyAmount, 0);
-                const dicFlexiPayComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-                const intResidualComponentID = Number(dicFlexiPayComponent?.intResidualComponentID);
-                const dicResidualComponent = Number.isFinite(intResidualComponentID) && intResidualComponentID > 0
-                  ? (dicComponentByID.get(intResidualComponentID)
-                    ?? (objFormOptions?.lstSalaryComponents ?? []).find((dicComponent) => Number(getComponentID(dicComponent)) === intResidualComponentID))
-                  : undefined;
-                const strResidualComponentName = dicResidualComponent?.strLabel
-                  ?? (dicFlexiPayComponent?.intResidualComponentID ? t("residual_component_not_found", "Residual component not found") : "")
-                  ?? "";
                 return (
                 <Box key={dicLine.strRowID}>
-                  <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
+                  <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr" }}>
                     <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
                       <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
                         <Box>
@@ -1521,10 +1586,9 @@ export default function SalaryStructureEditorPage({
                           <Box component="thead" sx={{ "& th": { borderBottom: "1px solid #d9e6ef", color: "#0f172a", fontSize: "0.77rem", fontWeight: 700, px: 2, py: 1.2, textAlign: "left", whiteSpace: "nowrap" } }}>
                             <tr>
                               <th>{t("component", "Component")}</th>
-                              <th>{t("monthly_equivalent", "Default Monthly Allocation")} (₹)</th>
-                              <th>{t("declared_annual", "Default Annual Allocation")} (₹)</th>
+                              <th>{t("monthly_equivalent", "Monthly Flexi Limit")} (₹)</th>
+                              <th>{t("declared_annual", "Annual Flexi Limit")} (₹)</th>
                               <th>{t("proof_required", "Proof Submission Required")}</th>
-                              <th>{t("status", "Allocation Status")}</th>
                               <th>{t("action", "Action")}</th>
                             </tr>
                           </Box>
@@ -1535,6 +1599,7 @@ export default function SalaryStructureEditorPage({
                               </tr>
                             ) : dicLine.lstFlexiMappings.map((dicMapping) => {
                               const dicFlexiComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
+                              const blnShowComponentSelect = dicMapping.intFlexiComponentID === "" || (dicFlexiComponent ? isFlexiEligibleComponent(dicFlexiComponent) : false);
                               const fltMonthlyLimit = getComponentMonthlyLimit(dicFlexiComponent);
                               const fltDeclaredAnnual = parseLineAmount(dicMapping.fltMaxAmount) ?? 0;
                               return (
@@ -1544,24 +1609,35 @@ export default function SalaryStructureEditorPage({
                                     <Box sx={{ alignItems: "center", background: "#eaf3ff", border: "1px solid #cfe3ff", borderRadius: "4px", color: "#0b57b7", display: "inline-flex", height: 34, justifyContent: "center", width: 34 }}>
                                       {getFlexiComponentIcon(dicFlexiComponent?.strLabel || dicMapping.strFlexiComponentName || "")}
                                     </Box>
-                                    <TextField
-                                      select
-                                      size="small"
-                                      value={dicMapping.intFlexiComponentID}
-                                      onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", objEvent.target.value)}
-                                      disabled={blnFieldDisabled}
-                                      data-testid="salary-structures.editor.flexi-mapping.component.select"
-                                      inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID })}
-                                      SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID }) }}
-                                      sx={{ minWidth: 200, "& .MuiSelect-select": { fontSize: "0.84rem" } }}
-                                    >
-                                      <MenuItem value="" data-testid="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
-                                      {lstFlexiEligibleComponents.map((dicOption) => (
-                                        <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                                          {dicOption.strLabel}
-                                        </MenuItem>
-                                      ))}
-                                    </TextField>
+                                    {blnShowComponentSelect ? (
+                                      <TextField
+                                        select
+                                        size="small"
+                                        value={dicMapping.intFlexiComponentID}
+                                        onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", objEvent.target.value)}
+                                        disabled={blnFieldDisabled}
+                                        data-testid="salary-structures.editor.flexi-mapping.component.select"
+                                        inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID })}
+                                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID }) }}
+                                        sx={{ minWidth: 200, "& .MuiSelect-select": { fontSize: "0.84rem" } }}
+                                      >
+                                        <MenuItem value="" data-testid="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
+                                        {lstFlexiEligibleComponents.map((dicOption) => (
+                                          <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                                            {dicOption.strLabel}
+                                          </MenuItem>
+                                        ))}
+                                      </TextField>
+                                    ) : (
+                                      <TextField
+                                        size="small"
+                                        value={dicFlexiComponent?.strLabel || dicMapping.strFlexiComponentName}
+                                        disabled
+                                        data-testid="salary-structures.editor.flexi-mapping.component.display"
+                                        inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.display", { "data-row-key": dicMapping.strRowID })}
+                                        sx={{ minWidth: 200, "& .MuiInputBase-input": { fontSize: "0.84rem" } }}
+                                      />
+                                    )}
                                   </Stack>
                                 </td>
                                 <td>
@@ -1582,11 +1658,6 @@ export default function SalaryStructureEditorPage({
                                 </td>
                                 <td>{formatFlexiAmount(fltDeclaredAnnual)}</td>
                                 <td>{dicFlexiComponent?.blnProofRequired ? t("yes", "Yes") : t("no", "No")}</td>
-                                <td>
-                                  <Box sx={{ background: dicMapping.blnIsActive ? "#dcf8e8" : "#dbeafe", borderRadius: "4px", color: dicMapping.blnIsActive ? "#067647" : "#0757b8", display: "inline-flex", fontSize: "0.75rem", fontWeight: 700, px: 1, py: 0.45 }}>
-                                    {dicMapping.blnIsActive ? t("allocated", "Allocated") : t("not_allocated", "Not Allocated")}
-                                  </Box>
-                                </td>
                                 <td>
                                   <Stack direction="row" spacing={0.35} alignItems="center">
                                     <ActiveStatusSwitch
@@ -1619,50 +1690,6 @@ export default function SalaryStructureEditorPage({
                         <Typography sx={{ color: "#475569", fontSize: "0.78rem" }}>
                           {t("monthly_declarations_calculate_annual", "Monthly declarations are used to calculate declared annual amounts.")}
                         </Typography>
-                      </Stack>
-                    </Paper>
-                    <Paper variant="outlined" sx={{ alignSelf: "start", borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
-                      <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800, mb: 2 }}>
-                        {t("flexi_basket_summary", "Flexi Allocation Summary")}
-                      </Typography>
-                      <Stack spacing={1.6}>
-                        {[
-                          [t("basket_available", "Flexi Bucket Amount"), formatFlexiAmount(fltBasketYearlyAmount), "#0f172a"],
-                          [t("allocated", "Allocated Amount"), formatFlexiAmount(fltAllocatedYearlyAmount), "#067647"],
-                          [t("balance", "Available Balance"), formatFlexiAmount(fltPendingYearlyAmount), "#0f172a"],
-                        ].map(([strLabel, strValue, strColor]) => (
-                          <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
-                            <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>₹ {strValue}</Typography>
-                          </Stack>
-                        ))}
-                        <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 1.6 }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Stack direction="row" spacing={0.5} alignItems="center">
-                              <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{t("residual_taxable_amount", "Taxable Residual")}</Typography>
-                              <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 16 }} />
-                            </Stack>
-                            <Typography sx={{ color: "#0757b8", fontSize: "0.84rem", fontWeight: 800 }}>₹ {formatFlexiAmount(fltPendingYearlyAmount)}</Typography>
-                          </Stack>
-                          {strResidualComponentName ? (
-                            <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.6 }}>
-                              {t("residual_component", "Residual Component")}: {strResidualComponentName}
-                            </Typography>
-                          ) : null}
-                        </Box>
-                        <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.4 }}>
-                          <Stack direction="row" spacing={0.8} alignItems="flex-start">
-                            <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
-                            <Box>
-                              <Typography sx={{ color: "#0757b8", fontSize: "0.82rem", fontWeight: 800 }}>
-                                {t("payroll_impact", "Estimated Payroll Impact")}
-                              </Typography>
-                              <Typography sx={{ color: "#172554", fontSize: "0.78rem", lineHeight: 1.45, mt: 0.4 }}>
-                                {t("flexi_payroll_impact_help", "Final allocated amount will be considered for payroll calculation and payroll processing.")}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </Box>
                       </Stack>
                     </Paper>
                   </Box>

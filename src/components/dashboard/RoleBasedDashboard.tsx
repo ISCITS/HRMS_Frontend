@@ -428,11 +428,10 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
 
   return (
     <Stack
-      spacing={1.6}
+      spacing={objDashboardGridSpacing}
       sx={{
         width: "100%",
         p: { xs: 0.4, md: 0.55 },
-        background: DASHBOARD_COLORS.page,
         boxSizing: "border-box",
       }}
     >
@@ -545,7 +544,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
           <Box
             sx={{
               display: "grid",
-              gap: { xs: 1.25, md: 1.5 },
+              gap: objDashboardGridSpacing,
               gridTemplateColumns: {
                 xs: "1fr",
                 sm: "repeat(2, minmax(0, 1fr))",
@@ -570,147 +569,224 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
             </Box>
           </Box>
 
-          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-            <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: objDashboardGridSpacing,
+              gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 7fr) minmax(0, 5fr)" },
+              alignItems: "stretch",
+            }}
+          >
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
-            </Grid>
-            <Grid item xs={12} xl={5} sx={{ display: "flex" }}>
+            </Box>
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
-          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-            <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: objDashboardGridSpacing,
+              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 5fr) minmax(0, 7fr)" },
+              alignItems: "stretch",
+            }}
+          >
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <AlertsPanel objWidget={objAlertsWidget} t={t} />
-            </Grid>
-            <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+            </Box>
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
-          <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-            <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: objDashboardGridSpacing,
+              gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" },
+              alignItems: "stretch",
+            }}
+          >
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
-            </Grid>
-            <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+            </Box>
+            <Box sx={{ display: "flex", minWidth: 0 }}>
               <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </>
       ) : null}
 
       {strActiveTab === "run_overview" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} xl={7} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 7fr) minmax(0, 5fr)" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <RunOverviewPanel objRun={objSelectedRun} lstDetails={objRunDetailItems} strRunStatus={strRunStatusRaw} t={t} />
-          </Grid>
-          <Grid item xs={12} xl={5} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "workflow" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 8fr) minmax(0, 4fr)" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <ReadinessPanel objReadiness={objReadiness} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "exceptions" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={4} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(0, 8fr)" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <ValidationSummaryPanel lstCards={lstValidationCards} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={8} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <ExceptionPanel lstItems={lstExceptionItems} lstGroups={lstExceptionGroups} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "employees" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} sx={{ display: "flex" }}>
+        <Box sx={{ display: "grid", gap: objDashboardGridSpacing, gridTemplateColumns: "1fr", alignItems: "stretch" }}>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <HighRiskEmployeesPanel lstEmployees={lstHighRiskEmployees} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "pay_payout" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(12, minmax(0, 1fr))" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 5" } }}>
             <ApprovalAgingPanel lstRows={lstApprovalAging} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 7" } }}>
             <OutputReadinessPanel objOutputReadiness={objOutputReadiness} t={t} />
-          </Grid>
+          </Box>
           {lstDetailedSummarySections.filter((objSection) => objSection.strCode === "reimbursement").map((objSection) => (
-            <Grid key={objSection.strCode} item xs={12} lg={6} sx={{ display: "flex" }}>
+            <Box key={objSection.strCode} sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 6" } }}>
               <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       ) : null}
 
       {strActiveTab === "compliance" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
+            alignItems: "stretch",
+          }}
+        >
           {lstDetailedSummarySections.filter((objSection) => ["it", "statutory", "tax"].includes(objSection.strCode)).map((objSection) => (
-            <Grid key={objSection.strCode} item xs={12} md={6} xl={4} sx={{ display: "flex" }}>
+            <Box key={objSection.strCode} sx={{ display: "flex", minWidth: 0 }}>
               <DetailedSummaryPanel strTitle={objSection.strTitle} strSubtitle={objSection.strSubtitle} lstStats={objSection.lstStats} strAccent={objSection.strAccent} />
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       ) : null}
 
       {strActiveTab === "cost_analytics" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <VariancePanel lstMetrics={lstVarianceMetrics} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <TrendChartPanel objWidget={dicWidgetMap.get("payroll_cost_trend")} t={t} />
-          </Grid>
-          <Grid item xs={12} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "1 / -1" } }}>
             <BarChartPanel objWidget={dicWidgetMap.get("department_payroll_cost")} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "reports" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 7fr) minmax(0, 5fr)" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "audit_actions" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} lg={5} sx={{ display: "flex" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(12, minmax(0, 1fr))" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 5" } }}>
             <RunActionPanel lstActions={lstActionPanelItems} strRunStatus={strRunStatusRaw} t={t} />
-          </Grid>
-          <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 7" } }}>
             <AuditPanel objAudit={objAudit} t={t} />
-          </Grid>
-          <Grid item xs={12} sx={{ display: "flex" }}>
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: "1 / -1" }}>
             <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
 
       {strActiveTab === "settings" ? (
-        <Grid container spacing={objDashboardGridSpacing} alignItems="stretch">
-          <Grid item xs={12} sx={{ display: "flex" }}>
+        <Box sx={{ display: "grid", gap: objDashboardGridSpacing, gridTemplateColumns: "1fr", alignItems: "stretch" }}>
+          <Box sx={{ display: "flex", minWidth: 0 }}>
             <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       ) : null}
     </Stack>
   );
@@ -753,11 +829,14 @@ function PayrollKpiPanel({
   return (
     <Paper
       sx={{
-        p: 1.45,
+        p: 1.05,
         width: "100%",
         minWidth: 0,
-        minHeight: 104,
+        minHeight: 88,
         height: "auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         borderRadius: "18px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
@@ -767,9 +846,9 @@ function PayrollKpiPanel({
       }}
     >
       <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid rgba(255,255,255,0)`, pointerEvents: "none" }} />
-      <Stack spacing={0.85} alignItems="flex-start" sx={{ minWidth: 0 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5} sx={{ width: "100%" }}>
-          <Stack direction="row" spacing={0.9} sx={{ minWidth: 0, flex: 1 }}>
+      <Stack spacing={0.55} alignItems="center" sx={{ minWidth: 0, width: "100%", textAlign: "center" }}>
+        <Stack justifyContent="center" alignItems="center" spacing={0.7} sx={{ width: "100%" }}>
+          <Stack spacing={0.55} alignItems="center" sx={{ minWidth: 0, width: "100%" }}>
             <Box
               sx={{
                 width: 32,
@@ -786,20 +865,20 @@ function PayrollKpiPanel({
             >
               {objIcon}
             </Box>
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, width: "100%" }}>
               <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: DASHBOARD_COLORS.muted }}>
                 {strTitle}
               </Typography>
-              <Typography sx={{ mt: 0.55, fontSize: "1.45rem", lineHeight: 1.03, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
+              <Typography sx={{ mt: 0.35, fontSize: "1.35rem", lineHeight: 1.03, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
                 {strValue}
               </Typography>
-              <Typography sx={{ mt: 0.28, fontSize: "0.72rem", color: DASHBOARD_COLORS.muted }}>
+              <Typography sx={{ mt: 0.18, fontSize: "0.72rem", color: DASHBOARD_COLORS.muted }}>
                 {strSubtitle}
               </Typography>
             </Box>
           </Stack>
         </Stack>
-        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: objWidget.strWidgetCode === "payroll_validation_errors" ? DASHBOARD_COLORS.red : objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
+        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, textAlign: "center", color: objWidget.strWidgetCode === "payroll_validation_errors" ? DASHBOARD_COLORS.red : objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
           {strTrendText}
         </Typography>
       </Stack>
@@ -1041,25 +1120,25 @@ function ReadinessPanel({ objReadiness, t, blnCompact = false }: { objReadiness:
   const strStatus = String(objReadiness.strStatus || "Not Ready");
   const lstBreakdown = objReadiness.lstBreakdown || [];
   return (
-    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={blnCompact ? undefined : t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)}>
-      <Stack spacing={blnCompact ? 0.8 : 1.4} alignItems="stretch" sx={{ minWidth: 0 }}>
-        <Stack direction="row" spacing={0.8} alignItems="center" justifyContent="space-between" sx={{ minWidth: 0 }}>
-          <Stack spacing={0.4} sx={{ minWidth: 0, flex: 1 }}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompact ? "1.45rem" : "1.8rem" }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
+    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={blnCompact ? undefined : t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)} blnCenterHeader={blnCompact} blnCompactPanel={blnCompact}>
+      <Stack spacing={blnCompact ? 0.45 : 1.4} alignItems={blnCompact ? "center" : "stretch"} sx={{ minWidth: 0, textAlign: blnCompact ? "center" : "left" }}>
+        <Stack direction={blnCompact ? "column" : "row"} spacing={blnCompact ? 0.35 : 0.8} alignItems="center" justifyContent={blnCompact ? "center" : "space-between"} sx={{ minWidth: 0, width: "100%" }}>
+          <Stack spacing={0.4} alignItems={blnCompact ? "center" : "flex-start"} sx={{ minWidth: 0, flex: blnCompact ? "initial" : 1, width: blnCompact ? "100%" : "auto" }}>
+            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompact ? "1.32rem" : "1.8rem", textAlign: blnCompact ? "center" : "left", lineHeight: 1.05 }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
             <Chip
               label={strStatus}
               size="small"
               sx={{
-                width: blnCompact ? "100%" : "fit-content",
+                width: blnCompact ? "fit-content" : "fit-content",
                 maxWidth: "100%",
-                height: blnCompact ? 24 : 32,
+                height: blnCompact ? 22 : 32,
                 fontWeight: 700,
                 borderRadius: "999px",
                 backgroundColor: softColor(readinessAccent(strStatus)),
                 color: readinessAccent(strStatus),
                 fontSize: blnCompact ? "0.7rem" : "0.78rem",
                 "& .MuiChip-label": {
-                  px: blnCompact ? 1.05 : 1.4,
+                  px: blnCompact ? 0.95 : 1.4,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -1067,11 +1146,15 @@ function ReadinessPanel({ objReadiness, t, blnCompact = false }: { objReadiness:
               }}
             />
           </Stack>
-          <Box sx={{ transform: blnCompact ? "scale(0.68)" : "none", transformOrigin: "right center", flexShrink: 0 }}>
+          <Box sx={{ transform: blnCompact ? "scale(0.56)" : "none", transformOrigin: blnCompact ? "center center" : "right center", flexShrink: 0, mt: blnCompact ? -0.75 : 0 }}>
             <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={t("ready", "Ready")} />
           </Box>
         </Stack>
-        <MiniProgressBar decValue={decScore} strColor={readinessAccent(strStatus)} />
+        {!blnCompact ? (
+          <Box sx={{ width: "100%" }}>
+            <MiniProgressBar decValue={decScore} strColor={readinessAccent(strStatus)} />
+          </Box>
+        ) : null}
         {!blnCompact ? (
         <Grid container spacing={1}>
           <Grid item xs={4}>
@@ -2498,18 +2581,22 @@ function PanelShell({
   strSubtitle,
   strAccent = DASHBOARD_COLORS.blue,
   blnAutoHeight = false,
+  blnCenterHeader = false,
+  blnCompactPanel = false,
   children,
 }: {
   strTitle: string;
   strSubtitle?: string;
   strAccent?: string;
   blnAutoHeight?: boolean;
+  blnCenterHeader?: boolean;
+  blnCompactPanel?: boolean;
   children: ReactNode;
 }) {
   return (
     <Paper
       sx={{
-        p: 1.7,
+        p: blnCompactPanel ? 1.05 : 1.7,
         width: "100%",
         height: blnAutoHeight ? "auto" : "100%",
         borderRadius: "18px",
@@ -2521,8 +2608,8 @@ function PanelShell({
       }}
     >
       <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
-      <Box sx={{ mb: 1.2 }}>
-        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.96rem" }}>
+      <Box sx={{ mb: blnCompactPanel ? 0.55 : 1.2, textAlign: blnCenterHeader ? "center" : "left" }}>
+        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompactPanel ? "0.86rem" : "0.96rem", lineHeight: 1.15 }}>
           {strTitle}
         </Typography>
         {strSubtitle ? (

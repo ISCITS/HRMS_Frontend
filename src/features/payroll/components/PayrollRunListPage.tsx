@@ -243,7 +243,7 @@ export default function PayrollRunListPage() {
       </Typography>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
+        <Box className={`${styles.searchRow} ${styles.payrollRunSearchRow}`}>
           <TextField
             data-testid="payroll-runs.list.search.input"
             value={dicSearchDraft.strSearch}
@@ -269,6 +269,7 @@ export default function PayrollRunListPage() {
           />
           <TextField
             select
+            label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
