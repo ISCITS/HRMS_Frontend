@@ -18,7 +18,6 @@ export default function BlockingLoader({
       open={blnOpen}
       sx={{
         backgroundColor: "rgba(15, 23, 42, 0.34)",
-        backdropFilter: "blur(4px)",
         zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
       }}
     >

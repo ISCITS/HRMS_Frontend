@@ -161,6 +161,9 @@ function getFlexiRoleForComponent(dicComponent?: SalaryStructureFormOptions["lst
 }
 
 function isFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  if (dicOption.intFlexiComponentEligibilityID || typeof dicOption.blnIsFlexiComponentEligible === "boolean") {
+    return true;
+  }
   return Boolean(
     dicOption.blnIsActive !== false
     && dicOption.blnIsReimbursement
@@ -257,18 +260,18 @@ export default function SalaryStructureEditorPage({
       setBlnLoading(true);
       setStrError("");
       try {
-        const objOptions = await salaryStructureService.getFormOptions();
+        const objOptionsPromise = salaryStructureService.getFormOptions();
+        const dicDetailPromise = strMode === "edit" && intSalaryStructureID
+          ? salaryStructureService.getSalaryStructureById(intSalaryStructureID)
+          : Promise.resolve(null);
+        const [objOptions, dicDetail] = await Promise.all([objOptionsPromise, dicDetailPromise]);
         if (!blnMounted) {
           return;
         }
         setObjFormOptions(objOptions);
 
-        if (strMode === "edit" && intSalaryStructureID) {
-          const dicDetail = await salaryStructureService.getSalaryStructureById(intSalaryStructureID);
-          if (!blnMounted) {
-            return;
-          }
-          setDicForm(recalculateSalaryStructureForm(toSalaryStructureFormValues(dicDetail)));
+        if (dicDetail) {
+          setDicForm(applyFlexiEligibilityToForm(recalculateSalaryStructureForm(toSalaryStructureFormValues(dicDetail)), objOptions));
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => ({
@@ -660,6 +663,34 @@ export default function SalaryStructureEditorPage({
     };
   }
 
+  function applyFlexiEligibilityToForm(dicValues: SalaryStructureFormValues, dicOptions: SalaryStructureFormOptions | null) {
+    const dicFlexiComponentByID = new Map((dicOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
+    return {
+      ...dicValues,
+      lstComponents: dicValues.lstComponents.map((dicLine) => ({
+        ...dicLine,
+        lstFlexiMappings: dicLine.lstFlexiMappings.map((dicMapping) => {
+          if (dicMapping.intFlexiComponentID === "") {
+            return dicMapping;
+          }
+          const dicComponent = dicFlexiComponentByID.get(Number(dicMapping.intFlexiComponentID));
+          if (!dicComponent || !isFlexiEligibleComponent(dicComponent)) {
+            return {
+              ...dicMapping,
+              intFlexiComponentEligibilityID: null,
+              blnIsActive: false,
+            };
+          }
+          return {
+            ...dicMapping,
+            intFlexiComponentEligibilityID: dicComponent.intFlexiComponentEligibilityID ?? null,
+            // blnIsActive: isFlexiComponentEligibilityActive(dicComponent),
+          };
+        }),
+      })),
+    };
+  }
+
   function getAutofilledFlexiYearlyAmount(strMonthlyAmount: string | number | boolean, fltAnnualLimit: number | null) {
     const fltMonthlyAmount = parseLineAmount(strMonthlyAmount);
     if (fltMonthlyAmount === null) {
@@ -898,9 +929,11 @@ export default function SalaryStructureEditorPage({
               const strMonthlyAmount = getMonthlyAmountFromAnnual(strAnnualAmount);
               return {
                 ...dicMapping,
+                intFlexiComponentEligibilityID: dicComponent?.intFlexiComponentEligibilityID ?? null,
                 intFlexiComponentID: parseOptionalSelectNumber(String(objValue)),
                 strFlexiComponentCode: dicComponent?.strCode ?? "",
                 strFlexiComponentName: dicComponent?.strLabel ?? "",
+                // blnIsActive: isFlexiComponentEligibilityActive(dicComponent),
                 fltDefaultAmount: strMonthlyAmount,
                 fltMaxAmount: strAnnualAmount
               };
@@ -1059,7 +1092,10 @@ export default function SalaryStructureEditorPage({
       const dicSavedRecord = strMode === "edit" && intSalaryStructureID
         ? await salaryStructureService.updateSalaryStructure(intSalaryStructureID, dicForm)
         : await salaryStructureService.createSalaryStructure(dicForm);
-      setDicForm(toSalaryStructureFormValues(dicSavedRecord));
+      await salaryStructureService.saveFlexiComponentEligibility(dicForm);
+      const objLatestOptions = await salaryStructureService.getFormOptions();
+      setObjFormOptions(objLatestOptions);
+      setDicForm(applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicSavedRecord), objLatestOptions));
       setStrSuccess(
         strMode === "edit"
           ? t("salary_structure_updated", "Salary structure updated successfully.")
@@ -1602,6 +1638,7 @@ export default function SalaryStructureEditorPage({
                               const blnShowComponentSelect = dicMapping.intFlexiComponentID === "" || (dicFlexiComponent ? isFlexiEligibleComponent(dicFlexiComponent) : false);
                               const fltMonthlyLimit = getComponentMonthlyLimit(dicFlexiComponent);
                               const fltDeclaredAnnual = parseLineAmount(dicMapping.fltMaxAmount) ?? 0;
+                              const blnFlexiEligibilityInactive = !dicMapping.blnIsActive;
                               return (
                               <tr key={dicMapping.strRowID}>
                                 <td>
@@ -1645,7 +1682,7 @@ export default function SalaryStructureEditorPage({
                                     size="small"
                                     value={dicMapping.fltDefaultAmount}
                                     onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltDefaultAmount", objEvent.target.value)}
-                                    disabled={blnFieldDisabled}
+                                    disabled={blnFieldDisabled || blnFlexiEligibilityInactive}
                                     data-testid="salary-structures.editor.flexi-mapping.default-amount.input"
                                     inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.default-amount.input", {
                                       "data-row-key": dicMapping.strRowID,
@@ -1670,7 +1707,7 @@ export default function SalaryStructureEditorPage({
                                       size="small"
                                       color="error"
                                       onClick={() => handleRemoveFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID)}
-                                      disabled={blnFieldDisabled}
+                                      disabled={blnFieldDisabled || blnFlexiEligibilityInactive}
                                       data-testid="salary-structures.editor.flexi-mapping.remove.button"
                                       data-row-key={dicMapping.strRowID}
                                       aria-label={t("remove_button", "Remove")}

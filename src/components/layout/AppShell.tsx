@@ -42,6 +42,7 @@ import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
 const intTopBarHeight = 60;
+const intMenuZIndex = 1700;
 const strLanguageSwitchTokenKey = "hrms_language_switch_token";
 const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
 const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
@@ -701,6 +702,41 @@ export default function AppShell({ children }: { children: ReactNode }) {
           }}
         />
       </Paper>
+
+      <ButtonBase
+        data-testid="app-shell.sidebar-logout.button"
+        onClick={() => {
+          setBlnDrawerOpen(false);
+          // setBlnDesktopSidebarOpen(false);
+          setBlnLogoutDialogOpen(true);
+        }}
+        disabled={blnLoggingOut}
+        sx={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          gap: 1.25,
+          px: 2,
+          py: 1.4,
+          borderRadius: "18px",
+          backgroundColor: "rgba(255,255,255,0.86)",
+          border: "1px solid rgba(148, 163, 184, 0.16)",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
+          color: "#b91c1c",
+          "&:hover": {
+            backgroundColor: "rgba(254,242,242,0.92)"
+          },
+          "&.Mui-disabled": {
+            opacity: 0.6
+          }
+        }}
+      >
+        <LogoutRoundedIcon fontSize="small" />
+        <Typography sx={{ fontWeight: 700, color: "inherit" }}>
+          {tCommon("logout", "Logout")}
+        </Typography>
+      </ButtonBase>
     </Box>
   );
 
@@ -798,6 +834,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               data-testid="app-shell.menu-toggle.button"
               onClick={handleMenuToggle}
               sx={{
+                position: "relative",
+                zIndex: intMenuZIndex,
                 display: "inline-flex",
                 border: "1px solid rgba(148, 163, 184, 0.18)",
                 backgroundColor: "rgba(248,250,252,0.88)"
