@@ -1179,7 +1179,21 @@ export default function SalaryComponentEditorPage({
                 {t("flexi_eligibility_rules_note", "Eligibility is evaluated during ESS Flexi Declaration. Ineligible components will be hidden or disabled based on this rule.")}
               </Typography>
             </Box>
-            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddFlexiEligibilityRule} disabled={blnFieldDisabled}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<AddRoundedIcon />}
+              onClick={handleAddFlexiEligibilityRule}
+              disabled={blnFieldDisabled}
+              sx={{
+                alignSelf: { xs: "stretch", md: "flex-start" },
+                borderRadius: "14px",
+                height: 38,
+                minHeight: 38,
+                px: 2.25,
+                py: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
               {t("add_rule", "Add Rule")}
             </Button>
           </Stack>
