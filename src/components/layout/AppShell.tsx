@@ -1,6 +1,7 @@
 "use client";
 
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
@@ -29,7 +30,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import DynamicMenu from "@/components/navigation/DynamicMenu";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
@@ -43,6 +44,8 @@ import { authApiService } from "@/services";
 const intDrawerWidth = 308;
 const intTopBarHeight = 60;
 const intMenuZIndex = 1700;
+const intCollapsedMenuRailWidth = 60;
+const intContentLoaderZIndex = 1200;
 const strLanguageSwitchTokenKey = "hrms_language_switch_token";
 const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
 const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
@@ -266,6 +269,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strPathname = usePathname();
   const objSearchParams = useSearchParams();
   const [blnDrawerOpen, setBlnDrawerOpen] = useState(false);
+  const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
@@ -277,12 +281,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objTenantLanguageDetails, setObjTenantLanguageDetails] = useState<TenantAuthDetails | null>(null);
   const [dicLanguageLabelByID, setDicLanguageLabelByID] = useState<Record<number, string>>({});
   const [strActiveLanguageSwitchToken, setStrActiveLanguageSwitchToken] = useState("");
+  const [strPendingExpandedMenuIdentity, setStrPendingExpandedMenuIdentity] = useState<string | null>(null);
   const [intPendingLabelLoads, setIntPendingLabelLoads] = useState(0);
   const [blnLanguageShellReady, setBlnLanguageShellReady] = useState(false);
   const [intLastLabelActivityAt, setIntLastLabelActivityAt] = useState(0);
   const [intLastContentMutationAt, setIntLastContentMutationAt] = useState(0);
   const [strResolvedEmployeeName, setStrResolvedEmployeeName] = useState("");
   const objShellContentRef = useRef<HTMLDivElement | null>(null);
+  const objMainContentRef = useRef<HTMLElement | null>(null);
   const strHeaderModuleName = resolveRouteModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
   const { t: tHeader } = useModuleLabels(strHeaderModuleName || "common");
@@ -606,7 +612,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   function handleMenuToggle() {
+    if (typeof window !== "undefined" && window.innerWidth >= 1200) {
+      setBlnDesktopSidebarOpen((blnPrevious) => !blnPrevious);
+      return;
+    }
+
     setBlnDrawerOpen(true);
+  }
+
+  function handleMainContentClick() {
+    if (blnDesktopSidebarOpen) {
+      setBlnDesktopSidebarOpen(false);
+    }
+  }
+
+  function handleDesktopCollapsedMenuItemClick(strMenuIdentity: string) {
+    setStrPendingExpandedMenuIdentity(strMenuIdentity);
+    setBlnDesktopSidebarOpen(true);
   }
 
   function openProfileMenu(objEvent: React.MouseEvent<HTMLElement>) {
@@ -645,7 +667,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           overflow: "hidden"
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%" }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%", flex: 1, minWidth: 0 }}>
           <Box
             sx={{
               width: 46,
@@ -665,6 +687,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Typography>
           </Box>
         </Stack>
+        <IconButton
+          data-testid="app-shell.sidebar-close.button"
+          aria-label="Close navigation menu"
+          onClick={() => {
+            setBlnDrawerOpen(false);
+            setBlnDesktopSidebarOpen(false);
+          }}
+          sx={{
+            color: "#ffffff",
+            backgroundColor: "rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            "&:hover": {
+              backgroundColor: "rgba(255,255,255,0.22)"
+            }
+          }}
+        >
+          <CloseRoundedIcon />
+        </IconButton>
       </Paper>
 
       <Paper
@@ -697,6 +737,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
       >
         <DynamicMenu
           lstMenuItems={objMenu.lstMenuItems}
+          strForcedExpandedMenuIdentity={strPendingExpandedMenuIdentity}
+          onForcedExpandedHandled={() => setStrPendingExpandedMenuIdentity(null)}
           onNavigate={() => {
             setBlnDrawerOpen(false);
           }}
@@ -707,7 +749,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         data-testid="app-shell.sidebar-logout.button"
         onClick={() => {
           setBlnDrawerOpen(false);
-          // setBlnDesktopSidebarOpen(false);
+          setBlnDesktopSidebarOpen(false);
           setBlnLogoutDialogOpen(true);
         }}
         disabled={blnLoggingOut}
@@ -778,12 +820,111 @@ export default function AppShell({ children }: { children: ReactNode }) {
           "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
       }}
     >
-      <BlockingLoader blnOpen={blnLoggingOut} strLabel="Logging out..." intZIndex={1600} />
-      <BlockingLoader
-        blnOpen={blnLanguageSwitching}
-        strLabel={tCommon("switching_language", "Switching language...")}
-        intZIndex={1590}
-      />
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: intMenuZIndex,
+          width: intCollapsedMenuRailWidth,
+          flex: `0 0 ${intCollapsedMenuRailWidth}px`,
+          height: "100vh",
+          minHeight: 0,
+          display: { xs: "none", lg: "flex" },
+          flexDirection: "column",
+          alignItems: "center",
+          backgroundColor: "#ffffff",
+          borderRight: "1px solid #e2e8f0",
+          boxShadow: "8px 0 24px rgba(15, 23, 42, 0.08)",
+          overflow: "hidden",
+          cursor: "pointer",
+          transition: "box-shadow 180ms ease",
+          pointerEvents: "auto"
+        }}
+        onClick={() => setBlnDesktopSidebarOpen(true)}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            height: 96,
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+          }}
+        >
+            <IconButton
+              data-testid="app-shell.desktop-menu-toggle.button"
+              aria-label="Open navigation menu"
+              sx={{
+                width: 40,
+                height: 40,
+                border: "1px solid rgba(59, 130, 246, 0.18)",
+                backgroundColor: "#ffffff",
+                color: "#2563eb",
+                boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+                "&:hover": {
+                  backgroundColor: "#eff6ff",
+                  color: "#1d4ed8",
+                }
+              }}
+            >
+              <MenuRoundedIcon />
+          </IconButton>
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            width: "100%",
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            py: 1,
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": {
+              display: "none",
+            },
+          }}
+        >
+          <DynamicMenu
+            lstMenuItems={objMenu.lstMenuItems}
+            blnCollapsed
+            onCollapsedClick={() => setBlnDesktopSidebarOpen(true)}
+            onCollapsedMenuItemClick={handleDesktopCollapsedMenuItemClick}
+            onNavigate={() => setBlnDesktopSidebarOpen(false)}
+          />
+        </Box>
+        <Box
+          sx={{
+            width: "100%",
+            height: 72,
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            color: "#2563eb",
+          }}
+        >
+          <LogoutRoundedIcon />
+        </Box>
+      </Box>
+      <Box
+        sx={{
+          position: "fixed",
+          left: 0,
+          top: 0,
+          zIndex: intMenuZIndex + 1,
+          width: intDrawerWidth + 28,
+          height: "100vh",
+          minHeight: 0,
+          display: { xs: "none", lg: "block" },
+          p: { xs: 1, md: 1.5 },
+          pr: 0,
+          overflow: "hidden",
+          transform: blnDesktopSidebarOpen ? "translateX(0)" : `translateX(-${intDrawerWidth + 28}px)`,
+          transition: "transform 240ms cubic-bezier(0.2, 0, 0, 1), opacity 180ms ease",
+          opacity: blnDesktopSidebarOpen ? 1 : 0,
+          pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
+        }}
+      >
+        {objSidebarContent}
+      </Box>
       <Drawer
         variant="temporary"
         open={blnDrawerOpen}
@@ -791,7 +932,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ModalProps={{ keepMounted: true }}
         data-testid="app-shell.mobile-drawer"
         sx={{
-          display: "block",
+          display: { xs: "block", lg: "none" },
+          zIndex: intMenuZIndex,
           "& .MuiDrawer-paper": {
             width: intDrawerWidth,
             height: "100vh",
@@ -806,218 +948,236 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {objSidebarContent}
       </Drawer>
 
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          minHeight: 0,
-          overflow: "hidden",
-          p: blnDashboardRoute ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 }
-        }}
-      >
-        <AppBar
-          position="sticky"
-          color="inherit"
+      <BlockingLoaderViewportProvider getViewportElement={() => objMainContentRef.current}>
+        <Box
           sx={{
             position: "relative",
-            borderRadius: "24px",
-            mb: 1.5,
-            px: { xs: 0.25, sm: 0.75 },
-            background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
-            border: "1px solid rgba(255, 255, 255, 0.6)",
-            boxShadow:
-              "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            overflow: "hidden",
+            p: blnDashboardRoute ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 }
           }}
         >
-          <Toolbar sx={{ gap: 1.5, minHeight: "82px", alignItems: "center" }}>
-            <IconButton
-              data-testid="app-shell.menu-toggle.button"
-              onClick={handleMenuToggle}
-              sx={{
-                position: "relative",
-                zIndex: intMenuZIndex,
-                display: "inline-flex",
-                border: "1px solid rgba(148, 163, 184, 0.18)",
-                backgroundColor: "rgba(248,250,252,0.88)"
-              }}
-            >
-              <MenuRoundedIcon />
-            </IconButton>
-
-            <Box sx={{ minWidth: 0, flexShrink: 0 }}>
-              <Typography
+          <AppBar
+            position="sticky"
+            color="inherit"
+            sx={{
+              position: "relative",
+              borderRadius: "24px",
+              mb: 1.5,
+              px: { xs: 0.25, sm: 0.75 },
+              background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.6)",
+              boxShadow:
+                "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
+            }}
+          >
+            <Toolbar sx={{ gap: 1.5, minHeight: "82px", alignItems: "center" }}>
+              <IconButton
+                data-testid="app-shell.menu-toggle.button"
+                onClick={handleMenuToggle}
                 sx={{
-                  fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                  color: "#0f172a",
-                  textTransform: "none",
-                  letterSpacing: "normal",
-                  fontWeight: 700,
-                  lineHeight: 1.43,
-                  whiteSpace: "nowrap"
+                  position: "relative",
+                  zIndex: intMenuZIndex,
+                  display: { xs: "inline-flex", lg: "none" },
+                  border: "1px solid rgba(148, 163, 184, 0.18)",
+                  backgroundColor: "rgba(248,250,252,0.88)"
                 }}
               >
-                {tCommon("app_title", "Human Resource Management System")}
-              </Typography>
-            </Box>
+                <MenuRoundedIcon />
+              </IconButton>
 
-            {lstLanguageOptions.length > 1 ? (
-              <Box
-                sx={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
-                  zIndex: 1,
-                  display: { xs: "none", md: "block" }
-                }}
-              >
-                <Paper
-                  elevation={0}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.25,
-                    px: 0.75,
-                    py: 0.55,
-                    borderRadius: "16px",
-                    backgroundColor: "rgba(255,255,255,0.96)",
-                    border: "1px solid #dbe3ee",
-                    boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)"
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      display: "grid",
-                      placeItems: "center",
-                      borderRadius: "999px",
-                      color: "#47658a"
-                    }}
-                  >
-                    {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
-                  </Box>
-                  {lstLanguageOptions.map((dicLanguageOption) => {
-                    const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
-                    return (
-                      <ButtonBase
-                        data-testid={`app-shell.language.${dicLanguageOption.intLanguageID}.button`}
-                        key={dicLanguageOption.intLanguageID}
-                        onClick={() => {
-                          void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
-                        }}
-                        disabled={blnLanguageSwitching || blnActive}
-                        sx={{
-                          px: 1.15,
-                          py: 0.75,
-                          minWidth: 44,
-                          borderRadius: "12px",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          lineHeight: 1,
-                          color: blnActive ? "#ffffff" : "#52637a",
-                          backgroundColor: blnActive ? "#3f5f99" : "transparent",
-                          boxShadow: blnActive ? "0 8px 16px rgba(63, 95, 153, 0.22)" : "none",
-                          opacity: blnLanguageSwitching && !blnActive ? 0.72 : 1,
-                          transition: "background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease",
-                          "&:hover": blnActive
-                            ? {
-                                backgroundColor: "#3f5f99",
-                              }
-                            : {
-                                backgroundColor: "rgba(19, 42, 99, 0.08)",
-                                color: "#132a63",
-                              }
-                        }}
-                      >
-                        {dicLanguageOption.strLabel}
-                      </ButtonBase>
-                    );
-                  })}
-                </Paper>
-              </Box>
-            ) : null}
-
-            <Box sx={{ flex: 1, minWidth: 0 }} />
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                minWidth: 0,
-                pr: { xs: 0.25, md: 0.75 }
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                  fontWeight: 700,
-                  color: "#0f172a",
-                  letterSpacing: "-0.03em",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: { xs: "120px", sm: "220px", md: "320px" },
-                  textAlign: "right"
-                }}
-              >
-                {strPageTitle}
-              </Typography>
-              {strLinkedEmployeeName || intLinkedEmployeeID ? (
+              <Box sx={{ minWidth: 0, flexShrink: 0 }}>
                 <Typography
                   sx={{
-                    ml: 1,
-                    px: 1,
-                    py: 0.35,
-                    borderRadius: "999px",
-                    backgroundColor: "rgba(255,255,255,0.72)",
-                    border: "1px solid rgba(148, 163, 184, 0.25)",
-                    color: "#334155",
-                    fontSize: { xs: "0.72rem", md: "0.76rem" },
+                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                    color: "#0f172a",
+                    textTransform: "none",
+                    letterSpacing: "normal",
                     fontWeight: 700,
-                    maxWidth: { xs: "110px", sm: "180px", md: "240px" },
+                    lineHeight: 1.43,
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {tCommon("app_title", "Human Resource Management System")}
+                </Typography>
+              </Box>
+
+              {lstLanguageOptions.length > 1 ? (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 1,
+                    display: { xs: "none", md: "block" }
+                  }}
+                >
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.25,
+                      px: 0.75,
+                      py: 0.55,
+                      borderRadius: "16px",
+                      backgroundColor: "rgba(255,255,255,0.96)",
+                      border: "1px solid #dbe3ee",
+                      boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)"
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        display: "grid",
+                        placeItems: "center",
+                        borderRadius: "999px",
+                        color: "#47658a"
+                      }}
+                    >
+                      {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
+                    </Box>
+                    {lstLanguageOptions.map((dicLanguageOption) => {
+                      const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
+                      return (
+                        <ButtonBase
+                          data-testid={`app-shell.language.${dicLanguageOption.intLanguageID}.button`}
+                          key={dicLanguageOption.intLanguageID}
+                          onClick={() => {
+                            void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
+                          }}
+                          disabled={blnLanguageSwitching || blnActive}
+                          sx={{
+                            px: 1.15,
+                            py: 0.75,
+                            minWidth: 44,
+                            borderRadius: "12px",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            color: blnActive ? "#ffffff" : "#52637a",
+                            backgroundColor: blnActive ? "#3f5f99" : "transparent",
+                            boxShadow: blnActive ? "0 8px 16px rgba(63, 95, 153, 0.22)" : "none",
+                            opacity: blnLanguageSwitching && !blnActive ? 0.72 : 1,
+                            transition: "background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease",
+                            "&:hover": blnActive
+                              ? {
+                                  backgroundColor: "#3f5f99",
+                                }
+                              : {
+                                  backgroundColor: "rgba(19, 42, 99, 0.08)",
+                                  color: "#132a63",
+                                }
+                          }}
+                        >
+                          {dicLanguageOption.strLabel}
+                        </ButtonBase>
+                      );
+                    })}
+                  </Paper>
+                </Box>
+              ) : null}
+
+              <Box sx={{ flex: 1, minWidth: 0 }} />
+
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  minWidth: 0,
+                  pr: { xs: 0.25, md: 0.75 }
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    letterSpacing: "-0.03em",
+                    whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    maxWidth: { xs: "120px", sm: "220px", md: "320px" },
+                    textAlign: "right"
                   }}
-                  title={strLinkedEmployeeName || `Employee ID: ${intLinkedEmployeeID}`}
                 >
-                  {strLinkedEmployeeName || `Employee #${intLinkedEmployeeID}`}
+                  {strPageTitle}
                 </Typography>
-              ) : null}
-            </Box>
+                {strLinkedEmployeeName || intLinkedEmployeeID ? (
+                  <Typography
+                    sx={{
+                      ml: 1,
+                      px: 1,
+                      py: 0.35,
+                      borderRadius: "999px",
+                      backgroundColor: "rgba(255,255,255,0.72)",
+                      border: "1px solid rgba(148, 163, 184, 0.25)",
+                      color: "#334155",
+                      fontSize: { xs: "0.72rem", md: "0.76rem" },
+                      fontWeight: 700,
+                      maxWidth: { xs: "110px", sm: "180px", md: "240px" },
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={strLinkedEmployeeName || `Employee ID: ${intLinkedEmployeeID}`}
+                  >
+                    {strLinkedEmployeeName || `Employee #${intLinkedEmployeeID}`}
+                  </Typography>
+                ) : null}
+              </Box>
 
-            <IconButton
-              data-testid="app-shell.profile-menu.button"
-              onClick={openProfileMenu}
-              disabled={blnLoggingOut}
-              sx={{
-                p: 0.4,
-                border: "1px solid rgba(148, 163, 184, 0.18)",
-                backgroundColor: "rgba(248,250,252,0.92)"
-              }}
-            >
-              <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
-                {strAvatarText}
-              </Avatar>
-            </IconButton>
-          </Toolbar>
-        </AppBar>
+              <IconButton
+                data-testid="app-shell.profile-menu.button"
+                onClick={openProfileMenu}
+                disabled={blnLoggingOut}
+                sx={{
+                  p: 0.4,
+                  border: "1px solid rgba(148, 163, 184, 0.18)",
+                  backgroundColor: "rgba(248,250,252,0.92)"
+                }}
+              >
+                <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                  {strAvatarText}
+                </Avatar>
+              </IconButton>
+            </Toolbar>
+          </AppBar>
 
-        <Box
-          component="main"
-          sx={{
-            minHeight: 0,
-            height: "calc(100% - 98px)",
-            overflowY: "auto",
-            overflowX: "hidden",
-            pr: blnDashboardRoute ? 0 : 0.5
-          }}
-        >
-          {children}
+          <Box
+            component="main"
+            ref={objMainContentRef}
+            onClickCapture={handleMainContentClick}
+            sx={{
+              position: "relative",
+              minHeight: 0,
+              height: "calc(100% - 98px)",
+              overflowY: "auto",
+              overflowX: "hidden",
+              pr: blnDashboardRoute ? 0 : 0.5
+            }}
+          >
+            {children}
+            <BlockingLoader
+              blnOpen={blnLoggingOut}
+              strLabel="Logging out..."
+              intZIndex={intContentLoaderZIndex}
+              blnLocal
+            />
+            <BlockingLoader
+              blnOpen={blnLanguageSwitching}
+              strLabel={tCommon("switching_language", "Switching language...")}
+              intZIndex={intContentLoaderZIndex}
+              blnLocal
+            />
+          </Box>
         </Box>
-      </Box>
+      </BlockingLoaderViewportProvider>
 
       <Menu
         anchorEl={objProfileAnchorEl}

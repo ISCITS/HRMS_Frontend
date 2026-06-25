@@ -2,10 +2,10 @@
 
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
+import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
 import Icon from "@mui/material/Icon";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -15,6 +15,11 @@ import type { MenuItem } from "@/models/AuthModels";
 type DynamicMenuProps = {
   lstMenuItems: MenuItem[];
   onNavigate?: () => void;
+  blnCollapsed?: boolean;
+  onCollapsedClick?: () => void;
+  onCollapsedMenuItemClick?: (strMenuIdentity: string) => void;
+  strForcedExpandedMenuIdentity?: string | null;
+  onForcedExpandedHandled?: () => void;
 };
 
 const objMenuIconSx = { color: "inherit" };
@@ -34,8 +39,17 @@ function toMaterialIconName(strValue: string) {
     .toLowerCase();
 }
 
-function getMenuIcon(objItem: MenuItem) {
-  const strIconName = objItem.blnIsHome ? "dashboard" : toMaterialIconName(objItem.strIconName ?? "");
+function resolveMenuIconName(objItem: MenuItem, strFallbackIconName = "workspaces"): string {
+  if (objItem.blnIsHome) {
+    return "dashboard";
+  }
+
+  const strResolvedIconName = toMaterialIconName(objItem.strIconName ?? "");
+  return strResolvedIconName || strFallbackIconName;
+}
+
+function getMenuIcon(objItem: MenuItem, strFallbackIconName = "workspaces") {
+  const strIconName = resolveMenuIconName(objItem, strFallbackIconName);
   return <Icon sx={objMenuIconSx}>{strIconName || "workspaces"}</Icon>;
 }
 
@@ -592,6 +606,22 @@ function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
   ].filter(Boolean).join("|");
 }
 
+function findMenuIconSourceItem(objItem: MenuItem): MenuItem {
+  const strResolvedIconName = toMaterialIconName(objItem.strIconName ?? "");
+  if (objItem.blnIsHome || strResolvedIconName) {
+    return objItem;
+  }
+
+  for (const objChild of objItem.lstChildren) {
+    const objResolvedChild = findMenuIconSourceItem(objChild);
+    if (objResolvedChild.blnIsHome || toMaterialIconName(objResolvedChild.strIconName ?? "")) {
+      return objResolvedChild;
+    }
+  }
+
+  return objItem;
+}
+
 function hasPayrollResultAccess(lstItems: MenuItem[]): boolean {
   return (
     hasRoute(lstItems, "/payroll/results") ||
@@ -669,8 +699,17 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
   return lstUpdatedItems;
 }
 
-export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuProps) {
+export default function DynamicMenu({
+  lstMenuItems,
+  onNavigate,
+  blnCollapsed = false,
+  onCollapsedClick,
+  onCollapsedMenuItemClick,
+  strForcedExpandedMenuIdentity,
+  onForcedExpandedHandled,
+}: DynamicMenuProps) {
   const strPathname = usePathname();
+  const objRouter = useRouter();
   const intLanguageID = authHelpers.getLanguageID();
   const { t: tCommon } = useModuleLabels("common");
   const { t: tDepartment } = useModuleLabels("department");
@@ -960,10 +999,26 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
   const [dicExpandedMenus, setDicExpandedMenus] = useState<Record<string, boolean>>(dicDefaultExpanded);
 
   useEffect(() => {
-    setDicExpandedMenus((dicPrevious) => ({
-      ...dicPrevious,
-      ...collectExpandableDefaults(lstRenderedMenuItems),
-    }));
+    const dicActiveDefaults = collectExpandableDefaults(lstRenderedMenuItems);
+    const lstTopLevelKeys = lstRenderedMenuItems
+      .filter((objItem) => objItem.lstChildren.length > 0)
+      .map((objItem) => getMenuNodeKey(objItem, 0));
+    const strActiveTopLevelKey = lstTopLevelKeys.find((strKey) => dicActiveDefaults[strKey]);
+
+    setDicExpandedMenus((dicPrevious) => {
+      const dicNext = {
+        ...dicPrevious,
+        ...dicActiveDefaults,
+      };
+
+      if (strActiveTopLevelKey) {
+        lstTopLevelKeys.forEach((strKey) => {
+          dicNext[strKey] = strKey === strActiveTopLevelKey;
+        });
+      }
+
+      return dicNext;
+    });
   }, [lstRenderedMenuItems, strPathname]);
 
   function toggleMenu(strMenuKey: string) {
@@ -995,6 +1050,95 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     };
   }
 
+  function expandSingleTopLevelMenu(strMenuKey: string) {
+    setDicExpandedMenus((dicPrevious) => {
+      const dicNext = { ...dicPrevious };
+      lstRenderedMenuItems.forEach((objTopLevelItem) => {
+        dicNext[getMenuNodeKey(objTopLevelItem, 0)] = false;
+      });
+      dicNext[strMenuKey] = true;
+      return dicNext;
+    });
+  }
+
+  useEffect(() => {
+    if (!strForcedExpandedMenuIdentity) {
+      return;
+    }
+
+    const objTargetTopLevelMenu = lstRenderedMenuItems.find(
+      (objItem) => getMenuIdentityKey(objItem) === strForcedExpandedMenuIdentity && objItem.lstChildren.length > 0,
+    );
+
+    if (objTargetTopLevelMenu) {
+      expandSingleTopLevelMenu(getMenuNodeKey(objTargetTopLevelMenu, 0));
+    }
+
+    onForcedExpandedHandled?.();
+  }, [lstRenderedMenuItems, onForcedExpandedHandled, strForcedExpandedMenuIdentity]);
+
+  function getCollapsedButtonStyles(blnIsActive: boolean) {
+    return {
+      width: 44,
+      height: 44,
+      minWidth: 44,
+      borderRadius: "0",
+      mb: 0.75,
+      display: "grid",
+      placeItems: "center",
+      color: blnIsActive ? "#1d4ed8" : "#2563eb",
+      backgroundColor: "transparent",
+      borderLeft: blnIsActive ? "3px solid #2563eb" : "3px solid transparent",
+      transition: "background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease",
+      "&:hover": {
+        backgroundColor: "#eff6ff",
+        color: "#1d4ed8",
+        transform: "translateX(1px)",
+      },
+      "& .MuiListItemIcon-root": {
+        minWidth: 0,
+      },
+      "& .material-icons": {
+        fontSize: 24,
+      },
+    };
+  }
+
+  function renderCollapsedMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
+    const strMenuKey = getMenuNodeKey(objItem, intDepth);
+    const strRoute = resolveMenuRoute(objItem);
+    const blnIsActive = matchesRoute(strRoute, strPathname) || hasActiveDescendant(objItem);
+    const objIconSourceItem = findMenuIconSourceItem(objItem);
+
+    const blnHasChildren = objItem.lstChildren.length > 0;
+
+    return (
+      <Tooltip key={strMenuKey} title={resolveMenuLabel(objItem)} placement="right" arrow>
+        <ListItemButton
+          data-testid={`nav.collapsed-menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.button`}
+          aria-label={resolveMenuLabel(objItem)}
+          onClick={() => {
+            if (blnHasChildren) {
+              onCollapsedClick?.();
+              onCollapsedMenuItemClick?.(getMenuIdentityKey(objItem));
+              return;
+            }
+
+            if (strRoute) {
+              onNavigate?.();
+              objRouter.push(strRoute);
+            }
+          }}
+          sx={getCollapsedButtonStyles(blnIsActive)}
+        >
+          <ListItemIcon sx={{ color: "inherit", justifyContent: "center" }}>
+            {getMenuIcon(objIconSourceItem)}
+          </ListItemIcon>
+        </ListItemButton>
+      </Tooltip>
+    );
+  }
+
   function renderMenuItem(objItem: MenuItem, intDepth = 0): ReactNode {
     const strRoute = resolveMenuRoute(objItem);
     const strMenuKey = getMenuNodeKey(objItem, intDepth);
@@ -1002,6 +1146,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
     const blnHasChildren = objItem.lstChildren.length > 0;
     const blnHasActiveChild = hasActiveDescendant(objItem);
     const blnExpanded = dicExpandedMenus[strMenuKey] ?? blnHasActiveChild;
+    const objIconSourceItem = findMenuIconSourceItem(objItem);
 
     if (blnHasChildren) {
       return (
@@ -1011,17 +1156,24 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
             data-menu-code={objItem.strModuleCode}
             data-menu-label={resolveMenuLabel(objItem)}
             data-menu-route={strRoute ?? ""}
-            onClick={() => toggleMenu(strMenuKey)}
-            sx={getButtonStyles(blnHasActiveChild, intDepth)}
+            onClick={() => {
+              if (intDepth === 0) {
+                expandSingleTopLevelMenu(strMenuKey);
+                return;
+              }
+
+              toggleMenu(strMenuKey);
+            }}
+            sx={getButtonStyles(blnHasActiveChild || blnExpanded, intDepth)}
           >
-            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild ? "#2563eb" : "#64748b" }}>
-              {getMenuIcon(objItem)}
+            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild || blnExpanded ? "#2563eb" : "#64748b" }}>
+              {getMenuIcon(objIconSourceItem)}
             </ListItemIcon>
             <ListItemText
               primary={resolveMenuLabel(objItem)}
               primaryTypographyProps={{
                 fontWeight: 700,
-                color: "#0f172a",
+                color: blnHasActiveChild || blnExpanded ? "#1d4ed8" : "#0f172a",
                 fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
               }}
             />
@@ -1052,7 +1204,7 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
         sx={getButtonStyles(blnIsActive, intDepth)}
       >
         <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "#2563eb" : "#64748b" }}>
-          {getMenuIcon(objItem)}
+          {getMenuIcon(objIconSourceItem)}
         </ListItemIcon>
         <ListItemText
           primary={resolveMenuLabel(objItem)}
@@ -1063,6 +1215,24 @@ export default function DynamicMenu({ lstMenuItems, onNavigate }: DynamicMenuPro
           }}
         />
       </ListItemButton>
+    );
+  }
+
+  if (blnCollapsed) {
+    return (
+      <List
+        data-testid="nav.collapsed-menu.list"
+        sx={{
+          width: "100%",
+          mt: 0,
+          py: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        {lstRenderedMenuItems.map((objItem) => renderCollapsedMenuItem(objItem))}
+      </List>
     );
   }
 

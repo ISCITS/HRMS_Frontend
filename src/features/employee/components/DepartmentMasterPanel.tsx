@@ -739,7 +739,7 @@ export default function DepartmentMasterPanel() {
   );
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
       <Box className={styles.topBar}>
         <Button data-testid="department-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
       </Box>
@@ -1019,7 +1019,12 @@ export default function DepartmentMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader
+        blnOpen={blnLoading || blnRightsLoading || blnSubmitting}
+        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+        intZIndex={1400}
+        blnLocal
+      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
