@@ -1,6 +1,7 @@
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
   SalaryComponentDetailRecord,
+  SalaryComponentFlexiEligibilityRuleFormValue,
   SalaryComponentFormOptions,
   SalaryComponentFormValues,
   SalaryComponentListRecord,
@@ -8,10 +9,16 @@ import type {
 } from "@/features/salary-components/types";
 
 let intRowIDSequence = 0;
+let intRuleRowIDSequence = 0;
 
 function createRowID() {
   intRowIDSequence += 1;
   return `salary-component-text-row-${intRowIDSequence}`;
+}
+
+function createRuleRowID() {
+  intRuleRowIDSequence += 1;
+  return `salary-component-flexi-rule-row-${intRuleRowIDSequence}`;
 }
 
 function formatOptionalText(strValue: string) {
@@ -124,7 +131,41 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     blnIsActive: Boolean(dicRecord.blnIsActive),
     intDependencyCount: lstDependencyComponentIDs.length,
     lstDependencyComponentIDs,
-    lstFlexiEligibilityIDs: normalizeIntegerList(dicRecord.lstFlexiEligibilityIDs ?? []),
+    lstFlexiEligibilityRules: (dicRecord.lstFlexiEligibilityRules ?? []).map((dicRule) => ({
+      intID: dicRule.intID,
+      intEligibilityQuestionID: dicRule.intEligibilityQuestionID,
+      strOperator: dicRule.strOperator,
+      strExpectedValue: dicRule.strExpectedValue ?? null,
+      fltMinValue: dicRule.fltMinValue ?? null,
+      fltMaxValue: dicRule.fltMaxValue ?? null,
+      strMultiplierMode: dicRule.strMultiplierMode,
+      fltMultiplierCap: dicRule.fltMultiplierCap ?? null,
+      strIneligibleBehavior: dicRule.strIneligibleBehavior,
+      strFailureMessage: dicRule.strFailureMessage ?? null,
+      blnIsRequired: Boolean(dicRule.blnIsRequired),
+      blnIsActive: Boolean(dicRule.blnIsActive),
+      intDisplayOrder: Number(dicRule.intDisplayOrder ?? 10),
+      objQuestion: dicRule.objQuestion ? {
+        intID: dicRule.objQuestion.intID,
+        strQuestionCode: dicRule.objQuestion.strQuestionCode,
+        strAnswerType: dicRule.objQuestion.strAnswerType,
+        strSourceType: "",
+        blnIsEmployeeEditable: true,
+        strDefaultLabel: dicRule.objQuestion.strDefaultLabel,
+        strDefaultHelpText: dicRule.objQuestion.strDefaultHelpText ?? null,
+        strValueUnit: dicRule.objQuestion.strValueUnit ?? null,
+        decMinValue: null,
+        decMaxValue: null,
+        objOptionJSON: dicRule.objQuestion.objOptionJSON,
+        intDisplayOrder: 10,
+        blnIsActive: true,
+        lstTexts: (dicRule.objQuestion.lstTexts ?? []).map((dicText) => ({
+          intLanguageID: dicText.intLanguageID,
+          strQuestionLabel: dicText.strQuestionLabel,
+          strHelpText: dicText.strHelpText ?? null,
+        })),
+      } : null,
+    })),
     lstTexts: (dicRecord.lstTexts ?? []).map((dicText) => ({
       intLanguageID: dicText.intLanguageID,
       strLanguageName: dicText.strLanguageName,
@@ -142,6 +183,24 @@ export function createEmptySalaryComponentTextRow(): SalaryComponentTextFormValu
     strLanguageName: "",
     strComponentName: "",
     strComponentDescription: ""
+  };
+}
+
+export function createEmptySalaryComponentFlexiEligibilityRuleRow(): SalaryComponentFlexiEligibilityRuleFormValue {
+  return {
+    strRowID: createRuleRowID(),
+    intEligibilityQuestionID: "",
+    strOperator: "equals",
+    strExpectedValue: "",
+    strMinValue: "",
+    strMaxValue: "",
+    strMultiplierMode: "none",
+    strMultiplierCap: "",
+    strIneligibleBehavior: "show_disabled",
+    strFailureMessage: "",
+    blnIsRequired: true,
+    blnIsActive: true,
+    intDisplayOrder: 10,
   };
 }
 
@@ -188,9 +247,8 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnProofRequired: false,
     blnAllowManualOverride: true,
     blnIsActive: true,
-    blnEnableDependencyMapping: false,
-    lstFlexiEligibilityIDs: [],
     lstDependencyComponentIDs: [],
+    lstFlexiEligibilityRules: [],
     lstTexts: [createEmptySalaryComponentTextRow()]
   };
 }
@@ -238,9 +296,23 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnProofRequired: Boolean(dicRecord.blnProofRequired),
     blnAllowManualOverride: Boolean(dicRecord.blnAllowManualOverride),
     blnIsActive: Boolean(dicRecord.blnIsActive),
-    blnEnableDependencyMapping: dicRecord.lstFlexiEligibilityIDs.length > 0,
-    lstFlexiEligibilityIDs: dicRecord.lstFlexiEligibilityIDs,
     lstDependencyComponentIDs: dicRecord.lstDependencyComponentIDs,
+    lstFlexiEligibilityRules: dicRecord.lstFlexiEligibilityRules.map((dicRule, intIndex) => ({
+      strRowID: createRuleRowID(),
+      intID: dicRule.intID,
+      intEligibilityQuestionID: dicRule.intEligibilityQuestionID,
+      strOperator: dicRule.strOperator,
+      strExpectedValue: dicRule.strExpectedValue ?? "",
+      strMinValue: dicRule.fltMinValue != null ? String(dicRule.fltMinValue) : "",
+      strMaxValue: dicRule.fltMaxValue != null ? String(dicRule.fltMaxValue) : "",
+      strMultiplierMode: dicRule.strMultiplierMode,
+      strMultiplierCap: dicRule.fltMultiplierCap != null ? String(dicRule.fltMultiplierCap) : "",
+      strIneligibleBehavior: dicRule.strIneligibleBehavior,
+      strFailureMessage: dicRule.strFailureMessage ?? "",
+      blnIsRequired: dicRule.blnIsRequired,
+      blnIsActive: dicRule.blnIsActive,
+      intDisplayOrder: dicRule.intDisplayOrder ?? ((intIndex + 1) * 10),
+    })),
     lstTexts: dicRecord.lstTexts.length > 0
       ? dicRecord.lstTexts.map((dicText) => ({
           strRowID: createRowID(),
@@ -275,7 +347,8 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
         : decAnnualLimitAmount != null
           ? "yearly"
           : dicValues.strClaimLimitType;
-  const blnPersistDependencyMapping = dicValues.blnEnableDependencyMapping || isDependencyBackedCalculation(dicValues);
+  const blnPersistDependencyMapping = isDependencyBackedCalculation(dicValues);
+  const blnPersistFlexiEligibilityRules = isReimbursementCategory(dicValues.strComponentCategory) && dicValues.blnIsFlexiBenefit;
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -331,9 +404,23 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
       blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : [],
       intSalaryComponentID
     ),
-    lstFlexiEligibilityIDs: normalizeIntegerList(
-      dicValues.blnEnableDependencyMapping ? dicValues.lstFlexiEligibilityIDs : []
-    ),
+    lstFlexiEligibilityRules: blnPersistFlexiEligibilityRules
+      ? dicValues.lstFlexiEligibilityRules.map((dicRule) => ({
+          ...(dicRule.intID ? { intID: dicRule.intID } : {}),
+          intEligibilityQuestionID: Number(dicRule.intEligibilityQuestionID),
+          strOperator: dicRule.strOperator,
+          strExpectedValue: formatOptionalText(dicRule.strExpectedValue),
+          fltMinValue: dicRule.strMinValue.trim() ? Number(dicRule.strMinValue) : null,
+          fltMaxValue: dicRule.strMaxValue.trim() ? Number(dicRule.strMaxValue) : null,
+          strMultiplierMode: dicRule.strMultiplierMode,
+          fltMultiplierCap: dicRule.strMultiplierCap.trim() ? Number(dicRule.strMultiplierCap) : null,
+          strIneligibleBehavior: dicRule.strIneligibleBehavior,
+          strFailureMessage: formatOptionalText(dicRule.strFailureMessage),
+          blnIsRequired: dicRule.blnIsRequired,
+          blnIsActive: dicRule.blnIsActive,
+          intDisplayOrder: dicRule.intDisplayOrder,
+        }))
+      : [],
     lstTexts: dicValues.lstTexts
       .filter((dicText) => dicText.intLanguageID !== "" && dicText.strComponentName.trim())
       .map((dicText) => ({
@@ -407,7 +494,26 @@ export const salaryComponentService = {
     return {
       ...objResult.Data,
       lstResidualComponents: objResult.Data.lstResidualComponents ?? [],
-      lstFlexiComponentEligibilityOptions: objResult.Data.lstFlexiComponentEligibilityOptions ?? [],
+      lstFlexiEligibilityQuestions: (objResult.Data.lstFlexiEligibilityQuestions ?? []).map((dicQuestion) => ({
+        intID: dicQuestion.intID,
+        strQuestionCode: dicQuestion.strQuestionCode,
+        strAnswerType: dicQuestion.strAnswerType,
+        strSourceType: dicQuestion.strSourceType,
+        blnIsEmployeeEditable: Boolean(dicQuestion.blnIsEmployeeEditable),
+        strDefaultLabel: dicQuestion.strDefaultLabel,
+        strDefaultHelpText: dicQuestion.strDefaultHelpText ?? null,
+        strValueUnit: dicQuestion.strValueUnit ?? null,
+        decMinValue: dicQuestion.decMinValue ?? null,
+        decMaxValue: dicQuestion.decMaxValue ?? null,
+        objOptionJSON: dicQuestion.objOptionJSON,
+        intDisplayOrder: dicQuestion.intDisplayOrder,
+        blnIsActive: Boolean(dicQuestion.blnIsActive),
+        lstTexts: (dicQuestion.lstTexts ?? []).map((dicText) => ({
+          intLanguageID: dicText.intLanguageID,
+          strQuestionLabel: dicText.strQuestionLabel,
+          strHelpText: dicText.strHelpText ?? null,
+        })),
+      })),
       lstReimbursementTypes: objResult.Data.lstReimbursementTypes ?? [],
       lstSettlementMethods: objResult.Data.lstSettlementMethods ?? [],
       lstClaimLimitTypes: objResult.Data.lstClaimLimitTypes ?? [],

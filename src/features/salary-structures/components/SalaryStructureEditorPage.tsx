@@ -1227,7 +1227,7 @@ export default function SalaryStructureEditorPage({
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
         <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>
-            1. {t("structure_header", "Structure Header")}
+            {t("structure_header", "Structure Header")}
           </Typography>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
             <TextField
@@ -1256,7 +1256,7 @@ export default function SalaryStructureEditorPage({
         <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5} sx={{ mb: 1.5 }}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              2. {t("scope_and_dates", "Scope and Dates")}
+              {t("scope_and_dates", "Scope and Dates")}
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <FormControlLabel
@@ -1318,7 +1318,7 @@ export default function SalaryStructureEditorPage({
             <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  3. {t("component_line_configuration", "Salary Component Lines")}
+                  {t("component_line_configuration", "Salary Component Lines")}
                 </Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
                   {t(
@@ -1565,15 +1565,14 @@ export default function SalaryStructureEditorPage({
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
                 [t("flexi_basket", "Flexi Bucket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
                 [t("employer_contribution", "Employer Contribution"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
-                [t("default_flexi_balance", "Default Flexi Balance"), formatFlexiAmount(dicFlexiSummary.fltDefaultBalanceAnnual), "#0f172a"],
                 [t("residual_component", "Residual Component"), dicFlexiSummary.strResidualComponentName || "-", "#0f172a"],
                 [t("estimated_payroll_impact", "Estimated Payroll Impact"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
               ].map(([strLabel, strValue, strColor]) => {
                 const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
                 return (
                 <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography sx={{ color: "#172554", fontSize: "0.84rem" }}>{strLabel}</Typography>
-                  <Typography sx={{ color: strColor, fontSize: "0.84rem", fontWeight: 800 }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
+                  <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{strLabel}</Typography>
+                  <Typography sx={{ color: strColor, fontSize: blnCurrencyValue ? "0.84rem" : "0.76rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
                 </Stack>
                 );
               })}
@@ -1600,7 +1599,7 @@ export default function SalaryStructureEditorPage({
                       <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
                         <Box>
                           <Typography sx={{ color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
-                            4. {t("flexi_components", "Allowed Flexi Options")}
+                            {t("flexi_components", "Allowed Flexi Options")}
                           </Typography>
                           <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mt: 0.35 }}>
                             {t("flexi_components_declaration_standard_help", "Map employee-selectable flexi benefits and monthly declaration limits as per payroll and tax declaration policy.")}
@@ -1622,8 +1621,8 @@ export default function SalaryStructureEditorPage({
                           <Box component="thead" sx={{ "& th": { borderBottom: "1px solid #d9e6ef", color: "#0f172a", fontSize: "0.77rem", fontWeight: 700, px: 2, py: 1.2, textAlign: "left", whiteSpace: "nowrap" } }}>
                             <tr>
                               <th>{t("component", "Component")}</th>
-                              <th>{t("monthly_equivalent", "Monthly Flexi Limit")} (₹)</th>
-                              <th>{t("declared_annual", "Annual Flexi Limit")} (₹)</th>
+                              <th>{t("declared_annual", "Annual Limit")} (₹)</th>
+                              <th>{t("monthly_equivalent", "Monthly Limit")} (₹)</th>
                               <th>{t("proof_required", "Proof Submission Required")}</th>
                               <th>{t("action", "Action")}</th>
                             </tr>
@@ -1631,13 +1630,13 @@ export default function SalaryStructureEditorPage({
                           <Box component="tbody" sx={{ "& td": { borderBottom: "1px solid #d9e6ef", color: "#172554", fontSize: "0.84rem", px: 2, py: 1.15, verticalAlign: "middle", whiteSpace: "nowrap" } }}>
                             {dicLine.lstFlexiMappings.length === 0 ? (
                               <tr>
-                                <td className={styles.emptyState} colSpan={6}>{t("no_flexi_components_mapped", "No flexi components mapped.")}</td>
+                                <td className={styles.emptyState} colSpan={5}>{t("no_flexi_components_mapped", "No flexi components mapped.")}</td>
                               </tr>
                             ) : dicLine.lstFlexiMappings.map((dicMapping) => {
                               const dicFlexiComponent = dicComponentByID.get(Number(dicMapping.intFlexiComponentID));
                               const blnShowComponentSelect = dicMapping.intFlexiComponentID === "" || (dicFlexiComponent ? isFlexiEligibleComponent(dicFlexiComponent) : false);
-                              const fltMonthlyLimit = getComponentMonthlyLimit(dicFlexiComponent);
-                              const fltDeclaredAnnual = parseLineAmount(dicMapping.fltMaxAmount) ?? 0;
+                              const fltAnnualLimit = getComponentAnnualLimit(dicFlexiComponent);
+                              const strMonthlyLimit = getMonthlyAmountFromAnnual(dicMapping.fltMaxAmount);
                               const blnFlexiEligibilityInactive = !dicMapping.blnIsActive;
                               return (
                               <tr key={dicMapping.strRowID}>
@@ -1680,20 +1679,29 @@ export default function SalaryStructureEditorPage({
                                 <td>
                                   <TextField
                                     size="small"
-                                    value={dicMapping.fltDefaultAmount}
-                                    onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltDefaultAmount", objEvent.target.value)}
+                                    value={dicMapping.fltMaxAmount}
+                                    onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltMaxAmount", objEvent.target.value)}
                                     disabled={blnFieldDisabled || blnFlexiEligibilityInactive}
-                                    data-testid="salary-structures.editor.flexi-mapping.default-amount.input"
-                                    inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.default-amount.input", {
+                                    data-testid="salary-structures.editor.flexi-mapping.max-amount.input"
+                                    inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.max-amount.input", {
                                       "data-row-key": dicMapping.strRowID,
                                       inputMode: "decimal",
                                       pattern: "[0-9]*[.]?[0-9]*",
-                                      ...(fltMonthlyLimit != null ? { max: String(fltMonthlyLimit) } : {})
+                                      ...(fltAnnualLimit != null ? { max: String(fltAnnualLimit) } : {})
                                     })}
                                     sx={{ width: 126, "& .MuiInputBase-input": { fontSize: "0.84rem", py: 0.9 } }}
                                   />
                                 </td>
-                                <td>{formatFlexiAmount(fltDeclaredAnnual)}</td>
+                                <td>
+                                  <TextField
+                                    size="small"
+                                    value={strMonthlyLimit}
+                                    disabled
+                                    data-testid="salary-structures.editor.flexi-mapping.default-amount.input"
+                                    inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.default-amount.input", { "data-row-key": dicMapping.strRowID })}
+                                    sx={{ width: 126, "& .MuiInputBase-input": { fontSize: "0.84rem", py: 0.9 } }}
+                                  />
+                                </td>
                                 <td>{dicFlexiComponent?.blnProofRequired ? t("yes", "Yes") : t("no", "No")}</td>
                                 <td>
                                   <Stack direction="row" spacing={0.35} alignItems="center">
@@ -1725,7 +1733,7 @@ export default function SalaryStructureEditorPage({
                       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ color: "#475569", fontSize: "0.78rem", px: 2, py: 1.4 }}>
                         <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18 }} />
                         <Typography sx={{ color: "#475569", fontSize: "0.78rem" }}>
-                          {t("monthly_declarations_calculate_annual", "Monthly declarations are used to calculate declared annual amounts.")}
+                          {t("annual_declarations_calculate_monthly", "Annual flexi limits are used to calculate monthly limits.")}
                         </Typography>
                       </Stack>
                     </Paper>
@@ -1739,10 +1747,10 @@ export default function SalaryStructureEditorPage({
       </Box>
 
       <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
+        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              5. {t("multilingual_text", "Multilingual Text")}
+              {t("multilingual_text", "Multilingual Text")}
             </Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
               {t(
@@ -1775,7 +1783,7 @@ export default function SalaryStructureEditorPage({
                 display: "grid",
                 gap: 1.5,
                 gridTemplateColumns: { xs: "1fr", lg: "220px 1fr 1.1fr auto" },
-                alignItems: "start",
+                alignItems: "center",
                 border: "1px solid rgba(203,213,225,0.8)",
                 borderRadius: "18px",
                 p: 1.5,
