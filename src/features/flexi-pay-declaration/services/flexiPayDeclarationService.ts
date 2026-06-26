@@ -25,6 +25,9 @@ export type FlexiDeclarationLineRecord = {
   strComponentName?: string | null;
   decAnnualLimit?: number | null;
   decMonthlyLimit?: number | null;
+  decEffectiveAnnualCap?: number | null;
+  decEffectiveMonthlyCap?: number | null;
+  decEffectiveMultiplier?: number | null;
   decAllocationAnnual?: number | null;
   decAllocationMonthly?: number | null;
   blnProofRequired?: boolean | null;
@@ -36,13 +39,24 @@ export type FlexiDeclarationLineRecord = {
   strDeclarationItemRemarks?: string | null;
   blnEligible?: boolean | null;
   strEligibilityReason?: string | null;
+  strIneligibleBehavior?: string | null;
+  decMonthlyImpact?: number | null;
 };
 
 export type FlexiEligibilityQuestionRecord = {
   strQuestionCode: string;
   strQuestionLabel: string;
-  strAnswerType: "boolean" | "number" | "text";
+  strAnswerType: "boolean" | "number" | "text" | "select";
   strHint?: string | null;
+  strHelpText?: string | null;
+  strGroupCode?: string | null;
+  strGroupLabel?: string | null;
+  strValueUnit?: string | null;
+  decMinValue?: number | null;
+  decMaxValue?: number | null;
+  blnIsRequired?: boolean | null;
+  blnIsEmployeeEditable?: boolean | null;
+  objOptionJson?: unknown;
   objAnswerValue?: string | number | boolean | null;
 };
 
@@ -77,6 +91,24 @@ export type FlexiDeclarationContextRecord = {
   lstEligibilityQuestions?: FlexiEligibilityQuestionRecord[];
   objEligibilityAnswers?: Record<string, string | number | boolean | null>;
   lstDeclarationLines: FlexiDeclarationLineRecord[];
+  salary_impact_summary?: {
+    decAnnualCtc?: number | null;
+    decGrossMonthly?: number | null;
+    decFlexiBasketAvailableAnnual?: number | null;
+    decDeclaredFlexiAnnual?: number | null;
+    decResidualTaxableBalanceAnnual?: number | null;
+    objResidualComponent?: {
+      strComponentCode?: string | null;
+      strComponentName?: string | null;
+    } | null;
+    decEstimatedMonthlyPayrollImpact?: number | null;
+  } | null;
+  validation_messages?: string[];
+  eligible_components?: FlexiDeclarationLineRecord[];
+  ineligible_components_with_reason?: FlexiDeclarationLineRecord[];
+  history_count?: number | null;
+  declaration_status?: string | null;
+  blnHasHiddenComponents?: boolean | null;
 };
 
 export type FlexiDeclarationHistoryRecord = {
@@ -91,6 +123,34 @@ export type FlexiDeclarationHistoryRecord = {
   decApprovedTotalAnnual: number;
   intItemCount: number;
   strRemarks?: string | null;
+};
+
+export type FlexiDeclarationSummaryRecord = {
+  strFinancialYearCode: string;
+  blnCanDeclare: boolean;
+  strIneligibilityReason?: string | null;
+  objDeclaration?: FlexiDeclarationRecord | null;
+  objEmployeeSummary?: {
+    intEmployeeID: number;
+    strEmployeeCode?: string | null;
+    strEmployeeName?: string | null;
+  } | null;
+  objAssignedStructure?: {
+    intSalaryStructureID?: number | null;
+    strSalaryStructureName?: string | null;
+    strCurrencyCode?: string | null;
+    dtEffectiveFrom?: string | null;
+  } | null;
+  objFlexiAllocation?: {
+    blnHasFlexiBasket?: boolean;
+    decFlexiBasketAvailableAnnual?: number | null;
+    decResidualTaxableAllowanceAnnual?: number | null;
+    strResidualComponentName?: string | null;
+  } | null;
+  decDeclaredFlexiAnnual?: number | null;
+  decResidualTaxableBalanceAnnual?: number | null;
+  intHistoryCount?: number | null;
+  intItemCount?: number | null;
 };
 
 export type HrFlexiDeclarationApprovePayload = {
@@ -135,6 +195,15 @@ function buildSavePayload(
 }
 
 export const flexiPayDeclarationService = {
+  async getCurrentSummary(strFinancialYearCode: string): Promise<FlexiDeclarationSummaryRecord> {
+    const objResult = await requestApi<FlexiDeclarationSummaryRecord>({
+      strPath: `/ess/flexi-declaration/summary?financial_year_code=${encodeURIComponent(strFinancialYearCode)}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: strEssFlexiMenuAction,
+    });
+    return objResult.Data;
+  },
+
   async getCurrentDeclaration(strFinancialYearCode: string): Promise<FlexiDeclarationContextRecord> {
     const objResult = await requestApi<FlexiDeclarationContextRecord>({
       strPath: `/ess/flexi-declaration/current?financial_year_code=${encodeURIComponent(strFinancialYearCode)}`,
@@ -152,6 +221,21 @@ export const flexiPayDeclarationService = {
   ): Promise<FlexiDeclarationContextRecord> {
     const objResult = await requestApi<FlexiDeclarationContextRecord>({
       strPath: "/ess/flexi-declaration/save-draft",
+      strMethod: ApiRequestMethod.Post,
+      objBody: buildSavePayload(strFinancialYearCode, lstItems, strRemarks, objEligibilityAnswers),
+      strMenuAction: strEssFlexiMenuAction,
+    });
+    return objResult.Data;
+  },
+
+  async evaluate(
+    strFinancialYearCode: string,
+    lstItems: FlexiDeclarationItemPayload[],
+    strRemarks?: string | null,
+    objEligibilityAnswers?: Record<string, string | number | boolean | null>,
+  ): Promise<FlexiDeclarationContextRecord> {
+    const objResult = await requestApi<FlexiDeclarationContextRecord>({
+      strPath: "/ess/flexi-declaration/evaluate",
       strMethod: ApiRequestMethod.Post,
       objBody: buildSavePayload(strFinancialYearCode, lstItems, strRemarks, objEligibilityAnswers),
       strMenuAction: strEssFlexiMenuAction,
