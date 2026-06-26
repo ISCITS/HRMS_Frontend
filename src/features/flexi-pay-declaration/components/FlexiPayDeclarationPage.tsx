@@ -15,7 +15,10 @@ import {
   Box,
   Button,
   Chip,
-  FormControlLabel,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   MenuItem,
   Paper,
@@ -29,6 +32,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -44,6 +48,9 @@ import {
 
 type DraftInputMap = Record<number, string>;
 type EligibilityAnswerMap = Record<string, string | number | boolean | null>;
+type ComponentSelectionMap = Record<number, number>;
+type LinkedQuestionSelectionMap = Record<number, string>;
+const intEligibilityPreviewLimit = 6;
 
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
@@ -150,13 +157,35 @@ function buildStateSignature(dicDraftInputs: DraftInputMap, dicEligibilityAnswer
   });
 }
 
-function getQuestionIcon(strGroupCode?: string | null) {
-  const strCode = normalizeText(strGroupCode);
-  if (strCode.includes("vehicle")) return <DirectionsCarFilledRoundedIcon sx={{ color: "#0f4c81", fontSize: 18 }} />;
-  if (strCode.includes("family")) return <FamilyRestroomRoundedIcon sx={{ color: "#0f4c81", fontSize: 18 }} />;
-  if (strCode.includes("meal")) return <LunchDiningRoundedIcon sx={{ color: "#0f4c81", fontSize: 18 }} />;
-  return <QuizOutlinedIcon sx={{ color: "#0f4c81", fontSize: 18 }} />;
+const OBJ_ELIGIBILITY_FIELD_SX = {
+  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#7dd3fc" },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#38bdf8" },
+  "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#0ea5e9" },
+};
+
+function hasAnyEligibilityAnswers(dicEligibilityAnswers: EligibilityAnswerMap) {
+  return Object.values(dicEligibilityAnswers).some((objValue) => {
+    if (objValue == null) return false;
+    if (typeof objValue === "string") return objValue.trim().length > 0;
+    return true;
+  });
 }
+
+function getQuestionIcon(strGroupCode?: string | null, strColor = "#0f4c81") {
+  const strCode = normalizeText(strGroupCode);
+  if (strCode.includes("vehicle")) return <DirectionsCarFilledRoundedIcon sx={{ color: strColor, fontSize: 18 }} />;
+  if (strCode.includes("family")) return <FamilyRestroomRoundedIcon sx={{ color: strColor, fontSize: 18 }} />;
+  if (strCode.includes("meal")) return <LunchDiningRoundedIcon sx={{ color: strColor, fontSize: 18 }} />;
+  return <QuizOutlinedIcon sx={{ color: strColor, fontSize: 18 }} />;
+}
+
+const LST_GROUP_ACCENT_PALETTE = [
+  { strAccent: "#2563eb", strTint: "#eff6ff" },
+  { strAccent: "#0d9488", strTint: "#f0fdfa" },
+  { strAccent: "#d97706", strTint: "#fffbeb" },
+  { strAccent: "#db2777", strTint: "#fdf2f8" },
+  { strAccent: "#7c3aed", strTint: "#f5f3ff" },
+];
 
 function normalizeSelectOptions(objOptionJson: unknown) {
   if (!Array.isArray(objOptionJson)) return [];
@@ -176,10 +205,104 @@ function normalizeSelectOptions(objOptionJson: unknown) {
     .filter((objOption): objOption is { strValue: string; strLabel: string } => Boolean(objOption));
 }
 
+function buildQuestionFromRule(objRule: Record<string, unknown>): FlexiEligibilityQuestionRecord | null {
+  const strQuestionCode = String(objRule.strQuestionCode ?? objRule.question_code ?? "").trim();
+  if (!strQuestionCode) return null;
+  return {
+    strQuestionCode,
+    strQuestionLabel: String(objRule.strQuestionLabel ?? objRule.question_label ?? objRule.default_label ?? strQuestionCode),
+    strAnswerType: String(objRule.strAnswerType ?? objRule.answer_type ?? "text") as FlexiEligibilityQuestionRecord["strAnswerType"],
+    strHelpText: String(objRule.strHelpText ?? objRule.help_text ?? objRule.default_help_text ?? "").trim() || null,
+    strGroupCode: String(objRule.strGroupCode ?? objRule.str_group_code ?? "").trim() || null,
+    strGroupLabel: String(objRule.strGroupLabel ?? objRule.str_group_label ?? "").trim() || null,
+    strValueUnit: String(objRule.strValueUnit ?? objRule.value_unit ?? "").trim() || null,
+    decMinValue: objRule.question_min_value == null ? null : Number(objRule.question_min_value),
+    decMaxValue: objRule.question_max_value == null ? null : Number(objRule.question_max_value),
+    blnIsRequired: Boolean(objRule.is_required ?? objRule.blnIsRequired ?? false),
+    blnIsEmployeeEditable: Boolean(objRule.is_employee_editable ?? objRule.blnIsEmployeeEditable ?? true),
+    objOptionJson: objRule.option_json ?? objRule.objOptionJson,
+    objAnswerValue: null,
+  };
+}
+
+function getLinkedQuestionsForRow(objRow: FlexiDeclarationLineRecord) {
+  const dicQuestionByCode = new Map<string, FlexiEligibilityQuestionRecord>();
+  for (const objRule of objRow.lstEligibilityRules || []) {
+    if (!objRule || typeof objRule !== "object") continue;
+    const objQuestion = buildQuestionFromRule(objRule as Record<string, unknown>);
+    if (objQuestion && !dicQuestionByCode.has(objQuestion.strQuestionCode)) {
+      dicQuestionByCode.set(objQuestion.strQuestionCode, objQuestion);
+    }
+  }
+  return Array.from(dicQuestionByCode.values());
+}
+
+function getRuleEvaluationByQuestionCode(objRow: FlexiDeclarationLineRecord, strQuestionCode: string) {
+  for (const objEvaluation of objRow.lstRuleEvaluations || []) {
+    if (!objEvaluation || typeof objEvaluation !== "object") continue;
+    const dicEvaluation = objEvaluation as Record<string, unknown>;
+    const strCurrentCode = String(dicEvaluation.strQuestionCode ?? dicEvaluation.question_code ?? "").trim();
+    if (strCurrentCode === strQuestionCode) {
+      return {
+        blnPassed: Boolean(dicEvaluation.blnPassed ?? dicEvaluation.bln_passed ?? false),
+        strFailureMessage: String(dicEvaluation.strFailureMessage ?? dicEvaluation.failure_message ?? "").trim() || null,
+      };
+    }
+  }
+  return null;
+}
+
+function getRowEffectiveMultiplier(objRow: FlexiDeclarationLineRecord) {
+  const decMultiplier = Number(objRow.decEffectiveMultiplier ?? 1);
+  return Number.isFinite(decMultiplier) && decMultiplier > 0 ? decMultiplier : 1;
+}
+
+function getDisplayedDeclarationAmount(objRow: FlexiDeclarationLineRecord, strStoredValue: string | undefined) {
+  const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0));
+  const decMultiplier = getRowEffectiveMultiplier(objRow);
+  if (decMultiplier <= 1) {
+    return String(decStoredAnnual);
+  }
+  return String(decStoredAnnual / decMultiplier);
+}
+
+function isSelectableDeclarationComponent(objRow: Pick<FlexiDeclarationLineRecord, "strComponentCode" | "strComponentName">) {
+  const strCode = normalizeText(objRow.strComponentCode);
+  const strName = normalizeText(objRow.strComponentName);
+  return strCode !== "flexipay" && strCode !== "flexi_pay" && strName !== "flexi pay";
+}
+
+function buildInitialComponentSelections(objContext: FlexiDeclarationContextRecord) {
+  return (objContext.lstDeclarationLines || []).reduce<ComponentSelectionMap>((dicAcc, objLine) => {
+    if (!isSelectableDeclarationComponent(objLine)) return dicAcc;
+    dicAcc[objLine.intSalaryComponentID] = objLine.intSalaryComponentID;
+    return dicAcc;
+  }, {});
+}
+
+function buildInitialQuestionSelections(objContext: FlexiDeclarationContextRecord) {
+  return (objContext.lstDeclarationLines || []).reduce<LinkedQuestionSelectionMap>((dicAcc, objLine) => {
+    if (!isSelectableDeclarationComponent(objLine)) return dicAcc;
+    dicAcc[objLine.intSalaryComponentID] = getLinkedQuestionsForRow(objLine)[0]?.strQuestionCode ?? "";
+    return dicAcc;
+  }, {});
+}
+
 type EvaluatedLineRecord = FlexiDeclarationLineRecord & {
   decInputAnnual: number;
   decDisplayMonthly: number;
   strValidationMessage?: string;
+};
+
+type DisplayedLineRecord = {
+  intRowKey: number;
+  objBaseLine: EvaluatedLineRecord;
+  objSelectedLine: EvaluatedLineRecord;
+  lstLinkedQuestions: FlexiEligibilityQuestionRecord[];
+  strSelectedQuestionCode: string;
+  objSelectedQuestion: FlexiEligibilityQuestionRecord | null;
+  strDisplayedAmount: string;
+  decMultiplier: number;
 };
 
 export default function FlexiPayDeclarationPage() {
@@ -189,6 +312,7 @@ export default function FlexiPayDeclarationPage() {
   const intEvaluateSequenceRef = useRef(0);
   const strLastSyncedSignatureRef = useRef("");
   const strLastAutoSavedSignatureRef = useRef("");
+  const strLastEvaluatedSignatureRef = useRef("");
 
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -199,18 +323,27 @@ export default function FlexiPayDeclarationPage() {
   const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(() => buildFallbackContext(strFinancialYearCode));
   const [dicDraftInputs, setDicDraftInputs] = useState<DraftInputMap>(() => buildInitialDraftInputs(buildFallbackContext(strFinancialYearCode)));
   const [dicEligibilityAnswers, setDicEligibilityAnswers] = useState<EligibilityAnswerMap>({});
+  const [dicSelectedComponents, setDicSelectedComponents] = useState<ComponentSelectionMap>({});
+  const [dicSelectedQuestions, setDicSelectedQuestions] = useState<LinkedQuestionSelectionMap>({});
+  const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
+  const [blnSubmitDialogOpen, setBlnSubmitDialogOpen] = useState(false);
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
     setObjContext(objData);
     const dicNextDraftInputs = buildInitialDraftInputs(objData);
     const dicNextAnswers = buildAnswerMap(objData);
+    const dicNextSelectedComponents = buildInitialComponentSelections(objData);
+    const dicNextSelectedQuestions = buildInitialQuestionSelections(objData);
     const strNextRemarks = objData.objDeclaration?.strRemarks || "";
     setDicDraftInputs(dicNextDraftInputs);
     setDicEligibilityAnswers(dicNextAnswers);
+    setDicSelectedComponents(dicNextSelectedComponents);
+    setDicSelectedQuestions(dicNextSelectedQuestions);
     setStrRemarks(strNextRemarks);
     const strSignature = buildStateSignature(dicNextDraftInputs, dicNextAnswers, strNextRemarks);
     strLastSyncedSignatureRef.current = strSignature;
     strLastAutoSavedSignatureRef.current = strSignature;
+    strLastEvaluatedSignatureRef.current = strSignature;
     if (strMessage) {
       setStrToast(strMessage);
     }
@@ -267,6 +400,45 @@ export default function FlexiPayDeclarationPage() {
     });
   }, [dicDraftInputs, objContext?.lstDeclarationLines]);
 
+  const lstSelectableRows = useMemo(
+    () => lstRows.filter((objRow) => isSelectableDeclarationComponent(objRow)),
+    [lstRows],
+  );
+
+  const dicSelectableRowByID = useMemo(
+    () => new Map(lstSelectableRows.map((objRow) => [objRow.intSalaryComponentID, objRow])),
+    [lstSelectableRows],
+  );
+
+  const lstDisplayedRows = useMemo<DisplayedLineRecord[]>(() => {
+    return lstSelectableRows.map((objBaseLine) => {
+      const intRowKey = objBaseLine.intSalaryComponentID;
+      const intSelectedComponentID = dicSelectedComponents[intRowKey] ?? intRowKey;
+      const objSelectedLine = dicSelectableRowByID.get(intSelectedComponentID) ?? objBaseLine;
+      const lstLinkedQuestions = getLinkedQuestionsForRow(objSelectedLine);
+      const lstQuestionOptions = lstLinkedQuestions.length > 0 ? lstLinkedQuestions : (objContext?.lstEligibilityQuestions || []);
+      const strStoredQuestionCode = dicSelectedQuestions[intRowKey] ?? "";
+      const strSelectedQuestionCode = lstQuestionOptions.some((objQuestion) => objQuestion.strQuestionCode === strStoredQuestionCode)
+        ? strStoredQuestionCode
+        : (lstQuestionOptions[0]?.strQuestionCode ?? "");
+      return {
+        intRowKey,
+        objBaseLine,
+        objSelectedLine,
+        lstLinkedQuestions: lstQuestionOptions,
+        strSelectedQuestionCode,
+        objSelectedQuestion: lstQuestionOptions.find((objQuestion) => objQuestion.strQuestionCode === strSelectedQuestionCode) ?? null,
+        strDisplayedAmount: getDisplayedDeclarationAmount(objSelectedLine, dicDraftInputs[objSelectedLine.intSalaryComponentID]),
+        decMultiplier: getRowEffectiveMultiplier(objSelectedLine),
+      };
+    });
+  }, [dicDraftInputs, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows, objContext?.lstEligibilityQuestions]);
+
+  const setSelectedComponentIDs = useMemo(
+    () => new Set(lstDisplayedRows.map((objRow) => objRow.objSelectedLine.intSalaryComponentID)),
+    [lstDisplayedRows],
+  );
+
   const objSalaryImpactSummary = objContext?.salary_impact_summary || null;
   const decBasketAnnual = Number(
     objSalaryImpactSummary?.decFlexiBasketAvailableAnnual
@@ -275,7 +447,7 @@ export default function FlexiPayDeclarationPage() {
   );
   const decDeclaredAnnual = Number(
     objSalaryImpactSummary?.decDeclaredFlexiAnnual
-      ?? lstRows.reduce((decTotal, objRow) => decTotal + objRow.decInputAnnual, 0),
+      ?? lstDisplayedRows.reduce((decTotal, objRow) => decTotal + objRow.objSelectedLine.decInputAnnual, 0),
   );
   const decResidualAnnual = Number(
     objSalaryImpactSummary?.decResidualTaxableBalanceAnnual
@@ -296,31 +468,49 @@ export default function FlexiPayDeclarationPage() {
     ),
   );
   const decEstimatedMonthlyPayrollImpact = Number(objSalaryImpactSummary?.decEstimatedMonthlyPayrollImpact ?? decDeclaredAnnual / 12);
-  const intEligibleFlexiComponentCount = lstRows.filter((objRow) => objRow.blnEligible !== false).length;
+  const intEligibleFlexiComponentCount = lstDisplayedRows.filter((objRow) => objRow.objSelectedLine.blnEligible !== false).length;
   const blnAllocationExceeded = decDeclaredAnnual > decBasketAnnual;
-  const blnHasRowValidationErrors = lstRows.some((objRow) => Boolean(objRow.strValidationMessage));
-  const blnCanAttemptSave = Boolean(blnCanEditDeclaration && !blnSaving && !blnEvaluating && !blnAllocationExceeded && !blnHasRowValidationErrors);
+  const blnHasRowValidationErrors = lstDisplayedRows.some((objRow) => Boolean(objRow.objSelectedLine.strValidationMessage));
+  const blnHasEligibilityAnswerValues = hasAnyEligibilityAnswers(dicEligibilityAnswers);
   const lstValidationMessages = objContext?.validation_messages || [];
   const strResidualComponentName = objSalaryImpactSummary?.objResidualComponent?.strComponentName
     || objContext?.objFlexiAllocation?.strResidualComponentName
     || "-";
-  const intHistoryCount = Number(objContext?.history_count ?? (objContext?.objDeclaration ? 1 : 0));
 
   const strCurrentSignature = useMemo(
     () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks),
     [dicDraftInputs, dicEligibilityAnswers, strRemarks],
   );
 
-  const lstPayloadRows = useMemo(
-    () =>
-      lstRows
-        .filter((objRow) => objRow.decInputAnnual > 0)
-        .map((objRow) => ({
-          intSalaryComponentID: objRow.intSalaryComponentID,
-          decDeclaredAmountAnnual: objRow.decInputAnnual,
-          strRemarks: objRow.strDeclarationItemRemarks || null,
-        })),
-    [lstRows],
+  const lstPayloadRows = useMemo(() => {
+    const dicRows = new Map();
+    lstDisplayedRows.forEach((objDisplayRow) => {
+      const objRow = objDisplayRow.objSelectedLine;
+      if (objRow.decInputAnnual <= 0) return;
+      dicRows.set(objRow.intSalaryComponentID, {
+        intSalaryComponentID: objRow.intSalaryComponentID,
+        decDeclaredAmountAnnual: objRow.decInputAnnual,
+        strRemarks: objRow.strDeclarationItemRemarks || null,
+      });
+    });
+    return Array.from(dicRows.values());
+  }, [lstDisplayedRows]);
+
+  const blnCanSaveDraft = Boolean(
+    blnCanEditDeclaration
+    && !blnSaving
+    && !blnEvaluating
+    && !blnAllocationExceeded
+    && !blnHasRowValidationErrors
+    && (lstPayloadRows.length > 0 || blnHasEligibilityAnswerValues || strRemarks.trim().length > 0),
+  );
+  const blnCanSubmit = Boolean(
+    blnCanEditDeclaration
+    && !blnSaving
+    && !blnEvaluating
+    && !blnAllocationExceeded
+    && !blnHasRowValidationErrors
+    && lstPayloadRows.length > 0,
   );
 
   const dicQuestionGroups = useMemo(() => {
@@ -338,10 +528,103 @@ export default function FlexiPayDeclarationPage() {
     );
   }, [objContext?.lstEligibilityQuestions]);
 
+  const lstAllEligibilityQuestions = useMemo(
+    () => Object.values(dicQuestionGroups).flatMap((objGroup) => objGroup.lstQuestions),
+    [dicQuestionGroups],
+  );
+
+  const dicPreviewQuestionGroups = useMemo(() => {
+    return lstAllEligibilityQuestions
+      .slice(0, intEligibilityPreviewLimit)
+      .reduce<Record<string, { strGroupLabel: string; lstQuestions: FlexiEligibilityQuestionRecord[] }>>((dicAcc, objQuestion) => {
+        const strGroupCode = objQuestion.strGroupCode || "other_eligibility";
+        const strGroupLabel = objQuestion.strGroupLabel || "Other Eligibility";
+        if (!dicAcc[strGroupCode]) {
+          dicAcc[strGroupCode] = { strGroupLabel, lstQuestions: [] };
+        }
+        dicAcc[strGroupCode].lstQuestions.push(objQuestion);
+        return dicAcc;
+      }, {});
+  }, [lstAllEligibilityQuestions]);
+
+  function renderEligibilityQuestionGroups(
+    dicGroups: Record<string, { strGroupLabel: string; lstQuestions: FlexiEligibilityQuestionRecord[] }>,
+  ) {
+    if (Object.entries(dicGroups).length === 0) {
+      return (
+        <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>
+          No eligibility questions are configured for this flexi declaration.
+        </Typography>
+      );
+    }
+
+    return Object.entries(dicGroups).map(([strGroupCode, objGroup], intGroupIndex) => {
+      const { strAccent, strTint } = LST_GROUP_ACCENT_PALETTE[intGroupIndex % LST_GROUP_ACCENT_PALETTE.length];
+      return (
+        <Box key={strGroupCode}>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.65 }}>
+            {getQuestionIcon(strGroupCode, strAccent)}
+            <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: strAccent }}>
+              {objGroup.strGroupLabel}:
+            </Typography>
+          </Stack>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 0.75,
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(3, minmax(0, 1fr))",
+              },
+            }}
+          >
+            {objGroup.lstQuestions.map((objQuestion) => {
+              const objLabelBlock = (
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.2 }}>
+                    {objQuestion.strQuestionLabel}
+                    {objQuestion.blnIsRequired ? " *" : ""}
+                  </Typography>
+                  {objQuestion.strHelpText ? (
+                    <Typography sx={{ color: "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
+                      {objQuestion.strHelpText}
+                    </Typography>
+                  ) : null}
+                </Box>
+              );
+
+              return (
+                <Box
+                  key={objQuestion.strQuestionCode}
+                  sx={{
+                    minWidth: 0,
+                    p: 0.75,
+                    borderRadius: "9px",
+                    border: "1px solid #dbe3ef",
+                    borderLeft: `3px solid ${strAccent}`,
+                    backgroundColor: strTint,
+                  }}
+                >
+                  <Stack direction="row" spacing={0.6} alignItems="flex-start" justifyContent="space-between">
+                    {objLabelBlock}
+                    <Box sx={{ flexShrink: 0, pt: 0.15 }}>{renderQuestionInput(objQuestion)}</Box>
+                  </Stack>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+      );
+    });
+  }
+
   useEffect(() => {
     if (blnLoading || !objContext?.blnCanDeclare || !blnWorkflowEditable) return;
     if (strCurrentSignature === strLastSyncedSignatureRef.current) return;
+    if (strCurrentSignature === strLastEvaluatedSignatureRef.current) return;
 
+    const strEvaluationSignature = strCurrentSignature;
     const intSequence = ++intEvaluateSequenceRef.current;
     const intTimer = window.setTimeout(async () => {
       setBlnEvaluating(true);
@@ -353,6 +636,7 @@ export default function FlexiPayDeclarationPage() {
           dicEligibilityAnswers,
         );
         if (intEvaluateSequenceRef.current !== intSequence) return;
+        strLastEvaluatedSignatureRef.current = strEvaluationSignature;
         setObjContext(objData);
         setStrError("");
       } catch (objError) {
@@ -380,17 +664,19 @@ export default function FlexiPayDeclarationPage() {
   useEffect(() => {
     if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnWorkflowEditable) return;
     if (strCurrentSignature === strLastAutoSavedSignatureRef.current) return;
-    if (lstPayloadRows.length === 0) return;
+    if (lstPayloadRows.length === 0 && !blnHasEligibilityAnswerValues && strRemarks.trim().length === 0) return;
 
     const intTimer = window.setTimeout(async () => {
       try {
-        const objData = await flexiPayDeclarationService.saveDraft(
+        await flexiPayDeclarationService.saveDraft(
           strFinancialYearCode,
           lstPayloadRows,
           strRemarks,
           dicEligibilityAnswers,
         );
-        syncLocalStateFromContext(objData);
+        if (strCurrentSignature === buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks)) {
+          strLastAutoSavedSignatureRef.current = strCurrentSignature;
+        }
       } catch {
         // Keep autosave silent; manual actions still surface errors.
       }
@@ -400,6 +686,7 @@ export default function FlexiPayDeclarationPage() {
   }, [
     blnLoading,
     blnSaving,
+    blnHasEligibilityAnswerValues,
     dicEligibilityAnswers,
     lstPayloadRows,
     objContext?.objDeclaration?.intDeclarationID,
@@ -407,11 +694,11 @@ export default function FlexiPayDeclarationPage() {
     strCurrentSignature,
     strFinancialYearCode,
     strRemarks,
-    syncLocalStateFromContext,
+    dicDraftInputs,
   ]);
 
-  function validateDeclarationForAction() {
-    if (lstRows.length === 0) {
+  function validateDeclarationForAction(strAction: "draft" | "submit") {
+    if (lstDisplayedRows.length === 0) {
       setStrError("No flexi components are available for this salary structure.");
       return false;
     }
@@ -423,22 +710,42 @@ export default function FlexiPayDeclarationPage() {
       setStrError("Fix declaration validation issues before continuing.");
       return false;
     }
-    if (lstPayloadRows.length === 0) {
+    if (strAction === "submit" && lstPayloadRows.length === 0) {
       setStrError("Enter a declared annual amount for at least one eligible flexi component.");
       return false;
     }
     return true;
   }
 
-  function handleClearFlexiComponent(intSalaryComponentID: number) {
+  function handleComponentSelectionChange(intRowKey: number, intSalaryComponentID: number) {
+    const objSelectedLine = dicSelectableRowByID.get(intSalaryComponentID);
+    setDicSelectedComponents((dicPrevious) => ({
+      ...dicPrevious,
+      [intRowKey]: intSalaryComponentID,
+    }));
+    setDicSelectedQuestions((dicPrevious) => ({
+      ...dicPrevious,
+      [intRowKey]: objSelectedLine ? (getLinkedQuestionsForRow(objSelectedLine)[0]?.strQuestionCode ?? "") : "",
+    }));
+  }
+
+  function handleLinkedQuestionSelectionChange(intRowKey: number, strQuestionCode: string) {
+    setDicSelectedQuestions((dicPrevious) => ({
+      ...dicPrevious,
+      [intRowKey]: strQuestionCode,
+    }));
+  }
+
+  function handleClearFlexiComponent(intRowKey: number) {
+    const intSelectedComponentID = dicSelectedComponents[intRowKey] ?? intRowKey;
     setDicDraftInputs((dicPrevious) => ({
       ...dicPrevious,
-      [intSalaryComponentID]: "0",
+      [intSelectedComponentID]: "0",
     }));
   }
 
   async function handleSaveDraft() {
-    if (!validateDeclarationForAction()) return;
+    if (!validateDeclarationForAction("draft")) return;
     setBlnSaving(true);
     setStrError("");
     try {
@@ -456,8 +763,8 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
-  async function handleSubmit() {
-    if (!validateDeclarationForAction()) return;
+  async function handleSubmit(): Promise<boolean> {
+    if (!validateDeclarationForAction("submit")) return false;
     setBlnSaving(true);
     setStrError("");
     try {
@@ -468,10 +775,19 @@ export default function FlexiPayDeclarationPage() {
         dicEligibilityAnswers,
       );
       syncLocalStateFromContext(objData, "Declaration submitted successfully.");
+      return true;
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to submit declaration.");
+      return false;
     } finally {
       setBlnSaving(false);
+    }
+  }
+
+  async function handleConfirmSubmit() {
+    const blnSuccess = await handleSubmit();
+    if (blnSuccess) {
+      setBlnSubmitDialogOpen(false);
     }
   }
 
@@ -507,24 +823,24 @@ export default function FlexiPayDeclarationPage() {
     const blnDisabled = !blnCanEditDeclaration || blnSaving;
 
     if (objQuestion.strAnswerType === "boolean") {
+      const blnChecked = objValue == null ? false : Boolean(objValue);
       return (
-        <FormControlLabel
-          sx={{ m: 0, justifyContent: "space-between", width: "100%" }}
-          label=""
-          control={(
-            <Switch
-              size="small"
-              checked={Boolean(objValue)}
-              disabled={blnDisabled}
-              onChange={(objEvent) =>
-                setDicEligibilityAnswers((dicPrevious) => ({
-                  ...dicPrevious,
-                  [strQuestionCode]: objEvent.target.checked,
-                }))
-              }
-            />
-          )}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          <Switch
+            checked={blnChecked}
+            disabled={blnDisabled}
+            onChange={(_, blnNextChecked) =>
+              setDicEligibilityAnswers((dicPrevious) => ({
+                ...dicPrevious,
+                [strQuestionCode]: blnNextChecked,
+              }))
+            }
+            size="small"
+          />
+          <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: blnChecked ? "#2563eb" : "#64748b" }}>
+            {blnChecked ? "Yes" : "No"}
+          </Typography>
+        </Box>
       );
     }
 
@@ -534,7 +850,6 @@ export default function FlexiPayDeclarationPage() {
         <TextField
           select
           size="small"
-          fullWidth
           value={objValue == null ? "" : String(objValue)}
           disabled={blnDisabled}
           onChange={(objEvent) =>
@@ -543,6 +858,7 @@ export default function FlexiPayDeclarationPage() {
               [strQuestionCode]: objEvent.target.value || null,
             }))
           }
+          sx={{ width: 120, ...OBJ_ELIGIBILITY_FIELD_SX }}
         >
           <MenuItem value="">Select</MenuItem>
           {lstOptions.map((objOption) => (
@@ -558,7 +874,6 @@ export default function FlexiPayDeclarationPage() {
       return (
         <TextField
           size="small"
-          fullWidth
           type="number"
           value={objValue == null ? "" : String(objValue)}
           disabled={blnDisabled}
@@ -573,6 +888,13 @@ export default function FlexiPayDeclarationPage() {
             max: objQuestion.decMaxValue ?? undefined,
             step: 1,
           }}
+          sx={{
+            width: 64,
+            ...OBJ_ELIGIBILITY_FIELD_SX,
+            "& input[type=number]::-webkit-outer-spin-button": { WebkitAppearance: "none", margin: 0 },
+            "& input[type=number]::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 },
+            "& input[type=number]": { MozAppearance: "textfield" },
+          }}
         />
       );
     }
@@ -580,7 +902,6 @@ export default function FlexiPayDeclarationPage() {
     return (
       <TextField
         size="small"
-        fullWidth
         value={objValue == null ? "" : String(objValue)}
         disabled={blnDisabled}
         onChange={(objEvent) =>
@@ -589,6 +910,7 @@ export default function FlexiPayDeclarationPage() {
             [strQuestionCode]: objEvent.target.value || null,
           }))
         }
+        sx={{ width: 120, ...OBJ_ELIGIBILITY_FIELD_SX }}
       />
     );
   }
@@ -615,7 +937,6 @@ export default function FlexiPayDeclarationPage() {
       {objContext?.strIneligibilityReason && !objContext.blnCanDeclare ? (
         <Alert severity="info">{objContext.strIneligibilityReason}</Alert>
       ) : null}
-      {blnEvaluating ? <Alert severity="info">Refreshing eligibility and salary impact preview...</Alert> : null}
       {blnAllocationExceeded ? <Alert severity="error">Declared flexi amount exceeds the available basket.</Alert> : null}
       {lstValidationMessages.map((strMessage) => (
         <Alert key={strMessage} severity="warning">{strMessage}</Alert>
@@ -657,90 +978,188 @@ export default function FlexiPayDeclarationPage() {
             >
               Back
             </Button>
-            {blnCanCancel ? (
-              <Button size="small" variant="outlined" sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)" }} disabled={blnSaving} onClick={() => void handleCancel()}>
-                Cancel
-              </Button>
-            ) : null}
             {blnCanWithdraw ? (
               <Button size="small" variant="outlined" sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)" }} startIcon={<UndoRoundedIcon />} disabled={blnSaving} onClick={() => void handleWithdraw()}>
                 Withdraw
               </Button>
             ) : null}
-            <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanAttemptSave} onClick={() => void handleSaveDraft()}>
+            <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
               Save Draft
             </Button>
-            <Button size="small" variant="contained" color="warning" startIcon={<SendRoundedIcon />} disabled={!blnCanAttemptSave} onClick={() => void handleSubmit()}>
+            <Button
+              size="small"
+              variant="contained"
+              color="warning"
+              startIcon={<SendRoundedIcon />}
+              disabled={blnSaving}
+              onClick={() => {
+                if (validateDeclarationForAction("submit")) {
+                  setStrError("");
+                  setBlnSubmitDialogOpen(true);
+                }
+              }}
+            >
               {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
             </Button>
           </Stack>
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "repeat(6, minmax(0, 1fr))" } }}>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Current Status</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{formatStatus(strWorkflowStatus)}</Typography>
+      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" } }}>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Current Status</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatStatus(strWorkflowStatus)}</Typography>
         </Paper>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Flexi Basket Available</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #0d9488" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Flexi Basket Available</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
         </Paper>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Declared Flexi</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decDeclaredAnnual, strCurrencyCode)}</Typography>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #d97706" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Declared Flexi</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decDeclaredAnnual, strCurrencyCode)}</Typography>
         </Paper>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Residual Taxable Balance</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #db2777" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Residual Taxable Balance</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
         </Paper>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Assigned Salary Structure</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{objContext?.objAssignedStructure?.strSalaryStructureName || "-"}</Typography>
-        </Paper>
-        <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>History Count</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{intHistoryCount}</Typography>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #7c3aed" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Assigned Salary Structure</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{objContext?.objAssignedStructure?.strStructureName || "-"}</Typography>
         </Paper>
       </Box>
 
-      <Box sx={{ display: "grid", gap: 1.2, alignItems: "start", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 340px" } }}>
-        <Stack spacing={1.2}>
-          {decBasketAnnual > 0 && Object.keys(dicQuestionGroups).length > 0 ? (
-            <Paper sx={{ p: 1.2, borderRadius: "12px", border: "1px solid #dbe3ef" }}>
-              <Stack spacing={1.1}>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>Eligibility Questions</Typography>
-                {Object.entries(dicQuestionGroups).map(([strGroupCode, objGroup]) => (
-                  <Box key={strGroupCode}>
-                    <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 0.8, fontSize: "0.82rem" }}>{objGroup.strGroupLabel}</Typography>
-                    <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-                      {objGroup.lstQuestions.map((objQuestion) => (
-                        <Paper key={objQuestion.strQuestionCode} variant="outlined" sx={{ p: 1, borderRadius: "10px" }}>
-                          <Stack spacing={0.8}>
-                            <Stack direction="row" spacing={0.75} alignItems="flex-start">
-                              {getQuestionIcon(objQuestion.strGroupCode)}
-                              <Box sx={{ flex: 1 }}>
-                                <Typography sx={{ fontWeight: 700, fontSize: "0.81rem" }}>
-                                  {objQuestion.strQuestionLabel}
-                                  {objQuestion.blnIsRequired ? " *" : ""}
-                                </Typography>
-                                {objQuestion.strHelpText || objQuestion.strHint ? (
-                                  <Typography sx={{ color: "#64748b", fontSize: "0.7rem" }}>
-                                    {objQuestion.strHelpText || objQuestion.strHint}
-                                  </Typography>
-                                ) : null}
-                              </Box>
-                            </Stack>
-                            {renderQuestionInput(objQuestion)}
-                          </Stack>
-                        </Paper>
-                      ))}
-                    </Box>
-                  </Box>
-                ))}
+      <Stack spacing={1.2}>
+        <Box sx={{ display: "grid", gap: 1.2, alignItems: "start", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 340px" } }}>
+
+          <Paper sx={{ borderRadius: "12px", overflow: "hidden" }}>
+            <Box sx={{ p: 0.75, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={0.75} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>Basic Eligibility Details</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.72rem", mt: 0.1 }}>
+                    Answer these basic details first. Your responses decide which flexi components become eligible in the declaration table below.
+                  </Typography>
+                </Box>
+                {lstAllEligibilityQuestions.length > intEligibilityPreviewLimit ? (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => setBlnEligibilityDialogOpen(true)}
+                    sx={{ alignSelf: { xs: "flex-start", md: "center" }, backgroundColor: "#2563eb", "&:hover": { backgroundColor: "#1d4ed8" } }}
+                  >
+                    Show More
+                  </Button>
+                ) : null}
               </Stack>
-            </Paper>
-          ) : null}
+            </Box>
+            <Box sx={{ p: 1, display: "grid", gap: 1 }}>
+              {renderEligibilityQuestionGroups(dicPreviewQuestionGroups)}
+            </Box>
+          </Paper>
+
+          <Paper sx={{ p: 1.25, borderRadius: "18px", border: "1px solid #cfe3ff", display: "flex" }}>
+            <Stack spacing={1.15} sx={{ width: "100%" }}>
+              <Stack direction="row" spacing={0.6} alignItems="center">
+                <Typography sx={{ fontWeight: 900, color: "#172554", fontSize: "0.95rem" }}>Salary Impact Summary</Typography>
+                <Tooltip title="This is an estimate. Final payroll impact will be based on approved declaration and payroll processing." enterTouchDelay={0}>
+                  <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 16, cursor: "pointer" }} />
+                </Tooltip>
+              </Stack>
+
+              <Stack spacing={0.9}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Annual CTC</Typography>
+                  <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decAnnualCtc, strCurrencyCode)}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Gross Monthly</Typography>
+                  <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decGrossMonthly, strCurrencyCode)}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Flexi Basket Available</Typography>
+                  <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Declared Flexi</Typography>
+                  <Typography sx={{ color: blnAllocationExceeded ? "#dc2626" : "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>
+                    {formatCurrency(decDeclaredAnnual, strCurrencyCode)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Taxable Balance</Typography>
+                  <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Component</Typography>
+                  <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem", textAlign: "right" }}>{strResidualComponentName}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Estimated Monthly Payroll Impact</Typography>
+                  <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decEstimatedMonthlyPayrollImpact, strCurrencyCode)}</Typography>
+                </Box>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Box>
+
+        <Dialog
+            open={blnEligibilityDialogOpen}
+            onClose={() => setBlnEligibilityDialogOpen(false)}
+            fullWidth
+            maxWidth="lg"
+          >
+            <DialogTitle>All Basic Eligibility Details</DialogTitle>
+            <DialogContent dividers sx={{ p: 1.25 }}>
+              <Box sx={{ display: "grid", gap: 1 }}>
+                {renderEligibilityQuestionGroups(dicQuestionGroups)}
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 1.5, py: 1 }}>
+              <Button onClick={() => setBlnEligibilityDialogOpen(false)}>Close</Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={blnSubmitDialogOpen}
+            onClose={() => (blnSaving ? null : setBlnSubmitDialogOpen(false))}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>Confirm Declaration Submission</DialogTitle>
+            <DialogContent dividers sx={{ p: 1.5 }}>
+              <Stack spacing={1.25}>
+                {strError ? <Alert severity="error">{strError}</Alert> : null}
+                <Alert severity="info">
+                  Please review your declared amounts before submitting. Once submitted, the declaration moves for approval and cannot be edited unless it is returned.
+                </Alert>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip label={`Declared Flexi: ${formatCurrency(decDeclaredAnnual, strCurrencyCode)}`} />
+                  <Chip label={`Residual Taxable Balance: ${formatCurrency(decResidualAnnual, strCurrencyCode)}`} />
+                </Stack>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>Declaration Remarks</Typography>
+                <TextField
+                  multiline
+                  minRows={3}
+                  value={strRemarks}
+                  onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
+                  disabled={blnSaving}
+                  placeholder="Optional remarks for this submission"
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 1.5, py: 1 }}>
+              <Button onClick={() => setBlnSubmitDialogOpen(false)} disabled={blnSaving}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="warning"
+                startIcon={<SendRoundedIcon />}
+                disabled={blnSaving}
+                onClick={() => void handleConfirmSubmit()}
+              >
+                {normalizeText(strWorkflowStatus) === "returned" ? "Confirm Resubmit" : "Confirm Submit"}
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           <Paper sx={{ borderRadius: "12px", overflow: "hidden" }}>
             <Box sx={{ p: 1.2, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
@@ -748,15 +1167,15 @@ export default function FlexiPayDeclarationPage() {
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>Eligible Flexi Components</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.25 }}>
-                    Declare annual amount against eligible flexi components. Eligibility and limits are calculated based on your salary structure and answers.
+                    Declare amount only for the components that become eligible from the basic details above.
                   </Typography>
                 </Box>
-                <Chip label={`${intEligibleFlexiComponentCount} eligible / ${lstRows.length} total`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
+                <Chip label={`${intEligibleFlexiComponentCount} eligible / ${lstDisplayedRows.length} total`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
               </Stack>
             </Box>
 
-            <TableContainer sx={{ maxHeight: 380 }}>
-              <Table size="small">
+            <TableContainer sx={{ maxHeight: 300 }}>
+              <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
                 <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
                   <TableRow>
                     <TableCell>Component</TableCell>
@@ -770,96 +1189,89 @@ export default function FlexiPayDeclarationPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {lstRows.length === 0 ? (
+                  {lstDisplayedRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
                         No flexi components are available.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    lstRows.map((objRow) => (
-                      <TableRow key={objRow.intSalaryComponentID}>
-                        <TableCell>
-                          <Typography sx={{ fontWeight: 700, fontSize: "0.84rem" }}>
-                            {objRow.strComponentName || objRow.strComponentCode || "Component"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            color={objRow.blnEligible === false ? "default" : "success"}
-                            label={objRow.blnEligible === false ? "Not Eligible" : "Eligible"}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode)}
-                        </TableCell>
-                        <TableCell align="right">
-                          <TextField
-                            size="small"
-                            type="number"
-                            value={dicDraftInputs[objRow.intSalaryComponentID] ?? String(objRow.decDraftDeclaredAnnual ?? 0)}
-                            disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
-                            error={Boolean(objRow.strValidationMessage)}
-                            helperText={objRow.strValidationMessage || " "}
-                            onChange={(objEvent) =>
-                              setDicDraftInputs((dicPrevious) => ({
-                                ...dicPrevious,
-                                [objRow.intSalaryComponentID]: objEvent.target.value,
-                              }))
-                            }
-                            inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
-                            sx={{ width: 150 }}
-                          />
-                        </TableCell>
-                        <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                        <TableCell>{objRow.blnProofRequired ? "Required" : "Not Required"}</TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={objRow.strDeclarationItemStatus ? formatStatus(objRow.strDeclarationItemStatus) : "Draft"}
-                            color={getStatusTone(objRow.strDeclarationItemStatus)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="space-between">
-                            <Typography sx={{ color: "#64748b", fontSize: "0.72rem", flex: 1 }}>
-                              {objRow.strEligibilityReason || "-"}
+                    lstDisplayedRows.map((objDisplayRow) => {
+                      const objRow = objDisplayRow.objSelectedLine;
+                      return (
+                        <TableRow key={objDisplayRow.intRowKey}>
+                          <TableCell sx={{ width: 160, minWidth: 160 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
+                              {objRow.strComponentName || objRow.strComponentCode || "Component"}
                             </Typography>
-                            <IconButton
+                          </TableCell>
+                          <TableCell>
+                            <Stack spacing={0.5}>
+                              <Chip
+                                size="small"
+                                color={objRow.blnEligible === false ? "default" : "success"}
+                                label={objRow.blnEligible === false ? "Not Eligible" : "Eligible"}
+                              />
+                              {objDisplayRow.decMultiplier > 1 ? (
+                                <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
+                                  Multiplier x {objDisplayRow.decMultiplier}
+                                </Typography>
+                              ) : null}
+                            </Stack>
+                          </TableCell>
+                          <TableCell align="right">
+                            {formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <TextField
                               size="small"
+                              type="number"
+                              value={objDisplayRow.strDisplayedAmount}
                               disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
-                              onClick={() => handleClearFlexiComponent(objRow.intSalaryComponentID)}
-                              sx={{ color: "#dc2626" }}
-                              aria-label={`Clear ${objRow.strComponentName || objRow.strComponentCode || "component"} amount`}
-                            >
-                              <DeleteOutlineRoundedIcon fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                              error={Boolean(objRow.strValidationMessage)}
+                              helperText={objRow.strValidationMessage || (objDisplayRow.decMultiplier > 1 ? `Per unit x ${objDisplayRow.decMultiplier} = ${formatCurrency(objRow.decInputAnnual, strCurrencyCode)}` : " ")}
+                              onChange={(objEvent) =>
+                                setDicDraftInputs((dicPrevious) => ({
+                                  ...dicPrevious,
+                                  [objRow.intSalaryComponentID]: String(normalizeAmount(objEvent.target.value) * objDisplayRow.decMultiplier),
+                                }))
+                              }
+                              inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
+                              sx={{ width: 92, "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 }, "& .MuiFormHelperText-root": { fontSize: "0.58rem", mt: 0.2, lineHeight: 1.05 } }}
+                            />
+                          </TableCell>
+                          <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
+                          <TableCell>{objRow.blnProofRequired ? "Required" : "Not Required"}</TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={objRow.strDeclarationItemStatus ? formatStatus(objRow.strDeclarationItemStatus) : "Draft"}
+                              color={getStatusTone(objRow.strDeclarationItemStatus)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="space-between">
+                              <Typography sx={{ color: "#64748b", fontSize: "0.6rem", lineHeight: 1.15, maxWidth: 118, flex: 1, overflow: "hidden" }}>
+                                {objRow.strEligibilityReason || "-"}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
+                                onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
+                                sx={{ color: "#dc2626" }}
+                                aria-label={`Clear ${objRow.strComponentName || objRow.strComponentCode || "component"} amount`}
+                              >
+                                <DeleteOutlineRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
-          </Paper>
-
-          <Paper sx={{ p: 1.2, borderRadius: "12px" }}>
-            <Stack spacing={1}>
-              <Typography sx={{ fontWeight: 800 }}>Declaration Remarks</Typography>
-              <TextField
-                multiline
-                minRows={3}
-                value={strRemarks}
-                onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
-                disabled={(!blnCanEditDeclaration && !blnCanCancel && !blnCanWithdraw) || blnSaving}
-              />
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`Declared Flexi: ${formatCurrency(decDeclaredAnnual, strCurrencyCode)}`} />
-                <Chip label={`Residual Taxable Balance: ${formatCurrency(decResidualAnnual, strCurrencyCode)}`} />
-              </Stack>
-            </Stack>
           </Paper>
 
           <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" } }}>
@@ -868,7 +1280,7 @@ export default function FlexiPayDeclarationPage() {
                 <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>Fixed Salary Components</Typography>
               </Box>
               <TableContainer>
-                <Table size="small">
+                <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Component</TableCell>
@@ -897,7 +1309,7 @@ export default function FlexiPayDeclarationPage() {
                 <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>Estimated Salary Split After Declaration</Typography>
               </Box>
               <TableContainer>
-                <Table size="small">
+                <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Bucket</TableCell>
@@ -927,58 +1339,6 @@ export default function FlexiPayDeclarationPage() {
             </Paper>
           </Box>
         </Stack>
-
-        <Paper sx={{ p: 1.25, borderRadius: "18px", border: "1px solid #cfe3ff", position: { lg: "sticky" }, top: { lg: 82 }, alignSelf: "start" }}>
-          <Stack spacing={1.15}>
-            <Stack direction="row" spacing={0.6} alignItems="center">
-              <Typography sx={{ fontWeight: 900, color: "#172554", fontSize: "0.95rem" }}>Salary Impact Summary</Typography>
-              <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 16 }} />
-            </Stack>
-
-            <Stack spacing={0.9}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Annual CTC</Typography>
-                <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decAnnualCtc, strCurrencyCode)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Gross Monthly</Typography>
-                <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decGrossMonthly, strCurrencyCode)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Flexi Basket Available</Typography>
-                <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Declared Flexi</Typography>
-                <Typography sx={{ color: blnAllocationExceeded ? "#dc2626" : "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>
-                  {formatCurrency(decDeclaredAnnual, strCurrencyCode)}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Taxable Balance</Typography>
-                <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Component</Typography>
-                <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem", textAlign: "right" }}>{strResidualComponentName}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Estimated Monthly Payroll Impact</Typography>
-                <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decEstimatedMonthlyPayrollImpact, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-
-            <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1 }}>
-              <Stack direction="row" spacing={0.75} alignItems="flex-start">
-                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
-                <Typography sx={{ color: "#172554", fontSize: "0.75rem", lineHeight: 1.45 }}>
-                  This is an estimate. Final payroll impact will be based on approved declaration and payroll processing.
-                </Typography>
-              </Stack>
-            </Box>
-          </Stack>
-        </Paper>
-      </Box>
 
       <Snackbar open={Boolean(strToast)} autoHideDuration={2500} onClose={() => setStrToast("")} message={strToast} />
     </Box>

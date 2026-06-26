@@ -212,7 +212,7 @@ export default function FlexiDeclarationReviewDetailPage({ intDeclarationID }: P
         </Paper>
         <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Structure</Typography>
-          <Typography sx={{ fontWeight: 800 }}>{objContext.objAssignedStructure?.strSalaryStructureName || "-"}</Typography>
+          <Typography sx={{ fontWeight: 800 }}>{objContext.objAssignedStructure?.strStructureName || "-"}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px" }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>Employee</Typography>

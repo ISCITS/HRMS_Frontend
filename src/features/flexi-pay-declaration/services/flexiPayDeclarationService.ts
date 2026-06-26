@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
@@ -41,6 +41,8 @@ export type FlexiDeclarationLineRecord = {
   strEligibilityReason?: string | null;
   strIneligibleBehavior?: string | null;
   decMonthlyImpact?: number | null;
+  lstEligibilityRules?: Record<string, unknown>[];
+  lstRuleEvaluations?: Record<string, unknown>[];
 };
 
 export type FlexiEligibilityQuestionRecord = {
@@ -72,7 +74,7 @@ export type FlexiDeclarationContextRecord = {
   } | null;
   objAssignedStructure?: {
     intSalaryStructureID?: number | null;
-    strSalaryStructureName?: string | null;
+    strStructureName?: string | null;
     strCurrencyCode?: string | null;
   } | null;
   objCurrentSalarySnapshot?: Record<string, unknown> | null;
@@ -356,3 +358,4 @@ export const hrFlexiDeclarationReviewService = {
     return objResult.Data;
   },
 };
+
