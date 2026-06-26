@@ -43,9 +43,12 @@ export type SalaryStructureOption = {
   strContributionType?: string | null;
   strEligibilitySummary?: string | null;
   strValueSource?: string | null;
+  strCalcMethod?: string | null;
   strFormulaExpression?: string | null;
   intBasisComponentID?: number | null;
+  lstDependencyComponentIDs?: number[];
   fltPercentageValue?: number | null;
+  decPercentageValue?: number | null;
   fltMinAmount?: number | null;
   fltMaxAmount?: number | null;
   intDefaultLineOrder?: number | null;

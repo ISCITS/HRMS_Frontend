@@ -77,6 +77,11 @@ function buildSelectDisplayTestIdProps(strTestId: string, objExtraProps?: Record
   } as Record<string, string>;
 }
 
+function isFlexiBucketToken(strValue: string) {
+  const strToken = normalizeSelectToken(strValue);
+  return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
+}
+
 function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
   if (lstLines.length === 0) {
     return 10;
@@ -125,6 +130,30 @@ function getLowerCap(fltPolicyLimit: number | null, fltStructureCap: number | nu
   return fltPolicyLimit == null ? fltStructureCap : Math.min(fltPolicyLimit, fltStructureCap);
 }
 
+function getComponentValueSource(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined, strFallbackValueSource: string) {
+  const strRawValueSource = String(dicComponent?.strValueSource ?? dicComponent?.strCalcMethod ?? strFallbackValueSource ?? "Fixed");
+  const strToken = normalizeSelectToken(strRawValueSource);
+  if (strToken === "percentage" || strToken === "percent") {
+    return "Percentage";
+  }
+  if (strToken === "formula" || strToken === "calculated") {
+    return "Formula";
+  }
+  return "Fixed";
+}
+
+function getComponentBasisComponentID(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined) {
+  if (dicComponent?.intBasisComponentID) {
+    return dicComponent.intBasisComponentID;
+  }
+  const intDependencyID = dicComponent?.lstDependencyComponentIDs?.find((intComponentID) => Number.isInteger(Number(intComponentID)) && Number(intComponentID) > 0);
+  return intDependencyID ? Number(intDependencyID) : "";
+}
+
+function getComponentPercentageValue(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined) {
+  return dicComponent?.fltPercentageValue ?? dicComponent?.decPercentageValue ?? null;
+}
+
 function getFlexiComponentIcon(strValue: string) {
   const strToken = normalizeSelectToken(strValue);
   if (strToken.includes("meal") || strToken.includes("food")) {
@@ -146,11 +175,13 @@ function getFlexiComponentIcon(strValue: string) {
 }
 
 function isFlexiBasketLine(dicLine: SalaryStructureLineFormValue) {
+  const strRole = normalizeSelectToken(dicLine.strFlexiComponentRole);
   return Boolean(
     dicLine.blnIsFlexiBasketLine
-    || normalizeSelectToken(dicLine.strFlexiComponentRole) === "basket"
-    || normalizeSelectToken(dicLine.strFlexiComponentRole) === "flexibasket"
-    || normalizeSelectToken(dicLine.strComponentCode) === "flexipay"
+    || strRole === "basket"
+    || isFlexiBucketToken(dicLine.strFlexiComponentRole)
+    || isFlexiBucketToken(dicLine.strComponentCode)
+    || isFlexiBucketToken(dicLine.strComponentName)
   );
 }
 
@@ -158,7 +189,15 @@ function getFlexiRoleForComponent(dicComponent?: SalaryStructureFormOptions["lst
   const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
   const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
   const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
-  if (dicComponent?.blnIsFlexiBasket || strFlexiType === "basket" || strFlexiType === "flexibucket" || strCategory === "flexibucket" || strCategory === "flexibasket") {
+  if (
+    dicComponent?.blnIsFlexiBasket
+    || strFlexiType === "basket"
+    || isFlexiBucketToken(String(dicComponent?.strFlexiComponentType ?? ""))
+    || isFlexiBucketToken(String(dicComponent?.strComponentCategory ?? ""))
+    || isFlexiBucketToken(String(dicComponent?.strComponentGroup ?? ""))
+    || isFlexiBucketToken(String(dicComponent?.strCode ?? ""))
+    || isFlexiBucketToken(String(dicComponent?.strLabel ?? ""))
+  ) {
     return "Flexi Bucket";
   }
   if (dicComponent?.blnIsEmployerContribution || strCategory === "employercontribution" || strGroup === "employercontribution" || strGroup === "contribution") {
@@ -171,6 +210,17 @@ function getFlexiRoleForComponent(dicComponent?: SalaryStructureFormOptions["lst
     return "Information";
   }
   return "Normal";
+}
+
+function getFlexiRoleForLine(dicLine: SalaryStructureLineFormValue, dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  if (isFlexiBasketLine(dicLine)) {
+    return "Flexi Bucket";
+  }
+  return getFlexiRoleForComponent(dicComponent);
+}
+
+function isFlexiEntitlementHostLine(dicLine: SalaryStructureLineFormValue, dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
+  return getFlexiRoleForLine(dicLine, dicComponent) === "Flexi Bucket";
 }
 
 function getFlexiRoleTokenForComponent(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
@@ -188,16 +238,16 @@ function getFlexiRoleTokenForComponent(dicComponent?: SalaryStructureFormOptions
 }
 
 function isFlexiEligibleComponent(dicOption: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
-  if (dicOption.intFlexiComponentEligibilityID || typeof dicOption.blnIsFlexiComponentEligible === "boolean") {
-    return true;
+  if (dicOption.intFlexiComponentEligibilityID) {
+    return dicOption.blnIsActive !== false;
+  }
+  if (typeof dicOption.blnIsFlexiComponentEligible === "boolean") {
+    return dicOption.blnIsFlexiComponentEligible && dicOption.blnIsActive !== false;
   }
   return Boolean(
     dicOption.blnIsActive !== false
     && dicOption.blnIsReimbursement
     && dicOption.blnIsFlexiBenefit
-    && dicOption.blnIncludedInCtc !== false
-    && normalizeSelectToken(String(dicOption.strReimbursementType ?? "")) === "ctcbased"
-    && normalizeSelectToken(String(dicOption.strReimbursementSettlementMode ?? "")) === "payroll"
     && getFlexiRoleForComponent(dicOption) === "Normal"
     && normalizeSelectToken(dicOption.strCode ?? "") !== "flexipay"
   );
@@ -287,6 +337,7 @@ export default function SalaryStructureEditorPage({
   const [strSuccess, setStrSuccess] = useState("");
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
+  const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -364,13 +415,16 @@ export default function SalaryStructureEditorPage({
     return lstFlexiEligibleComponents.map((dicComponent) => dicComponent.intID).join("|");
   }, [lstFlexiEligibleComponents]);
   const lstFlexiBasketLines = useMemo(() => {
-    return dicForm.lstComponents.filter((dicLine) => {
+    const lstDetectedFlexiLines = dicForm.lstComponents.filter((dicLine) => {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-      return dicLine.blnIsActive
-        && getFlexiRoleForComponent(dicComponent) === "Flexi Bucket"
-        && (parseLineAmount(dicLine.fltFixedAmount) ?? 0) > 0;
+      return isFlexiEntitlementHostLine(dicLine, dicComponent);
     });
-  }, [dicComponentByID, dicForm.lstComponents]);
+    if (strMode !== "add" || !strAddModeFlexiHostRowID || lstDetectedFlexiLines.some((dicLine) => dicLine.strRowID === strAddModeFlexiHostRowID)) {
+      return lstDetectedFlexiLines;
+    }
+    const dicPendingFlexiLine = dicForm.lstComponents.find((dicLine) => dicLine.strRowID === strAddModeFlexiHostRowID);
+    return dicPendingFlexiLine ? [...lstDetectedFlexiLines, dicPendingFlexiLine] : lstDetectedFlexiLines;
+  }, [dicComponentByID, dicForm.lstComponents, strAddModeFlexiHostRowID, strMode]);
   const strFlexiBasketLineSignature = useMemo(() => {
     return lstFlexiBasketLines.map((dicLine) => dicLine.strRowID).join("|");
   }, [lstFlexiBasketLines]);
@@ -384,7 +438,7 @@ export default function SalaryStructureEditorPage({
         const fltMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
         const fltYearlyAmount = fltMonthlyAmount * 12;
         const blnIncludedInCtc = Boolean(dicComponent?.blnIncludedInCtc ?? dicLine.blnIncludedInCtc);
-        const blnIsFlexiBasket = Boolean(dicLine.blnIsFlexiBasketLine || dicComponent?.blnIsFlexiBasket || dicComponent?.strCode === "FLEXI_PAY");
+        const blnIsFlexiBasket = Boolean(isFlexiBasketLine(dicLine) || dicComponent?.blnIsFlexiBasket || normalizeSelectToken(String(dicComponent?.strCode ?? "")) === "flexipay");
         const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
         const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
         const blnIsEmployerContribution = Boolean(dicComponent?.blnIsEmployerContribution);
@@ -796,15 +850,39 @@ export default function SalaryStructureEditorPage({
   }
 
   function updateLineRow(strRowID: string, strField: keyof SalaryStructureLineFormValue, objValue: string | number | boolean) {
+    const dicSelectedComponent = strField === "intSalaryComponentID" ? dicComponentByID.get(Number(objValue)) : undefined;
+    if (strMode === "add" && strField === "intSalaryComponentID") {
+      setStrAddModeFlexiHostRowID(getFlexiRoleForComponent(dicSelectedComponent) === "Flexi Bucket" ? strRowID : "");
+    }
     setDicForm((dicPrevious) => {
       const lstUpdatedComponents: SalaryStructureLineFormValue[] = dicPrevious.lstComponents.map((dicLine) => {
         if (dicLine.strRowID !== strRowID) {
           return dicLine;
         }
         if (strField === "intSalaryComponentID") {
-          const dicComponent = dicComponentByID.get(Number(objValue));
+          const dicComponent = dicSelectedComponent;
           const blnIsFlexiBasket = getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
-          const strValueSource = dicComponent?.strValueSource || dicLine.strValueSource || "Fixed";
+          const strValueSource = getComponentValueSource(dicComponent, dicLine.strValueSource);
+          const objBasisComponentID = getComponentBasisComponentID(dicComponent);
+          const fltComponentPercentageValue = getComponentPercentageValue(dicComponent);
+          const setMappedComponentIDs = new Set(
+            dicLine.lstFlexiMappings
+              .map((dicMapping) => Number(dicMapping.intFlexiComponentID))
+              .filter((intComponentID) => Number.isFinite(intComponentID) && intComponentID > 0)
+          );
+          const lstMissingFlexiMappings = blnIsFlexiBasket
+            ? lstFlexiEligibleComponents
+              .filter((dicFlexiComponent) => !setMappedComponentIDs.has(dicFlexiComponent.intID))
+              .map((dicFlexiComponent) => ({
+                ...createEmptyFlexiMappingRow(),
+                intFlexiComponentID: dicFlexiComponent.intID,
+                strFlexiComponentCode: dicFlexiComponent.strCode ?? "",
+                strFlexiComponentName: dicFlexiComponent.strLabel,
+                fltDefaultAmount: "0",
+                fltMaxAmount: "0",
+                blnIsActive: true,
+              }))
+            : [];
           return {
             ...dicLine,
             intSalaryComponentID: Number(objValue),
@@ -815,14 +893,15 @@ export default function SalaryStructureEditorPage({
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
             strComponentCategory: dicComponent?.strComponentCategory ?? "",
             strValueSource,
-            strFormulaExpression: dicComponent?.strFormulaExpression ?? (strValueSource === "Formula" ? dicLine.strFormulaExpression : ""),
-            intBasisComponentID: dicComponent?.intBasisComponentID ?? (strValueSource === "Percentage" ? dicLine.intBasisComponentID : ""),
-            fltPercentageValue: dicComponent?.fltPercentageValue?.toString() ?? (strValueSource === "Percentage" ? dicLine.fltPercentageValue : ""),
+            strFormulaExpression: strValueSource === "Formula" ? (dicComponent?.strFormulaExpression ?? dicLine.strFormulaExpression) : "",
+            intBasisComponentID: strValueSource === "Percentage" ? (objBasisComponentID || dicLine.intBasisComponentID) : "",
+            fltPercentageValue: strValueSource === "Percentage" ? (fltComponentPercentageValue?.toString() ?? dicLine.fltPercentageValue) : "",
             fltMinAmount: dicComponent?.fltMinAmount?.toString() ?? dicLine.fltMinAmount,
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
+            blnIsActive: dicLine.blnIsActive ?? true,
             intLineOrder: dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
-            lstFlexiMappings: blnIsFlexiBasket ? dicLine.lstFlexiMappings : []
+            lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
         if (strField === "strValueSource") {
@@ -961,7 +1040,8 @@ export default function SalaryStructureEditorPage({
     setDicForm((dicPrevious) => {
       let blnChanged = false;
       const lstComponents = dicPrevious.lstComponents.map((dicLine) => {
-        if (!isFlexiBasketLine(dicLine)) {
+        const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
+        if (!isFlexiEntitlementHostLine(dicLine, dicComponent)) {
           return dicLine;
         }
         const setMappedComponentIDs = new Set(
@@ -991,7 +1071,7 @@ export default function SalaryStructureEditorPage({
       });
       return blnChanged ? { ...dicPrevious, lstComponents } : dicPrevious;
     });
-  }, [strFlexiBasketLineSignature, strFlexiEligibleComponentSignature, lstFlexiEligibleComponents, strMode]);
+  }, [dicComponentByID, strFlexiBasketLineSignature, strFlexiEligibleComponentSignature, lstFlexiEligibleComponents, strMode]);
 
   function updateFlexiMappingRow(
     strLineRowID: string,
@@ -1163,7 +1243,7 @@ export default function SalaryStructureEditorPage({
     const lstSelectedComponents = dicForm.lstComponents.filter((dicLine) => dicLine.intSalaryComponentID !== "");
     const lstActiveFlexiBasketLines = lstSelectedComponents.filter((dicLine) => {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-      return dicLine.blnIsActive && getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
+      return dicLine.blnIsActive && isFlexiEntitlementHostLine(dicLine, dicComponent);
     });
     const intFlexiBasketCount = lstActiveFlexiBasketLines.length;
     if (intFlexiBasketCount > 1) {
@@ -1475,7 +1555,7 @@ export default function SalaryStructureEditorPage({
                     dicComponent.blnIncludedInCtc === false ? t("non_ctc", "Non-CTC") : t("ctc", "CTC"),
                     getTaxTreatmentLabel(dicComponent) || t("tax_not_configured", "Tax not configured"),
                     dicComponent.blnIsWages ? t("wage", "Wage") : t("non_wage", "Non-Wage"),
-                    getFlexiRoleForComponent(dicComponent),
+                    getFlexiRoleForLine(dicLine, dicComponent),
                     dicComponent.blnIsReimbursement ? (getSettlementMode(dicComponent) || t("settlement_not_configured", "Settlement not configured")) : "",
                   ].filter(Boolean) : [];
                   return (
@@ -1526,8 +1606,8 @@ export default function SalaryStructureEditorPage({
                       </Stack>
                     </td>
                     <td>
-                      <Typography sx={{ width: 130, fontSize: "0.8rem", fontWeight: 700, color: getFlexiRoleForComponent(dicComponent) === "Flexi Bucket" ? "#0f766e" : "#64748b" }}>
-                        {getFlexiRoleForComponent(dicComponent)}
+                      <Typography sx={{ width: 130, fontSize: "0.8rem", fontWeight: 700, color: getFlexiRoleForLine(dicLine, dicComponent) === "Flexi Bucket" ? "#0f766e" : "#64748b" }}>
+                        {getFlexiRoleForLine(dicLine, dicComponent)}
                       </Typography>
                     </td>
                     <td>

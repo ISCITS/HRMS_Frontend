@@ -46,9 +46,29 @@ function formatOptionalInteger(objValue: number | string | "") {
   return Number.isInteger(intValue) && intValue > 0 ? intValue : null;
 }
 
+function normalizeSelectToken(strValue: string) {
+  return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function isFlexiBucketToken(strValue: string) {
+  const strToken = normalizeSelectToken(strValue);
+  return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
+}
+
 export function normalizeSalaryStructureFlexiRole(strValue?: string | null) {
   const strRole = (strValue ?? "").trim().toLowerCase();
   return strRole && strRole !== "none" ? strRole : "normal";
+}
+
+function isFlexiBasketLinePayload(dicLine: Pick<SalaryStructureLineFormValue, "blnIsFlexiBasketLine" | "strFlexiComponentRole" | "strComponentCode" | "strComponentName">) {
+  const strRole = normalizeSelectToken(dicLine.strFlexiComponentRole);
+  return Boolean(
+    dicLine.blnIsFlexiBasketLine
+    || strRole === "basket"
+    || isFlexiBucketToken(dicLine.strFlexiComponentRole)
+    || isFlexiBucketToken(dicLine.strComponentCode)
+    || isFlexiBucketToken(dicLine.strComponentName)
+  );
 }
 
 function mapTextToFormValue(dicText: SalaryStructureTextApiRecord): SalaryStructureTextFormValue {
@@ -191,8 +211,8 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         intSalaryComponentID: dicLine.intSalaryComponentID,
         intLineOrder: dicLine.intLineOrder,
         strValueSource: dicLine.strValueSource,
-        blnIsFlexiBasketLine: dicLine.blnIsFlexiBasketLine,
-        strFlexiComponentRole: "normal",
+        blnIsFlexiBasketLine: isFlexiBasketLinePayload(dicLine),
+        strFlexiComponentRole: isFlexiBasketLinePayload(dicLine) ? "basket" : normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
         fltFixedAmount: dicLine.strValueSource === "Fixed" ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
         fltPercentageValue: dicLine.strValueSource === "Percentage" ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
         intBasisComponentID: dicLine.strValueSource === "Percentage" ? dicLine.intBasisComponentID : null,
