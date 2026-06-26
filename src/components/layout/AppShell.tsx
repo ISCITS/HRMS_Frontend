@@ -1,7 +1,6 @@
 "use client";
 
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
@@ -42,7 +41,7 @@ import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
-const intTopBarHeight = 60;
+const intTopBarHeight = 64;
 const intMenuZIndex = 1700;
 const intCollapsedMenuRailWidth = 60;
 const intContentLoaderZIndex = 1200;
@@ -655,94 +654,106 @@ export default function AppShell({ children }: { children: ReactNode }) {
     >
       <Paper
         sx={{
-          px: 2.25,
-          height: `${intTopBarHeight}px`,
-          borderRadius: "24px",
-          background: "linear-gradient(145deg, #0f766e 0%, #0f5d8d 52%, #1d4ed8 100%)",
-          color: "#effcff",
-          boxShadow: "0 24px 50px rgba(15, 23, 42, 0.18)",
           display: "flex",
-          alignItems: "center",
-          boxSizing: "border-box",
-          overflow: "hidden"
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%", flex: 1, minWidth: 0 }}>
-          <Box
-            sx={{
-              width: 46,
-              height: 46,
-              borderRadius: "16px",
-              display: "grid",
-              placeItems: "center",
-              backgroundColor: "rgba(255,255,255,0.16)",
-              border: "1px solid rgba(255,255,255,0.18)"
-            }}
-          >
-            <SpaceDashboardRoundedIcon />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-              HRMS
-            </Typography>
-          </Box>
-        </Stack>
-        <IconButton
-          data-testid="app-shell.sidebar-close.button"
-          aria-label="Close navigation menu"
-          onClick={() => {
-            setBlnDrawerOpen(false);
-            setBlnDesktopSidebarOpen(false);
-          }}
-          sx={{
-            color: "#ffffff",
-            backgroundColor: "rgba(255,255,255,0.14)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            "&:hover": {
-              backgroundColor: "rgba(255,255,255,0.22)"
-            }
-          }}
-        >
-          <CloseRoundedIcon />
-        </IconButton>
-      </Paper>
-
-      <Paper
-        sx={{
-          p: 1.25,
-          borderRadius: "24px",
+          flexDirection: "column",
           flex: 1,
           minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
+          borderRadius: "24px",
+          overflow: "hidden",
           backgroundColor: "rgba(255,255,255,0.86)",
           backdropFilter: "blur(22px)",
           border: "1px solid rgba(148, 163, 184, 0.16)",
-          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)",
-          scrollbarWidth: "thin",
-          scrollbarColor: "rgba(148, 163, 184, 0.9) transparent",
-          "&::-webkit-scrollbar": {
-            width: 8
-          },
-          "&::-webkit-scrollbar-track": {
-            background: "transparent"
-          },
-          "&::-webkit-scrollbar-thumb": {
-            backgroundColor: "rgba(148, 163, 184, 0.85)",
-            borderRadius: "999px",
-            border: "2px solid transparent",
-            backgroundClip: "padding-box"
-          }
+          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)"
         }}
       >
-        <DynamicMenu
-          lstMenuItems={objMenu.lstMenuItems}
-          strForcedExpandedMenuIdentity={strPendingExpandedMenuIdentity}
-          onForcedExpandedHandled={() => setStrPendingExpandedMenuIdentity(null)}
-          onNavigate={() => {
-            setBlnDrawerOpen(false);
+        <Box
+          sx={{
+            px: 2.25,
+            height: `${intTopBarHeight}px`,
+            flexShrink: 0,
+            background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            boxSizing: "border-box"
           }}
-        />
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%", flex: 1, minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: "16px",
+                display: "grid",
+                placeItems: "center",
+                backgroundColor: "rgba(37, 99, 235, 0.12)",
+                border: "1px solid rgba(37, 99, 235, 0.18)",
+                color: "#2563eb"
+              }}
+            >
+              <SpaceDashboardRoundedIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                HRMS
+              </Typography>
+            </Box>
+          </Stack>
+          <IconButton
+            data-testid="app-shell.sidebar-close.button"
+            aria-label="Close navigation menu"
+            onClick={() => {
+              setBlnDrawerOpen(false);
+              setBlnDesktopSidebarOpen(false);
+            }}
+            sx={{
+              color: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.12)",
+              border: "1px solid rgba(37, 99, 235, 0.18)",
+              "&:hover": {
+                backgroundColor: "rgba(37, 99, 235, 0.2)"
+              }
+            }}
+          >
+            <MenuRoundedIcon />
+          </IconButton>
+        </Box>
+
+        <Divider sx={{ borderColor: "rgba(148, 163, 184, 0.18)" }} />
+
+        <Box
+          sx={{
+            p: 1.25,
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(148, 163, 184, 0.9) transparent",
+            "&::-webkit-scrollbar": {
+              width: 8
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "transparent"
+            },
+            "&::-webkit-scrollbar-thumb": {
+              backgroundColor: "rgba(148, 163, 184, 0.85)",
+              borderRadius: "999px",
+              border: "2px solid transparent",
+              backgroundClip: "padding-box"
+            }
+          }}
+        >
+          <DynamicMenu
+            lstMenuItems={objMenu.lstMenuItems}
+            strForcedExpandedMenuIdentity={strPendingExpandedMenuIdentity}
+            onForcedExpandedHandled={() => setStrPendingExpandedMenuIdentity(null)}
+            onNavigate={() => {
+              setBlnDrawerOpen(false);
+              setBlnDesktopSidebarOpen(false);
+            }}
+          />
+        </Box>
       </Paper>
 
       <ButtonBase
@@ -831,7 +842,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "none", lg: "flex" },
           flexDirection: "column",
           alignItems: "center",
-          backgroundColor: "#ffffff",
+          background: "linear-gradient(180deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
           borderRight: "1px solid #e2e8f0",
           boxShadow: "8px 0 24px rgba(15, 23, 42, 0.08)",
           overflow: "hidden",
@@ -973,7 +984,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
             }}
           >
-            <Toolbar sx={{ gap: 1.5, minHeight: "82px", alignItems: "center" }}>
+            <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
               <IconButton
                 data-testid="app-shell.menu-toggle.button"
                 onClick={handleMenuToggle}
@@ -1156,7 +1167,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             sx={{
               position: "relative",
               minHeight: 0,
-              height: "calc(100% - 98px)",
+              height: `calc(100% - ${intTopBarHeight + 16}px)`,
               overflowY: "auto",
               overflowX: "hidden",
               pr: blnDashboardRoute ? 0 : 0.5
