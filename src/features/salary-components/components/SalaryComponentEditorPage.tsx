@@ -120,6 +120,26 @@ function isCalculationMethod(strValue: string, ...lstExpected: string[]) {
   return lstExpected.some((strExpected) => strNormalized === normalizeSelectToken(strExpected));
 }
 
+function getDefaultOperatorForAnswerType(strAnswerType: string | null | undefined) {
+  return strAnswerType === "number" ? "greater_than_or_equal" : "equals";
+}
+
+function getRuleConditionOptions(strAnswerType: string | null | undefined) {
+  if (strAnswerType === "number") {
+    return [
+      { value: "greater_than_or_equal", label: "At least" },
+      { value: "greater_than", label: "More than" },
+      { value: "less_than_or_equal", label: "At most" },
+      { value: "less_than", label: "Less than" },
+      { value: "between", label: "Between" },
+    ];
+  }
+  return [
+    { value: "equals", label: "Is" },
+    { value: "not_equals", label: "Is not" },
+  ];
+}
+
 function getWageTypeLabel(strValue: "wages" | "nonWages") {
   return strValue === "wages" ? "Wage Component" : "Non-Wage Component";
 }
@@ -306,8 +326,11 @@ export default function SalaryComponentEditorPage({
   const blnShowExpenseDateRequired = blnIsReimbursementCategory;
   const blnShowCalculationDependencies = !blnIsReimbursementCategory
     && !blnIsFlexiBucketCategory
-    && (isCalculationMethod(dicForm.strCalcMethod, "formula", "percentage")
-      || Boolean(dicForm.strFormulaExpression.trim()));
+    && isCalculationMethod(dicForm.strCalcMethod, "formula");
+  const blnShowFormulaExpression = !blnIsReimbursementCategory
+    && !blnIsFlexiBucketCategory
+    && isCalculationMethod(dicForm.strCalcMethod, "formula");
+  const blnShowManualCalculationHelp = isCalculationMethod(dicForm.strCalcMethod, "manual");
   const blnShowRemunerationFlag = blnIsEarningCategory;
   const blnShowStatutoryFlags = blnIsEarningCategory;
   const blnShowOnlyActiveAndOverride = blnIsDeductionCategory;
@@ -416,9 +439,42 @@ export default function SalaryComponentEditorPage({
   ) {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
-      lstFlexiEligibilityRules: dicPrevious.lstFlexiEligibilityRules.map((dicRule) => (
-        dicRule.strRowID === strRowID ? { ...dicRule, [strField]: objValue } : dicRule
-      )),
+      lstFlexiEligibilityRules: dicPrevious.lstFlexiEligibilityRules.map((dicRule) => {
+        if (dicRule.strRowID !== strRowID) {
+          return dicRule;
+        }
+        if (strField === "intEligibilityQuestionID") {
+          const objQuestion = dicFlexiEligibilityQuestionByID.get(Number(objValue));
+          const strOperator = getDefaultOperatorForAnswerType(objQuestion?.strAnswerType);
+          return {
+            ...dicRule,
+            intEligibilityQuestionID: objValue as number | "",
+            strOperator,
+            strExpectedValue: "",
+            strMinValue: "",
+            strMaxValue: "",
+            strMultiplierMode: "none",
+            strMultiplierCap: "",
+          };
+        }
+        if (strField === "strOperator") {
+          return {
+            ...dicRule,
+            strOperator: String(objValue),
+            strExpectedValue: dicRule.strExpectedValue,
+            strMinValue: "",
+            strMaxValue: "",
+          };
+        }
+        if (strField === "strMultiplierMode" && objValue === "none") {
+          return {
+            ...dicRule,
+            strMultiplierMode: "none",
+            strMultiplierCap: "",
+          };
+        }
+        return { ...dicRule, [strField]: objValue };
+      }),
     }));
   }
 
@@ -756,7 +812,7 @@ export default function SalaryComponentEditorPage({
           return;
         }
         if (!dicRule.strOperator.trim()) {
-          setStrError(t("eligibility_operator_required", "Condition is required for each rule row."));
+          setStrError(t("eligibility_operator_required", "Rule condition is required for each rule row."));
           return;
         }
         if (dicRule.blnIsActive) {
@@ -767,22 +823,22 @@ export default function SalaryComponentEditorPage({
           setActiveQuestionIDs.add(objQuestion.intID);
         }
         if (objQuestion.strAnswerType === "boolean" && !dicRule.strExpectedValue.trim()) {
-          setStrError(t("eligibility_boolean_expected_required", "Boolean questions require an expected answer."));
+          setStrError(t("eligibility_boolean_expected_required", "Boolean questions require a required answer."));
           return;
         }
         if (objQuestion.strAnswerType === "number") {
           if (dicRule.strOperator === "between") {
             if (!dicRule.strMinValue.trim() || !dicRule.strMaxValue.trim()) {
-              setStrError(t("eligibility_between_required", "Between condition requires both minimum and maximum values."));
+              setStrError(t("eligibility_between_required", "Between rule condition requires both minimum and maximum values."));
               return;
             }
           } else if (["greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal"].includes(dicRule.strOperator) && !dicRule.strMinValue.trim()) {
-            setStrError(t("eligibility_number_threshold_required", "Number condition requires a threshold value."));
+            setStrError(t("eligibility_number_threshold_required", "Number rules require a required value."));
             return;
           }
         }
         if (dicRule.strMultiplierMode !== "none" && (!dicRule.strMultiplierCap.trim() || Number(dicRule.strMultiplierCap) <= 0)) {
-          setStrError(t("eligibility_multiplier_cap_required", "Maximum Count is required and must be greater than 0 when multiplier is enabled."));
+          setStrError(t("eligibility_multiplier_cap_required", "Multiplier Cap is required and must be greater than 0 when multiplier mode is enabled."));
           return;
         }
       }
@@ -1053,8 +1109,13 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} />
+          {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
         </Box>
+        {blnShowManualCalculationHelp ? (
+          <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 1.5 }}>
+            {t("manual_calculation_help", "Amount will be configured in Salary Structure / Employee Salary.")}
+          </Typography>
+        ) : null}
       </Paper>
 
       {blnShowFlexiBucketConfiguration ? (
@@ -1207,6 +1268,7 @@ export default function SalaryComponentEditorPage({
                 const blnBooleanQuestion = objQuestion?.strAnswerType === "boolean";
                 const blnNumberQuestion = objQuestion?.strAnswerType === "number";
                 const blnSelectQuestion = objQuestion?.strAnswerType === "select";
+                const lstRuleConditionOptions = getRuleConditionOptions(objQuestion?.strAnswerType);
                 return (
                   <Box key={dicRule.strRowID} sx={{ border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
                     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
@@ -1222,20 +1284,20 @@ export default function SalaryComponentEditorPage({
                           <MenuItem key={dicQuestion.intID} value={dicQuestion.intID}>{resolveEligibilityQuestionLabel(dicQuestion, intDefaultLanguageID)}</MenuItem>
                         ))}
                       </TextField>
-                      <TextField select label={t("condition", "Condition")} value={dicRule.strOperator} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strOperator", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
-                        {["equals", "not_equals", "greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal", "between"].map((strOperator) => (
-                          <MenuItem key={strOperator} value={strOperator}>{strOperator}</MenuItem>
+                      <TextField select label={t("rule_condition", "Rule Condition")} value={dicRule.strOperator} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strOperator", objEvent.target.value)} disabled={blnFieldDisabled || !objQuestion} fullWidth>
+                        {lstRuleConditionOptions.map((dicOption) => (
+                          <MenuItem key={dicOption.value} value={dicOption.value}>{t(`eligibility_rule_condition_${dicOption.value}`, dicOption.label)}</MenuItem>
                         ))}
                       </TextField>
                       {blnBooleanQuestion ? (
-                        <TextField select label={t("expected_answer", "Expected Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                        <TextField select label={t("required_answer", "Required Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
                           <MenuItem value="">{t("select", "Select")}</MenuItem>
                           <MenuItem value="true">{t("yes", "Yes")}</MenuItem>
                           <MenuItem value="false">{t("no", "No")}</MenuItem>
                         </TextField>
                       ) : null}
                       {blnSelectQuestion ? (
-                        <TextField select={lstSelectOptions.length > 0} label={t("expected_answer", "Expected Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+                        <TextField select={lstSelectOptions.length > 0} label={t("required_answer", "Required Answer")} value={dicRule.strExpectedValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strExpectedValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
                           {lstSelectOptions.length > 0 ? <MenuItem value="">{t("select", "Select")}</MenuItem> : null}
                           {lstSelectOptions.map((objOption) => {
                             const strOptionLabel = typeof objOption === "string" ? objOption : String((objOption as { label?: string; value?: string }).label ?? (objOption as { value?: string }).value ?? "");
@@ -1246,8 +1308,8 @@ export default function SalaryComponentEditorPage({
                       ) : null}
                       {blnNumberQuestion ? (
                         <>
-                          <TextField label={dicRule.strOperator === "between" ? t("minimum_value", "Min Value") : t("expected_number", "Expected Number")} value={dicRule.strMinValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMinValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
-                          {dicRule.strOperator === "between" ? <TextField label={t("maximum_value", "Max Value")} value={dicRule.strMaxValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMaxValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
+                          <TextField label={dicRule.strOperator === "between" ? t("minimum_value", "Minimum Value") : t("required_value", "Required Value")} value={dicRule.strMinValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMinValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+                          {dicRule.strOperator === "between" ? <TextField label={t("maximum_value", "Maximum Value")} value={dicRule.strMaxValue} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMaxValue", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
                         </>
                       ) : null}
                       <TextField select label={t("multiplier", "Multiplier")} value={dicRule.strMultiplierMode} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMultiplierMode", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
@@ -1255,7 +1317,7 @@ export default function SalaryComponentEditorPage({
                           <MenuItem key={strMode} value={strMode}>{strMode}</MenuItem>
                         ))}
                       </TextField>
-                      {dicRule.strMultiplierMode !== "none" ? <TextField label={t("maximum_count", "Maximum Count")} value={dicRule.strMultiplierCap} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMultiplierCap", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
+                      {dicRule.strMultiplierMode !== "none" ? <TextField label={t("multiplier_cap", "Multiplier Cap")} value={dicRule.strMultiplierCap} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strMultiplierCap", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth /> : null}
                       <TextField select label={t("when_not_eligible", "When not eligible")} value={dicRule.strIneligibleBehavior} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strIneligibleBehavior", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
                         <MenuItem value="show_disabled">{t("show_disabled", "Show disabled")}</MenuItem>
                         <MenuItem value="hide">{t("hide", "Hide")}</MenuItem>
