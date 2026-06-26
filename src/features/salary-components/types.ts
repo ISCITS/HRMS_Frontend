@@ -126,6 +126,7 @@ export type SalaryComponentFormValues = {
   blnRequiresBills: boolean;
   blnExpenseDateRequired: boolean;
   blnAllowPartialApproval: boolean;
+  intApplicableForWhichTaxRegime: 0 | 1 | 2;
   strClaimLimitType: "none" | "monthly" | "yearly" | "both";
   strAnnualLimitAmount: string;
   strMonthlyLimitAmount: string;

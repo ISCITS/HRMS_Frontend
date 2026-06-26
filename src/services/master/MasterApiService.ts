@@ -483,6 +483,7 @@ export type SalaryComponentApiRecord = {
   blnRequiresBills?: boolean;
   blnExpenseDateRequired?: boolean;
   blnAllowPartialApproval?: boolean;
+  intApplicableForWhichTaxRegime?: number | null;
   decAnnualLimitAmount?: number | null;
   decMonthlyLimitAmount?: number | null;
   strClaimLimitType?: string | null;
