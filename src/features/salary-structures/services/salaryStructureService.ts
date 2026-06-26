@@ -1,6 +1,7 @@
 import {
   masterApiService,
   type FlexiComponentEligibilityApiRecord,
+  type SalaryComponentApiRecord,
   type SalaryStructureApiRecord,
   type SalaryStructureComponentApiRecord,
   type SalaryStructureTextApiRecord
@@ -53,6 +54,10 @@ function normalizeSelectToken(strValue: string) {
 function isFlexiBucketToken(strValue: string) {
   const strToken = normalizeSelectToken(strValue);
   return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
+}
+
+function isLineValueSource(strValueSource: string, strExpectedValue: "fixed" | "percentage" | "formula") {
+  return normalizeSelectToken(strValueSource) === strExpectedValue;
 }
 
 export function normalizeSalaryStructureFlexiRole(strValue?: string | null) {
@@ -213,10 +218,10 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         strValueSource: dicLine.strValueSource,
         blnIsFlexiBasketLine: isFlexiBasketLinePayload(dicLine),
         strFlexiComponentRole: isFlexiBasketLinePayload(dicLine) ? "basket" : normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
-        fltFixedAmount: dicLine.strValueSource === "Fixed" ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
-        fltPercentageValue: dicLine.strValueSource === "Percentage" ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
-        intBasisComponentID: dicLine.strValueSource === "Percentage" ? dicLine.intBasisComponentID : null,
-        strFormulaExpression: dicLine.strValueSource === "Formula" ? formatOptionalText(dicLine.strFormulaExpression) : null,
+        fltFixedAmount: isLineValueSource(dicLine.strValueSource, "fixed") ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
+        fltPercentageValue: isLineValueSource(dicLine.strValueSource, "percentage") ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
+        intBasisComponentID: isLineValueSource(dicLine.strValueSource, "percentage") ? dicLine.intBasisComponentID : null,
+        strFormulaExpression: isLineValueSource(dicLine.strValueSource, "formula") ? formatOptionalText(dicLine.strFormulaExpression) : null,
         fltMinAmount: formatOptionalNumber(dicLine.fltMinAmount),
         fltMaxAmount: formatOptionalNumber(dicLine.fltMaxAmount),
         blnIsMandatory: dicLine.blnIsMandatory,
@@ -363,6 +368,45 @@ function mergeFlexiEligibilityIntoOptions(
   };
 }
 
+function mergeSalaryComponentMetadataIntoOptions(
+  dicOptions: SalaryStructureFormOptions,
+  lstSalaryComponents: SalaryComponentApiRecord[]
+): SalaryStructureFormOptions {
+  const dicComponentByID = new Map(lstSalaryComponents.map((dicComponent) => [dicComponent.intID, dicComponent]));
+  return {
+    ...dicOptions,
+    lstSalaryComponents: dicOptions.lstSalaryComponents.map((dicOption) => {
+      const dicComponent = dicComponentByID.get(dicOption.intID);
+      if (!dicComponent) {
+        return dicOption;
+      }
+      return {
+        ...dicOption,
+        strCalcMethod: dicComponent.strCalcMethod ?? dicOption.strCalcMethod,
+        strFormulaExpression: dicComponent.strFormulaExpression ?? dicOption.strFormulaExpression,
+        strComponentCategory: dicComponent.strComponentCategory ?? dicOption.strComponentCategory,
+        strComponentGroup: dicComponent.strComponentGroup ?? dicOption.strComponentGroup,
+        strDefaultPeriodicity: dicComponent.strDefaultPeriodicity ?? dicOption.strDefaultPeriodicity,
+        strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
+        strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
+        blnIsWages: dicComponent.blnIsWages ?? dicOption.blnIsWages,
+        blnIncludedInCtc: dicComponent.blnIncludedInCtc ?? dicOption.blnIncludedInCtc,
+        blnIncludeInPayslip: dicComponent.blnIncludeInPayslip ?? dicOption.blnIncludeInPayslip,
+        blnIsReimbursement: dicComponent.blnIsReimbursement ?? dicOption.blnIsReimbursement,
+        blnIsFlexiBenefit: dicComponent.blnIsFlexiBenefit ?? dicOption.blnIsFlexiBenefit,
+        blnIsFlexiBasket: dicComponent.blnIsFlexiBasket ?? dicOption.blnIsFlexiBasket,
+        strFlexiComponentType: dicComponent.strFlexiComponentType ?? dicOption.strFlexiComponentType,
+        strSettlementMethod: dicComponent.strSettlementMethod ?? dicOption.strSettlementMethod,
+        blnProofRequired: dicComponent.blnProofRequired ?? dicOption.blnProofRequired,
+        blnIsEmployerContribution: dicComponent.blnIsEmployerContribution ?? dicOption.blnIsEmployerContribution,
+        blnIsEmployeeDeduction: dicComponent.blnIsEmployeeDeduction ?? dicOption.blnIsEmployeeDeduction,
+        intDisplayOrder: dicComponent.intDisplayOrder ?? dicOption.intDisplayOrder,
+        lstDependencyComponentIDs: dicComponent.lstDependencyComponentIDs ?? dicOption.lstDependencyComponentIDs
+      };
+    })
+  };
+}
+
 async function getFlexiComponentEligibilityWithTimeout(intTimeoutMs = 1500) {
   let intTimeoutID: ReturnType<typeof setTimeout> | null = null;
   try {
@@ -446,9 +490,13 @@ export const salaryStructureService = {
   },
 
   async getFormOptions(): Promise<SalaryStructureFormOptions> {
-    const objOptionsResult = await masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1);
+    const [objOptionsResult, objSalaryComponentsResult] = await Promise.all([
+      masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1),
+      masterApiService.getSalaryComponents()
+    ]);
     const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
-    return mergeFlexiEligibilityIntoOptions(objOptionsResult.Data, objEligibilityResult?.Data ?? []);
+    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, objSalaryComponentsResult.Data);
+    return mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []);
   },
 
   async saveFlexiComponentEligibility(dicValues: SalaryStructureFormValues): Promise<void> {

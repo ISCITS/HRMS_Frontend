@@ -192,6 +192,90 @@
   margin-top: 6px;
 }
 
+.bankFileSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.payslipSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.payslipSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.payslipSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 240px) auto;
+}
+
+.bankFileSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.bankFileSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.payrollRegisterSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.payrollRegisterSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.payrollRegisterSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.statutorySearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.statutorySearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(220px, 1.15fr) minmax(180px, 1fr) minmax(170px, 0.85fr) minmax(170px, 0.9fr);
+}
+
+.statutorySearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(170px, 0.9fr) auto;
+}
+
 .quickFilterRow {
   display: grid;
   gap: 10px;
@@ -223,12 +307,16 @@
 }
 
 .quickFilterRow :global(.MuiInputBase-root),
-.searchRow :global(.MuiInputBase-root) {
+.searchRow :global(.MuiInputBase-root),
+.bankFileSearchPanel :global(.MuiInputBase-root),
+.payrollRegisterSearchPanel :global(.MuiInputBase-root) {
   min-height: 40px;
 }
 
 .quickFilterRow :global(.MuiOutlinedInput-input),
-.searchRow :global(.MuiOutlinedInput-input) {
+.searchRow :global(.MuiOutlinedInput-input),
+.bankFileSearchPanel :global(.MuiOutlinedInput-input),
+.payrollRegisterSearchPanel :global(.MuiOutlinedInput-input) {
   padding-bottom: 10px;
   padding-top: 10px;
 }
@@ -722,6 +810,17 @@
 @media (max-width: 900px) {
   .quickFilterRow,
   .searchRow {
+    grid-template-columns: 1fr;
+  }
+
+  .payslipSearchLinePrimary,
+  .payslipSearchLineSecondary,
+  .bankFileSearchLinePrimary,
+  .bankFileSearchLineSecondary,
+  .payrollRegisterSearchLinePrimary,
+  .payrollRegisterSearchLineSecondary,
+  .statutorySearchLinePrimary,
+  .statutorySearchLineSecondary {
     grid-template-columns: 1fr;
   }
 

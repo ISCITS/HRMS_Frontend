@@ -131,12 +131,30 @@ function getLowerCap(fltPolicyLimit: number | null, fltStructureCap: number | nu
 }
 
 function getComponentValueSource(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined, strFallbackValueSource: string) {
-  const strRawValueSource = String(dicComponent?.strValueSource ?? dicComponent?.strCalcMethod ?? strFallbackValueSource ?? "Fixed");
+  const strRawValueSource = String(dicComponent?.strCalcMethod ?? dicComponent?.strValueSource ?? strFallbackValueSource ?? "Fixed");
   const strToken = normalizeSelectToken(strRawValueSource);
   if (strToken === "percentage" || strToken === "percent") {
     return "Percentage";
   }
   if (strToken === "formula" || strToken === "calculated") {
+    return "Formula";
+  }
+  return "Fixed";
+}
+
+function resolveValueSourceOption(
+  lstValueSources: string[],
+  strRawValueSource: string
+) {
+  const strNormalizedValue = normalizeSelectToken(strRawValueSource);
+  const strMatchedOption = lstValueSources.find((strOption) => normalizeSelectToken(strOption) === strNormalizedValue);
+  if (strMatchedOption) {
+    return strMatchedOption;
+  }
+  if (strNormalizedValue === "percentage" || strNormalizedValue === "percent") {
+    return "Percentage";
+  }
+  if (strNormalizedValue === "formula" || strNormalizedValue === "calculated") {
     return "Formula";
   }
   return "Fixed";
@@ -408,6 +426,7 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
+  const lstValueSourceOptions = objFormOptions?.lstValueSources ?? [];
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
@@ -862,7 +881,10 @@ export default function SalaryStructureEditorPage({
         if (strField === "intSalaryComponentID") {
           const dicComponent = dicSelectedComponent;
           const blnIsFlexiBasket = getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
-          const strValueSource = getComponentValueSource(dicComponent, dicLine.strValueSource);
+          const strValueSource = resolveValueSourceOption(
+            lstValueSourceOptions,
+            getComponentValueSource(dicComponent, dicLine.strValueSource)
+          );
           const objBasisComponentID = getComponentBasisComponentID(dicComponent);
           const fltComponentPercentageValue = getComponentPercentageValue(dicComponent);
           const setMappedComponentIDs = new Set(
@@ -893,9 +915,11 @@ export default function SalaryStructureEditorPage({
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
             strComponentCategory: dicComponent?.strComponentCategory ?? "",
             strValueSource,
-            strFormulaExpression: strValueSource === "Formula" ? (dicComponent?.strFormulaExpression ?? dicLine.strFormulaExpression) : "",
-            intBasisComponentID: strValueSource === "Percentage" ? (objBasisComponentID || dicLine.intBasisComponentID) : "",
-            fltPercentageValue: strValueSource === "Percentage" ? (fltComponentPercentageValue?.toString() ?? dicLine.fltPercentageValue) : "",
+            strFormulaExpression: normalizeSelectToken(strValueSource) === "formula"
+              ? (dicComponent?.strFormulaExpression ?? "")
+              : "",
+            intBasisComponentID: normalizeSelectToken(strValueSource) === "percentage" ? (objBasisComponentID || dicLine.intBasisComponentID) : "",
+            fltPercentageValue: normalizeSelectToken(strValueSource) === "percentage" ? (fltComponentPercentageValue?.toString() ?? dicLine.fltPercentageValue) : "",
             fltMinAmount: dicComponent?.fltMinAmount?.toString() ?? dicLine.fltMinAmount,
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
@@ -905,25 +929,26 @@ export default function SalaryStructureEditorPage({
           };
         }
         if (strField === "strValueSource") {
-          if (objValue === "Fixed") {
+          const strNormalizedValueSource = normalizeSelectToken(String(objValue));
+          if (strNormalizedValueSource === "fixed") {
             return {
               ...dicLine,
-              strValueSource: "Fixed",
+              strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
               fltPercentageValue: "",
               intBasisComponentID: "",
               strFormulaExpression: ""
             };
           }
-          if (objValue === "Percentage") {
+          if (strNormalizedValueSource === "percentage" || strNormalizedValueSource === "percent") {
             return {
               ...dicLine,
-              strValueSource: "Percentage",
+              strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
               strFormulaExpression: ""
             };
           }
           return {
             ...dicLine,
-            strValueSource: "Formula",
+            strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
             fltFixedAmount: "",
             fltPercentageValue: "",
             intBasisComponentID: "" as const
@@ -1614,7 +1639,7 @@ export default function SalaryStructureEditorPage({
                       <TextField
                         select
                         size="small"
-                        value={dicLine.strValueSource}
+                        value={resolveValueSourceOption(lstValueSourceOptions, dicLine.strValueSource)}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
                         disabled={blnFieldDisabled}
                         data-testid="salary-structures.editor.line.value-source.select"
@@ -1632,7 +1657,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={strLineYearlyAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Fixed"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed"}
                         data-testid="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
                           "data-row-key": dicLine.strRowID,
@@ -1657,7 +1682,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltPercentageValue}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltPercentageValue", objEvent.target.value)}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
                         data-testid="salary-structures.editor.line.percentage-value.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.percentage-value.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ width: 55 }}
@@ -1669,7 +1694,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.intBasisComponentID}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Percentage"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
                         data-testid="salary-structures.editor.line.basis-component.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
@@ -1690,7 +1715,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.strFormulaExpression}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
-                        disabled={blnFieldDisabled || dicLine.strValueSource !== "Formula"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "formula"}
                         data-testid="salary-structures.editor.line.formula.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ minWidth: 210 }}
@@ -1768,10 +1793,10 @@ export default function SalaryStructureEditorPage({
                 [t("flexi_entitlement_total", "Flexi Entitlement Total"), formatFlexiAmount(dicFlexiSummary.fltEntitlementAnnual), "#0f766e"],
                 [t("residual_taxable_projection", "Residual Taxable Projection"), formatFlexiAmount(dicFlexiSummary.fltResidualTaxableProjection), "#b45309"],
                 [t("gross_monthly_estimate", "Gross Monthly Estimate"), formatFlexiAmount((dicStructureSummary.fltTotalCtc - dicStructureSummary.fltEmployerContribution) / 12), "#0757b8"],
-              ].map(([strLabel, strValue, strColor]) => {
+              ].map(([strLabel, strValue, strColor], intSummaryIndex) => {
                 const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
                 return (
-                <Stack key={strLabel} direction="row" justifyContent="space-between" alignItems="center">
+                <Stack key={`summary-${intSummaryIndex}-${String(strLabel)}`} direction="row" justifyContent="space-between" alignItems="center">
                   <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{strLabel}</Typography>
                   <Typography sx={{ color: strColor, fontSize: blnCurrencyValue ? "0.84rem" : "0.76rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
                 </Stack>

@@ -494,35 +494,35 @@ export default function PayrollResultListPage({
             </Box>
           </Box>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField
-            data-testid="payroll-results.list.employee-search.input"
-            value={dicSearchDraft.strSearchEmployee}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearchEmployee: objEvent.target.value,
-              }))
-            }
-            placeholder={t(
-              "employee_search_placeholder",
-              "Search by employee code or name"
-            )}
-            fullWidth
-          />
-          <TextField
-            value={dicSearchDraft.strSearchRun}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearchRun: objEvent.target.value,
-              }))
-            }
-            placeholder={t("run_search_placeholder", "Search by payroll run")}
-            fullWidth
-          />
-          {blnPayslipScreen ? (
-            <>
+        {blnPayslipScreen && blnEssMode ? (
+          <Box className={styles.payslipSearchPanel}>
+            <Box className={styles.payslipSearchLinePrimary}>
+              <TextField
+                data-testid="payroll-results.list.employee-search.input"
+                value={dicSearchDraft.strSearchEmployee}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strSearchEmployee: objEvent.target.value,
+                  }))
+                }
+                placeholder={t(
+                  "employee_search_placeholder",
+                  "Search by employee code or name"
+                )}
+                fullWidth
+              />
+              <TextField
+                value={dicSearchDraft.strSearchRun}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strSearchRun: objEvent.target.value,
+                  }))
+                }
+                placeholder={t("run_search_placeholder", "Search by payroll run")}
+                fullWidth
+              />
               <TextField
                 type="month"
                 value={dicSearchDraft.strPayrollMonth}
@@ -558,43 +558,145 @@ export default function PayrollResultListPage({
                 placeholder={t("location", "Location")}
                 fullWidth
               />
-            </>
-          ) : null}
-          {blnPayslipScreen ? (
+            </Box>
+            <Box className={styles.payslipSearchLineSecondary}>
+              <TextField
+                select
+                value={dicSearchDraft.strStatus}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strStatus: objEvent.target.value as SearchForm["strStatus"],
+                  }))
+                }
+                fullWidth
+              >
+                <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
+                <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
+              </TextField>
+              <Box className={styles.searchActions}>
+                <Button
+                  data-testid="payroll-results.list.search.button"
+                  className={styles.primaryButton}
+                  startIcon={<SearchRoundedIcon />}
+                  onClick={() => applyFilters(dicSearchDraft)}
+                >
+                  {t("search", "Search")}
+                </Button>
+                <Button
+                  data-testid="payroll-results.list.clear.button"
+                  className={styles.secondaryButton}
+                  startIcon={<ClearRoundedIcon />}
+                  onClick={clearFilters}
+                >
+                  {t("clear", "Clear")}
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        ) : (
+          <Box className={styles.searchRow}>
             <TextField
-              select
-              value={dicSearchDraft.strStatus}
+              data-testid="payroll-results.list.employee-search.input"
+              value={dicSearchDraft.strSearchEmployee}
               onChange={(objEvent) =>
                 setDicSearchDraft((dicPrevious) => ({
                   ...dicPrevious,
-                  strStatus: objEvent.target.value as SearchForm["strStatus"],
+                  strSearchEmployee: objEvent.target.value,
                 }))
               }
+              placeholder={t(
+                "employee_search_placeholder",
+                "Search by employee code or name"
+              )}
               fullWidth
-            >
-              <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
-              <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
-            </TextField>
-          ) : null}
-          <Box className={styles.searchActions}>
-            <Button
-              data-testid="payroll-results.list.search.button"
-              className={styles.primaryButton}
-              startIcon={<SearchRoundedIcon />}
-              onClick={() => applyFilters(dicSearchDraft)}
-            >
-              {t("search", "Search")}
-            </Button>
-            <Button
-              data-testid="payroll-results.list.clear.button"
-              className={styles.secondaryButton}
-              startIcon={<ClearRoundedIcon />}
-              onClick={clearFilters}
-            >
-              {t("clear", "Clear")}
-            </Button>
+            />
+            <TextField
+              value={dicSearchDraft.strSearchRun}
+              onChange={(objEvent) =>
+                setDicSearchDraft((dicPrevious) => ({
+                  ...dicPrevious,
+                  strSearchRun: objEvent.target.value,
+                }))
+              }
+              placeholder={t("run_search_placeholder", "Search by payroll run")}
+              fullWidth
+            />
+            {blnPayslipScreen ? (
+              <>
+                <TextField
+                  type="month"
+                  value={dicSearchDraft.strPayrollMonth}
+                  onChange={(objEvent) =>
+                    setDicSearchDraft((dicPrevious) => ({
+                      ...dicPrevious,
+                      strPayrollMonth: objEvent.target.value,
+                    }))
+                  }
+                  label={t("payroll_month", "Payroll Month")}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  value={dicSearchDraft.strDepartment}
+                  onChange={(objEvent) =>
+                    setDicSearchDraft((dicPrevious) => ({
+                      ...dicPrevious,
+                      strDepartment: objEvent.target.value,
+                    }))
+                  }
+                  placeholder={t("department", "Department")}
+                  fullWidth
+                />
+                <TextField
+                  value={dicSearchDraft.strLocation}
+                  onChange={(objEvent) =>
+                    setDicSearchDraft((dicPrevious) => ({
+                      ...dicPrevious,
+                      strLocation: objEvent.target.value,
+                    }))
+                  }
+                  placeholder={t("location", "Location")}
+                  fullWidth
+                />
+              </>
+            ) : null}
+            {blnPayslipScreen ? (
+              <TextField
+                select
+                value={dicSearchDraft.strStatus}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strStatus: objEvent.target.value as SearchForm["strStatus"],
+                  }))
+                }
+                fullWidth
+              >
+                <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
+                <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
+              </TextField>
+            ) : null}
+            <Box className={styles.searchActions}>
+              <Button
+                data-testid="payroll-results.list.search.button"
+                className={styles.primaryButton}
+                startIcon={<SearchRoundedIcon />}
+                onClick={() => applyFilters(dicSearchDraft)}
+              >
+                {t("search", "Search")}
+              </Button>
+              <Button
+                data-testid="payroll-results.list.clear.button"
+                className={styles.secondaryButton}
+                startIcon={<ClearRoundedIcon />}
+                onClick={clearFilters}
+              >
+                {t("clear", "Clear")}
+              </Button>
+            </Box>
           </Box>
-        </Box>
+        )}
         {!blnPayslipScreen ? (
           <Box className={styles.quickFilterRow}>
             <TextField

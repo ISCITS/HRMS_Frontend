@@ -4,7 +4,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -165,16 +165,15 @@ export default function PayrollRegisterReportPage() {
   const [lstRows, setLstRows] = useState<PayrollResultListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(true);
+  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
-  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
-  async function loadRows(objFilters: SearchForm = dicSearchApplied) {
+  async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
@@ -189,34 +188,7 @@ export default function PayrollRegisterReportPage() {
     }
   }
 
-  useEffect(() => {
-    if (!blnRightsLoading) {
-      setBlnFilterDialogOpen(true);
-    }
-  }, [blnRightsLoading]);
-
-  const lstFilteredRows = useMemo(() => {
-    const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
-    const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
-    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
-    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
-    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
-    return lstRows.filter((dicRow) => {
-      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
-      const blnEmployeeMatch =
-        !strEmployeeSearch ||
-        dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
-        dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
-      const blnRunMatch =
-        !strRunSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
-        dicRow.strRunName.toLowerCase().includes(strRunSearch);
-      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
-      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
-      const blnStatusMatch = dicSearchApplied.strStatus === "All" || dicRow.strStatus === dicSearchApplied.strStatus;
-      return blnEmployeeMatch && blnRunMatch && blnMonthMatch && blnYearMatch && blnStatusMatch;
-    });
-  }, [dicSearchApplied, lstRows]);
+  const lstFilteredRows = useMemo(() => lstRows, [lstRows]);
 
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
@@ -265,15 +237,17 @@ export default function PayrollRegisterReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
-    setDicSearchApplied(dicFilters);
     setBlnFilterDialogOpen(false);
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
-    setDicSearchApplied(dicEmptySearch);
-    loadRows(dicEmptySearch).catch(() => undefined);
+    setLstRows([]);
+    setSetSelectedRowIDs(new Set());
+    setStrError("");
+    setBlnHasLoadedRows(false);
+    setIntPage(1);
   }
 
   if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
@@ -292,22 +266,26 @@ export default function PayrollRegisterReportPage() {
             </Typography>
           </Box>
         </Box>
-        <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth data-testid="reports.payroll-register.employee-search.input" />
-          <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-testid="reports.payroll-register.run-search.input" />
-          <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-testid="reports.payroll-register.payroll-month.input" />
-          <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-testid="reports.payroll-register.department.input" />
-          <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-testid="reports.payroll-register.location.input" />
-          <TextField select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-testid="reports.payroll-register.status.select">
-            <MenuItem value="All">All statuses</MenuItem>
-            <MenuItem value="Calculated">Calculated</MenuItem>
-            <MenuItem value="Approved">Approved</MenuItem>
-            <MenuItem value="Published">Published</MenuItem>
-            <MenuItem value="Paid">Paid</MenuItem>
-          </TextField>
-          <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-testid="reports.payroll-register.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-testid="reports.payroll-register.clear.button">Clear</Button>
+        <Box className={styles.payrollRegisterSearchPanel}>
+          <Box className={styles.payrollRegisterSearchLinePrimary}>
+            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code" fullWidth data-testid="reports.payroll-register.employee-search.input" />
+            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-testid="reports.payroll-register.run-search.input" />
+            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-testid="reports.payroll-register.payroll-month.input" />
+            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-testid="reports.payroll-register.department.input" />
+            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-testid="reports.payroll-register.location.input" />
+          </Box>
+          <Box className={styles.payrollRegisterSearchLineSecondary}>
+            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-testid="reports.payroll-register.status.select">
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="Calculated">Calculated</MenuItem>
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Published">Published</MenuItem>
+              <MenuItem value="Paid">Paid</MenuItem>
+            </TextField>
+            <Box className={styles.searchActions}>
+              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-testid="reports.payroll-register.search.button">Search</Button>
+              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-testid="reports.payroll-register.clear.button">Clear</Button>
+            </Box>
           </Box>
         </Box>
       </Box>
