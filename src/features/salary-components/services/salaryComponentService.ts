@@ -91,6 +91,8 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     strComponentGroup: dicRecord.strComponentGroup ?? null,
     strCalcMethod: dicRecord.strCalcMethod,
     strFormulaExpression: dicRecord.strFormulaExpression,
+    decDefaultPercentageValue: dicRecord.decDefaultPercentageValue ?? null,
+    intDefaultBasisComponentID: dicRecord.intDefaultBasisComponentID ?? null,
     strRoundingRule: dicRecord.strRoundingRule,
     strDefaultPeriodicity: dicRecord.strDefaultPeriodicity,
     strTaxTreatment: dicRecord.strTaxTreatment,
@@ -214,6 +216,8 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     strComponentGroup: "",
     strCalcMethod: "fixed",
     strFormulaExpression: "",
+    strDefaultPercentageValue: "",
+    intDefaultBasisComponentID: "",
     strRoundingRule: "",
     strDefaultPeriodicity: "monthly",
     strTaxTreatment: "",
@@ -263,6 +267,8 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     strComponentGroup: dicRecord.strComponentGroup ?? "",
     strCalcMethod: dicRecord.strCalcMethod,
     strFormulaExpression: dicRecord.strFormulaExpression ?? "",
+    strDefaultPercentageValue: dicRecord.decDefaultPercentageValue != null ? String(dicRecord.decDefaultPercentageValue) : "",
+    intDefaultBasisComponentID: dicRecord.intDefaultBasisComponentID ?? "",
     strRoundingRule: dicRecord.strRoundingRule ?? "",
     strDefaultPeriodicity: dicRecord.strDefaultPeriodicity,
     strTaxTreatment: dicRecord.strTaxTreatment ?? "",
@@ -349,6 +355,16 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
           : dicValues.strClaimLimitType;
   const blnPersistDependencyMapping = isDependencyBackedCalculation(dicValues);
   const blnPersistFlexiEligibilityRules = isReimbursementCategory(dicValues.strComponentCategory) && dicValues.blnIsFlexiBenefit;
+  const strNormalizedCalcMethod = dicValues.strCalcMethod.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  const intDefaultBasisComponentID = dicValues.intDefaultBasisComponentID === "" ? null : Number(dicValues.intDefaultBasisComponentID);
+  const decDefaultPercentageValue = dicValues.strDefaultPercentageValue.trim() ? Number(dicValues.strDefaultPercentageValue) : null;
+  const lstDependencyComponentIDs = sanitizeDependencyIDs(
+    [
+      ...(blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : []),
+      ...(strNormalizedCalcMethod === "percentage" && intDefaultBasisComponentID ? [intDefaultBasisComponentID] : []),
+    ],
+    intSalaryComponentID
+  );
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -358,6 +374,8 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     strComponentGroup: formatOptionalText(dicValues.strComponentGroup),
     strCalcMethod: dicValues.strCalcMethod.trim(),
     strFormulaExpression: formatOptionalText(dicValues.strFormulaExpression),
+    decDefaultPercentageValue,
+    intDefaultBasisComponentID,
     strRoundingRule: formatOptionalText(dicValues.strRoundingRule),
     strDefaultPeriodicity: dicValues.strDefaultPeriodicity.trim(),
     strTaxTreatment: formatOptionalText(dicValues.strTaxTreatment),
@@ -400,10 +418,7 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnAllowManualOverride: dicValues.blnAllowManualOverride,
     blnIsActive: dicValues.blnIsActive,
     intLanguageID: Number(dicValues.lstTexts[0]?.intLanguageID || 1),
-    lstDependencyComponentIDs: sanitizeDependencyIDs(
-      blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : [],
-      intSalaryComponentID
-    ),
+    lstDependencyComponentIDs,
     lstFlexiEligibilityRules: blnPersistFlexiEligibilityRules
       ? dicValues.lstFlexiEligibilityRules.map((dicRule) => ({
           ...(dicRule.intID ? { intID: dicRule.intID } : {}),

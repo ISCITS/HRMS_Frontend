@@ -105,6 +105,8 @@ export type SalaryComponentFormValues = {
   strComponentGroup: string;
   strCalcMethod: string;
   strFormulaExpression: string;
+  strDefaultPercentageValue: string;
+  intDefaultBasisComponentID: number | "";
   strRoundingRule: string;
   strDefaultPeriodicity: string;
   strTaxTreatment: string;
@@ -147,6 +149,8 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   strComponentDescription: string | null;
   strComponentGroup: string | null;
   strFormulaExpression: string | null;
+  decDefaultPercentageValue?: number | null;
+  intDefaultBasisComponentID?: number | null;
   strRoundingRule: string | null;
   strTaxTreatment: string | null;
   intUsedInSalaryStructures: number;

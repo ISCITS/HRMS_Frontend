@@ -460,6 +460,8 @@ export type SalaryComponentApiRecord = {
   strComponentGroup: string | null;
   strCalcMethod: string;
   strFormulaExpression: string | null;
+  decDefaultPercentageValue?: number | null;
+  intDefaultBasisComponentID?: number | null;
   strRoundingRule: string | null;
   strDefaultPeriodicity: string;
   strTaxTreatment: string | null;
