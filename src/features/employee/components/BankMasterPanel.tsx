@@ -732,7 +732,7 @@ export default function BankMasterPanel() {
           <Typography data-testid="bank-master.list.banner.rights-error" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography data-testid="bank-master.list.banner.read-only" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography data-testid="bank-master.read-only.banner" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Bank.")}
           </Typography>
         ) : null}
@@ -803,9 +803,9 @@ export default function BankMasterPanel() {
             <Typography sx={{ mt: 1 }}>{dicBankLabels.loadingRecords}</Typography>
           </Box>
         ) : !blnCanView ? (
-          <Box className={styles.emptyState} data-testid="bank-master.list.banner.no-access">
-            <Typography data-testid="bank-master.list.banner.no-access.title" sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
-            <Typography data-testid="bank-master.list.banner.no-access.message" sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
+          <Box className={styles.emptyState} data-testid="bank-master.no-access.message">
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
           </Box>
         ) : (
         // The table wrapper is the only scrolling region so the master header stays stable on screen.
@@ -823,18 +823,18 @@ export default function BankMasterPanel() {
             <tbody data-testid="bank-master.list.table.body">
               {lstFilteredBanks.length === 0 ? (
                 <tr data-testid="bank-master.list.table.empty-row">
-                  <td data-testid="bank-master.list.table.empty" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
+                  <td data-testid="bank-master.list.empty-state" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
                 </tr>
               ) : lstVisibleBanks.map((dicBank) => {
                 const blnSelected = lstSelectedIds.includes(dicBank.id);
                 return (
-                  <tr key={dicBank.id} data-testid="bank-master.list.table.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
+                  <tr key={dicBank.id} data-testid="bank-master.list.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
                     <td><Checkbox data-testid="bank-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} inputProps={{ "data-testid": "bank-master.list.row.select.checkbox", "data-row-key": dicBank.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
                     <td><CommonRowActions testIdPrefix="bank-master.list.row" rowKey={dicBank.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
-                    <td data-testid="bank-master.list.table.cell.name" data-row-key={dicBank.id}>{dicBank.name}</td>
-                    <td data-testid="bank-master.list.table.cell.code" data-row-key={dicBank.id}>{dicBank.code}</td>
-                    <td data-testid="bank-master.list.table.cell.status" data-row-key={dicBank.id}>
-                      <span data-testid="bank-master.list.table.status-pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
+                    <td data-testid="bank-master.list.row.name.cell" data-row-key={dicBank.id}>{dicBank.name}</td>
+                    <td data-testid="bank-master.list.row.code.cell" data-row-key={dicBank.id}>{dicBank.code}</td>
+                    <td data-testid="bank-master.list.row.status.cell" data-row-key={dicBank.id}>
+                      <span data-testid="bank-master.list.row.status.pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
                     </td>
                   </tr>
                 );
@@ -1042,12 +1042,13 @@ export default function BankMasterPanel() {
         rootTestId="bank-master.confirm-dialog"
         cancelButtonTestId="bank-master.confirm-dialog.cancel.button"
         confirmButtonTestId="bank-master.confirm-dialog.confirm.button"
+        messageTestId="bank-master.confirm-dialog.message"
       />
 
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
-      <Snackbar data-testid="bank-master.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert data-testid="bank-master.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+      <Snackbar data-testid="bank-master.toast.alert" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
           <span data-testid="bank-master.toast.message">{objToast.strMessage}</span>
         </Alert>
       </Snackbar>

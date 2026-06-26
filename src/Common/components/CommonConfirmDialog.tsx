@@ -27,6 +27,7 @@ type CommonConfirmDialogProps = {
   rootTestId?: string;
   cancelButtonTestId?: string;
   confirmButtonTestId?: string;
+  messageTestId?: string;
 };
 
 export type { CommonConfirmDialogProps };
@@ -52,6 +53,7 @@ export default function CommonConfirmDialog({
   rootTestId,
   cancelButtonTestId,
   confirmButtonTestId,
+  messageTestId,
 }: CommonConfirmDialogProps) {
   return (
     <Dialog
@@ -63,7 +65,7 @@ export default function CommonConfirmDialog({
     >
       <DialogTitle className={strDialogTitleClassName}>{strTitle}</DialogTitle>
       <DialogContent className={strDialogContentClassName}>
-        {nodeMessage ?? <Typography className={strDialogMessageClassName}>{strMessage}</Typography>}
+        {nodeMessage ?? <Typography data-testid={messageTestId} className={strDialogMessageClassName}>{strMessage}</Typography>}
       </DialogContent>
       <DialogActions className={strDialogActionsClassName}>
         <Button data-testid={cancelButtonTestId} className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
