@@ -91,6 +91,8 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     strComponentGroup: dicRecord.strComponentGroup ?? null,
     strCalcMethod: dicRecord.strCalcMethod,
     strFormulaExpression: dicRecord.strFormulaExpression,
+    decDefaultPercentageValue: dicRecord.decDefaultPercentageValue ?? null,
+    intDefaultBasisComponentID: dicRecord.intDefaultBasisComponentID ?? null,
     strRoundingRule: dicRecord.strRoundingRule,
     strDefaultPeriodicity: dicRecord.strDefaultPeriodicity,
     strTaxTreatment: dicRecord.strTaxTreatment,
@@ -112,6 +114,7 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     blnRequiresBills: Boolean(dicRecord.blnRequiresBills),
     blnExpenseDateRequired: Boolean(dicRecord.blnExpenseDateRequired ?? true),
     blnAllowPartialApproval: Boolean(dicRecord.blnAllowPartialApproval ?? dicRecord.blnAllowExcessClaim),
+    intApplicableForWhichTaxRegime: Number(dicRecord.intApplicableForWhichTaxRegime ?? 2),
     decAnnualLimitAmount: dicRecord.decAnnualLimitAmount ?? null,
     decMonthlyLimitAmount: dicRecord.decMonthlyLimitAmount ?? null,
     strClaimLimitType: dicRecord.strClaimLimitType ?? null,
@@ -214,6 +217,8 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     strComponentGroup: "",
     strCalcMethod: "fixed",
     strFormulaExpression: "",
+    strDefaultPercentageValue: "",
+    intDefaultBasisComponentID: "",
     strRoundingRule: "",
     strDefaultPeriodicity: "monthly",
     strTaxTreatment: "",
@@ -233,6 +238,7 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnRequiresBills: false,
     blnExpenseDateRequired: true,
     blnAllowPartialApproval: true,
+    intApplicableForWhichTaxRegime: 2,
     strClaimLimitType: "none",
     strAnnualLimitAmount: "",
     strMonthlyLimitAmount: "",
@@ -263,6 +269,8 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     strComponentGroup: dicRecord.strComponentGroup ?? "",
     strCalcMethod: dicRecord.strCalcMethod,
     strFormulaExpression: dicRecord.strFormulaExpression ?? "",
+    strDefaultPercentageValue: dicRecord.decDefaultPercentageValue != null ? String(dicRecord.decDefaultPercentageValue) : "",
+    intDefaultBasisComponentID: dicRecord.intDefaultBasisComponentID ?? "",
     strRoundingRule: dicRecord.strRoundingRule ?? "",
     strDefaultPeriodicity: dicRecord.strDefaultPeriodicity,
     strTaxTreatment: dicRecord.strTaxTreatment ?? "",
@@ -282,6 +290,7 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnRequiresBills: Boolean(dicRecord.blnRequiresBills),
     blnExpenseDateRequired: Boolean(dicRecord.blnExpenseDateRequired ?? true),
     blnAllowPartialApproval: Boolean(dicRecord.blnAllowPartialApproval ?? dicRecord.blnAllowExcessClaim),
+    intApplicableForWhichTaxRegime: Number(dicRecord.intApplicableForWhichTaxRegime ?? 2) as SalaryComponentFormValues["intApplicableForWhichTaxRegime"],
     strClaimLimitType: (dicRecord.strClaimLimitType as SalaryComponentFormValues["strClaimLimitType"]) ?? "none",
     strAnnualLimitAmount: dicRecord.decAnnualLimitAmount != null ? String(dicRecord.decAnnualLimitAmount) : "",
     strMonthlyLimitAmount: dicRecord.decMonthlyLimitAmount != null ? String(dicRecord.decMonthlyLimitAmount) : "",
@@ -349,6 +358,16 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
           : dicValues.strClaimLimitType;
   const blnPersistDependencyMapping = isDependencyBackedCalculation(dicValues);
   const blnPersistFlexiEligibilityRules = isReimbursementCategory(dicValues.strComponentCategory) && dicValues.blnIsFlexiBenefit;
+  const strNormalizedCalcMethod = dicValues.strCalcMethod.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  const intDefaultBasisComponentID = dicValues.intDefaultBasisComponentID === "" ? null : Number(dicValues.intDefaultBasisComponentID);
+  const decDefaultPercentageValue = dicValues.strDefaultPercentageValue.trim() ? Number(dicValues.strDefaultPercentageValue) : null;
+  const lstDependencyComponentIDs = sanitizeDependencyIDs(
+    [
+      ...(blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : []),
+      ...(strNormalizedCalcMethod === "percentage" && intDefaultBasisComponentID ? [intDefaultBasisComponentID] : []),
+    ],
+    intSalaryComponentID
+  );
   return {
     strComponentCode: dicValues.strComponentCode.trim(),
     strComponentName: dicValues.strComponentName.trim(),
@@ -358,6 +377,8 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     strComponentGroup: formatOptionalText(dicValues.strComponentGroup),
     strCalcMethod: dicValues.strCalcMethod.trim(),
     strFormulaExpression: formatOptionalText(dicValues.strFormulaExpression),
+    decDefaultPercentageValue,
+    intDefaultBasisComponentID,
     strRoundingRule: formatOptionalText(dicValues.strRoundingRule),
     strDefaultPeriodicity: dicValues.strDefaultPeriodicity.trim(),
     strTaxTreatment: formatOptionalText(dicValues.strTaxTreatment),
@@ -376,6 +397,7 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     strSettlementMethod,
     blnRequiresBills: dicValues.blnRequiresBills,
     blnExpenseDateRequired: dicValues.blnExpenseDateRequired,
+    intApplicableForWhichTaxRegime: blnIsReimbursement ? Number(dicValues.intApplicableForWhichTaxRegime ?? 2) : 2,
     decAnnualLimitAmount,
     decMonthlyLimitAmount,
     strClaimLimitType,
@@ -400,10 +422,7 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnAllowManualOverride: dicValues.blnAllowManualOverride,
     blnIsActive: dicValues.blnIsActive,
     intLanguageID: Number(dicValues.lstTexts[0]?.intLanguageID || 1),
-    lstDependencyComponentIDs: sanitizeDependencyIDs(
-      blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : [],
-      intSalaryComponentID
-    ),
+    lstDependencyComponentIDs,
     lstFlexiEligibilityRules: blnPersistFlexiEligibilityRules
       ? dicValues.lstFlexiEligibilityRules.map((dicRule) => ({
           ...(dicRule.intID ? { intID: dicRule.intID } : {}),

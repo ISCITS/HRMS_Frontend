@@ -105,6 +105,8 @@ export type SalaryComponentFormValues = {
   strComponentGroup: string;
   strCalcMethod: string;
   strFormulaExpression: string;
+  strDefaultPercentageValue: string;
+  intDefaultBasisComponentID: number | "";
   strRoundingRule: string;
   strDefaultPeriodicity: string;
   strTaxTreatment: string;
@@ -124,6 +126,7 @@ export type SalaryComponentFormValues = {
   blnRequiresBills: boolean;
   blnExpenseDateRequired: boolean;
   blnAllowPartialApproval: boolean;
+  intApplicableForWhichTaxRegime: 0 | 1 | 2;
   strClaimLimitType: "none" | "monthly" | "yearly" | "both";
   strAnnualLimitAmount: string;
   strMonthlyLimitAmount: string;
@@ -147,6 +150,8 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   strComponentDescription: string | null;
   strComponentGroup: string | null;
   strFormulaExpression: string | null;
+  decDefaultPercentageValue?: number | null;
+  intDefaultBasisComponentID?: number | null;
   strRoundingRule: string | null;
   strTaxTreatment: string | null;
   intUsedInSalaryStructures: number;

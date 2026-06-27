@@ -324,12 +324,14 @@ export default function SalaryComponentEditorPage({
   const blnWageTypeDisabled = blnFieldDisabled || !blnIsEarningCategory;
   const blnHideWageType = blnIsDeductionCategory || blnIsEmployerContributionCategory;
   const blnShowExpenseDateRequired = blnIsReimbursementCategory;
-  const blnShowCalculationDependencies = !blnIsReimbursementCategory
-    && !blnIsFlexiBucketCategory
-    && isCalculationMethod(dicForm.strCalcMethod, "formula");
-  const blnShowFormulaExpression = !blnIsReimbursementCategory
-    && !blnIsFlexiBucketCategory
-    && isCalculationMethod(dicForm.strCalcMethod, "formula");
+  const lstTaxRegimeApplicabilityOptions = [
+    { value: 2, label: "Both" },
+    { value: 1, label: "New Regime" },
+    { value: 0, label: "Old Regime" },
+  ] as const;
+  const blnShowCalculationDependencies = isCalculationMethod(dicForm.strCalcMethod, "formula");
+  const blnShowFormulaExpression = isCalculationMethod(dicForm.strCalcMethod, "formula");
+  const blnShowPercentageCalculationFields = isCalculationMethod(dicForm.strCalcMethod, "percentage");
   const blnShowManualCalculationHelp = isCalculationMethod(dicForm.strCalcMethod, "manual");
   const blnShowRemunerationFlag = blnIsEarningCategory;
   const blnShowStatutoryFlags = blnIsEarningCategory;
@@ -795,6 +797,16 @@ export default function SalaryComponentEditorPage({
       setStrError(t("display_order_required", "Display Order is required when Show on Payslip is enabled."));
       return;
     }
+    if (blnShowPercentageCalculationFields) {
+      if (!dicForm.intDefaultBasisComponentID) {
+        setStrError(t("base_component_required", "Base Component is required for percentage calculation method."));
+        return;
+      }
+      if (!dicForm.strDefaultPercentageValue.trim() || Number(dicForm.strDefaultPercentageValue) < 0) {
+        setStrError(t("percentage_value_required", "Percentage value is required for percentage calculation method."));
+        return;
+      }
+    }
     if (blnApplyMonthlyLimit && (!dicForm.strMonthlyLimitAmount.trim() || Number(dicForm.strMonthlyLimitAmount) <= 0)) {
       setStrError(t("monthly_limit_required", "Policy Monthly Limit Amount is required and must be greater than 0."));
       return;
@@ -1109,6 +1121,38 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
             ))}
           </TextField>
+          {blnShowPercentageCalculationFields ? (
+            <TextField
+              select
+              label={t("base_component", "Base Component")}
+              value={dicForm.intDefaultBasisComponentID}
+              onChange={(objEvent) => updateRootField("intDefaultBasisComponentID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              disabled={blnFieldDisabled}
+              fullWidth
+              {...buildSelectTestIdProps("salary-components.editor.default-basis-component.select")}
+            >
+              <MenuItem value="">{t("select", "Select")}</MenuItem>
+              {(objFormOptions?.lstDependencyComponents ?? [])
+                .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+                .map((dicOption) => (
+                  <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                    {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
+                  </MenuItem>
+                ))}
+            </TextField>
+          ) : null}
+          {blnShowPercentageCalculationFields ? (
+            <TextField
+              type="number"
+              label={t("percentage_value", "%")}
+              value={dicForm.strDefaultPercentageValue}
+              onChange={(objEvent) => updateRootField("strDefaultPercentageValue", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-testid="salary-components.editor.default-percentage-value.input"
+              inputProps={{ ...buildInputTestIdProps("salary-components.editor.default-percentage-value.input"), min: 0, step: "0.01" }}
+            />
+          ) : null}
           {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
         </Box>
         {blnShowManualCalculationHelp ? (
@@ -1143,7 +1187,7 @@ export default function SalaryComponentEditorPage({
       {blnShowFlexiReimbursementConfiguration ? (
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("reimbursement_configuration", "Reimbursement Configuration")}</Typography>
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 0.9fr) repeat(3, minmax(0, 1fr))" }, alignItems: "start" }}>
+          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 0.9fr) repeat(5, minmax(0, 1fr))" }, alignItems: "start" }}>
             <FormControlLabel sx={{ m: 0, minHeight: 56, alignItems: "center" }} control={<Switch checked={dicForm.blnIsFlexiBenefit} onChange={(objEvent) => setDicForm((dicPrevious) => ({
               ...dicPrevious,
               blnIsFlexiBenefit: objEvent.target.checked,
@@ -1176,6 +1220,21 @@ export default function SalaryComponentEditorPage({
               <MenuItem value="none">{t("select", "Select")}</MenuItem>
               {(objFormOptions?.lstSettlementMethods ?? []).map((strOption) => (
                 <MenuItem key={strOption} value={strOption}>{t(`settlement_method_${strOption}`, strOption === "payroll" ? "Payroll" : "Finance")}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label={t("applicable_for_which_tax_regime", "Applicable For Which Tax Regime")}
+              value={dicForm.intApplicableForWhichTaxRegime}
+              onChange={(objEvent) => updateRootField("intApplicableForWhichTaxRegime", Number(objEvent.target.value) as SalaryComponentFormValues["intApplicableForWhichTaxRegime"])}
+              disabled={blnFieldDisabled}
+              fullWidth
+              {...buildSelectTestIdProps("salary-components.editor.applicable-tax-regime.select")}
+            >
+              {lstTaxRegimeApplicabilityOptions.map((dicOption) => (
+                <MenuItem key={dicOption.value} value={dicOption.value} data-testid={`salary-components.editor.applicable-tax-regime.${dicOption.value}.option`}>
+                  {t(`applicable_tax_regime_${dicOption.value}`, dicOption.label)}
+                </MenuItem>
               ))}
             </TextField>
             <Box sx={{ display: "grid", gap: 1.25 }}>
