@@ -879,10 +879,21 @@ export default function LocationMasterPanel() {
         onPrimaryAction={saveLocation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.dialogPaper}
-        maxWidth="xl"
-        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        paperClassName={styles.compactDialogPaper}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        paperSx={{
+          width: "min(800px, calc(100vw - 32px)) !important",
+          maxWidth: "800px !important",
+          overflow: "hidden",
+          m: 2,
+        }} 
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
+            <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+          </Box>
+        } 
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
             <Box
@@ -1057,10 +1068,7 @@ export default function LocationMasterPanel() {
               ))}
             </Box>
 
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-            </Box>
+
           </Box>
         }
       />

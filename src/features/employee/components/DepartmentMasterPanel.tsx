@@ -838,9 +838,29 @@ export default function DepartmentMasterPanel() {
         onPrimaryAction={saveDepartment}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.dialogPaper}
-        maxWidth="xl"
-        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel} sx={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
+              {dicDepartmentLabels.fieldIsActive}
+            </Typography>
+            <ActiveStatusSwitch
+              testId="department-master.dialog.active.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+          </Box>
+        }
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        paperClassName={styles.compactDialogPaper}
+        maxWidth={false}
+        fullWidth={false}
+        paperSx={{
+          width: "min(800px, calc(100vw - 32px))",
+          maxWidth: "800px",
+          overflow: "hidden",
+          m: 2,
+        }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
@@ -848,13 +868,14 @@ export default function DepartmentMasterPanel() {
               sx={{
                 display: "grid",
                 gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
               <TextField
                 data-testid="department-master.dialog.name.input"
-                label={`${dicDepartmentLabels.fieldName} *`}
+                label={dicDepartmentLabels.fieldName}
+                required
                 value={dicForm.name}
                 inputProps={{ "data-testid": "department-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -866,11 +887,13 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
+                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
                 data-testid="department-master.dialog.code.input"
-                label={`${dicDepartmentLabels.fieldCode} *`}
+                label={dicDepartmentLabels.fieldCode}
+                required
                 value={dicForm.code}
                 inputProps={{ "data-testid": "department-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -882,6 +905,7 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
+                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
@@ -890,6 +914,7 @@ export default function DepartmentMasterPanel() {
                 value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0}
                 inputProps={{ "data-testid": "department-master.dialog.employee-count.input" }}
                 disabled
+                sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}
                 fullWidth
               />
             </Box>
@@ -941,7 +966,7 @@ export default function DepartmentMasterPanel() {
                      gap: 1.2,
                      gridTemplateColumns: {
                        xs: "1fr",
-                       md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
+                       lg: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
                      },
                      alignItems: "start",
                      border: "1px solid rgba(203,213,225,0.8)",
@@ -998,11 +1023,6 @@ export default function DepartmentMasterPanel() {
                   />
                 </Box>
               ))}
-            </Box>
-
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicDepartmentLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="department-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }

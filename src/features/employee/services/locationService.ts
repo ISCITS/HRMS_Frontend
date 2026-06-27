@@ -22,8 +22,11 @@ export type LocationFormValues = {
   lstTexts: LocationTextFormValue[];
 };
 
+let intRowIDCounter = 0;
+
 function createRowID() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  intRowIDCounter += 1;
+  return `location-row-${Date.now()}-${intRowIDCounter}`;
 }
 
 export function createEmptyLocationTextRow(): LocationTextFormValue {

@@ -862,9 +862,20 @@ export default function DesignationMasterPanel() {
         onPrimaryAction={saveDesignation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.dialogPaper}
-        maxWidth="xl"
-        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        paperClassName={styles.compactDialogPaper}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+              <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
+              <ActiveStatusSwitch testId="designation-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+         </Box>
+        }
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        paperSx={{
+          width: "min(800px, calc(100vw - 32px)) !important",
+          maxWidth: "800px !important",
+          overflow: "hidden",
+          m: 2,
+        }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
@@ -877,8 +888,9 @@ export default function DesignationMasterPanel() {
               }}
             >
               <TextField
+                required
                 data-testid="designation-master.dialog.name.input"
-                label={`${dicDesignationLabels.fieldName} *`}
+                label={`${dicDesignationLabels.fieldName}`}
                 value={dicForm.name}
                 inputProps={{ "data-testid": "designation-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -893,8 +905,9 @@ export default function DesignationMasterPanel() {
                 fullWidth
               />
               <TextField
+                required
                 data-testid="designation-master.dialog.code.input"
-                label={`${dicDesignationLabels.fieldCode} *`}
+                label={`${dicDesignationLabels.fieldCode}`}
                 value={dicForm.code}
                 inputProps={{ "data-testid": "designation-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -1023,10 +1036,7 @@ export default function DesignationMasterPanel() {
               ))}
             </Box>
 
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="designation-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-            </Box>
+           
           </Box>
         }
       />

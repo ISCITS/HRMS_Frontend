@@ -22,8 +22,11 @@ export type CountryFormValues = {
   lstTexts: CountryTextFormValue[];
 };
 
+let intRowIDCounter = 0;
+
 function createRowID() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  intRowIDCounter += 1;
+  return `country-row-${Date.now()}-${intRowIDCounter}`;
 }
 
 export function createEmptyCountryTextRow(): CountryTextFormValue {

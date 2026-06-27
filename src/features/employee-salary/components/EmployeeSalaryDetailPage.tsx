@@ -28,6 +28,10 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
+import {
+  flexiPayDeclarationService,
+  type FlexiDeclarationContextRecord,
+} from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
@@ -87,6 +91,14 @@ function formatDate(strDate: string | null) {
 
 function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentFinancialYearCode() {
+  const objNow = new Date();
+  const intYear = objNow.getFullYear();
+  const intMonth = objNow.getMonth();
+  const intFyStartYear = intMonth >= 3 ? intYear : intYear - 1;
+  return `${intFyStartYear}-${String(intFyStartYear + 1).slice(-2)}`;
 }
 
 function addDaysToDateString(strDate: string, intDays: number) {
@@ -396,6 +408,18 @@ function getFlexiMonthlyCap(dicLine: EmployeeSalaryFlexiAllocationSummary["lstAl
   }
   const decAnnualLimit = getNumberValue(dicLine.decAnnualLimit);
   return decAnnualLimit > 0 ? decAnnualLimit / 12 : null;
+}
+
+function hasEmployeeFlexiAllocation(
+  dicLine: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number] | FlexiAllocationLineWithStatus
+) {
+  return (
+    getNumberValue(dicLine.decAllocationAnnual) > 0 ||
+    getNumberValue(dicLine.decAllocationMonthly) > 0 ||
+    getNumberValue(dicLine.decApprovedAnnualAmount) > 0 ||
+    getNumberValue(dicLine.decApprovedMonthlyAmount) > 0 ||
+    getNumberValue(dicLine.decUtilizedAnnualAmount) > 0
+  );
 }
 
 function getEmployeeFlexiBucketAmounts(objDetail: EmployeeSalaryDetailRecord | null) {
@@ -784,6 +808,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const { t } = useEmployeeSalaryLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
+  const [objFlexiDeclarationContext, setObjFlexiDeclarationContext] = useState<FlexiDeclarationContextRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -805,6 +830,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
   const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
+  const strFinancialYearCode = getCurrentFinancialYearCode();
 
   useEffect(() => {
     let blnMounted = true;
@@ -821,15 +847,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setBlnLoading(true);
       setStrError("");
       try {
-        const [dicDetail, dicFormOptions, dicSalaryComponents] = await Promise.all([
+        const [dicDetail, dicFormOptions, dicSalaryComponents, dicFlexiDeclarationContext] = await Promise.all([
           employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID),
           employeeSalaryService.getFormOptions(),
-          masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] }))
+          masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
+          flexiPayDeclarationService.getCurrentDeclaration(strFinancialYearCode).catch(() => null),
         ]);
         if (!blnMounted) {
           return;
         }
         setObjDetail(dicDetail);
+        setObjFlexiDeclarationContext(dicFlexiDeclarationContext);
         setObjFormOptions(dicFormOptions);
         setLstSalaryComponents(dicSalaryComponents.Data);
         setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, dicSalaryComponents.Data, t));
@@ -851,7 +879,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID, strFinancialYearCode, t]);
 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
 
@@ -1013,33 +1041,50 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   }, [dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides]);
 
   const lstFlexiRows: FlexiGridRow[] = useMemo(() => {
+    const mapDeclarationLinesByComponentID = new Map(
+      (objFlexiDeclarationContext?.lstDeclarationLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
+    );
     return objFlexiAllocation.lstAllocationLines
       .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
+      .filter((dicLine) => {
+        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(dicLine.intSalaryComponentID);
+        if (dicDeclarationLine) {
+          return getNumberValue(dicDeclarationLine.decDraftDeclaredAnnual) > 0 || getNumberValue(dicDeclarationLine.decMonthlyImpact) > 0;
+        }
+        return hasEmployeeFlexiAllocation(dicLine as FlexiAllocationLineWithStatus);
+      })
       .map((dicLine) => {
-      const dicAllocationLine = dicLine as FlexiAllocationLineWithStatus;
-      const decApprovedAnnual = getNumberValue(dicAllocationLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
-      const decApprovedMonthly = getNumberValue(dicAllocationLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly);
-      return {
-        intSalaryComponentID: dicLine.intSalaryComponentID,
-        strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
-        strAnnualLimit: formatOptionalCurrencyValue(dicLine.decAnnualLimit, strCurrencyCode),
-        strMonthlyLimit: formatOptionalCurrencyValue(getFlexiMonthlyCap(dicLine), strCurrencyCode),
-        strAllocationAnnual: formatCurrency(dicLine.decAllocationAnnual, strCurrencyCode),
-        strAllocationMonthly: formatCurrency(dicLine.decAllocationMonthly, strCurrencyCode),
-        strApprovedAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
-        strApprovedMonthly: formatCurrency(decApprovedMonthly, strCurrencyCode),
-        strUtilizedAnnual: formatCurrency(getNumberValue(dicAllocationLine.decUtilizedAnnualAmount), strCurrencyCode),
-        strProofRequired: dicLine.blnProofRequired
-          ? t("employee_salary_yes", "Yes")
-          : t("employee_salary_no", "No"),
-        strTaxTreatment: dicLine.strTaxTreatment || "-",
-        strRemainingAnnualBalance: formatOptionalCurrencyValue(dicLine.decBalanceAnnual, strCurrencyCode),
-        strStatus: dicAllocationLine.strStatus ?? t("employee_salary_approved", "Approved"),
-        strSource: normalizeFlexiSource(dicAllocationLine.strSource ?? "Structure Default"),
-        strRemarks: dicAllocationLine.strRemarks ?? "-"
-      };
-    });
-  }, [objFlexiAllocation, strCurrencyCode, t]);
+        const dicAllocationLine = dicLine as FlexiAllocationLineWithStatus;
+        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(dicLine.intSalaryComponentID);
+        const decAllocatedAnnual = dicDeclarationLine?.decDraftDeclaredAnnual ?? getNumberValue(dicLine.decAllocationAnnual);
+        const decAllocatedMonthly = dicDeclarationLine?.decMonthlyImpact ?? getNumberValue(dicLine.decAllocationMonthly);
+        const decApprovedAnnual = dicDeclarationLine?.decDraftApprovedAnnual != null
+          ? dicDeclarationLine.decDraftApprovedAnnual
+          : (getNumberValue(dicAllocationLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual));
+        const decApprovedMonthly = dicDeclarationLine?.decDraftApprovedAnnual != null
+          ? dicDeclarationLine.decDraftApprovedAnnual / 12
+          : (getNumberValue(dicAllocationLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly));
+        return {
+          intSalaryComponentID: dicLine.intSalaryComponentID,
+          strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
+          strAnnualLimit: formatOptionalCurrencyValue(dicLine.decAnnualLimit, strCurrencyCode),
+          strMonthlyLimit: formatOptionalCurrencyValue(getFlexiMonthlyCap(dicLine), strCurrencyCode),
+          strAllocationAnnual: formatCurrency(decAllocatedAnnual, strCurrencyCode),
+          strAllocationMonthly: formatCurrency(decAllocatedMonthly, strCurrencyCode),
+          strApprovedAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
+          strApprovedMonthly: formatCurrency(decApprovedMonthly, strCurrencyCode),
+          strUtilizedAnnual: formatCurrency(getNumberValue(dicAllocationLine.decUtilizedAnnualAmount), strCurrencyCode),
+          strProofRequired: (dicDeclarationLine?.blnProofRequired ?? dicLine.blnProofRequired)
+            ? t("employee_salary_yes", "Yes")
+            : t("employee_salary_no", "No"),
+          strTaxTreatment: dicDeclarationLine?.strTaxTreatment || dicLine.strTaxTreatment || "-",
+          strRemainingAnnualBalance: formatOptionalCurrencyValue(dicLine.decBalanceAnnual, strCurrencyCode),
+          strStatus: dicDeclarationLine?.strDeclarationItemStatus ?? dicAllocationLine.strStatus ?? t("employee_salary_approved", "Approved"),
+          strSource: normalizeFlexiSource(dicDeclarationLine ? "ESS Declaration" : (dicAllocationLine.strSource ?? "Structure Default")),
+          strRemarks: dicAllocationLine.strRemarks ?? "-"
+        };
+      });
+  }, [objFlexiAllocation, objFlexiDeclarationContext?.lstDeclarationLines, strCurrencyCode, t]);
 
   const lstFilteredComponentRows = useMemo(
     () => lstComponentRows.filter((dicRow) => {
@@ -2328,7 +2373,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   : t("employee_salary_flexi_not_enabled", "Flexi Pay is not enabled for this employee's salary structure.")}
               </Alert>
             ) : null}
-            {blnHasFlexiBucket || blnHasFlexiAllocations ? (
+            {blnHasFlexiBucket || lstFlexiRows.length > 0 ? (
             <Box className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
@@ -2352,7 +2397,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <tbody>
                   {lstFlexiRows.length === 0 ? (
                     <tr>
-                      <td className={styles.emptyState} colSpan={13}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
+                      <td className={styles.emptyState} colSpan={14}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
                     </tr>
                   ) : lstFlexiRows.map((dicRow) => (
                     <tr key={dicRow.intSalaryComponentID}>

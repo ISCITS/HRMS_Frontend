@@ -682,15 +682,27 @@ export default function CountryMasterPanel() {
         rootTestId="country-master.dialog"
         cancelButtonTestId="country-master.dialog.cancel.button"
         primaryButtonTestId="country-master.dialog.primary.button"
-        paperClassName={styles.dialogPaper}
-        maxWidth="xl"
-        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        paperClassName={styles.compactDialogPaper}
+        paperSx={{
+          width: "min(800px, calc(100vw - 32px)) !important",
+          maxWidth: "800px !important",
+          overflow: "hidden",
+          m: 2,
+        }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
+            <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
+          </Box>
+        }
+         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={(
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
             <Box sx={{ display: "grid", gap: 1.6, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
               <TextField
-                label={`${dicModuleLabels.fieldName} *`}
+                required
+                label={`${dicModuleLabels.fieldName}`}
                 value={dicForm.name}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -705,7 +717,8 @@ export default function CountryMasterPanel() {
                 fullWidth
               />
               <TextField
-                label={`${dicModuleLabels.fieldCode} *`}
+                required
+                label={`${dicModuleLabels.fieldCode}`}
                 value={dicForm.code}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -720,7 +733,8 @@ export default function CountryMasterPanel() {
                 fullWidth
               />
               <TextField
-                label={`${dicModuleLabels.fieldCurrencyCode} *`}
+                required
+                label={`${dicModuleLabels.fieldCurrencyCode}`}
                 value={dicForm.currencyCode}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -834,11 +848,6 @@ export default function CountryMasterPanel() {
                   />
                 </Box>
               ))}
-            </Box>
-
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
             </Box>
           </Box>
         )}

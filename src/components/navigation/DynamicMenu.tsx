@@ -1061,6 +1061,20 @@ export default function DynamicMenu({
     });
   }
 
+  function toggleSingleTopLevelMenu(strMenuKey: string) {
+    setDicExpandedMenus((dicPrevious) => {
+      const blnWasExpanded = dicPrevious[strMenuKey] ?? false;
+      const dicNext = { ...dicPrevious };
+
+      lstRenderedMenuItems.forEach((objTopLevelItem) => {
+        dicNext[getMenuNodeKey(objTopLevelItem, 0)] = false;
+      });
+
+      dicNext[strMenuKey] = !blnWasExpanded;
+      return dicNext;
+    });
+  }
+
   useEffect(() => {
     if (!strForcedExpandedMenuIdentity) {
       return;
@@ -1158,7 +1172,7 @@ export default function DynamicMenu({
             data-menu-route={strRoute ?? ""}
             onClick={() => {
               if (intDepth === 0) {
-                expandSingleTopLevelMenu(strMenuKey);
+                toggleSingleTopLevelMenu(strMenuKey);
                 return;
               }
 

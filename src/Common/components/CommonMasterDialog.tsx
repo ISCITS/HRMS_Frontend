@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 import type { ReactNode } from "react";
 import type { DialogProps } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
@@ -12,6 +12,8 @@ type CommonMasterDialogProps = {
   blnOpen: boolean;
   strTitle: string;
   nodeContent: ReactNode;
+  nodeTitleAction?: ReactNode;
+  titleSx?: SxProps<Theme>;
   strSecondaryLabel: string;
   onClose: () => void;
   strPrimaryLabel?: string;
@@ -37,6 +39,8 @@ export default function CommonMasterDialog({
   blnOpen,
   strTitle,
   nodeContent,
+  nodeTitleAction,
+  titleSx,
   strSecondaryLabel,
   onClose,
   strPrimaryLabel,
@@ -65,7 +69,10 @@ export default function CommonMasterDialog({
       maxWidth={maxWidth}
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
-      <DialogTitle>{strTitle}</DialogTitle>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, ...titleSx }}>
+        <Box component="span">{strTitle}</Box>
+        {nodeTitleAction ? <Box sx={{ display: "flex", alignItems: "center", ml: "auto" }}>{nodeTitleAction}</Box> : null}
+      </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button data-testid={cancelButtonTestId} className={strSecondaryButtonClassName} onClick={onClose}>
