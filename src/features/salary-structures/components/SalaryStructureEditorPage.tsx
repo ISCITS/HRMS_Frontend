@@ -14,7 +14,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   FormControlLabel,
   InputAdornment,
@@ -1551,14 +1550,30 @@ export default function SalaryStructureEditorPage({
                 {t("add_line", "Add Line")}
               </Button>
             </Stack>
-          <Box sx={{ overflowX: "auto" }}>
+          <Box
+            sx={{
+              overflowX: "auto",
+              "& .MuiInputBase-root.MuiInputBase-sizeSmall": {
+                minHeight: 34
+              },
+              "& .MuiInputBase-input.MuiInputBase-inputSizeSmall": {
+                fontSize: "0.82rem",
+                py: 0.75
+              },
+              "& .MuiSelect-select.MuiInputBase-inputSizeSmall": {
+                fontSize: "0.82rem",
+                py: 0.75
+              },
+              "& .MuiSwitch-root": {
+                mt: -0.4
+              }
+            }}
+          >
             <table className={styles.table}>
               <thead>
                 <tr>
                   <th style={{ left: 0, minWidth: 106, position: "sticky", zIndex: 4 }}>{t("line_order", "Line Order")}</th>
-                  <th style={{ left: 106, minWidth: 250, position: "sticky", zIndex: 4 }}>{t("salary_component", "Salary Component")}</th>
-                  <th>{t("component_metadata", "Metadata")}</th>
-                  <th>{t("flexi_role", "Flexi Role")}</th>
+                  <th style={{ left: 106, minWidth: 320, position: "sticky", zIndex: 4 }}>{t("salary_component", "Salary Component")}</th>
                   <th>{t("value_source", "Value Source")}</th>
                   <th>{t("yearly_amount", "Yearly Amount")}</th>
                   <th>{t("monthly_amount", "Monthly Amount")}</th>
@@ -1585,7 +1600,7 @@ export default function SalaryStructureEditorPage({
                   ].filter(Boolean) : [];
                   return (
                   <tr key={dicLine.strRowID}>
-                    <td style={{ background: "#ffffff", left: 0, position: "sticky", zIndex: 2 }}>
+                    <td style={{ background: "#ffffff", left: 0, paddingBottom: 4, paddingTop: 4, position: "sticky", verticalAlign: "top", zIndex: 2 }}>
                       <TextField
                         type="number"
                         size="small"
@@ -1594,48 +1609,52 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled}
                         data-testid="salary-structures.editor.line.line-order.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ width: 86 }}
+                        sx={{ width: 78 }}
                       />
                     </td>
-                    <td style={{ background: "#ffffff", left: 106, position: "sticky", zIndex: 2 }}>
-                      <TextField
-                        select
-                        size="small"
-                        value={dicLine.intSalaryComponentID}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                        disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.salary-component.select"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
-                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ width: 230 }}
-                      >
-                        {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
-                          <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                            {dicOption.strLabel}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ minWidth: 260, maxWidth: 360 }}>
-                        {lstLineBadges.length === 0 ? (
-                          <Typography sx={{ color: "#94a3b8", fontSize: "0.78rem" }}>-</Typography>
-                        ) : lstLineBadges.map((strBadge) => (
-                          <Chip
-                            key={strBadge}
-                            label={strBadge}
-                            size="small"
-                            sx={{ borderRadius: "6px", fontSize: "0.72rem", fontWeight: 700, height: 24 }}
-                          />
-                        ))}
+                    <td style={{ background: "#ffffff", left: 106, paddingBottom: 4, paddingTop: 4, position: "sticky", verticalAlign: "top", zIndex: 2 }}>
+                      <Stack spacing={0.45} sx={{ minWidth: 280, maxWidth: 320 }}>
+                        <TextField
+                          select
+                          size="small"
+                          value={dicLine.intSalaryComponentID}
+                          onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                          disabled={blnFieldDisabled}
+                          data-testid="salary-structures.editor.line.salary-component.select"
+                          inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
+                          SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
+                          sx={{ width: "100%" }}
+                        >
+                          {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
+                            <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                              {dicOption.strLabel}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ minHeight: 18 }}>
+                          {lstLineBadges.length === 0 ? (
+                            <Typography sx={{ color: "#94a3b8", fontSize: "0.68rem" }}>-</Typography>
+                          ) : lstLineBadges.map((strBadge) => (
+                            <Box
+                              key={strBadge}
+                              sx={{
+                                background: "#f2f4f7",
+                                borderRadius: "6px",
+                                color: "#334155",
+                                fontSize: "0.64rem",
+                                fontWeight: 600,
+                                lineHeight: 1,
+                                px: 0.8,
+                                py: 0.45
+                              }}
+                            >
+                              {strBadge}
+                            </Box>
+                          ))}
+                        </Stack>
                       </Stack>
                     </td>
-                    <td>
-                      <Typography sx={{ width: 130, fontSize: "0.8rem", fontWeight: 700, color: getFlexiRoleForLine(dicLine, dicComponent) === "Flexi Bucket" ? "#0f766e" : "#64748b" }}>
-                        {getFlexiRoleForLine(dicLine, dicComponent)}
-                      </Typography>
-                    </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         select
                         size="small"
@@ -1645,14 +1664,14 @@ export default function SalaryStructureEditorPage({
                         data-testid="salary-structures.editor.line.value-source.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ minWidth: 150 }}
+                        sx={{ minWidth: 136 }}
                       >
                         {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
                           <MenuItem key={strValueSource} value={strValueSource} data-testid={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
                         ))}
                       </TextField>
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={strLineYearlyAmount}
@@ -1664,20 +1683,20 @@ export default function SalaryStructureEditorPage({
                           inputMode: "decimal",
                           pattern: "[0-9]*[.]?[0-9]*"
                         })}
-                        sx={{ minWidth: 140 }}
+                        sx={{ minWidth: 128 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={dicLine.fltFixedAmount}
                         disabled
                         data-testid="salary-structures.editor.line.fixed-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 130 }}
+                        sx={{ minWidth: 118 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={dicLine.fltPercentageValue}
@@ -1685,10 +1704,10 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
                         data-testid="salary-structures.editor.line.percentage-value.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.percentage-value.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ width: 55 }}
+                        sx={{ width: 50 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         select
                         size="small"
@@ -1698,7 +1717,7 @@ export default function SalaryStructureEditorPage({
                         data-testid="salary-structures.editor.line.basis-component.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
-                        sx={{ minWidth: 210 }}
+                        sx={{ minWidth: 188 }}
                       >
                         <MenuItem value="" data-testid="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
                         {dicForm.lstComponents
@@ -1710,7 +1729,7 @@ export default function SalaryStructureEditorPage({
                           ))}
                       </TextField>
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={dicLine.strFormulaExpression}
@@ -1718,10 +1737,10 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "formula"}
                         data-testid="salary-structures.editor.line.formula.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 210 }}
+                        sx={{ minWidth: 188 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={dicLine.fltMinAmount}
@@ -1729,10 +1748,10 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled}
                         data-testid="salary-structures.editor.line.min-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.min-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 120 }}
+                        sx={{ minWidth: 108 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
                         value={dicLine.fltMaxAmount}
@@ -1740,10 +1759,10 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled}
                         data-testid="salary-structures.editor.line.max-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.max-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 120 }}
+                        sx={{ minWidth: 108 }}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <Switch
                         checked={dicLine.blnIsMandatory}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "blnIsMandatory", objEvent.target.checked)}
@@ -1751,7 +1770,7 @@ export default function SalaryStructureEditorPage({
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.mandatory.switch", { "data-row-key": dicLine.strRowID })}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <ActiveStatusSwitch
                         blnIsActive={dicLine.blnIsActive}
                         onChange={(blnChecked) => updateLineRow(dicLine.strRowID, "blnIsActive", blnChecked)}
@@ -1759,7 +1778,7 @@ export default function SalaryStructureEditorPage({
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.active.switch", { "data-row-key": dicLine.strRowID })}
                       />
                     </td>
-                    <td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <IconButton
                         color="error"
                         onClick={() => handleRemoveLineRow(dicLine.strRowID)}
