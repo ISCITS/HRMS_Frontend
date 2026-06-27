@@ -58,6 +58,12 @@ export type FlexiEligibilityQuestionRecord = {
   decMaxValue?: number | null;
   blnIsRequired?: boolean | null;
   blnIsEmployeeEditable?: boolean | null;
+  blnIsDisabled?: boolean | null;
+  blnShowInfoIcon?: boolean | null;
+  strDisabledReason?: string | null;
+  strInfoMessage?: string | null;
+  strApplicableRegime?: string | null;
+  lstLinkedComponentIDs?: number[];
   objOptionJson?: unknown;
   objAnswerValue?: string | number | boolean | null;
 };
@@ -111,6 +117,8 @@ export type FlexiDeclarationContextRecord = {
   history_count?: number | null;
   declaration_status?: string | null;
   blnHasHiddenComponents?: boolean | null;
+  blnHasEligibilityQuestions?: boolean | null;
+  strEligibilityQuestionsMessage?: string | null;
 };
 
 export type FlexiDeclarationHistoryRecord = {
@@ -358,4 +366,3 @@ export const hrFlexiDeclarationReviewService = {
     return objResult.Data;
   },
 };
-

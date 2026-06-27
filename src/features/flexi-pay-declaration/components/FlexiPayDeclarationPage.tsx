@@ -9,7 +9,6 @@ import LunchDiningRoundedIcon from "@mui/icons-material/LunchDiningRounded";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import {
   Alert,
   Box,
@@ -220,6 +219,11 @@ function buildQuestionFromRule(objRule: Record<string, unknown>): FlexiEligibili
     decMaxValue: objRule.question_max_value == null ? null : Number(objRule.question_max_value),
     blnIsRequired: Boolean(objRule.is_required ?? objRule.blnIsRequired ?? false),
     blnIsEmployeeEditable: Boolean(objRule.is_employee_editable ?? objRule.blnIsEmployeeEditable ?? true),
+    blnIsDisabled: Boolean(objRule.blnIsDisabled ?? false),
+    blnShowInfoIcon: Boolean(objRule.blnShowInfoIcon ?? false),
+    strDisabledReason: String(objRule.strDisabledReason ?? "").trim() || null,
+    strInfoMessage: String(objRule.strInfoMessage ?? "").trim() || null,
+    strApplicableRegime: String(objRule.strApplicableRegime ?? "").trim() || null,
     objOptionJson: objRule.option_json ?? objRule.objOptionJson,
     objAnswerValue: null,
   };
@@ -374,8 +378,6 @@ export default function FlexiPayDeclarationPage() {
 
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || objContext?.declaration_status || "draft";
   const blnWorkflowEditable = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
-  const blnCanWithdraw = normalizeText(strWorkflowStatus) === "submitted";
-  const blnCanCancel = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
   const blnCanEditDeclaration = Boolean(blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
 
@@ -410,13 +412,19 @@ export default function FlexiPayDeclarationPage() {
     [lstSelectableRows],
   );
 
+  const dicEligibilityQuestionByCode = useMemo(
+    () => new Map((objContext?.lstEligibilityQuestions || []).map((objQuestion) => [objQuestion.strQuestionCode, objQuestion])),
+    [objContext?.lstEligibilityQuestions],
+  );
+
   const lstDisplayedRows = useMemo<DisplayedLineRecord[]>(() => {
     return lstSelectableRows.map((objBaseLine) => {
       const intRowKey = objBaseLine.intSalaryComponentID;
       const intSelectedComponentID = dicSelectedComponents[intRowKey] ?? intRowKey;
       const objSelectedLine = dicSelectableRowByID.get(intSelectedComponentID) ?? objBaseLine;
-      const lstLinkedQuestions = getLinkedQuestionsForRow(objSelectedLine);
-      const lstQuestionOptions = lstLinkedQuestions.length > 0 ? lstLinkedQuestions : (objContext?.lstEligibilityQuestions || []);
+      const lstQuestionOptions = getLinkedQuestionsForRow(objSelectedLine).map(
+        (objQuestion) => dicEligibilityQuestionByCode.get(objQuestion.strQuestionCode) ?? objQuestion,
+      );
       const strStoredQuestionCode = dicSelectedQuestions[intRowKey] ?? "";
       const strSelectedQuestionCode = lstQuestionOptions.some((objQuestion) => objQuestion.strQuestionCode === strStoredQuestionCode)
         ? strStoredQuestionCode
@@ -432,7 +440,7 @@ export default function FlexiPayDeclarationPage() {
         decMultiplier: getRowEffectiveMultiplier(objSelectedLine),
       };
     });
-  }, [dicDraftInputs, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows, objContext?.lstEligibilityQuestions]);
+  }, [dicDraftInputs, dicEligibilityQuestionByCode, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows]);
 
   const setSelectedComponentIDs = useMemo(
     () => new Set(lstDisplayedRows.map((objRow) => objRow.objSelectedLine.intSalaryComponentID)),
@@ -553,7 +561,7 @@ export default function FlexiPayDeclarationPage() {
     if (Object.entries(dicGroups).length === 0) {
       return (
         <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>
-          No eligibility questions are configured for this flexi declaration.
+          {objContext?.strEligibilityQuestionsMessage || "No eligibility questions are configured for this flexi declaration."}
         </Typography>
       );
     }
@@ -582,10 +590,17 @@ export default function FlexiPayDeclarationPage() {
             {objGroup.lstQuestions.map((objQuestion) => {
               const objLabelBlock = (
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.2 }}>
-                    {objQuestion.strQuestionLabel}
-                    {objQuestion.blnIsRequired ? " *" : ""}
-                  </Typography>
+                  <Stack direction="row" spacing={0.45} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.2 }}>
+                      {objQuestion.strQuestionLabel}
+                      {objQuestion.blnIsRequired ? " *" : ""}
+                    </Typography>
+                    {objQuestion.blnShowInfoIcon ? (
+                      <Tooltip title={objQuestion.strInfoMessage || objQuestion.strDisabledReason || "This question cannot be edited."} enterTouchDelay={0}>
+                        <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 14, cursor: "pointer", flexShrink: 0, mt: 0.05 }} />
+                      </Tooltip>
+                    ) : null}
+                  </Stack>
                   {objQuestion.strHelpText ? (
                     <Typography sx={{ color: "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
                       {objQuestion.strHelpText}
@@ -791,36 +806,10 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
-  async function handleWithdraw() {
-    setBlnSaving(true);
-    setStrError("");
-    try {
-      const objData = await flexiPayDeclarationService.withdraw(strFinancialYearCode, strRemarks);
-      syncLocalStateFromContext(objData, "Declaration withdrawn successfully.");
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to withdraw declaration.");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
-  async function handleCancel() {
-    setBlnSaving(true);
-    setStrError("");
-    try {
-      const objData = await flexiPayDeclarationService.cancel(strFinancialYearCode, strRemarks);
-      syncLocalStateFromContext(objData, "Declaration cancelled successfully.");
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to cancel declaration.");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
   function renderQuestionInput(objQuestion: FlexiEligibilityQuestionRecord) {
     const strQuestionCode = objQuestion.strQuestionCode;
     const objValue = dicEligibilityAnswers[strQuestionCode] ?? objQuestion.objAnswerValue ?? null;
-    const blnDisabled = !blnCanEditDeclaration || blnSaving;
+    const blnDisabled = !blnCanEditDeclaration || blnSaving || objQuestion.blnIsDisabled === true || objQuestion.blnIsEmployeeEditable === false;
 
     if (objQuestion.strAnswerType === "boolean") {
       const blnChecked = objValue == null ? false : Boolean(objValue);
@@ -937,6 +926,9 @@ export default function FlexiPayDeclarationPage() {
       {objContext?.strIneligibilityReason && !objContext.blnCanDeclare ? (
         <Alert severity="info">{objContext.strIneligibilityReason}</Alert>
       ) : null}
+      {!blnWorkflowEditable && objContext?.blnCanDeclare ? (
+        <Alert severity="info">This declaration is in view-only mode.</Alert>
+      ) : null}
       {blnAllocationExceeded ? <Alert severity="error">Declared flexi amount exceeds the available basket.</Alert> : null}
       {lstValidationMessages.map((strMessage) => (
         <Alert key={strMessage} severity="warning">{strMessage}</Alert>
@@ -978,29 +970,28 @@ export default function FlexiPayDeclarationPage() {
             >
               Back
             </Button>
-            {blnCanWithdraw ? (
-              <Button size="small" variant="outlined" sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)" }} startIcon={<UndoRoundedIcon />} disabled={blnSaving} onClick={() => void handleWithdraw()}>
-                Withdraw
+            {blnCanEditDeclaration ? (
+              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
+                Save Draft
               </Button>
             ) : null}
-            <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
-              Save Draft
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              color="warning"
-              startIcon={<SendRoundedIcon />}
-              disabled={blnSaving}
-              onClick={() => {
-                if (validateDeclarationForAction("submit")) {
-                  setStrError("");
-                  setBlnSubmitDialogOpen(true);
-                }
-              }}
-            >
-              {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
-            </Button>
+            {blnCanEditDeclaration ? (
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                startIcon={<SendRoundedIcon />}
+                disabled={blnSaving}
+                onClick={() => {
+                  if (validateDeclarationForAction("submit")) {
+                    setStrError("");
+                    setBlnSubmitDialogOpen(true);
+                  }
+                }}
+              >
+                {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
       </Paper>
