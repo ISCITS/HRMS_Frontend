@@ -852,15 +852,9 @@ export default function DepartmentMasterPanel() {
           </Box>
         }
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        paperClassName={styles.compactDialogPaper}
+        paperClassName={styles.dialogPaperDapartment}
         maxWidth={false}
         fullWidth={false}
-        paperSx={{
-          width: "min(800px, calc(100vw - 32px))",
-          maxWidth: "800px",
-          overflow: "hidden",
-          m: 2,
-        }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
