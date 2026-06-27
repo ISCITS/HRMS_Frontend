@@ -905,7 +905,8 @@ export default function LocationMasterPanel() {
               }}
             >
               <TextField
-                label={`${dicModuleLabels.fieldName} *`}
+                required
+                label={`${dicModuleLabels.fieldName}`}
                 value={dicForm.name}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -919,7 +920,8 @@ export default function LocationMasterPanel() {
                 fullWidth
               />
               <TextField
-                label={`${dicModuleLabels.fieldCode} *`}
+                required
+                label={`${dicModuleLabels.fieldCode}`}
                 value={dicForm.code}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
