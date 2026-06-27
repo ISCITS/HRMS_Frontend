@@ -92,10 +92,64 @@ function formatStatus(strStatus?: string | null) {
 }
 
 function formatApplicableRegime(strApplicableRegime?: string | null) {
-  const strValue = normalizeText(strApplicableRegime);
-  if (strValue === "new" || strValue === "new regime") return "New Regime";
-  if (strValue === "both" || strValue === "all") return "Both Regimes";
+  const strValue = normalizeText(strApplicableRegime).replace(/[-_]+/g, " ");
+  if (strValue.includes("new")) return "New Regime";
+  if (strValue.includes("both") || strValue === "all" || strValue === "all regimes") return "Both Regimes";
   return "Old Regime";
+}
+
+function getRegimeChipColor(strApplicableRegime?: string | null): "default" | "info" | "success" | "warning" {
+  const strValue = normalizeText(strApplicableRegime).replace(/[-_]+/g, " ");
+  if (strValue.includes("new")) return "warning";
+  if (strValue.includes("old")) return "info";
+  if (strValue.includes("both") || strValue === "all" || strValue === "all regimes") return "success";
+  return "default";
+}
+
+function getSelectedTaxRegimeLabel(objContext: FlexiDeclarationContextRecord | null) {
+  const strLabel =
+    objContext?.objSelectedTaxRegime?.strTaxRegimeLabel
+    || objContext?.objSelectedTaxRegime?.strTaxRegimeName
+    || objContext?.strSelectedTaxRegime
+    || objContext?.strTaxRegime
+    || "";
+  const strNormalized = normalizeText(strLabel).replace(/[-_]+/g, " ");
+  if (!strNormalized) return "Not selected";
+  if (strNormalized.includes("new")) return "New Regime";
+  if (strNormalized.includes("old")) return "Old Regime";
+  if (strNormalized.includes("both") || strNormalized === "all" || strNormalized === "all regimes") return "Both Regimes";
+  return strLabel.replace(/[-_]+/g, " ").trim();
+}
+
+function getEligibilityChipConfig(objRow: FlexiDeclarationLineRecord): {
+  strLabel: string;
+  strColor: "default" | "success" | "warning" | "error";
+} {
+  if (objRow.blnEligible !== false) {
+    return { strLabel: "Eligible", strColor: "success" };
+  }
+  if (objRow.blnRegimeEligible === false) {
+    return { strLabel: "Regime Mismatch", strColor: "error" };
+  }
+  return { strLabel: "Needs Details", strColor: "warning" };
+}
+
+function getLineReasonText(objRow: FlexiDeclarationLineRecord) {
+  if (objRow.blnRegimeEligible === false) {
+    return objRow.strRegimeEligibilityReason || objRow.strEligibilityReason || "Component is not eligible for the selected IT regime.";
+  }
+  if (objRow.strEligibilityDetailsReason) {
+    return `Regime matched. Detail check: ${objRow.strEligibilityDetailsReason}`;
+  }
+  return objRow.strEligibilityReason || "-";
+}
+
+function getComponentRegimeDisplayLabel(objRow: FlexiDeclarationLineRecord) {
+  return (
+    objRow.strEligibilityApplicableRegimeLabel
+    || objRow.strComponentApplicableRegimeLabel
+    || formatApplicableRegime(objRow.strEligibilityApplicableRegime || objRow.strComponentApplicableRegime)
+  );
 }
 
 function getStatusTone(strStatus?: string | null): "default" | "success" | "warning" | "error" {
@@ -387,6 +441,7 @@ export default function FlexiPayDeclarationPage() {
   const blnWorkflowEditable = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
   const blnCanEditDeclaration = Boolean(blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
+  const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -999,7 +1054,7 @@ export default function FlexiPayDeclarationPage() {
               {objContext?.objEmployeeSummary?.strEmployeeName || "Employee"}
             </Typography>
             <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | FY {strFinancialYearCode} | Current Status {formatStatus(strWorkflowStatus)}
+              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | FY {strFinancialYearCode} | Current Status {formatStatus(strWorkflowStatus)} | IT Regime {strSelectedTaxRegimeLabel}
             </Typography>
           </Box>
 
@@ -1040,7 +1095,7 @@ export default function FlexiPayDeclarationPage() {
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" } }}>
+      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(6, minmax(0, 1fr))" } }}>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Current Status</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatStatus(strWorkflowStatus)}</Typography>
@@ -1061,6 +1116,21 @@ export default function FlexiPayDeclarationPage() {
           <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Assigned Salary Structure</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{objContext?.objAssignedStructure?.strStructureName || "-"}</Typography>
         </Paper>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #f59e0b" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Tax Regime</Typography>
+          <Chip
+            size="small"
+            variant="outlined"
+            label={strSelectedTaxRegimeLabel}
+            color={getRegimeChipColor(strSelectedTaxRegimeLabel)}
+            sx={{
+              mt: 0.25,
+              height: 22,
+              maxWidth: "100%",
+              "& .MuiChip-label": { px: 0.75, fontSize: "0.7rem", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis" },
+            }}
+          />
+        </Paper>
       </Box>
 
       <Stack spacing={1.2}>
@@ -1072,7 +1142,7 @@ export default function FlexiPayDeclarationPage() {
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>Basic Eligibility Details</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.72rem", mt: 0.1 }}>
-                    Answer these basic details first. Your responses decide which flexi components become eligible in the declaration table below.
+                    Components are enabled from the selected IT regime. Related questions remain available for eligible components.
                   </Typography>
                 </Box>
                 {lstAllEligibilityQuestions.length > intEligibilityPreviewLimit ? (
@@ -1202,7 +1272,7 @@ export default function FlexiPayDeclarationPage() {
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>Eligible Flexi Components</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.25 }}>
-                    Declare amount only for the components that become eligible from the basic details above.
+                    Declare amount only for components eligible under the IT Declaration tax regime for this FY.
                   </Typography>
                 </Box>
                 <Chip label={`${intEligibleFlexiComponentCount} eligible / ${lstDisplayedRows.length} total`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
@@ -1214,14 +1284,14 @@ export default function FlexiPayDeclarationPage() {
                 size="small"
                 sx={{
                   tableLayout: "fixed",
-                  minWidth: 1120,
+                  minWidth: 1164,
                   "& .MuiTableCell-root": { py: 0.55, px: 0.75, fontSize: "0.7rem", verticalAlign: "middle" },
                   "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" },
                 }}
               >
                 <colgroup>
                   <col style={{ width: 218 }} />
-                  <col style={{ width: 92 }} />
+                  <col style={{ width: 136 }} />
                   <col style={{ width: 112 }} />
                   <col style={{ width: 112 }} />
                   <col style={{ width: 116 }} />
@@ -1253,6 +1323,7 @@ export default function FlexiPayDeclarationPage() {
                   ) : (
                     lstDisplayedRows.map((objDisplayRow) => {
                       const objRow = objDisplayRow.objSelectedLine;
+                      const objEligibilityChip = getEligibilityChipConfig(objRow);
                       return (
                         <TableRow key={objDisplayRow.intRowKey}>
                           <TableCell>
@@ -1264,9 +1335,14 @@ export default function FlexiPayDeclarationPage() {
                             <Stack spacing={0.5}>
                               <Chip
                                 size="small"
-                                color={objRow.blnEligible === false ? "default" : "success"}
-                                label={objRow.blnEligible === false ? "Not Eligible" : "Eligible"}
-                                sx={{ minWidth: 74, height: 22, "& .MuiChip-label": { px: 0.85 } }}
+                                color={objEligibilityChip.strColor}
+                                label={objEligibilityChip.strLabel}
+                                sx={{
+                                  minWidth: objEligibilityChip.strLabel === "Regime Mismatch" ? 116 : 82,
+                                  height: 22,
+                                  maxWidth: "none",
+                                  "& .MuiChip-label": { px: 0.85, overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" },
+                                }}
                               />
                               {objDisplayRow.decMultiplier > 1 ? (
                                 <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
@@ -1279,8 +1355,8 @@ export default function FlexiPayDeclarationPage() {
                             <Chip
                               size="small"
                               variant="outlined"
-                              label={objRow.strComponentApplicableRegimeLabel || formatApplicableRegime(objRow.strComponentApplicableRegime)}
-                              color={normalizeText(objRow.strComponentApplicableRegime) === "new" ? "warning" : "default"}
+                              label={getComponentRegimeDisplayLabel(objRow)}
+                              color={getRegimeChipColor(objRow.strEligibilityApplicableRegime || objRow.strComponentApplicableRegime)}
                               sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
                             />
                           </TableCell>
@@ -1329,7 +1405,7 @@ export default function FlexiPayDeclarationPage() {
                                   overflow: "hidden",
                                 }}
                               >
-                                {objRow.strEligibilityReason || "-"}
+                                {getLineReasonText(objRow)}
                               </Typography>
                               <IconButton
                                 size="small"

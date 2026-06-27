@@ -26,8 +26,13 @@ export type FlexiDeclarationLineRecord = {
   intApplicableForWhichTaxRegime?: number | null;
   strComponentApplicableRegime?: string | null;
   strComponentApplicableRegimeLabel?: string | null;
+  strEligibilityApplicableRegime?: string | null;
+  strEligibilityApplicableRegimeLabel?: string | null;
   strStructureApplicableRegime?: string | null;
   strApplicableRegime?: string | null;
+  strEmployeeApplicableRegime?: string | null;
+  strEmployeeTaxRegimeCode?: string | null;
+  strEmployeeTaxRegimeLabel?: string | null;
   decAnnualLimit?: number | null;
   decMonthlyLimit?: number | null;
   decEffectiveAnnualCap?: number | null;
@@ -43,11 +48,28 @@ export type FlexiDeclarationLineRecord = {
   strDeclarationItemStatus?: string | null;
   strDeclarationItemRemarks?: string | null;
   blnEligible?: boolean | null;
+  blnRegimeEligible?: boolean | null;
+  blnEligibilityDetailsSatisfied?: boolean | null;
   strEligibilityReason?: string | null;
+  strEligibilityDetailsReason?: string | null;
+  strRegimeEligibilityReason?: string | null;
   strIneligibleBehavior?: string | null;
   decMonthlyImpact?: number | null;
   lstEligibilityRules?: Record<string, unknown>[];
   lstRuleEvaluations?: Record<string, unknown>[];
+  objRegimeEvaluation?: Record<string, unknown> | null;
+};
+
+export type FlexiSelectedTaxRegimeRecord = {
+  intDeclarationID?: number | null;
+  intTaxRegimeID?: number | null;
+  strFinancialYearCode?: string | null;
+  strTaxRegimeCode?: string | null;
+  strTaxRegimeName?: string | null;
+  strTaxRegimeLabel?: string | null;
+  strApplicableRegime?: string | null;
+  strDeclarationStatus?: string | null;
+  blnIsSelected?: boolean | null;
 };
 
 export type FlexiEligibilityQuestionRecord = {
@@ -76,6 +98,10 @@ export type FlexiEligibilityQuestionRecord = {
 export type FlexiDeclarationContextRecord = {
   strFinancialYearCode: string;
   objDeclaration?: FlexiDeclarationRecord | null;
+  objSelectedTaxRegime?: FlexiSelectedTaxRegimeRecord | null;
+  strTaxRegime?: string | null;
+  strTaxRegimeCode?: string | null;
+  strSelectedTaxRegime?: string | null;
   blnCanDeclare: boolean;
   strIneligibilityReason?: string | null;
   objEmployeeSummary?: {
