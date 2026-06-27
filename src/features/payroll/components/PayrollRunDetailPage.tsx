@@ -635,7 +635,7 @@ export default function PayrollRunDetailPage({
                     {dicStep.strStep}
                   </Button>
                   {intIndex < 4 ? (
-                    <Typography sx={{ color: "#8aa3c2", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1 }}>→</Typography>
+                    <Typography sx={{ color: "#8aa3c2", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1 }}>{"\u2192"}</Typography>
                   ) : null}
                 </Box>
               );

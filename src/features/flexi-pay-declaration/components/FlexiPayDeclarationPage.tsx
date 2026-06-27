@@ -9,7 +9,6 @@ import LunchDiningRoundedIcon from "@mui/icons-material/LunchDiningRounded";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import {
   Alert,
   Box,
@@ -90,6 +89,13 @@ function formatStatus(strStatus?: string | null) {
   return String(strStatus || "draft")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function formatApplicableRegime(strApplicableRegime?: string | null) {
+  const strValue = normalizeText(strApplicableRegime);
+  if (strValue === "new" || strValue === "new regime") return "New Regime";
+  if (strValue === "both" || strValue === "all") return "Both Regimes";
+  return "Old Regime";
 }
 
 function getStatusTone(strStatus?: string | null): "default" | "success" | "warning" | "error" {
@@ -220,6 +226,11 @@ function buildQuestionFromRule(objRule: Record<string, unknown>): FlexiEligibili
     decMaxValue: objRule.question_max_value == null ? null : Number(objRule.question_max_value),
     blnIsRequired: Boolean(objRule.is_required ?? objRule.blnIsRequired ?? false),
     blnIsEmployeeEditable: Boolean(objRule.is_employee_editable ?? objRule.blnIsEmployeeEditable ?? true),
+    blnIsDisabled: Boolean(objRule.blnIsDisabled ?? false),
+    blnShowInfoIcon: Boolean(objRule.blnShowInfoIcon ?? false),
+    strDisabledReason: String(objRule.strDisabledReason ?? "").trim() || null,
+    strInfoMessage: String(objRule.strInfoMessage ?? "").trim() || null,
+    strApplicableRegime: String(objRule.strApplicableRegime ?? "").trim() || null,
     objOptionJson: objRule.option_json ?? objRule.objOptionJson,
     objAnswerValue: null,
   };
@@ -374,8 +385,6 @@ export default function FlexiPayDeclarationPage() {
 
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || objContext?.declaration_status || "draft";
   const blnWorkflowEditable = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
-  const blnCanWithdraw = normalizeText(strWorkflowStatus) === "submitted";
-  const blnCanCancel = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
   const blnCanEditDeclaration = Boolean(blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
 
@@ -410,13 +419,19 @@ export default function FlexiPayDeclarationPage() {
     [lstSelectableRows],
   );
 
+  const dicEligibilityQuestionByCode = useMemo(
+    () => new Map((objContext?.lstEligibilityQuestions || []).map((objQuestion) => [objQuestion.strQuestionCode, objQuestion])),
+    [objContext?.lstEligibilityQuestions],
+  );
+
   const lstDisplayedRows = useMemo<DisplayedLineRecord[]>(() => {
     return lstSelectableRows.map((objBaseLine) => {
       const intRowKey = objBaseLine.intSalaryComponentID;
       const intSelectedComponentID = dicSelectedComponents[intRowKey] ?? intRowKey;
       const objSelectedLine = dicSelectableRowByID.get(intSelectedComponentID) ?? objBaseLine;
-      const lstLinkedQuestions = getLinkedQuestionsForRow(objSelectedLine);
-      const lstQuestionOptions = lstLinkedQuestions.length > 0 ? lstLinkedQuestions : (objContext?.lstEligibilityQuestions || []);
+      const lstQuestionOptions = getLinkedQuestionsForRow(objSelectedLine).map(
+        (objQuestion) => dicEligibilityQuestionByCode.get(objQuestion.strQuestionCode) ?? objQuestion,
+      );
       const strStoredQuestionCode = dicSelectedQuestions[intRowKey] ?? "";
       const strSelectedQuestionCode = lstQuestionOptions.some((objQuestion) => objQuestion.strQuestionCode === strStoredQuestionCode)
         ? strStoredQuestionCode
@@ -432,7 +447,7 @@ export default function FlexiPayDeclarationPage() {
         decMultiplier: getRowEffectiveMultiplier(objSelectedLine),
       };
     });
-  }, [dicDraftInputs, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows, objContext?.lstEligibilityQuestions]);
+  }, [dicDraftInputs, dicEligibilityQuestionByCode, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows]);
 
   const setSelectedComponentIDs = useMemo(
     () => new Set(lstDisplayedRows.map((objRow) => objRow.objSelectedLine.intSalaryComponentID)),
@@ -553,7 +568,7 @@ export default function FlexiPayDeclarationPage() {
     if (Object.entries(dicGroups).length === 0) {
       return (
         <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>
-          No eligibility questions are configured for this flexi declaration.
+          {objContext?.strEligibilityQuestionsMessage || "No eligibility questions are configured for this flexi declaration."}
         </Typography>
       );
     }
@@ -580,14 +595,60 @@ export default function FlexiPayDeclarationPage() {
             }}
           >
             {objGroup.lstQuestions.map((objQuestion) => {
+              const blnQuestionDisabled = objQuestion.blnIsDisabled === true;
+              const strQuestionAccent = blnQuestionDisabled ? "#0f7ea7" : strAccent;
+              const strQuestionTint = blnQuestionDisabled ? "#eef8fc" : strTint;
               const objLabelBlock = (
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.2 }}>
-                    {objQuestion.strQuestionLabel}
-                    {objQuestion.blnIsRequired ? " *" : ""}
-                  </Typography>
+                  <Stack direction="row" spacing={0.45} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: "0.73rem", lineHeight: 1.2, color: blnQuestionDisabled ? "#0f4c81" : "#0f172a" }}>
+                      {objQuestion.strQuestionLabel}
+                      {objQuestion.blnIsRequired ? " *" : ""}
+                    </Typography>
+                    {objQuestion.blnShowInfoIcon ? (
+                      <Tooltip
+                        title={objQuestion.strInfoMessage || objQuestion.strDisabledReason || "This question cannot be edited."}
+                        enterTouchDelay={0}
+                        arrow
+                        slotProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: "#0f4c81",
+                              color: "#ffffff",
+                              border: "1px solid #38bdf8",
+                              boxShadow: "0 10px 24px rgba(15, 76, 129, 0.28)",
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                              lineHeight: 1.25,
+                              maxWidth: 260,
+                            },
+                          },
+                          arrow: { sx: { color: "#0f4c81" } },
+                        }}
+                      >
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            bgcolor: "#dff3fb",
+                            border: "1px solid #38bdf8",
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            mt: -0.05,
+                          }}
+                        >
+                          <InfoOutlinedIcon sx={{ color: "#0f7ea7", fontSize: 12 }} />
+                        </Box>
+                      </Tooltip>
+                    ) : null}
+                  </Stack>
                   {objQuestion.strHelpText ? (
-                    <Typography sx={{ color: "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
+                    <Typography sx={{ color: blnQuestionDisabled ? "#246b8f" : "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
                       {objQuestion.strHelpText}
                     </Typography>
                   ) : null}
@@ -601,9 +662,10 @@ export default function FlexiPayDeclarationPage() {
                     minWidth: 0,
                     p: 0.75,
                     borderRadius: "9px",
-                    border: "1px solid #dbe3ef",
-                    borderLeft: `3px solid ${strAccent}`,
-                    backgroundColor: strTint,
+                    border: blnQuestionDisabled ? "1px solid #bae6fd" : "1px solid #dbe3ef",
+                    borderLeft: `3px solid ${strQuestionAccent}`,
+                    backgroundColor: strQuestionTint,
+                    boxShadow: blnQuestionDisabled ? "inset 0 0 0 1px rgba(56, 189, 248, 0.18)" : "none",
                   }}
                 >
                   <Stack direction="row" spacing={0.6} alignItems="flex-start" justifyContent="space-between">
@@ -791,36 +853,10 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
-  async function handleWithdraw() {
-    setBlnSaving(true);
-    setStrError("");
-    try {
-      const objData = await flexiPayDeclarationService.withdraw(strFinancialYearCode, strRemarks);
-      syncLocalStateFromContext(objData, "Declaration withdrawn successfully.");
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to withdraw declaration.");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
-  async function handleCancel() {
-    setBlnSaving(true);
-    setStrError("");
-    try {
-      const objData = await flexiPayDeclarationService.cancel(strFinancialYearCode, strRemarks);
-      syncLocalStateFromContext(objData, "Declaration cancelled successfully.");
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to cancel declaration.");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
   function renderQuestionInput(objQuestion: FlexiEligibilityQuestionRecord) {
     const strQuestionCode = objQuestion.strQuestionCode;
     const objValue = dicEligibilityAnswers[strQuestionCode] ?? objQuestion.objAnswerValue ?? null;
-    const blnDisabled = !blnCanEditDeclaration || blnSaving;
+    const blnDisabled = !blnCanEditDeclaration || blnSaving || objQuestion.blnIsDisabled === true || objQuestion.blnIsEmployeeEditable === false;
 
     if (objQuestion.strAnswerType === "boolean") {
       const blnChecked = objValue == null ? false : Boolean(objValue);
@@ -978,29 +1014,28 @@ export default function FlexiPayDeclarationPage() {
             >
               Back
             </Button>
-            {blnCanWithdraw ? (
-              <Button size="small" variant="outlined" sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)" }} startIcon={<UndoRoundedIcon />} disabled={blnSaving} onClick={() => void handleWithdraw()}>
-                Withdraw
+            {blnCanEditDeclaration ? (
+              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
+                Save Draft
               </Button>
             ) : null}
-            <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
-              Save Draft
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              color="warning"
-              startIcon={<SendRoundedIcon />}
-              disabled={blnSaving}
-              onClick={() => {
-                if (validateDeclarationForAction("submit")) {
-                  setStrError("");
-                  setBlnSubmitDialogOpen(true);
-                }
-              }}
-            >
-              {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
-            </Button>
+            {blnCanEditDeclaration ? (
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                startIcon={<SendRoundedIcon />}
+                disabled={blnSaving}
+                onClick={() => {
+                  if (validateDeclarationForAction("submit")) {
+                    setStrError("");
+                    setBlnSubmitDialogOpen(true);
+                  }
+                }}
+              >
+                {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
       </Paper>
@@ -1175,11 +1210,31 @@ export default function FlexiPayDeclarationPage() {
             </Box>
 
             <TableContainer sx={{ maxHeight: 300 }}>
-              <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
+              <Table
+                size="small"
+                sx={{
+                  tableLayout: "fixed",
+                  minWidth: 1120,
+                  "& .MuiTableCell-root": { py: 0.55, px: 0.75, fontSize: "0.7rem", verticalAlign: "middle" },
+                  "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" },
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: 218 }} />
+                  <col style={{ width: 92 }} />
+                  <col style={{ width: 112 }} />
+                  <col style={{ width: 112 }} />
+                  <col style={{ width: 116 }} />
+                  <col style={{ width: 104 }} />
+                  <col style={{ width: 72 }} />
+                  <col style={{ width: 96 }} />
+                  <col style={{ width: 198 }} />
+                </colgroup>
                 <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
                   <TableRow>
                     <TableCell>Component</TableCell>
                     <TableCell>Eligibility</TableCell>
+                    <TableCell>Regime</TableCell>
                     <TableCell align="right">Annual Cap</TableCell>
                     <TableCell align="right">Declared Annual</TableCell>
                     <TableCell align="right">Monthly Impact</TableCell>
@@ -1191,7 +1246,7 @@ export default function FlexiPayDeclarationPage() {
                 <TableBody>
                   {lstDisplayedRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
+                      <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
                         No flexi components are available.
                       </TableCell>
                     </TableRow>
@@ -1200,7 +1255,7 @@ export default function FlexiPayDeclarationPage() {
                       const objRow = objDisplayRow.objSelectedLine;
                       return (
                         <TableRow key={objDisplayRow.intRowKey}>
-                          <TableCell sx={{ width: 160, minWidth: 160 }}>
+                          <TableCell>
                             <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
                               {objRow.strComponentName || objRow.strComponentCode || "Component"}
                             </Typography>
@@ -1211,6 +1266,7 @@ export default function FlexiPayDeclarationPage() {
                                 size="small"
                                 color={objRow.blnEligible === false ? "default" : "success"}
                                 label={objRow.blnEligible === false ? "Not Eligible" : "Eligible"}
+                                sx={{ minWidth: 74, height: 22, "& .MuiChip-label": { px: 0.85 } }}
                               />
                               {objDisplayRow.decMultiplier > 1 ? (
                                 <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
@@ -1218,6 +1274,15 @@ export default function FlexiPayDeclarationPage() {
                                 </Typography>
                               ) : null}
                             </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={objRow.strComponentApplicableRegimeLabel || formatApplicableRegime(objRow.strComponentApplicableRegime)}
+                              color={normalizeText(objRow.strComponentApplicableRegime) === "new" ? "warning" : "default"}
+                              sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
+                            />
                           </TableCell>
                           <TableCell align="right">
                             {formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode)}
@@ -1229,7 +1294,6 @@ export default function FlexiPayDeclarationPage() {
                               value={objDisplayRow.strDisplayedAmount}
                               disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
                               error={Boolean(objRow.strValidationMessage)}
-                              helperText={objRow.strValidationMessage || (objDisplayRow.decMultiplier > 1 ? `Per unit x ${objDisplayRow.decMultiplier} = ${formatCurrency(objRow.decInputAnnual, strCurrencyCode)}` : " ")}
                               onChange={(objEvent) =>
                                 setDicDraftInputs((dicPrevious) => ({
                                   ...dicPrevious,
@@ -1237,28 +1301,41 @@ export default function FlexiPayDeclarationPage() {
                                 }))
                               }
                               inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
-                              sx={{ width: 92, "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 }, "& .MuiFormHelperText-root": { fontSize: "0.58rem", mt: 0.2, lineHeight: 1.05 } }}
+                              sx={{ width: 86, "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 }, "& input": { textAlign: "right" } }}
                             />
                           </TableCell>
                           <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                          <TableCell>{objRow.blnProofRequired ? "Required" : "Not Required"}</TableCell>
+                          <TableCell>{objRow.blnProofRequired ? "Required" : "No"}</TableCell>
                           <TableCell>
                             <Chip
                               size="small"
                               label={objRow.strDeclarationItemStatus ? formatStatus(objRow.strDeclarationItemStatus) : "Draft"}
                               color={getStatusTone(objRow.strDeclarationItemStatus)}
+                              sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.8, overflow: "hidden", textOverflow: "ellipsis" } }}
                             />
                           </TableCell>
                           <TableCell>
-                            <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="space-between">
-                              <Typography sx={{ color: "#64748b", fontSize: "0.6rem", lineHeight: 1.15, maxWidth: 118, flex: 1, overflow: "hidden" }}>
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                              <Typography
+                                sx={{
+                                  color: "#64748b",
+                                  fontSize: "0.6rem",
+                                  lineHeight: 1.15,
+                                  flex: 1,
+                                  minWidth: 0,
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 2,
+                                  overflow: "hidden",
+                                }}
+                              >
                                 {objRow.strEligibilityReason || "-"}
                               </Typography>
                               <IconButton
                                 size="small"
                                 disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
                                 onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
-                                sx={{ color: "#dc2626" }}
+                                sx={{ color: "#dc2626", flex: "0 0 auto", p: 0.35 }}
                                 aria-label={`Clear ${objRow.strComponentName || objRow.strComponentCode || "component"} amount`}
                               >
                                 <DeleteOutlineRoundedIcon fontSize="small" />
