@@ -23,6 +23,11 @@ export type FlexiDeclarationLineRecord = {
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName?: string | null;
+  intApplicableForWhichTaxRegime?: number | null;
+  strComponentApplicableRegime?: string | null;
+  strComponentApplicableRegimeLabel?: string | null;
+  strStructureApplicableRegime?: string | null;
+  strApplicableRegime?: string | null;
   decAnnualLimit?: number | null;
   decMonthlyLimit?: number | null;
   decEffectiveAnnualCap?: number | null;
