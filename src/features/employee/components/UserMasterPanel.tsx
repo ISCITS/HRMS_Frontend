@@ -840,6 +840,13 @@ export default function UserMasterPanel() {
         onPrimaryAction={saveUser}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
+            <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+          </Box>
+        }
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
           <Box
             sx={{
@@ -1074,11 +1081,6 @@ export default function UserMasterPanel() {
               </Box>
             </Box>
           ) : null}
-
-          <Box className={styles.switchRow}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
-            <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
-          </Box>
         </Box>}
       />
 
