@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -194,6 +195,12 @@ function buildFallbackContext(strFinancialYearCode: string): FlexiDeclarationCon
     declaration_status: "draft",
     blnHasHiddenComponents: false,
   };
+}
+
+function waitForNextPaint() {
+  return new Promise<void>((fnResolve) => {
+    window.requestAnimationFrame(() => fnResolve());
+  });
 }
 
 function buildInitialDraftInputs(objContext: FlexiDeclarationContextRecord) {
@@ -384,6 +391,7 @@ export default function FlexiPayDeclarationPage() {
   const [blnEvaluating, setBlnEvaluating] = useState(false);
   const [strError, setStrError] = useState("");
   const [strToast, setStrToast] = useState("");
+  const [strSavingLabel, setStrSavingLabel] = useState("Processing declaration...");
   const [strRemarks, setStrRemarks] = useState("");
   const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(() => buildFallbackContext(strFinancialYearCode));
   const [dicDraftInputs, setDicDraftInputs] = useState<DraftInputMap>(() => buildInitialDraftInputs(buildFallbackContext(strFinancialYearCode)));
@@ -872,9 +880,11 @@ export default function FlexiPayDeclarationPage() {
 
   async function handleSaveDraft() {
     if (!validateDeclarationForAction("draft")) return;
+    setStrSavingLabel("Saving draft...");
     setBlnSaving(true);
     setStrError("");
     try {
+      await waitForNextPaint();
       const objData = await flexiPayDeclarationService.saveDraft(
         strFinancialYearCode,
         lstPayloadRows,
@@ -886,14 +896,17 @@ export default function FlexiPayDeclarationPage() {
       setStrError(objError instanceof Error ? objError.message : "Unable to save draft.");
     } finally {
       setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
     }
   }
 
   async function handleSubmit(): Promise<boolean> {
     if (!validateDeclarationForAction("submit")) return false;
+    setStrSavingLabel("Submitting declaration...");
     setBlnSaving(true);
     setStrError("");
     try {
+      await waitForNextPaint();
       const objData = await flexiPayDeclarationService.submit(
         strFinancialYearCode,
         lstPayloadRows,
@@ -907,6 +920,7 @@ export default function FlexiPayDeclarationPage() {
       return false;
     } finally {
       setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
     }
   }
 
@@ -1033,6 +1047,31 @@ export default function FlexiPayDeclarationPage() {
         pr: 0.5,
       }}
     >
+      {blnSaving ? (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: (objTheme) => objTheme.zIndex.modal + 1,
+            display: "grid",
+            placeItems: "center",
+            pointerEvents: "auto",
+          }}
+        >
+          <Stack
+            spacing={1}
+            alignItems="center"
+            sx={{
+              textShadow: "0 1px 2px rgba(255, 255, 255, 0.95)",
+            }}
+          >
+            <CircularProgress size={34} thickness={4.4} sx={{ color: "#2563eb" }} />
+            <Typography sx={{ fontWeight: 700, color: "#315985", fontSize: "0.86rem" }}>
+              {strSavingLabel}
+            </Typography>
+          </Stack>
+        </Box>
+      ) : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {objContext?.strIneligibilityReason && !objContext.blnCanDeclare ? (
         <Alert severity="info">{objContext.strIneligibilityReason}</Alert>
@@ -1508,7 +1547,26 @@ export default function FlexiPayDeclarationPage() {
           </Box>
         </Stack>
 
-      <Snackbar open={Boolean(strToast)} autoHideDuration={2500} onClose={() => setStrToast("")} message={strToast} />
+      <Snackbar
+        open={Boolean(strToast)}
+        autoHideDuration={3500}
+        onClose={() => setStrToast("")}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert onClose={() => setStrToast("")} severity="success" variant="filled" sx={{ width: "100%" }}>
+          {strToast}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={Boolean(strError)}
+        autoHideDuration={4500}
+        onClose={() => setStrError("")}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert onClose={() => setStrError("")} severity="error" variant="filled" sx={{ width: "100%" }}>
+          {strError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
