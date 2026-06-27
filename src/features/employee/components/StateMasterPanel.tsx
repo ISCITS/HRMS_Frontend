@@ -387,10 +387,99 @@ export default function StateMasterPanel() {
           <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button data-testid="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
-      <CommonMasterDialog blnOpen={blnDialogOpen} onClose={closeDialog} rootTestId="state-master.dialog" cancelButtonTestId="state-master.dialog.cancel.button" primaryButtonTestId="state-master.dialog.save.button" strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle} strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel} strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save} onPrimaryAction={saveState} blnPrimaryDisabled={blnSubmitting} blnHidePrimary={strMode === "view"} paperClassName={styles.dialogPaper} maxWidth="xl" paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }} contentSx={{ overflowX: "hidden", overflowY: "visible" }} nodeContent={<Box sx={{ display: "grid", gap: 2, pt: 0.5 }}><TextField data-testid="state-master.dialog.country.select" inputProps={{ "data-testid": "state-master.dialog.country.select" }} select label={`${dicLabels.fieldCountry} *`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, countryId: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: objEvent.target.value ? Number(objEvent.target.value) : "" })); }} error={Boolean(dicErrors.countryId)} helperText={dicErrors.countryId} fullWidth><MenuItem data-testid="state-master.dialog.country.empty.option" value="">{dicLabels.selectCountry}</MenuItem>{objFormOptions.lstCountries.map((dicCountry) => <MenuItem data-testid="state-master.dialog.country.option" data-option-key={dicCountry.intID} key={dicCountry.intID} value={String(dicCountry.intID)}>{dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}</TextField><TextField data-testid="state-master.dialog.name.input" inputProps={{ "data-testid": "state-master.dialog.name.input" }} label={`${dicLabels.fieldName} *`} value={dicForm.name} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField data-testid="state-master.dialog.code.input" inputProps={{ "data-testid": "state-master.dialog.code.input" }} label={`${dicLabels.fieldCode} *`} value={dicForm.code} disabled={strMode === "view"} onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() })); }} error={Boolean(dicErrors.code)} helperText={dicErrors.code} fullWidth /><Box className={styles.switchRow}><Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography><ActiveStatusSwitch testId="state-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box></Box>} />
-      <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicLabels.confirmButton} blnConfirmDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction} />
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}><Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert></Snackbar>
+      <CommonMasterDialog
+        blnOpen={blnDialogOpen} onClose={closeDialog}
+        rootTestId="state-master.dialog"
+        cancelButtonTestId="state-master.dialog.cancel.button"
+        primaryButtonTestId="state-master.dialog.save.button"
+        strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
+         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
+        strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save} 
+        onPrimaryAction={saveState} blnPrimaryDisabled={blnSubmitting} 
+        blnHidePrimary={strMode === "view"} 
+        paperClassName={styles.compactDialogPaper} 
+        paperSx={{
+          width: "min(800px, calc(100vw - 32px))",
+          maxWidth: "800px",
+          overflow: "hidden",
+          m: 2,
+        }}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel}>{dicLabels.fieldIsActive}</Typography>
+
+            <ActiveStatusSwitch testId="state-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"} onChange={(blnChecked) =>
+                setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} /></Box>
+        }
+        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeContent={
+          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+            <TextField data-testid="state-master.dialog.country.select"
+              inputProps={{ "data-testid": "state-master.dialog.country.select" }}
+              required
+              select label={`${dicLabels.fieldCountry}`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)}
+              disabled={strMode === "view"}
+              onChange={(objEvent) => {
+                setDicErrors((dicPrevious) => ({ ...dicPrevious, countryId: undefined }));
+                setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: objEvent.target.value ? Number(objEvent.target.value) : "" }));
+              }}
+              error={Boolean(dicErrors.countryId)} 
+              helperText={dicErrors.countryId} 
+              fullWidth>
+              <MenuItem
+                data-testid="state-master.dialog.country.empty.option"
+                value="">{dicLabels.selectCountry}
+                </MenuItem>{
+                objFormOptions.lstCountries.map((dicCountry) => <MenuItem data-testid="state-master.dialog.country.option"
+                  data-option-key={dicCountry.intID} 
+                  key={dicCountry.intID} 
+                  value={String(dicCountry.intID)}>{
+                    dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}
+            </TextField>
+            <TextField 
+            data-testid="state-master.dialog.name.input" 
+            inputProps={{ "data-testid": "state-master.dialog.name.input" }}
+              required
+              label={`${dicLabels.fieldName}`} value={dicForm.name} disabled={strMode === "view"}
+              onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField data-testid="state-master.dialog.code.input" inputProps={{ "data-testid": "state-master.dialog.code.input" }}
+                required
+                label={`${dicLabels.fieldCode}`} 
+                value={dicForm.code} 
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }));
+                }}
+                error={Boolean(dicErrors.code)} helperText={dicErrors.code} 
+                fullWidth />
+          </Box>
+        }
+      />
+
+      <CommonConfirmDialog
+        blnOpen={Boolean(objConfirmDialog)}
+        strTitle={objConfirmDialog?.strTitle}
+        strMessage={objConfirmDialog?.strMessage}
+        strCancelLabel={dicCommonLabels.cancel}
+        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicLabels.confirmButton}
+        blnConfirmDisabled={blnSubmitting}
+        onClose={closeConfirmDialog}
+        onConfirm={executeConfirmedAction} />
+
+      <BlockingLoader 
+        blnOpen={blnLoading || blnRightsLoading || blnSubmitting}
+        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} 
+        intZIndex={1400} />
+
+      <Snackbar
+        open={objToast.blnOpen}
+        autoHideDuration={3500}
+        onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled"
+          sx={{ width: "100%" }}>{objToast.strMessage}</Alert>
+      </Snackbar>
     </Box>
   );
 }
