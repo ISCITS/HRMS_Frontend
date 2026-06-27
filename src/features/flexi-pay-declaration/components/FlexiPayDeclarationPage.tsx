@@ -451,9 +451,9 @@ export default function FlexiPayDeclarationPage() {
       const decEffectiveAnnualCap = Number(objLine.decEffectiveAnnualCap ?? objLine.decAnnualLimit ?? 0);
       let strValidationMessage = "";
       if (objLine.blnEligible === false && decInputAnnual > 0) {
-        strValidationMessage = objLine.strEligibilityReason || "This component is not eligible.";
+        strValidationMessage = `${objLine.strEligibilityReason || "This component is not eligible."} Use delete to clear the amount.`;
       } else if (decEffectiveAnnualCap > 0 && decInputAnnual > decEffectiveAnnualCap) {
-        strValidationMessage = "Declared amount cannot exceed annual cap.";
+        strValidationMessage = `Declared amount ${formatCurrency(decInputAnnual, strCurrencyCode)} exceeds annual cap ${formatCurrency(decEffectiveAnnualCap, strCurrencyCode)}.`;
       }
       return {
         ...objLine,
@@ -462,7 +462,7 @@ export default function FlexiPayDeclarationPage() {
         strValidationMessage,
       };
     });
-  }, [dicDraftInputs, objContext?.lstDeclarationLines]);
+  }, [dicDraftInputs, objContext?.lstDeclarationLines, strCurrencyCode]);
 
   const lstSelectableRows = useMemo(
     () => lstRows.filter((objRow) => isSelectableDeclarationComponent(objRow)),
@@ -541,6 +541,9 @@ export default function FlexiPayDeclarationPage() {
   const intEligibleFlexiComponentCount = lstDisplayedRows.filter((objRow) => objRow.objSelectedLine.blnEligible !== false).length;
   const blnAllocationExceeded = decDeclaredAnnual > decBasketAnnual;
   const blnHasRowValidationErrors = lstDisplayedRows.some((objRow) => Boolean(objRow.objSelectedLine.strValidationMessage));
+  const intDeclaredAnnualColumnWidth = blnHasRowValidationErrors ? 236 : 116;
+  const intDeclaredAnnualFieldWidth = blnHasRowValidationErrors ? 218 : 104;
+  const intFlexiComponentTableMinWidth = 982 + intDeclaredAnnualColumnWidth;
   const blnHasEligibilityAnswerValues = hasAnyEligibilityAnswers(dicEligibilityAnswers);
   const lstValidationMessages = objContext?.validation_messages || [];
   const strResidualComponentName = objSalaryImpactSummary?.objResidualComponent?.strComponentName
@@ -824,7 +827,13 @@ export default function FlexiPayDeclarationPage() {
       return false;
     }
     if (blnHasRowValidationErrors) {
-      setStrError("Fix declaration validation issues before continuing.");
+      const lstRowIssues = lstDisplayedRows
+        .map((objRow) => objRow.objSelectedLine)
+        .filter((objRow) => Boolean(objRow.strValidationMessage))
+        .map((objRow) => `${objRow.strComponentName || objRow.strComponentCode || "Component"}: ${objRow.strValidationMessage}`);
+      const strVisibleIssues = lstRowIssues.slice(0, 3).join(" | ");
+      const strMoreIssues = lstRowIssues.length > 3 ? ` | +${lstRowIssues.length - 3} more` : "";
+      setStrError(`Fix declaration validation issue${lstRowIssues.length > 1 ? "s" : ""}: ${strVisibleIssues}${strMoreIssues}`);
       return false;
     }
     if (strAction === "submit" && lstPayloadRows.length === 0) {
@@ -1284,21 +1293,21 @@ export default function FlexiPayDeclarationPage() {
                 size="small"
                 sx={{
                   tableLayout: "fixed",
-                  minWidth: 1164,
+                  minWidth: intFlexiComponentTableMinWidth,
                   "& .MuiTableCell-root": { py: 0.55, px: 0.75, fontSize: "0.7rem", verticalAlign: "middle" },
                   "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" },
                 }}
               >
                 <colgroup>
-                  <col style={{ width: 218 }} />
-                  <col style={{ width: 136 }} />
-                  <col style={{ width: 112 }} />
-                  <col style={{ width: 112 }} />
-                  <col style={{ width: 116 }} />
-                  <col style={{ width: 104 }} />
-                  <col style={{ width: 72 }} />
-                  <col style={{ width: 96 }} />
-                  <col style={{ width: 198 }} />
+                  <col style={{ width: 176 }} />
+                  <col style={{ width: 126 }} />
+                  <col style={{ width: 108 }} />
+                  <col style={{ width: 94 }} />
+                  <col style={{ width: intDeclaredAnnualColumnWidth }} />
+                  <col style={{ width: 92 }} />
+                  <col style={{ width: 64 }} />
+                  <col style={{ width: 70 }} />
+                  <col style={{ width: 252 }} />
                 </colgroup>
                 <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
                   <TableRow>
@@ -1370,6 +1379,7 @@ export default function FlexiPayDeclarationPage() {
                               value={objDisplayRow.strDisplayedAmount}
                               disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
                               error={Boolean(objRow.strValidationMessage)}
+                              helperText={objRow.strValidationMessage || ""}
                               onChange={(objEvent) =>
                                 setDicDraftInputs((dicPrevious) => ({
                                   ...dicPrevious,
@@ -1377,7 +1387,12 @@ export default function FlexiPayDeclarationPage() {
                                 }))
                               }
                               inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
-                              sx={{ width: 86, "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 }, "& input": { textAlign: "right" } }}
+                              sx={{
+                                width: intDeclaredAnnualFieldWidth,
+                                "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 },
+                                "& input": { textAlign: "right" },
+                                "& .MuiFormHelperText-root": { mx: 0, mt: 0.25, fontSize: "0.6rem", lineHeight: 1.12, textAlign: "left" },
+                              }}
                             />
                           </TableCell>
                           <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
@@ -1409,7 +1424,7 @@ export default function FlexiPayDeclarationPage() {
                               </Typography>
                               <IconButton
                                 size="small"
-                                disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
+                                disabled={!blnCanEditDeclaration || blnSaving}
                                 onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
                                 sx={{ color: "#dc2626", flex: "0 0 auto", p: 0.35 }}
                                 aria-label={`Clear ${objRow.strComponentName || objRow.strComponentCode || "component"} amount`}
