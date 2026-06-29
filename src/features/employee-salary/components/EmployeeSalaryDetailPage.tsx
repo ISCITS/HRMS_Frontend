@@ -29,8 +29,9 @@ import { useRouter } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
 import {
-  flexiPayDeclarationService,
+  hrFlexiDeclarationReviewService,
   type FlexiDeclarationContextRecord,
+  type FlexiDeclarationLineRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
@@ -62,6 +63,7 @@ type ConfirmDialogState = {
 
 const lstRowsPerPageOptions = [10, 20, 50];
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
+const lstFlexiDeclarationStatuses = ["submitted", "approved", "locked", "returned", "rejected"];
 
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
@@ -91,14 +93,6 @@ function formatDate(strDate: string | null) {
 
 function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function getCurrentFinancialYearCode() {
-  const objNow = new Date();
-  const intYear = objNow.getFullYear();
-  const intMonth = objNow.getMonth();
-  const intFyStartYear = intMonth >= 3 ? intYear : intYear - 1;
-  return `${intFyStartYear}-${String(intFyStartYear + 1).slice(-2)}`;
 }
 
 function addDaysToDateString(strDate: string, intDays: number) {
@@ -334,6 +328,10 @@ function isFlexiPayComponentName(strValue: string) {
   return normalizeSelectToken(strValue) === "flexipay";
 }
 
+function isFlexiDeclarationDisplayComponent(strComponentName?: string | null, strComponentCode?: string | null) {
+  return !isFlexiPayComponentName(strComponentName ?? strComponentCode ?? "");
+}
+
 function isFlexiBucketLine(dicLine: EmployeeSalaryComponentLine | FlexiSourceLine) {
   const strRole = normalizeSelectToken("strFlexiComponentRole" in dicLine ? dicLine.strFlexiComponentRole ?? "" : "");
   const strName = normalizeSelectToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
@@ -399,6 +397,36 @@ function normalizeFlexiSource(strSource: string | null | undefined) {
   if (strToken === "payrolllock" || strToken === "locked") return "Payroll Lock";
   if (strToken === "imported" || strToken === "import") return "Imported";
   return "Structure Default";
+}
+
+function formatFlexiDeclarationStatus(strStatus: string | null | undefined) {
+  const strValue = String(strStatus || "draft").trim();
+  if (!strValue) {
+    return "-";
+  }
+  return strValue
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function formatFlexiApplicableRegime(objLine: FlexiDeclarationLineRecord) {
+  return (
+    objLine.strEligibilityApplicableRegimeLabel ||
+    objLine.strComponentApplicableRegimeLabel ||
+    objLine.strEligibilityApplicableRegime ||
+    objLine.strComponentApplicableRegime ||
+    "-"
+  );
+}
+
+function formatFlexiEligibilityText(objLine: FlexiDeclarationLineRecord) {
+  if (objLine.blnEligible === false) {
+    return "Ineligible";
+  }
+  if (objLine.blnRegimeEligible === false) {
+    return "Regime Mismatch";
+  }
+  return "Eligible";
 }
 
 function getFlexiMonthlyCap(dicLine: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number]) {
@@ -830,8 +858,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
   const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
-  const strFinancialYearCode = getCurrentFinancialYearCode();
-
   useEffect(() => {
     let blnMounted = true;
     async function loadData() {
@@ -847,12 +873,32 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setBlnLoading(true);
       setStrError("");
       try {
-        const [dicDetail, dicFormOptions, dicSalaryComponents, dicFlexiDeclarationContext] = await Promise.all([
+        const [dicDetail, dicFormOptions, dicSalaryComponents] = await Promise.all([
           employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID),
           employeeSalaryService.getFormOptions(),
           masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
-          flexiPayDeclarationService.getCurrentDeclaration(strFinancialYearCode).catch(() => null),
         ]);
+        let intDeclarationID = dicDetail.objFlexiDeclaration?.intDeclarationID ?? null;
+        if (!intDeclarationID) {
+          const lstDeclarationHistoryGroups = await Promise.all(
+            lstFlexiDeclarationStatuses.map((strStatus) =>
+              hrFlexiDeclarationReviewService.getList(strStatus).catch(() => [])
+            )
+          );
+          const lstDeclarationHistory = lstDeclarationHistoryGroups.flat();
+          const strFinancialYearCode = dicDetail.objFlexiDeclaration?.strFinancialYearCode ?? "";
+          const dicMatchedDeclaration =
+            lstDeclarationHistory.find(
+              (dicRow) =>
+                dicRow.intEmployeeID === intEmployeeID &&
+                (!strFinancialYearCode || dicRow.strFinancialYearCode === strFinancialYearCode)
+            ) ??
+            lstDeclarationHistory.find((dicRow) => dicRow.intEmployeeID === intEmployeeID);
+          intDeclarationID = dicMatchedDeclaration?.intDeclarationID ?? null;
+        }
+        const dicFlexiDeclarationContext = intDeclarationID
+          ? await hrFlexiDeclarationReviewService.getDetail(intDeclarationID).catch(() => null)
+          : null;
         if (!blnMounted) {
           return;
         }
@@ -879,7 +925,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID, strFinancialYearCode, t]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID, t]);
 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
 
@@ -1044,47 +1090,174 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     const mapDeclarationLinesByComponentID = new Map(
       (objFlexiDeclarationContext?.lstDeclarationLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
     );
-    return objFlexiAllocation.lstAllocationLines
-      .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
-      .filter((dicLine) => {
-        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(dicLine.intSalaryComponentID);
-        if (dicDeclarationLine) {
-          return getNumberValue(dicDeclarationLine.decDraftDeclaredAnnual) > 0 || getNumberValue(dicDeclarationLine.decMonthlyImpact) > 0;
-        }
-        return hasEmployeeFlexiAllocation(dicLine as FlexiAllocationLineWithStatus);
-      })
-      .map((dicLine) => {
-        const dicAllocationLine = dicLine as FlexiAllocationLineWithStatus;
-        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(dicLine.intSalaryComponentID);
-        const decAllocatedAnnual = dicDeclarationLine?.decDraftDeclaredAnnual ?? getNumberValue(dicLine.decAllocationAnnual);
-        const decAllocatedMonthly = dicDeclarationLine?.decMonthlyImpact ?? getNumberValue(dicLine.decAllocationMonthly);
+    const mapDeclarationItemsByComponentID = new Map(
+      (objDetail?.objFlexiDeclaration?.lstItems ?? []).map((dicItem) => [dicItem.intSalaryComponentID, dicItem])
+    );
+    const mapAllocationLinesByComponentID = new Map(
+      objFlexiAllocation.lstAllocationLines
+        .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
+        .map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
+    );
+    const setAllComponentIDs = new Set<number>([
+      ...mapAllocationLinesByComponentID.keys(),
+      ...mapDeclarationLinesByComponentID.keys(),
+      ...mapDeclarationItemsByComponentID.keys(),
+    ]);
+
+    return [...setAllComponentIDs]
+      .map((intSalaryComponentID) => {
+        const dicLine = mapAllocationLinesByComponentID.get(intSalaryComponentID);
+        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(intSalaryComponentID);
+        const dicDeclarationItem = mapDeclarationItemsByComponentID.get(intSalaryComponentID);
+        const dicAllocationLine = (dicLine ?? {}) as FlexiAllocationLineWithStatus;
+        const strComponentName =
+          dicLine?.strComponentName ??
+          dicLine?.strComponentCode ??
+          dicDeclarationLine?.strComponentName ??
+          dicDeclarationLine?.strComponentCode ??
+          "-";
+        const decDeclaredAnnual = dicDeclarationItem?.decDeclaredAnnual ?? 0;
+        const decDeclaredMonthly =
+          dicDeclarationItem?.decDeclaredMonthly ??
+          (decDeclaredAnnual > 0 ? decDeclaredAnnual / 12 : 0);
         const decApprovedAnnual = dicDeclarationLine?.decDraftApprovedAnnual != null
           ? dicDeclarationLine.decDraftApprovedAnnual
-          : (getNumberValue(dicAllocationLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual));
-        const decApprovedMonthly = dicDeclarationLine?.decDraftApprovedAnnual != null
-          ? dicDeclarationLine.decDraftApprovedAnnual / 12
-          : (getNumberValue(dicAllocationLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly));
+          : dicDeclarationItem?.decApprovedAnnual != null
+          ? dicDeclarationItem.decApprovedAnnual
+          : (getNumberValue(dicAllocationLine.decApprovedAnnualAmount) || getNumberValue(dicLine?.decAllocationAnnual));
+        const decApprovedMonthly = dicDeclarationItem?.decApprovedMonthly != null
+          ? dicDeclarationItem.decApprovedMonthly
+          : dicDeclarationLine?.decDraftApprovedAnnual != null
+            ? dicDeclarationLine.decDraftApprovedAnnual / 12
+          : dicDeclarationItem?.decApprovedAnnual != null
+            ? dicDeclarationItem.decApprovedAnnual / 12
+          : (getNumberValue(dicAllocationLine.decApprovedMonthlyAmount) || getNumberValue(dicLine?.decAllocationMonthly));
+        const decUtilizedAnnual = dicDeclarationItem?.decDeclaredAnnual ?? 0;
+
         return {
-          intSalaryComponentID: dicLine.intSalaryComponentID,
-          strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
-          strAnnualLimit: formatOptionalCurrencyValue(dicLine.decAnnualLimit, strCurrencyCode),
-          strMonthlyLimit: formatOptionalCurrencyValue(getFlexiMonthlyCap(dicLine), strCurrencyCode),
-          strAllocationAnnual: formatCurrency(decAllocatedAnnual, strCurrencyCode),
-          strAllocationMonthly: formatCurrency(decAllocatedMonthly, strCurrencyCode),
+          intSalaryComponentID,
+          strComponentName,
+          strAnnualLimit: formatOptionalCurrencyValue(dicDeclarationLine?.decAnnualLimit ?? dicLine?.decAnnualLimit ?? null, strCurrencyCode),
+          strMonthlyLimit: formatOptionalCurrencyValue(dicDeclarationLine?.decMonthlyLimit ?? (dicLine ? getFlexiMonthlyCap(dicLine) : null), strCurrencyCode),
+          strAllocationAnnual: formatCurrency(decDeclaredAnnual, strCurrencyCode),
+          strAllocationMonthly: formatCurrency(decDeclaredMonthly, strCurrencyCode),
           strApprovedAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
           strApprovedMonthly: formatCurrency(decApprovedMonthly, strCurrencyCode),
-          strUtilizedAnnual: formatCurrency(getNumberValue(dicAllocationLine.decUtilizedAnnualAmount), strCurrencyCode),
-          strProofRequired: (dicDeclarationLine?.blnProofRequired ?? dicLine.blnProofRequired)
+          strUtilizedAnnual: formatCurrency(decUtilizedAnnual, strCurrencyCode),
+          strProofRequired: (dicDeclarationLine?.blnProofRequired ?? dicDeclarationItem?.blnProofRequired ?? dicLine?.blnProofRequired)
             ? t("employee_salary_yes", "Yes")
             : t("employee_salary_no", "No"),
-          strTaxTreatment: dicDeclarationLine?.strTaxTreatment || dicLine.strTaxTreatment || "-",
-          strRemainingAnnualBalance: formatOptionalCurrencyValue(dicLine.decBalanceAnnual, strCurrencyCode),
-          strStatus: dicDeclarationLine?.strDeclarationItemStatus ?? dicAllocationLine.strStatus ?? t("employee_salary_approved", "Approved"),
-          strSource: normalizeFlexiSource(dicDeclarationLine ? "ESS Declaration" : (dicAllocationLine.strSource ?? "Structure Default")),
+          strTaxTreatment: dicDeclarationLine?.strTaxTreatment || dicDeclarationItem?.strTaxTreatment || dicLine?.strTaxTreatment || "-",
+          strRemainingAnnualBalance: formatOptionalCurrencyValue(dicLine?.decBalanceAnnual ?? null, strCurrencyCode),
+          strStatus: dicDeclarationLine?.strDeclarationItemStatus ?? dicDeclarationItem?.strLineStatus ?? dicAllocationLine.strStatus ?? t("employee_salary_approved", "Approved"),
+          strSource: normalizeFlexiSource(dicDeclarationLine || dicDeclarationItem ? "ESS Declaration" : (dicAllocationLine.strSource ?? "Structure Default")),
           strRemarks: dicAllocationLine.strRemarks ?? "-"
         };
-      });
-  }, [objFlexiAllocation, objFlexiDeclarationContext?.lstDeclarationLines, strCurrencyCode, t]);
+      })
+      .filter((dicRow) => dicRow.strComponentName !== "-");
+  }, [objDetail?.objFlexiDeclaration?.lstItems, objFlexiAllocation, objFlexiDeclarationContext?.lstDeclarationLines, strCurrencyCode, t]);
+  const lstEligibleFlexiDeclarationRows = useMemo(() => {
+    const lstContextDeclarationLines = objFlexiDeclarationContext?.lstDeclarationLines ?? [];
+    const lstContextEligibleComponents = objFlexiDeclarationContext?.eligible_components ?? [];
+    const lstContextIneligibleComponents = objFlexiDeclarationContext?.ineligible_components_with_reason ?? [];
+    const lstContextRows = [
+      ...lstContextDeclarationLines,
+      ...lstContextEligibleComponents,
+      ...lstContextIneligibleComponents,
+    ];
+    if (lstContextRows.length > 0) {
+      const mapContextRowsByComponentID = new Map<number, typeof lstContextRows[number]>();
+      for (const dicRow of lstContextRows) {
+        const dicExistingRow = mapContextRowsByComponentID.get(dicRow.intSalaryComponentID);
+        mapContextRowsByComponentID.set(dicRow.intSalaryComponentID, {
+          ...dicExistingRow,
+          ...dicRow,
+          intSalaryComponentID: dicRow.intSalaryComponentID,
+        });
+      }
+      return [...mapContextRowsByComponentID.values()].filter((dicRow) =>
+        isFlexiDeclarationDisplayComponent(dicRow.strComponentName, dicRow.strComponentCode)
+      );
+    }
+
+    const mapAllocationByComponentID = new Map(
+      [
+        ...(objFlexiAllocation.lstAllocationLines ?? []),
+        ...(objFlexiAllocation.lstAvailableComponents ?? []),
+      ].map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
+    );
+    const mapComponentLineByComponentID = new Map(
+      (objDetail?.lstComponentLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
+    );
+
+    return (objDetail?.objFlexiDeclaration?.lstItems ?? [])
+      .filter((dicItem) => {
+        const dicAllocationLine = mapAllocationByComponentID.get(dicItem.intSalaryComponentID);
+        const dicComponentLine = mapComponentLineByComponentID.get(dicItem.intSalaryComponentID);
+        return isFlexiDeclarationDisplayComponent(
+          dicAllocationLine?.strComponentName ?? dicComponentLine?.strComponentName ?? null,
+          dicAllocationLine?.strComponentCode ?? dicComponentLine?.strComponentCode ?? null
+        );
+      })
+      .filter((dicItem) => getNumberValue(dicItem.decDeclaredAnnual) > 0 || getNumberValue(dicItem.decDeclaredMonthly) > 0)
+      .map((dicItem) => {
+      const dicAllocationLine = mapAllocationByComponentID.get(dicItem.intSalaryComponentID);
+      const dicComponentLine = mapComponentLineByComponentID.get(dicItem.intSalaryComponentID);
+      return {
+        intSalaryComponentID: dicItem.intSalaryComponentID,
+        strComponentCode: dicAllocationLine?.strComponentCode ?? dicComponentLine?.strComponentCode ?? null,
+        strComponentName: dicAllocationLine?.strComponentName ?? dicComponentLine?.strComponentName ?? null,
+        decAnnualLimit: dicItem.decAnnualCap ?? dicAllocationLine?.decAnnualLimit ?? null,
+        decMonthlyLimit: dicItem.decMonthlyCap ?? dicAllocationLine?.decMonthlyLimit ?? null,
+        decEffectiveAnnualCap: dicItem.decAnnualCap ?? dicAllocationLine?.decAnnualLimit ?? null,
+        decEffectiveMonthlyCap: dicItem.decMonthlyCap ?? dicAllocationLine?.decMonthlyLimit ?? null,
+        decDraftDeclaredAnnual: dicItem.decDeclaredAnnual,
+        decAllocationAnnual: dicItem.decDeclaredAnnual,
+        decAllocationMonthly: dicItem.decDeclaredMonthly,
+        decMonthlyImpact: dicItem.decDeclaredMonthly,
+        decDraftApprovedAnnual: dicItem.decApprovedAnnual,
+        blnProofRequired: dicItem.blnProofRequired,
+        strTaxTreatment: dicItem.strTaxTreatment,
+        strDeclarationItemStatus: dicItem.strLineStatus,
+        blnEligible: true,
+        blnRegimeEligible: true,
+        strEligibilityReason: null,
+        strEligibilityDetailsReason: null,
+        strRegimeEligibilityReason: null,
+        strDeclarationItemRemarks: null,
+      };
+    });
+  }, [
+    objDetail?.lstComponentLines,
+    objDetail?.objFlexiDeclaration?.lstItems,
+    objFlexiAllocation.lstAllocationLines,
+    objFlexiAllocation.lstAvailableComponents,
+    objFlexiDeclarationContext?.eligible_components,
+    objFlexiDeclarationContext?.ineligible_components_with_reason,
+    objFlexiDeclarationContext?.lstDeclarationLines,
+  ]);
+  const dicEligibleFlexiImpactSummary = useMemo(() => {
+    const decDeclaredAnnual = lstEligibleFlexiDeclarationRows.reduce(
+      (decTotal, dicRow) => decTotal + getNumberValue(dicRow.decDraftDeclaredAnnual ?? dicRow.decAllocationAnnual),
+      0
+    );
+    const decMonthlyImpact = lstEligibleFlexiDeclarationRows.reduce(
+      (decTotal, dicRow) =>
+        decTotal + (
+          getNumberValue(dicRow.decMonthlyImpact) ||
+          (getNumberValue(dicRow.decDraftDeclaredAnnual ?? dicRow.decAllocationAnnual) / 12)
+        ),
+      0
+    );
+    const decFlexiBasketAnnual = dicFlexiTotals.decFlexiBucketAvailableAnnual;
+    const decRemainingAnnualBalance = decFlexiBasketAnnual - decDeclaredAnnual;
+    return {
+      decDeclaredAnnual,
+      decMonthlyImpact,
+      decRemainingAnnualBalance,
+      decResidualTaxableAnnual: decRemainingAnnualBalance,
+    };
+  }, [dicFlexiTotals.decFlexiBucketAvailableAnnual, lstEligibleFlexiDeclarationRows]);
 
   const lstFilteredComponentRows = useMemo(
     () => lstComponentRows.filter((dicRow) => {
@@ -2363,8 +2536,28 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           <Box className={styles.tableCard}>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
+                {blnHasFlexiBucket
+                  ? t("employee_salary_eligible_flexi_components", "Flexi Allocation and Benefits")
+                  : t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
               </Typography>
+              {blnHasFlexiBucket ? (
+                <Button
+                  size="small"
+                  variant="contained"
+                  className={styles.primaryButton}
+                  onClick={() => {
+                    const objParams = new URLSearchParams();
+                    objParams.set("intEmployeeID", String(intEmployeeID));
+                    if (objDetail?.objFlexiDeclaration?.intDeclarationID) {
+                      objParams.set("intDeclarationID", String(objDetail.objFlexiDeclaration.intDeclarationID));
+                    }
+                    objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
+                    objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
+                  }}
+                >
+                  {t("employee_salary_approve", "Approve")}
+                </Button>
+              ) : null}
             </Stack>
             {!blnHasFlexiBucket ? (
               <Alert severity={blnHasFlexiAllocations ? "error" : "info"} sx={{ mb: 1.25 }}>
@@ -2373,7 +2566,44 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   : t("employee_salary_flexi_not_enabled", "Flexi Pay is not enabled for this employee's salary structure.")}
               </Alert>
             ) : null}
-            {blnHasFlexiBucket || lstFlexiRows.length > 0 ? (
+            {blnHasFlexiBucket ? (
+            <Box className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>{t("employee_salary_flexi_component", "Component")}</th>
+                    <th>{t("employee_salary_eligibility", "Eligibility")}</th>
+                    <th>{t("employee_salary_regime", "Regime")}</th>
+                    <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
+                    <th>{t("employee_salary_employee_allocation_annual", "Declared Annual")}</th>
+                    <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
+                    <th>{t("employee_salary_proof_required", "Proof Required")}</th>
+                    <th>{t("employee_salary_status", "Status")}</th>
+                    <th>{t("employee_salary_reason_action", "Reason / Action")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lstEligibleFlexiDeclarationRows.length === 0 ? (
+                    <tr>
+                      <td className={styles.emptyState} colSpan={9}>{t("employee_salary_no_flexi_components_found", "No flexi components found.")}</td>
+                    </tr>
+                  ) : lstEligibleFlexiDeclarationRows.map((dicRow) => (
+                    <tr key={dicRow.intSalaryComponentID}>
+                      <td>{dicRow.strComponentName ?? dicRow.strComponentCode ?? "-"}</td>
+                      <td>{formatFlexiEligibilityText(dicRow)}</td>
+                      <td>{formatFlexiApplicableRegime(dicRow)}</td>
+                      <td>{formatOptionalCurrencyValue(dicRow.decEffectiveAnnualCap ?? dicRow.decAnnualLimit ?? null, strCurrencyCode)}</td>
+                      <td>{formatOptionalCurrencyValue(dicRow.decDraftDeclaredAnnual ?? null, strCurrencyCode)}</td>
+                      <td>{formatOptionalCurrencyValue(dicRow.decMonthlyImpact ?? null, strCurrencyCode)}</td>
+                      <td>{dicRow.blnProofRequired ? t("employee_salary_proof_required_label", "Required") : t("employee_salary_no", "No")}</td>
+                      <td>{formatFlexiDeclarationStatus(dicRow.strDeclarationItemStatus)}</td>
+                      <td>{dicRow.strEligibilityReason || dicRow.strEligibilityDetailsReason || dicRow.strRegimeEligibilityReason || dicRow.strDeclarationItemRemarks || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+            ) : lstFlexiRows.length > 0 ? (
             <Box className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
@@ -2395,11 +2625,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </tr>
                 </thead>
                 <tbody>
-                  {lstFlexiRows.length === 0 ? (
-                    <tr>
-                      <td className={styles.emptyState} colSpan={14}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
-                    </tr>
-                  ) : lstFlexiRows.map((dicRow) => (
+                  {lstFlexiRows.map((dicRow) => (
                     <tr key={dicRow.intSalaryComponentID}>
                       <td>{dicRow.strComponentName}</td>
                       <td>{dicRow.strMonthlyLimit}</td>
@@ -2475,15 +2701,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_declared_flexi", "Approved / Declared Flexi")}</Typography>
               <Stack direction="row" alignItems="center" spacing={0.25}>
-                <Typography sx={{ color: "#dc2626", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicFlexiTotals.decApprovedFlexiAnnual || dicFlexiTotals.decDeclaredFlexiAnnual, strCurrencyCode)}</Typography>
+                <Typography sx={{ color: "#dc2626", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicEligibleFlexiImpactSummary.decDeclaredAnnual, strCurrencyCode)}</Typography>
                 <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
               </Stack>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_remaining_balance", "Remaining Balance")}</Typography>
               <Stack direction="row" alignItems="center" spacing={0.25}>
-                <Typography sx={{ color: dicFlexiTotals.decRemainingAnnualBalance < 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicFlexiTotals.decRemainingAnnualBalance, strCurrencyCode)}</Typography>
-                <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
+                <Typography sx={{ color: dicEligibleFlexiImpactSummary.decRemainingAnnualBalance < 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicEligibleFlexiImpactSummary.decRemainingAnnualBalance, strCurrencyCode)}</Typography>
+                <KeyboardArrowUpRoundedIcon sx={{ color: dicEligibleFlexiImpactSummary.decRemainingAnnualBalance < 0 ? "#dc2626" : "#059669", fontSize: 18 }} />
               </Stack>
             </Stack>
 
@@ -2493,15 +2719,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_residual_taxable_allowance", "Residual Taxable Component")}</Typography>
                   <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: 15 }} />
                 </Stack>
-                <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicFlexiTotals.decRemainingAnnualBalance, strCurrencyCode)}</Typography>
+                <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicEligibleFlexiImpactSummary.decResidualTaxableAnnual, strCurrencyCode)}</Typography>
               </Stack>
             </Box>
 
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_net_payroll_impact_monthly", "Estimated Monthly Payroll Impact")}</Typography>
               <Stack direction="row" alignItems="center" spacing={0.25}>
-                <Typography sx={{ color: dicFlexiTotals.decResidualMonthlyAmount < 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicFlexiTotals.decResidualMonthlyAmount, strCurrencyCode)}</Typography>
-                {decRevisionNetPayrollImpactMonthly < 0 ? (
+                <Typography sx={{ color: dicEligibleFlexiImpactSummary.decMonthlyImpact > 0 ? "#dc2626" : "#059669", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(-dicEligibleFlexiImpactSummary.decMonthlyImpact, strCurrencyCode)}</Typography>
+                {dicEligibleFlexiImpactSummary.decMonthlyImpact > 0 ? (
                   <KeyboardArrowDownRoundedIcon sx={{ color: "#dc2626", fontSize: 18 }} />
                 ) : (
                   <KeyboardArrowUpRoundedIcon sx={{ color: "#059669", fontSize: 18 }} />
