@@ -883,8 +883,9 @@ export default function CostCenterMasterPanel() {
               }}
             >
               <TextField
+                required
                 data-testid="cost-center-master.dialog.name.input"
-                label={`${dicModuleLabels.fieldName} *`}
+                label={`${dicModuleLabels.fieldName}`}
                 value={dicForm.name}
                 inputProps={{ "data-testid": "cost-center-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -899,8 +900,9 @@ export default function CostCenterMasterPanel() {
                 fullWidth
               />
               <TextField
+                required
                 data-testid="cost-center-master.dialog.code.input"
-                label={`${dicModuleLabels.fieldCode} *`}
+                label={`${dicModuleLabels.fieldCode}`}
                 value={dicForm.code}
                 inputProps={{ "data-testid": "cost-center-master.dialog.code.input" }}
                 disabled={strMode === "view"}
