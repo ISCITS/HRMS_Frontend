@@ -2548,8 +2548,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   onClick={() => {
                     const objParams = new URLSearchParams();
                     objParams.set("intEmployeeID", String(intEmployeeID));
-                    if (objDetail?.objFlexiDeclaration?.intDeclarationID) {
-                      objParams.set("intDeclarationID", String(objDetail.objFlexiDeclaration.intDeclarationID));
+                    const intDeclarationID =
+                      objFlexiDeclarationContext?.objDeclaration?.intDeclarationID
+                      ?? objDetail?.objFlexiDeclaration?.intDeclarationID
+                      ?? null;
+                    if (intDeclarationID) {
+                      objParams.set("intDeclarationID", String(intDeclarationID));
                     }
                     objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
                     objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
