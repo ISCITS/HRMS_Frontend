@@ -204,20 +204,26 @@
   flex-direction: column;
   gap: 10px;
   margin-top: 6px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .payslipSearchLinePrimary {
   align-items: end;
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(180px, 220px)
+    minmax(180px, 220px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(180px, 220px)
+    auto;
 }
 
 .payslipSearchLineSecondary {
-  align-items: end;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(170px, 240px) auto;
+  display: none;
 }
 
 .bankFileSearchLinePrimary {

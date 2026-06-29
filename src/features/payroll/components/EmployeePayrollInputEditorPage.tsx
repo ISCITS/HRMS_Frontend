@@ -134,8 +134,8 @@ export default function EmployeePayrollInputEditorPage({
   strBackRoute,
 }: EmployeePayrollInputEditorPageProps) {
   const objRouter = useRouter();
-  const { t } = useModuleLabels("employee-payroll-input");
-  const { t: tCommon } = useModuleLabels("common");
+  const { t, blnLoadingLabels, strLabelError } = useModuleLabels("employee-payroll-input");
+  const { t: tCommon, blnLoadingLabels: blnCommonLabelsLoading, strLabelError: strCommonLabelError } = useModuleLabels("common");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeePayrollInputModuleCodes);
   const [dicForm, setDicForm] = useState<EmployeePayrollInputFormValues>(
     createInitialEmployeePayrollInputForm()
@@ -144,6 +144,7 @@ export default function EmployeePayrollInputEditorPage({
     null
   );
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnFormReady, setBlnFormReady] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
@@ -154,8 +155,15 @@ export default function EmployeePayrollInputEditorPage({
   const blnReadOnly = strMode === "view" || (strMode === "edit" && blnCanView && !blnCanEdit);
 
   useEffect(() => {
-    if (blnRightsLoading || (!blnCanView && !blnCanSave)) {
+    if (blnRightsLoading) {
+      setBlnLoading(true);
+      setBlnFormReady(false);
+      return;
+    }
+
+    if (!blnCanView && !blnCanSave) {
       setBlnLoading(false);
+      setBlnFormReady(false);
       return;
     }
 
@@ -163,9 +171,10 @@ export default function EmployeePayrollInputEditorPage({
 
     async function loadPage() {
       setBlnLoading(true);
+      setBlnFormReady(false);
       setStrError("");
       try {
-        const [objOptionsResult, objInputResult] = await Promise.allSettled([
+        const [objOptionsResult, objInputResult] = await Promise.all([
           employeePayrollInputService.getFormOptions(),
           (strMode === "edit" || strMode === "view") && intInputID
             ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
@@ -175,37 +184,17 @@ export default function EmployeePayrollInputEditorPage({
           return;
         }
 
-        if (objOptionsResult.status === "fulfilled") {
-          setObjOptions(objOptionsResult.value);
-        }
-
-        if (objInputResult.status === "fulfilled" && objInputResult.value) {
-          setDicForm(toEmployeePayrollInputFormValues(objInputResult.value));
-        }
-
-        const lstLoadErrors = [
-          {
-            strLabel: t("form_options_load_error", "Options"),
-            objResult: objOptionsResult,
-          },
-          {
-            strLabel: t("details_load_error", "Details"),
-            objResult: objInputResult,
-          },
-        ]
-          .filter(({ objResult }) => objResult.status === "rejected")
-          .map(({ strLabel, objResult }) => {
-            const strMessage =
-              objResult.status === "rejected" && objResult.reason instanceof Error
-                ? objResult.reason.message
-                : "Unable to load payroll input workspace.";
-            return `${strLabel}: ${strMessage}`;
-          });
-        if (lstLoadErrors.length) {
-          setStrError(lstLoadErrors.join(" "));
-        }
+        setObjOptions(objOptionsResult);
+        setDicForm(
+          objInputResult
+            ? toEmployeePayrollInputFormValues(objInputResult)
+            : createInitialEmployeePayrollInputForm()
+        );
+        setBlnFormReady(true);
       } catch (objError) {
         if (blnMounted) {
+          setObjOptions(null);
+          setBlnFormReady(false);
           setStrError(
             objError instanceof Error
               ? objError.message
@@ -396,7 +385,7 @@ export default function EmployeePayrollInputEditorPage({
     }
   }
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading || blnLoadingLabels || blnCommonLabelsLoading) {
     return (
       <BlockingLoader
         blnOpen
@@ -405,6 +394,30 @@ export default function EmployeePayrollInputEditorPage({
           "Loading payroll input..."
         )}
       />
+    );
+  }
+
+  if (!blnCanView && !blnCanSave) {
+    return (
+      <Stack spacing={2}>
+        {strLabelError ? <Alert severity="warning">{strLabelError}</Alert> : null}
+        {strCommonLabelError ? <Alert severity="warning">{strCommonLabelError}</Alert> : null}
+        {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+        <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert>
+      </Stack>
+    );
+  }
+
+  if (!blnFormReady || !objOptions) {
+    return (
+      <Stack spacing={2}>
+        {strLabelError ? <Alert severity="warning">{strLabelError}</Alert> : null}
+        {strCommonLabelError ? <Alert severity="warning">{strCommonLabelError}</Alert> : null}
+        {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+        <Alert severity="error">
+          {strError || t("workspace_load_error", "Unable to load payroll input workspace.")}
+        </Alert>
+      </Stack>
     );
   }
 
@@ -492,6 +505,8 @@ export default function EmployeePayrollInputEditorPage({
         </Stack>
       </Paper>
 
+      {strLabelError ? <Alert severity="warning">{strLabelError}</Alert> : null}
+      {strCommonLabelError ? <Alert severity="warning">{strCommonLabelError}</Alert> : null}
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
