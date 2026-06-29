@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import PayrollRunDetailDashboardPage from "@/features/payroll/components/PayrollRunDetailDashboardPage";
 import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
@@ -191,7 +192,7 @@ function DetailValue({
   );
 }
 
-export default function PayrollRunDetailPage({
+function PayrollRunDetailPageLegacy({
   intRunID,
 }: PayrollRunDetailPageProps) {
   const objRouter = useRouter();
@@ -987,3 +988,5 @@ export default function PayrollRunDetailPage({
     </Box>
   );
 }
+
+export default PayrollRunDetailDashboardPage;
