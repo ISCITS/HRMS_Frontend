@@ -1450,6 +1450,14 @@ export default function SalaryComponentEditorPage({
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "5." : "4."} {t("payslip_configuration", "Payslip Configuration")}</Typography>
+        {blnIsFlexiBucketCategory ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t(
+              "flexi_bucket_payslip_help",
+              "Flexi Pay itself stays hidden on the payslip. If nothing is allocated, the selected residual component appears on the payslip. If allocations are made, the allocated flexi components appear instead."
+            )}
+          </Alert>
+        ) : null}
         <Box
           sx={{
             display: "grid",
@@ -1461,16 +1469,16 @@ export default function SalaryComponentEditorPage({
         >
           <FormControlLabel
             sx={{ m: 0, pt: { xs: 0, md: 1.25 }, minHeight: 56, alignItems: "center" }}
-            control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
+            control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
-          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
+          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-testid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
             {lstPayslipSections.map((strOption) => (
               <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{t(`payslip_section_${normalizeSelectToken(strOption)}`, getPayslipSectionLabel(strOption))}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || !dicForm.blnIncludeInPayslip} fullWidth data-testid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
+          <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-testid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
         </Box>
      </Paper>
 
