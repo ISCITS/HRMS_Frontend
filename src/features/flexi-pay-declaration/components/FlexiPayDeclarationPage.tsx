@@ -46,6 +46,7 @@ import {
   type FlexiDeclarationLineRecord,
   type FlexiEligibilityQuestionRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
+import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
 
 type DraftInputMap = Record<number, string>;
 type EligibilityAnswerMap = Record<string, string | number | boolean | null>;
@@ -381,11 +382,15 @@ type DisplayedLineRecord = {
 export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
+  const { t } = useFlexiPayDeclarationLabels();
   const strFinancialYearCode = getCurrentFinancialYearCode();
   const intRouteDeclarationID = Number(objSearchParams.get("intDeclarationID") || 0);
   const blnRouteHasDeclarationID = Number.isInteger(intRouteDeclarationID) && intRouteDeclarationID > 0;
   const blnReviewEntryMode = blnRouteHasDeclarationID;
-  const strReturnTo = objSearchParams.get("returnTo") || "/salary/flexi-pay-declarations";
+  const strReturnTo = (objSearchParams.get("returnTo") || "").trim();
+  const strBackPath = strReturnTo.startsWith("/") && !strReturnTo.startsWith("//")
+    ? strReturnTo
+    : "/salary/flexi-pay-declarations";
   const intLoadSequenceRef = useRef(0);
   const intEvaluateSequenceRef = useRef(0);
   const strLastSyncedSignatureRef = useRef("");
@@ -455,7 +460,7 @@ export default function FlexiPayDeclarationPage() {
   }, [loadContext]);
 
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || objContext?.declaration_status || "draft";
-  const blnWorkflowEditable = ["draft", "returned", "rejected"].includes(normalizeText(strWorkflowStatus));
+  const blnWorkflowEditable = ["draft", "returned", "rejected", "released"].includes(normalizeText(strWorkflowStatus));
   const blnCanEditDeclaration = Boolean(!blnReviewEntryMode && blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
@@ -1122,9 +1127,9 @@ export default function FlexiPayDeclarationPage() {
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
               sx={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.72)", "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }}
-              onClick={() => objRouter.push(strReturnTo)}
+              onClick={() => objRouter.push(strBackPath)}
             >
-              Back
+              {t("flexi_pay_declaration_back", "Back")}
             </Button>
             {blnCanEditDeclaration ? (
               <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
@@ -1145,7 +1150,7 @@ export default function FlexiPayDeclarationPage() {
                   }
                 }}
               >
-                {normalizeText(strWorkflowStatus) === "returned" ? "Resubmit" : "Submit"}
+                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Resubmit" : "Submit"}
               </Button>
             ) : null}
           </Stack>
@@ -1318,7 +1323,7 @@ export default function FlexiPayDeclarationPage() {
                 disabled={blnSaving}
                 onClick={() => void handleConfirmSubmit()}
               >
-                {normalizeText(strWorkflowStatus) === "returned" ? "Confirm Resubmit" : "Confirm Submit"}
+                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Confirm Resubmit" : "Confirm Submit"}
               </Button>
             </DialogActions>
           </Dialog>

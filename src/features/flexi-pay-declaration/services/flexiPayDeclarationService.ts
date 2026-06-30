@@ -396,4 +396,14 @@ export const hrFlexiDeclarationReviewService = {
     });
     return objResult.Data;
   },
+
+  async release(intDeclarationID: number, strRemarks?: string | null): Promise<FlexiDeclarationContextRecord> {
+    const objResult = await requestApi<FlexiDeclarationContextRecord>({
+      strPath: `/hr/flexi-declarations/${intDeclarationID}/release`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strRemarks: strRemarks?.trim() || null },
+      strMenuAction: strPayrollFlexiMenuAction,
+    });
+    return objResult.Data;
+  },
 };

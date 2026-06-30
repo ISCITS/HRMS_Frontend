@@ -592,6 +592,11 @@ export type SalaryStructureComponentApiRecord = {
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName: string;
+  strCalcMethod?: string | null;
+  strTaxTreatment?: string | null;
+  strWageType?: string | null;
+  strRoundingRule?: string | null;
+  strPayslipSection?: string | null;
   blnIsFlexiBasketLine?: boolean;
   strFlexiComponentRole?: string | null;
   blnIncludedInCtc?: boolean;
@@ -651,6 +656,8 @@ export type SalaryStructureApiRecord = {
   intComponentCount?: number;
   dicStructureSummary?: {
     fltTotalCtc?: number;
+    fltGrossAnnual?: number;
+    fltGrossMonthly?: number;
     fltFixedPay?: number;
     fltVariablePay?: number;
     fltFlexiBasket?: number;
@@ -811,6 +818,54 @@ export type EmployeeSalarySummaryApiRecord = {
   objCurrentSalarySnapshot: EmployeeSalaryDetailApiRecord["objCurrentSalarySnapshot"];
   objAssignedStructure: EmployeeSalaryDetailApiRecord["objAssignedStructure"];
   intRevisionCount: number;
+};
+
+export type EmployeeSalaryRevisionPreviewApiRecord = {
+  intEmployeeID: number;
+  intSalaryStructureID: number;
+  strStructureCode: string | null;
+  strStructureName: string | null;
+  fltNonWageCapPercent?: number | null;
+  lstComponentLines: Array<{
+    intSalaryComponentID: number;
+    strComponentCode: string | null;
+    strComponentName: string | null;
+    strComponentCategory: string | null;
+    decAmountMonthly: number | null;
+    decAmountAnnual: number | null;
+    decPercentageValue: number | null;
+    strFormulaExpression: string | null;
+    blnIsOverride: boolean;
+    strRemarks: string | null;
+  }>;
+  objFlexiAllocation: {
+    blnHasFlexiBasket: boolean;
+    intFlexiBasketComponentID?: number | null;
+    intResidualComponentID?: number | null;
+    strResidualComponentCode?: string | null;
+    strResidualComponentName?: string | null;
+    decFlexiBasketAvailableAnnual?: number | null;
+    decFlexiBasketAvailableMonthly?: number | null;
+    decAllocatedFlexiAnnual?: number | null;
+    decAllocatedFlexiMonthly?: number | null;
+    decBalanceFlexiAnnual?: number | null;
+    decBalanceFlexiMonthly?: number | null;
+    decResidualTaxableAllowanceAnnual?: number | null;
+    decResidualTaxableAllowanceMonthly?: number | null;
+    lstAllocationLines: Array<{
+      intSalaryComponentID: number;
+      strComponentCode: string | null;
+      strComponentName: string | null;
+      decAnnualLimit: number | null;
+      decMonthlyLimit: number | null;
+      decAllocationAnnual: number;
+      decAllocationMonthly: number;
+      blnProofRequired: boolean;
+      strTaxTreatment: string | null;
+      decBalanceAnnual: number | null;
+      strSource?: string | null;
+    }>;
+  };
 };
 
 function buildApiPath(objResource: MasterApiResource, ...lstSegments: Array<string | number>) {
@@ -2478,6 +2533,15 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { intID: intEmployeeID },
       strMenuAction: MasterMenuAction.EmployeeSalarySummary
+    });
+  },
+
+  previewEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeSalaryRevisionPreviewApiRecord>({
+      strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Revisions, "preview"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.EmployeeSalaryView
     });
   },
 

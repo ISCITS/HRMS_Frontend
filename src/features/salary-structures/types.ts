@@ -85,6 +85,11 @@ export type SalaryStructureLineFormValue = {
   strValueSource: string;
   strComponentCode: string;
   strComponentName: string;
+  strCalcMethod?: string;
+  strTaxTreatment?: string;
+  strWageType?: string;
+  strRoundingRule?: string;
+  strPayslipSection?: string;
   blnIsFlexiBasketLine: boolean;
   strFlexiComponentRole: string;
   blnIncludedInCtc: boolean;
@@ -132,6 +137,8 @@ export type SalaryStructureCloneValues = {
 export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
   dicStructureSummary: {
     fltTotalCtc: number;
+    fltGrossAnnual?: number;
+    fltGrossMonthly?: number;
     fltFixedPay: number;
     fltVariablePay: number;
     fltFlexiBasket: number;
@@ -148,6 +155,11 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     intSalaryComponentID: number;
     strComponentCode: string | null;
     strComponentName: string;
+    strCalcMethod?: string | null;
+    strTaxTreatment?: string | null;
+    strWageType?: string | null;
+    strRoundingRule?: string | null;
+    strPayslipSection?: string | null;
     blnIsFlexiBasketLine: boolean;
     strFlexiComponentRole: string | null;
     blnIncludedInCtc: boolean;
