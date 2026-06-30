@@ -1,8 +1,10 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -10,6 +12,11 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
   MenuItem,
   Pagination,
   Stack,
@@ -504,6 +511,8 @@ export default function PayrollResultListPage({
             </Box>
           </Box>
         ) : null}
+
+        {blnPayslipScreen && blnEssMode ? (
         {blnPayslipScreen ? (
           <Box className={styles.payslipSearchPanel}>
             <Box className={styles.payslipSearchLinePrimary}>
@@ -516,10 +525,7 @@ export default function PayrollResultListPage({
                     strSearchEmployee: objEvent.target.value,
                   }))
                 }
-                placeholder={t(
-                  "employee_search_placeholder",
-                  "Search by employee code or name"
-                )}
+                placeholder={t("employee_search_placeholder", "Search by employee code or name")}
                 fullWidth
               />
               <TextField
@@ -603,74 +609,104 @@ export default function PayrollResultListPage({
               </Box>
             </Box>
           </Box>
-        ) : (
-          <Box className={styles.searchRow}>
-            <TextField
-              data-testid="payroll-results.list.employee-search.input"
-              value={dicSearchDraft.strSearchEmployee}
-              onChange={(objEvent) =>
-                setDicSearchDraft((dicPrevious) => ({
-                  ...dicPrevious,
-                  strSearchEmployee: objEvent.target.value,
-                }))
-              }
-              placeholder={t(
-                "employee_search_placeholder",
-                "Search by employee code or name"
-              )}
-              fullWidth
-            />
-            <TextField
-              value={dicSearchDraft.strSearchRun}
-              onChange={(objEvent) =>
-                setDicSearchDraft((dicPrevious) => ({
-                  ...dicPrevious,
-                  strSearchRun: objEvent.target.value,
-                }))
-              }
-              placeholder={t("run_search_placeholder", "Search by payroll run")}
-              fullWidth
-            />
-            {blnPayslipScreen ? (
-              <>
-                <TextField
-                  type="month"
-                  value={dicSearchDraft.strPayrollMonth}
-                  onChange={(objEvent) =>
-                    setDicSearchDraft((dicPrevious) => ({
-                      ...dicPrevious,
-                      strPayrollMonth: objEvent.target.value,
-                    }))
-                  }
-                  label={t("payroll_month", "Payroll Month")}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  value={dicSearchDraft.strDepartment}
-                  onChange={(objEvent) =>
-                    setDicSearchDraft((dicPrevious) => ({
-                      ...dicPrevious,
-                      strDepartment: objEvent.target.value,
-                    }))
-                  }
-                  placeholder={t("department", "Department")}
-                  fullWidth
-                />
-                <TextField
-                  value={dicSearchDraft.strLocation}
-                  onChange={(objEvent) =>
-                    setDicSearchDraft((dicPrevious) => ({
-                      ...dicPrevious,
-                      strLocation: objEvent.target.value,
-                    }))
-                  }
-                  placeholder={t("location", "Location")}
-                  fullWidth
-                />
-              </>
-            ) : null}
-            {blnPayslipScreen ? (
+        ) : null}
+
+        {!blnPayslipScreen ? (
+          <Box
+            sx={{
+              width: "100%",
+              border: "1px solid rgba(191,219,254,0.7)",
+              borderRadius: "28px",
+              px: { xs: 1.5, md: 2.5 },
+              py: { xs: 2, md: 2.2 },
+              background: "radial-gradient(circle at top center, rgba(226,241,255,0.72) 0%, #ffffff 45%, #f8fbff 100%)",
+              boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <Box sx={{ mb: 1.8 }}>
+              <Typography sx={{ color: "#0f172a", fontSize: { xs: "2rem", md: "2.1rem" }, fontWeight: 900, lineHeight: 1.05 }}>
+                {t("payroll_results_title", "Payroll Results")}
+              </Typography>
+              <Typography sx={{ color: "#5f7aa4", mt: 0.75, fontSize: "0.98rem" }}>
+                {t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 1.2,
+                gridTemplateColumns: { xs: "1fr", xl: "1.35fr 1.05fr 0.8fr 0.68fr 0.68fr auto auto" },
+                alignItems: "end",
+              }}
+            >
+              <TextField
+                data-testid="payroll-results.list.employee-search.input"
+                value={dicSearchDraft.strSearchEmployee}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strSearchEmployee: objEvent.target.value,
+                  }))
+                }
+                placeholder={t("employee_search_placeholder", "Search by employee code or name")}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonOutlineRoundedIcon sx={{ color: "#94a3b8", fontSize: 22 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                value={dicSearchDraft.strSearchRun}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strSearchRun: objEvent.target.value,
+                  }))
+                }
+                placeholder={t("run_search_placeholder", "Search by payroll run")}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonthOutlinedIcon sx={{ color: "#94a3b8", fontSize: 22 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                select
+                value={dicSearchDraft.strMonthScope}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strMonthScope: objEvent.target.value as SearchForm["strMonthScope"],
+                    strPayrollMonth: objEvent.target.value === "Custom" ? dicPrevious.strPayrollMonth : "",
+                  }))
+                }
+                label={t("data_scope", "Data Scope")}
+                fullWidth
+              >
+                <MenuItem value="Latest">{t("latest_month", "Latest month")}</MenuItem>
+                <MenuItem value="Custom">{t("custom_month", "Custom month")}</MenuItem>
+                <MenuItem value="All">{t("all_data", "All data")}</MenuItem>
+              </TextField>
+              <TextField
+                type="month"
+                value={dicSearchDraft.strPayrollMonth}
+                onChange={(objEvent) =>
+                  setDicSearchDraft((dicPrevious) => ({
+                    ...dicPrevious,
+                    strPayrollMonth: objEvent.target.value,
+                  }))
+                }
+                label={t("payroll_month", "Payroll Month")}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                disabled={dicSearchDraft.strMonthScope !== "Custom"}
+              />
               <TextField
                 select
                 label={t("status", "Status")}
@@ -681,18 +717,23 @@ export default function PayrollResultListPage({
                     strStatus: objEvent.target.value as SearchForm["strStatus"],
                   }))
                 }
+                label={t("status", "Status")}
                 fullWidth
               >
+                <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
+                <MenuItem value="Calculated">{t("status_calculated", "Calculated")}</MenuItem>
+                <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
+                <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
+                <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
                 <MenuItem value="All">{t("status_all", "All")}</MenuItem>
                 <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
               </TextField>
-            ) : null}
-            <Box className={styles.searchActions}>
               <Button
                 data-testid="payroll-results.list.search.button"
                 className={styles.primaryButton}
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => applyFilters(dicSearchDraft)}
+                sx={{ minWidth: 112, height: 50, borderRadius: "14px" }}
               >
                 {t("search", "Search")}
               </Button>
@@ -701,6 +742,7 @@ export default function PayrollResultListPage({
                 className={styles.secondaryButton}
                 startIcon={<ClearRoundedIcon />}
                 onClick={clearFilters}
+                sx={{ minWidth: 104, height: 50, borderRadius: "14px" }}
               >
                 {t("clear", "Clear")}
               </Button>

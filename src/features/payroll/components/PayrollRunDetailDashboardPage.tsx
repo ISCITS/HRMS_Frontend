@@ -540,6 +540,8 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const lstRecentValidationRows = lstValidationRows.slice(0, 6);
   const intBlockingCount = lstValidationRows.filter((dicIssue) => dicIssue.blnIsBlocking).length;
   const intWarningCount = lstValidationRows.filter((dicIssue) => !dicIssue.blnIsBlocking).length;
+  const intProcessedEmployeeCount = objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0;
+  const blnReprocessEnabled = blnCanReprocess && !blnSaving && objRun.strRunStatus !== "Closed" && intProcessedEmployeeCount > 0;
   const strScopeLabel = objRun.strScopeType === "SelectedEmployee"
     ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
     : t("scope_payroll_group", "Payroll Group");
@@ -622,7 +624,17 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               </MenuItem>
             );
           })}
-          {blnCanReprocess ? <MenuItem disabled={blnSaving || objRun.strRunStatus !== "Processed"} onClick={() => { handleCloseActions(); reprocessRun(); }}>{t("reprocess", "Reprocess")}</MenuItem> : null}
+          {blnCanReprocess ? (
+            <MenuItem
+              disabled={!blnReprocessEnabled}
+              onClick={() => {
+                handleCloseActions();
+                reprocessRun();
+              }}
+            >
+              {t("reprocess", "Reprocess")}
+            </MenuItem>
+          ) : null}
         </Menu>
 
         <Box sx={{ border: "1px solid #eef2f7", borderRadius: "12px", display: "grid", gap: { xs: 0, md: 1 }, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, px: 1.25, py: 0.75 }}>
