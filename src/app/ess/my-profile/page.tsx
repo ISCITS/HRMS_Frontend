@@ -339,7 +339,7 @@ export default function EssMyProfilePage() {
               Remove
             </Button>
             <Button
-              data-testid="ess.my-profile.edit.button"
+              controlId="ess.my-profile.edit.button"
               variant="contained"
               startIcon={<EditRoundedIcon />}
               onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}

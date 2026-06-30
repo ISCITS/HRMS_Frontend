@@ -515,9 +515,33 @@ export type PayrollResultLineRecord = {
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;
+  decCalculatedAmount?: number | null;
+  decOriginalAmount?: number | null;
+  decProratedAmount?: number | null;
+  decQuantity?: number | null;
+  decRate?: number | null;
   strSourceType?: string | null;
+  intSourceEntityID?: number | null;
+  intSourceEntityLineID?: number | null;
+  strSourceLabel?: string | null;
+  intFlexiAllocationID?: number | null;
+  blnIsFlexiComponent?: boolean;
+  blnIsFlexiResidual?: boolean;
+  blnIsEmployerContribution?: boolean;
+  blnIsEmployeeDeduction?: boolean;
+  blnIsTaxLine?: boolean;
+  blnIsDeclaredFlexi?: boolean;
+  blnIsResidualTaxable?: boolean;
+  blnIncludeInGross?: boolean;
+  blnIncludeInNetPay?: boolean;
+  blnIncludeInPayslip?: boolean;
+  strCalculationSource?: string | null;
+  objCalculationTrace?: Record<string, unknown> | null;
   blnIsWages?: boolean | null;
   blnIncludeInRemuneration?: boolean | null;
+  strPayslipSection?: string | null;
+  strBasisSnapshot?: string | null;
+  strFormulaSnapshot?: string | null;
   strRemarks: string | null;
 };
 
@@ -560,6 +584,13 @@ export type PayrollResultRecord = {
   decDeductionAmount: number;
   decTaxAmount: number;
   decNetPayAmount: number;
+  decGrossEarningsAmount: number;
+  decEmployeeDeductionTotal: number;
+  decTaxTotal: number;
+  decTotalEmployerCost: number;
+  decFlexiBucketAmount: number;
+  decDeclaredFlexiAmount: number;
+  decResidualFlexiAmount: number;
   strRegimeUsed: string | null;
   decTaxableIncome: number;
   decAnnualTaxAmount: number;
@@ -581,6 +612,9 @@ export type PayrollResultRecord = {
   decComplianceWageBaseAmount: number;
   decEmployerContributionTotal: number;
   decTaxableIncomeMonthly: number;
+  dtPeriodStartDate?: string | null;
+  dtPeriodEndDate?: string | null;
+  decCalendarDays?: number | null;
   decPaidDays: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
@@ -589,6 +623,7 @@ export type PayrollResultRecord = {
   blnPayslipGenerated: boolean;
   dtPayslipGeneratedOn: string | null;
   strRemarks: string | null;
+  objCalculationTrace?: Record<string, unknown> | null;
 };
 
 export type PayrollResultListRecord = PayrollResultRecord;
@@ -699,10 +734,33 @@ export type PayslipPreviewRecord = {
   };
   dicTotals: {
     decGrossEarnings: number;
+    decEmployeeDeductions: number;
+    decTaxTotal: number;
     decTotalDeductions: number;
     decNetPay: number;
     decEmployerContributionTotal: number;
+    decTotalEmployerCost: number;
     strNetPayInWords: string;
+  };
+  dicSummary?: {
+    decFlexiBucketAmount: number;
+    decDeclaredFlexiAmount: number;
+    decResidualFlexiAmount: number;
+    decGrossEarningsAmount: number;
+    decEmployeeDeductionTotal: number;
+    decTaxTotal: number;
+    decEmployerContributionTotal: number;
+    decTotalEmployerCost: number;
+  };
+  dicFooter?: {
+    strPayrollRunCode: string;
+    strPayrollRunName: string;
+    intPayrollResultID: number;
+    intPayrollResultVersion: number;
+    strPayslipNumber: string | null;
+    strPayslipStatus: string;
+    dtGeneratedOn: string | null;
+    strSystemNote: string;
   };
   objTemplateSettings: Record<string, unknown>;
   strRemarks: string | null;

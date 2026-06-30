@@ -279,10 +279,10 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
             {showExportOptions ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button data-testid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
+                <Button controlId={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
                   {strExportExcelLabel}
                 </Button>
-                <Button data-testid={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
+                <Button controlId={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
                   {strExportPdfLabel}
                 </Button>
               </Stack>
@@ -301,7 +301,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   {strRowsPerPageLabel}
                 </Typography>
                 <TextField
-                  data-testid={`${testIdPrefix}.rows-per-page.select`}
+                  controlId={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
                   select
                   size="small"
@@ -325,7 +325,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Typography>
               </Box>
               <Pagination
-                data-testid={`${testIdPrefix}.pagination`}
+                controlId={`${testIdPrefix}.pagination`}
                 className={styles.paginationBar}
                 count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
                 page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
@@ -350,7 +350,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
         }}
       >
         <Table
-          data-testid={`${testIdPrefix}.table`}
+          controlId={`${testIdPrefix}.table`}
           size="small"
           stickyHeader
           sx={{
@@ -410,7 +410,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               paginatedRows.map((row, index) => (
                 <TableRow
                   key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
-                  data-testid={`${testIdPrefix}.row`}
+                  controlId={`${testIdPrefix}.row`}
                   hover
                   sx={[
                     {

@@ -134,7 +134,7 @@ export default function GoogleMfaChallengeView({
 
           <Stack spacing={2}>
             {blnAllowBackupCode ? (
-              <Button data-testid={toggleBackupCodeButtonTestId} variant="text" onClick={onToggleBackupCode} startIcon={<VpnKeyRoundedIcon />}>
+              <Button controlId={toggleBackupCodeButtonTestId} variant="text" onClick={onToggleBackupCode} startIcon={<VpnKeyRoundedIcon />}>
                 {blnUseBackupCode ? "Use authenticator code instead" : "Use backup code instead"}
               </Button>
             ) : null}
@@ -142,7 +142,7 @@ export default function GoogleMfaChallengeView({
             {blnUseBackupCode ? (
               <TextField
                 label="Backup code"
-                inputProps={{ "data-testid": backupCodeInputTestId }}
+                inputProps={{ "controlId": backupCodeInputTestId }}
                 value={strBackupCode}
                 onChange={(objEvent) => onBackupCodeChange(objEvent.target.value.toUpperCase())}
                 placeholder="Enter one backup code"
@@ -151,7 +151,7 @@ export default function GoogleMfaChallengeView({
             ) : (
               <TextField
                 label={strResolvedCodeLabel}
-                inputProps={{ "data-testid": codeInputTestId }}
+                inputProps={{ "controlId": codeInputTestId }}
                 value={strCode}
                 onChange={(objEvent) => onCodeChange(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder={strResolvedCodePlaceholder}
@@ -160,7 +160,7 @@ export default function GoogleMfaChallengeView({
             )}
 
             <Button
-              data-testid={verifyButtonTestId}
+              controlId={verifyButtonTestId}
               variant="contained"
               disabled={blnSubmitting || !blnCanVerify}
               onClick={onVerify}

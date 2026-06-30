@@ -61,7 +61,7 @@ function LineTable({ lstLines, blnReadOnly, onEdit, onDelete }: { lstLines: FNFS
             <tr key={line.intID}>
               <td>{line.strLineType}{line.strRecoveryType ? ` / ${line.strRecoveryType}` : ""}</td><td>{line.strLineCode}</td><td>{line.strLineName}</td><td>{line.strCalculationBasis || "-"}</td><td>{formatCurrency(line.decActualAmount ?? line.decAmount)}</td><td>{formatCurrency(line.decAmount)}</td><td>{line.strSourceType || (line.blnIsSystemCalculated ? "system" : "manual")}</td>
               <td className={styles.actionsColumn}>
-                {!blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} data-testid="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} data-testid="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
+                {!blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} controlId="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} controlId="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
               </td>
             </tr>
           )) : <tr><td colSpan={8} className={styles.emptyState}>No settlement lines yet.</td></tr>}
@@ -73,12 +73,12 @@ function LineTable({ lstLines, blnReadOnly, onEdit, onDelete }: { lstLines: FNFS
 
 export function FNFSettlementCalculationPanel({ objSettlement, blnReadOnly, onAdd, onEdit, onDelete }: { objSettlement: FNFSettlementRecord; blnReadOnly: boolean; onAdd: () => void; onEdit: (line: FNFSettlementLineRecord) => void; onDelete: (line: FNFSettlementLineRecord) => void }) {
   const lstLines = objSettlement.lstLines || [];
-  return <Section strTitle="Earnings, Deductions & Recoveries" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} data-testid="payroll.fnf-settlement.add-line.button">Add Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
+  return <Section strTitle="Earnings, Deductions & Recoveries" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} controlId="payroll.fnf-settlement.add-line.button">Add Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
 }
 
 export function FNFLeaveEncashmentPanel({ objSettlement, blnReadOnly = true, onAdd, onEdit, onDelete }: { objSettlement: FNFSettlementRecord; blnReadOnly?: boolean; onAdd?: () => void; onEdit?: (line: FNFSettlementLineRecord) => void; onDelete?: (line: FNFSettlementLineRecord) => void }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strCalculationBasis?.includes("leave") || line.strLineCode.includes("LEAVE"));
-  return <Section strTitle="Leave Encashment" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} data-testid="payroll.fnf-settlement.leave-add-line.button">Add Leave Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
+  return <Section strTitle="Leave Encashment" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} controlId="payroll.fnf-settlement.leave-add-line.button">Add Leave Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
 }
 
 export function FNFNoticePayPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {

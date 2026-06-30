@@ -202,7 +202,7 @@ export default function EssMyBankDetailsPage() {
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={6}>
             <TextField
-              data-testid="ess.my-bank-details.bank.select"
+              controlId="ess.my-bank-details.bank.select"
               fullWidth
               select
               label="Bank"
@@ -219,7 +219,7 @@ export default function EssMyBankDetailsPage() {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
-              data-testid="ess.my-bank-details.account-holder-name.input"
+              controlId="ess.my-bank-details.account-holder-name.input"
               fullWidth
               label="Account Holder Name"
               value={dicForm.strAccountHolderName}
@@ -230,7 +230,7 @@ export default function EssMyBankDetailsPage() {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
-              data-testid="ess.my-bank-details.account-number.input"
+              controlId="ess.my-bank-details.account-number.input"
               fullWidth
               label="Account Number"
               value={dicForm.strAccountNumber}
@@ -241,7 +241,7 @@ export default function EssMyBankDetailsPage() {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
-              data-testid="ess.my-bank-details.ifsc-code.input"
+              controlId="ess.my-bank-details.ifsc-code.input"
               fullWidth
               label="IFSC Code"
               value={dicForm.strIfscCode}
@@ -254,7 +254,7 @@ export default function EssMyBankDetailsPage() {
 
         <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button
-            data-testid="ess.my-bank-details.save.button"
+            controlId="ess.my-bank-details.save.button"
             variant="contained"
             startIcon={<SaveRoundedIcon />}
             disabled={blnSaving || !blnCanSave}

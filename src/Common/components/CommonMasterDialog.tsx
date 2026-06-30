@@ -28,9 +28,9 @@ type CommonMasterDialogProps = {
   onDialogClose?: DialogProps["onClose"];
   strSecondaryButtonClassName?: string;
   strPrimaryButtonClassName?: string;
-  rootTestId?: string;
-  cancelButtonTestId?: string;
-  primaryButtonTestId?: string;
+  rootControlId?: string;
+  cancelButtonControlId?: string;
+  primaryButtonControlId?: string;
 };
 
 export type { CommonMasterDialogProps };
@@ -55,13 +55,10 @@ export default function CommonMasterDialog({
   onDialogClose,
   strSecondaryButtonClassName = masterStyles.secondaryButton,
   strPrimaryButtonClassName = masterStyles.primaryButton,
-  rootTestId,
-  cancelButtonTestId,
-  primaryButtonTestId,
 }: CommonMasterDialogProps) {
   return (
     <Dialog
-      data-testid={rootTestId}
+      controlId="common-master-dialog"
       open={blnOpen}
       onClose={onDialogClose ?? (() => onClose())}
       onKeyDown={handleSingleDialogActionEnter}
@@ -75,11 +72,11 @@ export default function CommonMasterDialog({
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button data-testid={cancelButtonTestId} className={strSecondaryButtonClassName} onClick={onClose}>
+        <Button controlId="common-master-dialog.cancel.button" className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
         {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button data-testid={primaryButtonTestId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
+          <Button controlId="common-master-dialog.primary.button" className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
             {strPrimaryLabel}
           </Button>
         ) : null}

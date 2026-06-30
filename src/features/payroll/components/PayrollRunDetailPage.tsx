@@ -572,7 +572,7 @@ function PayrollRunDetailPageLegacy({
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll/runs")}
-          data-testid="payroll.run-detail.back.button"
+          controlId="payroll.run-detail.back.button"
         >
           {t("back_to_list", "Back to List")}
         </Button>
@@ -605,7 +605,7 @@ function PayrollRunDetailPageLegacy({
                     className={!dicStep.blnActive ? styles.secondaryButton : undefined}
                     onClick={fnOnClick}
                     disabled={dicStep.strStep !== "Draft" && !blnEnabled}
-                    data-testid={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replace(/\s+/g, "-")}.button`}
+                    controlId={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replace(/\s+/g, "-")}.button`}
                     sx={{
                       minWidth: { xs: 96, sm: 104 },
                       height: 34,
@@ -647,7 +647,7 @@ function PayrollRunDetailPageLegacy({
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
             disabled={blnSaving || objRun.strRunStatus !== "Processed"}
-            data-testid="payroll.run-detail.reprocess.button"
+            controlId="payroll.run-detail.reprocess.button"
           >
             {t("reprocess", "Reprocess")}
           </Button> : null}
@@ -655,7 +655,7 @@ function PayrollRunDetailPageLegacy({
             className={styles.secondaryButton}
             startIcon={<ReceiptLongRoundedIcon />}
             onClick={() => objRouter.push("/payroll/results")}
-            data-testid="payroll.run-detail.results.button"
+            controlId="payroll.run-detail.results.button"
           >
             {t("view_results", "Results")}
           </Button>
@@ -767,7 +767,7 @@ function PayrollRunDetailPageLegacy({
                   )
                 }
                 disabled={!blnCanEdit || blnSaving || objRun.strRunStatus === "Closed"}
-                data-testid="payroll.run-detail.status.select"
+                controlId="payroll.run-detail.status.select"
                 fullWidth
               >
                 {lstEditableRunStatuses.map((strStatus) => (
@@ -790,7 +790,7 @@ function PayrollRunDetailPageLegacy({
                   checked={blnIsLocked}
                   onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
                   disabled={!blnCanEdit || objRun.strRunStatus === "Closed"}
-                  inputProps={{ "data-testid": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                  inputProps={{ "controlId": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 />
               </Box>
               {blnCanEdit ? <Button
@@ -798,7 +798,7 @@ function PayrollRunDetailPageLegacy({
                 onClick={saveLockState}
                 disabled={blnSaving}
                 sx={{ alignSelf: "flex-end" }}
-                data-testid="payroll.run-detail.save-status.button"
+                controlId="payroll.run-detail.save-status.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button> : null}
@@ -878,7 +878,7 @@ function PayrollRunDetailPageLegacy({
                 startIcon={<ReceiptLongRoundedIcon />}
                 onClick={generateAllPayslips}
                 disabled={blnPayslipLoading}
-                data-testid="payroll.run-detail.payslips.generate-all.button"
+                controlId="payroll.run-detail.payslips.generate-all.button"
               >
                 {t("generate_all", "Generate All Payslips")}
               </Button> : null}
@@ -915,7 +915,7 @@ function PayrollRunDetailPageLegacy({
                               className={styles.secondaryButton}
                               onClick={() => viewPayslip(dicRow)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.view.button"
+                              controlId="payroll.run-detail.payslip.view.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("view", "View")}
@@ -924,7 +924,7 @@ function PayrollRunDetailPageLegacy({
                               className={styles.secondaryButton}
                               onClick={() => generatePayslip(dicRow)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.generate.button"
+                              controlId="payroll.run-detail.payslip.generate.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("generate", "Generate")}
@@ -934,7 +934,7 @@ function PayrollRunDetailPageLegacy({
                               startIcon={<DownloadRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, false)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.download.button"
+                              controlId="payroll.run-detail.payslip.download.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("download", "Download")}
@@ -944,7 +944,7 @@ function PayrollRunDetailPageLegacy({
                               startIcon={<PrintRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, true)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.print.button"
+                              controlId="payroll.run-detail.payslip.print.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("print", "Print")}
@@ -971,11 +971,11 @@ function PayrollRunDetailPageLegacy({
         onClose={() => setBlnPayslipDialogOpen(false)}
         maxWidth="lg"
         fullWidth
-        data-testid="payroll.run-detail.payslip-preview.dialog"
+        controlId="payroll.run-detail.payslip-preview.dialog"
       >
         <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
           {t("payslip_preview", "Payslip Preview")}
-          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} data-testid="payroll.run-detail.payslip-preview.close.icon-button">
+          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} controlId="payroll.run-detail.payslip-preview.close.icon-button">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>

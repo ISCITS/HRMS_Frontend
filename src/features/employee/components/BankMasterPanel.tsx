@@ -11,11 +11,14 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   InputAdornment,
   MenuItem,
   Pagination,
   Snackbar,
-  Switch,
   TextField,
   Typography
 } from "@mui/material";
@@ -23,8 +26,8 @@ import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -724,28 +727,28 @@ export default function BankMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="bank-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicBankLabels.backButton}</Button>
+        <Button controlId="bank-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicBankLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         {strRightsError ? (
-          <Typography data-testid="bank-master.list.banner.rights-error" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          <Typography controlId="bank-master.list.banner.rights-error" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography data-testid="bank-master.read-only.banner" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography controlId="bank-master.read-only.banner" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Bank.")}
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="bank-master.list.search-name.input" inputProps={{ "data-testid": "bank-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} fullWidth />
-          <TextField data-testid="bank-master.list.search-code.input" inputProps={{ "data-testid": "bank-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} fullWidth />
-          <TextField data-testid="bank-master.list.search-status.select" inputProps={{ "data-testid": "bank-master.list.search-status.select" }} select label={dicBankLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem data-testid="bank-master.list.search-status.all.option" value="All">All</MenuItem>
-            <MenuItem data-testid="bank-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem data-testid="bank-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          <TextField controlId="bank-master.list.search-name.input" inputProps={{ controlId: "bank-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} fullWidth />
+          <TextField controlId="bank-master.list.search-code.input" inputProps={{ controlId: "bank-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} fullWidth />
+          <TextField controlId="bank-master.list.search-status.select" inputProps={{ controlId: "bank-master.list.search-status.select" }} select label={dicBankLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem controlId="bank-master.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem controlId="bank-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem controlId="bank-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-testid="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
@@ -756,9 +759,9 @@ export default function BankMasterPanel() {
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicBankLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button data-testid="bank-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicBankLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button data-testid="bank-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicBankLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-testid="bank-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicBankLabels.bulkDelete}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="bank-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicBankLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="bank-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicBankLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button controlId="bank-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicBankLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -766,9 +769,9 @@ export default function BankMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button data-testid="bank-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicBankLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button data-testid="bank-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicBankLabels.exportFileName, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button data-testid="bank-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicBankLabels.exportTitle, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
+            {blnCanAdd ? <Button controlId="bank-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicBankLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button controlId="bank-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicBankLabels.exportFileName, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button controlId="bank-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicBankLabels.exportTitle, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredBanks.length > 0 ? (
@@ -798,12 +801,12 @@ export default function BankMasterPanel() {
         ) : null}
         </Box>
         {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState} data-testid="bank-master.list.loading">
+          <Box className={styles.emptyState} controlId="bank-master.list.loading">
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{dicBankLabels.loadingRecords}</Typography>
           </Box>
         ) : !blnCanView ? (
-          <Box className={styles.emptyState} data-testid="bank-master.no-access.message">
+          <Box className={styles.emptyState} controlId="bank-master.no-access.message">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
           </Box>
@@ -813,28 +816,28 @@ export default function BankMasterPanel() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th><Checkbox data-testid="bank-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "bank-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
+                <th><Checkbox controlId="bank-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ controlId: "bank-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
                 <th>{dicBankLabels.tableActions}</th>
                 <th>{dicBankLabels.tableName}</th>
                 <th>{dicBankLabels.tableCode}</th>
                 <th>{dicBankLabels.tableStatus}</th>
               </tr>
             </thead>
-            <tbody data-testid="bank-master.list.table.body">
+            <tbody controlId="bank-master.list.table.body">
               {lstFilteredBanks.length === 0 ? (
-                <tr data-testid="bank-master.list.table.empty-row">
-                  <td data-testid="bank-master.list.empty-state" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
+                <tr controlId="bank-master.list.table.empty-row">
+                  <td controlId="bank-master.list.empty-state" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
                 </tr>
               ) : lstVisibleBanks.map((dicBank) => {
                 const blnSelected = lstSelectedIds.includes(dicBank.id);
                 return (
-                  <tr key={dicBank.id} data-testid="bank-master.list.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox data-testid="bank-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} inputProps={{ "data-testid": "bank-master.list.row.select.checkbox", "data-row-key": dicBank.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                    <td><CommonRowActions testIdPrefix="bank-master.list.row" rowKey={dicBank.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
-                    <td data-testid="bank-master.list.row.name.cell" data-row-key={dicBank.id}>{dicBank.name}</td>
-                    <td data-testid="bank-master.list.row.code.cell" data-row-key={dicBank.id}>{dicBank.code}</td>
-                    <td data-testid="bank-master.list.row.status.cell" data-row-key={dicBank.id}>
-                      <span data-testid="bank-master.list.row.status.pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
+                  <tr key={dicBank.id} controlId="bank-master.list.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
+                    <td><Checkbox controlId="bank-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} inputProps={{ controlId: "bank-master.list.row.select.checkbox", "data-row-key": dicBank.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
+                    <td><CommonRowActions rowKey={dicBank.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
+                    <td controlId="bank-master.list.row.name.cell" data-row-key={dicBank.id}>{dicBank.name}</td>
+                    <td controlId="bank-master.list.row.code.cell" data-row-key={dicBank.id}>{dicBank.code}</td>
+                    <td controlId="bank-master.list.row.status.cell" data-row-key={dicBank.id}>
+                      <span controlId="bank-master.list.row.status.pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
                     </td>
                   </tr>
                 );
@@ -848,9 +851,6 @@ export default function BankMasterPanel() {
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
-        rootTestId="bank-master.dialog"
-        cancelButtonTestId="bank-master.dialog.cancel.button"
-        primaryButtonTestId="bank-master.dialog.save.button"
         strTitle={strMode === "add" ? dicBankLabels.dialogAddTitle : strMode === "edit" ? dicBankLabels.dialogEditTitle : dicBankLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicBankLabels.saving : dicCommonLabels.save}
@@ -869,7 +869,7 @@ export default function BankMasterPanel() {
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
               <Typography className={styles.switchLabel}>{dicBankLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="bank-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
           </Box>
         }
         nodeContent={
@@ -884,10 +884,10 @@ export default function BankMasterPanel() {
             >
               <TextField
                 required
-                data-testid="bank-master.dialog.name.input"
+                controlId="bank-master.dialog.name.input"
                 label={`${dicBankLabels.fieldName}`}
                 value={dicForm.name}
-                inputProps={{ "data-testid": "bank-master.dialog.name.input" }}
+                inputProps={{ controlId: "bank-master.dialog.name.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value;
@@ -896,16 +896,16 @@ export default function BankMasterPanel() {
                   syncEnglishBankName(strValue);
                 }}
                 error={Boolean(dicErrors.name)}
-                FormHelperTextProps={{ "data-testid": "bank-master.dialog.name.error" }}
+                FormHelperTextProps={{ controlId: "bank-master.dialog.name.error" } as Record<string, string>}
                 helperText={dicErrors.name}
                 fullWidth
               />
               <TextField
                 required
-                data-testid="bank-master.dialog.code.input"
+                controlId="bank-master.dialog.code.input"
                 label={`${dicBankLabels.fieldCode}`}
                 value={dicForm.code}
-                inputProps={{ "data-testid": "bank-master.dialog.code.input" }}
+                inputProps={{ controlId: "bank-master.dialog.code.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value.toUpperCase();
@@ -914,7 +914,7 @@ export default function BankMasterPanel() {
                   syncBankCode(strValue);
                 }}
                 error={Boolean(dicErrors.code)}
-                FormHelperTextProps={{ "data-testid": "bank-master.dialog.code.error" }}
+                FormHelperTextProps={{ controlId: "bank-master.dialog.code.error" } as Record<string, string>}
                 helperText={dicErrors.code}
                 fullWidth
               />
@@ -922,17 +922,17 @@ export default function BankMasterPanel() {
 
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography data-testid="bank-master.dialog.multilingual.title" sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
-                <Typography data-testid="bank-master.dialog.multilingual.help" sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
+                <Typography controlId="bank-master.dialog.multilingual.title" sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography controlId="bank-master.dialog.multilingual.help" sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated bank names for supported languages.")}
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button data-testid="bank-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button controlId="bank-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  data-testid="bank-master.dialog.translate.button"
+                  controlId="bank-master.dialog.translate.button"
                   variant="contained"
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
@@ -945,7 +945,7 @@ export default function BankMasterPanel() {
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
-                    <CircularProgress data-testid="bank-master.dialog.translate.loading" size={18} sx={{ color: "#ffffff" }} />
+                    <CircularProgress controlId="bank-master.dialog.translate.loading" size={18} sx={{ color: "#ffffff" }} />
                   ) : (
                     t("translate", "AI Translate")
                   )}
@@ -957,7 +957,7 @@ export default function BankMasterPanel() {
               {dicForm.lstTexts.map((dicText, intIndex) => (
                 <Box
                   key={dicText.strRowID}
-                  data-testid="bank-master.dialog.language-row"
+                  controlId="bank-master.dialog.language-row"
                   data-row-key={dicText.strRowID}
                   sx={{
                     display: "grid",
@@ -974,11 +974,11 @@ export default function BankMasterPanel() {
                   }}
                 >
                   <TextField
-                    data-testid="bank-master.dialog.language.select"
+                    controlId="bank-master.dialog.language.select"
                     select
                     label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
                     value={dicText.intLanguageID}
-                    inputProps={{ "data-testid": "bank-master.dialog.language.select", "data-row-key": dicText.strRowID }}
+                    inputProps={{ controlId: "bank-master.dialog.language.select", "data-row-key": dicText.strRowID }}
                     InputLabelProps={{ shrink: true }}
                     SelectProps={{
                       displayEmpty: true,
@@ -995,14 +995,14 @@ export default function BankMasterPanel() {
                     fullWidth
                   >
                     {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem data-testid="bank-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                      <MenuItem controlId="bank-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                     ))}
                   </TextField>
                   <TextField
-                    data-testid="bank-master.dialog.translated-name.input"
+                    controlId="bank-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicBankLabels.fieldName)}
                     value={dicText.strBankName}
-                    inputProps={{ "data-testid": "bank-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ controlId: "bank-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strBankName", strValue);
@@ -1016,7 +1016,7 @@ export default function BankMasterPanel() {
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? (
                             <InputAdornment position="end">
-                              <CircularProgress data-testid="bank-master.dialog.translated-name.loading" size={18} sx={{ color: "#2563eb" }} />
+                              <CircularProgress controlId="bank-master.dialog.translated-name.loading" size={18} sx={{ color: "#2563eb" }} />
                             </InputAdornment>
                           )
                         : undefined,
@@ -1024,10 +1024,10 @@ export default function BankMasterPanel() {
                     fullWidth
                   />
                   <TextField
-                    data-testid="bank-master.dialog.translated-code.input"
+                    controlId="bank-master.dialog.translated-code.input"
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicBankLabels.fieldCode)}
                     value={dicText.strBankCode}
-                    inputProps={{ "data-testid": "bank-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ controlId: "bank-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
                     disabled
                     fullWidth
                   />
@@ -1038,26 +1038,32 @@ export default function BankMasterPanel() {
         }
       />
 
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle}
-        strMessage={objConfirmDialog?.strMessage}
-        strCancelLabel={dicCommonLabels.cancel}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicBankLabels.confirmButton}
-        blnConfirmDisabled={blnSubmitting}
+      <Dialog
+        controlId="bank-master.confirm-dialog"
+        open={Boolean(objConfirmDialog)}
         onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-        rootTestId="bank-master.confirm-dialog"
-        cancelButtonTestId="bank-master.confirm-dialog.cancel.button"
-        confirmButtonTestId="bank-master.confirm-dialog.confirm.button"
-        messageTestId="bank-master.confirm-dialog.message"
-      />
+        onKeyDown={handleSingleDialogActionEnter}
+        PaperProps={{ className: styles.confirmDialogPaper }}
+      >
+        <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography controlId="bank-master.confirm-dialog.message" className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
+        </DialogContent>
+        <DialogActions className={styles.confirmDialogActions}>
+          <Button controlId="bank-master.confirm-dialog.cancel.button" className={styles.textAction} onClick={closeConfirmDialog}>
+            {dicCommonLabels.cancel}
+          </Button>
+          <Button controlId="bank-master.confirm-dialog.confirm.button" className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+            {objConfirmDialog?.strConfirmLabel ?? dicBankLabels.confirmButton}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
-      <Snackbar data-testid="bank-master.toast.alert" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+      <Snackbar controlId="bank-master.toast.alert" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
-          <span data-testid="bank-master.toast.message">{objToast.strMessage}</span>
+          <span controlId="bank-master.toast.message">{objToast.strMessage}</span>
         </Alert>
       </Snackbar>
     </Box>

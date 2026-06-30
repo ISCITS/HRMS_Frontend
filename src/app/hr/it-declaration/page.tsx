@@ -380,7 +380,7 @@ export default function HrItDeclarationListPage() {
             renderInput={(objParams) => (
               <TextField
                 {...objParams}
-                data-testid="salary.hr-it-declarations.search.employee.select"
+                controlId="salary.hr-it-declarations.search.employee.select"
                 size="small"
                 required
                 label="Employee"
@@ -398,7 +398,7 @@ export default function HrItDeclarationListPage() {
             )}
           />
           <TextField
-            data-testid="salary.hr-it-declarations.search.financial-year.select"
+            controlId="salary.hr-it-declarations.search.financial-year.select"
             select
             size="small"
             label="Financial Year"
@@ -411,7 +411,7 @@ export default function HrItDeclarationListPage() {
             ))}
           </TextField>
           <TextField
-            data-testid="salary.hr-it-declarations.search.regime.select"
+            controlId="salary.hr-it-declarations.search.regime.select"
             select
             size="small"
             label="Tax Regime"

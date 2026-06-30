@@ -210,16 +210,16 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
               
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button data-testid="tax-regimes.editor.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+              <Button controlId="tax-regimes.editor.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
                 {t("back_to_list", "Back to list")}
               </Button>
               {strMode !== "add" && intTaxRegimeID && !blnForcedViewMode ? (
-                <Button data-testid="tax-regimes.editor.manage-slabs.button" className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
+                <Button controlId="tax-regimes.editor.manage-slabs.button" className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
                   {t("manage_slabs", "Manage slabs")}
                 </Button>
               ) : null}
               {blnCanSave ? (
-                <Button data-testid="tax-regimes.editor.save.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
+                <Button controlId="tax-regimes.editor.save.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
                   {blnSaving ? t("saving", "Saving...") : t("save", "Save Tax Regime")}
                 </Button>
               ) : null}

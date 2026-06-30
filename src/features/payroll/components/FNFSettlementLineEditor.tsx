@@ -56,11 +56,11 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {strError ? <Typography color="error">{strError}</Typography> : null}
-          <TextField data-testid="payroll.fnf.line-editor.line-type.select" required select label="Line Type" value={dicForm.strLineType} onChange={(e) => setDicForm((d) => ({ ...d, strLineType: e.target.value as FNFLineFormValues["strLineType"] }))} fullWidth>
+          <TextField controlId="payroll.fnf.line-editor.line-type.select" required select label="Line Type" value={dicForm.strLineType} onChange={(e) => setDicForm((d) => ({ ...d, strLineType: e.target.value as FNFLineFormValues["strLineType"] }))} fullWidth>
             {["EARNING", "DEDUCTION", "RECOVERY", "STATUTORY", "TAX"].map((strType) => <MenuItem key={strType} value={strType}>{strType}</MenuItem>)}
           </TextField>
           {dicForm.strLineType === "RECOVERY" ? (
-            <TextField data-testid="payroll.fnf.line-editor.recovery-type.select" required select label="Recovery Type" value={dicForm.strRecoveryType} onChange={(e) => setDicForm((d) => ({ ...d, strRecoveryType: e.target.value as FNFRecoveryType }))} fullWidth>
+            <TextField controlId="payroll.fnf.line-editor.recovery-type.select" required select label="Recovery Type" value={dicForm.strRecoveryType} onChange={(e) => setDicForm((d) => ({ ...d, strRecoveryType: e.target.value as FNFRecoveryType }))} fullWidth>
               {["NOTICE", "LOAN", "ADVANCE", "ASSET", "EXCESS_SALARY", "OTHER"].map((strType) => <MenuItem key={strType} value={strType}>{strType}</MenuItem>)}
             </TextField>
           ) : null}
@@ -72,15 +72,15 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
           <TextField required label="Line Name" value={dicForm.strLineName} onChange={(e) => setDicForm((d) => ({ ...d, strLineName: e.target.value }))} fullWidth />
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Typography sx={{ fontWeight: 700 }}>Manual Override</Typography>
-            <Switch inputProps={{ "data-testid": "payroll.fnf.line-editor.manual-override.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.blnIsManualOverride} onChange={(_, checked) => setDicForm((d) => ({ ...d, blnIsManualOverride: checked }))} />
+            <Switch inputProps={{ "controlId": "payroll.fnf.line-editor.manual-override.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.blnIsManualOverride} onChange={(_, checked) => setDicForm((d) => ({ ...d, blnIsManualOverride: checked }))} />
           </Box>
           <TextField required={dicForm.blnIsManualOverride} label="Reason" value={dicForm.strOverrideReason} onChange={(e) => setDicForm((d) => ({ ...d, strOverrideReason: e.target.value }))} fullWidth />
           <TextField label="Remarks" value={dicForm.strRemarks} onChange={(e) => setDicForm((d) => ({ ...d, strRemarks: e.target.value }))} fullWidth multiline minRows={2} />
         </Stack>
       </DialogContent>
       <DialogActions sx={{ justifyContent: "flex-end", px: 3, pb: 2 }}>
-        <Button data-testid="payroll.fnf.line-editor.cancel.button" size="small" variant="text" onClick={onClose}>Cancel</Button>
-        <Button data-testid="payroll.fnf.line-editor.save.button" size="small" variant="contained" startIcon={objLine ? <SaveRoundedIcon /> : <AddRoundedIcon />} disabled={blnSaving} onClick={handleSave}>Save</Button>
+        <Button controlId="payroll.fnf.line-editor.cancel.button" size="small" variant="text" onClick={onClose}>Cancel</Button>
+        <Button controlId="payroll.fnf.line-editor.save.button" size="small" variant="contained" startIcon={objLine ? <SaveRoundedIcon /> : <AddRoundedIcon />} disabled={blnSaving} onClick={handleSave}>Save</Button>
       </DialogActions>
     </Dialog>
   );

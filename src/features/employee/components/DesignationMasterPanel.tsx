@@ -733,7 +733,7 @@ export default function DesignationMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="designation-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDesignationLabels.backButton}</Button>
+        <Button controlId="designation-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDesignationLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -746,15 +746,15 @@ export default function DesignationMasterPanel() {
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="designation-master.list.search-name.input" inputProps={{ "data-testid": "designation-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} fullWidth />
-          <TextField data-testid="designation-master.list.search-code.input" inputProps={{ "data-testid": "designation-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} fullWidth />
-          <TextField data-testid="designation-master.list.search-status.select" inputProps={{ "data-testid": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem data-testid="designation-master.list.search-status.all.option" value="All">All</MenuItem>
-            <MenuItem data-testid="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem data-testid="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          <TextField controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} fullWidth />
+          <TextField controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} fullWidth />
+          <TextField controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem controlId="designation-master.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem controlId="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem controlId="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-testid="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
@@ -765,9 +765,9 @@ export default function DesignationMasterPanel() {
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDesignationLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button data-testid="designation-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDesignationLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button data-testid="designation-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDesignationLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-testid="designation-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDesignationLabels.bulkDelete}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="designation-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDesignationLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="designation-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDesignationLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button controlId="designation-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDesignationLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -775,9 +775,9 @@ export default function DesignationMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button data-testid="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button data-testid="designation-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button data-testid="designation-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
+            {blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button controlId="designation-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button controlId="designation-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredDesignations.length > 0 ? (
@@ -822,7 +822,7 @@ export default function DesignationMasterPanel() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th><Checkbox data-testid="designation-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "designation-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
+                <th><Checkbox controlId="designation-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "designation-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
                 <th>{dicDesignationLabels.tableActions}</th>
                 <th>{dicDesignationLabels.tableName}</th>
                 <th>{dicDesignationLabels.tableCode}</th>
@@ -836,7 +836,7 @@ export default function DesignationMasterPanel() {
                 const blnSelected = lstSelectedIds.includes(dicDesignation.id);
                 return (
                   <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox data-testid="designation-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} inputProps={{ "data-testid": "designation-master.list.row.select.checkbox", "data-row-key": dicDesignation.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
+                    <td><Checkbox controlId="designation-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} inputProps={{ "controlId": "designation-master.list.row.select.checkbox", "data-row-key": dicDesignation.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
                     <td><CommonRowActions testIdPrefix="designation-master.list.row" rowKey={dicDesignation.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} /></td>
                     <td>{dicDesignation.name}</td>
                     <td>{dicDesignation.code}</td>
@@ -889,10 +889,10 @@ export default function DesignationMasterPanel() {
             >
               <TextField
                 required
-                data-testid="designation-master.dialog.name.input"
+                controlId="designation-master.dialog.name.input"
                 label={`${dicDesignationLabels.fieldName}`}
                 value={dicForm.name}
-                inputProps={{ "data-testid": "designation-master.dialog.name.input" }}
+                inputProps={{ "controlId": "designation-master.dialog.name.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value;
@@ -906,10 +906,10 @@ export default function DesignationMasterPanel() {
               />
               <TextField
                 required
-                data-testid="designation-master.dialog.code.input"
+                controlId="designation-master.dialog.code.input"
                 label={`${dicDesignationLabels.fieldCode}`}
                 value={dicForm.code}
-                inputProps={{ "data-testid": "designation-master.dialog.code.input" }}
+                inputProps={{ "controlId": "designation-master.dialog.code.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value.toUpperCase();
@@ -931,11 +931,11 @@ export default function DesignationMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button data-testid="designation-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button controlId="designation-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  data-testid="designation-master.dialog.translate.button"
+                  controlId="designation-master.dialog.translate.button"
                   variant="contained"
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
@@ -975,11 +975,11 @@ export default function DesignationMasterPanel() {
                   }}
                 >
                   <TextField
-                    data-testid="designation-master.dialog.language.select"
+                    controlId="designation-master.dialog.language.select"
                     select
                     label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
                     value={dicText.intLanguageID}
-                    inputProps={{ "data-testid": "designation-master.dialog.language.select", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "designation-master.dialog.language.select", "data-row-key": dicText.strRowID }}
                     InputLabelProps={{ shrink: true }}
                     SelectProps={{
                       displayEmpty: true,
@@ -996,14 +996,14 @@ export default function DesignationMasterPanel() {
                     fullWidth
                   >
                     {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem data-testid="designation-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                      <MenuItem controlId="designation-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                     ))}
                   </TextField>
                   <TextField
-                    data-testid="designation-master.dialog.translated-name.input"
+                    controlId="designation-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicDesignationLabels.fieldName)}
                     value={dicText.strDesignationName}
-                    inputProps={{ "data-testid": "designation-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "designation-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strDesignationName", strValue);
@@ -1025,10 +1025,10 @@ export default function DesignationMasterPanel() {
                     fullWidth
                   />
                   <TextField
-                    data-testid="designation-master.dialog.translated-code.input"
+                    controlId="designation-master.dialog.translated-code.input"
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicDesignationLabels.fieldCode)}
                     value={dicText.strDesignationCode}
-                    inputProps={{ "data-testid": "designation-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "designation-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
                     disabled
                     fullWidth
                   />

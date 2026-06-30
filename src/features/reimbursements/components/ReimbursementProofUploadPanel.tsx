@@ -53,16 +53,16 @@ export default function ReimbursementProofUploadPanel({ objItem, blnEditable, on
             </Stack>
           </Stack>
           {blnEditable ? (
-            <IconButton data-testid="reimbursements.proof-upload.delete.icon-button" size="small" onClick={() => void deleteProof(objProof.intID)} disabled={blnBusy} aria-label="Delete proof">
+            <IconButton controlId="reimbursements.proof-upload.delete.icon-button" size="small" onClick={() => void deleteProof(objProof.intID)} disabled={blnBusy} aria-label="Delete proof">
               <DeleteOutlineRoundedIcon fontSize="small" />
             </IconButton>
           ) : null}
         </Stack>
       ))}
       {blnEditable ? (
-        <Button data-testid="reimbursements.proof-upload.upload.button" component="label" variant="outlined" size="small" startIcon={blnBusy ? <CircularProgress size={15} /> : <UploadFileRoundedIcon />} sx={{ alignSelf: "flex-start", borderRadius: "8px", textTransform: "none", fontWeight: 700 }}>
+        <Button controlId="reimbursements.proof-upload.upload.button" component="label" variant="outlined" size="small" startIcon={blnBusy ? <CircularProgress size={15} /> : <UploadFileRoundedIcon />} sx={{ alignSelf: "flex-start", borderRadius: "8px", textTransform: "none", fontWeight: 700 }}>
           Upload Proof
-          <input hidden data-testid="reimbursements.proof-upload.file.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => void uploadSelectedFile(objEvent.target.files?.[0] ?? null)} />
+          <input hidden controlId="reimbursements.proof-upload.file.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => void uploadSelectedFile(objEvent.target.files?.[0] ?? null)} />
         </Button>
       ) : null}
     </Stack>

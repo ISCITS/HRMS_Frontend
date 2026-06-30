@@ -1147,7 +1147,7 @@ export default function EmployeeEditorScreen({
         {!blnViewOnly ? (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
             <Button
-              data-testid="employee.editor.back.button"
+              controlId="employee.editor.back.button"
               className={styles.secondaryButton}
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
@@ -1174,7 +1174,7 @@ export default function EmployeeEditorScreen({
             </Button>
             {objPageActionConfig ? (
               <Button
-                data-testid="employee.editor.partial-save.button"
+                controlId="employee.editor.partial-save.button"
                 className={styles.secondaryButton}
                 variant="outlined"
                 startIcon={<SaveRoundedIcon />}
@@ -1203,7 +1203,7 @@ export default function EmployeeEditorScreen({
             ) : null}
             {objPageActionConfig ? (
               <Button
-                data-testid="employee.editor.save.button"
+                controlId="employee.editor.save.button"
                 className={styles.primaryButton}
                 variant="contained"
                 startIcon={<SaveRoundedIcon />}
@@ -1236,14 +1236,14 @@ export default function EmployeeEditorScreen({
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-          <TextField data-testid="employee.editor.employee-code.input" inputProps={{ "data-testid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+          <TextField controlId="employee.editor.employee-code.input" inputProps={{ "controlId": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
           {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
-          <TextField data-testid="employee.editor.first-name.input" inputProps={{ "data-testid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+          <TextField controlId="employee.editor.first-name.input" inputProps={{ "controlId": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
           <Stack spacing={1} sx={{ minWidth: 0 }}>
-            <TextField data-testid="employee.editor.middle-name.input" inputProps={{ "data-testid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField controlId="employee.editor.middle-name.input" inputProps={{ "controlId": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
           </Stack>
-          <TextField data-testid="employee.editor.last-name.input" inputProps={{ "data-testid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-          <TextField data-testid="employee.editor.date-of-birth.input" inputProps={{ "data-testid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+          <TextField controlId="employee.editor.last-name.input" inputProps={{ "controlId": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+          <TextField controlId="employee.editor.date-of-birth.input" inputProps={{ "controlId": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
           <RadioGroup
               row
               value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"}
@@ -1278,7 +1278,7 @@ export default function EmployeeEditorScreen({
       <Paper sx={{ borderRadius: "26px", overflow: "hidden", border: "1px solid rgba(148,163,184,0.24)" }}>
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
           <Tabs
-            data-testid="employee.editor.tabs"
+            controlId="employee.editor.tabs"
             value={strActiveTab}
             onChange={(_, strNextValue) => setStrActiveTab(strNextValue)}
             variant="scrollable"
@@ -1288,7 +1288,7 @@ export default function EmployeeEditorScreen({
               <Tab
                 key={strTabKey}
                 value={strTabKey}
-                data-testid={`employee.editor.${strTabKey}.tab`}
+                controlId={`employee.editor.${strTabKey}.tab`}
                 label={strTabKey === "basicInfo"
                   ? t("tab_basic_info", dicConstant.employeeMaster.tabs.basicInfo)
                   : strTabKey === "address"
@@ -1313,7 +1313,7 @@ export default function EmployeeEditorScreen({
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.5 }}>{t("section_identity_employment", "Identity & Employment")}</Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
-                  <TextField data-testid="employee.editor.date-of-joining.input" inputProps={{ "data-testid": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+                  <TextField controlId="employee.editor.date-of-joining.input" inputProps={{ "controlId": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(renderRequiredLabel(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType)), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue as number | ""), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), dicFieldRefs.intEmploymentTypeID)}
                   {renderSelectField(t("field_department", dicConstant.employeeMaster.fields.department), dicBasicForm.intDepartmentID, (objValue) => updateBasicField("intDepartmentID", objValue as number | ""), objFormOptions?.lstDepartments ?? [], blnViewOnly)}
                   {renderSelectField(t("field_designation", dicConstant.employeeMaster.fields.designation), dicBasicForm.intDesignationID, (objValue) => updateBasicField("intDesignationID", objValue as number | ""), objFormOptions?.lstDesignations ?? [], blnViewOnly)}
@@ -1328,18 +1328,18 @@ export default function EmployeeEditorScreen({
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.5 }}>{t("section_contact_preferences", "Contact & Preferences")}</Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
-                  <TextField data-testid="employee.editor.work-email.input" inputProps={{ "data-testid": "employee.editor.work-email.input" }} label={t("field_work_email", dicConstant.employeeMaster.fields.workEmail)} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
-                  <TextField data-testid="employee.editor.personal-email.input" inputProps={{ "data-testid": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
-                  <TextField data-testid="employee.editor.mobile-number.input" inputProps={{ "data-testid": "employee.editor.mobile-number.input" }} label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)} value={dicBasicForm.strMobileNumber} onChange={(objEvent) => updateBasicField("strMobileNumber", objEvent.target.value)} error={Boolean(dicBasicErrors.strMobileNumber)} helperText={dicBasicErrors.strMobileNumber} disabled={blnViewOnly} fullWidth />
+                  <TextField controlId="employee.editor.work-email.input" inputProps={{ "controlId": "employee.editor.work-email.input" }} label={t("field_work_email", dicConstant.employeeMaster.fields.workEmail)} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
+                  <TextField controlId="employee.editor.personal-email.input" inputProps={{ "controlId": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
+                  <TextField controlId="employee.editor.mobile-number.input" inputProps={{ "controlId": "employee.editor.mobile-number.input" }} label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)} value={dicBasicForm.strMobileNumber} onChange={(objEvent) => updateBasicField("strMobileNumber", objEvent.target.value)} error={Boolean(dicBasicErrors.strMobileNumber)} helperText={dicBasicErrors.strMobileNumber} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
                   {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 56, border: "1px solid #dbe4ee", borderRadius: "14px", px: 1.75, py: 1.25 }}>
                     <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("field_employment_status", dicConstant.employeeMaster.fields.employmentStatus)}</Typography>
                     <ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} />
                   </Box>
-                  <TextField data-testid="employee.editor.date-of-exit.input" inputProps={{ "data-testid": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
+                  <TextField controlId="employee.editor.date-of-exit.input" inputProps={{ "controlId": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
                   <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                    <FormControlLabel control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-testid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)} />
+                    <FormControlLabel control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "controlId": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)} />
                   </Box>
                 </Box>
               </Box>
@@ -1350,11 +1350,11 @@ export default function EmployeeEditorScreen({
             <Stack spacing={2.5}>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
                 {renderSelectField(t("field_address_type", dicConstant.employeeMaster.fields.addressType), dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
-                <TextField data-testid="employee.editor.address-line1.input" inputProps={{ "data-testid": "employee.editor.address-line1.input" }} label={renderRequiredLabel(t("field_address_line1", dicConstant.employeeMaster.fields.addressLine1))} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.address-line2.input" inputProps={{ "data-testid": "employee.editor.address-line2.input" }} label={t("field_address_line2", dicConstant.employeeMaster.fields.addressLine2)} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.city.input" inputProps={{ "data-testid": "employee.editor.city.input" }} label={t("field_city", dicConstant.employeeMaster.fields.cityName)} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.address-line1.input" inputProps={{ "controlId": "employee.editor.address-line1.input" }} label={renderRequiredLabel(t("field_address_line1", dicConstant.employeeMaster.fields.addressLine1))} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.address-line2.input" inputProps={{ "controlId": "employee.editor.address-line2.input" }} label={t("field_address_line2", dicConstant.employeeMaster.fields.addressLine2)} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.city.input" inputProps={{ "controlId": "employee.editor.city.input" }} label={t("field_city", dicConstant.employeeMaster.fields.cityName)} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(t("field_state", dicConstant.employeeMaster.fields.state), dicAddressForm.intStateID, (objValue) => updateAddressField("intStateID", objValue as number | ""), objFormOptions?.lstStates ?? [], blnViewOnly)}
-                <TextField data-testid="employee.editor.postal-code.input" inputProps={{ "data-testid": "employee.editor.postal-code.input" }} label={t("field_postal_code", dicConstant.employeeMaster.fields.postalCode)} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.postal-code.input" inputProps={{ "controlId": "employee.editor.postal-code.input" }} label={t("field_postal_code", dicConstant.employeeMaster.fields.postalCode)} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(renderRequiredLabel(t("field_country", dicConstant.employeeMaster.fields.country)), dicAddressForm.intCountryID, (objValue) => updateAddressField("intCountryID", objValue as number | ""), objFormOptions?.lstCountries ?? [], blnViewOnly, dicAddressErrors.intCountryID, Boolean(dicAddressErrors.intCountryID), dicFieldRefs.intCountryID)}
               </Box>
             </Stack>
@@ -1364,9 +1364,9 @@ export default function EmployeeEditorScreen({
             <Stack spacing={2.5}>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
                 {renderSelectField(renderRequiredLabel(t("field_bank", dicConstant.employeeMaster.fields.bank)), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), dicFieldRefs.intBankID)}
-                <TextField data-testid="employee.editor.account-holder-name.input" inputProps={{ "data-testid": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.account-number.input" inputProps={{ "data-testid": "employee.editor.account-number.input" }} label={renderRequiredLabel(t("field_account_number", dicConstant.employeeMaster.fields.accountNumber))} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.ifsc-code.input" inputProps={{ "data-testid": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.account-holder-name.input" inputProps={{ "controlId": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.account-number.input" inputProps={{ "controlId": "employee.editor.account-number.input" }} label={renderRequiredLabel(t("field_account_number", dicConstant.employeeMaster.fields.accountNumber))} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.ifsc-code.input" inputProps={{ "controlId": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
                   <FormControlLabel control={<Switch checked={dicBankForm.blnIsPrimary} onChange={(_, blnChecked) => updateBankField("blnIsPrimary", blnChecked)} disabled={blnViewOnly} />} label={t("field_is_primary", dicConstant.employeeMaster.fields.isPrimary)} />
                 </Box>
@@ -1380,9 +1380,9 @@ export default function EmployeeEditorScreen({
           {strActiveTab === "statutory" ? (
             <Stack spacing={2.5}>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-                <TextField data-testid="employee.editor.pan-number.input" inputProps={{ "data-testid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.uan-number.input" inputProps={{ "data-testid": "employee.editor.uan-number.input" }} label={t("field_uan_number", dicConstant.employeeMaster.fields.uanNumber)} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-                <TextField data-testid="employee.editor.esi-number.input" inputProps={{ "data-testid": "employee.editor.esi-number.input" }} label={t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber)} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.pan-number.input" inputProps={{ "controlId": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.uan-number.input" inputProps={{ "controlId": "employee.editor.uan-number.input" }} label={t("field_uan_number", dicConstant.employeeMaster.fields.uanNumber)} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                <TextField controlId="employee.editor.esi-number.input" inputProps={{ "controlId": "employee.editor.esi-number.input" }} label={t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber)} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
                 <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
                   <FormControlLabel
@@ -1403,8 +1403,8 @@ export default function EmployeeEditorScreen({
                 </Box>
                 {dicStatutoryForm.blnPfApplicable ? (
                   <TextField
-                    data-testid="employee.editor.pf-number.input"
-                    inputProps={{ "data-testid": "employee.editor.pf-number.input" }}
+                    controlId="employee.editor.pf-number.input"
+                    inputProps={{ "controlId": "employee.editor.pf-number.input" }}
                     label={renderRequiredLabel(t("field_pf_number", dicConstant.employeeMaster.fields.pfNumber))}
                     value={dicStatutoryForm.strPfNumber}
                     onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())}
@@ -1466,35 +1466,35 @@ export default function EmployeeEditorScreen({
                     {!blnViewOnly && blnAddingExperience ? (
                       <TableRow sx={{ bgcolor: intEditingExperienceID ? "rgba(255,249,235,0.75)" : "#fcfcfd" }}>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.company-name.input" inputProps={{ "data-testid": "employee.editor.experience.company-name.input" }} value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.company-name.input" inputProps={{ "controlId": "employee.editor.experience.company-name.input" }} value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.job-title.input" inputProps={{ "data-testid": "employee.editor.experience.job-title.input" }} value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.job-title.input" inputProps={{ "controlId": "employee.editor.experience.job-title.input" }} value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" type="date" data-testid="employee.editor.experience.from-date.input" inputProps={{ "data-testid": "employee.editor.experience.from-date.input" }} value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                          <TextField size="small" type="date" controlId="employee.editor.experience.from-date.input" inputProps={{ "controlId": "employee.editor.experience.from-date.input" }} value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" type="date" data-testid="employee.editor.experience.to-date.input" inputProps={{ "data-testid": "employee.editor.experience.to-date.input" }} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                          <TextField size="small" type="date" controlId="employee.editor.experience.to-date.input" inputProps={{ "controlId": "employee.editor.experience.to-date.input" }} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.total-years.input" inputProps={{ "data-testid": "employee.editor.experience.total-years.input" }} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.total-years.input" inputProps={{ "controlId": "employee.editor.experience.total-years.input" }} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.last-drawn-salary.input" inputProps={{ "data-testid": "employee.editor.experience.last-drawn-salary.input" }} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.last-drawn-salary.input" inputProps={{ "controlId": "employee.editor.experience.last-drawn-salary.input" }} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.reason-for-leaving.input" inputProps={{ "data-testid": "employee.editor.experience.reason-for-leaving.input" }} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.reason-for-leaving.input" inputProps={{ "controlId": "employee.editor.experience.reason-for-leaving.input" }} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.experience.responsibilities.input" inputProps={{ "data-testid": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.experience.responsibilities.input" inputProps={{ "controlId": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
                         </TableCell>
                         <TableCell align="center">
-                          <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                          <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "controlId": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
-                            <button data-testid="employee.editor.experience.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
+                            <button controlId="employee.editor.experience.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
                               <CloseRoundedIcon fontSize="small" />
                             </button>
                           </Box>
@@ -1514,35 +1514,35 @@ export default function EmployeeEditorScreen({
                           {intEditingExperienceID === objRecord.intID ? (
                             <>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.company-name.input" inputProps={{ "data-testid": "employee.editor.experience.company-name.input" }} value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.company-name.input" inputProps={{ "controlId": "employee.editor.experience.company-name.input" }} value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} placeholder={t("field_company_name", "Company Name")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.job-title.input" inputProps={{ "data-testid": "employee.editor.experience.job-title.input" }} value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.job-title.input" inputProps={{ "controlId": "employee.editor.experience.job-title.input" }} value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} placeholder={t("field_job_title", "Job Title")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" type="date" data-testid="employee.editor.experience.from-date.input" inputProps={{ "data-testid": "employee.editor.experience.from-date.input" }} value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                                <TextField size="small" type="date" controlId="employee.editor.experience.from-date.input" inputProps={{ "controlId": "employee.editor.experience.from-date.input" }} value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} InputLabelProps={{ shrink: true }} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" type="date" data-testid="employee.editor.experience.to-date.input" inputProps={{ "data-testid": "employee.editor.experience.to-date.input" }} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
+                                <TextField size="small" type="date" controlId="employee.editor.experience.to-date.input" inputProps={{ "controlId": "employee.editor.experience.to-date.input" }} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} InputLabelProps={{ shrink: true }} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.total-years.input" inputProps={{ "data-testid": "employee.editor.experience.total-years.input" }} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.total-years.input" inputProps={{ "controlId": "employee.editor.experience.total-years.input" }} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.last-drawn-salary.input" inputProps={{ "data-testid": "employee.editor.experience.last-drawn-salary.input" }} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.last-drawn-salary.input" inputProps={{ "controlId": "employee.editor.experience.last-drawn-salary.input" }} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.reason-for-leaving.input" inputProps={{ "data-testid": "employee.editor.experience.reason-for-leaving.input" }} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.reason-for-leaving.input" inputProps={{ "controlId": "employee.editor.experience.reason-for-leaving.input" }} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.experience.responsibilities.input" inputProps={{ "data-testid": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.experience.responsibilities.input" inputProps={{ "controlId": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} fullWidth />
                               </TableCell>
                               <TableCell align="center">
-                                <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                                <ActiveStatusSwitch blnIsActive={dicExperienceForm.blnIsActive} onChange={(blnChecked) => updateExperienceField("blnIsActive", blnChecked)} inputProps={{ "controlId": "employee.editor.experience.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
-                                  <button data-testid="employee.editor.experience.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
+                                  <button controlId="employee.editor.experience.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetExperienceEditor} aria-label={t("clear", "Clear")}>
                                     <CloseRoundedIcon fontSize="small" />
                                   </button>
                                 </Box>
@@ -1566,11 +1566,11 @@ export default function EmployeeEditorScreen({
                               <TableCell>
                                 {!blnViewOnly ? (
                                   <Box className={styles.actionCell}>
-                                    <button data-testid="employee.editor.experience.row.edit.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleExperienceEdit(objRecord)} aria-label={t("edit", "Edit")}>
+                                    <button controlId="employee.editor.experience.row.edit.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleExperienceEdit(objRecord)} aria-label={t("edit", "Edit")}>
                                       <EditRoundedIcon fontSize="small" />
                                     </button>
                                     {blnCanDelete && objRecord.blnIsActive ? (
-                                      <button data-testid="employee.editor.experience.row.delete.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleExperienceDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
+                                      <button controlId="employee.editor.experience.row.delete.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleExperienceDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
                                         <DeleteRoundedIcon fontSize="small" />
                                       </button>
                                     ) : null}
@@ -1643,8 +1643,8 @@ export default function EmployeeEditorScreen({
                       <TableRow sx={{ bgcolor: intEditingQualificationID ? "rgba(255,249,235,0.75)" : "#fcfcfd" }}>
                         <TableCell>
                             <TextField
-                              data-testid="employee.editor.qualification.degree-name.input"
-                              inputProps={{ "data-testid": "employee.editor.qualification.degree-name.input" }}
+                              controlId="employee.editor.qualification.degree-name.input"
+                              inputProps={{ "controlId": "employee.editor.qualification.degree-name.input" }}
                               size="small"
                             value={dicQualificationForm.strDegreeName}
                             onChange={(objEvent) => updateQualificationField("strDegreeName", objEvent.target.value)}
@@ -1654,12 +1654,12 @@ export default function EmployeeEditorScreen({
                           />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.qualification.specialization.input" inputProps={{ "data-testid": "employee.editor.qualification.specialization.input" }} value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.qualification.specialization.input" inputProps={{ "controlId": "employee.editor.qualification.specialization.input" }} value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
                         </TableCell>
                         <TableCell>
                           <TextField
-                            data-testid="employee.editor.qualification.institution-name.input"
-                            inputProps={{ "data-testid": "employee.editor.qualification.institution-name.input" }}
+                            controlId="employee.editor.qualification.institution-name.input"
+                            inputProps={{ "controlId": "employee.editor.qualification.institution-name.input" }}
                             size="small"
                             value={dicQualificationForm.strInstitutionName}
                             onChange={(objEvent) => updateQualificationField("strInstitutionName", objEvent.target.value)}
@@ -1669,12 +1669,12 @@ export default function EmployeeEditorScreen({
                           />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.qualification.university-name.input" inputProps={{ "data-testid": "employee.editor.qualification.university-name.input" }} value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.qualification.university-name.input" inputProps={{ "controlId": "employee.editor.qualification.university-name.input" }} value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
                         </TableCell>
                         <TableCell>
                           <TextField
-                            data-testid="employee.editor.qualification.year-of-passing.input"
-                            inputProps={{ "data-testid": "employee.editor.qualification.year-of-passing.input" }}
+                            controlId="employee.editor.qualification.year-of-passing.input"
+                            inputProps={{ "controlId": "employee.editor.qualification.year-of-passing.input" }}
                             size="small"
                             value={dicQualificationForm.intYearOfPassing}
                             onChange={(objEvent) => updateQualificationField("intYearOfPassing", objEvent.target.value.replace(/[^0-9]/g, ""))}
@@ -1684,20 +1684,20 @@ export default function EmployeeEditorScreen({
                           />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.qualification.grade-or-percentage.input" inputProps={{ "data-testid": "employee.editor.qualification.grade-or-percentage.input" }} value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.qualification.grade-or-percentage.input" inputProps={{ "controlId": "employee.editor.qualification.grade-or-percentage.input" }} value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
                         </TableCell>
                         <TableCell>
-                          <TextField size="small" data-testid="employee.editor.qualification.certification-number.input" inputProps={{ "data-testid": "employee.editor.qualification.certification-number.input" }} value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
+                          <TextField size="small" controlId="employee.editor.qualification.certification-number.input" inputProps={{ "controlId": "employee.editor.qualification.certification-number.input" }} value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
                         </TableCell>
                         <TableCell align="center">
-                          <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                          <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "controlId": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell align="center">
-                          <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                          <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "controlId": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                         </TableCell>
                         <TableCell>
                           <Box className={styles.actionCell}>
-                            <button data-testid="employee.editor.qualification.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
+                            <button controlId="employee.editor.qualification.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
                               <CloseRoundedIcon fontSize="small" />
                             </button>
                           </Box>
@@ -1717,35 +1717,35 @@ export default function EmployeeEditorScreen({
                           {intEditingQualificationID === objRecord.intID ? (
                             <>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.degree-name.input" inputProps={{ "data-testid": "employee.editor.qualification.degree-name.input" }} value={dicQualificationForm.strDegreeName} onChange={(objEvent) => updateQualificationField("strDegreeName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strDegreeName)} placeholder={t("field_degree_name", "Degree Name")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.degree-name.input" inputProps={{ "controlId": "employee.editor.qualification.degree-name.input" }} value={dicQualificationForm.strDegreeName} onChange={(objEvent) => updateQualificationField("strDegreeName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strDegreeName)} placeholder={t("field_degree_name", "Degree Name")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.specialization.input" inputProps={{ "data-testid": "employee.editor.qualification.specialization.input" }} value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.specialization.input" inputProps={{ "controlId": "employee.editor.qualification.specialization.input" }} value={dicQualificationForm.strSpecialization} onChange={(objEvent) => updateQualificationField("strSpecialization", objEvent.target.value)} placeholder={t("field_specialization", "Specialization")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.institution-name.input" inputProps={{ "data-testid": "employee.editor.qualification.institution-name.input" }} value={dicQualificationForm.strInstitutionName} onChange={(objEvent) => updateQualificationField("strInstitutionName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strInstitutionName)} placeholder={t("field_institution_name", "Institution Name")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.institution-name.input" inputProps={{ "controlId": "employee.editor.qualification.institution-name.input" }} value={dicQualificationForm.strInstitutionName} onChange={(objEvent) => updateQualificationField("strInstitutionName", objEvent.target.value)} error={Boolean(dicQualificationErrors.strInstitutionName)} placeholder={t("field_institution_name", "Institution Name")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.university-name.input" inputProps={{ "data-testid": "employee.editor.qualification.university-name.input" }} value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.university-name.input" inputProps={{ "controlId": "employee.editor.qualification.university-name.input" }} value={dicQualificationForm.strUniversityName} onChange={(objEvent) => updateQualificationField("strUniversityName", objEvent.target.value)} placeholder={t("field_university_name", "University Name")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.year-of-passing.input" inputProps={{ "data-testid": "employee.editor.qualification.year-of-passing.input" }} value={dicQualificationForm.intYearOfPassing} onChange={(objEvent) => updateQualificationField("intYearOfPassing", objEvent.target.value.replace(/[^0-9]/g, ""))} error={Boolean(dicQualificationErrors.intYearOfPassing)} placeholder={t("field_year_of_passing", "Year Of Passing")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.year-of-passing.input" inputProps={{ "controlId": "employee.editor.qualification.year-of-passing.input" }} value={dicQualificationForm.intYearOfPassing} onChange={(objEvent) => updateQualificationField("intYearOfPassing", objEvent.target.value.replace(/[^0-9]/g, ""))} error={Boolean(dicQualificationErrors.intYearOfPassing)} placeholder={t("field_year_of_passing", "Year Of Passing")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.grade-or-percentage.input" inputProps={{ "data-testid": "employee.editor.qualification.grade-or-percentage.input" }} value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.grade-or-percentage.input" inputProps={{ "controlId": "employee.editor.qualification.grade-or-percentage.input" }} value={dicQualificationForm.strGradeOrPercentage} onChange={(objEvent) => updateQualificationField("strGradeOrPercentage", objEvent.target.value)} placeholder={t("field_grade_or_percentage", "Grade / Percentage")} fullWidth />
                               </TableCell>
                               <TableCell>
-                                <TextField size="small" data-testid="employee.editor.qualification.certification-number.input" inputProps={{ "data-testid": "employee.editor.qualification.certification-number.input" }} value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
+                                <TextField size="small" controlId="employee.editor.qualification.certification-number.input" inputProps={{ "controlId": "employee.editor.qualification.certification-number.input" }} value={dicQualificationForm.strCertificationNumber} onChange={(objEvent) => updateQualificationField("strCertificationNumber", objEvent.target.value)} placeholder={t("field_certification_number", "Certification Number")} fullWidth />
                               </TableCell>
                               <TableCell align="center">
-                                <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                                <Switch checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "controlId": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell align="center">
-                                <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-testid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
+                                <ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "controlId": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} />
                               </TableCell>
                               <TableCell>
                                 <Box className={styles.actionCell}>
-                                  <button data-testid="employee.editor.qualification.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
+                                  <button controlId="employee.editor.qualification.reset.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={resetQualificationEditor} aria-label={t("clear", "Clear")}>
                                     <CloseRoundedIcon fontSize="small" />
                                   </button>
                                 </Box>
@@ -1769,11 +1769,11 @@ export default function EmployeeEditorScreen({
                               <TableCell>
                                 {!blnViewOnly ? (
                                   <Box className={styles.actionCell}>
-                                    <button data-testid="employee.editor.qualification.row.edit.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleQualificationEdit(objRecord)} aria-label={t("edit", "Edit")}>
+                                    <button controlId="employee.editor.qualification.row.edit.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => handleQualificationEdit(objRecord)} aria-label={t("edit", "Edit")}>
                                       <EditRoundedIcon fontSize="small" />
                                     </button>
                                     {blnCanDelete && objRecord.blnIsActive ? (
-                                      <button data-testid="employee.editor.qualification.row.delete.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleQualificationDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
+                                      <button controlId="employee.editor.qualification.row.delete.button" data-row-key={objRecord.intID} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => handleQualificationDeleteRequest(objRecord.intID)} aria-label={t("delete", "Delete")}>
                                         <DeleteRoundedIcon fontSize="small" />
                                       </button>
                                     ) : null}
@@ -1837,7 +1837,7 @@ export default function EmployeeEditorScreen({
         onKeyDown={handleSingleDialogActionEnter}
         fullWidth
         maxWidth="xs"
-        data-testid="employee.editor.experience.delete.dialog"
+        controlId="employee.editor.experience.delete.dialog"
       >
         <DialogTitle>{t("delete_experience_title", "Delete Experience")}</DialogTitle>
         <DialogContent>
@@ -1849,8 +1849,8 @@ export default function EmployeeEditorScreen({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeExperienceDeleteDialog} data-testid="employee.editor.experience.delete.cancel.button">{t("cancel", dicConstant.common.cancel)}</Button>
-          <Button onClick={handleExperienceDelete} variant="contained" color="error" data-testid="employee.editor.experience.delete.confirm.button">
+          <Button onClick={closeExperienceDeleteDialog} controlId="employee.editor.experience.delete.cancel.button">{t("cancel", dicConstant.common.cancel)}</Button>
+          <Button onClick={handleExperienceDelete} variant="contained" color="error" controlId="employee.editor.experience.delete.confirm.button">
             {t("delete", "Delete")}
           </Button>
         </DialogActions>
@@ -1862,7 +1862,7 @@ export default function EmployeeEditorScreen({
         onKeyDown={handleSingleDialogActionEnter}
         fullWidth
         maxWidth="xs"
-        data-testid="employee.editor.qualification.delete.dialog"
+        controlId="employee.editor.qualification.delete.dialog"
       >
         <DialogTitle>{t("delete_qualification_title", "Delete Qualification")}</DialogTitle>
         <DialogContent>
@@ -1874,8 +1874,8 @@ export default function EmployeeEditorScreen({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeQualificationDeleteDialog} data-testid="employee.editor.qualification.delete.cancel.button">{t("cancel", dicConstant.common.cancel)}</Button>
-          <Button onClick={handleQualificationDelete} variant="contained" color="error" data-testid="employee.editor.qualification.delete.confirm.button">
+          <Button onClick={closeQualificationDeleteDialog} controlId="employee.editor.qualification.delete.cancel.button">{t("cancel", dicConstant.common.cancel)}</Button>
+          <Button onClick={handleQualificationDelete} variant="contained" color="error" controlId="employee.editor.qualification.delete.confirm.button">
             {t("delete", "Delete")}
           </Button>
         </DialogActions>

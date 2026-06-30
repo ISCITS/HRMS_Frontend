@@ -10,6 +10,10 @@ type PayslipPreviewContentProps = {
   objPayslip: PayslipPreviewRecord;
 };
 
+function hasDisplayAmount(decAmount: number | null | undefined) {
+  return Number(decAmount ?? 0) > 0;
+}
+
 function formatCurrency(decValue: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -60,6 +64,8 @@ function LineTable({
   strAmountLabel: string;
   strNoLinesLabel: string;
 }) {
+  const lstVisibleLines = lstLines.filter((dicLine) => hasDisplayAmount(dicLine.decAmount));
+
   return (
     <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
       <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
@@ -74,8 +80,8 @@ function LineTable({
             </tr>
           </thead>
           <tbody>
-            {lstLines.length ? (
-              lstLines.map((dicLine, intIndex) => (
+            {lstVisibleLines.length ? (
+              lstVisibleLines.map((dicLine, intIndex) => (
                 <tr key={`${dicLine.strGroupCode}-${dicLine.strLineCode ?? dicLine.strLineLabel}-${intIndex}`}>
                   <td>{dicLine.strLineLabel}</td>
                   <td style={{ textAlign: "right" }}>{formatCurrency(dicLine.decAmount)}</td>
@@ -104,6 +110,8 @@ export default function PayslipPreviewContent({
   const dicCompany = objPayslip.dicCompany;
   const dicTax = objPayslip.dicTax;
   const dicTotals = objPayslip.dicTotals;
+  const dicSummary = objPayslip.dicSummary;
+  const dicFooter = objPayslip.dicFooter;
   const dicLineTableLabels = {
     strComponentLabel: t("component", "Component"),
     strAmountLabel: t("amount", "Amount"),
@@ -154,7 +162,7 @@ export default function PayslipPreviewContent({
       >
         <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
           <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
-            {t("employee", "Employee")}
+            {t("employee_information", "Employee Information")}
           </Typography>
           <Stack spacing={0.8}>
             <DetailRow strLabel={t("code", "Code")} strValue={dicEmployee.strEmployeeCode} />
@@ -168,10 +176,14 @@ export default function PayslipPreviewContent({
 
         <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
           <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
-            {t("payroll", "Payroll")}
+            {t("payroll_information", "Payroll Information")}
           </Typography>
           <Stack spacing={0.8}>
-            <DetailRow strLabel={t("run", "Run")} strValue={dicRun.strRunName} />
+            <DetailRow strLabel={t("period", "Payroll Period")} strValue={dicRun.strPayrollMonthLabel} />
+            <DetailRow strLabel={t("pay_date", "Pay Date")} strValue={formatDate(dicFooter?.dtGeneratedOn ?? null)} />
+            <DetailRow strLabel={t("working_days", "Working Days")} strValue={String(objPayslip.dicAttendance.decCalendarDays ?? "-")} />
+            <DetailRow strLabel={t("paid_days", "Paid Days")} strValue={String(objPayslip.dicAttendance.decPaidDays ?? "-")} />
+            <DetailRow strLabel={t("lop_days", "LOP Days")} strValue={String(objPayslip.dicAttendance.decLopDays ?? "-")} />
             <DetailRow strLabel={t("pan", "PAN")} strValue={dicEmployee.strPanNumber} />
             <DetailRow strLabel={t("tax_regime", "Tax Regime")} strValue={dicTax?.strRegimeUsed} />
             <DetailRow strLabel={t("uan", "UAN")} strValue={dicEmployee.strUanNumber} />
@@ -198,7 +210,7 @@ export default function PayslipPreviewContent({
         <LineTable strTitle={t("information", "Information")} lstLines={objPayslip.lstInformation} {...dicLineTableLabels} />
       </Box>
 
-      {objPayslip.lstEmployerContributions.length ? (
+      {objPayslip.lstEmployerContributions.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
         <Box sx={{ mt: 2 }}>
           <LineTable
             strTitle={t("employer_contributions", "Employer Contributions")}
@@ -216,13 +228,33 @@ export default function PayslipPreviewContent({
             gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
           }}
         >
-          <DetailRow strLabel={t("gross", "Gross")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
-          <DetailRow strLabel={t("deductions", "Deductions")} strValue={formatCurrency(dicTotals.decTotalDeductions)} />
+          <DetailRow strLabel={t("gross_earnings", "Gross Earnings")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
+          <DetailRow strLabel={t("employee_deductions", "Total Employee Deductions")} strValue={formatCurrency(dicTotals.decEmployeeDeductions)} />
+          <DetailRow strLabel={t("tax_total", "Total Tax")} strValue={formatCurrency(dicTotals.decTaxTotal)} />
+          <DetailRow strLabel={t("deductions", "Total Deductions")} strValue={formatCurrency(dicTotals.decTotalDeductions)} />
           <DetailRow strLabel={t("net_pay", "Net Pay")} strValue={formatCurrency(dicTotals.decNetPay)} />
+          <DetailRow strLabel={t("employer_contribution_total", "Employer Contributions")} strValue={formatCurrency(dicTotals.decEmployerContributionTotal)} />
+          <DetailRow strLabel={t("total_employer_cost", "Total Employer Cost")} strValue={formatCurrency(dicTotals.decTotalEmployerCost)} />
+          <DetailRow strLabel={t("flexi_bucket", "Flexi Bucket")} strValue={formatCurrency(dicSummary?.decFlexiBucketAmount ?? 0)} />
+          <DetailRow strLabel={t("declared_flexi", "Declared Flexi")} strValue={formatCurrency(dicSummary?.decDeclaredFlexiAmount ?? 0)} />
+          <DetailRow strLabel={t("residual_flexi", "Residual Flexi")} strValue={formatCurrency(dicSummary?.decResidualFlexiAmount ?? 0)} />
         </Box>
         <Typography sx={{ color: "#475569", fontSize: "0.88rem", mt: 1.5 }}>
           {dicTotals.strNetPayInWords}
         </Typography>
+      </Box>
+
+      <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
+        <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          {t("footer", "Footer")}
+        </Typography>
+        <Stack spacing={0.8}>
+          <DetailRow strLabel={t("run_code", "Payroll Run")} strValue={dicFooter?.strPayrollRunCode || dicRun.strRunCode} />
+          <DetailRow strLabel={t("result_id", "Payroll Result ID")} strValue={dicFooter ? String(dicFooter.intPayrollResultID) : "-"} />
+          <DetailRow strLabel={t("result_version", "Result Version")} strValue={dicFooter ? String(dicFooter.intPayrollResultVersion) : "-"} />
+          <DetailRow strLabel={t("generated_on", "Generated On")} strValue={formatDate(dicFooter?.dtGeneratedOn ?? null)} />
+          <DetailRow strLabel={t("note", "Note")} strValue={dicFooter?.strSystemNote || "-"} />
+        </Stack>
       </Box>
     </Box>
   );

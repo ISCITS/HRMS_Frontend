@@ -245,7 +245,7 @@ export default function PayrollRunListPage() {
       <Box className={styles.controlsCard}>
         <Box className={`${styles.searchRow} ${styles.payrollRunSearchRow}`}>
           <TextField
-            data-testid="payroll-runs.list.search.input"
+            controlId="payroll-runs.list.search.input"
             value={dicSearchDraft.strSearch}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -287,7 +287,7 @@ export default function PayrollRunListPage() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              data-testid="payroll-runs.list.search.button"
+              controlId="payroll-runs.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
@@ -298,7 +298,7 @@ export default function PayrollRunListPage() {
               {t("search", "Search")}
             </Button>
             <Button
-              data-testid="payroll-runs.list.clear.button"
+              controlId="payroll-runs.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -317,7 +317,7 @@ export default function PayrollRunListPage() {
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
             {blnCanAdd ? <Button
-              data-testid="payroll-runs.list.add.button"
+              controlId="payroll-runs.list.add.button"
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => objRouter.push("/payroll/runs/new")}
@@ -325,7 +325,7 @@ export default function PayrollRunListPage() {
               {t("add_button", "Add Payroll Run")}
             </Button> : null}
             {blnCanExport ? <Button
-              data-testid="payroll-runs.list.export-excel.button"
+              controlId="payroll-runs.list.export-excel.button"
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => downloadCsv("payroll-runs.csv", lstFilteredRows)}
@@ -333,7 +333,7 @@ export default function PayrollRunListPage() {
               {t("export_excel", "Export Excel")}
             </Button> : null}
             {blnCanExport ? <Button
-              data-testid="payroll-runs.list.export-pdf.button"
+              controlId="payroll-runs.list.export-pdf.button"
               className={styles.secondaryButton}
               startIcon={<DownloadRoundedIcon />}
               onClick={() => exportPdf("Payroll Runs", lstFilteredRows)}

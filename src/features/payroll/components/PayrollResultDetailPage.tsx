@@ -101,6 +101,92 @@ function getCategoryChipSx(strCategory: string | null | undefined) {
   return { background: "#e2e8f0", color: "#334155" };
 }
 
+function hasDisplayAmount(decAmount: number | null | undefined) {
+  return Number(decAmount ?? 0) > 0;
+}
+
+function formatOptionalCurrency(decValue: number | null | undefined) {
+  return decValue === null || decValue === undefined ? "-" : formatCurrency(decValue);
+}
+
+function getCalculationTraceValue(
+  objTrace: Record<string, unknown> | null | undefined,
+  ...lstKeys: string[]
+) {
+  if (!objTrace) {
+    return null;
+  }
+  for (const strKey of lstKeys) {
+    const objValue = objTrace[strKey];
+    if (objValue !== null && objValue !== undefined && objValue !== "") {
+      return objValue;
+    }
+  }
+  return null;
+}
+
+function getLineAnnualAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  const objTrace = dicLine.objCalculationTrace;
+  const objAnnualValue = getCalculationTraceValue(
+    objTrace,
+    "approved_annual_amount",
+    "annual_amount",
+    "declared_annual_amount"
+  );
+  return typeof objAnnualValue === "number" ? objAnnualValue : null;
+}
+
+function getLineMonthlyAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  const objTrace = dicLine.objCalculationTrace;
+  const objMonthlyValue = getCalculationTraceValue(
+    objTrace,
+    "approved_monthly_amount",
+    "monthly_amount"
+  );
+  if (typeof objMonthlyValue === "number") {
+    return objMonthlyValue;
+  }
+  return dicLine.decProratedAmount ?? dicLine.decCalculatedAmount ?? dicLine.decAmount;
+}
+
+function getPayrollImpactLabel(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  if (dicLine.blnIsEmployerContribution) {
+    return "Employer Only";
+  }
+  if (dicLine.blnIsTaxLine) {
+    return "Tax";
+  }
+  if (dicLine.blnIsEmployeeDeduction) {
+    return "Net Pay Reduction";
+  }
+  if (dicLine.blnIncludeInGross) {
+    return "Gross Earning";
+  }
+  return "Informational";
+}
+
+function getTaxableLabel(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  const objTrace = dicLine.objCalculationTrace;
+  const objTaxable = getCalculationTraceValue(objTrace, "taxable", "is_taxable");
+  if (typeof objTaxable === "boolean") {
+    return objTaxable ? "Yes" : "No";
+  }
+  if (dicLine.blnIsTaxLine || dicLine.blnIsResidualTaxable) {
+    return "Yes";
+  }
+  return "-";
+}
+
+function getCtcIncludedLabel(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  if (dicLine.blnIsEmployerContribution) {
+    return "Yes";
+  }
+  if (dicLine.blnIsEmployeeDeduction) {
+    return "No";
+  }
+  return dicLine.blnIncludeInGross ? "Yes" : "-";
+}
+
 function KpiCard({
   strLabel,
   strValue,
@@ -251,7 +337,7 @@ export default function PayrollResultDetailPage({
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
 
   const lstResultLines = useMemo(
-    () => objResult?.lstLines ?? [],
+    () => (objResult?.lstLines ?? []).filter((dicLine) => hasDisplayAmount(dicLine.decAmount)),
     [objResult]
   );
 
@@ -384,7 +470,7 @@ export default function PayrollResultDetailPage({
                   fontWeight: 700,
                   "&:hover": { background: "transparent", color: "#5d7fb8" },
                 }}
-                data-testid="payroll.result-detail.back.button"
+                controlId="payroll.result-detail.back.button"
               >
                 {t("back_to_list", "Back to List")}
               </Button>
@@ -442,21 +528,21 @@ export default function PayrollResultDetailPage({
                       textTransform: "none",
                       fontWeight: 800,
                     }}
-                    data-testid="payroll.result-detail.actions.button"
+                    controlId="payroll.result-detail.actions.button"
                   >
                     {t("download_payslip", "Download")}
                   </Button>
                   <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
-                    <MenuItem onClick={() => { handleCloseActions(); void loadPayslipPreview(); }} data-testid="payroll.result-detail.preview-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void loadPayslipPreview(); }} controlId="payroll.result-detail.preview-payslip.button">
                       {t("preview_payslip", "Preview Payslip")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void generatePayslip(); }} data-testid="payroll.result-detail.generate-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void generatePayslip(); }} controlId="payroll.result-detail.generate-payslip.button">
                       {t("generate_payslip", "Generate")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} data-testid="payroll.result-detail.download-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} controlId="payroll.result-detail.download-payslip.button">
                       {t("download_payslip", "Download")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} data-testid="payroll.result-detail.print-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} controlId="payroll.result-detail.print-payslip.button">
                       {t("print_payslip", "Print")}
                     </MenuItem>
                   </Menu>
@@ -477,16 +563,16 @@ export default function PayrollResultDetailPage({
             }}
           >
             <KpiCard
-              strLabel={t("gross", "Gross")}
-              strValue={formatCurrency(objResult.decGrossAmount)}
+              strLabel={t("gross_earnings", "Gross Earnings")}
+              strValue={formatCurrency(objResult.decGrossEarningsAmount ?? objResult.decGrossAmount)}
               objIcon={<WalletRoundedIcon sx={{ fontSize: 30 }} />}
               strBorder="rgba(125, 211, 252, 0.55)"
               strIconBg="linear-gradient(135deg, #ecfeff 0%, #d1fae5 100%)"
               strIconColor="#0f766e"
             />
             <KpiCard
-              strLabel={t("deductions", "Deductions")}
-              strValue={formatCurrency(objResult.decDeductionAmount)}
+              strLabel={t("employee_deductions", "Employee Deductions")}
+              strValue={formatCurrency(objResult.decEmployeeDeductionTotal ?? objResult.decDeductionAmount)}
               objIcon={<DescriptionOutlinedIcon sx={{ fontSize: 30 }} />}
               strBorder="rgba(253, 186, 116, 0.55)"
               strIconBg="linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)"
@@ -494,7 +580,7 @@ export default function PayrollResultDetailPage({
             />
             <KpiCard
               strLabel={t("tax", "Tax")}
-              strValue={formatCurrency(objResult.decTaxAmount)}
+              strValue={formatCurrency(objResult.decTaxTotal ?? objResult.decTaxAmount)}
               objIcon={<PercentRoundedIcon sx={{ fontSize: 30 }} />}
               strBorder="rgba(196, 181, 253, 0.7)"
               strIconBg="linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)"
@@ -507,6 +593,22 @@ export default function PayrollResultDetailPage({
               strBorder="rgba(167, 243, 208, 0.75)"
               strIconBg="linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%)"
               strIconColor="#16a34a"
+            />
+            <KpiCard
+              strLabel={t("employer_contribution", "Employer Contributions")}
+              strValue={formatCurrency(objResult.decEmployerContributionTotal ?? 0)}
+              objIcon={<RequestQuoteRoundedIcon sx={{ fontSize: 30 }} />}
+              strBorder="rgba(253, 224, 71, 0.7)"
+              strIconBg="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+              strIconColor="#b45309"
+            />
+            <KpiCard
+              strLabel={t("total_employer_cost", "Total Employer Cost")}
+              strValue={formatCurrency(objResult.decTotalEmployerCost ?? 0)}
+              objIcon={<SummarizeOutlinedIcon sx={{ fontSize: 30 }} />}
+              strBorder="rgba(251, 146, 60, 0.55)"
+              strIconBg="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)"
+              strIconColor="#c2410c"
             />
           </Box>
 
@@ -533,6 +635,9 @@ export default function PayrollResultDetailPage({
               <SummaryBlock strTitle={t("employee_summary", "Employee Summary")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />}>
                 <DetailValue strLabel={t("employee_code", "Employee Code")} strValue={objResult.strEmployeeCode} />
                 <DetailValue strLabel={t("employee_name", "Employee Name")} strValue={objResult.strEmployeeName} />
+                <DetailValue strLabel={t("flexi_bucket", "Flexi Bucket")} strValue={formatCurrency(objResult.decFlexiBucketAmount ?? 0)} />
+                <DetailValue strLabel={t("declared_flexi", "Declared Flexi")} strValue={formatCurrency(objResult.decDeclaredFlexiAmount ?? 0)} />
+                <DetailValue strLabel={t("residual_flexi", "Residual Flexi")} strValue={formatCurrency(objResult.decResidualFlexiAmount ?? 0)} />
                 <DetailValue
                   strLabel={t("status", "Status")}
                   objValue={<Chip label={objResult.strStatus} size="small" sx={{ ...dicStatusTone, fontWeight: 800, width: "fit-content" }} />}
@@ -549,6 +654,10 @@ export default function PayrollResultDetailPage({
                 <DetailValue strLabel={t("payroll_run", "Payroll Run")} strValue={objResult.strRunName} />
                 <DetailValue strLabel={t("run_code", "Run Code")} strValue={objResult.strRunCode} />
                 <DetailValue strLabel={t("payroll_month", "Payroll Month")} strValue={formatMonth(objResult.dtPayrollMonth)} />
+                <DetailValue strLabel={t("payroll_period", "Payroll Period")} strValue={`${objResult.dtPeriodStartDate || "-"} to ${objResult.dtPeriodEndDate || "-"}`} />
+                <DetailValue strLabel={t("working_days", "Working Days")} strValue={String(objResult.decCalendarDays ?? "-")} />
+                <DetailValue strLabel={t("paid_days", "Paid Days")} strValue={String(objResult.decPaidDays ?? "-")} />
+                <DetailValue strLabel={t("lop_days", "LOP Days")} strValue={String(objResult.decLopDays ?? "-")} />
               </SummaryBlock>
 
               <SummaryBlock strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 22 }} />} blnDivider={false}>
@@ -602,14 +711,14 @@ export default function PayrollResultDetailPage({
                   <Switch
                     checked={false}
                     disabled
-                    inputProps={{ "data-testid": "payroll.result-detail.group-by-category.switch" }}
+                    inputProps={{ "controlId": "payroll.result-detail.group-by-category.switch" }}
                   />
                 </Stack>
                 <Button
                   className={styles.secondaryButton}
                   startIcon={<FilterAltOutlinedIcon />}
                   disabled
-                  data-testid="payroll.result-detail.filter.button"
+                  controlId="payroll.result-detail.filter.button"
                 >
                   {t("filter", "Filter")}
                 </Button>
@@ -631,13 +740,20 @@ export default function PayrollResultDetailPage({
                     <th>{t("category", "Category")}</th>
                     <th>{t("line_type", "Line Type")}</th>
                     <th>{t("amount", "Amount")}</th>
+                    <th>{t("annual_amount", "Annual Amount")}</th>
+                    <th>{t("monthly_amount", "Monthly Amount")}</th>
+                    <th>{t("payroll_impact", "Payroll Impact")}</th>
+                    <th>{t("calculation_source", "Calculation Source")}</th>
+                    <th>{t("taxable", "Taxable")}</th>
+                    <th>{t("ctc_included", "CTC Included")}</th>
+                    <th>{t("payslip_section", "Payslip Section")}</th>
                     <th>{t("remarks", "Remarks")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lstResultLines.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className={styles.emptyState}>
+                      <td colSpan={13} className={styles.emptyState}>
                         {t("line_empty", "No payroll result lines found.")}
                       </td>
                     </tr>
@@ -659,6 +775,13 @@ export default function PayrollResultDetailPage({
                         </td>
                         <td>{dicLine.strLineType || "-"}</td>
                         <td>{formatCurrency(dicLine.decAmount)}</td>
+                        <td>{formatOptionalCurrency(getLineAnnualAmount(dicLine))}</td>
+                        <td>{formatCurrency(getLineMonthlyAmount(dicLine) ?? 0)}</td>
+                        <td>{getPayrollImpactLabel(dicLine)}</td>
+                        <td>{dicLine.strCalculationSource || dicLine.strSourceType || "-"}</td>
+                        <td>{getTaxableLabel(dicLine)}</td>
+                        <td>{getCtcIncludedLabel(dicLine)}</td>
+                        <td>{dicLine.strPayslipSection || "-"}</td>
                         <td>{dicLine.strRemarks || "-"}</td>
                       </tr>
                     ))

@@ -24,10 +24,10 @@ type CommonConfirmDialogProps = {
   strDialogActionsClassName?: string;
   strCancelButtonClassName?: string;
   strConfirmButtonClassName?: string;
-  rootTestId?: string;
-  cancelButtonTestId?: string;
-  confirmButtonTestId?: string;
-  messageTestId?: string;
+  rootControlId?: string;
+  cancelButtonControlId?: string;
+  confirmButtonControlId?: string;
+  messageControlId?: string;
 };
 
 export type { CommonConfirmDialogProps };
@@ -50,14 +50,10 @@ export default function CommonConfirmDialog({
   strDialogActionsClassName = masterStyles.confirmDialogActions,
   strCancelButtonClassName = masterStyles.textAction,
   strConfirmButtonClassName = masterStyles.primaryButton,
-  rootTestId,
-  cancelButtonTestId,
-  confirmButtonTestId,
-  messageTestId,
 }: CommonConfirmDialogProps) {
   return (
     <Dialog
-      data-testid={rootTestId}
+      controlId="common-confirm-dialog"
       open={blnOpen}
       onClose={onClose}
       onKeyDown={handleSingleDialogActionEnter}
@@ -65,13 +61,13 @@ export default function CommonConfirmDialog({
     >
       <DialogTitle className={strDialogTitleClassName}>{strTitle}</DialogTitle>
       <DialogContent className={strDialogContentClassName}>
-        {nodeMessage ?? <Typography data-testid={messageTestId} className={strDialogMessageClassName}>{strMessage}</Typography>}
+        {nodeMessage ?? <Typography controlId="common-confirm-dialog.message" className={strDialogMessageClassName}>{strMessage}</Typography>}
       </DialogContent>
       <DialogActions className={strDialogActionsClassName}>
-        <Button data-testid={cancelButtonTestId} className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
+        <Button controlId="common-confirm-dialog.cancel.button" className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
           {strCancelLabel}
         </Button>
-        <Button data-testid={confirmButtonTestId} className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
+        <Button controlId="common-confirm-dialog.confirm.button" className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
           {strConfirmLabel}
         </Button>
       </DialogActions>

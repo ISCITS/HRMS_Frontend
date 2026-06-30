@@ -260,7 +260,7 @@ export default function UserGroupAdminPage() {
               variant="contained"
               startIcon={<AddRoundedIcon />}
               onClick={() => openDialog("add")}
-              data-testid="security.user-group-admin.create.button"
+              controlId="security.user-group-admin.create.button"
               sx={{
                 alignSelf: "flex-start",
                 borderRadius: 2.5,
@@ -308,7 +308,7 @@ export default function UserGroupAdminPage() {
             placeholder="Search groups"
             value={strSearch}
             onChange={(objEvent) => setStrSearch(objEvent.target.value)}
-            data-testid="security.user-group-admin.search.input"
+            controlId="security.user-group-admin.search.input"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">

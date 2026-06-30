@@ -174,7 +174,7 @@ export default function ITDeclarationItemReviewPanel({
                       size="small"
                       onClick={() => setBlnUploadsDialogOpen(true)}
                       disabled={lstProofs.length === 0}
-                      data-testid="it-declaration.review.uploads.icon-button"
+                      controlId="it-declaration.review.uploads.icon-button"
                       sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
                     >
                       <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
@@ -206,7 +206,7 @@ export default function ITDeclarationItemReviewPanel({
               <TextField
                 size="small"
                 label="Approved amount"
-                data-testid="it-declaration.review.approved-amount.input"
+                controlId="it-declaration.review.approved-amount.input"
                 type="number"
                 value={strApprovedAmount}
                 onChange={(e) => setStrApprovedAmount(e.target.value)}
@@ -216,7 +216,7 @@ export default function ITDeclarationItemReviewPanel({
                 inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
                 sx={{ width: "100%" }}
               />
-              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} data-testid="it-declaration.review.remarks.input" />
+              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} controlId="it-declaration.review.remarks.input" />
             </Box>
             {strError ? <Alert severity="error" sx={{ width: "100%" }}>{strError}</Alert> : null}
           </Stack>
@@ -240,15 +240,15 @@ export default function ITDeclarationItemReviewPanel({
             }}
           >
             {blnHasProof ? (
-              <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnDisableProofPendingAction} onClick={() => void runWithValidation("proof_pending")} data-testid="it-declaration.review.proof-pending.button">Proof Pending</Button>
+              <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnDisableProofPendingAction} onClick={() => void runWithValidation("proof_pending")} controlId="it-declaration.review.proof-pending.button">Proof Pending</Button>
             ) : null}
-            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} data-testid="it-declaration.review.reject.button">Reject Item</Button>
-            <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("partial_approve")} data-testid="it-declaration.review.partial-approve.button">Partial Approve</Button>
-            <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} data-testid="it-declaration.review.approve.button">Approve Item</Button>
+            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} controlId="it-declaration.review.reject.button">Reject Item</Button>
+            <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("partial_approve")} controlId="it-declaration.review.partial-approve.button">Partial Approve</Button>
+            <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} controlId="it-declaration.review.approve.button">Approve Item</Button>
           </Stack>
         </Grid>
       </Grid>
-      <Dialog open={blnUploadsDialogOpen} onClose={() => setBlnUploadsDialogOpen(false)} maxWidth="md" fullWidth data-testid="it-declaration.review.uploads.dialog">
+      <Dialog open={blnUploadsDialogOpen} onClose={() => setBlnUploadsDialogOpen(false)} maxWidth="md" fullWidth controlId="it-declaration.review.uploads.dialog">
         <DialogTitle>Uploaded Documents</DialogTitle>
         <DialogContent>
           {lstProofs.length === 0 ? (
@@ -273,7 +273,7 @@ export default function ITDeclarationItemReviewPanel({
                           size="small"
                           onClick={() => fnPreviewProof?.(objProof.intProofID)}
                           disabled={!fnPreviewProof}
-                          data-testid="it-declaration.review.proof.view.icon-button"
+                          controlId="it-declaration.review.proof.view.icon-button"
                           data-row-key={objProof.intProofID}
                           sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
                         >
@@ -287,7 +287,7 @@ export default function ITDeclarationItemReviewPanel({
                           size="small"
                           onClick={() => fnDownloadProof?.(objProof.intProofID)}
                           disabled={!fnDownloadProof}
-                          data-testid="it-declaration.review.proof.download.icon-button"
+                          controlId="it-declaration.review.proof.download.icon-button"
                           data-row-key={objProof.intProofID}
                           sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
                         >
@@ -301,7 +301,7 @@ export default function ITDeclarationItemReviewPanel({
                           size="small"
                           disabled={blnDisableProofActions}
                           onClick={() => void runWithValidation("proof_verify")}
-                          data-testid="it-declaration.review.proof.verify.icon-button"
+                          controlId="it-declaration.review.proof.verify.icon-button"
                           data-row-key={objProof.intProofID}
                           sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
                         >
@@ -315,7 +315,7 @@ export default function ITDeclarationItemReviewPanel({
                           size="small"
                           disabled={blnDisableProofActions}
                           onClick={() => void runWithValidation("proof_reject")}
-                          data-testid="it-declaration.review.proof.reject.icon-button"
+                          controlId="it-declaration.review.proof.reject.icon-button"
                           data-row-key={objProof.intProofID}
                           sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
                         >
@@ -330,7 +330,7 @@ export default function ITDeclarationItemReviewPanel({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnUploadsDialogOpen(false)} data-testid="it-declaration.review.uploads.close.button">Close</Button>
+          <Button onClick={() => setBlnUploadsDialogOpen(false)} controlId="it-declaration.review.uploads.close.button">Close</Button>
         </DialogActions>
       </Dialog>
     </Paper>

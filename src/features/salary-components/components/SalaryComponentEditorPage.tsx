@@ -78,13 +78,13 @@ function resolveSelectValue(lstOptions: string[], strValue: string | null | unde
 
 function buildInputTestIdProps(strTestId: string) {
   return {
-    "data-testid": strTestId,
+    "controlId": strTestId,
   } as InputHTMLAttributes<HTMLInputElement>;
 }
 
 function buildSelectTestIdProps(strTestId: string) {
   return {
-    "data-testid": strTestId,
+    "controlId": strTestId,
     inputProps: buildInputTestIdProps(strTestId),
   };
 }
@@ -925,7 +925,7 @@ export default function SalaryComponentEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
               <Button
-                data-testid="salary-components.editor.back.button"
+                controlId="salary-components.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push(strResolvedBackRoute)}
@@ -951,7 +951,7 @@ export default function SalaryComponentEditorPage({
                 {t("back_button", "Back")}
               </Button>
               <Button
-                data-testid="salary-components.editor.save.button"
+                controlId="salary-components.editor.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
@@ -1008,13 +1008,13 @@ export default function SalaryComponentEditorPage({
             onChange={(objEvent) => syncEnglishComponentText(objEvent.target.value, dicForm.strComponentDescription)}
             disabled={blnFieldDisabled}
             fullWidth
-            data-testid="salary-components.editor.component-name.input"
+            controlId="salary-components.editor.component-name.input"
             inputProps={buildInputTestIdProps("salary-components.editor.component-name.input")}
           />
 
           <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
             {lstCategoryOptions.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{getCategoryLabel(strOption)}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{getCategoryLabel(strOption)}</MenuItem>
             ))}
           </TextField>
           <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.75, minHeight: 56 }}>
@@ -1027,7 +1027,7 @@ export default function SalaryComponentEditorPage({
                 color={blnDerivedIncludedInCtc ? "success" : "default"}
                 label={blnDerivedIncludedInCtc ? t("included_in_ctc", "Included in CTC") : t("not_included_in_ctc", "Not Included in CTC")}
                 sx={{ flexShrink: 0, fontWeight: 700 }}
-                data-testid="salary-components.editor.ctc-treatment.chip"
+                controlId="salary-components.editor.ctc-treatment.chip"
               />
             </Box>
             <Typography sx={{ color: "#64748b", fontSize: "0.78rem", lineHeight: 1.35 }}>
@@ -1035,9 +1035,9 @@ export default function SalaryComponentEditorPage({
             </Typography>
           </Box>
           <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
-            <MenuItem value="" data-testid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
+            <MenuItem value="" controlId="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
             {lstGroupOptions.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.component-group.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.component-group.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
             ))}
           </TextField>
           <TextField
@@ -1049,7 +1049,7 @@ export default function SalaryComponentEditorPage({
               ? t("component_code_read_only_help", "Component code can be entered during creation and is read-only after save.")
               : t("component_code_create_help", "Set the internal component code used for system references.")}
             fullWidth
-            data-testid="salary-components.editor.component-code.input"
+            controlId="salary-components.editor.component-code.input"
             inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
           />
           {!blnHideWageType ? (
@@ -1089,7 +1089,7 @@ export default function SalaryComponentEditorPage({
             onChange={(objEvent) => syncEnglishComponentText(dicForm.strComponentName, objEvent.target.value)}
             disabled={blnFieldDisabled}
             fullWidth
-            data-testid="salary-components.editor.description.input"
+            controlId="salary-components.editor.description.input"
             inputProps={buildInputTestIdProps("salary-components.editor.description.input")}
             sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }}
           />
@@ -1101,24 +1101,24 @@ export default function SalaryComponentEditorPage({
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <TextField select label={t("calculation_method", "Calculation Method")} value={resolveSelectValue(objFormOptions?.lstCalcMethods ?? [], dicForm.strCalcMethod)} onChange={(objEvent) => updateRootField("strCalcMethod", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
             {(objFormOptions?.lstCalcMethods ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.calculation-method.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.calculation-method.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
             ))}
           </TextField>
           <TextField select label={t("rounding_rule", "Rounding Rule")} value={resolveSelectValue(objFormOptions?.lstRoundingRules ?? [], dicForm.strRoundingRule)} onChange={(objEvent) => updateRootField("strRoundingRule", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.rounding-rule.select")}>
-            <MenuItem value="" data-testid="salary-components.editor.rounding-rule.none.option">{t("none", "None")}</MenuItem>
+            <MenuItem value="" controlId="salary-components.editor.rounding-rule.none.option">{t("none", "None")}</MenuItem>
             {(objFormOptions?.lstRoundingRules ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.rounding-rule.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.rounding-rule.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
             ))}
           </TextField>
           <TextField select label={t("default_periodicity", "Default Periodicity")} value={resolveSelectValue(objFormOptions?.lstDefaultPeriodicities ?? [], dicForm.strDefaultPeriodicity)} onChange={(objEvent) => updateRootField("strDefaultPeriodicity", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.default-periodicity.select")}>
             {(objFormOptions?.lstDefaultPeriodicities ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.default-periodicity.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.default-periodicity.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
             ))}
           </TextField>
           <TextField select label={t("tax_treatment", "Tax Treatment")} value={resolveSelectValue(objFormOptions?.lstTaxTreatments ?? [], dicForm.strTaxTreatment)} onChange={(objEvent) => updateRootField("strTaxTreatment", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.tax-treatment.select")}>
-            <MenuItem value="" data-testid="salary-components.editor.tax-treatment.none.option">{t("none", "None")}</MenuItem>
+            <MenuItem value="" controlId="salary-components.editor.tax-treatment.none.option">{t("none", "None")}</MenuItem>
             {(objFormOptions?.lstTaxTreatments ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
             ))}
           </TextField>
           {blnShowPercentageCalculationFields ? (
@@ -1149,11 +1149,11 @@ export default function SalaryComponentEditorPage({
               onChange={(objEvent) => updateRootField("strDefaultPercentageValue", objEvent.target.value)}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-components.editor.default-percentage-value.input"
+              controlId="salary-components.editor.default-percentage-value.input"
               inputProps={{ ...buildInputTestIdProps("salary-components.editor.default-percentage-value.input"), min: 0, step: "0.01" }}
             />
           ) : null}
-          {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth data-testid="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
+          {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth controlId="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
         </Box>
         {blnShowManualCalculationHelp ? (
           <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 1.5 }}>
@@ -1232,7 +1232,7 @@ export default function SalaryComponentEditorPage({
               {...buildSelectTestIdProps("salary-components.editor.applicable-tax-regime.select")}
             >
               {lstTaxRegimeApplicabilityOptions.map((dicOption) => (
-                <MenuItem key={dicOption.value} value={dicOption.value} data-testid={`salary-components.editor.applicable-tax-regime.${dicOption.value}.option`}>
+                <MenuItem key={dicOption.value} value={dicOption.value} controlId={`salary-components.editor.applicable-tax-regime.${dicOption.value}.option`}>
                   {t(`applicable_tax_regime_${dicOption.value}`, dicOption.label)}
                 </MenuItem>
               ))}
@@ -1247,7 +1247,7 @@ export default function SalaryComponentEditorPage({
                   onChange={(objEvent) => updateRootField("strMonthlyLimitAmount", objEvent.target.value)}
                   disabled={blnFieldDisabled}
                   fullWidth
-                  data-testid="salary-components.editor.monthly-limit-amount.input"
+                  controlId="salary-components.editor.monthly-limit-amount.input"
                   inputProps={{ ...buildInputTestIdProps("salary-components.editor.monthly-limit-amount.input"), min: 0, step: "0.01" }}
                 />
               ) : null}
@@ -1262,7 +1262,7 @@ export default function SalaryComponentEditorPage({
                   onChange={(objEvent) => updateRootField("strAnnualLimitAmount", objEvent.target.value)}
                   disabled={blnFieldDisabled}
                   fullWidth
-                  data-testid="salary-components.editor.annual-limit-amount.input"
+                  controlId="salary-components.editor.annual-limit-amount.input"
                   inputProps={{ ...buildInputTestIdProps("salary-components.editor.annual-limit-amount.input"), min: 0, step: "0.01" }}
                 />
               ) : null}
@@ -1473,12 +1473,12 @@ export default function SalaryComponentEditorPage({
             label={t("show_on_payslip", "Show on Payslip")}
           />
           <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
-            <MenuItem value="" data-testid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
+            <MenuItem value="" controlId="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
             {lstPayslipSections.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-testid={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{t(`payslip_section_${normalizeSelectToken(strOption)}`, getPayslipSectionLabel(strOption))}</MenuItem>
+              <MenuItem key={strOption} value={strOption} controlId={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{t(`payslip_section_${normalizeSelectToken(strOption)}`, getPayslipSectionLabel(strOption))}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-testid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
+          <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth controlId="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
         </Box>
      </Paper>
 
@@ -1499,14 +1499,14 @@ export default function SalaryComponentEditorPage({
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled data-testid="salary-components.editor.multilingual.add-language.button">
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled controlId="salary-components.editor.multilingual.add-language.button">
               {t("add_language", "Add Language")}
             </Button>
             <Button
               className={styles.primaryButton}
               onClick={() => void handleTranslateClick()}
               disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-              data-testid="salary-components.editor.multilingual.translate.button"
+              controlId="salary-components.editor.multilingual.translate.button"
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
                 ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
@@ -1517,9 +1517,9 @@ export default function SalaryComponentEditorPage({
         <Stack spacing={1.5}>
           {dicForm.lstTexts.map((dicText, intIndex) => (
             <Box key={dicText.strRowID} sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "220px 1fr 1.1fr auto" }, alignItems: "start", border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
-              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled fullWidth data-testid="salary-components.editor.multilingual.language.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.language.select"), "data-row-key": dicText.strRowID }}>
+              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled fullWidth controlId="salary-components.editor.multilingual.language.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.language.select"), "data-row-key": dicText.strRowID }}>
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
-                  <MenuItem key={dicLanguage.intID} value={dicLanguage.intID} data-testid={`salary-components.editor.multilingual.language.${dicLanguage.intID}.option`}>{dicLanguage.strLabel}</MenuItem>
+                  <MenuItem key={dicLanguage.intID} value={dicLanguage.intID} controlId={`salary-components.editor.multilingual.language.${dicLanguage.intID}.option`}>{dicLanguage.strLabel}</MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -1527,7 +1527,7 @@ export default function SalaryComponentEditorPage({
                 value={dicText.strComponentName}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)}
                 disabled={blnFieldDisabled || intIndex === 0}
-                data-testid="salary-components.editor.multilingual.component-name.input"
+                controlId="salary-components.editor.multilingual.component-name.input"
                 inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.component-name.input"), "data-row-key": dicText.strRowID }}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
@@ -1541,7 +1541,7 @@ export default function SalaryComponentEditorPage({
                 value={dicText.strComponentDescription}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)}
                 disabled={blnFieldDisabled || intIndex === 0}
-                data-testid="salary-components.editor.multilingual.description.input"
+                controlId="salary-components.editor.multilingual.description.input"
                 inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.description.input"), "data-row-key": dicText.strRowID }}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
@@ -1550,7 +1550,7 @@ export default function SalaryComponentEditorPage({
                 }}
                 fullWidth
               />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled data-testid="salary-components.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 54 }}>
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled controlId="salary-components.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>
@@ -1570,7 +1570,7 @@ export default function SalaryComponentEditorPage({
             label={t("dependency_components", "Dependency Components")}
             value={dicForm.lstDependencyComponentIDs}
             onChange={(objEvent) => updateRootField("lstDependencyComponentIDs", parseMultiSelectNumberValues(objEvent.target.value))}
-            data-testid="salary-components.editor.dependency-components.select"
+            controlId="salary-components.editor.dependency-components.select"
             SelectProps={{ multiple: true, renderValue: (lstSelected) => (
               <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                 {(lstSelected as Array<string | number>).map((objValue) => {
@@ -1589,7 +1589,7 @@ export default function SalaryComponentEditorPage({
                 <MenuItem
                   key={dicOption.intID}
                   value={dicOption.intID}
-                  data-testid={`salary-components.editor.dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}
+                  controlId={`salary-components.editor.dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}
                   data-option-key={dicOption.intID}
                 >
                   <Checkbox

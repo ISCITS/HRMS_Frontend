@@ -728,7 +728,7 @@ export default function CostCenterMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="cost-center-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
+        <Button controlId="cost-center-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -741,15 +741,15 @@ export default function CostCenterMasterPanel() {
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="cost-center-master.list.search-name.input" inputProps={{ "data-testid": "cost-center-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
-          <TextField data-testid="cost-center-master.list.search-code.input" inputProps={{ "data-testid": "cost-center-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
-          <TextField data-testid="cost-center-master.list.search-status.select" inputProps={{ "data-testid": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem data-testid="cost-center-master.list.search-status.all.option" value="All">All</MenuItem>
-            <MenuItem data-testid="cost-center-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem data-testid="cost-center-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          <TextField controlId="cost-center-master.list.search-name.input" inputProps={{ "controlId": "cost-center-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
+          <TextField controlId="cost-center-master.list.search-code.input" inputProps={{ "controlId": "cost-center-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
+          <TextField controlId="cost-center-master.list.search-status.select" inputProps={{ "controlId": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem controlId="cost-center-master.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem controlId="cost-center-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem controlId="cost-center-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-testid="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
@@ -760,9 +760,9 @@ export default function CostCenterMasterPanel() {
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicModuleLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button data-testid="cost-center-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button data-testid="cost-center-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-testid="cost-center-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="cost-center-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button controlId="cost-center-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button controlId="cost-center-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -770,9 +770,9 @@ export default function CostCenterMasterPanel() {
       <Box className={styles.tableCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button data-testid="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button data-testid="cost-center-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button data-testid="cost-center-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
+            {blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
+            {blnCanExport ? <Button controlId="cost-center-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
+            {blnCanExport ? <Button controlId="cost-center-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
           </Box>
 
           {!blnLoading && lstFilteredCostCenters.length > 0 ? (
@@ -817,7 +817,7 @@ export default function CostCenterMasterPanel() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th><Checkbox data-testid="cost-center-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "cost-center-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
+                <th><Checkbox controlId="cost-center-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "cost-center-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
                 <th>{dicModuleLabels.tableActions}</th>
                 <th>{dicModuleLabels.tableName}</th>
                 <th>{dicModuleLabels.tableCode}</th>
@@ -831,7 +831,7 @@ export default function CostCenterMasterPanel() {
                 const blnSelected = lstSelectedIds.includes(dicCostCenter.id);
                 return (
                   <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox data-testid="cost-center-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} inputProps={{ "data-testid": "cost-center-master.list.row.select.checkbox", "data-row-key": dicCostCenter.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
+                    <td><Checkbox controlId="cost-center-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} inputProps={{ "controlId": "cost-center-master.list.row.select.checkbox", "data-row-key": dicCostCenter.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
                     <td><CommonRowActions testIdPrefix="cost-center-master.list.row" rowKey={dicCostCenter.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} /></td>
                     <td>{dicCostCenter.name}</td>
                     <td>{dicCostCenter.code}</td>
@@ -884,10 +884,10 @@ export default function CostCenterMasterPanel() {
             >
               <TextField
                 required
-                data-testid="cost-center-master.dialog.name.input"
+                controlId="cost-center-master.dialog.name.input"
                 label={`${dicModuleLabels.fieldName}`}
                 value={dicForm.name}
-                inputProps={{ "data-testid": "cost-center-master.dialog.name.input" }}
+                inputProps={{ "controlId": "cost-center-master.dialog.name.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value;
@@ -901,10 +901,10 @@ export default function CostCenterMasterPanel() {
               />
               <TextField
                 required
-                data-testid="cost-center-master.dialog.code.input"
+                controlId="cost-center-master.dialog.code.input"
                 label={`${dicModuleLabels.fieldCode}`}
                 value={dicForm.code}
-                inputProps={{ "data-testid": "cost-center-master.dialog.code.input" }}
+                inputProps={{ "controlId": "cost-center-master.dialog.code.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value.toUpperCase();
@@ -926,11 +926,11 @@ export default function CostCenterMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button data-testid="cost-center-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button controlId="cost-center-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  data-testid="cost-center-master.dialog.translate.button"
+                  controlId="cost-center-master.dialog.translate.button"
                   variant="contained"
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
@@ -970,11 +970,11 @@ export default function CostCenterMasterPanel() {
                   }}
                 >
                   <TextField
-                    data-testid="cost-center-master.dialog.language.select"
+                    controlId="cost-center-master.dialog.language.select"
                     select
                     label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
                     value={dicText.intLanguageID}
-                    inputProps={{ "data-testid": "cost-center-master.dialog.language.select", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "cost-center-master.dialog.language.select", "data-row-key": dicText.strRowID }}
                     InputLabelProps={{ shrink: true }}
                     SelectProps={{
                       displayEmpty: true,
@@ -991,14 +991,14 @@ export default function CostCenterMasterPanel() {
                     fullWidth
                   >
                     {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem data-testid="cost-center-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                      <MenuItem controlId="cost-center-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                     ))}
                   </TextField>
                   <TextField
-                    data-testid="cost-center-master.dialog.translated-name.input"
+                    controlId="cost-center-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
                     value={dicText.strCostCenterName}
-                    inputProps={{ "data-testid": "cost-center-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "cost-center-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strCostCenterName", strValue);
@@ -1020,10 +1020,10 @@ export default function CostCenterMasterPanel() {
                     fullWidth
                   />
                   <TextField
-                    data-testid="cost-center-master.dialog.translated-code.input"
+                    controlId="cost-center-master.dialog.translated-code.input"
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
                     value={dicText.strCostCenterCode}
-                    inputProps={{ "data-testid": "cost-center-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "cost-center-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
                     disabled
                     fullWidth
                   />

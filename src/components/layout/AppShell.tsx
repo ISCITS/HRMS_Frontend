@@ -700,7 +700,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
           </Stack>
           <IconButton
-            data-testid="app-shell.sidebar-close.button"
+            controlId="app-shell.sidebar-close.button"
             aria-label="Close navigation menu"
             onClick={() => {
               setBlnDrawerOpen(false);
@@ -757,7 +757,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </Paper>
 
       <ButtonBase
-        data-testid="app-shell.sidebar-logout.button"
+        controlId="app-shell.sidebar-logout.button"
         onClick={() => {
           setBlnDrawerOpen(false);
           setBlnDesktopSidebarOpen(false);
@@ -811,7 +811,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Typography sx={{ color: "#b91c1c", fontWeight: 700 }}>
             {strBootstrapError}
           </Typography>
-          <Button data-testid="app-shell.retry.button" variant="contained" onClick={() => window.location.reload()}>
+          <Button controlId="app-shell.retry.button" variant="contained" onClick={() => window.location.reload()}>
             Retry
           </Button>
         </Stack>
@@ -862,7 +862,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           }}
         >
             <IconButton
-              data-testid="app-shell.desktop-menu-toggle.button"
+              controlId="app-shell.desktop-menu-toggle.button"
               aria-label="Open navigation menu"
               sx={{
                 width: 40,
@@ -941,7 +941,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         open={blnDrawerOpen}
         onClose={() => setBlnDrawerOpen(false)}
         ModalProps={{ keepMounted: true }}
-        data-testid="app-shell.mobile-drawer"
+        controlId="app-shell.mobile-drawer"
         sx={{
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
@@ -986,7 +986,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           >
             <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
               <IconButton
-                data-testid="app-shell.menu-toggle.button"
+                controlId="app-shell.menu-toggle.button"
                 onClick={handleMenuToggle}
                 sx={{
                   position: "relative",
@@ -1056,7 +1056,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
                       return (
                         <ButtonBase
-                          data-testid={`app-shell.language.${dicLanguageOption.intLanguageID}.button`}
+                          controlId={`app-shell.language.${dicLanguageOption.intLanguageID}.button`}
                           key={dicLanguageOption.intLanguageID}
                           onClick={() => {
                             void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
@@ -1144,7 +1144,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Box>
 
               <IconButton
-                data-testid="app-shell.profile-menu.button"
+                controlId="app-shell.profile-menu.button"
                 onClick={openProfileMenu}
                 disabled={blnLoggingOut}
                 sx={{
@@ -1197,7 +1197,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         PaperProps={{
-          "data-testid": "app-shell.profile-menu",
+          "controlId": "app-shell.profile-menu",
           sx: {
             mt: 1,
             minWidth: 240,
@@ -1214,7 +1214,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Box>
         <Divider />
         <MenuItem
-          data-testid="app-shell.logout.menu-item"
+          controlId="app-shell.logout.menu-item"
           onClick={() => {
             closeProfileMenu();
             setBlnLogoutDialogOpen(true);
@@ -1227,14 +1227,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </MenuItem>
       </Menu>
 
-      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" data-testid="app-shell.logout.dialog">
+      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" controlId="app-shell.logout.dialog">
         <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
           <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button data-testid="app-shell.logout.cancel.button" onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>{tCommon("cancel", "Cancel")}</Button>
-          <Button data-testid="app-shell.logout.confirm.button" onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
+          <Button controlId="app-shell.logout.cancel.button" onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>{tCommon("cancel", "Cancel")}</Button>
+          <Button controlId="app-shell.logout.confirm.button" onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
             {tCommon("logout", "Logout")}
           </Button>
         </DialogActions>

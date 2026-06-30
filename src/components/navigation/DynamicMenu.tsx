@@ -1129,7 +1129,7 @@ export default function DynamicMenu({
     return (
       <Tooltip key={strMenuKey} title={resolveMenuLabel(objItem)} placement="right" arrow>
         <ListItemButton
-          data-testid={`nav.collapsed-menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.button`}
+          controlId={`nav.collapsed-menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.button`}
           aria-label={resolveMenuLabel(objItem)}
           onClick={() => {
             if (blnHasChildren) {
@@ -1166,7 +1166,7 @@ export default function DynamicMenu({
       return (
         <Fragment key={strMenuKey}>
           <ListItemButton
-            data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
+            controlId={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
             data-menu-code={objItem.strModuleCode}
             data-menu-label={resolveMenuLabel(objItem)}
             data-menu-route={strRoute ?? ""}
@@ -1208,7 +1208,7 @@ export default function DynamicMenu({
     return (
       <ListItemButton
         key={strMenuKey}
-        data-testid={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
+        controlId={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
         data-menu-code={objItem.strModuleCode}
         data-menu-label={resolveMenuLabel(objItem)}
         data-menu-route={strRoute ?? ""}
@@ -1235,7 +1235,7 @@ export default function DynamicMenu({
   if (blnCollapsed) {
     return (
       <List
-        data-testid="nav.collapsed-menu.list"
+        controlId="nav.collapsed-menu.list"
         sx={{
           width: "100%",
           mt: 0,
@@ -1251,7 +1251,7 @@ export default function DynamicMenu({
   }
 
   return (
-    <List data-testid="nav.menu.list" sx={{ mt: 0 }}>
+    <List controlId="nav.menu.list" sx={{ mt: 0 }}>
       {lstRenderedMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );

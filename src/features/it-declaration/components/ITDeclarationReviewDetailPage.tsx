@@ -442,7 +442,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 variant="text"
                 size="small"
                 onClick={() => setBlnAuditDialogOpen(true)}
-                data-testid="it-declaration.review-detail.view-log.button"
+                controlId="it-declaration.review-detail.view-log.button"
                 sx={{ textTransform: "none", color: "#14532d", minWidth: "auto", px: 0.6, fontWeight: 800 }}
               >
                 View Log
@@ -452,7 +452,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
               {blnCanStartReview ? <Button
                 variant="outlined"
                 onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}
-                data-testid="it-declaration.review-detail.start-review.button"
+                controlId="it-declaration.review-detail.start-review.button"
                 sx={{
                   minHeight: 30,
                   borderRadius: "8px",
@@ -479,7 +479,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 fnLock={() => setStrConfirm("lock")}
               />
             </Stack>
-            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} data-testid="it-declaration.review-detail.back.button" sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
           </Stack>
         </Stack>
       </Paper>
@@ -568,22 +568,22 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       {objDetail.objHomeLoanDetails ? <DeclarationDetailPanel strTitle="Home Loan Details" objDetails={objDetail.objHomeLoanDetails} /> : null}
       {objDetail.objPreviousEmployerDetails ? <DeclarationDetailPanel strTitle="Previous Employer Details" objDetails={objDetail.objPreviousEmployerDetails} /> : null}
 
-      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth data-testid="it-declaration.review-detail.confirm.dialog">
+      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth controlId="it-declaration.review-detail.confirm.dialog">
         <DialogTitle>Confirm Action</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 1 }}>Please confirm this action.</Typography>
           {(strConfirm === "reject" || strConfirm === "release") ? (
-            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} data-testid="it-declaration.review-detail.confirm.remarks.input" />
+            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} controlId="it-declaration.review-detail.confirm.remarks.input" />
           ) : null}
           {strDialogError ? <Alert severity="error" sx={{ mt: 1 }}>{strDialogError}</Alert> : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStrConfirm(null)} data-testid="it-declaration.review-detail.confirm.cancel.button">Cancel</Button>
-          <Button variant="contained" onClick={() => void confirmAction()} data-testid="it-declaration.review-detail.confirm.submit.button">Confirm</Button>
+          <Button onClick={() => setStrConfirm(null)} controlId="it-declaration.review-detail.confirm.cancel.button">Cancel</Button>
+          <Button variant="contained" onClick={() => void confirmAction()} controlId="it-declaration.review-detail.confirm.submit.button">Confirm</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={blnAuditDialogOpen} onClose={() => setBlnAuditDialogOpen(false)} maxWidth="md" fullWidth data-testid="it-declaration.review-detail.audit.dialog">
+      <Dialog open={blnAuditDialogOpen} onClose={() => setBlnAuditDialogOpen(false)} maxWidth="md" fullWidth controlId="it-declaration.review-detail.audit.dialog">
         <DialogTitle>Audit Logs</DialogTitle>
         <DialogContent>
           {lstAudit.length === 0 ? (
@@ -608,7 +608,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnAuditDialogOpen(false)} data-testid="it-declaration.review-detail.audit.close.button">Close</Button>
+          <Button onClick={() => setBlnAuditDialogOpen(false)} controlId="it-declaration.review-detail.audit.close.button">Close</Button>
         </DialogActions>
       </Dialog>
 

@@ -287,22 +287,22 @@ export default function StatutoryReportPage() {
         </Box>
         <Box className={styles.statutorySearchPanel}>
           <Box className={styles.statutorySearchLinePrimary}>
-            <TextField select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth data-testid="reports.statutory.report-type.select">
+            <TextField select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth controlId="reports.statutory.report-type.select">
               {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
             </TextField>
-            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth data-testid="reports.statutory.employee-search.input" />
-            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-testid="reports.statutory.run-search.input" />
-            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-testid="reports.statutory.payroll-month.input" />
-            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-testid="reports.statutory.department.input" />
+            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth controlId="reports.statutory.employee-search.input" />
+            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth controlId="reports.statutory.run-search.input" />
+            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} controlId="reports.statutory.payroll-month.input" />
+            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth controlId="reports.statutory.department.input" />
           </Box>
           <Box className={styles.statutorySearchLinePrimary}>
-            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-testid="reports.statutory.location.input" />
-            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-testid="reports.statutory.status.select">
+            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth controlId="reports.statutory.location.input" />
+            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth controlId="reports.statutory.status.select">
               <MenuItem value="All">All Statuses</MenuItem><MenuItem value="Calculated">Calculated</MenuItem><MenuItem value="Approved">Approved</MenuItem><MenuItem value="Published">Published</MenuItem><MenuItem value="Paid">Paid</MenuItem>
             </TextField>
             <Box className={styles.searchActions}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-testid="reports.statutory.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-testid="reports.statutory.clear.button">Clear</Button>
+              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
+              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
             </Box>
           </Box>
         </Box>
@@ -312,14 +312,14 @@ export default function StatutoryReportPage() {
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${dicReportMeta.strFile}.csv`, lstExportRows)} data-testid="reports.statutory.export-excel.button">Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicReportMeta.strLabel, lstExportRows)} data-testid="reports.statutory.download-pdf.button">Download PDF</Button> : null}
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${dicReportMeta.strFile}.csv`, lstExportRows)} controlId="reports.statutory.export-excel.button">Export Excel</Button> : null}
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicReportMeta.strLabel, lstExportRows)} controlId="reports.statutory.download-pdf.button">Download PDF</Button> : null}
             {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
           </Box>
           <Box className={styles.paginationBar} sx={{ p: 0 }}>
             <Box className={styles.paginationInfo}>
               <Typography>Rows per page</Typography>
-              <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }} data-testid="reports.statutory.rows-per-page.select">{lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}</TextField>
+              <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }} controlId="reports.statutory.rows-per-page.select">{lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}</TextField>
               <Typography className={styles.paginationRange}>{lstPagedSourceRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstPagedSourceRows.length)} of ${lstPagedSourceRows.length}`}</Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
@@ -334,16 +334,16 @@ export default function StatutoryReportPage() {
               {lstSummaryRows.length > 0 ? <tr><td colSpan={3}><strong>Total</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPtEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decLwfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGratuityEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGrandTotal)}</strong></td><td /></tr> : null}
             </tbody>
           </table> : <table className={styles.table}>
-            <thead><tr><th><Checkbox size="small" checked={blnAllVisibleSelected} indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected} onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)} inputProps={{ "data-testid": "reports.statutory.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Statutory</th><th>Basis</th><th>Employee Rate</th><th>Employer Rate</th><th>Employee Amount</th><th>Employer Amount</th><th>Total</th><th>Ceiling</th><th>Mode</th><th>Status</th></tr></thead>
+            <thead><tr><th><Checkbox size="small" checked={blnAllVisibleSelected} indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected} onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)} inputProps={{ "controlId": "reports.statutory.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Statutory</th><th>Basis</th><th>Employee Rate</th><th>Employer Rate</th><th>Employee Amount</th><th>Employer Amount</th><th>Total</th><th>Ceiling</th><th>Mode</th><th>Status</th></tr></thead>
             <tbody>
               {lstVisibleRows.length === 0 ? <tr><td colSpan={14} className={styles.emptyState}>No statutory report rows found for the current filters.</td></tr> : null}
-              {lstVisibleRows.map((dicRow) => <tr key={dicRow.intID}><td><Checkbox size="small" checked={setSelectedRowIDs.has(dicRow.intID)} onChange={(objEvent) => setSetSelectedRowIDs((setPrevious) => { const setNext = new Set(setPrevious); objEvent.target.checked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID); return setNext; })} inputProps={{ "data-testid": "reports.statutory.row.select.checkbox", "data-row-key": dicRow.intID } as InputHTMLAttributes<HTMLInputElement>} /></td><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{dicRow.strStatutoryName}</td><td>{formatCurrency(dicRow.decBasisAmount)}</td><td>{formatPercent(dicRow.decEmployeeRatePercent)}</td><td>{formatPercent(dicRow.decEmployerRatePercent)}</td><td>{formatCurrency(dicRow.decEmployeeAmount)}</td><td>{formatCurrency(dicRow.decEmployerAmount)}</td><td>{formatCurrency(dicRow.decTotalAmount)}</td><td>{dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount)}</td><td>{dicRow.strCalculationMode || "-"}</td><td>{dicRow.strStatus}</td></tr>)}
+              {lstVisibleRows.map((dicRow) => <tr key={dicRow.intID}><td><Checkbox size="small" checked={setSelectedRowIDs.has(dicRow.intID)} onChange={(objEvent) => setSetSelectedRowIDs((setPrevious) => { const setNext = new Set(setPrevious); objEvent.target.checked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID); return setNext; })} inputProps={{ "controlId": "reports.statutory.row.select.checkbox", "data-row-key": dicRow.intID } as InputHTMLAttributes<HTMLInputElement>} /></td><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{dicRow.strStatutoryName}</td><td>{formatCurrency(dicRow.decBasisAmount)}</td><td>{formatPercent(dicRow.decEmployeeRatePercent)}</td><td>{formatPercent(dicRow.decEmployerRatePercent)}</td><td>{formatCurrency(dicRow.decEmployeeAmount)}</td><td>{formatCurrency(dicRow.decEmployerAmount)}</td><td>{formatCurrency(dicRow.decTotalAmount)}</td><td>{dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount)}</td><td>{dicRow.strCalculationMode || "-"}</td><td>{dicRow.strStatus}</td></tr>)}
               {lstFilteredRows.length > 0 ? <tr><td colSpan={5}><strong>Total</strong></td><td><strong>{formatCurrency(dicTotals.decBasis)}</strong></td><td /><td /><td><strong>{formatCurrency(dicTotals.decEmployee)}</strong></td><td><strong>{formatCurrency(dicTotals.decEmployer)}</strong></td><td><strong>{formatCurrency(dicTotals.decTotal)}</strong></td><td /><td /><td /></tr> : null}
             </tbody>
           </table>}
         </Box>
       </Box>
-      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth data-testid="reports.statutory.filter.dialog">
+      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth controlId="reports.statutory.filter.dialog">
         <DialogTitle>Statutory Reports</DialogTitle>
         <DialogContent>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
@@ -359,9 +359,9 @@ export default function StatutoryReportPage() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)} data-testid="reports.statutory.filter.reset.button">Reset</Button>
-          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)} data-testid="reports.statutory.filter.close.button">Close</Button> : null}
-          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading} data-testid="reports.statutory.filter.show-report.button">Show Report</Button>
+          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)} controlId="reports.statutory.filter.reset.button">Reset</Button>
+          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)} controlId="reports.statutory.filter.close.button">Close</Button> : null}
+          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading} controlId="reports.statutory.filter.show-report.button">Show Report</Button>
         </DialogActions>
       </Dialog>
     </Box>

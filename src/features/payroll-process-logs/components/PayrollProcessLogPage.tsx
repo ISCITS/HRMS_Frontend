@@ -273,7 +273,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           }}
         >
           <TextField
-            data-testid="payroll-process-logs.list.run-id.input"
+            controlId="payroll-process-logs.list.run-id.input"
             label={t("payroll_run_id", "Payroll Run ID")}
             value={dicFiltersDraft.intPayrollRunID}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, intPayrollRunID: objEvent.target.value }))}
@@ -332,7 +332,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             ))}
           </TextField>
           <TextField
-            data-testid="payroll-process-logs.list.search-text.input"
+            controlId="payroll-process-logs.list.search-text.input"
             label={t("search_text", "Search Text")}
             value={dicFiltersDraft.strSearchText}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchText: objEvent.target.value }))}
@@ -340,7 +340,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             sx={{ flex: { xs: "1 1 100%", md: "0 1 260px" }, minWidth: { md: 220 } }}
           />
           <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button data-testid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
+            <Button controlId="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
               {t("search", "Search")}
             </Button>
           </Box>

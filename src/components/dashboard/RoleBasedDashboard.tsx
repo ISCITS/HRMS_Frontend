@@ -1750,24 +1750,24 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const [objEmployeeStatutory, setObjEmployeeStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [objEmployeeSalarySummary, setObjEmployeeSalarySummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const ESS_COLORS = {
-    bg: "#EEF3FF",
-    shell: "linear-gradient(90deg, #C026D3 0%, #7C3AED 24%, #2563EB 54%, #0891B2 77%, #10B981 100%)",
-    shellBorder: "rgba(255,255,255,0.14)",
-    shellText: "#F8FBFF",
-    shellMuted: "rgba(244,248,255,0.82)",
-    hero: "linear-gradient(135deg, #41318D 0%, #382B80 42%, #35379A 100%)",
-    heroGlow: "radial-gradient(circle at top right, rgba(132, 140, 255, 0.18), rgba(132, 140, 255, 0) 62%)",
-    navy: "#172554",
+    bg: "#F8FAFF",
+    shell: "linear-gradient(90deg, #EDF4FF 0%, #E7F0FF 42%, #E8F8F1 100%)",
+    shellBorder: "rgba(190, 210, 244, 0.72)",
+    shellText: "#33446F",
+    shellMuted: "#66779F",
+    hero: "linear-gradient(135deg, #F2F7FF 0%, #EEF5FF 58%, #E8F2FF 100%)",
+    heroGlow: "radial-gradient(circle at top right, rgba(153, 191, 255, 0.22), rgba(153, 191, 255, 0) 62%)",
+    navy: "#22345F",
     blue: "#285CFF",
     green: "#16A34A",
     orange: "#F97316",
     violet: "#6D28D9",
     teal: "#0EA5A4",
     red: "#EF4444",
-    card: "#FFFFFF",
-    border: "#E6ECF8",
-    muted: "#6B7280",
-    body: "#475569",
+    card: "linear-gradient(135deg, #FCFEFF 0%, #F6FBFF 56%, #F2FBF6 100%)",
+    border: "#DCE7F7",
+    muted: "#667085",
+    body: "#4E6288",
     softBlue: "#EEF4FF",
     softGreen: "#ECFDF5",
     softOrange: "#FFF7ED",
@@ -1779,8 +1779,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     height: "100%",
     borderRadius: "18px",
     border: `1px solid ${ESS_COLORS.border}`,
-    backgroundColor: ESS_COLORS.card,
-    boxShadow: "0 14px 36px rgba(25, 40, 76, 0.08)",
+    background: ESS_COLORS.card,
+    boxShadow: "0 14px 36px rgba(69, 94, 146, 0.08)",
   } as const;
   const lstWidgets = objDashboard.lstWidgets.map(normalizeDashboardWidget);
   const objWelcomeWidget = lstWidgets.find((objWidget) => objWidget.strWidgetCode === "welcome_profile");
@@ -1959,7 +1959,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
 
   return (
     <Stack spacing={2} sx={{ p: { xs: 1, md: 1.5 }, background: ESS_COLORS.bg }}>
-      <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: "28px", background: ESS_COLORS.shell, boxShadow: "0 22px 50px rgba(34, 70, 183, 0.22)" }}>
+      <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: "28px", background: ESS_COLORS.shell, boxShadow: "0 14px 32px rgba(120, 144, 186, 0.16)" }}>
         <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5} sx={{ mb: 1.8 }}>
           <Box>
             <Typography sx={{ color: ESS_COLORS.shellText, fontWeight: 800, fontSize: { xs: "1.65rem", md: "2rem" }, letterSpacing: "-0.03em" }}>
@@ -1971,10 +1971,10 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
           </Box>
         </Stack>
 
-        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", p: 0.7, borderRadius: "22px", backgroundColor: "rgba(17, 30, 96, 0.18)", border: `1px solid ${ESS_COLORS.shellBorder}` }}>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", p: 0.7, borderRadius: "22px", backgroundColor: "rgba(255,255,255,0.42)", border: `1px solid ${ESS_COLORS.shellBorder}` }}>
           {lstTopNav.map((objItem) => (
             <Link key={objItem.strLabel} href={objItem.strRoutePath} style={{ textDecoration: "none" }}>
-              <Stack direction="row" spacing={0.9} alignItems="center" sx={{ px: 1.45, py: 1.05, borderRadius: "16px", backgroundColor: objItem.blnActive ? "#FFFFFF" : "transparent", color: objItem.blnActive ? ESS_COLORS.blue : ESS_COLORS.shellText, minHeight: 48, boxShadow: objItem.blnActive ? "0 10px 26px rgba(15, 31, 61, 0.14)" : "none" }}>
+              <Stack direction="row" spacing={0.9} alignItems="center" sx={{ px: 1.45, py: 1.05, borderRadius: "16px", backgroundColor: objItem.blnActive ? "#FFFFFF" : "transparent", color: objItem.blnActive ? ESS_COLORS.blue : ESS_COLORS.shellText, minHeight: 48, boxShadow: objItem.blnActive ? "0 10px 24px rgba(132, 153, 190, 0.16)" : "none" }}>
                 {objItem.objIcon}
                 <Typography sx={{ fontWeight: 700, fontSize: "0.92rem", whiteSpace: "nowrap" }}>{objItem.strLabel}</Typography>
               </Stack>
@@ -1990,13 +1990,13 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
             <Box sx={{ p: { xs: 1.6, md: 2.1 }, position: "relative", zIndex: 1 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.6} alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Box sx={{ position: "relative" }}>
-                  <Avatar src={strAvatarUrl || undefined} sx={{ width: 88, height: 88, border: "3px solid rgba(255,255,255,0.78)", boxShadow: "0 16px 36px rgba(6, 10, 44, 0.28)" }}>{getInitials(strEmployeeName)}</Avatar>
+                  <Avatar src={strAvatarUrl || undefined} sx={{ width: 88, height: 88, border: "3px solid rgba(255,255,255,0.92)", boxShadow: "0 14px 30px rgba(146, 163, 196, 0.2)" }}>{getInitials(strEmployeeName)}</Avatar>
                   <Box sx={{ position: "absolute", right: 2, bottom: 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "#22C55E", border: "2px solid white" }} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }} useFlexGap>
-                    <Typography sx={{ color: "#FFFFFF", fontWeight: 800, fontSize: { xs: "1.7rem", md: "2rem" }, letterSpacing: "-0.02em" }}>{strEmployeeName}</Typography>
-                    <Chip label={strDesignation} size="small" sx={{ backgroundColor: "rgba(124, 58, 237, 0.9)", color: "#fff", fontWeight: 700 }} />
+                    <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: { xs: "1.7rem", md: "2rem" }, letterSpacing: "-0.02em" }}>{strEmployeeName}</Typography>
+                    <Chip label={strDesignation} size="small" sx={{ backgroundColor: "#DDE8FF", color: ESS_COLORS.blue, fontWeight: 700 }} />
                   </Stack>
                   <Grid container spacing={1.3} sx={{ mt: 1.05 }}>
                     <Grid item xs={12} sm={4}>
@@ -2014,15 +2014,29 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
 
               <Grid container spacing={1.15} sx={{ mt: 1.6 }}>
                 {lstHeroDetails.map((objItem) => (
-                  <Grid key={objItem.strLabel} item xs={12} sm={6} md={3}>
-                    <Box sx={{ p: 1.15, minHeight: 84, borderRadius: "14px", backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Box sx={{ width: 32, height: 32, borderRadius: "10px", backgroundColor: "rgba(102, 95, 255, 0.25)", color: "#D8E7FF", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                  <Grid key={objItem.strLabel} item xs={12} sm={6} md={3} sx={{ minWidth: 0 }}>
+                    <Box sx={{ p: 1.15, minHeight: 84, borderRadius: "14px", backgroundColor: "rgba(255,255,255,0.5)", border: "1px solid rgba(208, 222, 245, 0.9)" }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                        <Box sx={{ width: 32, height: 32, borderRadius: "10px", backgroundColor: "#E5EEFF", color: ESS_COLORS.blue, display: "grid", placeItems: "center", flexShrink: 0 }}>
                           {objItem.objIcon}
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ color: "rgba(232, 240, 255, 0.7)", fontSize: "0.7rem" }}>{objItem.strLabel}</Typography>
-                          <Typography sx={{ color: "#FFFFFF", fontWeight: 700, fontSize: "0.84rem", lineHeight: 1.35 }}>{objItem.strValue}</Typography>
+                          <Typography sx={{ color: "#6C7EA5", fontSize: "0.7rem" }}>{objItem.strLabel}</Typography>
+                          <Typography
+                            sx={{
+                              color: ESS_COLORS.navy,
+                              fontWeight: 700,
+                              fontSize: "0.84rem",
+                              lineHeight: 1.35,
+                              minWidth: 0,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={objItem.strValue}
+                          >
+                            {objItem.strValue}
+                          </Typography>
                         </Box>
                       </Stack>
                     </Box>
@@ -2031,13 +2045,13 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
               </Grid>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.1} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mt: 1.6 }}>
-                <Typography sx={{ color: "#FFFFFF", fontWeight: 700, minWidth: 150 }}>Profile Completeness</Typography>
-                <Box sx={{ flex: 1, height: 10, borderRadius: "999px", backgroundColor: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
-                  <Box sx={{ width: `${Math.max(0, Math.min(100, intProfileCompletionPercent))}%`, height: "100%", background: "linear-gradient(90deg, #0EA5E9 0%, #22C55E 100%)" }} />
+                <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, minWidth: 150 }}>Profile Completeness</Typography>
+                <Box sx={{ flex: 1, height: 10, borderRadius: "999px", backgroundColor: "rgba(214, 226, 248, 0.9)", overflow: "hidden" }}>
+                  <Box sx={{ width: `${Math.max(0, Math.min(100, intProfileCompletionPercent))}%`, height: "100%", background: "linear-gradient(90deg, #C9D9FF 0%, #BFEBD9 100%)" }} />
                 </Box>
-                <Typography sx={{ color: "#FFFFFF", fontWeight: 700 }}>{`${intProfileCompletionPercent}% Complete`}</Typography>
+                <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700 }}>{`${intProfileCompletionPercent}% Complete`}</Typography>
                 <Link href="/ess/my-profile" style={{ textDecoration: "none" }}>
-                  <Button variant="outlined" endIcon={<ArrowForwardRoundedIcon />} sx={{ color: "#FFFFFF", borderColor: "rgba(255,255,255,0.25)", borderRadius: "14px", px: 2.1, textTransform: "none", fontWeight: 700 }}>
+                  <Button variant="outlined" endIcon={<ArrowForwardRoundedIcon />} sx={{ color: ESS_COLORS.blue, borderColor: "#C7D9F8", backgroundColor: "rgba(255,255,255,0.72)", borderRadius: "14px", px: 2.1, textTransform: "none", fontWeight: 700 }}>
                     Improve Profile
                   </Button>
                 </Link>
@@ -2312,8 +2326,8 @@ function FallbackDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboa
 function HeroStat({ strLabel, strValue }: { strLabel: string; strValue: string }) {
   return (
     <Box>
-      <Typography sx={{ color: "rgba(232, 240, 255, 0.7)", fontSize: "0.75rem" }}>{strLabel}</Typography>
-      <Typography sx={{ mt: 0.2, color: "#FFFFFF", fontWeight: 800, fontSize: "1rem" }}>{strValue}</Typography>
+      <Typography sx={{ color: "#6C7EA5", fontSize: "0.75rem" }}>{strLabel}</Typography>
+      <Typography sx={{ mt: 0.2, color: "#22345F", fontWeight: 800, fontSize: "1rem" }}>{strValue}</Typography>
     </Box>
   );
 }

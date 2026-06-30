@@ -6,7 +6,7 @@ import Switch, { type SwitchProps } from "@mui/material/Switch";
 type ActiveStatusSwitchProps = Omit<SwitchProps, "checked" | "onChange" | "color"> & {
   blnIsActive: boolean;
   onChange?: (blnIsActive: boolean) => void;
-  testId?: string;
+  controlId?: string;
 };
 
 export default function ActiveStatusSwitch({
@@ -14,24 +14,22 @@ export default function ActiveStatusSwitch({
   disabled,
   onChange,
   inputProps,
-  testId,
   title,
   size,
   sx,
   ...objProps
 }: ActiveStatusSwitchProps) {
   const strStateLabel = blnIsActive ? "Active ON" : "Inactive OFF";
-  const strResolvedTestId = testId ?? "shared.active-status.switch";
   const objResolvedInputProps = {
-    "data-testid": strResolvedTestId,
-    "aria-label": strStateLabel,
     ...inputProps,
+    controlId: "active-status-switch.input",
+    "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;
 
   return (
     <Switch
       {...objProps}
-      data-testid={strResolvedTestId}
+      controlId="active-status-switch"
       checked={blnIsActive}
       disabled={disabled}
       color="primary"

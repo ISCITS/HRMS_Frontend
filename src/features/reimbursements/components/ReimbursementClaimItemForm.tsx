@@ -220,11 +220,11 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
         <Stack spacing={1.3}>
           <Grid container spacing={1.2}>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label="Reimbursement Type" data-testid="reimbursements.claim-item.payroll-component.select" inputProps={{ "data-testid": "reimbursements.claim-item.payroll-component.select" }} value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedSalaryComponent(objEvent.target.value)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
+              <TextField required select fullWidth size="small" label="Reimbursement Type" controlId="reimbursements.claim-item.payroll-component.select" inputProps={{ "controlId": "reimbursements.claim-item.payroll-component.select" }} value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedSalaryComponent(objEvent.target.value)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
                 <MenuItem value="">Reimbursement Type</MenuItem>
-                {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem data-testid="reimbursements.claim-item.payroll-component.option" data-option-key={objComponent.intID} key={objComponent.intID} value={String(objComponent.intID)}>{getReimbursementTypeLabel(objComponent.strComponentName)}</MenuItem>)}
+                {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem controlId="reimbursements.claim-item.payroll-component.option" data-option-key={objComponent.intID} key={objComponent.intID} value={String(objComponent.intID)}>{getReimbursementTypeLabel(objComponent.strComponentName)}</MenuItem>)}
               </TextField>
-              <Typography data-testid="reimbursements.claim-item.supporting-document.label" sx={{ mt: 0.45, color: "#94a3b8", fontSize: "0.74rem", fontWeight: 400 }}>
+              <Typography controlId="reimbursements.claim-item.supporting-document.label" sx={{ mt: 0.45, color: "#94a3b8", fontSize: "0.74rem", fontWeight: 400 }}>
                 Supporting Document:{" "}
                 <Typography component="span" sx={{ color: blnSelectedComponentProofRequired ? "#dc2626" : "#64748b", fontSize: "inherit", fontWeight: 400 }}>
                   {blnSelectedComponentProofRequired ? "Required" : "Optional"}
@@ -233,14 +233,14 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
             </Grid>
          
             <Grid item xs={12} md={3}>
-              <TextField required fullWidth size="small" type="date" data-testid="reimbursements.claim-item.expense-date.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-date.input" }} label="Expense Date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField required fullWidth size="small" type="date" controlId="reimbursements.claim-item.expense-date.input" inputProps={{ "controlId": "reimbursements.claim-item.expense-date.input" }} label="Expense Date" InputLabelProps={{ shrink: true }} value={objForm.dtExpenseDate} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, dtExpenseDate: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField required fullWidth size="small" type="number" data-testid="reimbursements.claim-item.claimed-amount.input" label="Claimed Amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly, "data-testid": "reimbursements.claim-item.claimed-amount.input" }} />
+              <TextField required fullWidth size="small" type="number" controlId="reimbursements.claim-item.claimed-amount.input" label="Claimed Amount" value={objForm.decClaimedAmount} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, decClaimedAmount: objEvent.target.value })} inputProps={{ min: 0, step: "0.01", readOnly: blnReadOnly, "controlId": "reimbursements.claim-item.claimed-amount.input" }} />
             </Grid>
                {objSelectedSalaryComponent || objItem ? (
               <Grid item xs={12}>
-                <Box data-testid="reimbursements.claim-item.component-info.panel" sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1.2, py: 1, bgcolor: "#f8fafc" }}>
+                <Box controlId="reimbursements.claim-item.component-info.panel" sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1.2, py: 1, bgcolor: "#f8fafc" }}>
                   <Grid container spacing={1.1}>
                     <Grid item xs={6} md={3}>
                       <ComponentInfoMetric strLabel="Reimbursement Type" strValue={formatChoiceLabel(strReimbursementType)} blnAccent />
@@ -271,10 +271,10 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
               </Grid>
             ) : null}
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" data-testid="reimbursements.claim-item.expense-description.input" inputProps={{ "data-testid": "reimbursements.claim-item.expense-description.input" }} label="Expense Description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField fullWidth multiline minRows={2} size="small" controlId="reimbursements.claim-item.expense-description.input" inputProps={{ "controlId": "reimbursements.claim-item.expense-description.input" }} label="Expense Description" value={objForm.strExpenseDescription} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strExpenseDescription: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline minRows={2} size="small" data-testid="reimbursements.claim-item.employee-remarks.input" inputProps={{ "data-testid": "reimbursements.claim-item.employee-remarks.input" }} label="Employee Remarks" value={objForm.strEmployeeRemarks} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} InputProps={objReadOnlyProps} />
+              <TextField fullWidth multiline minRows={2} size="small" controlId="reimbursements.claim-item.employee-remarks.input" inputProps={{ "controlId": "reimbursements.claim-item.employee-remarks.input" }} label="Employee Remarks" value={objForm.strEmployeeRemarks} disabled={blnReadOnly} onChange={(objEvent) => setObjForm({ ...objForm, strEmployeeRemarks: objEvent.target.value })} InputProps={objReadOnlyProps} />
             </Grid>
           </Grid>
           {strProofError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strProofError}</Alert> : null}
@@ -293,11 +293,11 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
                   </Stack>
                   <Stack direction="row" spacing={0.6} alignItems="center" justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
                     <ReimbursementClaimStatusBadge strStatus={objProof.strVerificationStatus} />
-                    <Button data-testid="reimbursements.claim-item.view-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} disabled={intPreviewingProofID === objProof.intID} onClick={() => void viewProof(objProof)} sx={objSmallProofButtonSx}>
+                    <Button controlId="reimbursements.claim-item.view-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} disabled={intPreviewingProofID === objProof.intID} onClick={() => void viewProof(objProof)} sx={objSmallProofButtonSx}>
                       {intPreviewingProofID === objProof.intID ? "Opening..." : "View"}
                     </Button>
                     {!blnReadOnly && onDeleteProof ? (
-                      <Button data-testid="reimbursements.claim-item.delete-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<DeleteOutlineRoundedIcon />} disabled={blnSaving || intDeletingProofID === objProof.intID} onClick={() => void deleteProof(objProof)} sx={objSmallProofButtonSx}>
+                      <Button controlId="reimbursements.claim-item.delete-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<DeleteOutlineRoundedIcon />} disabled={blnSaving || intDeletingProofID === objProof.intID} onClick={() => void deleteProof(objProof)} sx={objSmallProofButtonSx}>
                         {intDeletingProofID === objProof.intID ? "Deleting..." : "Delete"}
                       </Button>
                     ) : null}
@@ -309,7 +309,7 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3.2, pt: 1.4, pb: 2.2 }}>
-        <Button data-testid="reimbursements.claim-item.close.button" 
+        <Button controlId="reimbursements.claim-item.close.button" 
         size="small" 
         onClick={onClose} 
         variant={blnReadOnly ? "contained" : "outlined"} 
@@ -324,14 +324,14 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
                 <Button size="small" variant="text" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setObjProofFile(null)} sx={objSmallProofButtonSx}>Delete</Button>
               </Stack>
             ) : null}
-            <Button data-testid="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
+            <Button controlId="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
               Upload Proof
-              <input hidden data-testid="reimbursements.claim-item.upload-proof.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
+              <input hidden controlId="reimbursements.claim-item.upload-proof.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
             </Button>
           </Stack>
         ) : null}
 
-        {!blnReadOnly ? <Button data-testid="reimbursements.claim-item.save.button" size="small" variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled} sx={{ ...objSmallActionButtonSx, fontWeight: 800 }}>
+        {!blnReadOnly ? <Button controlId="reimbursements.claim-item.save.button" size="small" variant="contained" startIcon={objItem ? <SaveRoundedIcon /> : <AddRoundedIcon />} onClick={() => void saveItem()} disabled={blnSaveDisabled} sx={{ ...objSmallActionButtonSx, fontWeight: 800 }}>
           {objItem ? "Save Claim Item" : "Add Claim Item"}
         </Button> : null}
       </DialogActions>

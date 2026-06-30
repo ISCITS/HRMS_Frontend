@@ -591,7 +591,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               className={styles.secondaryButton}
               endIcon={<KeyboardArrowDownRoundedIcon />}
               onClick={handleOpenActions}
-              data-testid="payroll.run-detail.actions.menu.button"
+              controlId="payroll.run-detail.actions.menu.button"
             >
               {t("actions", "Actions")}
             </Button>
@@ -649,8 +649,19 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnPayslipLoading ? <Alert severity="info">{t("payslip_preparing", "Preparing payslips...")}</Alert> : null}
 
-      <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "0.95fr 1.38fr 1.05fr" } }}>
-        <Box sx={{ ...objCardSx, p: 1.25 }}>
+      <Box
+        sx={{
+          alignItems: "start",
+          display: "grid",
+          gap: 1.25,
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))",
+            xl: "minmax(250px, 0.92fr) minmax(0, 1.42fr) minmax(280px, 1fr)",
+          },
+        }}
+      >
+        <Box sx={{ ...objCardSx, minWidth: 0, p: 1.25 }}>
           <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75, mb: 1.25 }}>
             <TaskAltRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
             {t("summary_title", "Run Summary")}
@@ -665,13 +676,13 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Box>
         </Box>
 
-        <Box sx={{ ...objCardSx, display: "flex", flexDirection: "column", minHeight: 0, p: 1.25 }}>
-          <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
+        <Box sx={{ ...objCardSx, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, p: 1.25 }}>
+          <Box sx={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
             <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
               <SummarizeRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("validation_panel", "Validation")}
             </Typography>
-            <Box sx={{ display: "flex", gap: 0.75 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, justifyContent: "flex-end" }}>
               <Chip label={`${intBlockingCount} ${t("blocking", "Blocking")}`} size="small" sx={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontWeight: 800 }} />
               <Chip label={`${intWarningCount} ${t("warning", "Warning")}`} size="small" sx={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#ea580c", fontWeight: 800 }} />
               <Button className={styles.secondaryButton} onClick={() => objRouter.push(`/payroll-process-logs/run/${intRunID}`)} sx={{ minHeight: 28, px: 1.25 }}>
@@ -719,12 +730,20 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Box>
         </Box>
 
-        <Box sx={{ ...objCardSx, display: "flex", flexDirection: "column", p: 1.25 }}>
+        <Box
+          sx={{
+            ...objCardSx,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            p: 1.25,
+          }}
+        >
           <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75, mb: 1.25 }}>
             <LockRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
             {t("status_title", "Payroll Controls")}
           </Typography>
-          <Stack spacing={1.2} sx={{ flex: 1 }}>
+          <Stack spacing={1.2} sx={{ flex: 1, minWidth: 0 }}>
             <Box>
               <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700, mb: 0.5 }}>{t("status", "Status")}</Typography>
               <StatusPill strStatus={objRun.strRunStatus} />
@@ -739,7 +758,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 )
               }
               disabled={!blnCanEdit || blnSaving || objRun.strRunStatus === "Closed"}
-              data-testid="payroll.run-detail.status.select"
+              controlId="payroll.run-detail.status.select"
               fullWidth
               size="small"
             >
@@ -757,7 +776,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 checked={blnIsLocked}
                 onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
                 disabled={!blnCanEdit || objRun.strRunStatus === "Closed"}
-                inputProps={{ "data-testid": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                inputProps={{ "controlId": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
               />
             </Box>
             {blnCanEdit ? (
@@ -767,7 +786,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 onClick={saveLockState}
                 disabled={blnSaving}
                 sx={{ alignSelf: "flex-end", mt: "auto" }}
-                data-testid="payroll.run-detail.save-status.button"
+                controlId="payroll.run-detail.save-status.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button>
@@ -775,7 +794,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Stack>
         </Box>
 
-        <Box sx={{ ...objCardSx, p: 1.25, gridColumn: { xs: "auto", md: "1 / -1", xl: "2 / 4" } }}>
+        <Box sx={{ ...objCardSx, gridColumn: "1 / -1", minWidth: 0, p: 1.25 }}>
           <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
             <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
               <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
@@ -787,7 +806,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 startIcon={<ReceiptLongRoundedIcon />}
                 onClick={generateAllPayslips}
                 disabled={blnPayslipLoading}
-                data-testid="payroll.run-detail.payslips.generate-all.button"
+                controlId="payroll.run-detail.payslips.generate-all.button"
               >
                 {t("generate_all", "Generate All Payslips")}
               </Button>
@@ -820,10 +839,10 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                     <td>{formatDateTime(dicRow.dtGeneratedOn)}</td>
                     <td>
                       <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
-                        <Button className={styles.secondaryButton} onClick={() => viewPayslip(dicRow)} disabled={blnPayslipLoading} data-testid="payroll.run-detail.payslip.view.button" data-row-key={dicRow.intEmployeeID}>{t("view", "View")}</Button>
-                        {blnCanGeneratePayslip ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} data-testid="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
-                        {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => openPayslipDocument(dicRow, false)} disabled={blnPayslipLoading} data-testid="payroll.run-detail.payslip.download.button" data-row-key={dicRow.intEmployeeID}>{t("download", "Download")}</Button> : null}
-                        {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => openPayslipDocument(dicRow, true)} disabled={blnPayslipLoading} data-testid="payroll.run-detail.payslip.print.button" data-row-key={dicRow.intEmployeeID}>{t("print", "Print")}</Button> : null}
+                        <Button className={styles.secondaryButton} onClick={() => viewPayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.view.button" data-row-key={dicRow.intEmployeeID}>{t("view", "View")}</Button>
+                        {blnCanGeneratePayslip ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
+                        {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => openPayslipDocument(dicRow, false)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.download.button" data-row-key={dicRow.intEmployeeID}>{t("download", "Download")}</Button> : null}
+                        {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => openPayslipDocument(dicRow, true)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.print.button" data-row-key={dicRow.intEmployeeID}>{t("print", "Print")}</Button> : null}
                       </Stack>
                     </td>
                   </tr>
@@ -851,10 +870,10 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         </Box>
       ) : null}
 
-      <Dialog open={blnPayslipDialogOpen} onClose={() => setBlnPayslipDialogOpen(false)} maxWidth="lg" fullWidth data-testid="payroll.run-detail.payslip-preview.dialog">
+      <Dialog open={blnPayslipDialogOpen} onClose={() => setBlnPayslipDialogOpen(false)} maxWidth="lg" fullWidth controlId="payroll.run-detail.payslip-preview.dialog">
         <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
           {t("payslip_preview", "Payslip Preview")}
-          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} data-testid="payroll.run-detail.payslip-preview.close.icon-button">
+          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} controlId="payroll.run-detail.payslip-preview.close.icon-button">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>

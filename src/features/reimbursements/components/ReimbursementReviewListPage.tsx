@@ -262,15 +262,15 @@ export default function ReimbursementReviewListPage() {
         action: blnEmployeeReimbursementContext ? (
           <Stack direction="row" spacing={0.6} justifyContent="center" flexWrap="wrap" useFlexGap>
             {blnCanViewEssReimbursement ? (
-              <Button size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))} data-testid="reimbursements.review-list.row.view-ess.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
+              <Button size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))} controlId="reimbursements.review-list.row.view-ess.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
             ) : null}
             {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" data-testid="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
+              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
             ) : null}
           </Stack>
         ) : (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Button size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} data-testid="reimbursements.review-list.row.open.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
+            <Button size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} controlId="reimbursements.review-list.row.open.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
           </Box>
         ),
         strClaimReference: (
@@ -373,7 +373,7 @@ export default function ReimbursementReviewListPage() {
             <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
           </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap>
-            <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.status.select">
+            <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
               <MenuItem value="">All statuses</MenuItem>
               {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
             </TextField>
@@ -391,7 +391,7 @@ export default function ReimbursementReviewListPage() {
               <MenuItem value="yes">Yes</MenuItem>
               <MenuItem value="no">No</MenuItem>
             </TextField>
-            <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.payroll-status.select">
+            <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.payroll-status.select">
               <MenuItem value="">Any</MenuItem>
               <MenuItem value="in_payroll">In payroll</MenuItem>
               <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
@@ -451,7 +451,7 @@ export default function ReimbursementReviewListPage() {
         <DialogTitle>Add Reimbursement</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 1.4 }}>Select an employee to create the reimbursement for.</DialogContentText>
-          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} data-testid="reimbursements.review-list.create.employee.select">
+          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select">
             <MenuItem value="">Select employee</MenuItem>
             {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
           </TextField>

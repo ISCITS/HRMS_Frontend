@@ -340,20 +340,20 @@ export default function EmployeeMasterListPanel() {
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="employee.master-list.search.name.input" inputProps={{ "data-testid": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
-          <TextField data-testid="employee.master-list.search.code.input" inputProps={{ "data-testid": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
-            <TextField data-testid="employee.master-list.search.status.select" inputProps={{ "data-testid": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+          <TextField controlId="employee.master-list.search.name.input" inputProps={{ "controlId": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
+          <TextField controlId="employee.master-list.search.code.input" inputProps={{ "controlId": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
+            <TextField controlId="employee.master-list.search.status.select" inputProps={{ "controlId": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
               <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
             </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {t("search_button", dicConstant.common.search)}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button data-testid="employee.master-list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master-list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {t("clear_button", dicConstant.common.clear)}
             </Button>
           </Box>
@@ -368,13 +368,13 @@ export default function EmployeeMasterListPanel() {
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIDs.length} {t("bulk_rows_selected", "row(s) selected")}</Typography>
             {blnCanChangeStatus ? (
-              <Button data-testid="employee.master-list.bulk-activate.button" className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
+              <Button controlId="employee.master-list.bulk-activate.button" className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
             ) : null}
             {blnCanChangeStatus ? (
-              <Button data-testid="employee.master-list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+              <Button controlId="employee.master-list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
             ) : null}
             {blnCanDelete ? (
-              <Button data-testid="employee.master-list.bulk-delete.button" className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+              <Button controlId="employee.master-list.bulk-delete.button" className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
             ) : null}
           </Box>
         ) : null}
@@ -393,17 +393,17 @@ export default function EmployeeMasterListPanel() {
         >
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanAdd ? (
-              <Button data-testid="employee.master-list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="employee.master-list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("emp_add_button", dicConstant.employeeMaster.addButton)}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button data-testid="employee.master-list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="employee.master-list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_excel", dicConstant.common.exportExcel)}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button data-testid="employee.master-list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="employee.master-list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_pdf", dicConstant.common.exportPdf)}
               </Button>
             ) : null}
@@ -413,7 +413,7 @@ export default function EmployeeMasterListPanel() {
             <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
               <Box className={styles.paginationInfo}>
                 <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
-                <TextField data-testid="employee.master-list.rows-per-page.select" inputProps={{ "data-testid": "employee.master-list.rows-per-page.select" }} select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
+                <TextField controlId="employee.master-list.rows-per-page.select" inputProps={{ "controlId": "employee.master-list.rows-per-page.select" }} select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
                   {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>)}
                 </TextField>
                 <Typography className={styles.paginationRange}>
@@ -442,7 +442,7 @@ export default function EmployeeMasterListPanel() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "employee.master-list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
+                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "employee.master-list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
                   <th>{t("grid_actions", dicConstant.employeeMaster.grid.actions)}</th>
                   <th>{t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)}</th>
                   <th>{t("grid_full_name", dicConstant.employeeMaster.grid.fullName)}</th>
@@ -463,17 +463,17 @@ export default function EmployeeMasterListPanel() {
                   const blnSelected = lstSelectedIDs.includes(dicEmployee.intID);
                   return (
                     <tr key={dicEmployee.intID} className={blnSelected ? styles.selectedRow : undefined}>
-                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} inputProps={{ "data-testid": "employee.master-list.row.select.checkbox", "data-row-key": dicEmployee.intID } as InputHTMLAttributes<HTMLInputElement>} /></td>
+                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} inputProps={{ "controlId": "employee.master-list.row.select.checkbox", "data-row-key": dicEmployee.intID } as InputHTMLAttributes<HTMLInputElement>} /></td>
                       <td>
                         <Box className={styles.actionCell}>
                           {blnCanView ? (
-                            <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)} data-testid="employee.master-list.row.view.button" data-row-key={dicEmployee.intID}><VisibilityRoundedIcon fontSize="small" /></button>
+                            <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)} controlId="employee.master-list.row.view.button" data-row-key={dicEmployee.intID}><VisibilityRoundedIcon fontSize="small" /></button>
                           ) : null}
                           {blnCanEdit ? (
-                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)} data-testid="employee.master-list.row.edit.button" data-row-key={dicEmployee.intID}><EditRoundedIcon fontSize="small" /></button>
+                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)} controlId="employee.master-list.row.edit.button" data-row-key={dicEmployee.intID}><EditRoundedIcon fontSize="small" /></button>
                           ) : null}
                           {blnCanDelete ? (
-                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)} data-testid="employee.master-list.row.delete.button" data-row-key={dicEmployee.intID}><DeleteRoundedIcon fontSize="small" /></button>
+                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)} controlId="employee.master-list.row.delete.button" data-row-key={dicEmployee.intID}><DeleteRoundedIcon fontSize="small" /></button>
                           ) : null}
                         </Box>
                       </td>
@@ -504,16 +504,16 @@ export default function EmployeeMasterListPanel() {
         rootTestId="employee.master-list.alert.dialog"
         closeButtonTestId="employee.master-list.alert.close.button"
       />
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper, "data-testid": "employee.master-list.confirm.dialog" }}>
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper, "controlId": "employee.master-list.confirm.dialog" }}>
         <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
         <DialogContent className={styles.confirmDialogContent}>
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions className={styles.confirmDialogActions}>
-          <Button data-testid="employee.master-list.confirm.cancel.button" className={styles.textAction} onClick={closeConfirmDialog}>
+          <Button controlId="employee.master-list.confirm.cancel.button" className={styles.textAction} onClick={closeConfirmDialog}>
             {dicConstant.common.cancel}
           </Button>
-          <Button data-testid="employee.master-list.confirm.confirm.button" className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+          <Button controlId="employee.master-list.confirm.confirm.button" className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
             {objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
           </Button>
         </DialogActions>

@@ -143,16 +143,22 @@ function getStatusPillSx(strStatus: string) {
   return dicToneByStatus[strStatus] ?? { background: "#475569", color: "#fff" };
 }
 
+function hasDisplayAmount(decAmount: number | null | undefined) {
+  return Number(decAmount ?? 0) > 0;
+}
+
 function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
   const lstHeaders = [
     "Employee Code",
     "Employee Name",
     "Payroll Run",
     "Payroll Month",
-    "Gross",
-    "Deductions",
+    "Gross Earnings",
+    "Employee Deductions",
     "Tax",
     "Net Pay",
+    "Employer Contributions",
+    "Total Employer Cost",
     "Status",
   ];
   const lstLines = [
@@ -163,10 +169,12 @@ function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
         dicRow.strEmployeeName,
         dicRow.strRunName,
         dicRow.dtPayrollMonth ?? "",
-        dicRow.decGrossAmount,
-        dicRow.decDeductionAmount,
-        dicRow.decTaxAmount,
+        dicRow.decGrossEarningsAmount,
+        dicRow.decEmployeeDeductionTotal,
+        dicRow.decTaxTotal,
         dicRow.decNetPayAmount,
+        dicRow.decEmployerContributionTotal,
+        dicRow.decTotalEmployerCost,
         dicRow.strStatus,
       ]
         .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
@@ -197,10 +205,12 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
       <td>${dicRow.strEmployeeName}</td>
       <td>${dicRow.strRunName}</td>
       <td>${dicRow.dtPayrollMonth ?? "-"}</td>
-      <td>${dicRow.decGrossAmount}</td>
-      <td>${dicRow.decDeductionAmount}</td>
-      <td>${dicRow.decTaxAmount}</td>
+      <td>${dicRow.decGrossEarningsAmount}</td>
+      <td>${dicRow.decEmployeeDeductionTotal}</td>
+      <td>${dicRow.decTaxTotal}</td>
       <td>${dicRow.decNetPayAmount}</td>
+      <td>${dicRow.decEmployerContributionTotal}</td>
+      <td>${dicRow.decTotalEmployerCost}</td>
       <td>${dicRow.strStatus}</td>
     </tr>
   `
@@ -227,10 +237,12 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
               <th>Employee Name</th>
               <th>Payroll Run</th>
               <th>Payroll Month</th>
-              <th>Gross</th>
-              <th>Deductions</th>
+              <th>Gross Earnings</th>
+              <th>Employee Deductions</th>
               <th>Tax</th>
               <th>Net Pay</th>
+              <th>Employer Contributions</th>
+              <th>Total Employer Cost</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -385,6 +397,10 @@ export default function PayrollResultListPage({
       return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnMonthMatch && blnYearMatch;
     });
   }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults, strLatestPayrollMonth]);
+  const lstPreviewLines = useMemo(
+    () => (objPreviewRecord?.lstLines ?? []).filter((dicLine) => hasDisplayAmount(dicLine.decAmount)),
+    [objPreviewRecord]
+  );
 
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -485,7 +501,7 @@ export default function PayrollResultListPage({
 
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
         <Button
-          data-testid="payroll-results.list.back.button"
+          controlId="payroll-results.list.back.button"
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll")}
@@ -512,12 +528,11 @@ export default function PayrollResultListPage({
           </Box>
         ) : null}
 
-        {blnPayslipScreen && blnEssMode ? (
         {blnPayslipScreen ? (
           <Box className={styles.payslipSearchPanel}>
             <Box className={styles.payslipSearchLinePrimary}>
               <TextField
-                data-testid="payroll-results.list.employee-search.input"
+                controlId="payroll-results.list.employee-search.input"
                 value={dicSearchDraft.strSearchEmployee}
                 onChange={(objEvent) =>
                   setDicSearchDraft((dicPrevious) => ({
@@ -591,7 +606,7 @@ export default function PayrollResultListPage({
               </TextField>
               <Box className={styles.searchActions}>
                 <Button
-                  data-testid="payroll-results.list.search.button"
+                  controlId="payroll-results.list.search.button"
                   className={styles.primaryButton}
                   startIcon={<SearchRoundedIcon />}
                   onClick={() => applyFilters(dicSearchDraft)}
@@ -599,7 +614,7 @@ export default function PayrollResultListPage({
                   {t("search", "Search")}
                 </Button>
                 <Button
-                  data-testid="payroll-results.list.clear.button"
+                  controlId="payroll-results.list.clear.button"
                   className={styles.secondaryButton}
                   startIcon={<ClearRoundedIcon />}
                   onClick={clearFilters}
@@ -611,7 +626,7 @@ export default function PayrollResultListPage({
           </Box>
         ) : null}
 
-        {!blnPayslipScreen ? (
+        {!blnPayslipScreen && (
           <Box
             sx={{
               width: "100%",
@@ -640,7 +655,7 @@ export default function PayrollResultListPage({
               }}
             >
               <TextField
-                data-testid="payroll-results.list.employee-search.input"
+                controlId="payroll-results.list.employee-search.input"
                 value={dicSearchDraft.strSearchEmployee}
                 onChange={(objEvent) =>
                   setDicSearchDraft((dicPrevious) => ({
@@ -729,7 +744,7 @@ export default function PayrollResultListPage({
                 <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
               </TextField>
               <Button
-                data-testid="payroll-results.list.search.button"
+                controlId="payroll-results.list.search.button"
                 className={styles.primaryButton}
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => applyFilters(dicSearchDraft)}
@@ -738,7 +753,7 @@ export default function PayrollResultListPage({
                 {t("search", "Search")}
               </Button>
               <Button
-                data-testid="payroll-results.list.clear.button"
+                controlId="payroll-results.list.clear.button"
                 className={styles.secondaryButton}
                 startIcon={<ClearRoundedIcon />}
                 onClick={clearFilters}
@@ -819,7 +834,7 @@ export default function PayrollResultListPage({
           <Box className={styles.listUtilityActions}>
             {canDoAny("export") ? (
               <Button
-                data-testid="payroll-results.list.export-excel.button"
+                controlId="payroll-results.list.export-excel.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() =>
@@ -834,7 +849,7 @@ export default function PayrollResultListPage({
             ) : null}
             {canDoAny("export") ? (
               <Button
-                data-testid="payroll-results.list.export-pdf.button"
+                controlId="payroll-results.list.export-pdf.button"
                 className={styles.secondaryButton}
                 startIcon={<DownloadRoundedIcon />}
                 onClick={() =>
@@ -894,10 +909,12 @@ export default function PayrollResultListPage({
                 {blnPayslipScreen ? <th>{t("payslip_no", "Payslip No.")}</th> : null}
                 <th>{t("payroll_run", "Payroll Run")}</th>
                 <th>{t("payroll_month", "Payroll Month")}</th>
-                <th>{t("gross", "Gross")}</th>
-                <th>{t("deductions", "Deductions")}</th>
+                <th>{t("gross_earnings", "Gross Earnings")}</th>
+                <th>{t("employee_deductions", "Employee Deductions")}</th>
                 <th>{t("tax", "Tax")}</th>
                 <th>{t("net_pay", "Net Pay")}</th>
+                <th>{t("employer_contribution", "Employer Contributions")}</th>
+                <th>{t("total_employer_cost", "Total Employer Cost")}</th>
                 <th>{t("status", "Status")}</th>
                 {blnPayslipScreen ? <th>{t("generated_on", "Generated On")}</th> : null}
               </tr>
@@ -905,7 +922,7 @@ export default function PayrollResultListPage({
             <tbody>
               {lstVisibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={blnPayslipScreen ? 12 : 10} className={styles.emptyState}>
+                  <td colSpan={blnPayslipScreen ? 14 : 12} className={styles.emptyState}>
                     {blnPayslipScreen
                       ? t(
                           "empty_generated_payslip_message",
@@ -975,10 +992,12 @@ export default function PayrollResultListPage({
                     {blnPayslipScreen ? <td>{dicRow.strPayslipNumber || "-"}</td> : null}
                     <td>{dicRow.strRunName}</td>
                     <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
-                    <td>{formatCurrency(dicRow.decGrossAmount)}</td>
-                    <td>{formatCurrency(dicRow.decDeductionAmount)}</td>
-                    <td>{formatCurrency(dicRow.decTaxAmount)}</td>
+                    <td>{formatCurrency(dicRow.decGrossEarningsAmount)}</td>
+                    <td>{formatCurrency(dicRow.decEmployeeDeductionTotal)}</td>
+                    <td>{formatCurrency(dicRow.decTaxTotal)}</td>
                     <td>{formatCurrency(dicRow.decNetPayAmount)}</td>
+                    <td>{formatCurrency(dicRow.decEmployerContributionTotal)}</td>
+                    <td>{formatCurrency(dicRow.decTotalEmployerCost)}</td>
                     <td>
                       <span
                         className={styles.statusPill}
@@ -1049,15 +1068,15 @@ export default function PayrollResultListPage({
                     {t("gross", "Gross")}
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
-                    {formatCurrency(objPreviewRecord.decGrossAmount)}
+                    {formatCurrency(objPreviewRecord.decGrossEarningsAmount)}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                    {t("deductions", "Deductions")}
+                    {t("employee_deductions", "Employee Deductions")}
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
-                    {formatCurrency(objPreviewRecord.decDeductionAmount)}
+                    {formatCurrency(objPreviewRecord.decEmployeeDeductionTotal)}
                   </Typography>
                 </Box>
                 <Box>
@@ -1065,7 +1084,7 @@ export default function PayrollResultListPage({
                     {t("tax", "Tax")}
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
-                    {formatCurrency(objPreviewRecord.decTaxAmount)}
+                    {formatCurrency(objPreviewRecord.decTaxTotal)}
                   </Typography>
                 </Box>
                 <Box>
@@ -1108,14 +1127,14 @@ export default function PayrollResultListPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {objPreviewRecord.lstLines.length === 0 ? (
+                      {lstPreviewLines.length === 0 ? (
                         <tr>
                           <td colSpan={4} className={styles.emptyState}>
                             {t("no_lines", "No payroll result lines recorded.")}
                           </td>
                         </tr>
                       ) : null}
-                      {objPreviewRecord.lstLines.map((dicLine) => (
+                      {lstPreviewLines.map((dicLine) => (
                         <tr key={dicLine.intID}>
                           <td>{dicLine.strComponentName || dicLine.strComponentCode}</td>
                           <td>{dicLine.strComponentCategory || "-"}</td>

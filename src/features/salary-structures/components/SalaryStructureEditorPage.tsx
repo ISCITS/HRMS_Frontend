@@ -64,14 +64,14 @@ function normalizeSelectToken(strValue: string) {
 
 function buildInputTestIdProps(strTestId: string, objExtraProps?: Record<string, string>) {
   return {
-    "data-testid": strTestId,
+    "controlId": strTestId,
     ...objExtraProps,
   } as Record<string, string>;
 }
 
 function buildSelectDisplayTestIdProps(strTestId: string, objExtraProps?: Record<string, string>) {
   return {
-    "data-testid": strTestId,
+    "controlId": strTestId,
     ...objExtraProps,
   } as Record<string, string>;
 }
@@ -1365,7 +1365,7 @@ export default function SalaryStructureEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                data-testid="salary-structures.editor.back.button"
+                controlId="salary-structures.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/salary-structures")}
@@ -1390,7 +1390,7 @@ export default function SalaryStructureEditorPage({
                 {t("back_button", "Back")}
               </Button>
               <Button
-                data-testid="salary-structures.editor.save.button"
+                controlId="salary-structures.editor.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
@@ -1436,7 +1436,7 @@ export default function SalaryStructureEditorPage({
               onChange={(objEvent) => updateRootField("strStructureCode", objEvent.target.value.toUpperCase())}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-structures.editor.structure-code.input"
+              controlId="salary-structures.editor.structure-code.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.structure-code.input")}
               required
             />
@@ -1446,7 +1446,7 @@ export default function SalaryStructureEditorPage({
               onChange={(objEvent) => syncDefaultStructureText(objEvent.target.value)}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-structures.editor.structure-name.input"
+              controlId="salary-structures.editor.structure-name.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.structure-name.input")}
               required
             />
@@ -1477,12 +1477,12 @@ export default function SalaryStructureEditorPage({
               onChange={(objEvent) => updateRootField("strCurrencyCode", objEvent.target.value)}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-structures.editor.currency.select"
+              controlId="salary-structures.editor.currency.select"
               inputProps={buildInputTestIdProps("salary-structures.editor.currency.select")}
               SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.currency.select") }}
             >
               {(objFormOptions?.lstCurrencies ?? []).map((strCurrencyCode) => (
-                <MenuItem key={strCurrencyCode} value={strCurrencyCode} data-testid={`salary-structures.editor.currency.${normalizeSelectToken(strCurrencyCode)}.option`}>{strCurrencyCode}</MenuItem>
+                <MenuItem key={strCurrencyCode} value={strCurrencyCode} controlId={`salary-structures.editor.currency.${normalizeSelectToken(strCurrencyCode)}.option`}>{strCurrencyCode}</MenuItem>
               ))}
             </TextField>
             <TextField
@@ -1493,7 +1493,7 @@ export default function SalaryStructureEditorPage({
               InputLabelProps={{ shrink: true }}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-structures.editor.effective-from.input"
+              controlId="salary-structures.editor.effective-from.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.effective-from.input")}
               required
             />
@@ -1505,7 +1505,7 @@ export default function SalaryStructureEditorPage({
               InputLabelProps={{ shrink: true }}
               disabled={blnFieldDisabled}
               fullWidth
-              data-testid="salary-structures.editor.effective-to.input"
+              controlId="salary-structures.editor.effective-to.input"
               inputProps={buildInputTestIdProps("salary-structures.editor.effective-to.input")}
             />
           </Box>
@@ -1528,7 +1528,7 @@ export default function SalaryStructureEditorPage({
                 </Typography>
               </Box>
               <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
-                data-testid="salary-structures.editor.add-line.button"
+                controlId="salary-structures.editor.add-line.button"
                 onClick={handleAddLineRow} disabled={blnFieldDisabled}
                 sx={{
                   borderRadius: "14px",
@@ -1607,7 +1607,7 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.intLineOrder}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
                         disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.line-order.input"
+                        controlId="salary-structures.editor.line.line-order.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ width: 78 }}
                       />
@@ -1620,13 +1620,13 @@ export default function SalaryStructureEditorPage({
                           value={dicLine.intSalaryComponentID}
                           onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
                           disabled={blnFieldDisabled}
-                          data-testid="salary-structures.editor.line.salary-component.select"
+                          controlId="salary-structures.editor.line.salary-component.select"
                           inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
                           SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
                           sx={{ width: "100%" }}
                         >
                           {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
-                            <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                            <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                               {dicOption.strLabel}
                             </MenuItem>
                           ))}
@@ -1661,13 +1661,13 @@ export default function SalaryStructureEditorPage({
                         value={resolveValueSourceOption(lstValueSourceOptions, dicLine.strValueSource)}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
                         disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.value-source.select"
+                        controlId="salary-structures.editor.line.value-source.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID }) }}
                         sx={{ minWidth: 136 }}
                       >
                         {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
-                          <MenuItem key={strValueSource} value={strValueSource} data-testid={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
+                          <MenuItem key={strValueSource} value={strValueSource} controlId={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
                         ))}
                       </TextField>
                     </td>
@@ -1677,7 +1677,7 @@ export default function SalaryStructureEditorPage({
                         value={strLineYearlyAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed"}
-                        data-testid="salary-structures.editor.line.yearly-amount.input"
+                        controlId="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
                           "data-row-key": dicLine.strRowID,
                           inputMode: "decimal",
@@ -1691,7 +1691,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltFixedAmount}
                         disabled
-                        data-testid="salary-structures.editor.line.fixed-amount.input"
+                        controlId="salary-structures.editor.line.fixed-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ minWidth: 118 }}
                       />
@@ -1702,7 +1702,7 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.fltPercentageValue}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltPercentageValue", objEvent.target.value)}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
-                        data-testid="salary-structures.editor.line.percentage-value.input"
+                        controlId="salary-structures.editor.line.percentage-value.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.percentage-value.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ width: 50 }}
                       />
@@ -1714,16 +1714,16 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.intBasisComponentID}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
-                        data-testid="salary-structures.editor.line.basis-component.select"
+                        controlId="salary-structures.editor.line.basis-component.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
                         sx={{ minWidth: 188 }}
                       >
-                        <MenuItem value="" data-testid="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
+                        <MenuItem value="" controlId="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
                         {dicForm.lstComponents
                           .filter((dicBasis) => dicBasis.strRowID !== dicLine.strRowID && dicBasis.intSalaryComponentID !== "")
                           .map((dicBasis) => (
-                            <MenuItem key={dicBasis.strRowID} value={Number(dicBasis.intSalaryComponentID)} data-testid={`salary-structures.editor.line.basis-component.${normalizeSelectToken(dicBasis.strComponentCode || dicBasis.strComponentName)}.option`}>
+                            <MenuItem key={dicBasis.strRowID} value={Number(dicBasis.intSalaryComponentID)} controlId={`salary-structures.editor.line.basis-component.${normalizeSelectToken(dicBasis.strComponentCode || dicBasis.strComponentName)}.option`}>
                               {dicBasis.strComponentCode ? `${dicBasis.strComponentCode} - ${dicBasis.strComponentName}` : dicBasis.strComponentName}
                             </MenuItem>
                           ))}
@@ -1735,7 +1735,7 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.strFormulaExpression}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "formula"}
-                        data-testid="salary-structures.editor.line.formula.input"
+                        controlId="salary-structures.editor.line.formula.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ minWidth: 188 }}
                       />
@@ -1746,7 +1746,7 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.fltMinAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMinAmount", objEvent.target.value)}
                         disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.min-amount.input"
+                        controlId="salary-structures.editor.line.min-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.min-amount.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ minWidth: 108 }}
                       />
@@ -1757,7 +1757,7 @@ export default function SalaryStructureEditorPage({
                         value={dicLine.fltMaxAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltMaxAmount", objEvent.target.value)}
                         disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.max-amount.input"
+                        controlId="salary-structures.editor.line.max-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.max-amount.input", { "data-row-key": dicLine.strRowID })}
                         sx={{ minWidth: 108 }}
                       />
@@ -1783,7 +1783,7 @@ export default function SalaryStructureEditorPage({
                         color="error"
                         onClick={() => handleRemoveLineRow(dicLine.strRowID)}
                         disabled={blnFieldDisabled}
-                        data-testid="salary-structures.editor.line.remove.button"
+                        controlId="salary-structures.editor.line.remove.button"
                         data-row-key={dicLine.strRowID}
                         aria-label={t("remove_button", "Remove")}
                       >
@@ -1860,7 +1860,7 @@ export default function SalaryStructureEditorPage({
                           startIcon={<AddRoundedIcon />}
                           onClick={() => handleAddFlexiMappingRow(dicLine.strRowID)}
                           disabled={blnFieldDisabled || lstFlexiEligibleComponents.length === 0}
-                          data-testid="salary-structures.editor.flexi-mapping.add.button"
+                          controlId="salary-structures.editor.flexi-mapping.add.button"
                           data-row-key={dicLine.strRowID}
                         >
                           {t("add_flexi_component", "Add")}
@@ -1914,14 +1914,14 @@ export default function SalaryStructureEditorPage({
                                         value={dicMapping.intFlexiComponentID}
                                         onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", objEvent.target.value)}
                                         disabled={blnFieldDisabled}
-                                        data-testid="salary-structures.editor.flexi-mapping.component.select"
+                                        controlId="salary-structures.editor.flexi-mapping.component.select"
                                         inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID })}
                                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID }) }}
                                         sx={{ minWidth: 200, "& .MuiSelect-select": { fontSize: "0.84rem" } }}
                                       >
-                                        <MenuItem value="" data-testid="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
+                                        <MenuItem value="" controlId="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
                                         {lstFlexiEligibleComponents.map((dicOption) => (
-                                          <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                                          <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                                             {dicOption.strLabel}
                                           </MenuItem>
                                         ))}
@@ -1931,7 +1931,7 @@ export default function SalaryStructureEditorPage({
                                         size="small"
                                         value={dicFlexiComponent?.strLabel || dicMapping.strFlexiComponentName}
                                         disabled
-                                        data-testid="salary-structures.editor.flexi-mapping.component.display"
+                                        controlId="salary-structures.editor.flexi-mapping.component.display"
                                         inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.display", { "data-row-key": dicMapping.strRowID })}
                                         sx={{ minWidth: 200, "& .MuiInputBase-input": { fontSize: "0.84rem" } }}
                                       />
@@ -1950,7 +1950,7 @@ export default function SalaryStructureEditorPage({
                                     value={dicMapping.fltMaxAmount}
                                     onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "fltMaxAmount", objEvent.target.value)}
                                     disabled={blnFieldDisabled || blnFlexiEligibilityInactive}
-                                    data-testid="salary-structures.editor.flexi-mapping.max-amount.input"
+                                    controlId="salary-structures.editor.flexi-mapping.max-amount.input"
                                     inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.max-amount.input", {
                                       "data-row-key": dicMapping.strRowID,
                                       inputMode: "decimal",
@@ -1965,7 +1965,7 @@ export default function SalaryStructureEditorPage({
                                     size="small"
                                     value={strMonthlyLimit}
                                     disabled
-                                    data-testid="salary-structures.editor.flexi-mapping.default-amount.input"
+                                    controlId="salary-structures.editor.flexi-mapping.default-amount.input"
                                     inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.default-amount.input", { "data-row-key": dicMapping.strRowID })}
                                     sx={{ width: 126, "& .MuiInputBase-input": { fontSize: "0.84rem", py: 0.9 } }}
                                   />
@@ -2001,7 +2001,7 @@ export default function SalaryStructureEditorPage({
                                       color="error"
                                       onClick={() => handleRemoveFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID)}
                                       disabled={blnFieldDisabled || blnFlexiEligibilityInactive}
-                                      data-testid="salary-structures.editor.flexi-mapping.remove.button"
+                                      controlId="salary-structures.editor.flexi-mapping.remove.button"
                                       data-row-key={dicMapping.strRowID}
                                       aria-label={t("remove_button", "Remove")}
                                     >
@@ -2045,14 +2045,14 @@ export default function SalaryStructureEditorPage({
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled data-testid="salary-structures.editor.multilingual.add-language.button">
+            <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLanguageRow} disabled controlId="salary-structures.editor.multilingual.add-language.button">
               {t("add_language", "Add Language")}
             </Button>
             <Button
               className={styles.primaryButton}
               onClick={() => void handleTranslateClick()}
               disabled={blnFieldDisabled || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-              data-testid="salary-structures.editor.multilingual.translate.button"
+              controlId="salary-structures.editor.multilingual.translate.button"
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
                 ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
@@ -2082,12 +2082,12 @@ export default function SalaryStructureEditorPage({
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))}
                 disabled
                 fullWidth
-                data-testid="salary-structures.editor.multilingual.language.select"
+                controlId="salary-structures.editor.multilingual.language.select"
                 inputProps={buildInputTestIdProps("salary-structures.editor.multilingual.language.select", { "data-row-key": dicText.strRowID })}
                 SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.multilingual.language.select", { "data-row-key": dicText.strRowID }) }}
               >
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
-                  <MenuItem key={dicLanguage.intID} value={dicLanguage.intID} data-testid={`salary-structures.editor.multilingual.language.${dicLanguage.intID}.option`}>{dicLanguage.strLabel}</MenuItem>
+                  <MenuItem key={dicLanguage.intID} value={dicLanguage.intID} controlId={`salary-structures.editor.multilingual.language.${dicLanguage.intID}.option`}>{dicLanguage.strLabel}</MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -2095,7 +2095,7 @@ export default function SalaryStructureEditorPage({
                 value={dicText.strStructureName}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureName", objEvent.target.value)}
                 disabled={blnFieldDisabled || intIndex === 0}
-                data-testid="salary-structures.editor.multilingual.structure-name.input"
+                controlId="salary-structures.editor.multilingual.structure-name.input"
                 inputProps={buildInputTestIdProps("salary-structures.editor.multilingual.structure-name.input", { "data-row-key": dicText.strRowID })}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
@@ -2109,7 +2109,7 @@ export default function SalaryStructureEditorPage({
                 value={dicText.strStructureDescription}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStructureDescription", objEvent.target.value)}
                 disabled={blnFieldDisabled}
-                data-testid="salary-structures.editor.multilingual.description.input"
+                controlId="salary-structures.editor.multilingual.description.input"
                 inputProps={buildInputTestIdProps("salary-structures.editor.multilingual.description.input", { "data-row-key": dicText.strRowID })}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
@@ -2118,7 +2118,7 @@ export default function SalaryStructureEditorPage({
                 }}
                 fullWidth
               />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled data-testid="salary-structures.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 54 }}>
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled controlId="salary-structures.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 54 }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>

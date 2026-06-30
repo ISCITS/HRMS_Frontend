@@ -323,7 +323,7 @@ export default function StateMasterPanel() {
     const blnSelected = lstSelectedIds.includes(dicState.id);
     return {
       id: dicState.id,
-      select: <Checkbox data-testid="state-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicState.id)} inputProps={{ "data-testid": "state-master.list.row.select.checkbox", "data-row-key": dicState.id } as InputHTMLAttributes<HTMLInputElement>} />,
+      select: <Checkbox controlId="state-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicState.id)} inputProps={{ "controlId": "state-master.list.row.select.checkbox", "data-row-key": dicState.id } as InputHTMLAttributes<HTMLInputElement>} />,
       action: <CommonRowActions testIdPrefix="state-master.list.row" rowKey={dicState.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => void openDialog("view", dicState)} onEdit={() => void openDialog("edit", dicState)} onDelete={() => deleteRecord(dicState.id)} />,
       countryName: dicState.countryName || "-",
       name: dicState.name,
@@ -337,12 +337,12 @@ export default function StateMasterPanel() {
       field: "select",
       headerName: (
         <Checkbox
-          data-testid="state-master.list.select-all.checkbox"
+          controlId="state-master.list.select-all.checkbox"
           checked={blnAllFilteredSelected}
           indeterminate={blnSomeFilteredSelected}
           onChange={toggleSelectAll}
           disabled={lstFiltered.length === 0}
-          inputProps={{ "data-testid": "state-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          inputProps={{ "controlId": "state-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
         />
       ),
       sortable: false,
@@ -360,22 +360,22 @@ export default function StateMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="state-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
+        <Button controlId="state-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
       </Box>
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for State.")}</Typography> : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="state-master.list.search-name.input" inputProps={{ "data-testid": "state-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
-          <TextField data-testid="state-master.list.search-code.input" inputProps={{ "data-testid": "state-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
-          <TextField data-testid="state-master.list.search-status.select" inputProps={{ "data-testid": "state-master.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth><MenuItem data-testid="state-master.list.search-status.all.option" value="All">All</MenuItem><MenuItem data-testid="state-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem data-testid="state-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField>
-          <Box className={styles.searchActions}><Button data-testid="state-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="state-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <TextField controlId="state-master.list.search-name.input" inputProps={{ "controlId": "state-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
+          <TextField controlId="state-master.list.search-code.input" inputProps={{ "controlId": "state-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
+          <TextField controlId="state-master.list.search-status.select" inputProps={{ "controlId": "state-master.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth><MenuItem controlId="state-master.list.search-status.all.option" value="All">All</MenuItem><MenuItem controlId="state-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem controlId="state-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField>
+          <Box className={styles.searchActions}><Button controlId="state-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="state-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
         {blnSubmitting ? (
           <Box className={styles.bulkBar}><CircularProgress size={20} /><Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography></Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
-          <Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicLabels.bulkRowsSelected}`}</Typography>{blnCanChangeStatus ? <Button data-testid="state-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}{blnCanChangeStatus ? <Button data-testid="state-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}{blnCanDelete ? <Button data-testid="state-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}</Box>
+          <Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicLabels.bulkRowsSelected}`}</Typography>{blnCanChangeStatus ? <Button controlId="state-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}{blnCanChangeStatus ? <Button controlId="state-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}{blnCanDelete ? <Button controlId="state-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}</Box>
         ) : null}
       </Box>
       <Box className={styles.tableCard}>
@@ -384,7 +384,7 @@ export default function StateMasterPanel() {
         ) : !blnCanView ? (
           <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800, color: "#0f172a" }}>State access is not available for your user group.</Typography></Box>
         ) : (
-          <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button data-testid="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button controlId="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
       <CommonMasterDialog
@@ -416,8 +416,8 @@ export default function StateMasterPanel() {
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
-            <TextField data-testid="state-master.dialog.country.select"
-              inputProps={{ "data-testid": "state-master.dialog.country.select" }}
+            <TextField controlId="state-master.dialog.country.select"
+              inputProps={{ "controlId": "state-master.dialog.country.select" }}
               required
               select label={`${dicLabels.fieldCountry}`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)}
               disabled={strMode === "view"}
@@ -429,21 +429,21 @@ export default function StateMasterPanel() {
               helperText={dicErrors.countryId} 
               fullWidth>
               <MenuItem
-                data-testid="state-master.dialog.country.empty.option"
+                controlId="state-master.dialog.country.empty.option"
                 value="">{dicLabels.selectCountry}
                 </MenuItem>{
-                objFormOptions.lstCountries.map((dicCountry) => <MenuItem data-testid="state-master.dialog.country.option"
+                objFormOptions.lstCountries.map((dicCountry) => <MenuItem controlId="state-master.dialog.country.option"
                   data-option-key={dicCountry.intID} 
                   key={dicCountry.intID} 
                   value={String(dicCountry.intID)}>{
                     dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}
             </TextField>
             <TextField 
-            data-testid="state-master.dialog.name.input" 
-            inputProps={{ "data-testid": "state-master.dialog.name.input" }}
+            controlId="state-master.dialog.name.input" 
+            inputProps={{ "controlId": "state-master.dialog.name.input" }}
               required
               label={`${dicLabels.fieldName}`} value={dicForm.name} disabled={strMode === "view"}
-              onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField data-testid="state-master.dialog.code.input" inputProps={{ "data-testid": "state-master.dialog.code.input" }}
+              onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField controlId="state-master.dialog.code.input" inputProps={{ "controlId": "state-master.dialog.code.input" }}
                 required
                 label={`${dicLabels.fieldCode}`} 
                 value={dicForm.code} 

@@ -283,7 +283,7 @@ export default function EmployeePayrollInputListPage() {
 
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
         <Button
-          data-testid="employee-payroll-input.list.back.button"
+          controlId="employee-payroll-input.list.back.button"
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll")}
@@ -295,7 +295,7 @@ export default function EmployeePayrollInputListPage() {
       <Box className={styles.controlsCard}>
         <Box className={`${styles.searchRow} ${styles.employeePayrollInputSearchRow}`}>
           <TextField
-            data-testid="employee-payroll-input.list.employee-search.input"
+            controlId="employee-payroll-input.list.employee-search.input"
             value={dicSearchDraft.strSearchEmployee}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -338,7 +338,7 @@ export default function EmployeePayrollInputListPage() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              data-testid="employee-payroll-input.list.search.button"
+              controlId="employee-payroll-input.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
@@ -367,7 +367,7 @@ export default function EmployeePayrollInputListPage() {
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
             {blnCanAdd ? <Button
-              data-testid="employee-payroll-input.list.add.button"
+              controlId="employee-payroll-input.list.add.button"
               className={styles.primaryButton}
               startIcon={<AddRoundedIcon />}
               onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}

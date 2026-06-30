@@ -14,7 +14,10 @@ type CommonRowActionsProps = {
   blnCanDelete?: boolean;
   blnCanToggle?: boolean;
   blnToggleActive?: boolean;
-  testIdPrefix?: string;
+  viewButtonControlId?: string;
+  editButtonControlId?: string;
+  deleteButtonControlId?: string;
+  statusSwitchControlId?: string;
   rowKey?: string | number;
   onView?: () => void;
   onEdit?: () => void;
@@ -28,7 +31,6 @@ export default function CommonRowActions({
   blnCanDelete = false,
   blnCanToggle = false,
   blnToggleActive = true,
-  testIdPrefix,
   rowKey,
   onView,
   onEdit,
@@ -40,22 +42,22 @@ export default function CommonRowActions({
   return (
     <Box className={styles.actionCell}>
       {blnCanView && onView ? (
-        <button {...objRowDataProps} data-testid={testIdPrefix ? `${testIdPrefix}.view.button` : undefined} className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
+        <button {...objRowDataProps} controlId="common-row-actions.view.button" className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
           <VisibilityRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanEdit && onEdit ? (
-        <button {...objRowDataProps} data-testid={testIdPrefix ? `${testIdPrefix}.edit.button` : undefined} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
+        <button {...objRowDataProps} controlId="common-row-actions.edit.button" className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
           <EditRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanDelete && onDelete ? (
-        <button {...objRowDataProps} data-testid={testIdPrefix ? `${testIdPrefix}.delete.button` : undefined} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
+        <button {...objRowDataProps} controlId="common-row-actions.delete.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
           <DeleteRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanToggle && onToggle ? (
-        <ActiveStatusSwitch testId={testIdPrefix ? `${testIdPrefix}.status.switch` : undefined} blnIsActive={blnToggleActive} onChange={onToggle} />
+        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} />
       ) : null}
     </Box>
   );

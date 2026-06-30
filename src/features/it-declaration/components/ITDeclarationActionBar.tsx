@@ -57,10 +57,10 @@ export default function ITDeclarationActionBar({
 
   return (
     <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-      {blnCanApprove ? <Button variant="contained" sx={objContainedPrimarySx} disabled={blnLocked} onClick={fnApproveAll} data-testid="it-declaration.review.approve-all.button">Approve All</Button> : null}
-      {blnCanReject ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRejectHeader} data-testid="it-declaration.review.reject-all.button">Reject All</Button> : null}
-      {blnCanRelease ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRelease} data-testid="it-declaration.review.release.button">Release</Button> : null}
-      {blnCanLock ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnLock} data-testid="it-declaration.review.lock.button">Lock</Button> : null}
+      {blnCanApprove ? <Button variant="contained" sx={objContainedPrimarySx} disabled={blnLocked} onClick={fnApproveAll} controlId="it-declaration.review.approve-all.button">Approve All</Button> : null}
+      {blnCanReject ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRejectHeader} controlId="it-declaration.review.reject-all.button">Reject All</Button> : null}
+      {blnCanRelease ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnRelease} controlId="it-declaration.review.release.button">Release</Button> : null}
+      {blnCanLock ? <Button variant="outlined" sx={objOutlinedSx} disabled={blnLocked} onClick={fnLock} controlId="it-declaration.review.lock.button">Lock</Button> : null}
     </Stack>
   );
 }

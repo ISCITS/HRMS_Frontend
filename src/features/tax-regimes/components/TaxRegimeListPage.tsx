@@ -225,21 +225,21 @@ export default function TaxRegimeListPage() {
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
-          <TextField data-testid="tax-regimes.list.regime-code.input" inputProps={{ "data-testid": "tax-regimes.list.regime-code.input" }} label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField data-testid="tax-regimes.list.regime-name.input" inputProps={{ "data-testid": "tax-regimes.list.regime-name.input" }} label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField data-testid="tax-regimes.list.search-status.select" inputProps={{ "data-testid": "tax-regimes.list.search-status.select" }} select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
-            <MenuItem data-testid="tax-regimes.list.search-status.all.option" value="All">{t("all", "All")}</MenuItem>
-            <MenuItem data-testid="tax-regimes.list.search-status.active.option" value="Active">{t("active", "Active")}</MenuItem>
-            <MenuItem data-testid="tax-regimes.list.search-status.inactive.option" value="Inactive">{t("inactive", "Inactive")}</MenuItem>
+          <TextField controlId="tax-regimes.list.regime-code.input" inputProps={{ "controlId": "tax-regimes.list.regime-code.input" }} label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
+          <TextField controlId="tax-regimes.list.regime-name.input" inputProps={{ "controlId": "tax-regimes.list.regime-name.input" }} label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
+          <TextField controlId="tax-regimes.list.search-status.select" inputProps={{ "controlId": "tax-regimes.list.search-status.select" }} select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+            <MenuItem controlId="tax-regimes.list.search-status.all.option" value="All">{t("all", "All")}</MenuItem>
+            <MenuItem controlId="tax-regimes.list.search-status.active.option" value="Active">{t("active", "Active")}</MenuItem>
+            <MenuItem controlId="tax-regimes.list.search-status.inactive.option" value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="tax-regimes.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
+            <Button controlId="tax-regimes.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
               {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              data-testid="tax-regimes.list.clear.button"
+              controlId="tax-regimes.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -261,17 +261,17 @@ export default function TaxRegimeListPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanAdd ? (
-              <Button data-testid="tax-regimes.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="tax-regimes.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("add_tax_regime", "Add Tax Regime")}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button data-testid="tax-regimes.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tax_regimes.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="tax-regimes.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tax_regimes.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_excel", "Export Excel")}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button data-testid="tax-regimes.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("tax_regimes_title", "Tax Regimes"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="tax-regimes.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("tax_regimes_title", "Tax Regimes"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_pdf", "Export PDF")}
               </Button>
             ) : null}
@@ -338,7 +338,7 @@ export default function TaxRegimeListPage() {
                       />
                       {(blnCanView || blnCanEdit) ? (
                         <Button
-                          data-testid="tax-regimes.list.row.manage-slabs.button"
+                          controlId="tax-regimes.list.row.manage-slabs.button"
                           data-row-key={String(dicRow.intID)}
                           variant="outlined"
                           size="small"

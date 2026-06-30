@@ -169,7 +169,7 @@ export default function EssCalendarPage() {
           </Stack>
           <Stack direction="row" spacing={0.7} alignItems="center">
             <Button
-              data-testid="ess.calendar.previous-month.button"
+              controlId="ess.calendar.previous-month.button"
               size="small"
               onClick={showPreviousMonth}
               sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
@@ -188,7 +188,7 @@ export default function EssCalendarPage() {
               variant="outlined"
             />
             <Button
-              data-testid="ess.calendar.next-month.button"
+              controlId="ess.calendar.next-month.button"
               size="small"
               onClick={showNextMonth}
               sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
@@ -197,7 +197,7 @@ export default function EssCalendarPage() {
               <ChevronRightRoundedIcon fontSize="small" />
             </Button>
             <Button
-              data-testid="ess.calendar.today.button"
+              controlId="ess.calendar.today.button"
               size="small"
               onClick={jumpToCurrentMonth}
               sx={{ color: "white", borderColor: "rgba(255,255,255,0.48)", textTransform: "none", fontWeight: 700 }}

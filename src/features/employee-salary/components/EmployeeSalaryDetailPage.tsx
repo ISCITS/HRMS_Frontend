@@ -1516,7 +1516,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                data-testid="employee-salary.revision.back.button"
+                controlId="employee-salary.revision.back.button"
                 className={styles.secondaryButton}
                 variant="outlined"
                 startIcon={<ArrowBackRoundedIcon />}
@@ -1526,7 +1526,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_back_button", "Back")}
               </Button>
               <Button
-                data-testid="employee-salary.revision.save.button"
+                controlId="employee-salary.revision.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSaveRevision}
@@ -1546,23 +1546,23 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
             <TextField
-              data-testid="employee-salary.revision.salary-structure.select"
-              inputProps={{ "data-testid": "employee-salary.revision.salary-structure.select" }}
+              controlId="employee-salary.revision.salary-structure.select"
+              inputProps={{ "controlId": "employee-salary.revision.salary-structure.select" }}
               select
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
               onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
             >
-              <MenuItem data-testid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
+              <MenuItem controlId="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
               {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                   {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              data-testid="employee-salary.revision.effective-from.input"
-              inputProps={{ "data-testid": "employee-salary.revision.effective-from.input" }}
+              controlId="employee-salary.revision.effective-from.input"
+              inputProps={{ "controlId": "employee-salary.revision.effective-from.input" }}
               type="date"
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
@@ -1571,8 +1571,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             />
           </Box>
           <TextField
-            data-testid="employee-salary.revision.revision-reason.input"
-            inputProps={{ "data-testid": "employee-salary.revision.revision-reason.input" }}
+            controlId="employee-salary.revision.revision-reason.input"
+            inputProps={{ "controlId": "employee-salary.revision.revision-reason.input" }}
             label={t("employee_salary_revision_reason_field", "Revision reason")}
             value={dicRevisionForm.strRevisionReason}
             onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, strRevisionReason: objEvent.target.value }))}
@@ -1625,8 +1625,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        data-testid="employee-salary.revision.override.monthly.input"
-                        inputProps={{ "data-testid": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        controlId="employee-salary.revision.override.monthly.input"
+                        inputProps={{ "controlId": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decAmountMonthly}
                         placeholder={dicOverride.strDefaultMonthly}
                         size="small"
@@ -1653,8 +1653,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        data-testid="employee-salary.revision.override.annual.input"
-                        inputProps={{ "data-testid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        controlId="employee-salary.revision.override.annual.input"
+                        inputProps={{ "controlId": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decAmountAnnual}
                         placeholder={dicOverride.strDefaultAnnual}
                         size="small"
@@ -1668,8 +1668,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        data-testid="employee-salary.revision.override.percentage.input"
-                        inputProps={{ "data-testid": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        controlId="employee-salary.revision.override.percentage.input"
+                        inputProps={{ "controlId": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decPercentageValue}
                         size="small"
                         sx={objOverrideValueFieldSx}
@@ -1682,8 +1682,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        data-testid="employee-salary.revision.override.remarks.input"
-                        inputProps={{ "data-testid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        controlId="employee-salary.revision.override.remarks.input"
+                        inputProps={{ "controlId": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.strRemarks}
                         size="small"
                         sx={objOverrideValueFieldSx}
@@ -1820,7 +1820,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                data-testid="employee-salary.detail.back.button"
+                controlId="employee-salary.detail.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push(strReturnTo)}
@@ -1847,7 +1847,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               {blnIsRevisionMode ? (
                 <>
                   <Button
-                    data-testid="employee-salary.revision.cancel.button"
+                    controlId="employee-salary.revision.cancel.button"
                     className={styles.secondaryButton}
                     variant="outlined"
                     onClick={handleCancelRevision}
@@ -1867,7 +1867,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     {t("cancel", "Cancel")}
                   </Button>
                   <Button
-                    data-testid="employee-salary.revision.save.button"
+                    controlId="employee-salary.revision.save.button"
                     className={styles.primaryButton}
                     startIcon={<SaveRoundedIcon />}
                     onClick={handleSaveRevision}
@@ -1893,7 +1893,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <>
                   {blnCanUnassignSalary ? (
                     <Button
-                      data-testid="employee-salary.detail.unassign.button"
+                      controlId="employee-salary.detail.unassign.button"
                       className={styles.secondaryButton}
                       variant="outlined"
                       color="warning"
@@ -1931,7 +1931,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   ) : null}
                   {blnCanOpenAssignRevise ? (
                     <Button
-                      data-testid="employee-salary.detail.assign-revise.button"
+                      controlId="employee-salary.detail.assign-revise.button"
                       className={styles.primaryButton}
                       startIcon={<HistoryRoundedIcon />}
                       onClick={handleOpenRevisionDialog}
@@ -2097,24 +2097,24 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
             <TextField
-              data-testid="employee-salary.revision.salary-structure.select"
-              inputProps={{ "data-testid": "employee-salary.revision.salary-structure.select" }}
+              controlId="employee-salary.revision.salary-structure.select"
+              inputProps={{ "controlId": "employee-salary.revision.salary-structure.select" }}
               select
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
               onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
               required
             >
-              <MenuItem data-testid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
+              <MenuItem controlId="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
               {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-testid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                   {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              data-testid="employee-salary.revision.effective-from.input"
-              inputProps={{ "data-testid": "employee-salary.revision.effective-from.input" }}
+              controlId="employee-salary.revision.effective-from.input"
+              inputProps={{ "controlId": "employee-salary.revision.effective-from.input" }}
               type="date"
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
@@ -2123,8 +2123,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             />
           </Box>
           <TextField
-            data-testid="employee-salary.revision.revision-reason.input"
-            inputProps={{ "data-testid": "employee-salary.revision.revision-reason.input" }}
+            controlId="employee-salary.revision.revision-reason.input"
+            inputProps={{ "controlId": "employee-salary.revision.revision-reason.input" }}
             label={t("employee_salary_revision_reason_field", "Revision reason")}
             value={dicRevisionForm.strRevisionReason}
             onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, strRevisionReason: objEvent.target.value }))}
@@ -2180,8 +2180,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       </td>
                       <td>
                         <TextField
-                          data-testid="employee-salary.revision.override.monthly.input"
-                          inputProps={{ "data-testid": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          controlId="employee-salary.revision.override.monthly.input"
+                          inputProps={{ "controlId": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.decAmountMonthly}
                           placeholder={dicOverride.strDefaultMonthly}
                           size="small"
@@ -2208,8 +2208,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       </td>
                       <td>
                         <TextField
-                          data-testid="employee-salary.revision.override.annual.input"
-                          inputProps={{ "data-testid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          controlId="employee-salary.revision.override.annual.input"
+                          inputProps={{ "controlId": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.decAmountAnnual}
                           placeholder={dicOverride.strDefaultAnnual}
                           size="small"
@@ -2223,8 +2223,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       </td>
                       <td>
                         <TextField
-                          data-testid="employee-salary.revision.override.percentage.input"
-                          inputProps={{ "data-testid": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          controlId="employee-salary.revision.override.percentage.input"
+                          inputProps={{ "controlId": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.decPercentageValue}
                           size="small"
                           sx={objOverrideValueFieldSx}
@@ -2237,8 +2237,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       </td>
                       <td>
                         <TextField
-                          data-testid="employee-salary.revision.override.remarks.input"
-                          inputProps={{ "data-testid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          controlId="employee-salary.revision.override.remarks.input"
+                          inputProps={{ "controlId": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.strRemarks}
                           size="small"
                           sx={objOverrideValueFieldSx}
@@ -2461,8 +2461,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <Box className={styles.paginationInfo}>
                   <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
                   <TextField
-                    data-testid="employee-salary.detail.components.rows-per-page.select"
-                    inputProps={{ "data-testid": "employee-salary.detail.components.rows-per-page.select" }}
+                    controlId="employee-salary.detail.components.rows-per-page.select"
+                    inputProps={{ "controlId": "employee-salary.detail.components.rows-per-page.select" }}
                     select
                     size="small"
                     value={String(intComponentRowsPerPage)}
@@ -2473,7 +2473,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     className={styles.rowsPerPageSelect}
                   >
                     {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} data-testid={`employee-salary.detail.components.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
+                      <MenuItem key={intOption} value={String(intOption)} controlId={`employee-salary.detail.components.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                     ))}
                   </TextField>
                   <Typography className={styles.paginationRange}>
@@ -2481,7 +2481,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </Typography>
                 </Box>
                 <Pagination
-                  data-testid="employee-salary.detail.components.pagination"
+                  controlId="employee-salary.detail.components.pagination"
                   count={intComponentPageCount}
                   page={intResolvedComponentPage}
                   onChange={(_, intNextPage) => setIntComponentPage(intNextPage)}
@@ -2768,8 +2768,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <Box className={styles.paginationInfo}>
                   <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
                   <TextField
-                    data-testid="employee-salary.detail.history.rows-per-page.select"
-                    inputProps={{ "data-testid": "employee-salary.detail.history.rows-per-page.select" }}
+                    controlId="employee-salary.detail.history.rows-per-page.select"
+                    inputProps={{ "controlId": "employee-salary.detail.history.rows-per-page.select" }}
                     select
                     size="small"
                     value={String(intHistoryRowsPerPage)}
@@ -2780,7 +2780,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     className={styles.rowsPerPageSelect}
                   >
                     {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} data-testid={`employee-salary.detail.history.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
+                      <MenuItem key={intOption} value={String(intOption)} controlId={`employee-salary.detail.history.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                     ))}
                   </TextField>
                   <Typography className={styles.paginationRange}>
@@ -2788,7 +2788,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </Typography>
                 </Box>
                 <Pagination
-                  data-testid="employee-salary.detail.history.pagination"
+                  controlId="employee-salary.detail.history.pagination"
                   count={intHistoryPageCount}
                   page={intResolvedHistoryPage}
                   onChange={(_, intNextPage) => setIntHistoryPage(intNextPage)}

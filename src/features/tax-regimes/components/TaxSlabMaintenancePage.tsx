@@ -198,7 +198,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <Button
-                data-testid="tax-regimes.slabs.back.button"
+                controlId="tax-regimes.slabs.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}`)}
@@ -221,7 +221,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
               </Button>
               {blnCanSave ? (
                 <Button
-                  data-testid="tax-regimes.slabs.save.button"
+                  controlId="tax-regimes.slabs.save.button"
                   className={styles.primaryButton}
                   startIcon={<SaveRoundedIcon />}
                   onClick={handleSave}
@@ -287,7 +287,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
             </Typography>
           </Box>
           <Button
-            data-testid="tax-regimes.slabs.add-line.button"
+            controlId="tax-regimes.slabs.add-line.button"
             className={styles.primaryButton}
             startIcon={<AddRoundedIcon />}
             onClick={handleAddLine}

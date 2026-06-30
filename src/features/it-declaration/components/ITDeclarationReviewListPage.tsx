@@ -186,14 +186,14 @@ export default function ITDeclarationReviewListPage() {
 
       <Box className={styles.controlsCard} sx={{ mt: 0, mb: 0 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-          <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} data-testid="it-declaration.review-list.financial-year.input" />
-          <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} data-testid="it-declaration.review-list.employee.input" />
-          <TextField select size="small" label="Tax Regime" value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} data-testid="it-declaration.review-list.tax-regime.select">
+          <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" />
+          <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" />
+          <TextField select size="small" label="Tax Regime" value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select">
             <MenuItem value="">All</MenuItem>
             <MenuItem value="old">Old</MenuItem>
             <MenuItem value="new">New</MenuItem>
           </TextField>
-          <TextField select size="small" label="Status" value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} data-testid="it-declaration.review-list.status.select">
+          <TextField select size="small" label="Status" value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select">
             <MenuItem value="">All</MenuItem>
             <MenuItem value="submitted">Submitted</MenuItem>
             <MenuItem value="under_review">Under Review</MenuItem>
@@ -202,7 +202,7 @@ export default function ITDeclarationReviewListPage() {
             <MenuItem value="locked">Locked</MenuItem>
           </TextField>
           <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} data-testid="it-declaration.review-list.search.button">Search</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} controlId="it-declaration.review-list.search.button">Search</Button>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
@@ -210,7 +210,7 @@ export default function ITDeclarationReviewListPage() {
                 setDicFiltersDraft(dicEmptyFilters);
                 void loadData(dicEmptyFilters);
               }}
-              data-testid="it-declaration.review-list.clear.button"
+              controlId="it-declaration.review-list.clear.button"
             >
               Clear
             </Button>
@@ -222,7 +222,7 @@ export default function ITDeclarationReviewListPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("it_declaration_review.csv", lstRows)} data-testid="it-declaration.review-list.export-excel.button">
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("it_declaration_review.csv", lstRows)} controlId="it-declaration.review-list.export-excel.button">
                 Export Excel
               </Button>
             ) : null}
@@ -240,7 +240,7 @@ export default function ITDeclarationReviewListPage() {
                     setIntPage(1);
                   }}
                   className={styles.rowsPerPageSelect}
-                  data-testid="it-declaration.review-list.rows-per-page.select"
+                  controlId="it-declaration.review-list.rows-per-page.select"
                 >
                   {lstRowsPerPageOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)}>
@@ -283,7 +283,7 @@ export default function ITDeclarationReviewListPage() {
                 lstVisibleRows.map((objRow) => (
                   <tr key={objRow.strDeclarationCode}>
                     <td>
-                      <Button size="small" disabled={!blnCanView} onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)} data-testid="it-declaration.review-list.row.view.button" data-row-key={objRow.intDeclarationID}>
+                      <Button size="small" disabled={!blnCanView} onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)} controlId="it-declaration.review-list.row.view.button" data-row-key={objRow.intDeclarationID}>
                         View
                       </Button>
                     </td>
