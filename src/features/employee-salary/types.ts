@@ -110,10 +110,15 @@ export type EmployeeSalaryFlexiAllocationLine = {
   decMonthlyLimit: number | null;
   decAllocationAnnual: number;
   decAllocationMonthly: number;
+  decApprovedAnnualAmount?: number | null;
+  decApprovedMonthlyAmount?: number | null;
+  decUtilizedAnnualAmount?: number | null;
   blnProofRequired: boolean;
   strTaxTreatment: string | null;
   decBalanceAnnual: number | null;
   strSource?: string | null;
+  strStatus?: string | null;
+  strRemarks?: string | null;
 };
 
 export type EmployeeSalaryFlexiAllocationSummary = {
@@ -197,8 +202,20 @@ export type EmployeeSalaryDetailRecord = {
     strCurrencyCode: string;
     dtEffectiveFrom: string;
   } | null;
+  objSalarySummary?: {
+    decAnnualCtc: number | null;
+    decMonthlyCtc: number | null;
+    decGrossMonthly: number | null;
+    decNetFixedMonthly: number | null;
+    decEmployerContributionMonthly: number | null;
+    decEmployeeDeductionsMonthly: number | null;
+    decFlexiBucketAnnual: number | null;
+    decApprovedFlexiAnnual: number | null;
+    decResidualTaxableAnnual: number | null;
+  } | null;
   objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
   objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
+  lstWarnings?: string[];
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];
 };

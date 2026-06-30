@@ -281,7 +281,7 @@ function isReimbursementComponent(dicOption: SalaryStructureFormOptions["lstSala
 
 function getEligibilitySummary(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
   const strSummary = String(dicComponent?.strEligibilitySummary ?? "").trim();
-  return strSummary || "None";
+  return strSummary || "No eligibility questionnaire";
 }
 
 function getTaxTreatmentLabel(dicComponent?: SalaryStructureFormOptions["lstSalaryComponents"][number]) {
@@ -459,30 +459,43 @@ export default function SalaryStructureEditorPage({
         const blnIsFlexiBasket = Boolean(isFlexiBasketLine(dicLine) || dicComponent?.blnIsFlexiBasket || normalizeSelectToken(String(dicComponent?.strCode ?? "")) === "flexipay");
         const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
         const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
+        const strCalcMethod = normalizeSelectToken(String(dicComponent?.strCalcMethod ?? ""));
         const blnIsEmployerContribution = Boolean(dicComponent?.blnIsEmployerContribution);
+        const blnIsEmployeeDeduction = Boolean(dicComponent?.blnIsEmployeeDeduction);
         const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
-        if (blnIncludedInCtc) {
+        const blnIsEarning = strCategory === "earning";
+        const blnIsFixedPayEarning = strCategory === "earning" && strCalcMethod === "fixed";
+        const blnIsDeductionLike = blnIsEmployeeDeduction
+          || strCategory === "deduction"
+          || strCategory === "employeecontribution"
+          || strGroup === "deduction"
+          || strGroup === "employeecontribution";
+        const blnIsEmployerContributionLike = blnIsEmployerContribution
+          || strCategory === "contribution"
+          || strCategory === "employercontribution"
+          || strGroup === "contribution"
+          || strGroup === "employercontribution";
+        if (blnIncludedInCtc && !blnIsDeductionLike && strCategory !== "information") {
           dicTotals.fltTotalCtc += fltYearlyAmount;
         }
         if (blnIsFlexiBasket || strFlexiType === "basket") {
           dicTotals.fltFlexiBasket += fltYearlyAmount;
-        } else if (
-          blnIsEmployerContribution
-          || strCategory === "contribution"
-          || strCategory === "employercontribution"
-          || strGroup === "contribution"
-          || strGroup === "employercontribution"
-          || strGroup === "employeecontribution"
-        ) {
+        } else if (blnIsEmployerContributionLike) {
           dicTotals.fltEmployerContribution += fltYearlyAmount;
-        } else if (strGroup === "variablepay") {
+        } else if (strGroup === "variablepay" && blnIsEarning) {
           dicTotals.fltVariablePay += fltYearlyAmount;
-        } else {
+        } else if (blnIsFixedPayEarning) {
           dicTotals.fltFixedPay += fltYearlyAmount;
+        }
+        if (blnIsEarning && !blnIsFlexiBasket && !blnIsDeductionLike && !blnIsEmployerContributionLike) {
+          dicTotals.fltGrossMonthlyBase += fltMonthlyAmount;
+        }
+        if (blnIsEarning && !blnIsDeductionLike && !blnIsEmployerContributionLike) {
+          dicTotals.fltGrossAnnual += fltYearlyAmount;
         }
         return dicTotals;
       },
-      { fltTotalCtc: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
+      { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0, fltGrossMonthlyBase: 0 }
     );
   }, [dicComponentByID, dicForm.lstComponents]);
   const dicFlexiSummary = useMemo(() => {
@@ -529,6 +542,9 @@ export default function SalaryStructureEditorPage({
     }
     return lstWarnings;
   }, [dicFlexiSummary.fltEntitlementAnnual, dicForm.lstComponents, dicStructureSummary.fltFlexiBasket, dicStructureSummary.fltTotalCtc, lstFlexiBasketLines.length, t]);
+  const fltDeclaredFlexiMonthly = dicFlexiSummary.fltEntitlementAnnual / 12;
+  const fltResidualTaxableMonthly = dicFlexiSummary.fltResidualTaxableProjection / 12;
+  const fltGrossMonthlyEstimate = dicStructureSummary.fltGrossMonthlyBase + fltDeclaredFlexiMonthly + fltResidualTaxableMonthly;
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID()
@@ -909,6 +925,11 @@ export default function SalaryStructureEditorPage({
             intSalaryComponentID: Number(objValue),
             strComponentCode: dicComponent?.strCode ?? "",
             strComponentName: dicComponent?.strLabel ?? "",
+            strCalcMethod: dicComponent?.strCalcMethod ?? "",
+            strTaxTreatment: dicComponent?.strTaxTreatment ?? "",
+            strWageType: dicComponent?.blnIsWages ? "Wage" : "Non-Wage",
+            strRoundingRule: dicComponent?.strRoundingRule ?? "",
+            strPayslipSection: dicComponent?.strPayslipSection ?? "",
             blnIsFlexiBasketLine: blnIsFlexiBasket,
             strFlexiComponentRole: getFlexiRoleTokenForComponent(dicComponent),
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
@@ -1805,13 +1826,15 @@ export default function SalaryStructureEditorPage({
               {[
                 [t("annual_ctc", "Annual CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
                 [t("monthly_ctc", "Monthly CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc / 12), "#0757b8"],
+                [t("gross_annual", "Gross Annual"), formatFlexiAmount(dicStructureSummary.fltGrossAnnual), "#0f172a"],
+                [t("gross_monthly", "Gross Monthly"), formatFlexiAmount(dicStructureSummary.fltGrossAnnual / 12), "#0f172a"],
                 [t("fixed_pay", "Fixed Pay"), formatFlexiAmount(dicStructureSummary.fltFixedPay), "#0f172a"],
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
                 [t("employer_contributions", "Employer Contributions"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
                 [t("flexi_basket_amount", "Flexi Basket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
-                [t("flexi_entitlement_total", "Flexi Entitlement Total"), formatFlexiAmount(dicFlexiSummary.fltEntitlementAnnual), "#0f766e"],
-                [t("residual_taxable_projection", "Residual Taxable Projection"), formatFlexiAmount(dicFlexiSummary.fltResidualTaxableProjection), "#b45309"],
-                [t("gross_monthly_estimate", "Gross Monthly Estimate"), formatFlexiAmount((dicStructureSummary.fltTotalCtc - dicStructureSummary.fltEmployerContribution) / 12), "#0757b8"],
+                [t("declared_flexi", "Declared Flexi"), formatFlexiAmount(dicFlexiSummary.fltEntitlementAnnual), "#0f766e"],
+                [t("residual_flexi", "Residual Flexi"), formatFlexiAmount(dicFlexiSummary.fltDefaultBalanceAnnual), "#b45309"],
+                [t("gross_monthly_estimate", "Gross Monthly Estimate"), formatFlexiAmount(fltGrossMonthlyEstimate), "#0757b8"],
               ].map(([strLabel, strValue, strColor], intSummaryIndex) => {
                 const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
                 return (

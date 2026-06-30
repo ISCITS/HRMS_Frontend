@@ -230,6 +230,15 @@ export default function EmployeeSalaryListPage() {
         ) : null}
 
         <Box className={styles.searchRow}>
+            <TextField
+            data-testid="employee-salary.list.search-code.input"
+            inputProps={{ "data-testid": "employee-salary.list.search-code.input" }}
+            value={dicSearch.strCode}
+            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
+            placeholder={t("employee_salary_search_employee_code", "Search employee code")}
+            fullWidth
+          />
+          
           <TextField
             data-testid="employee-salary.list.search-name.input"
             inputProps={{ "data-testid": "employee-salary.list.search-name.input" }}
@@ -238,14 +247,7 @@ export default function EmployeeSalaryListPage() {
             placeholder={t("employee_salary_search_employee_name", "Search employee name")}
             fullWidth
           />
-          <TextField
-            data-testid="employee-salary.list.search-code.input"
-            inputProps={{ "data-testid": "employee-salary.list.search-code.input" }}
-            value={dicSearch.strCode}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("employee_salary_search_employee_code", "Search employee code")}
-            fullWidth
-          />
+
           <TextField
             data-testid="employee-salary.list.search-status.select"
             inputProps={{ "data-testid": "employee-salary.list.search-status.select" }}
