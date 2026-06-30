@@ -983,6 +983,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID]);
 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
+  const intFlexiDeclarationID =
+    objFlexiDeclarationContext?.objDeclaration?.intDeclarationID ??
+    objDetail?.objFlexiDeclaration?.intDeclarationID ??
+    null;
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
     const dicFlexiBucketAmounts = getEmployeeFlexiBucketAmounts(objDetail);
@@ -2486,7 +2490,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       {!blnIsRevisionMode && blnHasAssignedSalary ? (
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(260px, 1fr)" }, alignItems: "start" }}>
         <Stack spacing={1.5} sx={{ minWidth: 0 }}>
-          <Box className={styles.tableCard}>
+          <Box className={styles.tableCard} id="flexi-component">
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_component_lines", "Component Lines")}
@@ -2580,18 +2584,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   size="small"
                   variant="contained"
                   className={styles.primaryButton}
+                  disabled={!intFlexiDeclarationID}
                   onClick={() => {
+                    if (!intFlexiDeclarationID) {
+                      return;
+                    }
                     const objParams = new URLSearchParams();
                     objParams.set("intEmployeeID", String(intEmployeeID));
-                    const intDeclarationID =
-                      objFlexiDeclarationContext?.objDeclaration?.intDeclarationID
-                      ?? objDetail?.objFlexiDeclaration?.intDeclarationID
-                      ?? null;
-                    if (intDeclarationID) {
-                      objParams.set("intDeclarationID", String(intDeclarationID));
-                    }
+                    objParams.set("intDeclarationID", String(intFlexiDeclarationID));
+                    objParams.set("source", "employee_salary");
                     objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
-                    objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
+                    objRouter.push(`/payroll/flexi-declaration-review/${intFlexiDeclarationID}?${objParams.toString()}`);
                   }}
                 >
                   {t("employee_salary_approve", "Approve")}
@@ -2877,3 +2880,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     </Stack>
   );
 }
+
+
+

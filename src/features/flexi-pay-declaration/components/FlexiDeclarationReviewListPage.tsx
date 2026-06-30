@@ -30,6 +30,7 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
   if (["approved", "locked"].includes(strValue)) return "success";
   if (strValue === "submitted") return "warning";
   if (["returned", "rejected"].includes(strValue)) return "error";
+  if (strValue === "released") return "default";
   return "default";
 }
 
@@ -89,6 +90,7 @@ export default function FlexiDeclarationReviewListPage() {
             <Chip size="small" label={`Submitted ${objSummary.submitted || 0}`} />
             <Chip size="small" label={`Approved ${objSummary.approved || 0}`} />
             <Chip size="small" label={`Locked ${objSummary.locked || 0}`} />
+            <Chip size="small" label={`Released ${objSummary.released || 0}`} />
             <Chip size="small" label={`Returned ${objSummary.returned || 0}`} />
             <Chip size="small" label={`Rejected ${objSummary.rejected || 0}`} />
           </Stack>
@@ -108,6 +110,7 @@ export default function FlexiDeclarationReviewListPage() {
             <MenuItem value="submitted">Submitted</MenuItem>
             <MenuItem value="approved">Approved</MenuItem>
             <MenuItem value="locked">Locked</MenuItem>
+            <MenuItem value="released">Released</MenuItem>
             <MenuItem value="returned">Returned</MenuItem>
             <MenuItem value="rejected">Rejected</MenuItem>
           </TextField>
