@@ -5,6 +5,9 @@ import type { ModuleLabelsResponse } from "@/features/labels/types";
 import { normalizeLabelModuleName } from "@/features/labels/utils/normalizeLabelModuleName";
 import { callAPI } from "@/lib/apiClient";
 
+const dicLabelRequestCache = new Map<string, Promise<ModuleLabelsResponse>>();
+const dicLabelResponseCache = new Map<string, ModuleLabelsResponse>();
+
 async function requestLabels(objPayload: { language_id: number; module_name: string }) {
   const objResponse = await callAPI<ModuleLabelsResponse>(
     null,
@@ -18,19 +21,48 @@ async function requestLabels(objPayload: { language_id: number; module_name: str
   return objResponse.Response;
 }
 
-export const labelService = {
-  async getLabels(intLanguageID: number, strModuleName: string): Promise<ModuleLabelsResponse> {
-    const strResolvedModuleName = normalizeLabelModuleName(strModuleName);
-    try {
-      return await requestLabels({ language_id: intLanguageID, module_name: strResolvedModuleName });
-    } catch (objError) {
-      return {
+function buildLabelCacheKey(intLanguageID: number, strModuleName: string) {
+  return `${intLanguageID}:${normalizeLabelModuleName(strModuleName)}`;
+}
+
+async function getCachedLabels(intLanguageID: number, strModuleName: string) {
+  const strResolvedModuleName = normalizeLabelModuleName(strModuleName);
+  const strCacheKey = buildLabelCacheKey(intLanguageID, strResolvedModuleName);
+  const objCachedResponse = dicLabelResponseCache.get(strCacheKey);
+  if (objCachedResponse) {
+    return objCachedResponse;
+  }
+
+  const objPendingRequest = dicLabelRequestCache.get(strCacheKey);
+  if (objPendingRequest) {
+    return objPendingRequest;
+  }
+
+  const objRequest = requestLabels({ language_id: intLanguageID, module_name: strResolvedModuleName })
+    .then((objResponse) => {
+      dicLabelResponseCache.set(strCacheKey, objResponse);
+      dicLabelRequestCache.delete(strCacheKey);
+      return objResponse;
+    })
+    .catch(() => {
+      const objFallbackResponse: ModuleLabelsResponse = {
         module: strResolvedModuleName,
         language: "en",
         fallback_language: null,
         labels: {}
       };
-    }
+      dicLabelResponseCache.set(strCacheKey, objFallbackResponse);
+      dicLabelRequestCache.delete(strCacheKey);
+      return objFallbackResponse;
+    });
+
+  dicLabelRequestCache.set(strCacheKey, objRequest);
+  return objRequest;
+}
+
+export const labelService = {
+  async getLabels(intLanguageID: number, strModuleName: string): Promise<ModuleLabelsResponse> {
+    return getCachedLabels(intLanguageID, strModuleName);
   },
 
   async getModuleLabels(intLanguageID: number, strModuleName: string): Promise<ModuleLabelsResponse> {
