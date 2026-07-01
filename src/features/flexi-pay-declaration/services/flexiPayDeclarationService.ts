@@ -93,6 +93,9 @@ export type FlexiEligibilityQuestionRecord = {
   lstLinkedComponentIDs?: number[];
   objOptionJson?: unknown;
   objAnswerValue?: string | number | boolean | null;
+  blnAnswerValid?: boolean | null;
+  strValidationMessage?: string | null;
+  decEffectiveMultiplier?: number | null;
 };
 
 export type FlexiDeclarationContextRecord = {

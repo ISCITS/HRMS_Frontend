@@ -763,7 +763,7 @@ export default function PayrollResultListPage({
               </Button>
             </Box>
           </Box>
-        )}
+        ) : null}
         {!blnPayslipScreen ? (
           <Box className={styles.quickFilterRow}>
             <TextField

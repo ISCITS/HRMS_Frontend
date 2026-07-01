@@ -28,7 +28,11 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
-import type { FlexiDeclarationLineRecord } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
+import {
+  hrFlexiDeclarationReviewService,
+  type FlexiDeclarationContextRecord,
+  type FlexiDeclarationLineRecord,
+} from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
@@ -59,6 +63,7 @@ type ConfirmDialogState = {
 
 const lstRowsPerPageOptions = [10, 20, 50];
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
+const lstFlexiDeclarationStatuses = ["submitted", "approved", "locked", "released", "returned", "rejected"];
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -907,6 +912,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const refTranslate = useRef(t);
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
+  const [objFlexiDeclarationContext, setObjFlexiDeclarationContext] = useState<FlexiDeclarationContextRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -921,7 +927,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
   const [intHistoryPage, setIntHistoryPage] = useState(1);
   const [intHistoryRowsPerPage, setIntHistoryRowsPerPage] = useState(10);
-  const objFlexiDeclarationContext: any = null;
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
@@ -955,10 +960,32 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           employeeSalaryService.getFormOptions(),
           masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
         ]);
+        let intDeclarationID = dicDetail.objFlexiDeclaration?.intDeclarationID ?? null;
+        if (!intDeclarationID) {
+          const lstDeclarationHistoryGroups = await Promise.all(
+            lstFlexiDeclarationStatuses.map((strStatus) =>
+              hrFlexiDeclarationReviewService.getList(strStatus).catch(() => [])
+            )
+          );
+          const lstDeclarationHistory = lstDeclarationHistoryGroups.flat();
+          const strFinancialYearCode = dicDetail.objFlexiDeclaration?.strFinancialYearCode ?? "";
+          const dicMatchedDeclaration =
+            lstDeclarationHistory.find(
+              (dicRow) =>
+                dicRow.intEmployeeID === intEmployeeID &&
+                (!strFinancialYearCode || dicRow.strFinancialYearCode === strFinancialYearCode)
+            ) ??
+            lstDeclarationHistory.find((dicRow) => dicRow.intEmployeeID === intEmployeeID);
+          intDeclarationID = dicMatchedDeclaration?.intDeclarationID ?? null;
+        }
+        const dicFlexiDeclarationContext = intDeclarationID
+          ? await hrFlexiDeclarationReviewService.getDetail(intDeclarationID).catch(() => null)
+          : null;
         if (!blnMounted) {
           return;
         }
         setObjDetail(dicDetail);
+        setObjFlexiDeclarationContext(dicFlexiDeclarationContext);
         setObjFormOptions(dicFormOptions);
         setLstSalaryComponents(dicSalaryComponents.Data);
         setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, dicSalaryComponents.Data, refTranslate.current));
@@ -2626,8 +2653,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       return;
                     }
                     const objParams = new URLSearchParams();
-                    objParams.set("intEmployeeID", String(intEmployeeID));
-                    objParams.set("intDeclarationID", String(intFlexiDeclarationID));
                     objParams.set("source", "employee_salary");
                     objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
                     objRouter.push(`/payroll/flexi-declaration-review/${intFlexiDeclarationID}?${objParams.toString()}`);
