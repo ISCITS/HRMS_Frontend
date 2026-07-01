@@ -1,10 +1,17 @@
-import FlexiDeclarationReviewDetailPage from "@/features/flexi-pay-declaration/components/FlexiDeclarationReviewDetailPage";
+import FlexiDeclarationReviewDetailPage from "./FlexiDeclarationReviewDetailPage";
 
 type RouteProps = {
-  params: Promise<{ intDeclarationID: string }>;
+  params: {
+    intDeclarationID: string;
+  };
 };
 
-export default async function PayrollFlexiDeclarationReviewDetailRoute({ params }: RouteProps) {
-  const { intDeclarationID } = await params;
-  return <FlexiDeclarationReviewDetailPage intDeclarationID={Number(intDeclarationID)} />;
+export default function PayrollFlexiDeclarationReviewDetailRoute({
+  params,
+}: RouteProps) {
+  return (
+    <FlexiDeclarationReviewDetailPage
+      intDeclarationID={Number(params.intDeclarationID)}
+    />
+  );
 }
