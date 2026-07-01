@@ -234,14 +234,11 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
     if (dicLabels[strKey]) {
       return dicLabels[strKey];
     }
-    if (blnLoadingLabels) {
-      return "";
-    }
     if (typeof strFallback === "string") {
       return strFallback;
     }
     return resolveConstantFallback(strModuleName, strKey);
-  }, [blnLoadingLabels, dicLabels, strModuleName]);
+  }, [dicLabels, strModuleName]);
 
   return {
     intLanguageID,

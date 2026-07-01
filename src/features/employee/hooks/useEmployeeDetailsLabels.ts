@@ -79,9 +79,6 @@ export function useEmployeeDetailsLabels() {
     if (dicLabels[strKey]) {
       return dicLabels[strKey];
     }
-    if (blnLoadingLabels) {
-      return "";
-    }
     if (typeof strFallback === "string") {
       return strFallback;
     }
