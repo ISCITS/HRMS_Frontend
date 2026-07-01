@@ -14,6 +14,21 @@ type LabelRequestPayload = {
   module_name?: string | null;
 };
 
+type LabelProxyCacheEntry = {
+  intExpiresAt: number;
+  objResponse: ModuleLabelsResponse;
+};
+
+const intLabelProxyCacheTtlMs = 5 * 60 * 1000;
+const dicLabelProxyResponseCache = new Map<string, LabelProxyCacheEntry>();
+const dicLabelProxyRequestCache = new Map<string, Promise<ModuleLabelsResponse>>();
+
+function buildLabelProxyCacheKey(objRequest: NextRequest, strLanguageID: string, strModuleName: string) {
+  const strTenantID = objRequest.headers.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
+  const strCompanyID = objRequest.headers.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
+  return `${strTenantID}:${strCompanyID}:${strLanguageID}:${strModuleName.toLowerCase()}`;
+}
+
 function buildLabelHeaders(objRequest: NextRequest, strAccessToken: string) {
   const strTenantID = objRequest.headers.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
   const strCompanyID = objRequest.headers.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
@@ -45,22 +60,52 @@ async function proxyLabels(objRequest: NextRequest, objPayload: LabelRequestPayl
       return NextResponse.json({ message: "Unauthenticated." }, { status: 401 });
     }
 
-    const objLabels = await callBackendApi<ModuleLabelsResponse | { payload?: string }>(
-      `/api/v1/labels?language_id=${encodeURIComponent(strLanguageID)}&module_name=${encodeURIComponent(strModuleName)}`,
-      {
-        method: "GET",
-        cache: "no-store",
-        headers: buildLabelHeaders(objRequest, strAccessToken)
-      }
-    );
+    const strCacheKey = buildLabelProxyCacheKey(objRequest, strLanguageID, strModuleName);
+    const objCachedResponse = dicLabelProxyResponseCache.get(strCacheKey);
+    if (objCachedResponse && objCachedResponse.intExpiresAt > Date.now()) {
+      return NextResponse.json(objCachedResponse.objResponse, { status: 200 });
+    }
+    if (objCachedResponse) {
+      dicLabelProxyResponseCache.delete(strCacheKey);
+    }
 
-    const objResolvedLabels =
-      typeof objLabels === "object" &&
-      objLabels !== null &&
-      "payload" in objLabels &&
-      typeof objLabels.payload === "string"
-        ? await decryptPayload<ModuleLabelsResponse>(objLabels.payload)
-        : objLabels;
+    const objPendingRequest = dicLabelProxyRequestCache.get(strCacheKey);
+    if (objPendingRequest) {
+      const objResolvedPendingLabels = await objPendingRequest;
+      return NextResponse.json(objResolvedPendingLabels, { status: 200 });
+    }
+
+    const objRequestPromise = callBackendApi<ModuleLabelsResponse | { payload?: string }>(
+        `/api/v1/labels?language_id=${encodeURIComponent(strLanguageID)}&module_name=${encodeURIComponent(strModuleName)}`,
+        {
+          method: "GET",
+          cache: "no-store",
+          headers: buildLabelHeaders(objRequest, strAccessToken)
+        }
+      )
+      .then((objLabels) =>
+        typeof objLabels === "object" &&
+        objLabels !== null &&
+        "payload" in objLabels &&
+        typeof objLabels.payload === "string"
+          ? decryptPayload<ModuleLabelsResponse>(objLabels.payload)
+          : (objLabels as ModuleLabelsResponse)
+      )
+      .then((objResolvedLabels) => {
+        dicLabelProxyResponseCache.set(strCacheKey, {
+          intExpiresAt: Date.now() + intLabelProxyCacheTtlMs,
+          objResponse: objResolvedLabels
+        });
+        dicLabelProxyRequestCache.delete(strCacheKey);
+        return objResolvedLabels;
+      })
+      .catch((objError) => {
+        dicLabelProxyRequestCache.delete(strCacheKey);
+        throw objError;
+      });
+
+    dicLabelProxyRequestCache.set(strCacheKey, objRequestPromise);
+    const objResolvedLabels = await objRequestPromise;
 
     return NextResponse.json(objResolvedLabels, { status: 200 });
   } catch (objError) {
