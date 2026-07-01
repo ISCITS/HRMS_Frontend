@@ -2637,7 +2637,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     objParams.set("intDeclarationID", String(intFlexiDeclarationID));
                     objParams.set("source", "employee_salary");
                     objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
-                    objRouter.push(`/payroll/flexi-declaration-review/${intFlexiDeclarationID}?${objParams.toString()}`);
+                    objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
                   }}
                 >
                   {t("employee_salary_approve", "Approve")}
