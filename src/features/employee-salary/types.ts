@@ -110,8 +110,12 @@ export type EmployeeSalaryFlexiAllocationLine = {
   decMonthlyLimit: number | null;
   decAllocationAnnual: number;
   decAllocationMonthly: number;
+  decDeclaredAnnualAmount?: number | null;
+  decDeclaredMonthlyAmount?: number | null;
   decApprovedAnnualAmount?: number | null;
   decApprovedMonthlyAmount?: number | null;
+  decDeclarationApprovedAnnualAmount?: number | null;
+  decDeclarationApprovedMonthlyAmount?: number | null;
   decUtilizedAnnualAmount?: number | null;
   blnProofRequired: boolean;
   strTaxTreatment: string | null;
@@ -119,6 +123,7 @@ export type EmployeeSalaryFlexiAllocationLine = {
   strSource?: string | null;
   strStatus?: string | null;
   strRemarks?: string | null;
+  strDeclarationItemStatus?: string | null;
 };
 
 export type EmployeeSalaryFlexiAllocationSummary = {
