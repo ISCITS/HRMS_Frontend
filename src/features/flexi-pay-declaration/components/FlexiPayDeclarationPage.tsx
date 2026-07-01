@@ -47,12 +47,14 @@ import {
   type FlexiEligibilityQuestionRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type DraftInputMap = Record<number, string>;
 type EligibilityAnswerMap = Record<string, string | number | boolean | null>;
 type ComponentSelectionMap = Record<number, number>;
 type LinkedQuestionSelectionMap = Record<number, string>;
 const intEligibilityPreviewLimit = 6;
+const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
@@ -379,10 +381,13 @@ export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const { t } = useFlexiPayDeclarationLabels();
+  const { canDoAny } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const strFinancialYearCode = getCurrentFinancialYearCode();
   const intRouteDeclarationID = Number(objSearchParams.get("intDeclarationID") || 0);
   const blnRouteHasDeclarationID = Number.isInteger(intRouteDeclarationID) && intRouteDeclarationID > 0;
   const blnReviewEntryMode = blnRouteHasDeclarationID;
+  const strSource = (objSearchParams.get("source") || "").trim().toLowerCase();
+  const blnEmployeeSalarySource = strSource === "employee_salary";
   const strReturnTo = (objSearchParams.get("returnTo") || "").trim();
   const strBackPath = strReturnTo.startsWith("/") && !strReturnTo.startsWith("//")
     ? strReturnTo
@@ -407,6 +412,7 @@ export default function FlexiPayDeclarationPage() {
   const [dicSelectedQuestions, setDicSelectedQuestions] = useState<LinkedQuestionSelectionMap>({});
   const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
   const [blnSubmitDialogOpen, setBlnSubmitDialogOpen] = useState(false);
+  const [strReviewActionMode, setStrReviewActionMode] = useState<"reject" | null>(null);
   const strActiveFinancialYearCode = objContext?.strFinancialYearCode || strFinancialYearCode;
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
@@ -460,6 +466,16 @@ export default function FlexiPayDeclarationPage() {
   const blnCanEditDeclaration = Boolean(!blnReviewEntryMode && blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
+  const blnCanApproveAction = canDoAny("approve");
+  const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
+  const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
+  const blnCanReleaseAction = canDoAny("release") || canDoAny("unlock") || blnCanApproveAction;
+  const blnReviewOpen = strWorkflowStatus === "submitted";
+  const blnShowWorkflowActions = blnEmployeeSalarySource && blnReviewEntryMode && blnReviewOpen;
+  const blnCanApproveCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanApproveAction;
+  const blnCanRejectCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanRejectAction;
+  const blnCanLockCurrent = blnShowWorkflowActions && strWorkflowStatus === "approved" && blnCanLockAction;
+  const blnCanReleaseCurrent = blnShowWorkflowActions && strWorkflowStatus === "locked" && blnCanReleaseAction;
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -961,6 +977,91 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
+  function navigateAfterReviewAction(blnFocusFlexiSection: boolean) {
+    if (blnEmployeeSalarySource && strReturnTo.startsWith("/") && !strReturnTo.startsWith("//")) {
+      const strTarget = blnFocusFlexiSection && !strReturnTo.includes("#") ? `${strReturnTo}#flexi-component` : strReturnTo;
+      objRouter.push(strTarget);
+      return;
+    }
+    objRouter.push(strBackPath);
+  }
+
+  async function handleApproveReview() {
+    if (!blnCanApproveCurrent) return;
+    setStrSavingLabel("Approving declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.approve(intRouteDeclarationID, {
+        lstItems: lstDisplayedRows.map((objDisplayRow) => ({
+          intSalaryComponentID: objDisplayRow.objSelectedLine.intSalaryComponentID,
+          decApprovedAmountAnnual: objDisplayRow.objSelectedLine.decInputAnnual,
+          strRemarks: objDisplayRow.objSelectedLine.strDeclarationItemRemarks || null,
+        })),
+        strRemarks,
+      });
+      setStrToast(t("flexi_pay_declaration_approve_success", "Declaration approved successfully."));
+      navigateAfterReviewAction(false);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to approve declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleLockReview() {
+    if (!blnCanLockCurrent) return;
+    setStrSavingLabel("Locking declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.lock(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_lock_success", "Declaration locked successfully."));
+      navigateAfterReviewAction(false);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to lock declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleReleaseReview() {
+    if (!blnCanReleaseCurrent) return;
+    setStrSavingLabel("Releasing declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.release(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_release_success", "Declaration released successfully."));
+      navigateAfterReviewAction(true);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to release declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleDecisionReview() {
+    if (!strReviewActionMode) return;
+    setStrSavingLabel("Rejecting declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.reject(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_reject_success", "Declaration rejected."));
+      setStrReviewActionMode(null);
+      navigateAfterReviewAction(true);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to update declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
   function renderQuestionInput(objQuestion: FlexiEligibilityQuestionRecord) {
     const strQuestionCode = objQuestion.strQuestionCode;
     const objValue = dicEligibilityAnswers[strQuestionCode] ?? objQuestion.objAnswerValue ?? null;
@@ -1166,12 +1267,12 @@ export default function FlexiPayDeclarationPage() {
             >
               {t("flexi_pay_declaration_back", "Back")}
             </Button>
-            {blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
               <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
                 Save Draft
               </Button>
             ) : null}
-            {blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
               <Button
                 size="small"
                 variant="contained"
@@ -1187,6 +1288,26 @@ export default function FlexiPayDeclarationPage() {
               >
                 {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Resubmit" : "Submit"}
               </Button>
+            ) : null}
+            {blnShowWorkflowActions ? (
+              <>
+                <Button size="small" variant="outlined" color="error" disabled={!blnCanRejectCurrent || blnSaving} onClick={() => setStrReviewActionMode("reject")}>
+                  {t("flexi_pay_declaration_reject", "Reject")}
+                </Button>
+                {blnCanReleaseCurrent ? (
+                  <Button size="small" variant="outlined" color="info" disabled={blnSaving} onClick={() => void handleReleaseReview()}>
+                    {t("flexi_pay_declaration_release", "Release")}
+                  </Button>
+                ) : null}
+                {blnCanLockCurrent ? (
+                  <Button size="small" variant="outlined" color="success" disabled={blnSaving} onClick={() => void handleLockReview()}>
+                    {t("flexi_pay_declaration_lock", "Lock")}
+                  </Button>
+                ) : null}
+                <Button size="small" variant="contained" disabled={!blnCanApproveCurrent || blnSaving || blnAllocationExceeded} onClick={() => void handleApproveReview()}>
+                  {t("flexi_pay_declaration_approve", "Approve")}
+                </Button>
+              </>
             ) : null}
           </Stack>
         </Stack>
@@ -1359,6 +1480,34 @@ export default function FlexiPayDeclarationPage() {
                 onClick={() => void handleConfirmSubmit()}
               >
                 {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Confirm Resubmit" : "Confirm Submit"}
+              </Button>
+          </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={Boolean(strReviewActionMode)}
+            onClose={() => (blnSaving ? null : setStrReviewActionMode(null))}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>{t("flexi_pay_declaration_reject_dialog_title", "Reject Declaration")}</DialogTitle>
+            <DialogContent dividers sx={{ p: 1.5 }}>
+              <Stack spacing={1.25}>
+                <Typography sx={{ mb: 0.25 }}>{t("flexi_pay_declaration_reviewer_remarks_hint", "Reviewer remarks will be saved on the declaration.")}</Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  value={strRemarks}
+                  onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
+                  disabled={blnSaving}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 1.5, py: 1 }}>
+              <Button onClick={() => setStrReviewActionMode(null)} disabled={blnSaving}>{t("flexi_pay_declaration_cancel", "Cancel")}</Button>
+              <Button variant="contained" onClick={() => void handleDecisionReview()} disabled={blnSaving || !strRemarks.trim()}>
+                {t("flexi_pay_declaration_confirm", "Confirm")}
               </Button>
             </DialogActions>
           </Dialog>
