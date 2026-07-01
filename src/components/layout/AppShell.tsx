@@ -275,6 +275,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
+  const [blnMenuLoaded, setBlnMenuLoaded] = useState(false);
+  const [blnMenuLoading, setBlnMenuLoading] = useState(false);
   const [strBootstrapError, setStrBootstrapError] = useState("");
   const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const [objTenantLanguageDetails, setObjTenantLanguageDetails] = useState<TenantAuthDetails | null>(null);
@@ -383,11 +385,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     const lstRequests: [
       ReturnType<typeof authApiService.getCurrentUser>,
-      ReturnType<typeof authApiService.getMenu>,
       Promise<{ Data?: TenantAuthDetails }>
     ] = [
       authApiService.getCurrentUser(intResolvedLanguageID),
-      authApiService.getMenu(intResolvedLanguageID),
       strTenantUUID
         ? authApiService
             .getTenantAuthDetails(strTenantUUID, intResolvedLanguageID)
@@ -396,7 +396,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         : Promise.resolve({})
     ];
 
-    const [objUserResult, objMenuResult, objTenantDetailsResult] = await Promise.all(lstRequests);
+    const [objUserResult, objTenantDetailsResult] = await Promise.all(lstRequests);
     const objTenantDetails = objTenantDetailsResult.Data;
 
     authHelpers.setTenantContext(
@@ -406,7 +406,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
       objTenantDetails?.secondary_language_id ?? authHelpers.getSecondaryLanguageID() ?? undefined
     );
     setObjUserContext(objUserResult.Data);
-    setObjMenu(normalizeMenuResponse(objMenuResult.Data));
     if (objTenantDetails) {
       setObjTenantLanguageDetails(objTenantDetails);
       setDicLanguageLabelByID((dicCurrentLabels) => ({
@@ -430,6 +429,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }
           : {})
       }));
+    }
+  }
+
+  async function ensureMenuLoaded(intLanguageID?: number | null) {
+    if (blnMenuLoaded || blnMenuLoading) {
+      return;
+    }
+
+    setBlnMenuLoading(true);
+    try {
+      const objMenuResult = await authApiService.getMenu(intLanguageID ?? authHelpers.getLanguageID());
+      setObjMenu(normalizeMenuResponse(objMenuResult.Data));
+      setBlnMenuLoaded(true);
+    } finally {
+      setBlnMenuLoading(false);
     }
   }
 
@@ -550,6 +564,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     window.sessionStorage.setItem(strLanguageSwitchTokenKey, strSwitchToken);
     window.sessionStorage.setItem(strLanguageSwitchLanguageKey, String(intRequestedLanguageID));
     authHelpers.setLanguageID(intRequestedLanguageID);
+    setBlnMenuLoaded(false);
+    setObjMenu({ lstMenuItems: [], strHomeRoute: "/dashboard" });
     try {
       await loadWorkspaceContext(intRequestedLanguageID);
       setBlnLanguageShellReady(true);
@@ -611,6 +627,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   function handleMenuToggle() {
+    void ensureMenuLoaded();
     if (typeof window !== "undefined" && window.innerWidth >= 1200) {
       setBlnDesktopSidebarOpen((blnPrevious) => !blnPrevious);
       return;
@@ -626,6 +643,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   function handleDesktopCollapsedMenuItemClick(strMenuIdentity: string) {
+    void ensureMenuLoaded();
     setStrPendingExpandedMenuIdentity(strMenuIdentity);
     setBlnDesktopSidebarOpen(true);
   }
@@ -850,7 +868,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
           transition: "box-shadow 180ms ease",
           pointerEvents: "auto"
         }}
-        onClick={() => setBlnDesktopSidebarOpen(true)}
+        onClick={() => {
+          void ensureMenuLoaded();
+          setBlnDesktopSidebarOpen(true);
+        }}
       >
         <Box
           sx={{
