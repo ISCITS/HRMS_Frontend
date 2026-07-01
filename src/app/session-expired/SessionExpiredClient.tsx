@@ -45,7 +45,7 @@ export default function SessionExpiredClient() {
               {strTenantUUID}
             </Typography>
           ) : null}
-          <Button controlId="auth.session-expired.login-again.button" variant="contained" size="large" onClick={handleLoginAgain} sx={{ mt: 1, minWidth: 180 }}>
+          <Button data-controlid="auth.session-expired.login-again.button" variant="contained" size="large" onClick={handleLoginAgain} sx={{ mt: 1, minWidth: 180 }}>
             Login again
           </Button>
         </Stack>

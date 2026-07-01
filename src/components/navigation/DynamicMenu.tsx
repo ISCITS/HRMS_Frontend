@@ -24,6 +24,10 @@ type DynamicMenuProps = {
 
 const objMenuIconSx = { color: "inherit" };
 
+function getAutomationProps(strControlId?: string) {
+  return strControlId ? ({ "data-controlid": strControlId } as const) : {};
+}
+
 function toMenuTestSegment(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
@@ -1129,7 +1133,7 @@ export default function DynamicMenu({
     return (
       <Tooltip key={strMenuKey} title={resolveMenuLabel(objItem)} placement="right" arrow>
         <ListItemButton
-          controlId={`nav.collapsed-menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.button`}
+          {...getAutomationProps(`nav.collapsed-menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.button`)}
           aria-label={resolveMenuLabel(objItem)}
           onClick={() => {
             if (blnHasChildren) {
@@ -1166,7 +1170,7 @@ export default function DynamicMenu({
       return (
         <Fragment key={strMenuKey}>
           <ListItemButton
-            controlId={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`}
+            {...getAutomationProps(`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.toggle`)}
             data-menu-code={objItem.strModuleCode}
             data-menu-label={resolveMenuLabel(objItem)}
             data-menu-route={strRoute ?? ""}
@@ -1208,7 +1212,7 @@ export default function DynamicMenu({
     return (
       <ListItemButton
         key={strMenuKey}
-        controlId={`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`}
+        {...getAutomationProps(`nav.menu.${toMenuTestSegment(objItem.strModuleCode || objItem.strModuleName)}.link`)}
         data-menu-code={objItem.strModuleCode}
         data-menu-label={resolveMenuLabel(objItem)}
         data-menu-route={strRoute ?? ""}
@@ -1235,7 +1239,7 @@ export default function DynamicMenu({
   if (blnCollapsed) {
     return (
       <List
-        controlId="nav.collapsed-menu.list"
+        {...getAutomationProps("nav.collapsed-menu.list")}
         sx={{
           width: "100%",
           mt: 0,
@@ -1251,7 +1255,7 @@ export default function DynamicMenu({
   }
 
   return (
-    <List controlId="nav.menu.list" sx={{ mt: 0 }}>
+    <List {...getAutomationProps("nav.menu.list")} sx={{ mt: 0 }}>
       {lstRenderedMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );

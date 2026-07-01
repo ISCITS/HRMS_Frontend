@@ -544,14 +544,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             <Divider />
 
             <Stack spacing={2}>
-              <Button controlId="auth.mfa.toggle-backup-code.button" variant="text" onClick={() => setBlnUseBackupCode((blnCurrent) => !blnCurrent)} startIcon={<VpnKeyRoundedIcon />}>
+              <Button data-controlid="auth.mfa.toggle-backup-code.button" variant="text" onClick={() => setBlnUseBackupCode((blnCurrent) => !blnCurrent)} startIcon={<VpnKeyRoundedIcon />}>
                 {blnUseBackupCode ? "Use authenticator code instead" : "Use backup code instead"}
               </Button>
 
               {blnUseBackupCode ? (
                 <TextField
                   label="Backup code"
-                  inputProps={{ controlId: "auth.mfa.backup-code.input" }}
+                  inputProps={{ "data-controlid": "auth.mfa.backup-code.input" }}
                   value={strBackupCode}
                   onChange={(objEvent) => setStrBackupCode(objEvent.target.value.toUpperCase())}
                   placeholder="Enter one backup code"
@@ -560,7 +560,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : (
                 <TextField
                   label="Authenticator code"
-                  inputProps={{ controlId: "auth.mfa.code.input" }}
+                  inputProps={{ "data-controlid": "auth.mfa.code.input" }}
                   value={strGoogleCode}
                   onChange={(objEvent) => setStrGoogleCode(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="Enter the 6-digit code"
@@ -569,7 +569,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               )}
 
               <Button
-                controlId="auth.mfa.verify.button"
+                data-controlid="auth.mfa.verify.button"
                 variant="contained"
                 disabled={blnSubmitting || !blnCanVerify}
                 onClick={() => {
@@ -633,7 +633,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     <button
                       key={dicLanguageOption.intLanguageID}
                       type="button"
-                      controlId="auth.login.language.button"
+                      data-controlid="auth.login.language.button"
                       data-option-key={dicLanguageOption.intLanguageID}
                       className={`${styles.languageButton} ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? styles.languageButtonActive : ""}`}
                       onClick={() => {
@@ -668,7 +668,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   {getLoginLabel("loginIdLabel")}
                 </Typography>
                 <TextField
-                  inputProps={{ controlId: "auth.login.login-id.input" }}
+                  inputProps={{ "data-controlid": "auth.login.login-id.input" }}
                   placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => {
@@ -694,7 +694,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
-                  inputProps={{ controlId: "auth.login.password.input" }}
+                  inputProps={{ "data-controlid": "auth.login.password.input" }}
                   placeholder={getLoginLabel("passwordPlaceholder")}
                   type={blnPasswordVisible ? "text" : "password"}
                   value={strPassword}
@@ -709,7 +709,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton controlId="auth.login.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
+                        <IconButton data-controlid="auth.login.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
                           {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                         </IconButton>
                       </InputAdornment>
@@ -722,7 +722,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 <Box>
                   <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
                   <TextField
-                    inputProps={{ controlId: "auth.login.otp.input" }}
+                    inputProps={{ "data-controlid": "auth.login.otp.input" }}
                     placeholder={getLoginLabel("otpPlaceholder")}
                     value={strOtp}
                     onChange={(objEvent) => setStrOtp(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -743,7 +743,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
  
               <Button
-                controlId="auth.login.submit.button"
+                data-controlid="auth.login.submit.button"
                 type="submit"
                 variant="contained"
                 size="large"
@@ -761,7 +761,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
               {blnOtpStep ? (
                 <Button
-                  controlId="auth.login.resend-otp.button"
+                  data-controlid="auth.login.resend-otp.button"
                   variant="text"
                   onClick={resendOtp}
                   disabled={blnResendingOtp || intResendRemainingSeconds > 0}
@@ -783,7 +783,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           </Box>
         </Box>
       </Box>
-      <Dialog controlId="auth.login.error.dialog" open={blnErrorDialogOpen} onClose={clearErrorState} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
+      <Dialog data-controlid="auth.login.error.dialog" open={blnErrorDialogOpen} onClose={clearErrorState} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
         <DialogTitle>Error</DialogTitle>
         <DialogContent>
           <Alert severity="error">
@@ -791,7 +791,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button controlId="auth.login.error.close.button" onClick={clearErrorState} variant="contained">
+          <Button data-controlid="auth.login.error.close.button" onClick={clearErrorState} variant="contained">
             OK
           </Button>
         </DialogActions>

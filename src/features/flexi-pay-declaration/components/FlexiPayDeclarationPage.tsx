@@ -462,20 +462,37 @@ export default function FlexiPayDeclarationPage() {
   }, [loadContext]);
 
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || objContext?.declaration_status || "draft";
-  const blnWorkflowEditable = ["draft", "returned", "rejected", "released"].includes(normalizeText(strWorkflowStatus));
-  const blnCanEditDeclaration = Boolean(!blnReviewEntryMode && blnWorkflowEditable && objContext?.blnCanDeclare);
+  const strNormalizedWorkflowStatus = normalizeText(strWorkflowStatus);
+  const blnCanEditDeclaration = Boolean(
+    !blnReviewEntryMode &&
+    ["draft", "returned"].includes(strNormalizedWorkflowStatus) &&
+    objContext?.blnCanDeclare
+  );
+  const blnShowEssDraftAction = Boolean(
+    !blnReviewEntryMode &&
+    ["draft", "returned", "locked", "released"].includes(strNormalizedWorkflowStatus) &&
+    objContext?.blnCanDeclare
+  );
+  const blnShowEssSubmitAction = blnShowEssDraftAction;
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
   const blnCanApproveAction = canDoAny("approve");
   const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
   const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
   const blnCanReleaseAction = canDoAny("release") || canDoAny("unlock") || blnCanApproveAction;
-  const blnReviewOpen = strWorkflowStatus === "submitted";
-  const blnShowWorkflowActions = blnEmployeeSalarySource && blnReviewEntryMode && blnReviewOpen;
-  const blnCanApproveCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanApproveAction;
-  const blnCanRejectCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanRejectAction;
-  const blnCanLockCurrent = blnShowWorkflowActions && strWorkflowStatus === "approved" && blnCanLockAction;
-  const blnCanReleaseCurrent = blnShowWorkflowActions && strWorkflowStatus === "locked" && blnCanReleaseAction;
+  const blnHasDeclaredReviewAmounts = (objContext?.lstDeclarationLines || []).some(
+    (objLine) => normalizeAmount(String(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? 0)) > 0,
+  );
+  const blnShowWorkflowActions =
+    blnEmployeeSalarySource &&
+    blnReviewEntryMode &&
+    blnHasDeclaredReviewAmounts &&
+    strNormalizedWorkflowStatus === "submitted";
+  const blnSubmittedWorkflow = strNormalizedWorkflowStatus === "submitted";
+  const blnCanApproveCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanApproveAction;
+  const blnCanRejectCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanRejectAction;
+  const blnCanLockCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanLockAction;
+  const blnCanReleaseCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanReleaseAction;
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -604,7 +621,7 @@ export default function FlexiPayDeclarationPage() {
   }, [lstDisplayedRows]);
 
   const blnCanSaveDraft = Boolean(
-    blnCanEditDeclaration
+    blnShowEssDraftAction
     && !blnSaving
     && !blnEvaluating
     && !blnAllocationExceeded
@@ -612,7 +629,7 @@ export default function FlexiPayDeclarationPage() {
     && (lstPayloadRows.length > 0 || blnHasEligibilityAnswerValues || strRemarks.trim().length > 0),
   );
   const blnCanSubmit = Boolean(
-    blnCanEditDeclaration
+    blnShowEssSubmitAction
     && !blnSaving
     && !blnEvaluating
     && !blnAllocationExceeded
@@ -794,7 +811,7 @@ export default function FlexiPayDeclarationPage() {
   }
 
   useEffect(() => {
-    if (blnLoading || !objContext?.blnCanDeclare || !blnWorkflowEditable) return;
+    if (blnLoading || !objContext?.blnCanDeclare || !blnCanEditDeclaration) return;
     if (strCurrentSignature === strLastSyncedSignatureRef.current) return;
     if (strCurrentSignature === strLastEvaluatedSignatureRef.current) return;
 
@@ -829,14 +846,14 @@ export default function FlexiPayDeclarationPage() {
     dicEligibilityAnswers,
     lstPayloadRows,
     objContext?.blnCanDeclare,
-    blnWorkflowEditable,
+    blnCanEditDeclaration,
     strCurrentSignature,
     strActiveFinancialYearCode,
     strRemarks,
   ]);
 
   useEffect(() => {
-    if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnWorkflowEditable) return;
+    if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnCanEditDeclaration) return;
     if (strCurrentSignature === strLastAutoSavedSignatureRef.current) return;
     if (lstPayloadRows.length === 0 && !blnHasEligibilityAnswerValues && strRemarks.trim().length === 0) return;
 
@@ -864,7 +881,7 @@ export default function FlexiPayDeclarationPage() {
     dicEligibilityAnswers,
     lstPayloadRows,
     objContext?.objDeclaration?.intDeclarationID,
-    blnWorkflowEditable,
+    blnCanEditDeclaration,
     strCurrentSignature,
     strActiveFinancialYearCode,
     strRemarks,
@@ -1267,18 +1284,18 @@ export default function FlexiPayDeclarationPage() {
             >
               {t("flexi_pay_declaration_back", "Back")}
             </Button>
-            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
-              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
-                Save Draft
+            {!blnShowWorkflowActions && blnShowEssDraftAction ? (
+              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanSaveDraft} onClick={() => void handleSaveDraft()}>
+                Draft
               </Button>
             ) : null}
-            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnShowEssSubmitAction ? (
               <Button
                 size="small"
                 variant="contained"
                 color="warning"
                 startIcon={<SendRoundedIcon />}
-                disabled={blnSaving}
+                disabled={!blnCanSubmit}
                 onClick={() => {
                   if (validateDeclarationForAction("submit")) {
                     setStrError("");
@@ -1286,7 +1303,7 @@ export default function FlexiPayDeclarationPage() {
                   }
                 }}
               >
-                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Resubmit" : "Submit"}
+                {strNormalizedWorkflowStatus === "returned" ? "Resubmit" : "Submit"}
               </Button>
             ) : null}
             {blnShowWorkflowActions ? (
@@ -1294,16 +1311,12 @@ export default function FlexiPayDeclarationPage() {
                 <Button size="small" variant="outlined" color="error" disabled={!blnCanRejectCurrent || blnSaving} onClick={() => setStrReviewActionMode("reject")}>
                   {t("flexi_pay_declaration_reject", "Reject")}
                 </Button>
-                {blnCanReleaseCurrent ? (
-                  <Button size="small" variant="outlined" color="info" disabled={blnSaving} onClick={() => void handleReleaseReview()}>
-                    {t("flexi_pay_declaration_release", "Release")}
-                  </Button>
-                ) : null}
-                {blnCanLockCurrent ? (
-                  <Button size="small" variant="outlined" color="success" disabled={blnSaving} onClick={() => void handleLockReview()}>
-                    {t("flexi_pay_declaration_lock", "Lock")}
-                  </Button>
-                ) : null}
+                <Button size="small" variant="outlined" color="info" disabled={!blnCanReleaseCurrent || blnSaving} onClick={() => void handleReleaseReview()}>
+                  {t("flexi_pay_declaration_release", "Release")}
+                </Button>
+                <Button size="small" variant="outlined" color="success" disabled={!blnCanLockCurrent || blnSaving} onClick={() => void handleLockReview()}>
+                  {t("flexi_pay_declaration_lock", "Lock")}
+                </Button>
                 <Button size="small" variant="contained" disabled={!blnCanApproveCurrent || blnSaving || blnAllocationExceeded} onClick={() => void handleApproveReview()}>
                   {t("flexi_pay_declaration_approve", "Approve")}
                 </Button>
@@ -1479,7 +1492,7 @@ export default function FlexiPayDeclarationPage() {
                 disabled={blnSaving}
                 onClick={() => void handleConfirmSubmit()}
               >
-                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Confirm Resubmit" : "Confirm Submit"}
+                {strNormalizedWorkflowStatus === "returned" ? "Confirm Resubmit" : "Confirm Submit"}
               </Button>
           </DialogActions>
           </Dialog>
