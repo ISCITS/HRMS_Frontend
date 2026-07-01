@@ -84,6 +84,10 @@ function normalizeText(strValue?: string | null) {
   return String(strValue || "").trim().toLowerCase();
 }
 
+function normalizeToken(strValue?: string | null) {
+  return normalizeText(strValue).replace(/[\s_-]+/g, "");
+}
+
 function normalizeAmount(strValue: string) {
   const decValue = Number(strValue);
   if (!Number.isFinite(decValue) || decValue < 0) return 0;
@@ -134,19 +138,37 @@ function getEligibilityChipConfig(objRow: FlexiDeclarationLineRecord): {
     return { strLabel: "Eligible", strColor: "success" };
   }
   if (objRow.blnRegimeEligible === false) {
-    return { strLabel: "Regime Mismatch", strColor: "error" };
+    return { strLabel: "Not Eligible", strColor: "error" };
   }
   return { strLabel: "Needs Details", strColor: "warning" };
 }
 
 function getLineReasonText(objRow: FlexiDeclarationLineRecord) {
+  const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+  const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
+  const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
   if (objRow.blnRegimeEligible === false) {
     return objRow.strRegimeEligibilityReason || objRow.strEligibilityReason || "Component is not eligible for the selected IT regime.";
   }
   if (objRow.strEligibilityDetailsReason) {
-    return `Regime matched. Detail check: ${objRow.strEligibilityDetailsReason}`;
+    return objRow.strEligibilityDetailsReason;
   }
-  return objRow.strEligibilityReason || "-";
+  if (decAnnualCap <= 0) {
+    return "No entitlement configured.";
+  }
+  if (["approved", "locked"].includes(strItemStatus) && decDeclaredAnnual > 0) {
+    return "Approved / Locked";
+  }
+  if (strItemStatus === "submitted" && decDeclaredAnnual > 0) {
+    return "Submitted via ESS";
+  }
+  if (decDeclaredAnnual <= 0) {
+    return "Not declared";
+  }
+  if (!(objRow.lstEligibilityRules || []).length) {
+    return "Eligible by default";
+  }
+  return objRow.strEligibilityReason || "Eligible by default";
 }
 
 function getComponentRegimeDisplayLabel(objRow: FlexiDeclarationLineRecord) {
@@ -171,6 +193,57 @@ function getSnapshotNumber(objSnapshot: Record<string, unknown> | null | undefin
     if (Number.isFinite(decValue)) return decValue;
   }
   return null;
+}
+
+function getRecordNumber(objRecord: Record<string, unknown> | null | undefined, lstKeys: string[]) {
+  if (!objRecord) return 0;
+  for (const strKey of lstKeys) {
+    const decValue = Number(objRecord[strKey]);
+    if (Number.isFinite(decValue)) return decValue;
+  }
+  return 0;
+}
+
+function isBasicComponentName(strValue?: string | null) {
+  return normalizeToken(strValue).includes("basic");
+}
+
+function isHraComponentName(strValue?: string | null) {
+  const strToken = normalizeToken(strValue);
+  return strToken === "hra" || strToken.includes("houserentallowance");
+}
+
+function isEmployerContributionCategory(strValue?: string | null) {
+  return normalizeToken(strValue).includes("employer");
+}
+
+function buildFixedSalaryRows(objContext: FlexiDeclarationContextRecord | null, decBasketAnnual: number, decResidualAnnual: number) {
+  const lstComponentLines = Array.isArray(objContext?.lstComponentLines)
+    ? (objContext.lstComponentLines as Array<Record<string, unknown>>)
+    : [];
+  const dicSummary = lstComponentLines.reduce(
+    (dicAcc, objLine) => {
+      const strName = String(objLine.strComponentName ?? objLine.strSalaryComponentName ?? objLine.strComponentCode ?? "");
+      const strCategory = String(objLine.strComponentCategory ?? objLine.strCategory ?? "");
+      const decAnnualAmount =
+        getRecordNumber(objLine, ["decAmountAnnual", "decAnnualAmount", "decComputedAnnualAmount", "decValueAnnual"])
+        || (getRecordNumber(objLine, ["decAmountMonthly", "decMonthlyAmount", "decComputedMonthlyAmount", "decValueMonthly"]) * 12);
+      if (decAnnualAmount <= 0) return dicAcc;
+      if (isBasicComponentName(strName)) dicAcc.decBasicAnnual += decAnnualAmount;
+      if (isHraComponentName(strName)) dicAcc.decHraAnnual += decAnnualAmount;
+      if (isEmployerContributionCategory(strCategory)) dicAcc.decEmployerContributionAnnual += decAnnualAmount;
+      return dicAcc;
+    },
+    { decBasicAnnual: 0, decHraAnnual: 0, decEmployerContributionAnnual: 0 },
+  );
+
+  return [
+    { strLabel: "Basic Salary", decAnnual: dicSummary.decBasicAnnual },
+    { strLabel: "HRA", decAnnual: dicSummary.decHraAnnual },
+    { strLabel: "Employer Contribution", decAnnual: dicSummary.decEmployerContributionAnnual },
+    { strLabel: "Flexi Bucket", decAnnual: decBasketAnnual },
+    { strLabel: "Residual Taxable Preview", decAnnual: decResidualAnnual },
+  ].filter((objRow) => objRow.decAnnual > 0);
 }
 
 function buildFallbackContext(strFinancialYearCode: string): FlexiDeclarationContextRecord {
@@ -412,7 +485,7 @@ export default function FlexiPayDeclarationPage() {
   const [dicSelectedQuestions, setDicSelectedQuestions] = useState<LinkedQuestionSelectionMap>({});
   const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
   const [blnSubmitDialogOpen, setBlnSubmitDialogOpen] = useState(false);
-  const [strReviewActionMode, setStrReviewActionMode] = useState<"reject" | null>(null);
+  const [strReviewActionMode, setStrReviewActionMode] = useState<"reject" | "return" | null>(null);
   const strActiveFinancialYearCode = objContext?.strFinancialYearCode || strFinancialYearCode;
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
@@ -462,20 +535,39 @@ export default function FlexiPayDeclarationPage() {
   }, [loadContext]);
 
   const strWorkflowStatus = objContext?.objDeclaration?.strWorkflowStatus || objContext?.declaration_status || "draft";
-  const blnWorkflowEditable = ["draft", "returned", "rejected", "released"].includes(normalizeText(strWorkflowStatus));
-  const blnCanEditDeclaration = Boolean(!blnReviewEntryMode && blnWorkflowEditable && objContext?.blnCanDeclare);
+  const strNormalizedWorkflowStatus = normalizeText(strWorkflowStatus);
+  const blnCanEditDeclaration = Boolean(
+    !blnReviewEntryMode &&
+    ["draft", "returned"].includes(strNormalizedWorkflowStatus) &&
+    objContext?.blnCanDeclare
+  );
+  const blnShowEssDraftAction = Boolean(
+    !blnReviewEntryMode &&
+    ["draft", "returned", "locked", "released"].includes(strNormalizedWorkflowStatus) &&
+    objContext?.blnCanDeclare
+  );
+  const blnShowEssSubmitAction = blnShowEssDraftAction;
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
   const blnCanApproveAction = canDoAny("approve");
   const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
   const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
   const blnCanReleaseAction = canDoAny("release") || canDoAny("unlock") || blnCanApproveAction;
-  const blnReviewOpen = strWorkflowStatus === "submitted";
-  const blnShowWorkflowActions = blnEmployeeSalarySource && blnReviewEntryMode && blnReviewOpen;
-  const blnCanApproveCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanApproveAction;
-  const blnCanRejectCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanRejectAction;
-  const blnCanLockCurrent = blnShowWorkflowActions && strWorkflowStatus === "approved" && blnCanLockAction;
-  const blnCanReleaseCurrent = blnShowWorkflowActions && strWorkflowStatus === "locked" && blnCanReleaseAction;
+  const blnHasDeclaredReviewAmounts = (objContext?.lstDeclarationLines || []).some(
+    (objLine) => normalizeAmount(String(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? 0)) > 0,
+  );
+  const blnShowWorkflowActions =
+    blnEmployeeSalarySource &&
+    blnReviewEntryMode &&
+    blnHasDeclaredReviewAmounts &&
+    strNormalizedWorkflowStatus === "submitted";
+  const blnSubmittedWorkflow = strNormalizedWorkflowStatus === "submitted";
+  const blnCanApproveCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanApproveAction;
+  const blnCanRejectCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanRejectAction;
+  const blnCanReturnCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanRejectAction;
+  const blnCanLockCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanLockAction;
+  const blnCanReleaseCurrent = blnShowWorkflowActions && blnSubmittedWorkflow && blnCanReleaseAction;
+  const strPageModeLabel = blnShowWorkflowActions ? "HR Approval Mode" : blnReviewEntryMode ? "Approval Review" : "ESS Declaration Mode";
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -535,6 +627,10 @@ export default function FlexiPayDeclarationPage() {
         strDisplayedAmount: getDisplayedDeclarationAmount(objSelectedLine, dicDraftInputs[objSelectedLine.intSalaryComponentID]),
         decMultiplier: getRowEffectiveMultiplier(objSelectedLine),
       };
+    }).filter((objRow) => {
+      const decAnnualCap = Number(objRow.objSelectedLine.decEffectiveAnnualCap ?? objRow.objSelectedLine.decAnnualLimit ?? 0);
+      const decDeclaredAnnual = Number(objRow.objSelectedLine.decInputAnnual ?? 0);
+      return decAnnualCap > 0 || decDeclaredAnnual > 0;
     });
   }, [dicDraftInputs, dicEligibilityQuestionByCode, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows]);
 
@@ -583,6 +679,10 @@ export default function FlexiPayDeclarationPage() {
   const strResidualComponentName = objSalaryImpactSummary?.objResidualComponent?.strComponentName
     || objContext?.objFlexiAllocation?.strResidualComponentName
     || "-";
+  const lstFixedSalaryRows = useMemo(
+    () => buildFixedSalaryRows(objContext, decBasketAnnual, decResidualAnnual),
+    [objContext, decBasketAnnual, decResidualAnnual],
+  );
 
   const strCurrentSignature = useMemo(
     () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks),
@@ -604,7 +704,7 @@ export default function FlexiPayDeclarationPage() {
   }, [lstDisplayedRows]);
 
   const blnCanSaveDraft = Boolean(
-    blnCanEditDeclaration
+    blnShowEssDraftAction
     && !blnSaving
     && !blnEvaluating
     && !blnAllocationExceeded
@@ -612,7 +712,7 @@ export default function FlexiPayDeclarationPage() {
     && (lstPayloadRows.length > 0 || blnHasEligibilityAnswerValues || strRemarks.trim().length > 0),
   );
   const blnCanSubmit = Boolean(
-    blnCanEditDeclaration
+    blnShowEssSubmitAction
     && !blnSaving
     && !blnEvaluating
     && !blnAllocationExceeded
@@ -794,7 +894,7 @@ export default function FlexiPayDeclarationPage() {
   }
 
   useEffect(() => {
-    if (blnLoading || !objContext?.blnCanDeclare || !blnWorkflowEditable) return;
+    if (blnLoading || !objContext?.blnCanDeclare || !blnCanEditDeclaration) return;
     if (strCurrentSignature === strLastSyncedSignatureRef.current) return;
     if (strCurrentSignature === strLastEvaluatedSignatureRef.current) return;
 
@@ -829,14 +929,14 @@ export default function FlexiPayDeclarationPage() {
     dicEligibilityAnswers,
     lstPayloadRows,
     objContext?.blnCanDeclare,
-    blnWorkflowEditable,
+    blnCanEditDeclaration,
     strCurrentSignature,
     strActiveFinancialYearCode,
     strRemarks,
   ]);
 
   useEffect(() => {
-    if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnWorkflowEditable) return;
+    if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnCanEditDeclaration) return;
     if (strCurrentSignature === strLastAutoSavedSignatureRef.current) return;
     if (lstPayloadRows.length === 0 && !blnHasEligibilityAnswerValues && strRemarks.trim().length === 0) return;
 
@@ -864,7 +964,7 @@ export default function FlexiPayDeclarationPage() {
     dicEligibilityAnswers,
     lstPayloadRows,
     objContext?.objDeclaration?.intDeclarationID,
-    blnWorkflowEditable,
+    blnCanEditDeclaration,
     strCurrentSignature,
     strActiveFinancialYearCode,
     strRemarks,
@@ -1046,12 +1146,17 @@ export default function FlexiPayDeclarationPage() {
 
   async function handleDecisionReview() {
     if (!strReviewActionMode) return;
-    setStrSavingLabel("Rejecting declaration...");
+    setStrSavingLabel(strReviewActionMode === "return" ? "Returning declaration..." : "Rejecting declaration...");
     setBlnSaving(true);
     setStrError("");
     try {
-      await hrFlexiDeclarationReviewService.reject(intRouteDeclarationID, strRemarks);
-      setStrToast(t("flexi_pay_declaration_reject_success", "Declaration rejected."));
+      if (strReviewActionMode === "return") {
+        await hrFlexiDeclarationReviewService.returnForCorrection(intRouteDeclarationID, strRemarks);
+        setStrToast(t("flexi_pay_declaration_return_success", "Declaration returned for correction."));
+      } else {
+        await hrFlexiDeclarationReviewService.reject(intRouteDeclarationID, strRemarks);
+        setStrToast(t("flexi_pay_declaration_reject_success", "Declaration rejected."));
+      }
       setStrReviewActionMode(null);
       navigateAfterReviewAction(true);
     } catch (objError) {
@@ -1233,6 +1338,15 @@ export default function FlexiPayDeclarationPage() {
       {objContext?.blnHasHiddenComponents ? (
         <Alert severity="info">Some components are hidden because eligibility conditions are not met.</Alert>
       ) : null}
+      {blnReviewEntryMode && blnEmployeeSalarySource ? (
+        <Alert severity="info">Approval Review: declaration amount fields are read-only here unless HR override is explicitly supported.</Alert>
+      ) : null}
+      {!blnShowWorkflowActions && strNormalizedWorkflowStatus === "submitted" ? (
+        <Alert severity="info">Submitted values are shown for preview. Payroll should use approved or locked values after approval.</Alert>
+      ) : null}
+      {blnShowWorkflowActions ? (
+        <Alert severity="info">HR Approval Mode: review submitted flexi values and use the approval actions below.</Alert>
+      ) : null}
 
       <Paper
         sx={{
@@ -1252,7 +1366,7 @@ export default function FlexiPayDeclarationPage() {
               {objContext?.objEmployeeSummary?.strEmployeeName || "Employee"}
             </Typography>
             <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | FY {strActiveFinancialYearCode} | Current Status {formatStatus(strWorkflowStatus)} | IT Regime {strSelectedTaxRegimeLabel}
+              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | FY {strActiveFinancialYearCode} | {strPageModeLabel} | Current Status {formatStatus(strWorkflowStatus)} | IT Regime {strSelectedTaxRegimeLabel}
             </Typography>
           </Box>
 
@@ -1267,18 +1381,18 @@ export default function FlexiPayDeclarationPage() {
             >
               {t("flexi_pay_declaration_back", "Back")}
             </Button>
-            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
-              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
-                Save Draft
+            {!blnShowWorkflowActions && blnShowEssDraftAction ? (
+              <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanSaveDraft} onClick={() => void handleSaveDraft()}>
+                Draft
               </Button>
             ) : null}
-            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnShowEssSubmitAction ? (
               <Button
                 size="small"
                 variant="contained"
                 color="warning"
                 startIcon={<SendRoundedIcon />}
-                disabled={blnSaving}
+                disabled={!blnCanSubmit}
                 onClick={() => {
                   if (validateDeclarationForAction("submit")) {
                     setStrError("");
@@ -1286,24 +1400,23 @@ export default function FlexiPayDeclarationPage() {
                   }
                 }}
               >
-                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Resubmit" : "Submit"}
+                {strNormalizedWorkflowStatus === "returned" ? "Resubmit" : "Submit"}
               </Button>
             ) : null}
             {blnShowWorkflowActions ? (
               <>
+                <Button size="small" variant="outlined" color="warning" disabled={!blnCanReturnCurrent || blnSaving} onClick={() => setStrReviewActionMode("return")}>
+                  {t("flexi_pay_declaration_return", "Return")}
+                </Button>
                 <Button size="small" variant="outlined" color="error" disabled={!blnCanRejectCurrent || blnSaving} onClick={() => setStrReviewActionMode("reject")}>
                   {t("flexi_pay_declaration_reject", "Reject")}
                 </Button>
-                {blnCanReleaseCurrent ? (
-                  <Button size="small" variant="outlined" color="info" disabled={blnSaving} onClick={() => void handleReleaseReview()}>
-                    {t("flexi_pay_declaration_release", "Release")}
-                  </Button>
-                ) : null}
-                {blnCanLockCurrent ? (
-                  <Button size="small" variant="outlined" color="success" disabled={blnSaving} onClick={() => void handleLockReview()}>
-                    {t("flexi_pay_declaration_lock", "Lock")}
-                  </Button>
-                ) : null}
+                <Button size="small" variant="outlined" color="info" disabled={!blnCanReleaseCurrent || blnSaving} onClick={() => void handleReleaseReview()}>
+                  {t("flexi_pay_declaration_release", "Release")}
+                </Button>
+                <Button size="small" variant="outlined" color="success" disabled={!blnCanLockCurrent || blnSaving} onClick={() => void handleLockReview()}>
+                  {t("flexi_pay_declaration_lock", "Lock")}
+                </Button>
                 <Button size="small" variant="contained" disabled={!blnCanApproveCurrent || blnSaving || blnAllocationExceeded} onClick={() => void handleApproveReview()}>
                   {t("flexi_pay_declaration_approve", "Approve")}
                 </Button>
@@ -1314,6 +1427,10 @@ export default function FlexiPayDeclarationPage() {
       </Paper>
 
       <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(6, minmax(0, 1fr))" } }}>
+        <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Mode</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{strPageModeLabel}</Typography>
+        </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Current Status</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatStatus(strWorkflowStatus)}</Typography>
@@ -1358,7 +1475,7 @@ export default function FlexiPayDeclarationPage() {
             <Box sx={{ p: 0.75, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
               <Stack direction={{ xs: "column", md: "row" }} spacing={0.75} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>Basic Eligibility Details</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>Eligibility Questions</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.72rem", mt: 0.1 }}>
                     Components are enabled from the selected IT regime. Related questions remain available for eligible components.
                   </Typography>
@@ -1431,7 +1548,7 @@ export default function FlexiPayDeclarationPage() {
             fullWidth
             maxWidth="lg"
           >
-            <DialogTitle>All Basic Eligibility Details</DialogTitle>
+            <DialogTitle>All Eligibility Questions</DialogTitle>
             <DialogContent dividers sx={{ p: 1.25 }}>
               <Box sx={{ display: "grid", gap: 1 }}>
                 {renderEligibilityQuestionGroups(dicQuestionGroups)}
@@ -1479,7 +1596,7 @@ export default function FlexiPayDeclarationPage() {
                 disabled={blnSaving}
                 onClick={() => void handleConfirmSubmit()}
               >
-                {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Confirm Resubmit" : "Confirm Submit"}
+                {strNormalizedWorkflowStatus === "returned" ? "Confirm Resubmit" : "Confirm Submit"}
               </Button>
           </DialogActions>
           </Dialog>
@@ -1490,7 +1607,7 @@ export default function FlexiPayDeclarationPage() {
             fullWidth
             maxWidth="sm"
           >
-            <DialogTitle>{t("flexi_pay_declaration_reject_dialog_title", "Reject Declaration")}</DialogTitle>
+            <DialogTitle>{strReviewActionMode === "return" ? t("flexi_pay_declaration_return_dialog_title", "Return Declaration") : t("flexi_pay_declaration_reject_dialog_title", "Reject Declaration")}</DialogTitle>
             <DialogContent dividers sx={{ p: 1.5 }}>
               <Stack spacing={1.25}>
                 <Typography sx={{ mb: 0.25 }}>{t("flexi_pay_declaration_reviewer_remarks_hint", "Reviewer remarks will be saved on the declaration.")}</Typography>
@@ -1518,7 +1635,7 @@ export default function FlexiPayDeclarationPage() {
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>Eligible Flexi Components</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.25 }}>
-                    Declare amount only for components eligible under the IT Declaration tax regime for this FY.
+                    Annual Cap is entitlement only. Monthly Impact is always based on Declared Annual divided by 12.
                   </Typography>
                 </Box>
                 <Chip label={`${intEligibleFlexiComponentCount} eligible / ${lstDisplayedRows.length} total`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
@@ -1584,7 +1701,7 @@ export default function FlexiPayDeclarationPage() {
                                 color={objEligibilityChip.strColor}
                                 label={objEligibilityChip.strLabel}
                                 sx={{
-                                  minWidth: objEligibilityChip.strLabel === "Regime Mismatch" ? 116 : 82,
+                                  minWidth: objEligibilityChip.strLabel === "Not Eligible" ? 96 : 82,
                                   height: 22,
                                   maxWidth: "none",
                                   "& .MuiChip-label": { px: 0.85, overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" },
@@ -1694,10 +1811,7 @@ export default function FlexiPayDeclarationPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {[
-                      { strLabel: "Annual CTC", decAnnual: decAnnualCtc },
-                      { strLabel: "Gross Monthly", decAnnual: decGrossMonthly * 12 },
-                    ].map((objRow) => (
+                    {lstFixedSalaryRows.map((objRow) => (
                       <TableRow key={objRow.strLabel}>
                         <TableCell>{objRow.strLabel}</TableCell>
                         <TableCell align="right">{formatCurrency(objRow.decAnnual, strCurrencyCode)}</TableCell>

@@ -69,8 +69,8 @@ function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-function formatCurrency(decValue: number | null, strCurrencyCode = "INR") {
-  if (decValue === null) {
+function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "INR") {
+  if (decValue === null || typeof decValue === "undefined") {
     return "-";
   }
   return new Intl.NumberFormat("en-IN", {
@@ -175,6 +175,7 @@ type FlexiGridRow = {
   strStatus: string;
   strReasonAction: string;
   decApprovedDeclaredAnnual: number;
+  strStatusCode?: string | null;
 };
 
 type RevisionBreakdownComponentRow = {
@@ -323,6 +324,13 @@ function parseOptionalAmount(strValue: string) {
   return strNormalizedValue.trim() && Number.isFinite(decValue) ? decValue : null;
 }
 
+function formatAmountInput(decValue: number | null | undefined) {
+  if (decValue === null || typeof decValue === "undefined" || !Number.isFinite(decValue)) {
+    return "";
+  }
+  return decValue.toFixed(2).replace(/\.00$/, "").replace(/(\.\d*[1-9])0$/, "$1");
+}
+
 function getNumberValue(objValue: number | string | null | undefined) {
   if (objValue === null || typeof objValue === "undefined" || objValue === "") {
     return 0;
@@ -355,8 +363,8 @@ function normalizeAmountTextOrDefault(strValue: string, objDefaultValue: number 
   return strNormalizedValue.trim() ? strNormalizedValue : normalizeAmountText(formatOptionalDefaultValue(objDefaultValue));
 }
 
-function formatPercentValue(decValue: number | null) {
-  return decValue === null || !Number.isFinite(decValue) ? "" : `(${decValue.toFixed(2)}%)`;
+function formatPercentValue(decValue: number | null | undefined) {
+  return decValue === null || typeof decValue === "undefined" || !Number.isFinite(decValue) ? "" : `(${decValue.toFixed(2)}%)`;
 }
 
 function isFlexiPayComponentName(strValue: string) {
@@ -501,6 +509,27 @@ function formatFlexiDeclarationStatus(strStatus: string | null | undefined) {
     .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
+function getPreferredFlexiDisplayAmount(
+  dicLine: FlexiAllocationLineWithStatus,
+  strDeclarationStatus: string | null | undefined
+) {
+  const strStatusType = getApprovedFlexiStatus(strDeclarationStatus);
+  const decApprovedAnnual =
+    getNumberValue(dicLine.decApprovedAnnualAmount) ||
+    getNumberValue(dicLine.decDeclarationApprovedAnnualAmount);
+  const decDeclaredAnnual =
+    getNumberValue(dicLine.decDeclaredAnnualAmount) ||
+    getNumberValue(dicLine.decAllocationAnnual);
+
+  if (strStatusType === "approved") {
+    return decApprovedAnnual;
+  }
+  if (strStatusType === "submitted") {
+    return decDeclaredAnnual;
+  }
+  return 0;
+}
+
 function formatFlexiApplicableRegime(objLine: FlexiDeclarationLineRecord) {
   return (
     objLine.strEligibilityApplicableRegimeLabel ||
@@ -612,6 +641,8 @@ function calculateSalarySummaryMetrics(
 ): SalarySummaryMetrics {
   const lstComponentLines = objDetail?.lstComponentLines ?? [];
   const decFlexiBucketAnnual = dicFlexiTotals.decFlexiBucketAvailableAnnual;
+  const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
+  const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
   const lstApprovedFlexiRows = lstFlexiRows.filter((dicRow) => dicRow.decApprovedDeclaredAnnual > 0);
   const decApprovedFlexiAnnual = lstApprovedFlexiRows.reduce((decTotal, dicRow) => decTotal + dicRow.decApprovedDeclaredAnnual, 0);
   const decResidualTaxableAnnual = Math.max(decFlexiBucketAnnual - decApprovedFlexiAnnual, 0);
@@ -649,8 +680,6 @@ function calculateSalarySummaryMetrics(
       ? decTotal + getNumberValue(dicLine.decAmountAnnual)
       : decTotal
   ), 0);
-  const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
-  const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
   return {
     decAnnualCtc: decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual,
     decGrossMonthly: decPayableEarningsMonthly + (decFlexiBucketAnnual / 12),
@@ -663,7 +692,7 @@ function calculateSalarySummaryMetrics(
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType !== "approved"
+    strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType === "other"
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",
     blnUsesSubmittedFlexiPreview: decFlexiBucketAnnual > 0 && strFlexiStatusType === "submitted"
@@ -675,7 +704,9 @@ function calculateRevisionSalarySummaryMetrics(
   dicRevisionForm: EmployeeSalaryRevisionFormValues
 ): SalarySummaryMetrics {
   const setFlexiAllocationComponentIDs = new Set(
-    dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
+    dicRevisionForm.lstFlexiAllocations
+      .filter((dicAllocation) => getNumberValue(dicAllocation.decAllocationAnnual) > 0 || getNumberValue(dicAllocation.decAllocationMonthly) > 0)
+      .map((dicAllocation) => dicAllocation.intSalaryComponentID)
   );
   const mapOverridesByComponentID = new Map(
     dicRevisionForm.lstOverrides.map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
@@ -950,23 +981,36 @@ function buildOverrideRows(
 
 function buildFlexiAllocationRows(
   lstSourceLines: FlexiSourceLine[],
-  _lstExistingAllocations: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"] = [],
+  lstExistingAllocations: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"] = [],
   fnTranslate?: (strKey: string, strFallback: string) => string
 ): EmployeeSalaryFlexiAllocationFormValue[] {
-  void _lstExistingAllocations;
+  const mapExistingAllocationByComponentID = new Map(
+    lstExistingAllocations.map((dicLine) => [dicLine.intSalaryComponentID, dicLine as FlexiAllocationLineWithStatus])
+  );
   return lstSourceLines.map((dicLine) => {
+    const dicExistingAllocation = mapExistingAllocationByComponentID.get(dicLine.intSalaryComponentID);
     const decAnnualLimit =
       dicLine.decAnnualLimit ??
+      dicExistingAllocation?.decAnnualLimit ??
       dicLine.decFlexiMaxYearlyAmount ??
       dicLine.decAnnualLimitAmount ??
       dicLine.decReimbursementMaxClaimYearlyLimit ??
       null;
     const decMonthlyLimit =
       dicLine.decMonthlyLimit ??
+      dicExistingAllocation?.decMonthlyLimit ??
       dicLine.decFlexiMaxMonthlyAmount ??
       dicLine.decMonthlyLimitAmount ??
       dicLine.decReimbursementMaxClaimMonthlyLimit ??
       (decAnnualLimit != null ? decAnnualLimit / 12 : null);
+    const decApprovedAnnual =
+      getNumberValue(dicExistingAllocation?.decApprovedAnnualAmount) ||
+      getNumberValue(dicExistingAllocation?.decDeclarationApprovedAnnualAmount);
+    const decDeclaredAnnual =
+      getNumberValue(dicExistingAllocation?.decDeclaredAnnualAmount) ||
+      getNumberValue(dicExistingAllocation?.decAllocationAnnual);
+    const decDisplayAnnual = decApprovedAnnual > 0 ? decApprovedAnnual : decDeclaredAnnual;
+    const strStatus = formatFlexiDeclarationStatus(dicExistingAllocation?.strStatus ?? dicExistingAllocation?.strDeclarationItemStatus ?? "Not Declared");
     return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
       strComponentName:
@@ -978,8 +1022,10 @@ function buildFlexiAllocationRows(
       blnProofRequired: Boolean(dicLine.blnProofRequired),
       decAnnualLimit,
       decMonthlyLimit,
-      decAllocationMonthly: "",
-      decAllocationAnnual: ""
+      decAllocationMonthly: decDisplayAnnual > 0 ? formatOptionalDefaultValue(decDisplayAnnual / 12) : "",
+      decAllocationAnnual: decDisplayAnnual > 0 ? formatOptionalDefaultValue(decDisplayAnnual) : "",
+      strStatus,
+      strReasonAction: dicExistingAllocation?.strRemarks ?? normalizeFlexiSource(dicExistingAllocation?.strSource ?? "Structure Default")
     };
   });
 }
@@ -1238,6 +1284,31 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     objFlexiDeclarationContext?.objDeclaration?.intDeclarationID ??
     objDetail?.objFlexiDeclaration?.intDeclarationID ??
     null;
+  const strFlexiDeclarationStatusNormalized = normalizeSelectToken(
+    objFlexiDeclarationContext?.objDeclaration?.strWorkflowStatus ??
+    objDetail?.objFlexiDeclaration?.strStatus ??
+    ""
+  );
+  const blnHasDeclaredFlexiAmounts = useMemo(() => {
+    if ((objFlexiDeclarationContext?.lstDeclarationLines ?? []).some((dicLine) => getPreferredFlexiAnnualAmount(dicLine) > 0)) {
+      return true;
+    }
+    return (objDetail?.objFlexiAllocation?.lstAllocationLines ?? []).some(
+      (dicLine) =>
+        !isFlexiBucketAllocationLine(dicLine, objDetail?.objFlexiAllocation) &&
+        (
+          getNumberValue(dicLine.decDeclaredAnnualAmount) > 0 ||
+          getNumberValue(dicLine.decAllocationAnnual) > 0
+        )
+    );
+  }, [objDetail?.objFlexiAllocation, objFlexiDeclarationContext?.lstDeclarationLines]);
+  const blnCanApproveFlexiDeclaration =
+    Boolean(intFlexiDeclarationID) &&
+    strFlexiDeclarationStatusNormalized === "submitted" &&
+    blnHasDeclaredFlexiAmounts;
+  const strFlexiActionLabel = blnCanApproveFlexiDeclaration
+    ? t("employee_salary_review_approve", "Review / Approve")
+    : t("employee_salary_view", "View");
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
     const dicFlexiBucketAmounts = getEmployeeFlexiBucketAmounts(objDetail);
@@ -1392,6 +1463,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   }, [dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides]);
 
   const lstFlexiRows: FlexiGridRow[] = useMemo(() => {
+    const mapDeclarationLinesByComponentID = new Map<number, FlexiDeclarationLineRecord>(
+      (objFlexiDeclarationContext?.lstDeclarationLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
+    );
+    const strDeclarationStatusCode =
+      objFlexiDeclarationContext?.objDeclaration?.strWorkflowStatus ??
+      objDetail?.objFlexiDeclaration?.strStatus ??
+      null;
+    const strOverallDeclarationStatus = formatFlexiDeclarationStatus(strDeclarationStatusCode);
     const mapAllocationLinesByComponentID = new Map<number, FlexiAllocationLineWithStatus>(
       objFlexiAllocation.lstAllocationLines
         .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
@@ -1399,8 +1478,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     );
     const setAllComponentIDs = new Set<number>([...mapAllocationLinesByComponentID.keys()]);
 
-    return [...setAllComponentIDs]
-      .map((intSalaryComponentID) => {
+    const lstRows = [...setAllComponentIDs]
+      .map((intSalaryComponentID): FlexiGridRow | null => {
         const dicLine = mapAllocationLinesByComponentID.get(intSalaryComponentID);
         if (!dicLine) {
           return null;
@@ -1409,10 +1488,20 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           dicLine?.strComponentName ??
           dicLine?.strComponentCode ??
           "-";
-        const strStatus = formatFlexiDeclarationStatus(dicLine.strStatus ?? dicLine.strDeclarationItemStatus ?? "Not Declared");
-        const decApprovedAnnual = getNumberValue(dicLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decDeclarationApprovedAnnualAmount);
-        const decSubmittedAnnual = getNumberValue(dicLine.decDeclaredAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
-        const decPreviewAnnual = decApprovedAnnual > 0 ? decApprovedAnnual : decSubmittedAnnual;
+        const dicDeclarationLine = mapDeclarationLinesByComponentID.get(intSalaryComponentID);
+        const decPreviewAnnual = getPreferredFlexiDisplayAmount(dicLine, strDeclarationStatusCode);
+        const strLineStatusCode =
+          dicDeclarationLine?.strDeclarationItemStatus ??
+          dicLine.strStatus ??
+          dicLine.strDeclarationItemStatus ??
+          strDeclarationStatusCode ??
+          "Not Declared";
+        const strStatus = formatFlexiDeclarationStatus(
+          (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? strLineStatusCode : "Not Declared")
+        );
+        const strReasonAction = dicDeclarationLine?.strDeclarationItemRemarks
+          ?? dicLine.strRemarks
+          ?? (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? "ESS Declaration" : normalizeFlexiSource(dicLine.strSource ?? "Structure Default"));
 
         return {
           intSalaryComponentID,
@@ -1425,12 +1514,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             ? t("employee_salary_yes", "Yes")
             : t("employee_salary_no", "No"),
           strStatus,
-          strReasonAction: dicLine.strRemarks ?? normalizeFlexiSource(dicLine.strSource ?? "Structure Default"),
-          decApprovedDeclaredAnnual: decPreviewAnnual
+          strReasonAction,
+          decApprovedDeclaredAnnual: decPreviewAnnual,
+          strStatusCode: strLineStatusCode
         };
-      })
-      .filter((dicRow): dicRow is FlexiGridRow => Boolean(dicRow && dicRow.strComponentName !== "-"));
-  }, [objFlexiAllocation, strCurrencyCode, t]);
+      });
+    return lstRows.reduce<FlexiGridRow[]>((lstResolvedRows, dicRow) => {
+      if (dicRow && dicRow.strComponentName !== "-") {
+        lstResolvedRows.push(dicRow);
+      }
+      return lstResolvedRows;
+    }, []);
+  }, [objDetail?.objFlexiDeclaration?.strStatus, objFlexiAllocation, objFlexiDeclarationContext, strCurrencyCode, t]);
   const dicSalarySummaryMetrics = useMemo(
     () => calculateSalarySummaryMetrics(objDetail, dicFlexiTotals, lstFlexiRows),
     [dicFlexiTotals, lstFlexiRows, objDetail]
@@ -1439,6 +1534,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     return (objDetail?.lstComponentLines ?? [])
       .filter((dicLine) =>
         !isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
+        !isFlexiAllocationLine(dicLine) &&
         !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
         Number(dicLine.decAmountAnnual ?? 0) > 0
       )
@@ -1747,7 +1843,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                controlId="employee-salary.revision.back.button"
+                data-controlid="employee-salary.revision.back.button"
                 className={styles.secondaryButton}
                 variant="outlined"
                 startIcon={<ArrowBackRoundedIcon />}
@@ -1757,7 +1853,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_back_button", "Back")}
               </Button>
               <Button
-                controlId="employee-salary.revision.save.button"
+                data-controlid="employee-salary.revision.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSaveRevision}
@@ -1777,23 +1873,23 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
             <TextField
-              controlId="employee-salary.revision.salary-structure.select"
-              inputProps={{ "controlId": "employee-salary.revision.salary-structure.select" }}
+              data-controlid="employee-salary.revision.salary-structure.select"
+              inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
               select
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
               onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
             >
-              <MenuItem controlId="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
+              <MenuItem data-controlid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
               {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                   {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              controlId="employee-salary.revision.effective-from.input"
-              inputProps={{ "controlId": "employee-salary.revision.effective-from.input" }}
+              data-controlid="employee-salary.revision.effective-from.input"
+              inputProps={{ "data-controlid": "employee-salary.revision.effective-from.input" }}
               type="date"
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
@@ -1802,8 +1898,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             />
           </Box>
           <TextField
-            controlId="employee-salary.revision.revision-reason.input"
-            inputProps={{ "controlId": "employee-salary.revision.revision-reason.input" }}
+            data-controlid="employee-salary.revision.revision-reason.input"
+            inputProps={{ "data-controlid": "employee-salary.revision.revision-reason.input" }}
             label={t("employee_salary_revision_reason_field", "Revision reason")}
             value={dicRevisionForm.strRevisionReason}
             onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, strRevisionReason: objEvent.target.value }))}
@@ -1874,8 +1970,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        controlId="employee-salary.revision.override.monthly.input"
-                        inputProps={{ "controlId": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        data-controlid="employee-salary.revision.override.monthly.input"
+                        inputProps={{ "data-controlid": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decAmountMonthly}
                         placeholder={dicOverride.strDefaultMonthly}
                         size="small"
@@ -1902,8 +1998,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        controlId="employee-salary.revision.override.annual.input"
-                        inputProps={{ "controlId": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        data-controlid="employee-salary.revision.override.annual.input"
+                        inputProps={{ "data-controlid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decAmountAnnual}
                         placeholder={dicOverride.strDefaultAnnual}
                         size="small"
@@ -1917,8 +2013,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        controlId="employee-salary.revision.override.percentage.input"
-                        inputProps={{ "controlId": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        data-controlid="employee-salary.revision.override.percentage.input"
+                        inputProps={{ "data-controlid": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decPercentageValue}
                         placeholder={dicOverride.strDefaultPercentage}
                         size="small"
@@ -1932,8 +2028,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                        controlId="employee-salary.revision.override.remarks.input"
-                        inputProps={{ "controlId": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        data-controlid="employee-salary.revision.override.remarks.input"
+                        inputProps={{ "data-controlid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.strRemarks}
                         size="small"
                         sx={objOverrideValueFieldSx}
@@ -1963,49 +2059,35 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>{t("employee_salary_flexi_component", "Flexi Component")}</th>
-                      <th>{t("employee_salary_annual_limit", "Annual Limit")}</th>
-                      <th>{t("employee_salary_monthly_limit", "Monthly Limit")}</th>
-                      <th>{t("employee_salary_employee_allocation_annual", "Allocated Annual")}</th>
-                      <th>{t("employee_salary_employee_allocation_monthly", "Allocated Monthly")}</th>
-                      <th>{t("employee_salary_tax_treatment", "Tax Treatment")}</th>
+                      <th>{t("employee_salary_flexi_component", "Component")}</th>
+                      <th>{t("employee_salary_eligibility", "Eligibility")}</th>
+                      <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
+                      <th>{t("employee_salary_approved_declared_annual", "Approved / Declared Annual")}</th>
+                      <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
+                      <th>{t("employee_salary_proof_required", "Proof Required")}</th>
+                      <th>{t("employee_salary_status", "Status")}</th>
+                      <th>{t("employee_salary_reason_action", "Reason / Action")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dicRevisionForm.lstFlexiAllocations.length === 0 ? (
                       <tr>
-                        <td className={styles.emptyState} colSpan={6}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
+                        <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
                       </tr>
-                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation, intIndex) => (
+                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => (
                       <tr key={dicAllocation.intSalaryComponentID}>
                         <td>
                           <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
-                          <Typography sx={{ color: "#64748b", fontSize: "0.75rem" }}>
-                            {`${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
-                          </Typography>
                         </td>
+                        <td>{t("employee_salary_eligible", "Eligible")}</td>
                         <td>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</td>
-                        <td>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</td>
                         <td>
                           <TextField
                             value={dicAllocation.decAllocationAnnual}
                             placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
                             size="small"
                             sx={objOverrideValueFieldSx}
-                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                              ...dicPrev,
-                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
-                                if (intRowIndex !== intIndex) {
-                                  return dicRow;
-                                }
-                                const decAnnual = parseOptionalAmount(objEvent.target.value);
-                                return {
-                                  ...dicRow,
-                                  decAllocationAnnual: objEvent.target.value,
-                                  decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
-                                };
-                              })
-                            }))}
+                            disabled
                           />
                         </td>
                         <td>
@@ -2014,23 +2096,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                             placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
                             size="small"
                             sx={objOverrideValueFieldSx}
-                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                              ...dicPrev,
-                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
-                                if (intRowIndex !== intIndex) {
-                                  return dicRow;
-                                }
-                                const decMonthly = parseOptionalAmount(objEvent.target.value);
-                                return {
-                                  ...dicRow,
-                                  decAllocationMonthly: objEvent.target.value,
-                                  decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
-                                };
-                              })
-                            }))}
+                            disabled
                           />
                         </td>
-                        <td style={{ textTransform: "capitalize" }}>{dicAllocation.strTaxTreatment || "-"}</td>
+                        <td>{dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}</td>
+                        <td>{dicAllocation.strStatus || t("employee_salary_not_declared", "Not Declared")}</td>
+                        <td>{dicAllocation.strReasonAction || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2070,7 +2141,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                controlId="employee-salary.detail.back.button"
+                data-controlid="employee-salary.detail.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push(strReturnTo)}
@@ -2097,7 +2168,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               {blnIsRevisionMode ? (
                 <>
                   <Button
-                    controlId="employee-salary.revision.cancel.button"
+                    data-controlid="employee-salary.revision.cancel.button"
                     className={styles.secondaryButton}
                     variant="outlined"
                     onClick={handleCancelRevision}
@@ -2117,7 +2188,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     {t("cancel", "Cancel")}
                   </Button>
                   <Button
-                    controlId="employee-salary.revision.save.button"
+                    data-controlid="employee-salary.revision.save.button"
                     className={styles.primaryButton}
                     startIcon={<SaveRoundedIcon />}
                     onClick={handleSaveRevision}
@@ -2143,7 +2214,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <>
                   {blnCanUnassignSalary ? (
                     <Button
-                      controlId="employee-salary.detail.unassign.button"
+                      data-controlid="employee-salary.detail.unassign.button"
                       className={styles.secondaryButton}
                       variant="outlined"
                       color="warning"
@@ -2181,7 +2252,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   ) : null}
                   {blnCanOpenAssignRevise ? (
                     <Button
-                      controlId="employee-salary.detail.assign-revise.button"
+                      data-controlid="employee-salary.detail.assign-revise.button"
                       className={styles.primaryButton}
                       startIcon={<HistoryRoundedIcon />}
                       onClick={handleOpenRevisionDialog}
@@ -2350,24 +2421,24 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
             <TextField
-              controlId="employee-salary.revision.salary-structure.select"
-              inputProps={{ "controlId": "employee-salary.revision.salary-structure.select" }}
+              data-controlid="employee-salary.revision.salary-structure.select"
+              inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
               select
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
               onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
               required
             >
-              <MenuItem controlId="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
+              <MenuItem data-controlid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
               {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                   {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              controlId="employee-salary.revision.effective-from.input"
-              inputProps={{ "controlId": "employee-salary.revision.effective-from.input" }}
+              data-controlid="employee-salary.revision.effective-from.input"
+              inputProps={{ "data-controlid": "employee-salary.revision.effective-from.input" }}
               type="date"
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
@@ -2376,8 +2447,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             />
           </Box>
           <TextField
-            controlId="employee-salary.revision.revision-reason.input"
-            inputProps={{ "controlId": "employee-salary.revision.revision-reason.input" }}
+            data-controlid="employee-salary.revision.revision-reason.input"
+            inputProps={{ "data-controlid": "employee-salary.revision.revision-reason.input" }}
             label={t("employee_salary_revision_reason_field", "Revision reason")}
             value={dicRevisionForm.strRevisionReason}
             onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, strRevisionReason: objEvent.target.value }))}
@@ -2451,7 +2522,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                             return {
                               ...dicRow,
                               decAmountAnnual: objEvent.target.value,
-                              decAmountMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                              decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                             };
                           })
                         }))}
@@ -2462,8 +2533,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       </td>
                       <td>
                         <TextField
-                          controlId="employee-salary.revision.override.monthly.input"
-                          inputProps={{ "controlId": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          data-controlid="employee-salary.revision.override.monthly.input"
+                          inputProps={{ "data-controlid": "employee-salary.revision.override.monthly.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.decAmountMonthly}
                         placeholder={dicOverride.strDefaultMonthly}
                         size="small"
@@ -2479,8 +2550,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     </td>
                     <td>
                       <TextField
-                          controlId="employee-salary.revision.override.remarks.input"
-                          inputProps={{ "controlId": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          data-controlid="employee-salary.revision.override.remarks.input"
+                          inputProps={{ "data-controlid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.strRemarks}
                           size="small"
                           sx={objOverrideValueFieldSx}
@@ -2547,7 +2618,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                                 return {
                                   ...dicRow,
                                   decAllocationAnnual: objEvent.target.value,
-                                  decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                                  decAllocationMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                                 };
                               })
                             }))}
@@ -2569,7 +2640,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                                 return {
                                   ...dicRow,
                                   decAllocationMonthly: objEvent.target.value,
-                                  decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
+                                  decAllocationAnnual: decMonthly !== null ? formatAmountInput(decMonthly * 12) : ""
                                 };
                               })
                             }))}
@@ -2593,40 +2664,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
           </Stack>
 
-          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
-            <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-              {t("employee_salary_current_before_declaration", "Current (Before Declaration)")}
-            </Typography>
-          </Box>
-
           <Stack spacing={1.25}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
-            </Stack>
-
-            {lstRevisionCurrentBreakdownComponentRows.map((dicRow) => (
-              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
-                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
-                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
-                  {dicRow.decPercentOfCtc !== null ? (
-                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
-                  ) : null}
-                </Stack>
-              </Stack>
-            ))}
-
-            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+            <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 0.25 }}>
               <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+                {t("employee_salary_current_before_declaration", "Current (Before Declaration)")}
               </Typography>
             </Box>
-
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
@@ -2635,19 +2678,22 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
             </Stack>
-
-            {lstRevisionLiveBreakdownComponentRows.map((dicRow) => (
-              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
-                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
-                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
-                  {dicRow.decPercentOfCtc !== null ? (
-                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
-                  ) : null}
-                </Stack>
+            {[
+              { key: "basic", label: "Basic Salary", amount: dicRevisionSalarySummaryMetrics.decBasicAnnual },
+              { key: "hra", label: "HRA", amount: dicRevisionSalarySummaryMetrics.decHraAnnual },
+              { key: "employer", label: "Employer Contribution", amount: dicRevisionSalarySummaryMetrics.decEmployerContributionAnnual },
+            ].map((dicRow) => (
+              <Stack key={dicRow.key} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.label}</Typography>
+                <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.amount, strCurrencyCode)}</Typography>
               </Stack>
             ))}
 
+            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+              <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+              </Typography>
+            </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_flexi_basket_available", "Flexi Bucket Available")}</Typography>
               <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography>
@@ -2701,8 +2747,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <Box className={styles.paginationInfo}>
                   <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
                   <TextField
-                    controlId="employee-salary.detail.components.rows-per-page.select"
-                    inputProps={{ "controlId": "employee-salary.detail.components.rows-per-page.select" }}
+                    data-controlid="employee-salary.detail.components.rows-per-page.select"
+                    inputProps={{ "data-controlid": "employee-salary.detail.components.rows-per-page.select" }}
                     select
                     size="small"
                     value={String(intComponentRowsPerPage)}
@@ -2713,7 +2759,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     className={styles.rowsPerPageSelect}
                   >
                     {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} controlId={`employee-salary.detail.components.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
+                      <MenuItem key={intOption} value={String(intOption)} data-controlid={`employee-salary.detail.components.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                     ))}
                   </TextField>
                   <Typography className={styles.paginationRange}>
@@ -2721,7 +2767,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </Typography>
                 </Box>
                 <Pagination
-                  controlId="employee-salary.detail.components.pagination"
+                  data-controlid="employee-salary.detail.components.pagination"
                   count={intComponentPageCount}
                   page={intResolvedComponentPage}
                   onChange={(_, intNextPage) => setIntComponentPage(intNextPage)}
@@ -2797,7 +2843,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
                   }}
                 >
-                  {t("employee_salary_approve", "Approve")}
+                  {strFlexiActionLabel}
                 </Button>
               ) : null}
             </Stack>
@@ -2855,11 +2901,11 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
           </Stack>
 
-          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
+          {/* <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
             <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
               {t("employee_salary_current_before_declaration", "Flexi Declaration Status")}
             </Typography>
-          </Box>
+          </Box> */}
 
           <Stack spacing={1.25}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
@@ -2958,8 +3004,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <Box className={styles.paginationInfo}>
                   <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
                   <TextField
-                    controlId="employee-salary.detail.history.rows-per-page.select"
-                    inputProps={{ "controlId": "employee-salary.detail.history.rows-per-page.select" }}
+                    data-controlid="employee-salary.detail.history.rows-per-page.select"
+                    inputProps={{ "data-controlid": "employee-salary.detail.history.rows-per-page.select" }}
                     select
                     size="small"
                     value={String(intHistoryRowsPerPage)}
@@ -2970,7 +3016,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     className={styles.rowsPerPageSelect}
                   >
                     {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} controlId={`employee-salary.detail.history.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
+                      <MenuItem key={intOption} value={String(intOption)} data-controlid={`employee-salary.detail.history.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
                     ))}
                   </TextField>
                   <Typography className={styles.paginationRange}>
@@ -2978,7 +3024,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </Typography>
                 </Box>
                 <Pagination
-                  controlId="employee-salary.detail.history.pagination"
+                  data-controlid="employee-salary.detail.history.pagination"
                   count={intHistoryPageCount}
                   page={intResolvedHistoryPage}
                   onChange={(_, intNextPage) => setIntHistoryPage(intNextPage)}

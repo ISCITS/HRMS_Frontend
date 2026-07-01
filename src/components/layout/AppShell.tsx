@@ -52,6 +52,10 @@ const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
 
+function getAutomationProps(strControlId?: string) {
+  return strControlId ? ({ "data-controlid": strControlId } as const) : {};
+}
+
 function getPageTitle(strPathname: string) {
   if (!strPathname || strPathname === "/") {
     return "Dashboard";
@@ -460,12 +464,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
 
     loadWorkspaceContext(authHelpers.getLanguageID())
-      .then(() => {
+      .then(async () => {
         if (!blnMounted) {
           return;
         }
         setStrBootstrapError("");
-        void ensureMenuLoaded(authHelpers.getLanguageID());
+        await ensureMenuLoaded(authHelpers.getLanguageID(), true);
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
@@ -720,7 +724,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
           </Stack>
           <IconButton
-            controlId="app-shell.sidebar-close.button"
             aria-label="Close navigation menu"
             onClick={() => {
               setBlnDrawerOpen(false);
@@ -734,6 +737,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 backgroundColor: "rgba(37, 99, 235, 0.2)"
               }
             }}
+            {...getAutomationProps("app-shell.sidebar-close.button")}
           >
             <MenuRoundedIcon />
           </IconButton>
@@ -777,7 +781,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </Paper>
 
       <ButtonBase
-        controlId="app-shell.sidebar-logout.button"
         onClick={() => {
           setBlnDrawerOpen(false);
           setBlnDesktopSidebarOpen(false);
@@ -804,6 +807,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             opacity: 0.6
           }
         }}
+        {...getAutomationProps("app-shell.sidebar-logout.button")}
       >
         <LogoutRoundedIcon fontSize="small" />
         <Typography sx={{ fontWeight: 700, color: "inherit" }}>
@@ -831,7 +835,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Typography sx={{ color: "#b91c1c", fontWeight: 700 }}>
             {strBootstrapError}
           </Typography>
-          <Button controlId="app-shell.retry.button" variant="contained" onClick={() => window.location.reload()}>
+          <Button variant="contained" onClick={() => window.location.reload()} {...getAutomationProps("app-shell.retry.button")}>
             Retry
           </Button>
         </Stack>
@@ -885,7 +889,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           }}
         >
             <IconButton
-              controlId="app-shell.desktop-menu-toggle.button"
               aria-label="Open navigation menu"
               sx={{
                 width: 40,
@@ -899,6 +902,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   color: "#1d4ed8",
                 }
               }}
+              {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
             >
               <MenuRoundedIcon />
           </IconButton>
@@ -964,7 +968,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
         open={blnDrawerOpen}
         onClose={() => setBlnDrawerOpen(false)}
         ModalProps={{ keepMounted: true }}
-        controlId="app-shell.mobile-drawer"
         sx={{
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
@@ -978,6 +981,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             overflow: "hidden"
           }
         }}
+        {...getAutomationProps("app-shell.mobile-drawer")}
       >
         {objSidebarContent}
       </Drawer>
@@ -1009,7 +1013,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           >
             <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
               <IconButton
-                controlId="app-shell.menu-toggle.button"
                 onClick={handleMenuToggle}
                 sx={{
                   position: "relative",
@@ -1018,6 +1021,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(148, 163, 184, 0.18)",
                   backgroundColor: "rgba(248,250,252,0.88)"
                 }}
+                {...getAutomationProps("app-shell.menu-toggle.button")}
               >
                 <MenuRoundedIcon />
               </IconButton>
@@ -1079,7 +1083,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
                       return (
                         <ButtonBase
-                          controlId={`app-shell.language.${dicLanguageOption.intLanguageID}.button`}
                           key={dicLanguageOption.intLanguageID}
                           onClick={() => {
                             void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
@@ -1107,6 +1110,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                                   color: "#132a63",
                                 }
                           }}
+                          {...getAutomationProps(`app-shell.language.${dicLanguageOption.intLanguageID}.button`)}
                         >
                           {dicLanguageOption.strLabel}
                         </ButtonBase>
@@ -1167,7 +1171,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Box>
 
               <IconButton
-                controlId="app-shell.profile-menu.button"
                 onClick={openProfileMenu}
                 disabled={blnLoggingOut}
                 sx={{
@@ -1175,6 +1178,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(148, 163, 184, 0.18)",
                   backgroundColor: "rgba(248,250,252,0.92)"
                 }}
+                {...getAutomationProps("app-shell.profile-menu.button")}
               >
                 <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
                   {strAvatarText}
@@ -1220,7 +1224,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         PaperProps={{
-          "controlId": "app-shell.profile-menu",
+          "data-controlid": "app-shell.profile-menu",
           sx: {
             mt: 1,
             minWidth: 240,
@@ -1237,27 +1241,27 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Box>
         <Divider />
         <MenuItem
-          controlId="app-shell.logout.menu-item"
           onClick={() => {
             closeProfileMenu();
             setBlnLogoutDialogOpen(true);
           }}
           disabled={blnLoggingOut}
           sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
+          {...getAutomationProps("app-shell.logout.menu-item")}
         >
           <LogoutRoundedIcon fontSize="small" />
           <Typography sx={{ fontWeight: 600 }}>{tCommon("logout", "Logout")}</Typography>
         </MenuItem>
       </Menu>
 
-      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" controlId="app-shell.logout.dialog">
+      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" {...getAutomationProps("app-shell.logout.dialog")}>
         <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
           <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button controlId="app-shell.logout.cancel.button" onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut}>{tCommon("cancel", "Cancel")}</Button>
-          <Button controlId="app-shell.logout.confirm.button" onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut}>
+          <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.cancel.button")}>{tCommon("cancel", "Cancel")}</Button>
+          <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.confirm.button")}>
             {tCommon("logout", "Logout")}
           </Button>
         </DialogActions>

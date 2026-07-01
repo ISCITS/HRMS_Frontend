@@ -2,7 +2,6 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -10,7 +9,6 @@ import {
   Button,
   CircularProgress,
   MenuItem,
-  Pagination,
   Snackbar,
   TextField,
   Typography
@@ -18,6 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -60,98 +59,8 @@ function formatDate(strDate: string | null) {
   }).format(new Date(strDate));
 }
 
-const lstRowsPerPageOptions = [10, 20, 50];
 const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
-
-function downloadCsv(strFileName: string, lstRows: EmployeeSalaryListRecord[]) {
-  const lstHeaders = [
-    "Employee Code",
-    "Employee Name",
-    "Salary Status",
-    "Assigned Structure",
-    "Effective From",
-    "Gross Monthly",
-    "CTC Annual"
-  ];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.strEmployeeCode,
-        dicRow.strEmployeeName,
-        dicRow.strSalaryStatus,
-        dicRow.strStructureName ?? "Not assigned",
-        formatDate(dicRow.dtEffectiveFrom),
-        formatCurrency(dicRow.decGrossMonthly),
-        formatCurrency(dicRow.decCtcAnnual)
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: EmployeeSalaryListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1400,height=900");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.strEmployeeCode}</td>
-      <td>${dicRow.strEmployeeName}</td>
-      <td>${dicRow.strSalaryStatus}</td>
-      <td>${dicRow.strStructureName ?? "Not assigned"}</td>
-      <td>${formatDate(dicRow.dtEffectiveFrom)}</td>
-      <td>${formatCurrency(dicRow.decGrossMonthly)}</td>
-      <td>${formatCurrency(dicRow.decCtcAnnual)}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 12px; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Employee Code</th>
-              <th>Employee Name</th>
-              <th>Salary Status</th>
-              <th>Assigned Structure</th>
-              <th>Effective From</th>
-              <th>Gross Monthly</th>
-              <th>CTC Annual</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
 
 export default function EmployeeSalaryListPage() {
   const objRouter = useRouter();
@@ -161,8 +70,6 @@ export default function EmployeeSalaryListPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [dicSearch, setDicSearch] = useState<SearchForm>(dicEmptySearch);
   const [dicAppliedSearch, setDicAppliedSearch] = useState(dicSearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const blnCanView = canViewAny() || canDoAny("list");
@@ -184,7 +91,6 @@ export default function EmployeeSalaryListPage() {
   async function loadEmployeeSalaries() {
     if (!blnCanView) {
       setLstEmployeeSalaries([]);
-      setIntPage(1);
       setBlnLoading(false);
       return;
     }
@@ -214,10 +120,50 @@ export default function EmployeeSalaryListPage() {
     });
   }, [dicAppliedSearch, lstEmployeeSalaries]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        id: dicRow.intEmployeeID,
+        action: (
+          <CommonRowActions
+            testIdPrefix="employee-salary.list.row"
+            rowKey={dicRow.intEmployeeID}
+            blnCanView={blnCanView}
+            blnCanEdit={blnCanMutate}
+            onView={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}?mode=view`)}
+            onEdit={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
+          />
+        ),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        strSalaryStatus: (
+          <span className={`${styles.statusPill} ${dicRow.strSalaryStatus === "Assigned" ? styles.statusActive : styles.statusInactive}`}>
+            {dicRow.strSalaryStatus === "Assigned"
+              ? t("employee_salary_status_assigned", "Assigned")
+              : t("employee_salary_status_unassigned", "Unassigned")}
+          </span>
+        ),
+        strAssignedStructure: dicRow.strStructureName ?? t("employee_salary_not_assigned", "Not assigned"),
+        dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
+        decCtcAnnual: formatCurrency(dicRow.decCtcAnnual),
+        decGrossMonthly: formatCurrency(dicRow.decGrossMonthly)
+      })),
+    [blnCanMutate, blnCanView, lstFilteredRows, objRouter, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("employee_salary_action", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strEmployeeCode", headerName: t("employee_salary_employee_code", "Employee Code") },
+      { field: "strEmployeeName", headerName: t("employee_salary_employee_name", "Employee Name") },
+      { field: "strSalaryStatus", headerName: t("employee_salary_salary_status", "Salary Status"), sortable: false, filterable: false, width: 150 },
+      { field: "strAssignedStructure", headerName: t("employee_salary_assigned_structure", "Assigned Structure") },
+      { field: "dtEffectiveFrom", headerName: t("employee_salary_effective_from", "Effective From") },
+      { field: "decCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), align: "right" },
+      { field: "decGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), align: "right" }
+    ],
+    [t]
+  );
 
   return (
     <Box className={styles.page}>
@@ -230,7 +176,7 @@ export default function EmployeeSalaryListPage() {
         ) : null}
 
         <Box className={styles.searchRow}>
-            <TextField
+          <TextField
             data-testid="employee-salary.list.search-code.input"
             inputProps={{ "data-testid": "employee-salary.list.search-code.input" }}
             value={dicSearch.strCode}
@@ -238,44 +184,35 @@ export default function EmployeeSalaryListPage() {
             placeholder={t("employee_salary_search_employee_code", "Search employee code")}
             fullWidth
           />
-          
+
           <TextField
-            controlId="employee-salary.list.search-name.input"
-            inputProps={{ "controlId": "employee-salary.list.search-name.input" }}
+            data-controlid="employee-salary.list.search-name.input"
+            inputProps={{ "data-controlid": "employee-salary.list.search-name.input" }}
             value={dicSearch.strName}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("employee_salary_search_employee_name", "Search employee name")}
             fullWidth
           />
-          <TextField
-            controlId="employee-salary.list.search-code.input"
-            inputProps={{ "controlId": "employee-salary.list.search-code.input" }}
-            value={dicSearch.strCode}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("employee_salary_search_employee_code", "Search employee code")}
-            fullWidth
-          />
 
           <TextField
-            controlId="employee-salary.list.search-status.select"
-            inputProps={{ "controlId": "employee-salary.list.search-status.select" }}
+            data-controlid="employee-salary.list.search-status.select"
+            inputProps={{ "data-controlid": "employee-salary.list.search-status.select" }}
             select
             value={dicSearch.strStatus}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value }))}
+            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
             fullWidth
           >
-            <MenuItem controlId="employee-salary.list.search-status.all.option" value="All">{t("employee_salary_status_filter", "Salary Status")}</MenuItem>
-            <MenuItem controlId="employee-salary.list.search-status.assigned.option" value="Assigned">{t("employee_salary_status_assigned", "Assigned")}</MenuItem>
-            <MenuItem controlId="employee-salary.list.search-status.unassigned.option" value="Unassigned">{t("employee_salary_status_unassigned", "Unassigned")}</MenuItem>
+            <MenuItem data-controlid="employee-salary.list.search-status.all.option" value="All">{t("employee_salary_status_filter", "Salary Status")}</MenuItem>
+            <MenuItem data-controlid="employee-salary.list.search-status.assigned.option" value="Assigned">{t("employee_salary_status_assigned", "Assigned")}</MenuItem>
+            <MenuItem data-controlid="employee-salary.list.search-status.unassigned.option" value="Unassigned">{t("employee_salary_status_unassigned", "Unassigned")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              controlId="employee-salary.list.search.button"
+              data-controlid="employee-salary.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => {
                 setDicAppliedSearch(dicSearch);
-                setIntPage(1);
               }}
             >
               {t("employee_salary_search_button", "Search")}
@@ -283,13 +220,12 @@ export default function EmployeeSalaryListPage() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              controlId="employee-salary.list.clear.button"
+              data-controlid="employee-salary.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearch(dicEmptySearch);
                 setDicAppliedSearch(dicEmptySearch);
-                setIntPage(1);
               }}
             >
               {t("employee_salary_clear_button", "Clear")}
@@ -299,83 +235,6 @@ export default function EmployeeSalaryListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanMutate ? (
-              <Button
-                controlId="employee-salary.list.open-employee.button"
-                className={styles.primaryButton}
-                startIcon={<AddRoundedIcon />}
-                onClick={() => {
-                  const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
-                  if (dicFirstUnassigned) {
-                    objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
-                  }
-                }}
-              >
-                {t("employee_salary_open_employee", "Open Employee")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button
-                controlId="employee-salary.list.export-excel.button"
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() => downloadCsv("employee_salary.csv", lstFilteredRows)}
-              >
-                {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button
-                controlId="employee-salary.list.export-pdf.button"
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() => exportPdf(t("employee_salary_title", "Employee Salary"), lstFilteredRows)}
-              >
-                {t("export_pdf", "Export PDF")}
-              </Button>
-            ) : null}
-          </Box>
-
-          {!blnLoading && lstFilteredRows.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                controlId="employee-salary.list.rows-per-page.select"
-                inputProps={{ "controlId": "employee-salary.list.rows-per-page.select" }}
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)} controlId={`employee-salary.list.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} of {lstFilteredRows.length}
-              </Typography>
-            </Box>
-            <Pagination
-              controlId="employee-salary.list.pagination"
-              count={intPageCount}
-              page={intCurrentPage}
-              onChange={(_, intNextPage) => setIntPage(intNextPage)}
-              size="small"
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
-          </Box>
-        ) : null}
-        </Box>
-
         {blnLoading || blnRightsLoading ? (
           <Box className={styles.emptyState}>
             <CircularProgress size={24} />
@@ -391,55 +250,38 @@ export default function EmployeeSalaryListPage() {
             </Typography>
           </Box>
         ) : (
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t("employee_salary_action", "Action")}</th>
-                  <th>{t("employee_salary_employee_code", "Employee Code")}</th>
-                  <th>{t("employee_salary_employee_name", "Employee Name")}</th>
-                  <th>{t("employee_salary_salary_status", "Salary Status")}</th>
-                  <th>{t("employee_salary_assigned_structure", "Assigned Structure")}</th>
-                  <th>{t("employee_salary_effective_from", "Effective From")}</th>
-                  <th>{t("employee_salary_gross_monthly", "Gross Monthly")}</th>
-                  <th>{t("employee_salary_ctc_annual", "CTC Annual")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstFilteredRows.length === 0 ? (
-                  <tr>
-                    <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_records_found", "No employee salary records found.")}</td>
-                  </tr>
-                ) : lstVisibleRows.map((dicRow) => (
-                  <tr key={dicRow.intEmployeeID}>
-                    <td>
-                      <CommonRowActions
-                        testIdPrefix="employee-salary.list.row"
-                        rowKey={dicRow.intEmployeeID}
-                        blnCanView={blnCanView}
-                        blnCanEdit={blnCanMutate}
-                        onView={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}?mode=view`)}
-                        onEdit={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
-                      />
-                    </td>
-                    <td>{dicRow.strEmployeeCode}</td>
-                    <td>{dicRow.strEmployeeName}</td>
-                    <td>
-                      <span className={`${styles.statusPill} ${dicRow.strSalaryStatus === "Assigned" ? styles.statusActive : styles.statusInactive}`}>
-                        {dicRow.strSalaryStatus === "Assigned"
-                          ? t("employee_salary_status_assigned", "Assigned")
-                          : t("employee_salary_status_unassigned", "Unassigned")}
-                      </span>
-                    </td>
-                    <td>{dicRow.strStructureName ?? t("employee_salary_not_assigned", "Not assigned")}</td>
-                    <td>{formatDate(dicRow.dtEffectiveFrom)}</td>
-                    <td>{formatCurrency(dicRow.decGrossMonthly)}</td>
-                    <td>{formatCurrency(dicRow.decCtcAnnual)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName="employee_salary"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={t("employee_salary_no_records_found", "No employee salary records found.")}
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanMutate ? (
+                  <Button
+                    data-controlid="employee-salary.list.open-employee.button"
+                    className={styles.primaryButton}
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => {
+                      const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
+                      if (dicFirstUnassigned) {
+                        objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
+                      }
+                    }}
+                  >
+                    {t("employee_salary_open_employee", "Open Employee")}
+                  </Button>
+                ) : null}
+              </Box>
+            )}
+            testIdPrefix="employee-salary.list"
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
 
