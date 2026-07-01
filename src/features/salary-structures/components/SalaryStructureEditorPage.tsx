@@ -100,8 +100,8 @@ function formatSummaryAmount(fltValue: number) {
   return fltValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function formatFlexiAmount(fltValue: number) {
-  return fltValue.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+function formatFlexiAmount(fltValue: number | null | undefined) {
+  return Number(fltValue ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
 
 function formatOptionalLimit(fltValue: number | null) {
@@ -447,7 +447,7 @@ export default function SalaryStructureEditorPage({
     return lstFlexiBasketLines.map((dicLine) => dicLine.strRowID).join("|");
   }, [lstFlexiBasketLines]);
   const dicStructureSummary = useMemo(() => {
-    return dicForm.lstComponents.reduce(
+    const dicTotals = dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
         if (dicLine.intSalaryComponentID === "") {
           return dicTotals;
@@ -498,6 +498,15 @@ export default function SalaryStructureEditorPage({
       },
       { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0, fltGrossMonthlyBase: 0 }
     );
+    return {
+      fltTotalCtc: dicTotals.fltTotalCtc,
+      fltGrossAnnual: dicTotals.fltGrossAnnual,
+      fltGrossMonthly: dicTotals.fltGrossMonthlyBase,
+      fltFixedPay: dicTotals.fltFixedPay,
+      fltVariablePay: dicTotals.fltVariablePay,
+      fltFlexiBasket: dicTotals.fltFlexiBasket,
+      fltEmployerContribution: dicTotals.fltEmployerContribution,
+    };
   }, [dicComponentByID, dicForm.lstComponents]);
   const dicFlexiSummary = useMemo(() => {
     const dicBucketLine = lstFlexiBasketLines[0];

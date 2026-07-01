@@ -137,8 +137,8 @@ export type SalaryStructureCloneValues = {
 export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
   dicStructureSummary: {
     fltTotalCtc: number;
-    fltGrossAnnual?: number;
-    fltGrossMonthly?: number;
+    fltGrossAnnual: number;
+    fltGrossMonthly: number;
     fltFixedPay: number;
     fltVariablePay: number;
     fltFlexiBasket: number;
