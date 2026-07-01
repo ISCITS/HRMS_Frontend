@@ -237,6 +237,7 @@ export type EmployeeSalaryOverrideFormValue = {
   intSalaryComponentID: number;
   strComponentName: string;
   blnAllowManualOverride: boolean;
+  strBasisComponentName?: string;
   decAmountMonthly: string;
   decAmountAnnual: string;
   decPercentageValue: string;

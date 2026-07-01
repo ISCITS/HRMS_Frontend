@@ -59,7 +59,6 @@ import {
   validateEmployeeForm
 } from "@/features/employee/EmployeeFormUtils";
 import { useEmployeeDetailsLabels } from "@/features/employee/hooks/useEmployeeDetailsLabels";
-import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type {
   EmployeeAddressFormValues,
@@ -1269,11 +1268,6 @@ export default function EmployeeEditorScreen({
           </RadioGroup>
         </Box>
       </Paper>
-
-      <EmployeeSalarySummaryCard
-        intEmployeeID={intResolvedEmployeeID}
-        blnHideOpenPageButton={blnHideSalaryOpenPageButton}
-      />
 
       <Paper sx={{ borderRadius: "26px", overflow: "hidden", border: "1px solid rgba(148,163,184,0.24)" }}>
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
