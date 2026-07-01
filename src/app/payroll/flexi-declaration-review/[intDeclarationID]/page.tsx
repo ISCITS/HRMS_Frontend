@@ -1,4 +1,4 @@
-import FlexiDeclarationReviewDetailPage from "./FlexiDeclarationReviewDetailPage";
+import FlexiDeclarationReviewDetailPage from "@/features/flexi-pay-declaration/components/FlexiDeclarationReviewDetailPage";
 
 type RouteProps = {
   params: {
