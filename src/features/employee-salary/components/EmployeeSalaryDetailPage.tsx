@@ -254,12 +254,17 @@ type SnapshotWithAssignmentSource = NonNullable<EmployeeSalaryDetailRecord["objC
 };
 
 type FlexiAllocationLineWithStatus = EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number] & {
+  decDeclaredAnnualAmount?: number | string | null;
+  decDeclaredMonthlyAmount?: number | string | null;
   decApprovedAnnualAmount?: number | string | null;
   decApprovedMonthlyAmount?: number | string | null;
+  decDeclarationApprovedAnnualAmount?: number | string | null;
+  decDeclarationApprovedMonthlyAmount?: number | string | null;
   decUtilizedAnnualAmount?: number | string | null;
   strStatus?: string | null;
   strSource?: string | null;
   strRemarks?: string | null;
+  strDeclarationItemStatus?: string | null;
   blnIsActive?: boolean | null;
   blnIsAllowedByStructure?: boolean | null;
   blnIsFlexiBenefit?: boolean | null;
@@ -1195,8 +1200,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           dicLine?.strComponentName ??
           dicLine?.strComponentCode ??
           "-";
-        const decApprovedAnnual = getNumberValue(dicLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
-        const decApprovedMonthly = getNumberValue(dicLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly);
+        const decDeclaredAnnual = getNumberValue(dicLine.decDeclaredAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
+        const decDeclaredMonthly = getNumberValue(dicLine.decDeclaredMonthlyAmount) || getNumberValue(dicLine.decAllocationMonthly);
+        const decApprovedAnnual = getNumberValue(dicLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decDeclarationApprovedAnnualAmount);
+        const decApprovedMonthly = getNumberValue(dicLine.decApprovedMonthlyAmount) || getNumberValue(dicLine.decDeclarationApprovedMonthlyAmount);
         const decUtilizedAnnual = getNumberValue(dicLine.decUtilizedAnnualAmount);
 
         return {
@@ -1204,8 +1211,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           strComponentName,
           strAnnualLimit: formatOptionalCurrencyValue(dicLine.decAnnualLimit ?? null, strCurrencyCode),
           strMonthlyLimit: formatOptionalCurrencyValue(getFlexiMonthlyCap(dicLine), strCurrencyCode),
-          strAllocationAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
-          strAllocationMonthly: formatCurrency(decApprovedMonthly, strCurrencyCode),
+          strAllocationAnnual: formatCurrency(decDeclaredAnnual, strCurrencyCode),
+          strAllocationMonthly: formatCurrency(decDeclaredMonthly, strCurrencyCode),
           strApprovedAnnual: formatCurrency(decApprovedAnnual, strCurrencyCode),
           strApprovedMonthly: formatCurrency(decApprovedMonthly, strCurrencyCode),
           strUtilizedAnnual: formatCurrency(decUtilizedAnnual, strCurrencyCode),
@@ -2671,8 +2678,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       <td>{t("employee_salary_eligible", "Eligible")}</td>
                       <td>{dicRow.strTaxTreatment === "-" ? "-" : t("employee_salary_regime_based", "As Configured")}</td>
                       <td>{dicRow.strAnnualLimit}</td>
-                      <td>{dicRow.strApprovedAnnual}</td>
-                      <td>{dicRow.strApprovedMonthly}</td>
+                      <td>{dicRow.strAllocationAnnual}</td>
+                      <td>{dicRow.strAllocationMonthly}</td>
                       <td>{dicRow.strProofRequired}</td>
                       <td>{dicRow.strStatus}</td>
                       <td>{dicRow.strRemarks || dicRow.strSource || "-"}</td>
