@@ -432,8 +432,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  async function ensureMenuLoaded(intLanguageID?: number | null) {
-    if (blnMenuLoaded || blnMenuLoading) {
+  async function ensureMenuLoaded(intLanguageID?: number | null, blnForce = false) {
+    if (!blnForce && (blnMenuLoaded || blnMenuLoading)) {
       return;
     }
 
@@ -465,6 +465,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         setStrBootstrapError("");
+        void ensureMenuLoaded(authHelpers.getLanguageID());
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
@@ -568,6 +569,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setObjMenu({ lstMenuItems: [], strHomeRoute: "/dashboard" });
     try {
       await loadWorkspaceContext(intRequestedLanguageID);
+      await ensureMenuLoaded(intRequestedLanguageID, true);
       setBlnLanguageShellReady(true);
     } catch (objError) {
       if (isSessionExpiredError(objError)) {

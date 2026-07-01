@@ -4,9 +4,17 @@ import { ApiRequestMethod } from "@/Common/enums/AppEnums";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import { normalizeLabelModuleName } from "@/features/labels/utils/normalizeLabelModuleName";
 import { callAPI } from "@/lib/apiClient";
+import { authHelpers } from "@/lib/auth";
 
 const dicLabelRequestCache = new Map<string, Promise<ModuleLabelsResponse>>();
 const dicLabelResponseCache = new Map<string, ModuleLabelsResponse>();
+const intPersistentCacheTtlMs = 10 * 60 * 1000;
+const strPersistentCachePrefix = "hrms_label_cache:";
+
+type PersistentLabelCacheEntry = {
+  intCachedAt: number;
+  objResponse: ModuleLabelsResponse;
+};
 
 async function requestLabels(objPayload: { language_id: number; module_name: string }) {
   const objResponse = await callAPI<ModuleLabelsResponse>(
@@ -22,7 +30,48 @@ async function requestLabels(objPayload: { language_id: number; module_name: str
 }
 
 function buildLabelCacheKey(intLanguageID: number, strModuleName: string) {
-  return `${intLanguageID}:${normalizeLabelModuleName(strModuleName)}`;
+  const intTenantID = authHelpers.getTenantID() ?? 0;
+  const intCompanyID = authHelpers.getCompanyID() ?? 0;
+  return `${intTenantID}:${intCompanyID}:${intLanguageID}:${normalizeLabelModuleName(strModuleName)}`;
+}
+
+function readPersistentLabels(strCacheKey: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const strCachedValue = window.sessionStorage.getItem(`${strPersistentCachePrefix}${strCacheKey}`);
+    if (!strCachedValue) {
+      return null;
+    }
+
+    const objCachedEntry = JSON.parse(strCachedValue) as PersistentLabelCacheEntry;
+    if (!objCachedEntry?.objResponse || Date.now() - objCachedEntry.intCachedAt > intPersistentCacheTtlMs) {
+      window.sessionStorage.removeItem(`${strPersistentCachePrefix}${strCacheKey}`);
+      return null;
+    }
+
+    return objCachedEntry.objResponse;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistentLabels(strCacheKey: string, objResponse: ModuleLabelsResponse) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const objCacheEntry: PersistentLabelCacheEntry = {
+      intCachedAt: Date.now(),
+      objResponse,
+    };
+    window.sessionStorage.setItem(`${strPersistentCachePrefix}${strCacheKey}`, JSON.stringify(objCacheEntry));
+  } catch {
+    // Storage can be unavailable in private browsing or under quota pressure.
+  }
 }
 
 async function getCachedLabels(intLanguageID: number, strModuleName: string) {
@@ -33,6 +82,12 @@ async function getCachedLabels(intLanguageID: number, strModuleName: string) {
     return objCachedResponse;
   }
 
+  const objPersistentResponse = readPersistentLabels(strCacheKey);
+  if (objPersistentResponse) {
+    dicLabelResponseCache.set(strCacheKey, objPersistentResponse);
+    return objPersistentResponse;
+  }
+
   const objPendingRequest = dicLabelRequestCache.get(strCacheKey);
   if (objPendingRequest) {
     return objPendingRequest;
@@ -41,6 +96,7 @@ async function getCachedLabels(intLanguageID: number, strModuleName: string) {
   const objRequest = requestLabels({ language_id: intLanguageID, module_name: strResolvedModuleName })
     .then((objResponse) => {
       dicLabelResponseCache.set(strCacheKey, objResponse);
+      writePersistentLabels(strCacheKey, objResponse);
       dicLabelRequestCache.delete(strCacheKey);
       return objResponse;
     })
@@ -51,7 +107,6 @@ async function getCachedLabels(intLanguageID: number, strModuleName: string) {
         fallback_language: null,
         labels: {}
       };
-      dicLabelResponseCache.set(strCacheKey, objFallbackResponse);
       dicLabelRequestCache.delete(strCacheKey);
       return objFallbackResponse;
     });
@@ -71,71 +126,22 @@ export const labelService = {
       return this.getLabels(intLanguageID, "common");
     }
 
-    const [objModuleLabels, objCommonLabels] = await Promise.all([
-      this.getLabels(intLanguageID, strModuleName),
-      this.getLabels(intLanguageID, "common"),
-    ]);
-
-    return {
-      ...objModuleLabels,
-      labels: {
-        ...(objCommonLabels.labels ?? {}),
-        ...(objModuleLabels.labels ?? {}),
-      },
-      fallback_language: objModuleLabels.fallback_language ?? objCommonLabels.fallback_language,
-      language: objModuleLabels.language ?? objCommonLabels.language,
-    };
+    return this.getLabels(intLanguageID, strModuleName);
   },
 
   async getPayrollCycleLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
-    try {
-      return await requestLabels({ language_id: intLanguageID, module_name: "payroll-cycles" });
-    } catch (objError) {
-      return {
-        module: "payroll-cycles",
-        language: "en",
-        fallback_language: null,
-        labels: {}
-      };
-    }
+    return getCachedLabels(intLanguageID, "payroll-cycles");
   },
 
   async getEmployeeDetailsLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
-    try {
-      return await requestLabels({ language_id: intLanguageID, module_name: "employee-details" });
-    } catch (objError) {
-      return {
-        module: "employee",
-        language: "en",
-        fallback_language: null,
-        labels: {}
-      };
-    }
+    return getCachedLabels(intLanguageID, "employee-details");
   },
 
   async getTaxRegimeLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
-    try {
-      return await requestLabels({ language_id: intLanguageID, module_name: "tax-regimes" });
-    } catch (objError) {
-      return {
-        module: "tax-regimes",
-        language: "en",
-        fallback_language: null,
-        labels: {}
-      };
-    }
+    return getCachedLabels(intLanguageID, "tax-regimes");
   },
 
   async getPayrollProcessLogLabels(intLanguageID: number): Promise<ModuleLabelsResponse> {
-    try {
-      return await requestLabels({ language_id: intLanguageID, module_name: "payroll-process-logs" });
-    } catch (objError) {
-      return {
-        module: "payroll-process-logs",
-        language: "en",
-        fallback_language: null,
-        labels: {}
-      };
-    }
+    return getCachedLabels(intLanguageID, "payroll-process-logs");
   }
 };

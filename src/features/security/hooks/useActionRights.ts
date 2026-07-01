@@ -5,6 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import type { ActionRightsResponse } from "@/models/AuthModels";
 import { authApiService } from "@/services/auth/AuthApiService";
+import { authHelpers } from "@/lib/auth";
+
+type ActionRightsCacheEntry = {
+  strCacheKey: string;
+  intExpiresAt: number;
+  objRights: ActionRightsResponse;
+};
+
+const intActionRightsCacheTtlMs = 5 * 60 * 1000;
+let objActionRightsCacheEntry: ActionRightsCacheEntry | null = null;
+let objActionRightsRequest: Promise<ActionRightsResponse> | null = null;
 
 function normalizeModuleCode(strModuleCode: string) {
   return strModuleCode.trim().toUpperCase().replace(/[-\s]/g, "_");
@@ -14,30 +25,101 @@ function normalizeActionCode(strActionCode: string) {
   return strActionCode.trim().toLowerCase();
 }
 
+function buildActionRightsCacheKey() {
+  const strTokenTail = authHelpers.getAccessToken()?.slice(-24) ?? "";
+  return [
+    authHelpers.getTenantID() ?? 0,
+    authHelpers.getCompanyID() ?? 0,
+    strTokenTail,
+  ].join(":");
+}
+
+async function getCachedActionRights() {
+  const strCacheKey = buildActionRightsCacheKey();
+  if (
+    objActionRightsCacheEntry &&
+    objActionRightsCacheEntry.strCacheKey === strCacheKey &&
+    objActionRightsCacheEntry.intExpiresAt > Date.now()
+  ) {
+    return objActionRightsCacheEntry.objRights;
+  }
+
+  if (objActionRightsRequest) {
+    return objActionRightsRequest;
+  }
+
+  objActionRightsRequest = authApiService.getActionRights()
+    .then((objResult) => {
+      const objRights = {
+        dicAllowedActions: objResult.Data.dicAllowedActions ?? {},
+        dicAccessScopeByAction: objResult.Data.dicAccessScopeByAction ?? {},
+      };
+      objActionRightsCacheEntry = {
+        strCacheKey,
+        intExpiresAt: Date.now() + intActionRightsCacheTtlMs,
+        objRights,
+      };
+      objActionRightsRequest = null;
+      return objRights;
+    })
+    .catch((objError) => {
+      objActionRightsRequest = null;
+      throw objError;
+    });
+
+  return objActionRightsRequest;
+}
+
 export function useActionRights() {
+  const strInitialCacheKey = buildActionRightsCacheKey();
+  const objInitialRights =
+    objActionRightsCacheEntry &&
+    objActionRightsCacheEntry.strCacheKey === strInitialCacheKey &&
+    objActionRightsCacheEntry.intExpiresAt > Date.now()
+      ? objActionRightsCacheEntry.objRights
+      : {
+          dicAllowedActions: {},
+          dicAccessScopeByAction: {},
+        };
   const [objRights, setObjRights] = useState<ActionRightsResponse>({
-    dicAllowedActions: {},
-    dicAccessScopeByAction: {},
+    dicAllowedActions: objInitialRights.dicAllowedActions,
+    dicAccessScopeByAction: objInitialRights.dicAccessScopeByAction,
   });
   
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(
+    !objActionRightsCacheEntry ||
+    objActionRightsCacheEntry.strCacheKey !== strInitialCacheKey ||
+    objActionRightsCacheEntry.intExpiresAt <= Date.now()
+  );
   const [strError, setStrError] = useState<string | null>(null);
 
   useEffect(() => {
     let blnMounted = true;
 
     async function loadRights() {
+      const strCacheKey = buildActionRightsCacheKey();
+      if (
+        objActionRightsCacheEntry &&
+        objActionRightsCacheEntry.strCacheKey === strCacheKey &&
+        objActionRightsCacheEntry.intExpiresAt > Date.now()
+      ) {
+        setObjRights(objActionRightsCacheEntry.objRights);
+        setBlnLoading(false);
+        setStrError(null);
+        return;
+      }
+
       setBlnLoading(true);
       setStrError(null);
       await runFrontendAction({
-        fnAction: () => authApiService.getActionRights(),
+        fnAction: getCachedActionRights,
         fnOnSuccess: (objResult) => {
           if (!blnMounted) {
             return;
           }
           setObjRights({
-            dicAllowedActions: objResult.Data.dicAllowedActions ?? {},
-            dicAccessScopeByAction: objResult.Data.dicAccessScopeByAction ?? {},
+            dicAllowedActions: objResult.dicAllowedActions ?? {},
+            dicAccessScopeByAction: objResult.dicAccessScopeByAction ?? {},
           });
         },
         fnOnError: (objError) => {
