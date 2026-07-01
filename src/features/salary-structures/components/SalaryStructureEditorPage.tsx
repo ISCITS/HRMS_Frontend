@@ -452,11 +452,13 @@ export default function SalaryStructureEditorPage({
         if (dicLine.intSalaryComponentID === "") {
           return dicTotals;
         }
+        const blnIsActiveLine = dicLine.blnIsActive !== false;
         const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
         const fltMonthlyAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
         const fltYearlyAmount = fltMonthlyAmount * 12;
         const blnIncludedInCtc = Boolean(dicComponent?.blnIncludedInCtc ?? dicLine.blnIncludedInCtc);
         const blnIsFlexiBasket = Boolean(isFlexiBasketLine(dicLine) || dicComponent?.blnIsFlexiBasket || normalizeSelectToken(String(dicComponent?.strCode ?? "")) === "flexipay");
+        const strRole = getFlexiRoleForLine(dicLine, dicComponent);
         const strGroup = normalizeSelectToken(String(dicComponent?.strComponentGroup ?? ""));
         const strCategory = normalizeSelectToken(String(dicComponent?.strComponentCategory ?? ""));
         const blnIsEmployerContribution = Boolean(dicComponent?.blnIsEmployerContribution);
@@ -464,44 +466,54 @@ export default function SalaryStructureEditorPage({
         const strFlexiType = normalizeSelectToken(String(dicComponent?.strFlexiComponentType ?? ""));
         const blnIsEarning = strCategory === "earning";
         const blnIsFixedPayEarning = strCategory === "earning" && strGroup === "fixedpay";
-        const blnIsDeductionLike = blnIsEmployeeDeduction
+        const blnIsDeductionLike = strRole === "Deduction"
+          || blnIsEmployeeDeduction
           || strCategory === "deduction"
           || strCategory === "employeecontribution"
           || strCategory === "recovery"
+          || strCategory === "pt"
+          || strCategory === "tds"
           || strGroup === "deduction"
           || strGroup === "employeecontribution"
-          || strGroup === "recovery";
-        const blnIsEmployerContributionLike = blnIsEmployerContribution
+          || strGroup === "recovery"
+          || strGroup === "pt"
+          || strGroup === "tds";
+        const blnIsEmployerContributionLike = strRole === "Employer Contribution"
+          || blnIsEmployerContribution
           || strCategory === "contribution"
           || strCategory === "employercontribution"
           || strGroup === "contribution"
           || strGroup === "employercontribution";
-        if (blnIncludedInCtc && !blnIsDeductionLike && strCategory !== "information") {
+        const blnIsInformationLike = strRole === "Information" || strCategory === "information" || strGroup === "information";
+        const blnIsPayableGrossComponent = blnIsActiveLine && (
+          blnIsFlexiBasket
+          || (blnIsEarning && !blnIsDeductionLike && !blnIsEmployerContributionLike && !blnIsInformationLike)
+        );
+
+        if (blnIsActiveLine && blnIncludedInCtc && (blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
           dicTotals.fltTotalCtc += fltYearlyAmount;
         }
-        if (blnIsFlexiBasket || strFlexiType === "basket") {
+        if (blnIsActiveLine && (blnIsFlexiBasket || strFlexiType === "basket")) {
           dicTotals.fltFlexiBasket += fltYearlyAmount;
-        } else if (blnIsEmployerContributionLike) {
+        } else if (blnIsActiveLine && blnIsEmployerContributionLike) {
           dicTotals.fltEmployerContribution += fltYearlyAmount;
-        } else if (strGroup === "variablepay" && blnIsEarning) {
+        } else if (blnIsActiveLine && strGroup === "variablepay" && blnIsEarning) {
           dicTotals.fltVariablePay += fltYearlyAmount;
-        } else if (blnIsFixedPayEarning) {
+        } else if (blnIsActiveLine && blnIsFixedPayEarning) {
           dicTotals.fltFixedPay += fltYearlyAmount;
         }
-        if (blnIsEarning && !blnIsFlexiBasket && !blnIsDeductionLike && !blnIsEmployerContributionLike) {
-          dicTotals.fltGrossMonthlyBase += fltMonthlyAmount;
-        }
-        if (blnIsEarning && !blnIsDeductionLike && !blnIsEmployerContributionLike) {
+        if (blnIsPayableGrossComponent) {
           dicTotals.fltGrossAnnual += fltYearlyAmount;
         }
         return dicTotals;
       },
-      { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0, fltGrossMonthlyBase: 0 }
+      { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
     );
+    const fltGrossAnnual = dicTotals.fltGrossAnnual;
     return {
       fltTotalCtc: dicTotals.fltTotalCtc,
-      fltGrossAnnual: dicTotals.fltGrossAnnual,
-      fltGrossMonthly: dicTotals.fltGrossMonthlyBase,
+      fltGrossAnnual,
+      fltGrossMonthly: fltGrossAnnual / 12,
       fltFixedPay: dicTotals.fltFixedPay,
       fltVariablePay: dicTotals.fltVariablePay,
       fltFlexiBasket: dicTotals.fltFlexiBasket,

@@ -47,12 +47,14 @@ import {
   type FlexiEligibilityQuestionRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type DraftInputMap = Record<number, string>;
 type EligibilityAnswerMap = Record<string, string | number | boolean | null>;
 type ComponentSelectionMap = Record<number, number>;
 type LinkedQuestionSelectionMap = Record<number, string>;
 const intEligibilityPreviewLimit = 6;
+const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
@@ -333,11 +335,7 @@ function getRowEffectiveMultiplier(objRow: FlexiDeclarationLineRecord) {
 
 function getDisplayedDeclarationAmount(objRow: FlexiDeclarationLineRecord, strStoredValue: string | undefined) {
   const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0));
-  const decMultiplier = getRowEffectiveMultiplier(objRow);
-  if (decMultiplier <= 1) {
-    return String(decStoredAnnual);
-  }
-  return String(decStoredAnnual / decMultiplier);
+  return String(decStoredAnnual);
 }
 
 function isSelectableDeclarationComponent(objRow: Pick<FlexiDeclarationLineRecord, "strComponentCode" | "strComponentName">) {
@@ -383,10 +381,13 @@ export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const { t } = useFlexiPayDeclarationLabels();
+  const { canDoAny } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const strFinancialYearCode = getCurrentFinancialYearCode();
   const intRouteDeclarationID = Number(objSearchParams.get("intDeclarationID") || 0);
   const blnRouteHasDeclarationID = Number.isInteger(intRouteDeclarationID) && intRouteDeclarationID > 0;
   const blnReviewEntryMode = blnRouteHasDeclarationID;
+  const strSource = (objSearchParams.get("source") || "").trim().toLowerCase();
+  const blnEmployeeSalarySource = strSource === "employee_salary";
   const strReturnTo = (objSearchParams.get("returnTo") || "").trim();
   const strBackPath = strReturnTo.startsWith("/") && !strReturnTo.startsWith("//")
     ? strReturnTo
@@ -411,6 +412,7 @@ export default function FlexiPayDeclarationPage() {
   const [dicSelectedQuestions, setDicSelectedQuestions] = useState<LinkedQuestionSelectionMap>({});
   const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
   const [blnSubmitDialogOpen, setBlnSubmitDialogOpen] = useState(false);
+  const [strReviewActionMode, setStrReviewActionMode] = useState<"reject" | null>(null);
   const strActiveFinancialYearCode = objContext?.strFinancialYearCode || strFinancialYearCode;
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
@@ -464,6 +466,16 @@ export default function FlexiPayDeclarationPage() {
   const blnCanEditDeclaration = Boolean(!blnReviewEntryMode && blnWorkflowEditable && objContext?.blnCanDeclare);
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
   const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
+  const blnCanApproveAction = canDoAny("approve");
+  const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
+  const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
+  const blnCanReleaseAction = canDoAny("release") || canDoAny("unlock") || blnCanApproveAction;
+  const blnReviewOpen = strWorkflowStatus === "submitted";
+  const blnShowWorkflowActions = blnEmployeeSalarySource && blnReviewEntryMode && blnReviewOpen;
+  const blnCanApproveCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanApproveAction;
+  const blnCanRejectCurrent = blnShowWorkflowActions && blnReviewOpen && blnCanRejectAction;
+  const blnCanLockCurrent = blnShowWorkflowActions && strWorkflowStatus === "approved" && blnCanLockAction;
+  const blnCanReleaseCurrent = blnShowWorkflowActions && strWorkflowStatus === "locked" && blnCanReleaseAction;
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -653,112 +665,132 @@ export default function FlexiPayDeclarationPage() {
       );
     }
 
-    return Object.entries(dicGroups).map(([strGroupCode, objGroup], intGroupIndex) => {
-      const { strAccent, strTint } = LST_GROUP_ACCENT_PALETTE[intGroupIndex % LST_GROUP_ACCENT_PALETTE.length];
-      return (
-        <Box key={strGroupCode}>
-          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.65 }}>
-            {getQuestionIcon(strGroupCode, strAccent)}
-            <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: strAccent }}>
-              {objGroup.strGroupLabel}:
-            </Typography>
-          </Stack>
-          <Box
-            sx={{
-              display: "grid",
-              gap: 0.75,
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, minmax(0, 1fr))",
-                lg: "repeat(3, minmax(0, 1fr))",
-              },
-            }}
-          >
-            {objGroup.lstQuestions.map((objQuestion) => {
-              const blnQuestionDisabled = objQuestion.blnIsDisabled === true;
-              const strQuestionAccent = blnQuestionDisabled ? "#0f7ea7" : strAccent;
-              const strQuestionTint = blnQuestionDisabled ? "#eef8fc" : strTint;
-              const objLabelBlock = (
-                <Box sx={{ minWidth: 0 }}>
-                  <Stack direction="row" spacing={0.45} alignItems="flex-start" sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: "0.73rem", lineHeight: 1.2, color: blnQuestionDisabled ? "#0f4c81" : "#0f172a" }}>
-                      {objQuestion.strQuestionLabel}
-                      {objQuestion.blnIsRequired ? " *" : ""}
-                    </Typography>
-                    {objQuestion.blnShowInfoIcon ? (
-                      <Tooltip
-                        title={objQuestion.strInfoMessage || objQuestion.strDisabledReason || "This question cannot be edited."}
-                        enterTouchDelay={0}
-                        arrow
-                        slotProps={{
-                          tooltip: {
-                            sx: {
-                              bgcolor: "#0f4c81",
-                              color: "#ffffff",
-                              border: "1px solid #38bdf8",
-                              boxShadow: "0 10px 24px rgba(15, 76, 129, 0.28)",
-                              fontSize: "0.68rem",
-                              fontWeight: 700,
-                              lineHeight: 1.25,
-                              maxWidth: 260,
-                            },
-                          },
-                          arrow: { sx: { color: "#0f4c81" } },
-                        }}
-                      >
-                        <Box
-                          component="span"
-                          sx={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: "50%",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            bgcolor: "#dff3fb",
-                            border: "1px solid #38bdf8",
-                            cursor: "pointer",
-                            flexShrink: 0,
-                            mt: -0.05,
-                          }}
-                        >
-                          <InfoOutlinedIcon sx={{ color: "#0f7ea7", fontSize: 12 }} />
-                        </Box>
-                      </Tooltip>
-                    ) : null}
-                  </Stack>
-                  {objQuestion.strHelpText ? (
-                    <Typography sx={{ color: blnQuestionDisabled ? "#246b8f" : "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
-                      {objQuestion.strHelpText}
-                    </Typography>
-                  ) : null}
-                </Box>
-              );
+    return (
+      <Box
+        sx={{
+          display: "grid",
+          gap: 1,
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))",
+            xl: "repeat(3, minmax(0, 1fr))",
+          },
+          alignItems: "start",
+        }}
+      >
+        {Object.entries(dicGroups).map(([strGroupCode, objGroup], intGroupIndex) => {
+          const { strAccent, strTint } = LST_GROUP_ACCENT_PALETTE[intGroupIndex % LST_GROUP_ACCENT_PALETTE.length];
+          return (
+            <Box
+              key={strGroupCode}
+              sx={{
+                minWidth: 0,
+                p: 0.9,
+                borderRadius: "12px",
+                border: "1px solid #dbe7f3",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 6px 16px rgba(15, 23, 42, 0.05)",
+              }}
+            >
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                {getQuestionIcon(strGroupCode, strAccent)}
+                <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: strAccent }}>
+                  {objGroup.strGroupLabel}
+                </Typography>
+              </Stack>
+              <Box sx={{ display: "grid", gap: 0.75 }}>
+                {objGroup.lstQuestions.map((objQuestion) => {
+                  const blnQuestionDisabled = objQuestion.blnIsDisabled === true;
+                  const strQuestionAccent = blnQuestionDisabled ? "#0f7ea7" : strAccent;
+                  const strQuestionTint = blnQuestionDisabled ? "#eef8fc" : strTint;
+                  const objLabelBlock = (
+                    <Box sx={{ minWidth: 0 }}>
+                      <Stack direction="row" spacing={0.45} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 800, fontSize: "0.73rem", lineHeight: 1.2, color: blnQuestionDisabled ? "#0f4c81" : "#0f172a" }}>
+                          {objQuestion.strQuestionLabel}
+                          {objQuestion.blnIsRequired ? " *" : ""}
+                        </Typography>
+                        {objQuestion.blnShowInfoIcon ? (
+                          <Tooltip
+                            title={objQuestion.strInfoMessage || objQuestion.strDisabledReason || "This question cannot be edited."}
+                            enterTouchDelay={0}
+                            arrow
+                            slotProps={{
+                              tooltip: {
+                                sx: {
+                                  bgcolor: "#0f4c81",
+                                  color: "#ffffff",
+                                  border: "1px solid #38bdf8",
+                                  boxShadow: "0 10px 24px rgba(15, 76, 129, 0.28)",
+                                  fontSize: "0.68rem",
+                                  fontWeight: 700,
+                                  lineHeight: 1.25,
+                                  maxWidth: 260,
+                                },
+                              },
+                              arrow: { sx: { color: "#0f4c81" } },
+                            }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: "50%",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                bgcolor: "#dff3fb",
+                                border: "1px solid #38bdf8",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                                mt: -0.05,
+                              }}
+                            >
+                              <InfoOutlinedIcon sx={{ color: "#0f7ea7", fontSize: 12 }} />
+                            </Box>
+                          </Tooltip>
+                        ) : null}
+                      </Stack>
+                      {objQuestion.strHelpText ? (
+                        <Typography sx={{ color: blnQuestionDisabled ? "#246b8f" : "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
+                          {objQuestion.strHelpText}
+                        </Typography>
+                      ) : null}
+                      {objQuestion.strValidationMessage ? (
+                        <Typography sx={{ color: "#dc2626", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15, fontWeight: 700 }}>
+                          {objQuestion.strValidationMessage}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  );
 
-              return (
-                <Box
-                  key={objQuestion.strQuestionCode}
-                  sx={{
-                    minWidth: 0,
-                    p: 0.75,
-                    borderRadius: "9px",
-                    border: blnQuestionDisabled ? "1px solid #bae6fd" : "1px solid #dbe3ef",
-                    borderLeft: `3px solid ${strQuestionAccent}`,
-                    backgroundColor: strQuestionTint,
-                    boxShadow: blnQuestionDisabled ? "inset 0 0 0 1px rgba(56, 189, 248, 0.18)" : "none",
-                  }}
-                >
-                  <Stack direction="row" spacing={0.6} alignItems="flex-start" justifyContent="space-between">
-                    {objLabelBlock}
-                    <Box sx={{ flexShrink: 0, pt: 0.15 }}>{renderQuestionInput(objQuestion)}</Box>
-                  </Stack>
-                </Box>
-              );
-            })}
-          </Box>
-        </Box>
-      );
-    });
+                  return (
+                    <Box
+                      key={objQuestion.strQuestionCode}
+                      sx={{
+                        minWidth: 0,
+                        p: 0.75,
+                        borderRadius: "9px",
+                        border: blnQuestionDisabled ? "1px solid #bae6fd" : "1px solid #dbe3ef",
+                        borderLeft: `3px solid ${strQuestionAccent}`,
+                        backgroundColor: strQuestionTint,
+                        boxShadow: blnQuestionDisabled ? "inset 0 0 0 1px rgba(56, 189, 248, 0.18)" : "none",
+                      }}
+                    >
+                      <Stack direction="row" spacing={0.6} alignItems="flex-start" justifyContent="space-between">
+                        {objLabelBlock}
+                        <Box sx={{ flexShrink: 0, pt: 0.15 }}>{renderQuestionInput(objQuestion)}</Box>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    );
   }
 
   useEffect(() => {
@@ -945,10 +977,96 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
+  function navigateAfterReviewAction(blnFocusFlexiSection: boolean) {
+    if (blnEmployeeSalarySource && strReturnTo.startsWith("/") && !strReturnTo.startsWith("//")) {
+      const strTarget = blnFocusFlexiSection && !strReturnTo.includes("#") ? `${strReturnTo}#flexi-component` : strReturnTo;
+      objRouter.push(strTarget);
+      return;
+    }
+    objRouter.push(strBackPath);
+  }
+
+  async function handleApproveReview() {
+    if (!blnCanApproveCurrent) return;
+    setStrSavingLabel("Approving declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.approve(intRouteDeclarationID, {
+        lstItems: lstDisplayedRows.map((objDisplayRow) => ({
+          intSalaryComponentID: objDisplayRow.objSelectedLine.intSalaryComponentID,
+          decApprovedAmountAnnual: objDisplayRow.objSelectedLine.decInputAnnual,
+          strRemarks: objDisplayRow.objSelectedLine.strDeclarationItemRemarks || null,
+        })),
+        strRemarks,
+      });
+      setStrToast(t("flexi_pay_declaration_approve_success", "Declaration approved successfully."));
+      navigateAfterReviewAction(false);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to approve declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleLockReview() {
+    if (!blnCanLockCurrent) return;
+    setStrSavingLabel("Locking declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.lock(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_lock_success", "Declaration locked successfully."));
+      navigateAfterReviewAction(false);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to lock declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleReleaseReview() {
+    if (!blnCanReleaseCurrent) return;
+    setStrSavingLabel("Releasing declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.release(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_release_success", "Declaration released successfully."));
+      navigateAfterReviewAction(true);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to release declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
+  async function handleDecisionReview() {
+    if (!strReviewActionMode) return;
+    setStrSavingLabel("Rejecting declaration...");
+    setBlnSaving(true);
+    setStrError("");
+    try {
+      await hrFlexiDeclarationReviewService.reject(intRouteDeclarationID, strRemarks);
+      setStrToast(t("flexi_pay_declaration_reject_success", "Declaration rejected."));
+      setStrReviewActionMode(null);
+      navigateAfterReviewAction(true);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to update declaration.");
+    } finally {
+      setBlnSaving(false);
+      setStrSavingLabel("Processing declaration...");
+    }
+  }
+
   function renderQuestionInput(objQuestion: FlexiEligibilityQuestionRecord) {
     const strQuestionCode = objQuestion.strQuestionCode;
     const objValue = dicEligibilityAnswers[strQuestionCode] ?? objQuestion.objAnswerValue ?? null;
     const blnDisabled = !blnCanEditDeclaration || blnSaving || objQuestion.blnIsDisabled === true || objQuestion.blnIsEmployeeEditable === false;
+    const strQuestionValidationMessage = objQuestion.strValidationMessage || "";
 
     if (objQuestion.strAnswerType === "boolean") {
       const blnChecked = objValue == null ? false : Boolean(objValue);
@@ -980,6 +1098,7 @@ export default function FlexiPayDeclarationPage() {
           size="small"
           value={objValue == null ? "" : String(objValue)}
           disabled={blnDisabled}
+          error={Boolean(strQuestionValidationMessage)}
           onChange={(objEvent) =>
             setDicEligibilityAnswers((dicPrevious) => ({
               ...dicPrevious,
@@ -1005,12 +1124,28 @@ export default function FlexiPayDeclarationPage() {
           type="number"
           value={objValue == null ? "" : String(objValue)}
           disabled={blnDisabled}
-          onChange={(objEvent) =>
+          error={Boolean(strQuestionValidationMessage)}
+          onChange={(objEvent) => {
+            const strNextValue = objEvent.target.value;
+            if (strNextValue === "") {
+              setDicEligibilityAnswers((dicPrevious) => ({
+                ...dicPrevious,
+                [strQuestionCode]: null,
+              }));
+              return;
+            }
+            const decRawValue = Number(strNextValue);
+            if (!Number.isFinite(decRawValue)) return;
+            const decMinValue = objQuestion.decMinValue ?? 0;
+            const decMaxValue = objQuestion.decMaxValue ?? undefined;
+            const decClampedValue = decMaxValue == null
+              ? Math.max(decMinValue, decRawValue)
+              : Math.min(Math.max(decMinValue, decRawValue), decMaxValue);
             setDicEligibilityAnswers((dicPrevious) => ({
               ...dicPrevious,
-              [strQuestionCode]: objEvent.target.value === "" ? null : Number(objEvent.target.value),
-            }))
-          }
+              [strQuestionCode]: decClampedValue,
+            }));
+          }}
           inputProps={{
             min: objQuestion.decMinValue ?? 0,
             max: objQuestion.decMaxValue ?? undefined,
@@ -1032,6 +1167,7 @@ export default function FlexiPayDeclarationPage() {
         size="small"
         value={objValue == null ? "" : String(objValue)}
         disabled={blnDisabled}
+        error={Boolean(strQuestionValidationMessage)}
         onChange={(objEvent) =>
           setDicEligibilityAnswers((dicPrevious) => ({
             ...dicPrevious,
@@ -1131,12 +1267,12 @@ export default function FlexiPayDeclarationPage() {
             >
               {t("flexi_pay_declaration_back", "Back")}
             </Button>
-            {blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
               <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={blnSaving} onClick={() => void handleSaveDraft()}>
                 Save Draft
               </Button>
             ) : null}
-            {blnCanEditDeclaration ? (
+            {!blnShowWorkflowActions && blnCanEditDeclaration ? (
               <Button
                 size="small"
                 variant="contained"
@@ -1152,6 +1288,26 @@ export default function FlexiPayDeclarationPage() {
               >
                 {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Resubmit" : "Submit"}
               </Button>
+            ) : null}
+            {blnShowWorkflowActions ? (
+              <>
+                <Button size="small" variant="outlined" color="error" disabled={!blnCanRejectCurrent || blnSaving} onClick={() => setStrReviewActionMode("reject")}>
+                  {t("flexi_pay_declaration_reject", "Reject")}
+                </Button>
+                {blnCanReleaseCurrent ? (
+                  <Button size="small" variant="outlined" color="info" disabled={blnSaving} onClick={() => void handleReleaseReview()}>
+                    {t("flexi_pay_declaration_release", "Release")}
+                  </Button>
+                ) : null}
+                {blnCanLockCurrent ? (
+                  <Button size="small" variant="outlined" color="success" disabled={blnSaving} onClick={() => void handleLockReview()}>
+                    {t("flexi_pay_declaration_lock", "Lock")}
+                  </Button>
+                ) : null}
+                <Button size="small" variant="contained" disabled={!blnCanApproveCurrent || blnSaving || blnAllocationExceeded} onClick={() => void handleApproveReview()}>
+                  {t("flexi_pay_declaration_approve", "Approve")}
+                </Button>
+              </>
             ) : null}
           </Stack>
         </Stack>
@@ -1325,6 +1481,34 @@ export default function FlexiPayDeclarationPage() {
               >
                 {["returned", "released"].includes(normalizeText(strWorkflowStatus)) ? "Confirm Resubmit" : "Confirm Submit"}
               </Button>
+          </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={Boolean(strReviewActionMode)}
+            onClose={() => (blnSaving ? null : setStrReviewActionMode(null))}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>{t("flexi_pay_declaration_reject_dialog_title", "Reject Declaration")}</DialogTitle>
+            <DialogContent dividers sx={{ p: 1.5 }}>
+              <Stack spacing={1.25}>
+                <Typography sx={{ mb: 0.25 }}>{t("flexi_pay_declaration_reviewer_remarks_hint", "Reviewer remarks will be saved on the declaration.")}</Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  value={strRemarks}
+                  onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
+                  disabled={blnSaving}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 1.5, py: 1 }}>
+              <Button onClick={() => setStrReviewActionMode(null)} disabled={blnSaving}>{t("flexi_pay_declaration_cancel", "Cancel")}</Button>
+              <Button variant="contained" onClick={() => void handleDecisionReview()} disabled={blnSaving || !strRemarks.trim()}>
+                {t("flexi_pay_declaration_confirm", "Confirm")}
+              </Button>
             </DialogActions>
           </Dialog>
 
@@ -1426,20 +1610,20 @@ export default function FlexiPayDeclarationPage() {
                             {formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode)}
                           </TableCell>
                           <TableCell align="right">
-                            <TextField
-                              size="small"
-                              type="number"
-                              value={objDisplayRow.strDisplayedAmount}
-                              disabled={!blnCanEditDeclaration || objRow.blnEligible === false || blnSaving}
-                              error={Boolean(objRow.strValidationMessage)}
-                              helperText={objRow.strValidationMessage || ""}
-                              onChange={(objEvent) =>
-                                setDicDraftInputs((dicPrevious) => ({
-                                  ...dicPrevious,
-                                  [objRow.intSalaryComponentID]: String(normalizeAmount(objEvent.target.value) * objDisplayRow.decMultiplier),
-                                }))
-                              }
-                              inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
+                              <TextField
+                                size="small"
+                                type="number"
+                                value={objDisplayRow.strDisplayedAmount}
+                                disabled={!blnCanEditDeclaration || objRow.blnEligible !== true || blnSaving}
+                                error={Boolean(objRow.strValidationMessage)}
+                                helperText={objRow.strValidationMessage || ""}
+                                onChange={(objEvent) =>
+                                  setDicDraftInputs((dicPrevious) => ({
+                                    ...dicPrevious,
+                                    [objRow.intSalaryComponentID]: String(normalizeAmount(objEvent.target.value)),
+                                  }))
+                                }
+                                inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
                               sx={{
                                 width: intDeclaredAnnualFieldWidth,
                                 "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 },
