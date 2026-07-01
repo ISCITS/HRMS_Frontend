@@ -2791,6 +2791,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       return;
                     }
                     const objParams = new URLSearchParams();
+                    objParams.set("intDeclarationID", String(intFlexiDeclarationID));
                     objParams.set("source", "employee_salary");
                     objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
                     objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
