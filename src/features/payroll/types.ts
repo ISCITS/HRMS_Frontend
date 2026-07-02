@@ -770,30 +770,6 @@ export type PayslipPreviewRecord = {
     decEmployerContributionTotal: number;
     decTotalEmployerCost: number;
   };
-  dicSalaryBreakdownImpact?: {
-    decAnnualCtc: number;
-    decGrossMonthly: number;
-    decBasicAnnual: number;
-    decHraAnnual: number;
-    decEmployerContributionAnnual: number;
-    decEmployerContributionMonthly: number;
-    decEmployeeDeductionsMonthly: number;
-    decFlexiBucketAnnual: number;
-    decApprovedFlexiAnnual: number;
-    decResidualTaxableAnnual: number;
-    decResidualTaxableMonthly: number;
-    decWageAnnual: number;
-    decNonWageAnnual: number;
-    decWagePercentOfCtc: number;
-    decMinimumRequiredWageAnnual: number;
-    decDeemedWageShortfallAnnual: number;
-    decDeemedWageAnnual: number;
-    strFlexiWarning?: string;
-    lstApprovedFlexiRows: {
-      strLabel: string;
-      decAmount: number;
-    }[];
-  } | null;
   dicFooter?: {
     strPayrollRunCode: string;
     strPayrollRunName: string;

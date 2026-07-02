@@ -114,74 +114,6 @@ function LineTable({
   );
 }
 
-function SalaryBreakdownImpact({ objPayslip }: PayslipPreviewContentProps) {
-  const dicImpact = objPayslip.dicSalaryBreakdownImpact;
-  if (!dicImpact) {
-    return null;
-  }
-
-  const lstFixedRows = [
-    { key: "basic", label: "Basic Salary", amount: dicImpact.decBasicAnnual },
-    { key: "hra", label: "HRA", amount: dicImpact.decHraAnnual },
-    { key: "employer", label: "Employer Contribution", amount: dicImpact.decEmployerContributionAnnual },
-  ].filter((dicRow) => dicRow.amount > 0);
-
-  return (
-    <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
-      <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
-        Salary Breakdown Impact
-      </Typography>
-
-      <Stack spacing={1.1}>
-        <DetailRow strLabel="Annual CTC" strValue={formatCurrency(dicImpact.decAnnualCtc)} />
-        <DetailRow strLabel="Gross Monthly" strValue={formatCurrency(dicImpact.decGrossMonthly)} />
-
-        {lstFixedRows.map((dicRow) => (
-          <DetailRow key={dicRow.key} strLabel={dicRow.label} strValue={formatCurrency(dicRow.amount)} />
-        ))}
-
-        {dicImpact.lstApprovedFlexiRows.map((dicRow, intIndex) => (
-          <DetailRow
-            key={`${dicRow.strLabel}-${intIndex}`}
-            strLabel={dicRow.strLabel}
-            strValue={formatCurrency(dicRow.decAmount)}
-          />
-        ))}
-
-        <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
-          <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-            Flexi Pay Declaration
-          </Typography>
-        </Box>
-
-        <DetailRow strLabel="Flexi Bucket Available" strValue={formatCurrency(dicImpact.decFlexiBucketAnnual)} />
-        <DetailRow strLabel="Approved / Declared Flexi" strValue={formatCurrency(dicImpact.decApprovedFlexiAnnual)} />
-        <DetailRow strLabel="Residual Taxable" strValue={formatCurrency(dicImpact.decResidualTaxableAnnual)} />
-        <DetailRow strLabel="Estimated Monthly Payroll Impact" strValue={formatCurrency(dicImpact.decResidualTaxableMonthly)} />
-
-        <Box sx={{ background: "#fff7ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
-          <Typography sx={{ color: "#9a3412", fontSize: "0.82rem", fontWeight: 800 }}>
-            Wage Breakdown Preview
-          </Typography>
-        </Box>
-
-        <DetailRow strLabel="Wage Total" strValue={formatCurrency(dicImpact.decWageAnnual)} />
-        <DetailRow strLabel="Non-Wage Total" strValue={formatCurrency(dicImpact.decNonWageAnnual)} />
-        <DetailRow strLabel="Wage % of CTC" strValue={`${dicImpact.decWagePercentOfCtc.toFixed(2)}%`} />
-        <DetailRow strLabel="Minimum Required Wage" strValue={formatCurrency(dicImpact.decMinimumRequiredWageAnnual)} />
-        <DetailRow strLabel="Deemed Wage Shortfall" strValue={formatCurrency(dicImpact.decDeemedWageShortfallAnnual)} />
-        <DetailRow strLabel="Deemed Wage Base" strValue={formatCurrency(dicImpact.decDeemedWageAnnual)} />
-
-        {dicImpact.strFlexiWarning ? (
-          <Box sx={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", fontSize: "0.84rem", p: 1.5 }}>
-            {dicImpact.strFlexiWarning}
-          </Box>
-        ) : null}
-      </Stack>
-    </Box>
-  );
-}
-
 export default function PayslipPreviewContent({
   objPayslip,
 }: PayslipPreviewContentProps) {
@@ -300,8 +232,6 @@ export default function PayslipPreviewContent({
           />
         </Box>
       ) : null}
-
-      <SalaryBreakdownImpact objPayslip={objPayslip} />
 
       <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
         <Box
