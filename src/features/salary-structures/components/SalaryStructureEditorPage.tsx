@@ -76,6 +76,10 @@ function buildSelectDisplayTestIdProps(strTestId: string, objExtraProps?: Record
   } as Record<string, string>;
 }
 
+function getAutomationProps(strControlId?: string) {
+  return strControlId ? ({ "data-controlid": strControlId } as const) : {};
+}
+
 function isFlexiBucketToken(strValue: string) {
   const strToken = normalizeSelectToken(strValue);
   return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
@@ -181,6 +185,34 @@ function getComponentBasisComponentID(dicComponent: SalaryStructureFormOptions["
 
 function getComponentPercentageValue(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined) {
   return dicComponent?.fltPercentageValue ?? dicComponent?.decPercentageValue ?? null;
+}
+
+function isWageComponent(
+  dicLine: { strWageType?: string | null; intSalaryComponentID?: number | "" | null },
+  dicSalaryComponentByID?: Map<number, SalaryStructureFormOptions["lstSalaryComponents"][number]>
+) {
+  const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
+  if (strWageTypeToken === "wage" || strWageTypeToken === "wages") {
+    return true;
+  }
+  if (strWageTypeToken === "nonwage" || strWageTypeToken === "nonwages") {
+    return false;
+  }
+  const intSalaryComponentID =
+    typeof dicLine.intSalaryComponentID === "number"
+      ? dicLine.intSalaryComponentID
+      : Number(dicLine.intSalaryComponentID);
+  const dicSalaryComponent = Number.isFinite(intSalaryComponentID) && intSalaryComponentID > 0
+    ? dicSalaryComponentByID?.get(intSalaryComponentID)
+    : undefined;
+  const strResolvedWageTypeToken = normalizeSelectToken(dicSalaryComponent?.strWageType ?? "");
+  if (strResolvedWageTypeToken === "wage" || strResolvedWageTypeToken === "wages") {
+    return true;
+  }
+  if (strResolvedWageTypeToken === "nonwage" || strResolvedWageTypeToken === "nonwages") {
+    return false;
+  }
+  return Boolean(dicSalaryComponent?.blnIsWages);
 }
 
 function getFlexiComponentIcon(strValue: string) {
@@ -889,7 +921,7 @@ export default function SalaryStructureEditorPage({
           }
           if (dicComponent?.blnIncludedInCtc !== false) {
             dicFormulaAggregates.ctcAnnual += fltResolvedAmount * 12;
-            if (isWageComponent({ strWageType: dicComponent.strWageType, intSalaryComponentID }, dicComponentByID)) {
+            if (isWageComponent({ strWageType: dicComponent?.strWageType, intSalaryComponentID }, dicComponentByID)) {
               dicFormulaAggregates.wageMonthly += fltResolvedAmount;
             } else {
               dicFormulaAggregates.nonWageMonthly += fltResolvedAmount;
@@ -1015,7 +1047,8 @@ export default function SalaryStructureEditorPage({
             strComponentName: dicComponent?.strLabel ?? "",
             strCalcMethod: dicComponent?.strCalcMethod ?? "",
             strTaxTreatment: dicComponent?.strTaxTreatment ?? "",
-            strWageType: dicComponent?.blnIsWages ? "Wage" : "Non-Wage",
+            strWageType: dicComponent?.strWageType
+              ?? (dicComponent?.blnIsWages ? "Wages" : "Non Wages"),
             strRoundingRule: dicComponent?.strRoundingRule ?? "",
             strPayslipSection: dicComponent?.strPayslipSection ?? "",
             blnIsFlexiBasketLine: blnIsFlexiBasket,
@@ -1479,10 +1512,10 @@ export default function SalaryStructureEditorPage({
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
-                controlId="salary-structures.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/salary-structures")}
+                {...getAutomationProps("salary-structures.editor.back.button")}
                 sx={{
                   borderRadius: "14px",
                   height: 34,
@@ -1504,11 +1537,11 @@ export default function SalaryStructureEditorPage({
                 {t("back_button", "Back")}
               </Button>
               <Button
-                controlId="salary-structures.editor.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={handleSave}
                 disabled={!blnCanSave || blnSaving}
+                {...getAutomationProps("salary-structures.editor.save.button")}
                 sx={{
                   borderRadius: "14px",
                   height: 34,

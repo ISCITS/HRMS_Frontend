@@ -406,6 +406,7 @@ function mergeSalaryComponentMetadataIntoOptions(
         strDefaultPeriodicity: dicComponent.strDefaultPeriodicity ?? dicOption.strDefaultPeriodicity,
         strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
         strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
+        strWageType: dicComponent.strWageType ?? dicOption.strWageType,
         blnIsWages: dicComponent.blnIsWages ?? dicOption.blnIsWages,
         blnIncludedInCtc: dicComponent.blnIncludedInCtc ?? dicOption.blnIncludedInCtc,
         blnIncludeInPayslip: dicComponent.blnIncludeInPayslip ?? dicOption.blnIncludeInPayslip,
