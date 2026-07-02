@@ -36,6 +36,7 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
+import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
   EmployeeSalaryComponentLine,
@@ -604,6 +605,19 @@ function getPreferredFlexiDisplayAmount(
   return 0;
 }
 
+function shouldDisplayFlexiDeclarationStatus(
+  strStatus: string | null | undefined,
+  decPreviewAnnual: number
+) {
+  const strNormalizedStatus = normalizeSelectToken(strStatus ?? "");
+  const strStatusType = getApprovedFlexiStatus(strStatus);
+  // Submitted declarations should stay visible after reload even before approval rows exist.
+  if (strNormalizedStatus === "submitted") {
+    return true;
+  }
+  return strStatusType === "approved" ? decPreviewAnnual > 0 : false;
+}
+
 function formatFlexiApplicableRegime(objLine: FlexiDeclarationLineRecord) {
   return (
     objLine.strEligibilityApplicableRegimeLabel ||
@@ -714,28 +728,21 @@ function calculateSalarySummaryMetrics(
   lstFlexiRows: FlexiGridRow[],
   dicSalaryComponentByID: Map<number, SalaryComponentApiRecord>
 ): SalarySummaryMetrics {
+  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objDetail);
   const lstComponentLines = objDetail?.lstComponentLines ?? [];
-  const decFlexiBucketAnnual = dicFlexiTotals.decFlexiBucketAvailableAnnual;
+  const decFlexiBucketAnnual = dicBaseSummaryMetrics.decFlexiBucketAnnual;
   const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
   const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
   const lstApprovedFlexiRows = lstFlexiRows.filter((dicRow) => dicRow.decApprovedDeclaredAnnual > 0);
   const decApprovedFlexiAnnual = lstApprovedFlexiRows.reduce((decTotal, dicRow) => decTotal + dicRow.decApprovedDeclaredAnnual, 0);
   const decResidualTaxableAnnual = Math.max(decFlexiBucketAnnual - decApprovedFlexiAnnual, 0);
-  const decEmployerContributionAnnual = lstComponentLines.reduce((decTotal, dicLine) => {
-    if (!isEmployerContributionCategory(dicLine.strComponentCategory) && !isEmployerPfComponent(dicLine)) {
-      return decTotal;
-    }
-    if (dicLine.blnIncludedInCtc === false) {
-      return decTotal;
-    }
-    return decTotal + getNumberValue(dicLine.decAmountAnnual);
-  }, 0);
   const decEmployeeDeductionsMonthly = lstComponentLines.reduce((decTotal, dicLine) => {
     if (!isDeductionCategory(dicLine.strComponentCategory) && !isEmployeePfComponent(dicLine)) {
       return decTotal;
     }
     return decTotal + getNumberValue(dicLine.decAmountMonthly);
   }, 0);
+<<<<<<< Updated upstream
   const decCtcIncludedEarningsAnnual = lstComponentLines.reduce((decTotal, dicLine) => (
     isCtcIncludedEarning(dicLine) ? decTotal + getNumberValue(dicLine.decAmountAnnual) : decTotal
   ), 0);
@@ -775,6 +782,15 @@ function calculateSalarySummaryMetrics(
     decHraAnnual,
     decEmployerContributionAnnual,
     decEmployerContributionMonthly: decEmployerContributionAnnual / 12,
+=======
+  return {
+    decAnnualCtc: dicBaseSummaryMetrics.decAnnualCtc,
+    decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly,
+    decBasicAnnual: dicBaseSummaryMetrics.decBasicAnnual,
+    decHraAnnual: dicBaseSummaryMetrics.decHraAnnual,
+    decEmployerContributionAnnual: dicBaseSummaryMetrics.decEmployerContributionAnnual,
+    decEmployerContributionMonthly: dicBaseSummaryMetrics.decEmployerContributionAnnual / 12,
+>>>>>>> Stashed changes
     decEmployeeDeductionsMonthly,
     decFlexiBucketAnnual,
     decApprovedFlexiAnnual,
@@ -1624,12 +1640,16 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           dicLine.strDeclarationItemStatus ??
           strDeclarationStatusCode ??
           "Not Declared";
+        const blnShowDeclarationStatus = shouldDisplayFlexiDeclarationStatus(
+          strLineStatusCode,
+          decPreviewAnnual
+        );
         const strStatus = formatFlexiDeclarationStatus(
-          (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? strLineStatusCode : "Not Declared")
+          (blnShowDeclarationStatus && strOverallDeclarationStatus !== "-" ? strLineStatusCode : "Not Declared")
         );
         const strReasonAction = dicDeclarationLine?.strDeclarationItemRemarks
           ?? dicLine.strRemarks
-          ?? (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? "ESS Declaration" : normalizeFlexiSource(dicLine.strSource ?? "Structure Default"));
+          ?? (blnShowDeclarationStatus && strOverallDeclarationStatus !== "-" ? "ESS Declaration" : normalizeFlexiSource(dicLine.strSource ?? "Structure Default"));
 
         return {
           intSalaryComponentID,

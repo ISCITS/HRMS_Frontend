@@ -31,6 +31,10 @@ export default function CommonRowActions({
   blnCanDelete = false,
   blnCanToggle = false,
   blnToggleActive = true,
+  viewButtonControlId = "common-row-actions.view.button",
+  editButtonControlId = "common-row-actions.edit.button",
+  deleteButtonControlId = "common-row-actions.delete.button",
+  statusSwitchControlId = "common-row-actions.status.switch",
   rowKey,
   onView,
   onEdit,
@@ -42,22 +46,22 @@ export default function CommonRowActions({
   return (
     <Box className={styles.actionCell}>
       {blnCanView && onView ? (
-        <button {...objRowDataProps} controlId="common-row-actions.view.button" className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
+        <button {...objRowDataProps} data-controlid={viewButtonControlId} className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
           <VisibilityRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanEdit && onEdit ? (
-        <button {...objRowDataProps} controlId="common-row-actions.edit.button" className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
+        <button {...objRowDataProps} data-controlid={editButtonControlId} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
           <EditRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanDelete && onDelete ? (
-        <button {...objRowDataProps} controlId="common-row-actions.delete.button" className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
+        <button {...objRowDataProps} data-controlid={deleteButtonControlId} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
           <DeleteRoundedIcon fontSize="small" />
         </button>
       ) : null}
       {blnCanToggle && onToggle ? (
-        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} />
+        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} controlId={statusSwitchControlId} />
       ) : null}
     </Box>
   );
