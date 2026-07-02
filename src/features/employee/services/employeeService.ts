@@ -18,6 +18,10 @@ import type {
 } from "@/features/employee/types";
 import { masterApiService } from "@/services/master/MasterApiService";
 
+type EmployeeServiceRequestOptions = {
+  strMenuAction?: string;
+};
+
 function normalizeOptionalNumber(intValue: number | ""): number | null {
   return intValue === "" ? null : intValue;
 }
@@ -58,13 +62,13 @@ export const employeeService = {
     return objResult.Data;
   },
 
-  async getEmployeeById(intEmployeeID: number): Promise<EmployeeDetailRecord> {
-    const objResult = await masterApiService.getEmployeeById(intEmployeeID);
+  async getEmployeeById(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
+    const objResult = await masterApiService.getEmployeeById(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async getFormOptions(): Promise<EmployeeFormOptions> {
-    const objResult = await masterApiService.getEmployeeFormOptions();
+  async getFormOptions(objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeFormOptions> {
+    const objResult = await masterApiService.getEmployeeFormOptions(undefined, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
@@ -73,8 +77,8 @@ export const employeeService = {
     return objResult.Data;
   },
 
-  async updateEmployee(intEmployeeID: number, dicValues: EmployeeFormValues): Promise<EmployeeDetailRecord> {
-    const objResult = await masterApiService.updateEmployee(intEmployeeID, mapEmployeePayload(dicValues));
+  async updateEmployee(intEmployeeID: number, dicValues: EmployeeFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
+    const objResult = await masterApiService.updateEmployee(intEmployeeID, mapEmployeePayload(dicValues), objOptions?.strMenuAction);
     return objResult.Data;
   },
 
@@ -86,12 +90,12 @@ export const employeeService = {
     return masterApiService.bulkEmployeeDelete(lstIDs);
   },
 
-  async getEmployeeAddress(intEmployeeID: number): Promise<EmployeeAddressRecord> {
-    const objResult = await masterApiService.getEmployeeAddress(intEmployeeID);
+  async getEmployeeAddress(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeAddressRecord> {
+    const objResult = await masterApiService.getEmployeeAddress(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async saveEmployeeAddress(intEmployeeID: number, dicValues: EmployeeAddressFormValues): Promise<EmployeeAddressRecord> {
+  async saveEmployeeAddress(intEmployeeID: number, dicValues: EmployeeAddressFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeAddressRecord> {
     const objResult = await masterApiService.saveEmployeeAddress(intEmployeeID, {
       strAddressType: dicValues.strAddressType,
       strAddressLine1: dicValues.strAddressLine1.trim(),
@@ -100,16 +104,16 @@ export const employeeService = {
       intStateID: normalizeOptionalNumber(dicValues.intStateID),
       strPostalCode: dicValues.strPostalCode.trim() || null,
       intCountryID: dicValues.intCountryID
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async getEmployeeBankAccount(intEmployeeID: number): Promise<EmployeeBankRecord> {
-    const objResult = await masterApiService.getEmployeeBankAccount(intEmployeeID);
+  async getEmployeeBankAccount(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeBankRecord> {
+    const objResult = await masterApiService.getEmployeeBankAccount(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async saveEmployeeBankAccount(intEmployeeID: number, dicValues: EmployeeBankFormValues): Promise<EmployeeBankRecord> {
+  async saveEmployeeBankAccount(intEmployeeID: number, dicValues: EmployeeBankFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeBankRecord> {
     const objResult = await masterApiService.saveEmployeeBankAccount(intEmployeeID, {
       intBankID: dicValues.intBankID,
       strAccountHolderName: dicValues.strAccountHolderName.trim(),
@@ -117,16 +121,16 @@ export const employeeService = {
       strIfscCode: dicValues.strIfscCode.trim() || null,
       blnIsPrimary: dicValues.blnIsPrimary,
       blnIsActive: dicValues.blnIsActive
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async getEmployeeStatutory(intEmployeeID: number): Promise<EmployeeStatutoryRecord> {
-    const objResult = await masterApiService.getEmployeeStatutory(intEmployeeID);
+  async getEmployeeStatutory(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeStatutoryRecord> {
+    const objResult = await masterApiService.getEmployeeStatutory(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async saveEmployeeStatutory(intEmployeeID: number, dicValues: EmployeeStatutoryFormValues): Promise<EmployeeStatutoryRecord> {
+  async saveEmployeeStatutory(intEmployeeID: number, dicValues: EmployeeStatutoryFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeStatutoryRecord> {
     const objResult = await masterApiService.saveEmployeeStatutory(intEmployeeID, {
       strPanNumber: dicValues.strPanNumber.trim() || null,
       strUanNumber: dicValues.strUanNumber.trim() || null,
@@ -136,16 +140,16 @@ export const employeeService = {
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async getEmployeeExperiences(intEmployeeID: number): Promise<EmployeeExperienceRecord[]> {
-    const objResult = await masterApiService.getEmployeeExperiences(intEmployeeID);
+  async getEmployeeExperiences(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeExperienceRecord[]> {
+    const objResult = await masterApiService.getEmployeeExperiences(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async createEmployeeExperience(intEmployeeID: number, dicValues: EmployeeExperienceFormValues): Promise<EmployeeExperienceRecord> {
+  async createEmployeeExperience(intEmployeeID: number, dicValues: EmployeeExperienceFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeExperienceRecord> {
     const objResult = await masterApiService.createEmployeeExperience(intEmployeeID, {
       strCompanyName: dicValues.strCompanyName.trim(),
       strJobTitle: dicValues.strJobTitle.trim(),
@@ -156,11 +160,11 @@ export const employeeService = {
       decLastDrawnSalary: dicValues.decLastDrawnSalary.trim() ? Number(dicValues.decLastDrawnSalary) : null,
       strReasonForLeaving: dicValues.strReasonForLeaving.trim() || null,
       blnIsActive: dicValues.blnIsActive
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, dicValues: EmployeeExperienceFormValues): Promise<EmployeeExperienceRecord> {
+  async updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, dicValues: EmployeeExperienceFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeExperienceRecord> {
     const objResult = await masterApiService.updateEmployeeExperience(intEmployeeID, intExperienceID, {
       strCompanyName: dicValues.strCompanyName.trim(),
       strJobTitle: dicValues.strJobTitle.trim(),
@@ -171,7 +175,7 @@ export const employeeService = {
       decLastDrawnSalary: dicValues.decLastDrawnSalary.trim() ? Number(dicValues.decLastDrawnSalary) : null,
       strReasonForLeaving: dicValues.strReasonForLeaving.trim() || null,
       blnIsActive: dicValues.blnIsActive
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
@@ -180,12 +184,12 @@ export const employeeService = {
     return objResult.Data;
   },
 
-  async getEmployeeQualifications(intEmployeeID: number): Promise<EmployeeQualificationRecord[]> {
-    const objResult = await masterApiService.getEmployeeQualifications(intEmployeeID);
+  async getEmployeeQualifications(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeQualificationRecord[]> {
+    const objResult = await masterApiService.getEmployeeQualifications(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async createEmployeeQualification(intEmployeeID: number, dicValues: EmployeeQualificationFormValues): Promise<EmployeeQualificationRecord> {
+  async createEmployeeQualification(intEmployeeID: number, dicValues: EmployeeQualificationFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeQualificationRecord> {
     const objResult = await masterApiService.createEmployeeQualification(intEmployeeID, {
       strDegreeName: dicValues.strDegreeName.trim(),
       strSpecialization: dicValues.strSpecialization.trim() || null,
@@ -196,11 +200,11 @@ export const employeeService = {
       strCertificationNumber: dicValues.strCertificationNumber.trim() || null,
       blnIsHighestQualification: dicValues.blnIsHighestQualification,
       blnIsActive: dicValues.blnIsActive
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, dicValues: EmployeeQualificationFormValues): Promise<EmployeeQualificationRecord> {
+  async updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, dicValues: EmployeeQualificationFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeQualificationRecord> {
     const objResult = await masterApiService.updateEmployeeQualification(intEmployeeID, intQualificationID, {
       strDegreeName: dicValues.strDegreeName.trim(),
       strSpecialization: dicValues.strSpecialization.trim() || null,
@@ -211,7 +215,7 @@ export const employeeService = {
       strCertificationNumber: dicValues.strCertificationNumber.trim() || null,
       blnIsHighestQualification: dicValues.blnIsHighestQualification,
       blnIsActive: dicValues.blnIsActive
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
@@ -220,12 +224,12 @@ export const employeeService = {
     return objResult.Data;
   },
 
-  async getEmployeeFamilyDetails(intEmployeeID: number): Promise<EmployeeFamilyDetailRecord[]> {
-    const objResult = await masterApiService.getEmployeeFamilyDetails(intEmployeeID);
+  async getEmployeeFamilyDetails(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeFamilyDetailRecord[]> {
+    const objResult = await masterApiService.getEmployeeFamilyDetails(intEmployeeID, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async createEmployeeFamilyDetail(intEmployeeID: number, dicValues: EmployeeFamilyDetailFormValues): Promise<EmployeeFamilyDetailRecord> {
+  async createEmployeeFamilyDetail(intEmployeeID: number, dicValues: EmployeeFamilyDetailFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeFamilyDetailRecord> {
     const objResult = await masterApiService.createEmployeeFamilyDetail(intEmployeeID, {
       strName: dicValues.strName.trim(),
       strRelationship: dicValues.strRelationship || null,
@@ -237,11 +241,11 @@ export const employeeService = {
       blnIsNominee: dicValues.blnIsNominee,
       decNomineePercentage: dicValues.blnIsNominee && dicValues.decNomineePercentage.trim() ? Number(dicValues.decNomineePercentage) : null,
       strAddress: dicValues.strAddress.trim() || null
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 
-  async updateEmployeeFamilyDetail(intFamilyID: number, dicValues: EmployeeFamilyDetailFormValues): Promise<EmployeeFamilyDetailRecord> {
+  async updateEmployeeFamilyDetail(intFamilyID: number, dicValues: EmployeeFamilyDetailFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeFamilyDetailRecord> {
     const objResult = await masterApiService.updateEmployeeFamilyDetail(intFamilyID, {
       strName: dicValues.strName.trim(),
       strRelationship: dicValues.strRelationship || null,
@@ -253,7 +257,7 @@ export const employeeService = {
       blnIsNominee: dicValues.blnIsNominee,
       decNomineePercentage: dicValues.blnIsNominee && dicValues.decNomineePercentage.trim() ? Number(dicValues.decNomineePercentage) : null,
       strAddress: dicValues.strAddress.trim() || null
-    });
+    }, objOptions?.strMenuAction);
     return objResult.Data;
   },
 

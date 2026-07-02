@@ -1857,22 +1857,22 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeFormOptions(intLanguageID?: number | null) {
+  getEmployeeFormOptions(intLanguageID?: number | null, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFormOptions) {
     const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<EmployeeFormOptionsApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
-      strMenuAction: MasterMenuAction.EmployeeFormOptions
+      strMenuAction
     });
   },
 
-  getEmployeeById(intID: number) {
+  getEmployeeById(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeView) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeView
+      strMenuAction
     });
   },
 
@@ -1885,12 +1885,12 @@ export const masterApiService = {
     });
   },
 
-  updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
+  updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeUpdate) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeUpdate
+      strMenuAction
     });
   },
 
@@ -1912,7 +1912,7 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeAddress(intID: number) {
+  getEmployeeAddress(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeAddressView) {
     return requestApi<EmployeeAddressApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1921,20 +1921,20 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeAddressView
+      strMenuAction
     });
   },
 
-  saveEmployeeAddress(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeAddress(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeAddressSave) {
     return requestApi<EmployeeAddressApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Address),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeAddressSave
+      strMenuAction
     });
   },
 
-  getEmployeeBankAccount(intID: number) {
+  getEmployeeBankAccount(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeBankView) {
     return requestApi<EmployeeBankApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1943,20 +1943,20 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeBankView
+      strMenuAction
     });
   },
 
-  saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeBankSave) {
     return requestApi<EmployeeBankApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Bank),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeBankSave
+      strMenuAction
     });
   },
 
-  getEmployeeStatutory(intID: number) {
+  getEmployeeStatutory(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeStatutoryView) {
     return requestApi<EmployeeStatutoryApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1965,37 +1965,37 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeStatutoryView
+      strMenuAction
     });
   },
 
-  saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeStatutorySave) {
     return requestApi<EmployeeStatutoryApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Statutory),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeStatutorySave
+      strMenuAction
     });
   },
 
-  getEmployeeExperiences(intID: number) {
+  getEmployeeExperiences(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceList) {
     return requestApi<EmployeeExperienceApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeExperienceList
+      strMenuAction
     });
   },
 
-  createEmployeeExperience(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeExperience(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeExperienceSave
+      strMenuAction
     });
   },
 
-  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>) {
+  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2005,7 +2005,7 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeExperienceSave
+      strMenuAction
     });
   },
 
@@ -2022,24 +2022,24 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeQualifications(intID: number) {
+  getEmployeeQualifications(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationList) {
     return requestApi<EmployeeQualificationApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeQualificationList
+      strMenuAction
     });
   },
 
-  createEmployeeQualification(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeQualification(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeQualificationSave
+      strMenuAction
     });
   },
 
-  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>) {
+  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2049,7 +2049,7 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeQualificationSave
+      strMenuAction
     });
   },
 
@@ -2066,29 +2066,29 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeFamilyDetails(intID: number) {
+  getEmployeeFamilyDetails(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilyList) {
     return requestApi<EmployeeFamilyDetailApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeFamilyList
+      strMenuAction
     });
   },
 
-  createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilySave) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeFamilySave
+      strMenuAction
     });
   },
 
-  updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>) {
+  updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilySave) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Family, intFamilyID),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeFamilySave
+      strMenuAction
     });
   },
 

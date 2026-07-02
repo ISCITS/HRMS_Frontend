@@ -1,20 +1,21 @@
 services:
   frontend:
-    image: iscuser1/hrms_frontend_deps:latest
+    image: node:20-alpine
     container_name: hrms-frontend
     working_dir: /workspace
-    command: sh -c "npm ci && npm run dev -- --hostname 0.0.0.0"
+    command: sh -c "rm -rf .next && npm ci && npm run dev -- --hostname 0.0.0.0"
     ports:
       - "3000:3000"
     volumes:
-      - .:/workspace
-      - hrms_frontend_node_modules:/workspace/node_modules
-      - hrms_frontend_next:/workspace/.next
+      - /mnt/host/d/Projects/HRMS/HRMS_Frontend:/workspace
+      - frontend_node_modules:/workspace/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: development
+      BACKEND_API_BASE_URL: http://host.docker.internal:8000
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
 
 volumes:
-  hrms_frontend_node_modules:
-  hrms_frontend_next:
+  frontend_node_modules:

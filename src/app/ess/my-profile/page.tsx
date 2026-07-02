@@ -71,7 +71,7 @@ function resolveLookupLabel(
 
 export default function EssMyProfilePage() {
   const objRouter = useRouter();
-  const { canDoAny } = useModuleActionAccess(["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"]);
+  const { canDoAny } = useModuleActionAccess(["MY_PROFILE"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
@@ -346,7 +346,7 @@ export default function EssMyProfilePage() {
                 controlId="ess.my-profile.edit.button"
                 variant="contained"
                 startIcon={<EditRoundedIcon />}
-                onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}
+                onClick={() => objRouter.push(`/ess/my-profile/edit/${intEmployeeID}`)}
                 sx={{
                   borderRadius: "12px",
                   textTransform: "none",
