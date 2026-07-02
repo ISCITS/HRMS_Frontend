@@ -7,29 +7,33 @@ type ActiveStatusSwitchProps = Omit<SwitchProps, "checked" | "onChange" | "color
   blnIsActive: boolean;
   onChange?: (blnIsActive: boolean) => void;
   controlId?: string;
+  testId?: string;
 };
 
 export default function ActiveStatusSwitch({
   blnIsActive,
+  controlId,
   disabled,
   onChange,
   inputProps,
   title,
   size,
   sx,
+  testId,
   ...objProps
 }: ActiveStatusSwitchProps) {
   const strStateLabel = blnIsActive ? "Active ON" : "Inactive OFF";
   const objResolvedInputProps = {
     ...inputProps,
-    controlId: "active-status-switch.input",
+    ...(testId ? { "data-testid": testId } : {}),
+    controlId: typeof inputProps?.controlId === "string" ? inputProps.controlId : "active-status-switch.input",
     "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;
 
   return (
     <Switch
       {...objProps}
-      controlId="active-status-switch"
+      controlId={controlId ?? "active-status-switch"}
       checked={blnIsActive}
       disabled={disabled}
       color="primary"
