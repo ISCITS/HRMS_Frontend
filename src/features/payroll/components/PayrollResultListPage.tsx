@@ -511,7 +511,7 @@ export default function PayrollResultListPage({
       </Box>
 
       <Box className={styles.controlsCard}>
-        {!blnEssMode ? (
+        {!blnEssMode && blnPayslipScreen ? (
           <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
             <Box>
               <Typography className={styles.title}>
@@ -732,7 +732,6 @@ export default function PayrollResultListPage({
                     strStatus: objEvent.target.value as SearchForm["strStatus"],
                   }))
                 }
-                label={t("status", "Status")}
                 fullWidth
               >
                 <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
@@ -740,8 +739,6 @@ export default function PayrollResultListPage({
                 <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
                 <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
                 <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
-                <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-                <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
               </TextField>
               <Button
                 controlId="payroll-results.list.search.button"
@@ -764,60 +761,6 @@ export default function PayrollResultListPage({
             </Box>
           </Box>
         )}
-        {!blnPayslipScreen ? (
-          <Box className={styles.quickFilterRow}>
-            <TextField
-              select
-              value={dicSearchDraft.strMonthScope}
-              onChange={(objEvent) =>
-                setDicSearchDraft((dicPrevious) => ({
-                  ...dicPrevious,
-                  strMonthScope: objEvent.target.value as SearchForm["strMonthScope"],
-                  strPayrollMonth:
-                    objEvent.target.value === "Custom" ? dicPrevious.strPayrollMonth : "",
-                }))
-              }
-              label={t("data_scope", "Data Scope")}
-              fullWidth
-            >
-              <MenuItem value="Latest">{t("latest_month", "Latest month")}</MenuItem>
-              <MenuItem value="Custom">{t("custom_month", "Custom month")}</MenuItem>
-              <MenuItem value="All">{t("all_data", "All data")}</MenuItem>
-            </TextField>
-            <TextField
-              type="month"
-              value={dicSearchDraft.strPayrollMonth}
-              onChange={(objEvent) =>
-                setDicSearchDraft((dicPrevious) => ({
-                  ...dicPrevious,
-                  strPayrollMonth: objEvent.target.value,
-                }))
-              }
-              label={t("payroll_month", "Payroll Month")}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              disabled={dicSearchDraft.strMonthScope !== "Custom"}
-            />
-            <TextField
-              select
-              value={dicSearchDraft.strStatus}
-              onChange={(objEvent) =>
-                setDicSearchDraft((dicPrevious) => ({
-                  ...dicPrevious,
-                  strStatus: objEvent.target.value as SearchForm["strStatus"],
-                }))
-              }
-              label={t("status", "Status")}
-              fullWidth
-            >
-              <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-              <MenuItem value="Calculated">{t("status_calculated", "Calculated")}</MenuItem>
-              <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
-              <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
-              <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
-            </TextField>
-          </Box>
-        ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
