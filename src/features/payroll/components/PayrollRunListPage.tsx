@@ -27,7 +27,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 type SearchForm = {
   strSearch: string;
   strSearchMonth: string;
-  strStatus: "All" | "Open" | "Approved" | "Processed" | "Closed";
+  strStatus: "All" | "Open" | "Approved" | "Failed" | "Processed" | "Closed";
 };
 
 const dicEmptySearch: SearchForm = {
@@ -50,6 +50,7 @@ function getStatusPillSx(strStatus: string) {
     Open: { background: "#2563eb", color: "#fff" },
     Submitted: { background: "#ea580c", color: "#fff" },
     Approved: { background: "#16a34a", color: "#fff" },
+    Failed: { background: "#dc2626", color: "#fff" },
     Processed: { background: "#0f766e", color: "#fff" },
     Closed: { background: "#475569", color: "#fff" },
   };
@@ -60,6 +61,7 @@ function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
     Approved: "Approved",
+    Failed: "Failed",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -282,6 +284,7 @@ export default function PayrollRunListPage() {
             <MenuItem value="All">{t("status_all", "All")}</MenuItem>
             <MenuItem value="Open">{t("status_open", "Draft")}</MenuItem>
             <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
+            <MenuItem value="Failed">{t("status_failed", "Failed")}</MenuItem>
             <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
             <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
           </TextField>

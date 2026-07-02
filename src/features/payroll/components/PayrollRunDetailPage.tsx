@@ -86,6 +86,7 @@ function getStatusPillSx(strStatus: string) {
     Open: { background: "#2563eb", color: "#fff" },
     Submitted: { background: "#ea580c", color: "#fff" },
     Approved: { background: "#16a34a", color: "#fff" },
+    Failed: { background: "#dc2626", color: "#fff" },
     Processed: { background: "#0f766e", color: "#fff" },
     Closed: { background: "#475569", color: "#fff" },
   };
@@ -96,6 +97,7 @@ function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
     Approved: "Approved",
+    Failed: "Failed",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -108,6 +110,8 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
       ? "Close"
       : strRunStatus === "Processed"
         ? blnHasPayslips ? "Generate Payslips" : "Process"
+        : strRunStatus === "Failed"
+          ? "Process"
         : strRunStatus === "Approved"
           ? "Validate"
           : "Draft";
@@ -115,6 +119,20 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
     strStep,
     blnActive: strStep === strCurrentStep,
   }));
+}
+
+function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boolean) {
+  if (!blnCanProcess) {
+    return false;
+  }
+  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+    return true;
+  }
+  return (
+    objRun.strRunStatus === "Processed" &&
+    (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
+    (objRun.intFailedEmployeeCount || 0) > 0
+  );
 }
 
 function isWorkflowStepEnabled(
@@ -136,7 +154,7 @@ function isWorkflowStepEnabled(
     case "Validate":
       return blnCanValidate && objRun.strRunStatus !== "Closed";
     case "Process":
-      return blnCanProcess && objRun.strRunStatus === "Approved";
+      return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
       return (
         blnCanGeneratePayslip &&
@@ -337,6 +355,13 @@ function PayrollRunDetailPageLegacy({
           t(
             "process_validation_failed",
             `Payroll processing blocked by ${intBlockingCount} validation error(s). Resolve the validation messages below and process again.`
+          )
+        );
+      } else if (dicSummary.strStatus === "Failed") {
+        setStrError(
+          t(
+            "process_failed",
+            "Payroll processing failed. Review the processing summary below and process again after fixing the issue."
           )
         );
       } else {
@@ -552,6 +577,10 @@ function PayrollRunDetailPageLegacy({
     fontWeight: 800,
     mb: 1.5,
   };
+  const lstDisplayedRunStatuses = lstEditableRunStatuses.includes(objRun.strRunStatus)
+    ? lstEditableRunStatuses
+    : [objRun.strRunStatus, ...lstEditableRunStatuses];
+  const blnRunControlsEditable = blnCanEdit && lstEditableRunStatuses.includes(objRun.strRunStatus);
 
   return (
     <Box
@@ -766,12 +795,12 @@ function PayrollRunDetailPageLegacy({
                       : dicPrevious
                   )
                 }
-                disabled={!blnCanEdit || blnSaving || objRun.strRunStatus === "Closed"}
+                disabled={!blnRunControlsEditable || blnSaving}
                 controlId="payroll.run-detail.status.select"
                 fullWidth
               >
-                {lstEditableRunStatuses.map((strStatus) => (
-                  <MenuItem key={strStatus} value={strStatus}>
+                {lstDisplayedRunStatuses.map((strStatus) => (
+                  <MenuItem key={strStatus} value={strStatus} disabled={!lstEditableRunStatuses.includes(strStatus)}>
                     {getPayrollRunStatusLabel(strStatus)}
                   </MenuItem>
                 ))}
@@ -789,14 +818,14 @@ function PayrollRunDetailPageLegacy({
                 <Switch
                   checked={blnIsLocked}
                   onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
-                  disabled={!blnCanEdit || objRun.strRunStatus === "Closed"}
+                  disabled={!blnRunControlsEditable}
                   inputProps={{ "controlId": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 />
               </Box>
               {blnCanEdit ? <Button
                 className={styles.primaryButton}
                 onClick={saveLockState}
-                disabled={blnSaving}
+                disabled={blnSaving || !blnRunControlsEditable}
                 sx={{ alignSelf: "flex-end" }}
                 controlId="payroll.run-detail.save-status.button"
               >

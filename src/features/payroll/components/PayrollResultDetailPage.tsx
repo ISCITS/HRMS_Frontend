@@ -37,7 +37,7 @@ import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewC
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
-import type { PayrollResultDetailRecord, PayslipPreviewRecord } from "@/features/payroll/types";
+import type { PayrollResultDetailRecord, PayslipPreviewRecord, WageRulePreviewRecord } from "@/features/payroll/types";
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
@@ -67,6 +67,16 @@ function formatCurrency(decValue: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(decValue || 0);
+}
+
+function formatPercent(decValue: number | null | undefined) {
+  if (decValue === null || decValue === undefined) {
+    return "-";
+  }
+  return `${new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(decValue)}%`;
 }
 
 function getStatusTone(strStatus: string) {
@@ -123,6 +133,62 @@ function getCalculationTraceValue(
     }
   }
   return null;
+}
+
+function asRecord(objValue: unknown): Record<string, unknown> | null {
+  if (!objValue || typeof objValue !== "object" || Array.isArray(objValue)) {
+    return null;
+  }
+  return objValue as Record<string, unknown>;
+}
+
+function getNumberValue(objRecord: Record<string, unknown>, strKey: string) {
+  const objValue = objRecord[strKey];
+  if (typeof objValue === "number") {
+    return objValue;
+  }
+  if (typeof objValue === "string" && objValue.trim() !== "") {
+    const fltValue = Number(objValue);
+    return Number.isFinite(fltValue) ? fltValue : null;
+  }
+  return null;
+}
+
+function getStringValue(objRecord: Record<string, unknown>, strKey: string) {
+  const objValue = objRecord[strKey];
+  return typeof objValue === "string" && objValue.trim() !== "" ? objValue : null;
+}
+
+function getWageRulePreview(dicResult: PayrollResultDetailRecord): WageRulePreviewRecord {
+  const objDirectPreview = asRecord(dicResult.dicWageRulePreview);
+  const objTracePreview = asRecord(asRecord(dicResult.objCalculationTrace)?.wage_rule);
+  const objSnapshotPreview = asRecord(asRecord(dicResult.objCalculationSnapshot)?.wage_rule);
+  const objPreview: Record<string, unknown> = objDirectPreview ?? objTracePreview ?? objSnapshotPreview ?? {};
+  return {
+    wage_total: getNumberValue(objPreview, "wage_total") ?? dicResult.decActualWagesAmount,
+    non_wage_total: getNumberValue(objPreview, "non_wage_total") ?? dicResult.decActualNonWagesAmount,
+    wage_percent_of_ctc: getNumberValue(objPreview, "wage_percent_of_ctc"),
+    minimum_required_wage: getNumberValue(objPreview, "minimum_required_wage"),
+    deemed_wage_shortfall: getNumberValue(objPreview, "deemed_wage_shortfall") ?? dicResult.decDeemedWagesAmount,
+    deemed_wage_base: getNumberValue(objPreview, "deemed_wage_base") ?? dicResult.decComplianceWageBaseAmount,
+    calculation_basis: getStringValue(objPreview, "calculation_basis"),
+    threshold_percent: getNumberValue(objPreview, "threshold_percent"),
+    total_remuneration_base: getNumberValue(objPreview, "total_remuneration_base") ?? dicResult.decRemunerationAmount,
+    total_remuneration_base_annual: getNumberValue(objPreview, "total_remuneration_base_annual"),
+    ctc_annual: getNumberValue(objPreview, "ctc_annual"),
+    gross_annual: getNumberValue(objPreview, "gross_annual"),
+  };
+}
+
+function formatBasisLabel(strValue: string | null | undefined) {
+  if (!strValue) {
+    return "-";
+  }
+  return strValue
+    .split("_")
+    .filter(Boolean)
+    .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
+    .join(" ");
 }
 
 function getLineAnnualAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
@@ -436,6 +502,7 @@ export default function PayrollResultDetailPage({
   }
 
   const dicStatusTone = getStatusTone(objResult.strStatus);
+  const dicWageRulePreview = getWageRulePreview(objResult);
 
   return (
     <Box
@@ -629,7 +696,7 @@ export default function PayrollResultDetailPage({
               sx={{
                 display: "grid",
                 gap: 3,
-                gridTemplateColumns: { xs: "1fr", lg: "repeat(4, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(5, minmax(0, 1fr))" },
               }}
             >
               <SummaryBlock strTitle={t("employee_summary", "Employee Summary")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />}>
@@ -658,6 +725,23 @@ export default function PayrollResultDetailPage({
                 <DetailValue strLabel={t("working_days", "Working Days")} strValue={String(objResult.decCalendarDays ?? "-")} />
                 <DetailValue strLabel={t("paid_days", "Paid Days")} strValue={String(objResult.decPaidDays ?? "-")} />
                 <DetailValue strLabel={t("lop_days", "LOP Days")} strValue={String(objResult.decLopDays ?? "-")} />
+              </SummaryBlock>
+
+              <SummaryBlock strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 22 }} />}>
+                <DetailValue strLabel={t("wage_total", "Wage Total")} strValue={formatCurrency(dicWageRulePreview.wage_total ?? 0)} />
+                <DetailValue strLabel={t("non_wage_total", "Non-Wage Total")} strValue={formatCurrency(dicWageRulePreview.non_wage_total ?? 0)} />
+                <DetailValue strLabel={t("wage_percent_of_ctc", "Wage % of CTC")} strValue={formatPercent(dicWageRulePreview.wage_percent_of_ctc)} />
+                <DetailValue strLabel={t("minimum_required_wage", "Minimum Required Wage")} strValue={formatOptionalCurrency(dicWageRulePreview.minimum_required_wage)} />
+                <DetailValue strLabel={t("deemed_wage_shortfall", "Deemed Wage Shortfall")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_shortfall ?? 0)} />
+                <DetailValue strLabel={t("deemed_wage_base", "Deemed Wage Base")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_base ?? 0)} />
+                <DetailValue strLabel={t("calculation_basis", "Calculation Basis")} strValue={formatBasisLabel(dicWageRulePreview.calculation_basis)} />
+                <DetailValue strLabel={t("threshold", "Threshold")} strValue={formatPercent(dicWageRulePreview.threshold_percent)} />
+                <Alert severity="info" sx={{ borderRadius: "12px", alignItems: "flex-start" }}>
+                  {t(
+                    "wage_rule_preview_note",
+                    "Wage rule preview is for statutory calculation. Final applicability depends on statutory configuration and payroll processing."
+                  )}
+                </Alert>
               </SummaryBlock>
 
               <SummaryBlock strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 22 }} />} blnDivider={false}>

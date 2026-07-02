@@ -57,6 +57,7 @@ export type PayrollRunStatus =
   | "Open"
   | "Submitted"
   | "Approved"
+  | "Failed"
   | "Processed"
   | "Closed";
 
@@ -564,6 +565,21 @@ export type PayrollStatutoryResultRecord = {
   strRemarks: string | null;
 };
 
+export type WageRulePreviewRecord = {
+  wage_total?: number | null;
+  non_wage_total?: number | null;
+  wage_percent_of_ctc?: number | null;
+  minimum_required_wage?: number | null;
+  deemed_wage_shortfall?: number | null;
+  deemed_wage_base?: number | null;
+  calculation_basis?: string | null;
+  threshold_percent?: number | null;
+  total_remuneration_base?: number | null;
+  total_remuneration_base_annual?: number | null;
+  ctc_annual?: number | null;
+  gross_annual?: number | null;
+};
+
 export type PayrollResultRecord = {
   intID: number;
   intPayrollRunID: number;
@@ -623,7 +639,9 @@ export type PayrollResultRecord = {
   blnPayslipGenerated: boolean;
   dtPayslipGeneratedOn: string | null;
   strRemarks: string | null;
+  objCalculationSnapshot?: Record<string, unknown> | unknown[] | null;
   objCalculationTrace?: Record<string, unknown> | null;
+  dicWageRulePreview?: WageRulePreviewRecord | null;
 };
 
 export type PayrollResultListRecord = PayrollResultRecord;

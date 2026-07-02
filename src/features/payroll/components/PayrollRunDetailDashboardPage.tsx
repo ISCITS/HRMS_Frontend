@@ -100,6 +100,7 @@ function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
     Approved: "Approved",
+    Failed: "Failed",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -112,6 +113,8 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
       ? "Close"
       : strRunStatus === "Processed"
         ? blnHasPayslips ? "Generate Payslips" : "Process"
+        : strRunStatus === "Failed"
+          ? "Process"
         : strRunStatus === "Approved"
           ? "Validate"
           : "Draft";
@@ -119,6 +122,20 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
     strStep,
     blnActive: strStep === strCurrentStep,
   }));
+}
+
+function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boolean) {
+  if (!blnCanProcess) {
+    return false;
+  }
+  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+    return true;
+  }
+  return (
+    objRun.strRunStatus === "Processed" &&
+    (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
+    (objRun.intFailedEmployeeCount || 0) > 0
+  );
 }
 
 function isWorkflowStepEnabled(
@@ -140,7 +157,7 @@ function isWorkflowStepEnabled(
     case "Validate":
       return blnCanValidate && objRun.strRunStatus !== "Closed";
     case "Process":
-      return blnCanProcess && objRun.strRunStatus === "Approved";
+      return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
       return blnCanGeneratePayslip && !blnPayslipLoading && ["Processed", "Closed"].includes(objRun.strRunStatus);
     case "Close":
@@ -164,6 +181,8 @@ function getToneStyles(strTone: Tone) {
 function StatusPill({ strStatus }: { strStatus: string }) {
   const objTone = ["Approved", "Processed"].includes(strStatus)
     ? getToneStyles("green")
+    : strStatus === "Failed"
+      ? getToneStyles("red")
     : strStatus === "Submitted"
       ? getToneStyles("amber")
       : strStatus === "Closed"
@@ -366,6 +385,8 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       if (dicSummary.strStatus === "ValidationFailed") {
         const intBlockingCount = dicSummary.dicValidationSummary?.intBlockingErrorCount ?? 0;
         setStrError(t("process_validation_failed", `Payroll processing blocked by ${intBlockingCount} validation error(s). Resolve the validation messages below and process again.`));
+      } else if (dicSummary.strStatus === "Failed") {
+        setStrError(t("process_failed", "Payroll processing failed. Review the processing summary below and process again after fixing the issue."));
       } else {
         setStrSuccess(t("process_complete", "Payroll processing completed."));
       }
@@ -542,6 +563,10 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const intWarningCount = lstValidationRows.filter((dicIssue) => !dicIssue.blnIsBlocking).length;
   const intProcessedEmployeeCount = objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0;
   const blnReprocessEnabled = blnCanReprocess && !blnSaving && objRun.strRunStatus !== "Closed" && intProcessedEmployeeCount > 0;
+  const lstDisplayedRunStatuses = lstEditableRunStatuses.includes(objRun.strRunStatus)
+    ? lstEditableRunStatuses
+    : [objRun.strRunStatus, ...lstEditableRunStatuses];
+  const blnRunControlsEditable = blnCanEdit && lstEditableRunStatuses.includes(objRun.strRunStatus);
   const strScopeLabel = objRun.strScopeType === "SelectedEmployee"
     ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
     : t("scope_payroll_group", "Payroll Group");
@@ -757,13 +782,15 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                   dicPrevious ? { ...dicPrevious, strRunStatus: objEvent.target.value as PayrollRunStatus } : dicPrevious
                 )
               }
-              disabled={!blnCanEdit || blnSaving || objRun.strRunStatus === "Closed"}
+              disabled={!blnRunControlsEditable || blnSaving}
               controlId="payroll.run-detail.status.select"
               fullWidth
               size="small"
             >
-              {lstEditableRunStatuses.map((strStatus) => (
-                <MenuItem key={strStatus} value={strStatus}>{getPayrollRunStatusLabel(strStatus)}</MenuItem>
+              {lstDisplayedRunStatuses.map((strStatus) => (
+                <MenuItem key={strStatus} value={strStatus} disabled={!lstEditableRunStatuses.includes(strStatus)}>
+                  {getPayrollRunStatusLabel(strStatus)}
+                </MenuItem>
               ))}
             </TextField>
             <Box>
@@ -775,7 +802,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               <Switch
                 checked={blnIsLocked}
                 onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
-                disabled={!blnCanEdit || objRun.strRunStatus === "Closed"}
+                disabled={!blnRunControlsEditable}
                 inputProps={{ "controlId": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
               />
             </Box>
@@ -784,7 +811,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveLockState}
-                disabled={blnSaving}
+                disabled={blnSaving || !blnRunControlsEditable}
                 sx={{ alignSelf: "flex-end", mt: "auto" }}
                 controlId="payroll.run-detail.save-status.button"
               >
@@ -861,7 +888,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         <Box sx={{ ...objCardSx, p: 1.25 }}>
           <Typography sx={{ fontSize: "1rem", fontWeight: 900, mb: 1 }}>{t("process_summary", "Processing Summary")}</Typography>
           <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-            <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("status", "Status")} strValue={objProcessSummary.strStatus} strTone="green" />
+            <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("status", "Status")} strValue={objProcessSummary.strStatus} strTone={objProcessSummary.strStatus === "Failed" ? "red" : "green"} />
             <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("processed", "Processed")} strValue={objProcessSummary.intProcessedEmployeeCount} strTone="blue" />
             <MetricTile objIcon={<ErrorOutlineRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("failed", "Failed")} strValue={objProcessSummary.intFailedEmployeeCount} strTone="red" />
             <MetricTile objIcon={<PaidRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objProcessSummary.decNetPayTotal || 0)} strTone="green" />
