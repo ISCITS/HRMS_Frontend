@@ -1707,18 +1707,22 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       (dicStructure) => dicStructure.intID === intSalaryStructureID
     );
     const lstStructureComponents = dicSelectedStructure?.lstComponents ?? [];
+    const blnIsCurrentAssignedStructure =
+      intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID;
     const lstFallbackCurrentLines =
-      intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID
+      blnIsCurrentAssignedStructure
         ? objDetail?.lstComponentLines ?? []
         : [];
+    const lstReusableOverrides = blnIsCurrentAssignedStructure ? dicRevisionForm.lstOverrides : [];
 
     const dicNextForm = {
       ...dicRevisionForm,
       intSalaryStructureID,
       lstOverrides: buildOverrideRows(
         lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
-        dicRevisionForm.lstOverrides,
-        intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID ? objFlexiAllocation : null,
+        lstReusableOverrides,
+        blnIsCurrentAssignedStructure ? objFlexiAllocation : null,
+        dicSalaryComponentByID,
         t
       ),
       lstFlexiAllocations: buildFlexiAllocationRows(
@@ -1727,7 +1731,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           lstFallbackCurrentLines,
           lstSalaryComponents
         ),
-        intSalaryStructureID === objDetail?.objAssignedStructure?.intSalaryStructureID
+        blnIsCurrentAssignedStructure
           ? objFlexiAllocation.lstAllocationLines
           : [],
         t
@@ -1751,6 +1755,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
             dicPreview.lstComponentLines,
             dicPreview.objFlexiAllocation,
+            dicSalaryComponentByID,
             t
           ),
           lstFlexiAllocations: buildFlexiAllocationRows(
@@ -2765,16 +2770,16 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
             </Stack>
             {[
-              { key: "basic", label: "Basic Salary", amount: dicRevisionSalarySummaryMetrics.decBasicAnnual },
-              { key: "hra", label: "HRA", amount: dicRevisionSalarySummaryMetrics.decHraAnnual },
-              { key: "employer", label: "Employer Contribution", amount: dicRevisionSalarySummaryMetrics.decEmployerContributionAnnual },
+              { key: "basic", label: "Basic Salary", amount: dicSalarySummaryMetrics.decBasicAnnual },
+              { key: "hra", label: "HRA", amount: dicSalarySummaryMetrics.decHraAnnual },
+              { key: "employer", label: "Employer Contribution", amount: dicSalarySummaryMetrics.decEmployerContributionAnnual },
             ].map((dicRow) => (
               <Stack key={dicRow.key} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
                 <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.label}</Typography>
