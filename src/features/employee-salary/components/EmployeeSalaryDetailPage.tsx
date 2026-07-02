@@ -69,8 +69,8 @@ function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-function formatCurrency(decValue: number | null, strCurrencyCode = "INR") {
-  if (decValue === null) {
+function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "INR") {
+  if (decValue === null || typeof decValue === "undefined") {
     return "-";
   }
   return new Intl.NumberFormat("en-IN", {
@@ -175,6 +175,7 @@ type FlexiGridRow = {
   strStatus: string;
   strReasonAction: string;
   decApprovedDeclaredAnnual: number;
+  strStatusCode?: string | null;
 };
 
 type RevisionBreakdownComponentRow = {
@@ -323,6 +324,13 @@ function parseOptionalAmount(strValue: string) {
   return strNormalizedValue.trim() && Number.isFinite(decValue) ? decValue : null;
 }
 
+function formatAmountInput(decValue: number | null | undefined) {
+  if (decValue === null || typeof decValue === "undefined" || !Number.isFinite(decValue)) {
+    return "";
+  }
+  return decValue.toFixed(2).replace(/\.00$/, "").replace(/(\.\d*[1-9])0$/, "$1");
+}
+
 function getNumberValue(objValue: number | string | null | undefined) {
   if (objValue === null || typeof objValue === "undefined" || objValue === "") {
     return 0;
@@ -355,8 +363,8 @@ function normalizeAmountTextOrDefault(strValue: string, objDefaultValue: number 
   return strNormalizedValue.trim() ? strNormalizedValue : normalizeAmountText(formatOptionalDefaultValue(objDefaultValue));
 }
 
-function formatPercentValue(decValue: number | null) {
-  return decValue === null || !Number.isFinite(decValue) ? "" : `(${decValue.toFixed(2)}%)`;
+function formatPercentValue(decValue: number | null | undefined) {
+  return decValue === null || typeof decValue === "undefined" || !Number.isFinite(decValue) ? "" : `(${decValue.toFixed(2)}%)`;
 }
 
 function isFlexiPayComponentName(strValue: string) {
@@ -501,6 +509,27 @@ function formatFlexiDeclarationStatus(strStatus: string | null | undefined) {
     .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
+function getPreferredFlexiDisplayAmount(
+  dicLine: FlexiAllocationLineWithStatus,
+  strDeclarationStatus: string | null | undefined
+) {
+  const strStatusType = getApprovedFlexiStatus(strDeclarationStatus);
+  const decApprovedAnnual =
+    getNumberValue(dicLine.decApprovedAnnualAmount) ||
+    getNumberValue(dicLine.decDeclarationApprovedAnnualAmount);
+  const decDeclaredAnnual =
+    getNumberValue(dicLine.decDeclaredAnnualAmount) ||
+    getNumberValue(dicLine.decAllocationAnnual);
+
+  if (strStatusType === "approved") {
+    return decApprovedAnnual;
+  }
+  if (strStatusType === "submitted") {
+    return decDeclaredAnnual;
+  }
+  return 0;
+}
+
 function formatFlexiApplicableRegime(objLine: FlexiDeclarationLineRecord) {
   return (
     objLine.strEligibilityApplicableRegimeLabel ||
@@ -612,6 +641,8 @@ function calculateSalarySummaryMetrics(
 ): SalarySummaryMetrics {
   const lstComponentLines = objDetail?.lstComponentLines ?? [];
   const decFlexiBucketAnnual = dicFlexiTotals.decFlexiBucketAvailableAnnual;
+  const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
+  const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
   const lstApprovedFlexiRows = lstFlexiRows.filter((dicRow) => dicRow.decApprovedDeclaredAnnual > 0);
   const decApprovedFlexiAnnual = lstApprovedFlexiRows.reduce((decTotal, dicRow) => decTotal + dicRow.decApprovedDeclaredAnnual, 0);
   const decResidualTaxableAnnual = Math.max(decFlexiBucketAnnual - decApprovedFlexiAnnual, 0);
@@ -649,8 +680,6 @@ function calculateSalarySummaryMetrics(
       ? decTotal + getNumberValue(dicLine.decAmountAnnual)
       : decTotal
   ), 0);
-  const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
-  const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
   return {
     decAnnualCtc: decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual,
     decGrossMonthly: decPayableEarningsMonthly + (decFlexiBucketAnnual / 12),
@@ -663,7 +692,7 @@ function calculateSalarySummaryMetrics(
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType !== "approved"
+    strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType === "other"
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",
     blnUsesSubmittedFlexiPreview: decFlexiBucketAnnual > 0 && strFlexiStatusType === "submitted"
@@ -675,7 +704,9 @@ function calculateRevisionSalarySummaryMetrics(
   dicRevisionForm: EmployeeSalaryRevisionFormValues
 ): SalarySummaryMetrics {
   const setFlexiAllocationComponentIDs = new Set(
-    dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
+    dicRevisionForm.lstFlexiAllocations
+      .filter((dicAllocation) => getNumberValue(dicAllocation.decAllocationAnnual) > 0 || getNumberValue(dicAllocation.decAllocationMonthly) > 0)
+      .map((dicAllocation) => dicAllocation.intSalaryComponentID)
   );
   const mapOverridesByComponentID = new Map(
     dicRevisionForm.lstOverrides.map((dicOverride) => [dicOverride.intSalaryComponentID, dicOverride])
@@ -950,23 +981,36 @@ function buildOverrideRows(
 
 function buildFlexiAllocationRows(
   lstSourceLines: FlexiSourceLine[],
-  _lstExistingAllocations: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"] = [],
+  lstExistingAllocations: EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"] = [],
   fnTranslate?: (strKey: string, strFallback: string) => string
 ): EmployeeSalaryFlexiAllocationFormValue[] {
-  void _lstExistingAllocations;
+  const mapExistingAllocationByComponentID = new Map(
+    lstExistingAllocations.map((dicLine) => [dicLine.intSalaryComponentID, dicLine as FlexiAllocationLineWithStatus])
+  );
   return lstSourceLines.map((dicLine) => {
+    const dicExistingAllocation = mapExistingAllocationByComponentID.get(dicLine.intSalaryComponentID);
     const decAnnualLimit =
       dicLine.decAnnualLimit ??
+      dicExistingAllocation?.decAnnualLimit ??
       dicLine.decFlexiMaxYearlyAmount ??
       dicLine.decAnnualLimitAmount ??
       dicLine.decReimbursementMaxClaimYearlyLimit ??
       null;
     const decMonthlyLimit =
       dicLine.decMonthlyLimit ??
+      dicExistingAllocation?.decMonthlyLimit ??
       dicLine.decFlexiMaxMonthlyAmount ??
       dicLine.decMonthlyLimitAmount ??
       dicLine.decReimbursementMaxClaimMonthlyLimit ??
       (decAnnualLimit != null ? decAnnualLimit / 12 : null);
+    const decApprovedAnnual =
+      getNumberValue(dicExistingAllocation?.decApprovedAnnualAmount) ||
+      getNumberValue(dicExistingAllocation?.decDeclarationApprovedAnnualAmount);
+    const decDeclaredAnnual =
+      getNumberValue(dicExistingAllocation?.decDeclaredAnnualAmount) ||
+      getNumberValue(dicExistingAllocation?.decAllocationAnnual);
+    const decDisplayAnnual = decApprovedAnnual > 0 ? decApprovedAnnual : decDeclaredAnnual;
+    const strStatus = formatFlexiDeclarationStatus(dicExistingAllocation?.strStatus ?? dicExistingAllocation?.strDeclarationItemStatus ?? "Not Declared");
     return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
       strComponentName:
@@ -978,8 +1022,10 @@ function buildFlexiAllocationRows(
       blnProofRequired: Boolean(dicLine.blnProofRequired),
       decAnnualLimit,
       decMonthlyLimit,
-      decAllocationMonthly: "",
-      decAllocationAnnual: ""
+      decAllocationMonthly: decDisplayAnnual > 0 ? formatOptionalDefaultValue(decDisplayAnnual / 12) : "",
+      decAllocationAnnual: decDisplayAnnual > 0 ? formatOptionalDefaultValue(decDisplayAnnual) : "",
+      strStatus,
+      strReasonAction: dicExistingAllocation?.strRemarks ?? normalizeFlexiSource(dicExistingAllocation?.strSource ?? "Structure Default")
     };
   });
 }
@@ -1261,7 +1307,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     strFlexiDeclarationStatusNormalized === "submitted" &&
     blnHasDeclaredFlexiAmounts;
   const strFlexiActionLabel = blnCanApproveFlexiDeclaration
-    ? t("employee_salary_approve", "Approve")
+    ? t("employee_salary_review_approve", "Review / Approve")
     : t("employee_salary_view", "View");
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
@@ -1420,11 +1466,11 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     const mapDeclarationLinesByComponentID = new Map<number, FlexiDeclarationLineRecord>(
       (objFlexiDeclarationContext?.lstDeclarationLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])
     );
-    const strOverallDeclarationStatus = formatFlexiDeclarationStatus(
+    const strDeclarationStatusCode =
       objFlexiDeclarationContext?.objDeclaration?.strWorkflowStatus ??
       objDetail?.objFlexiDeclaration?.strStatus ??
-      null
-    );
+      null;
+    const strOverallDeclarationStatus = formatFlexiDeclarationStatus(strDeclarationStatusCode);
     const mapAllocationLinesByComponentID = new Map<number, FlexiAllocationLineWithStatus>(
       objFlexiAllocation.lstAllocationLines
         .filter((dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation))
@@ -1432,8 +1478,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     );
     const setAllComponentIDs = new Set<number>([...mapAllocationLinesByComponentID.keys()]);
 
-    return [...setAllComponentIDs]
-      .map((intSalaryComponentID) => {
+    const lstRows = [...setAllComponentIDs]
+      .map((intSalaryComponentID): FlexiGridRow | null => {
         const dicLine = mapAllocationLinesByComponentID.get(intSalaryComponentID);
         if (!dicLine) {
           return null;
@@ -1443,19 +1489,19 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           dicLine?.strComponentCode ??
           "-";
         const dicDeclarationLine = mapDeclarationLinesByComponentID.get(intSalaryComponentID);
-        const decApprovedAnnual = getNumberValue(dicLine.decApprovedAnnualAmount) || getNumberValue(dicLine.decDeclarationApprovedAnnualAmount);
-        const decSubmittedAnnual = getNumberValue(dicLine.decDeclaredAnnualAmount) || getNumberValue(dicLine.decAllocationAnnual);
-        const decPreviewAnnual = decApprovedAnnual > 0 ? decApprovedAnnual : decSubmittedAnnual;
-        const strStatus = formatFlexiDeclarationStatus(
-          (decSubmittedAnnual > 0 && strOverallDeclarationStatus !== "-" ? strOverallDeclarationStatus : null) ??
+        const decPreviewAnnual = getPreferredFlexiDisplayAmount(dicLine, strDeclarationStatusCode);
+        const strLineStatusCode =
           dicDeclarationLine?.strDeclarationItemStatus ??
           dicLine.strStatus ??
           dicLine.strDeclarationItemStatus ??
-          "Not Declared"
+          strDeclarationStatusCode ??
+          "Not Declared";
+        const strStatus = formatFlexiDeclarationStatus(
+          (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? strLineStatusCode : "Not Declared")
         );
         const strReasonAction = dicDeclarationLine?.strDeclarationItemRemarks
           ?? dicLine.strRemarks
-          ?? (decSubmittedAnnual > 0 && strOverallDeclarationStatus !== "-" ? "ESS Declaration" : normalizeFlexiSource(dicLine.strSource ?? "Structure Default"));
+          ?? (decPreviewAnnual > 0 && strOverallDeclarationStatus !== "-" ? "ESS Declaration" : normalizeFlexiSource(dicLine.strSource ?? "Structure Default"));
 
         return {
           intSalaryComponentID,
@@ -1469,10 +1515,16 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             : t("employee_salary_no", "No"),
           strStatus,
           strReasonAction,
-          decApprovedDeclaredAnnual: decPreviewAnnual
+          decApprovedDeclaredAnnual: decPreviewAnnual,
+          strStatusCode: strLineStatusCode
         };
-      })
-      .filter((dicRow): dicRow is FlexiGridRow => Boolean(dicRow && dicRow.strComponentName !== "-"));
+      });
+    return lstRows.reduce<FlexiGridRow[]>((lstResolvedRows, dicRow) => {
+      if (dicRow && dicRow.strComponentName !== "-") {
+        lstResolvedRows.push(dicRow);
+      }
+      return lstResolvedRows;
+    }, []);
   }, [objDetail?.objFlexiDeclaration?.strStatus, objFlexiAllocation, objFlexiDeclarationContext, strCurrencyCode, t]);
   const dicSalarySummaryMetrics = useMemo(
     () => calculateSalarySummaryMetrics(objDetail, dicFlexiTotals, lstFlexiRows),
@@ -1482,6 +1534,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     return (objDetail?.lstComponentLines ?? [])
       .filter((dicLine) =>
         !isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
+        !isFlexiAllocationLine(dicLine) &&
         !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
         Number(dicLine.decAmountAnnual ?? 0) > 0
       )
@@ -2006,49 +2059,35 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>{t("employee_salary_flexi_component", "Flexi Component")}</th>
-                      <th>{t("employee_salary_annual_limit", "Annual Limit")}</th>
-                      <th>{t("employee_salary_monthly_limit", "Monthly Limit")}</th>
-                      <th>{t("employee_salary_employee_allocation_annual", "Allocated Annual")}</th>
-                      <th>{t("employee_salary_employee_allocation_monthly", "Allocated Monthly")}</th>
-                      <th>{t("employee_salary_tax_treatment", "Tax Treatment")}</th>
+                      <th>{t("employee_salary_flexi_component", "Component")}</th>
+                      <th>{t("employee_salary_eligibility", "Eligibility")}</th>
+                      <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
+                      <th>{t("employee_salary_approved_declared_annual", "Approved / Declared Annual")}</th>
+                      <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
+                      <th>{t("employee_salary_proof_required", "Proof Required")}</th>
+                      <th>{t("employee_salary_status", "Status")}</th>
+                      <th>{t("employee_salary_reason_action", "Reason / Action")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dicRevisionForm.lstFlexiAllocations.length === 0 ? (
                       <tr>
-                        <td className={styles.emptyState} colSpan={6}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
+                        <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
                       </tr>
-                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation, intIndex) => (
+                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => (
                       <tr key={dicAllocation.intSalaryComponentID}>
                         <td>
                           <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
-                          <Typography sx={{ color: "#64748b", fontSize: "0.75rem" }}>
-                            {`${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
-                          </Typography>
                         </td>
+                        <td>{t("employee_salary_eligible", "Eligible")}</td>
                         <td>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</td>
-                        <td>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</td>
                         <td>
                           <TextField
                             value={dicAllocation.decAllocationAnnual}
                             placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
                             size="small"
                             sx={objOverrideValueFieldSx}
-                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                              ...dicPrev,
-                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
-                                if (intRowIndex !== intIndex) {
-                                  return dicRow;
-                                }
-                                const decAnnual = parseOptionalAmount(objEvent.target.value);
-                                return {
-                                  ...dicRow,
-                                  decAllocationAnnual: objEvent.target.value,
-                                  decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
-                                };
-                              })
-                            }))}
+                            disabled
                           />
                         </td>
                         <td>
@@ -2057,23 +2096,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                             placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
                             size="small"
                             sx={objOverrideValueFieldSx}
-                            onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                              ...dicPrev,
-                              lstFlexiAllocations: dicPrev.lstFlexiAllocations.map((dicRow, intRowIndex) => {
-                                if (intRowIndex !== intIndex) {
-                                  return dicRow;
-                                }
-                                const decMonthly = parseOptionalAmount(objEvent.target.value);
-                                return {
-                                  ...dicRow,
-                                  decAllocationMonthly: objEvent.target.value,
-                                  decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
-                                };
-                              })
-                            }))}
+                            disabled
                           />
                         </td>
-                        <td style={{ textTransform: "capitalize" }}>{dicAllocation.strTaxTreatment || "-"}</td>
+                        <td>{dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}</td>
+                        <td>{dicAllocation.strStatus || t("employee_salary_not_declared", "Not Declared")}</td>
+                        <td>{dicAllocation.strReasonAction || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2494,7 +2522,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                             return {
                               ...dicRow,
                               decAmountAnnual: objEvent.target.value,
-                              decAmountMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                              decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                             };
                           })
                         }))}
@@ -2590,7 +2618,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                                 return {
                                   ...dicRow,
                                   decAllocationAnnual: objEvent.target.value,
-                                  decAllocationMonthly: decAnnual !== null ? String(decAnnual / 12) : ""
+                                  decAllocationMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                                 };
                               })
                             }))}
@@ -2612,7 +2640,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                                 return {
                                   ...dicRow,
                                   decAllocationMonthly: objEvent.target.value,
-                                  decAllocationAnnual: decMonthly !== null ? String(decMonthly * 12) : ""
+                                  decAllocationAnnual: decMonthly !== null ? formatAmountInput(decMonthly * 12) : ""
                                 };
                               })
                             }))}
@@ -2636,40 +2664,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
           </Stack>
 
-          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
-            <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-              {t("employee_salary_current_before_declaration", "Current (Before Declaration)")}
-            </Typography>
-          </Box>
-
           <Stack spacing={1.25}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
-            </Stack>
-
-            {lstRevisionCurrentBreakdownComponentRows.map((dicRow) => (
-              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
-                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
-                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
-                  {dicRow.decPercentOfCtc !== null ? (
-                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
-                  ) : null}
-                </Stack>
-              </Stack>
-            ))}
-
-            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+            <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 0.25 }}>
               <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+                {t("employee_salary_current_before_declaration", "Current (Before Declaration)")}
               </Typography>
             </Box>
-
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
@@ -2678,19 +2678,22 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
             </Stack>
-
-            {lstRevisionLiveBreakdownComponentRows.map((dicRow) => (
-              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
-                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexShrink: 0 }}>
-                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decAnnualAmount, strCurrencyCode)}</Typography>
-                  {dicRow.decPercentOfCtc !== null ? (
-                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{formatPercentValue(dicRow.decPercentOfCtc)}</Typography>
-                  ) : null}
-                </Stack>
+            {[
+              { key: "basic", label: "Basic Salary", amount: dicRevisionSalarySummaryMetrics.decBasicAnnual },
+              { key: "hra", label: "HRA", amount: dicRevisionSalarySummaryMetrics.decHraAnnual },
+              { key: "employer", label: "Employer Contribution", amount: dicRevisionSalarySummaryMetrics.decEmployerContributionAnnual },
+            ].map((dicRow) => (
+              <Stack key={dicRow.key} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.label}</Typography>
+                <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.amount, strCurrencyCode)}</Typography>
               </Stack>
             ))}
 
+            <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+              <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
+                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+              </Typography>
+            </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_flexi_basket_available", "Flexi Bucket Available")}</Typography>
               <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography>
@@ -2898,11 +2901,11 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
           </Stack>
 
-          <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
+          {/* <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
             <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
               {t("employee_salary_current_before_declaration", "Flexi Declaration Status")}
             </Typography>
-          </Box>
+          </Box> */}
 
           <Stack spacing={1.25}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>

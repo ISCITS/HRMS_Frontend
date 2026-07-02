@@ -257,6 +257,8 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
   decMonthlyLimit: number | null;
   decAllocationMonthly: string;
   decAllocationAnnual: string;
+  strStatus?: string;
+  strReasonAction?: string;
 };
 
 export type EmployeeSalaryRevisionFormValues = {
