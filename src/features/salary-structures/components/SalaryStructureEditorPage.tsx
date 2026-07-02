@@ -821,6 +821,33 @@ export default function SalaryStructureEditorPage({
   function recalculateDerivedLineAmounts(lstComponents: SalaryStructureLineFormValue[]) {
     const dicComputedMonthlyByComponentID = new Map<number, number>();
     const dicFormulaVariables: Record<string, number> = {};
+    const dicFormulaAggregates = {
+      wageMonthly: 0,
+      nonWageMonthly: 0,
+      ctcAnnual: 0,
+      grossAnnual: 0,
+    };
+
+    function setFormulaVariable(strName: string, fltValue: number) {
+      dicFormulaVariables[strName] = fltValue;
+      dicFormulaVariables[strName.toLowerCase()] = fltValue;
+    }
+
+    function updateStatutoryFormulaVariables() {
+      const decMinimumRequiredMonthly = dicFormulaAggregates.ctcAnnual > 0
+        ? (dicFormulaAggregates.ctcAnnual * 0.5) / 12
+        : 0;
+      const decShortfallMonthly = Math.max(decMinimumRequiredMonthly - dicFormulaAggregates.wageMonthly, 0);
+      setFormulaVariable("WAGE_TOTAL", Number(dicFormulaAggregates.wageMonthly.toFixed(2)));
+      setFormulaVariable("NON_WAGE_TOTAL", Number(dicFormulaAggregates.nonWageMonthly.toFixed(2)));
+      setFormulaVariable("DEEMED_WAGE", Number((dicFormulaAggregates.wageMonthly + decShortfallMonthly).toFixed(2)));
+      setFormulaVariable("DEEMED_WAGE_BASE", Number((dicFormulaAggregates.wageMonthly + decShortfallMonthly).toFixed(2)));
+      setFormulaVariable("DEEMED_WAGE_SHORTFALL", Number(decShortfallMonthly.toFixed(2)));
+      setFormulaVariable("CTC_ANNUAL", Number(dicFormulaAggregates.ctcAnnual.toFixed(2)));
+      setFormulaVariable("GROSS_ANNUAL", Number(dicFormulaAggregates.grossAnnual.toFixed(2)));
+    }
+
+    updateStatutoryFormulaVariables();
     return [...lstComponents]
       .sort((dicLeft, dicRight) =>
         Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
@@ -846,8 +873,10 @@ export default function SalaryStructureEditorPage({
           ? { ...dicLine, fltFixedAmount: fltCalculatedAmount !== null ? formatCalculatedLineAmount(fltCalculatedAmount) : "" }
           : dicLine;
         const fltResolvedAmount = parseLineAmount(dicCalculatedLine.fltFixedAmount);
+        const dicComponent = dicComponentByID.get(Number(dicCalculatedLine.intSalaryComponentID));
         if (dicCalculatedLine.intSalaryComponentID !== "" && fltResolvedAmount !== null) {
-          dicComputedMonthlyByComponentID.set(Number(dicCalculatedLine.intSalaryComponentID), fltResolvedAmount);
+          const intSalaryComponentID = Number(dicCalculatedLine.intSalaryComponentID);
+          dicComputedMonthlyByComponentID.set(intSalaryComponentID, fltResolvedAmount);
           const strRawCode = dicCalculatedLine.strComponentCode.trim();
           const strSanitizedCode = sanitizeFormulaVariable(strRawCode);
           if (strRawCode) {
@@ -858,6 +887,23 @@ export default function SalaryStructureEditorPage({
             dicFormulaVariables[strSanitizedCode] = fltResolvedAmount;
             dicFormulaVariables[strSanitizedCode.toLowerCase()] = fltResolvedAmount;
           }
+          if (dicComponent?.blnIncludedInCtc !== false) {
+            dicFormulaAggregates.ctcAnnual += fltResolvedAmount * 12;
+            if (isWageComponent({ strWageType: dicComponent.strWageType, intSalaryComponentID }, dicComponentByID)) {
+              dicFormulaAggregates.wageMonthly += fltResolvedAmount;
+            } else {
+              dicFormulaAggregates.nonWageMonthly += fltResolvedAmount;
+            }
+          }
+          if (
+            dicComponent
+            && !dicComponent.blnIsEmployerContribution
+            && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "deduction"
+            && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "information"
+          ) {
+            dicFormulaAggregates.grossAnnual += fltResolvedAmount * 12;
+          }
+          updateStatutoryFormulaVariables();
         }
         return lstCalculated.map((dicExistingLine) =>
           dicExistingLine.strRowID === dicCalculatedLine.strRowID ? dicCalculatedLine : dicExistingLine
@@ -1805,6 +1851,9 @@ export default function SalaryStructureEditorPage({
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "formula"}
                         controlId="salary-structures.editor.line.formula.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
+                        helperText={normalizeSelectToken(dicLine.strValueSource) === "formula"
+                          ? t("formula_expression_help", "Available system variables: WAGE_TOTAL, NON_WAGE_TOTAL, DEEMED_WAGE_BASE, DEEMED_WAGE_SHORTFALL, CTC_ANNUAL, GROSS_ANNUAL. Example: DEEMED_WAGE_BASE * 0.08")
+                          : " "}
                         sx={{ minWidth: 188 }}
                       />
                     </td>

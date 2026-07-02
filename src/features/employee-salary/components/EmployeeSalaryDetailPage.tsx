@@ -472,12 +472,13 @@ function calculateWageBreakdownMetrics(
   decWageAnnual: number,
   decNonWageAnnual: number
 ) {
+  const decResolvedNonWageAnnual = Math.max(decAnnualCtc - decWageAnnual, decNonWageAnnual, 0);
   const decMinimumRequiredWageAnnual = decAnnualCtc * 0.5;
   const decDeemedWageShortfallAnnual = Math.max(decMinimumRequiredWageAnnual - decWageAnnual, 0);
   const decDeemedWageAnnual = decWageAnnual + decDeemedWageShortfallAnnual;
   return {
     decWageAnnual,
-    decNonWageAnnual,
+    decNonWageAnnual: decResolvedNonWageAnnual,
     decMinimumRequiredWageAnnual,
     decDeemedWageShortfallAnnual,
     decDeemedWageAnnual,
@@ -485,11 +486,10 @@ function calculateWageBreakdownMetrics(
   };
 }
 
-function isCtcIncludedEarning(dicLine: EmployeeSalaryComponentLine) {
+function isCtcIncludedWagePreviewComponent(dicLine: EmployeeSalaryComponentLine) {
   return !isFlexiBucketLine(dicLine) &&
     !isFlexiAllocationLine(dicLine) &&
     !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
-    !isEmployerContributionCategory(dicLine.strComponentCategory) &&
     !isDeductionCategory(dicLine.strComponentCategory) &&
     !isInformationCategory(dicLine.strComponentCategory) &&
     !isNonCtcReimbursementLine(dicLine) &&
@@ -743,7 +743,7 @@ function calculateSalarySummaryMetrics(
     return decTotal + getNumberValue(dicLine.decAmountMonthly);
   }, 0);
   const dicWageMetrics = lstComponentLines.reduce((dicTotal, dicLine) => {
-    if (!isCtcIncludedEarning(dicLine)) {
+    if (!isCtcIncludedWagePreviewComponent(dicLine)) {
       return dicTotal;
     }
     const decAnnualAmount = getNumberValue(dicLine.decAmountAnnual);
@@ -822,7 +822,6 @@ function calculateRevisionSalarySummaryMetrics(
     }
     if ((isEmployerContributionCategory(strCategory) || strComponentName.toLowerCase().includes("employer provident fund")) && dicComponent.blnIncludedInCtc !== false) {
       dicTotal.decEmployerContributionAnnual += decAnnualAmount;
-      return dicTotal;
     }
     if (isDeductionCategory(strCategory) || isInformationCategory(strCategory) || blnIsFlexiBucket || blnIsFlexiAllocation) {
       return dicTotal;
@@ -2843,9 +2842,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
 
-            {dicRevisionSalarySummaryMetrics.blnUsesSubmittedFlexiPreview ? (
-              <Alert severity="info">Demo mode: Submitted Flexi values are included for preview only.</Alert>
-            ) : null}
             {dicRevisionSalarySummaryMetrics.strFlexiWarning ? (
               <Alert severity="warning">{dicRevisionSalarySummaryMetrics.strFlexiWarning}</Alert>
             ) : null}
@@ -3131,9 +3127,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Base</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
-            {dicSalarySummaryMetrics.blnUsesSubmittedFlexiPreview ? (
-              <Alert severity="info">Demo mode: Submitted Flexi values are included for preview only.</Alert>
-            ) : null}
+
             {dicSalarySummaryMetrics.strFlexiWarning ? (
               <Alert severity="warning">{dicSalarySummaryMetrics.strFlexiWarning}</Alert>
             ) : null}

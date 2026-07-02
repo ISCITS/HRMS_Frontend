@@ -1153,7 +1153,7 @@ export default function SalaryComponentEditorPage({
               inputProps={{ ...buildInputTestIdProps("salary-components.editor.default-percentage-value.input"), min: 0, step: "0.01" }}
             />
           ) : null}
-          {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods.")} fullWidth controlId="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
+          {blnShowFormulaExpression ? <TextField label={t("formula_expression", "Formula Expression")} value={dicForm.strFormulaExpression} onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("formula_expression_help", "Applicable only for formula-based calculation methods. Available system variables: WAGE_TOTAL, NON_WAGE_TOTAL, DEEMED_WAGE_BASE, DEEMED_WAGE_SHORTFALL, CTC_ANNUAL, GROSS_ANNUAL. Example: DEEMED_WAGE_BASE * 0.08")} fullWidth controlId="salary-components.editor.formula-expression.input" inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")} sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }} /> : null}
         </Box>
         {blnShowManualCalculationHelp ? (
           <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 1.5 }}>
