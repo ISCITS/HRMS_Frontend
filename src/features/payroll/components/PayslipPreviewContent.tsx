@@ -6,6 +6,8 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { PayslipLineRecord, PayslipPreviewRecord } from "@/features/payroll/types";
 
+const PAYSLIP_COMPANY_DISPLAY_NAME = "ABC India Pvt Ltd";
+
 type PayslipPreviewContentProps = {
   objPayslip: PayslipPreviewRecord;
 };
@@ -133,7 +135,7 @@ export default function PayslipPreviewContent({
       >
         <Box>
           <Typography sx={{ color: "#173b63", fontSize: "1.35rem", fontWeight: 900 }}>
-            {dicCompany.strCompanyName}
+            {PAYSLIP_COMPANY_DISPLAY_NAME}
           </Typography>
           <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
             {dicCompany.strCompanyAddress || ""}
