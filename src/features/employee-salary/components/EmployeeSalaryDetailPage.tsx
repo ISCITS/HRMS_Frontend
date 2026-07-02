@@ -742,27 +742,6 @@ function calculateSalarySummaryMetrics(
     }
     return decTotal + getNumberValue(dicLine.decAmountMonthly);
   }, 0);
-<<<<<<< Updated upstream
-  const decCtcIncludedEarningsAnnual = lstComponentLines.reduce((decTotal, dicLine) => (
-    isCtcIncludedEarning(dicLine) ? decTotal + getNumberValue(dicLine.decAmountAnnual) : decTotal
-  ), 0);
-  const decPayableEarningsMonthly = lstComponentLines.reduce((decTotal, dicLine) => {
-    if (!isCtcIncludedEarning(dicLine)) {
-      return decTotal;
-    }
-    return decTotal + getNumberValue(dicLine.decAmountMonthly);
-  }, 0);
-  const decBasicAnnual = lstComponentLines.reduce((decTotal, dicLine) => (
-    isBasicComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "")
-      ? decTotal + getNumberValue(dicLine.decAmountAnnual)
-      : decTotal
-  ), 0);
-  const decHraAnnual = lstComponentLines.reduce((decTotal, dicLine) => (
-    isHraComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "")
-      ? decTotal + getNumberValue(dicLine.decAmountAnnual)
-      : decTotal
-  ), 0);
-  const decAnnualCtc = decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual;
   const dicWageMetrics = lstComponentLines.reduce((dicTotal, dicLine) => {
     if (!isCtcIncludedEarning(dicLine)) {
       return dicTotal;
@@ -775,22 +754,14 @@ function calculateSalarySummaryMetrics(
     }
     return dicTotal;
   }, { decWageAnnual: 0, decNonWageAnnual: 0 });
+  const decAnnualCtc = dicBaseSummaryMetrics.decAnnualCtc;
   return {
-    decAnnualCtc,
-    decGrossMonthly: decPayableEarningsMonthly + (decFlexiBucketAnnual / 12),
-    decBasicAnnual,
-    decHraAnnual,
-    decEmployerContributionAnnual,
-    decEmployerContributionMonthly: decEmployerContributionAnnual / 12,
-=======
-  return {
-    decAnnualCtc: dicBaseSummaryMetrics.decAnnualCtc,
     decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly,
+    decAnnualCtc,
     decBasicAnnual: dicBaseSummaryMetrics.decBasicAnnual,
     decHraAnnual: dicBaseSummaryMetrics.decHraAnnual,
     decEmployerContributionAnnual: dicBaseSummaryMetrics.decEmployerContributionAnnual,
     decEmployerContributionMonthly: dicBaseSummaryMetrics.decEmployerContributionAnnual / 12,
->>>>>>> Stashed changes
     decEmployeeDeductionsMonthly,
     decFlexiBucketAnnual,
     decApprovedFlexiAnnual,

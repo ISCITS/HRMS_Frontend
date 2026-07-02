@@ -17,11 +17,7 @@ type ActiveStatusSwitchProps = Omit<SwitchProps, "checked" | "onChange" | "color
 
 export default function ActiveStatusSwitch({
   blnIsActive,
-<<<<<<< Updated upstream
-  controlId,
-=======
   controlId = "active-status-switch.input",
->>>>>>> Stashed changes
   disabled,
   onChange,
   inputProps,
@@ -34,24 +30,16 @@ export default function ActiveStatusSwitch({
   const strStateLabel = blnIsActive ? "Active ON" : "Inactive OFF";
   const objInputProps = (inputProps ?? {}) as ActiveStatusSwitchInputProps;
   const objResolvedInputProps = {
-<<<<<<< Updated upstream
-    ...inputProps,
-    ...(testId ? { "data-testid": testId } : {}),
-    controlId: typeof inputProps?.controlId === "string" ? inputProps.controlId : "active-status-switch.input",
-=======
     ...objInputProps,
+    ...(testId ? { "data-testid": testId } : {}),
+    controlId: typeof objInputProps.controlId === "string" ? objInputProps.controlId : controlId,
     "data-controlid": objInputProps["data-controlid"] ?? objInputProps.controlId ?? controlId,
->>>>>>> Stashed changes
     "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;
 
   return (
     <Switch
       {...objProps}
-<<<<<<< Updated upstream
-      controlId={controlId ?? "active-status-switch"}
-=======
->>>>>>> Stashed changes
       checked={blnIsActive}
       disabled={disabled}
       color="primary"
