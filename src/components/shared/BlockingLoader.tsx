@@ -77,8 +77,7 @@ export default function BlockingLoader({
         inset: 0,
         display: "grid",
         placeItems: "center",
-        background:
-          "linear-gradient(180deg, rgba(246, 250, 255, 0.92) 0%, rgba(241, 247, 255, 0.94) 100%)",
+        background: "transparent",
         zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
         pointerEvents: "auto",
       }}
@@ -107,8 +106,7 @@ export default function BlockingLoader({
     <Backdrop
       open={blnOpen}
       sx={{
-        background:
-          "linear-gradient(180deg, rgba(246, 250, 255, 0.92) 0%, rgba(241, 247, 255, 0.94) 100%)",
+        background: "transparent",
         zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
       }}
     >
