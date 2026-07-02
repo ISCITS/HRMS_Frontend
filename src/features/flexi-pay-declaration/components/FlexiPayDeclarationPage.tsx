@@ -1,6 +1,7 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
 import FamilyRestroomRoundedIcon from "@mui/icons-material/FamilyRestroomRounded";
@@ -431,6 +432,9 @@ type DisplayedLineRecord = {
   decMultiplier: number;
 };
 
+const lstEssEditableWorkflowStatuses = ["draft", "returned", "released", "rejected"];
+const lstEssResubmittableWorkflowStatuses = ["returned", "released", "rejected"];
+
 export default function FlexiPayDeclarationPage() {
   const objParams = useParams<{ intDeclarationID?: string | string[] }>();
   const objRouter = useRouter();
@@ -469,6 +473,8 @@ export default function FlexiPayDeclarationPage() {
   const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
   const [blnSubmitDialogOpen, setBlnSubmitDialogOpen] = useState(false);
   const [strReviewActionMode, setStrReviewActionMode] = useState<"reject" | null>(null);
+  const [blnShowReviewReadOnlyNotice, setBlnShowReviewReadOnlyNotice] = useState(true);
+  const [blnShowReviewActionNotice, setBlnShowReviewActionNotice] = useState(true);
   const strActiveFinancialYearCode = objContext?.strFinancialYearCode || strFinancialYearCode;
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
@@ -521,12 +527,12 @@ export default function FlexiPayDeclarationPage() {
   const strNormalizedWorkflowStatus = normalizeText(strWorkflowStatus);
   const blnCanEditDeclaration = Boolean(
     !blnReviewEntryMode &&
-    ["draft", "returned"].includes(strNormalizedWorkflowStatus) &&
+    lstEssEditableWorkflowStatuses.includes(strNormalizedWorkflowStatus) &&
     objContext?.blnCanDeclare
   );
   const blnShowEssDraftAction = Boolean(
     !blnReviewEntryMode &&
-    ["draft", "returned"].includes(strNormalizedWorkflowStatus) &&
+    lstEssEditableWorkflowStatuses.includes(strNormalizedWorkflowStatus) &&
     objContext?.blnCanDeclare
   );
   const blnShowEssSubmitAction = blnShowEssDraftAction;
@@ -1289,14 +1295,42 @@ export default function FlexiPayDeclarationPage() {
       {objContext?.blnHasHiddenComponents ? (
         <Alert severity="info">Some components are hidden because eligibility conditions are not met.</Alert>
       ) : null}
-      {blnReviewEntryMode ? (
-        <Alert severity="info">Approval Review: declaration amount fields are read-only here unless HR override is explicitly supported.</Alert>
+      {blnReviewEntryMode && blnShowReviewReadOnlyNotice ? (
+        <Alert
+          severity="info"
+          action={(
+            <IconButton
+              aria-label="Close review read only notice"
+              color="inherit"
+              size="small"
+              onClick={() => setBlnShowReviewReadOnlyNotice(false)}
+            >
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          )}
+        >
+          Approval Review: declaration amount fields are read-only here unless HR override is explicitly supported.
+        </Alert>
       ) : null}
       {!blnShowWorkflowActions && strNormalizedWorkflowStatus === "submitted" ? (
         <Alert severity="info">Submitted values are shown for preview. Payroll should use approved or locked values after approval.</Alert>
       ) : null}
-      {blnShowWorkflowActions ? (
-        <Alert severity="info">Approval Review: use Approve, Reject, Lock or Release based on the declaration status.</Alert>
+      {blnShowWorkflowActions && blnShowReviewActionNotice ? (
+        <Alert
+          severity="info"
+          action={(
+            <IconButton
+              aria-label="Close review action notice"
+              color="inherit"
+              size="small"
+              onClick={() => setBlnShowReviewActionNotice(false)}
+            >
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          )}
+        >
+          Approval Review: use Approve, Reject, Lock or Release based on the declaration status.
+        </Alert>
       ) : null}
 
       <Paper
@@ -1351,7 +1385,7 @@ export default function FlexiPayDeclarationPage() {
                   }
                 }}
               >
-                {strNormalizedWorkflowStatus === "returned" ? "Resubmit" : "Submit"}
+                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? "Resubmit" : "Submit"}
               </Button>
             ) : null}
             {blnShowWorkflowActions ? (
@@ -1528,7 +1562,7 @@ export default function FlexiPayDeclarationPage() {
               <Stack spacing={1.25}>
                 {strError ? <Alert severity="error">{strError}</Alert> : null}
                 <Alert severity="info">
-                  Please review your declared amounts before submitting. Once submitted, the declaration moves for approval and cannot be edited unless it is returned.
+                  Please review your declared amounts before submitting. Once submitted, the declaration moves for approval and cannot be edited unless it is returned, released, or rejected back to you.
                 </Alert>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   <Chip label={`Declared Flexi: ${formatCurrency(decDeclaredAnnual, strCurrencyCode)}`} />
@@ -1554,7 +1588,7 @@ export default function FlexiPayDeclarationPage() {
                 disabled={blnSaving}
                 onClick={() => void handleConfirmSubmit()}
               >
-                {strNormalizedWorkflowStatus === "returned" ? "Confirm Resubmit" : "Confirm Submit"}
+                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? "Confirm Resubmit" : "Confirm Submit"}
               </Button>
           </DialogActions>
           </Dialog>
