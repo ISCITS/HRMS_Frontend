@@ -241,6 +241,17 @@ function isPayrollContainerMenu(objItem: MenuItem): boolean {
   );
 }
 
+function isEmployeeServicesContainerMenu(objItem: MenuItem): boolean {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    strRoute === "/employee-services" ||
+    strModuleCode === "employee_services" ||
+    strModuleName === "employee services"
+  );
+}
+
 function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
   if (hasRouteInReportsBranch(lstItems, "/reports/payslips")) {
     return lstItems;
@@ -335,7 +346,7 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
     const blnShouldAppendHere =
       !blnInserted &&
       objItem.lstChildren.length > 0 &&
-      isPayrollContainerMenu(objItem) &&
+      isEmployeeServicesContainerMenu(objItem) &&
       !hasRoute(lstChildren, "/payroll/reimbursements");
 
     if (!blnShouldAppendHere) {
@@ -372,7 +383,7 @@ function appendGeneratedFNFMenu(lstItems: MenuItem[]): MenuItem[] {
     const blnShouldAppendHere =
       !blnInserted &&
       objItem.lstChildren.length > 0 &&
-      isPayrollContainerMenu(objItem) &&
+      isEmployeeServicesContainerMenu(objItem) &&
       !hasRoute(lstChildren, "/payroll/fnf-settlements");
 
     if (!blnShouldAppendHere) {
@@ -422,7 +433,7 @@ function appendGeneratedLoansAdvancesMenu(lstItems: MenuItem[]): MenuItem[] {
     const blnShouldAppendHere =
       !blnInserted &&
       objItem.lstChildren.length > 0 &&
-      isPayrollContainerMenu(objItem) &&
+      isEmployeeServicesContainerMenu(objItem) &&
       !hasRoute(lstChildren, "/payroll/loans-advances");
 
     if (!blnShouldAppendHere) {
@@ -492,6 +503,10 @@ function getMenuIdentityKey(objItem: MenuItem): string {
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
 
   if (objItem.lstChildren.length > 0) {
+    if (isEmployeeServicesContainerMenu(objItem)) {
+      return "group:employee-services";
+    }
+
     if (isDirectReportsMenu(objItem) || strRoute.startsWith("/reports/")) {
       return "group:reports";
     }
@@ -594,8 +609,20 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
 
 function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
   return collapseDuplicateMenuBranches(
-    removeReportsFromPayrollBranches(
-      promoteDashboardMenu(lstItems),
+    appendGeneratedReportsMenu(
+      appendGeneratedPayslipMenu(
+        appendGeneratedEssLoansAdvancesMenu(
+          appendGeneratedFNFMenu(
+            appendGeneratedLoansAdvancesMenu(
+              appendGeneratedReimbursementsMenu(
+                removeReportsFromPayrollBranches(
+                  promoteDashboardMenu(lstItems),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -942,6 +969,10 @@ export default function DynamicMenu({
 
     if (strRoute.includes("/reports/statutory") || strModuleCode.includes("statutory_report")) {
       return strModuleName || "Statutory Reports";
+    }
+
+    if (strModuleCode === "employee_services" || strModuleName.trim().toLowerCase() === "employee services") {
+      return strModuleName || "Employee Services";
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {

@@ -22,6 +22,7 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { createInitialLoanAdvanceForm, loanAdvanceService, toLoanAdvanceForm } from "@/features/payroll/services/loanAdvanceService";
 import type { LoanAdvanceCategoryRecord, LoanAdvanceFormValues, LoanAdvanceRecord, LoanAdvanceScheduleRecord } from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { authApiService } from "@/services/auth/AuthApiService";
 
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
@@ -143,6 +144,10 @@ function getScheduleOutstanding(objSchedule?: LoanAdvanceScheduleRecord | null) 
   };
 }
 
+function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRoute: string | null; lstChildren: never[] }[] }[], strRoute: string): boolean {
+  return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
+}
+
 export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
@@ -155,6 +160,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [objPolicy, setObjPolicy] = useState<LoanAdvanceCategoryRecord | null>(null);
   const [intTab, setIntTab] = useState(0);
   const [blnLoading, setBlnLoading] = useState(Boolean(intLoanAdvanceID));
+  const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
@@ -179,7 +185,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction])?.some((strAlias) => canDoAny(strAlias)) ?? false;
-  const blnCanView = canViewAny() || canLoanAction("view");
+  const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
   const blnCanEdit = canLoanAction("edit");
   const blnCanAdd = canLoanAction("create");
   const blnCanSubmit = canLoanAction("submit");
@@ -201,6 +207,34 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const lstDirectActionSchedules = useMemo(() => lstSchedule.filter((objSchedule) => lstDirectActionScheduleStatuses.includes(objSchedule.strScheduleStatus)), [lstSchedule]);
   const objSelectedActionSchedule = useMemo(() => lstDirectActionSchedules.find((objSchedule) => objSchedule.intID === Number(dicActionValues.intScheduleID)) || null, [lstDirectActionSchedules, dicActionValues.intScheduleID]);
   const objSelectedScheduleOutstanding = useMemo(() => getScheduleOutstanding(objSelectedActionSchedule), [objSelectedActionSchedule]);
+  useEffect(() => {
+    let blnMounted = true;
+
+    async function loadMenuFallback() {
+      try {
+        const objMenu = await authApiService.getMenu();
+        if (!blnMounted) {
+          return;
+        }
+        setBlnHasMenuFallbackAccess(
+          hasMenuRoute(
+            objMenu.Data.lstMenuItems ?? [],
+            blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances",
+          ),
+        );
+      } catch {
+        if (blnMounted) {
+          setBlnHasMenuFallbackAccess(false);
+        }
+      }
+    }
+
+    void loadMenuFallback();
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnIsEssMode]);
+
   const blnHasActiveWarning = useMemo(() => {
     if (!dicValues.intEmployeeID) return false;
     return lstExistingLoans.some((objLoan) =>

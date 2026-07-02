@@ -15,6 +15,7 @@ import { loanAdvanceService } from "@/features/payroll/services/loanAdvanceServi
 import type { LoanAdvanceCategoryRecord, LoanAdvanceRecord } from "@/features/payroll/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { authApiService } from "@/services/auth/AuthApiService";
 
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
@@ -42,6 +43,10 @@ function getEmployeeName(objRow: LoanAdvanceRecord) {
   return objRow.objEmployee?.strEmployeeName || objRow.objEmployee?.strEmployeeCode || "-";
 }
 
+function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRoute: string | null; lstChildren: never[] }[] }[], strRoute: string): boolean {
+  return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
+}
+
 export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
@@ -49,6 +54,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const [lstRows, setLstRows] = useState<LoanAdvanceRecord[]>([]);
   const [lstCategories, setLstCategories] = useState<LoanAdvanceCategoryRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [strError, setStrError] = useState("");
   const [dicFilters, setDicFilters] = useState({
     employee_code: "",
@@ -63,8 +69,36 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: "view" | "create") =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction]).some((strAlias) => canDoAny(strAlias));
-  const blnCanView = canViewAny() || canLoanAction("view");
+  const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
   const blnCanCreate = canLoanAction("create");
+
+  useEffect(() => {
+    let blnMounted = true;
+
+    async function loadMenuFallback() {
+      try {
+        const objMenu = await authApiService.getMenu();
+        if (!blnMounted) {
+          return;
+        }
+        setBlnHasMenuFallbackAccess(
+          hasMenuRoute(
+            objMenu.Data.lstMenuItems ?? [],
+            blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances",
+          ),
+        );
+      } catch {
+        if (blnMounted) {
+          setBlnHasMenuFallbackAccess(false);
+        }
+      }
+    }
+
+    void loadMenuFallback();
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnIsEssMode]);
 
   async function loadRows(dicNextFilters = dicFilters) {
     if (!blnCanView) {
