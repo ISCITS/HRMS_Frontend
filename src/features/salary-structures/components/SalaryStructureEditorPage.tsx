@@ -872,6 +872,7 @@ export default function SalaryStructureEditorPage({
       const decShortfallMonthly = Math.max(decMinimumRequiredMonthly - dicFormulaAggregates.wageMonthly, 0);
       setFormulaVariable("WAGE_TOTAL", Number(dicFormulaAggregates.wageMonthly.toFixed(2)));
       setFormulaVariable("NON_WAGE_TOTAL", Number(dicFormulaAggregates.nonWageMonthly.toFixed(2)));
+      setFormulaVariable("MINIMUM_REQUIRED_WAGE", Number(decMinimumRequiredMonthly.toFixed(2)));
       setFormulaVariable("DEEMED_WAGE", Number((dicFormulaAggregates.wageMonthly + decShortfallMonthly).toFixed(2)));
       setFormulaVariable("DEEMED_WAGE_BASE", Number((dicFormulaAggregates.wageMonthly + decShortfallMonthly).toFixed(2)));
       setFormulaVariable("DEEMED_WAGE_SHORTFALL", Number(decShortfallMonthly.toFixed(2)));
