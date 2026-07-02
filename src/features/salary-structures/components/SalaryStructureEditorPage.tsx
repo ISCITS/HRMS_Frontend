@@ -118,6 +118,18 @@ function sanitizeDecimalInput(strValue: string) {
   return lstRestParts.length === 0 ? strFirstPart : `${strFirstPart}.${lstRestParts.join("")}`;
 }
 
+function formatNormalizedAmount(fltValue: number, intPrecision = 6) {
+  if (!Number.isFinite(fltValue)) {
+    return "";
+  }
+  const fltNearestInteger = Math.round(fltValue);
+  if (Math.abs(fltValue - fltNearestInteger) < 0.05) {
+    return String(fltNearestInteger);
+  }
+  const fltRoundedValue = Number(fltValue.toFixed(intPrecision));
+  return fltRoundedValue.toString();
+}
+
 function parseCommaAmount(strValue: string) {
   return Number(strValue.replace(/,/g, ""));
 }
@@ -691,7 +703,7 @@ export default function SalaryStructureEditorPage({
     if (!Number.isFinite(fltValue)) {
       return "";
     }
-    return Number(fltValue.toFixed(2)).toString();
+    return formatNormalizedAmount(fltValue, 2);
   }
 
   function parseLineAmount(objValue: string | number | boolean | "") {
@@ -902,7 +914,7 @@ export default function SalaryStructureEditorPage({
     if (fltAnnualAmount === null) {
       return "";
     }
-    return Number((fltAnnualAmount / 12).toFixed(6)).toString();
+    return formatNormalizedAmount(fltAnnualAmount / 12, 6);
   }
 
   function getAnnualAmountFromMonthly(strMonthlyAmount: string | number | boolean) {
@@ -1346,7 +1358,12 @@ export default function SalaryStructureEditorPage({
         : await salaryStructureService.createSalaryStructure(dicForm);
       const objLatestOptions = await salaryStructureService.getFormOptions();
       setObjFormOptions(objLatestOptions);
-      setDicForm(applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicSavedRecord), objLatestOptions));
+      setDicForm(
+        applyFlexiEligibilityToForm(
+          recalculateSalaryStructureForm(toSalaryStructureFormValues(dicSavedRecord)),
+          objLatestOptions
+        )
+      );
       setStrSuccess(
         strMode === "edit"
           ? t("salary_structure_updated", "Salary structure updated successfully.")

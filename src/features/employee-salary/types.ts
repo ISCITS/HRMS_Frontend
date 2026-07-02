@@ -26,9 +26,12 @@ export type EmployeeSalaryOption = {
 
 export type EmployeeSalaryStructureComponentOption = {
   intSalaryComponentID: number;
+  intBasisComponentID?: number | null;
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  strBasisComponentName?: string | null;
+  strWageType?: string | null;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
@@ -67,6 +70,7 @@ export type EmployeeSalaryComponentLine = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  strWageType?: string | null;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
