@@ -1414,7 +1414,7 @@ export default function FlexiPayDeclarationPage() {
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(6, minmax(0, 1fr))" } }}>
+      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(7, minmax(0, 1fr))" } }}>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
           <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Mode</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{strPageModeLabel}</Typography>
