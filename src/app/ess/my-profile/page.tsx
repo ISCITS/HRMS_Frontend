@@ -25,6 +25,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -70,6 +71,7 @@ function resolveLookupLabel(
 
 export default function EssMyProfilePage() {
   const objRouter = useRouter();
+  const { canDoAny } = useModuleActionAccess(["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
@@ -163,6 +165,7 @@ export default function EssMyProfilePage() {
   const strInitial = strFullName[0]?.toUpperCase() || "E";
   const strTitleName = [objEmployee?.strTitle ?? "", strFullName].filter(Boolean).join(" ");
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const blnCanOpenEmployeeEditor = canDoAny("edit");
 
   async function refreshUserContext() {
     const objCurrentUserResult = await authApiService.getCurrentUser();
@@ -338,25 +341,27 @@ export default function EssMyProfilePage() {
             >
               Remove
             </Button>
-            <Button
-              controlId="ess.my-profile.edit.button"
-              variant="contained"
-              startIcon={<EditRoundedIcon />}
-              onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}
-              sx={{
-                borderRadius: "12px",
-                textTransform: "none",
-                fontWeight: 700,
-                px: 1.4,
-                py: 0.65,
-                fontSize: "0.82rem",
-                backgroundColor: "white",
-                color: "#0f172a",
-                "&:hover": { backgroundColor: "#e2e8f0" }
-              }}
-            >
-              Edit
-            </Button>
+            {blnCanOpenEmployeeEditor ? (
+              <Button
+                controlId="ess.my-profile.edit.button"
+                variant="contained"
+                startIcon={<EditRoundedIcon />}
+                onClick={() => objRouter.push(`/employees/edit/${intEmployeeID}?backRoute=${encodeURIComponent("/ess/my-profile")}`)}
+                sx={{
+                  borderRadius: "12px",
+                  textTransform: "none",
+                  fontWeight: 700,
+                  px: 1.4,
+                  py: 0.65,
+                  fontSize: "0.82rem",
+                  backgroundColor: "white",
+                  color: "#0f172a",
+                  "&:hover": { backgroundColor: "#e2e8f0" }
+                }}
+              >
+                Edit
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
       </Paper>
