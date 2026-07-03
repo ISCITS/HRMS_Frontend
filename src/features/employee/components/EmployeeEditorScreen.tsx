@@ -314,7 +314,7 @@ export default function EmployeeEditorScreen({
         }
       } catch (objError) {
         if (blnMounted) {
-          openAlertDialog("error", objError instanceof Error ? objError.message : t("error_load_workspace", "Unable to load employee workspace."));
+          openAlertDialog("error", objError instanceof Error ? objError.message : "Unable to load employee workspace.");
         }
       } finally {
         if (blnMounted) {
@@ -327,7 +327,7 @@ export default function EmployeeEditorScreen({
     return () => {
       blnMounted = false;
     };
-  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, objEmployeeRequestOptions, t]);
+  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, objEmployeeRequestOptions]);
 
   const lstManagerOptions = useMemo(
     () => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intResolvedEmployeeID),
