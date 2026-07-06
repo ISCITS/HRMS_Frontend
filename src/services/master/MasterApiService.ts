@@ -604,6 +604,8 @@ export type SalaryStructureComponentApiRecord = {
   intLineOrder: number;
   strValueSource: string;
   fltFixedAmount: number | null;
+  fltFormulaAmount?: number | null;
+  fltPercentageAmount?: number | null;
   fltPercentageValue: number | null;
   intBasisComponentID: number | null;
   strBasisComponentName?: string | null;
@@ -750,6 +752,9 @@ export type EmployeeSalaryStructureComponentOptionApiRecord = {
   strComponentName: string | null;
   strComponentCategory: string | null;
   strValueSource: string;
+  decFormulaAmount?: number | null;
+  decPercentageValue?: number | null;
+  decPercentageAmount?: number | null;
   blnAllowManualOverride: boolean;
   intLineOrder: number;
 };

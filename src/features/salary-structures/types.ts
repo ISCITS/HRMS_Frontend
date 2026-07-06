@@ -95,6 +95,8 @@ export type SalaryStructureLineFormValue = {
   blnIncludedInCtc: boolean;
   strComponentCategory: string;
   fltFixedAmount: string;
+  fltFormulaAmount?: string;
+  fltPercentageAmount?: string;
   fltPercentageValue: string;
   intBasisComponentID: number | "";
   strFormulaExpression: string;
@@ -167,6 +169,8 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     intLineOrder: number;
     strValueSource: string;
     fltFixedAmount: number | null;
+    fltFormulaAmount?: number | null;
+    fltPercentageAmount?: number | null;
     fltPercentageValue: number | null;
     intBasisComponentID: number | null;
     strBasisComponentName: string | null;

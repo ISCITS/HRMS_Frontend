@@ -435,7 +435,7 @@ export default function SalaryStructureEditorPage({
         setObjFormOptions(objOptions);
 
         if (dicDetail) {
-          setDicForm(applyFlexiEligibilityToForm(recalculateSalaryStructureForm(toSalaryStructureFormValues(dicDetail)), objOptions));
+          setDicForm(applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicDetail), objOptions));
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => ({
@@ -1060,6 +1060,9 @@ export default function SalaryStructureEditorPage({
             strFormulaExpression: normalizeSelectToken(strValueSource) === "formula"
               ? (dicComponent?.strFormulaExpression ?? "")
               : "",
+            fltFixedAmount: normalizeSelectToken(strValueSource) === "fixed" ? dicLine.fltFixedAmount : "",
+            fltFormulaAmount: normalizeSelectToken(strValueSource) === "formula" ? dicLine.fltFormulaAmount : "",
+            fltPercentageAmount: normalizeSelectToken(strValueSource) === "percentage" ? dicLine.fltPercentageAmount : "",
             intBasisComponentID: normalizeSelectToken(strValueSource) === "percentage" ? (objBasisComponentID || dicLine.intBasisComponentID) : "",
             fltPercentageValue: normalizeSelectToken(strValueSource) === "percentage" ? (fltComponentPercentageValue?.toString() ?? dicLine.fltPercentageValue) : "",
             fltMinAmount: dicComponent?.fltMinAmount?.toString() ?? dicLine.fltMinAmount,
@@ -1076,6 +1079,8 @@ export default function SalaryStructureEditorPage({
             return {
               ...dicLine,
               strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+              fltFormulaAmount: "",
+              fltPercentageAmount: "",
               fltPercentageValue: "",
               intBasisComponentID: "",
               strFormulaExpression: ""
@@ -1085,12 +1090,16 @@ export default function SalaryStructureEditorPage({
             return {
               ...dicLine,
               strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+              fltPercentageAmount: dicLine.fltFixedAmount,
+              fltFormulaAmount: "",
               strFormulaExpression: ""
             };
           }
           return {
             ...dicLine,
             strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+            fltFormulaAmount: dicLine.fltFixedAmount,
+            fltPercentageAmount: "",
             fltFixedAmount: "",
             fltPercentageValue: "",
             intBasisComponentID: "" as const

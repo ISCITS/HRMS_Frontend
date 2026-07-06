@@ -225,11 +225,14 @@ type OverrideSourceLine = {
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName?: string | null;
+  strValueSource?: string | null;
   blnAllowManualOverride: boolean;
   decAmountMonthly?: number | null;
   decAmountAnnual?: number | null;
   decFixedAmount?: number | null;
+  decFormulaAmount?: number | null;
   decPercentageValue?: number | null;
+  decPercentageAmount?: number | null;
   decDefaultAmountMonthly?: number | null;
   decDefaultAmountAnnual?: number | null;
   decDefaultPercentageValue?: number | null;
@@ -1000,7 +1003,15 @@ function buildOverrideRows(
     const dicReferenceLine = dicCurrentLineByComponent.get(dicLine.intSalaryComponentID) as (EmployeeSalaryComponentLine | ExistingOverrideLine | undefined);
     const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
     const blnIsFlexiPayLine = isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
+    const strValueSource = String(dicLine.strValueSource ?? "").trim().toLowerCase();
+    const decStoredDefaultMonthly =
+      strValueSource === "formula"
+        ? dicLine.decFormulaAmount
+        : strValueSource === "percentage"
+          ? dicLine.decPercentageAmount
+          : null;
     const decResolvedDefaultMonthly =
+      decStoredDefaultMonthly ??
       dicLine.decDefaultAmountMonthly ??
       dicLine.decAmountMonthly ??
       dicCurrentLine?.decDefaultAmountMonthly ??
@@ -1015,19 +1026,13 @@ function buildOverrideRows(
               ? Number(dicCurrentLine.decAmountAnnual) / 12
           : dicLine.decFixedAmount);
     const decResolvedDefaultAnnual =
-      dicLine.decDefaultAmountAnnual ??
-      dicLine.decAmountAnnual ??
-      dicCurrentLine?.decDefaultAmountAnnual ??
-      dicCurrentLine?.decAmountAnnual ??
-      (decResolvedDefaultMonthly != null ? Number(decResolvedDefaultMonthly) * 12 : null);
+      decResolvedDefaultMonthly != null ? Number(decResolvedDefaultMonthly) * 12 : null;
     const decDefaultMonthly =
       blnIsFlexiPayLine && getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableMonthly) > 0
         ? getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableMonthly)
         : decResolvedDefaultMonthly;
     const decDefaultAnnual =
-      blnIsFlexiPayLine && getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableAnnual) > 0
-        ? getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableAnnual)
-        : decResolvedDefaultAnnual;
+      decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : decResolvedDefaultAnnual;
     const strDefaultMonthly = formatOptionalDefaultValue(
       decDefaultMonthly
     );
@@ -1423,12 +1428,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       const blnIsFlexiBucket = isFlexiBucketLine(dicLine);
       const decLineMonthlyAmount = getNumberValue(dicLine.decAmountMonthly);
       const decLineAnnualAmount = getNumberValue(dicLine.decAmountAnnual);
-      const decMonthlyAmount = blnIsFlexiBucket && decLineMonthlyAmount <= 0
+      const decResolvedMonthlyAmount = blnIsFlexiBucket && decLineMonthlyAmount <= 0
         ? dicFlexiBucketAmounts.decMonthlyAmount
         : dicLine.decAmountMonthly;
-      const decAnnualAmount = blnIsFlexiBucket && decLineAnnualAmount <= 0
+      const decFallbackAnnualAmount = blnIsFlexiBucket && decLineAnnualAmount <= 0
         ? dicFlexiBucketAmounts.decAnnualAmount
         : dicLine.decAmountAnnual;
+      const decMonthlyAmount = decResolvedMonthlyAmount ?? (
+        decFallbackAnnualAmount != null ? Number(decFallbackAnnualAmount) / 12 : null
+      );
+      const decAnnualAmount = decMonthlyAmount != null
+        ? Number(decMonthlyAmount) * 12
+        : decFallbackAnnualAmount;
 
       return {
         intEmployeeSalaryComponentID: dicLine.intEmployeeSalaryComponentID,

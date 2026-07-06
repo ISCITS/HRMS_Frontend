@@ -108,6 +108,12 @@ function mapFlexiMappingToFormValue(dicMapping: {
 }
 
 function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryStructureLineFormValue {
+  const strNormalizedValueSource = normalizeSelectToken(dicLine.strValueSource);
+  const strMonthlyAmount = strNormalizedValueSource === "formula"
+    ? (dicLine.fltFormulaAmount?.toString() ?? "")
+    : strNormalizedValueSource === "percentage"
+      ? (dicLine.fltPercentageAmount?.toString() ?? "")
+      : (dicLine.fltFixedAmount?.toString() ?? "");
   return {
     strRowID: createRowID(),
     intSalaryComponentID: dicLine.intSalaryComponentID,
@@ -124,7 +130,9 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
     blnIncludedInCtc: Boolean(dicLine.blnIncludedInCtc ?? true),
     strComponentCategory: dicLine.strComponentCategory ?? "",
-    fltFixedAmount: dicLine.fltFixedAmount?.toString() ?? "",
+    fltFixedAmount: strMonthlyAmount,
+    fltFormulaAmount: dicLine.fltFormulaAmount?.toString() ?? "",
+    fltPercentageAmount: dicLine.fltPercentageAmount?.toString() ?? "",
     fltPercentageValue: dicLine.fltPercentageValue?.toString() ?? "",
     intBasisComponentID: dicLine.intBasisComponentID ?? "",
     strFormulaExpression: dicLine.strFormulaExpression ?? "",
@@ -180,6 +188,8 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       intLineOrder: dicLine.intLineOrder,
       strValueSource: dicLine.strValueSource,
       fltFixedAmount: dicLine.fltFixedAmount,
+      fltFormulaAmount: dicLine.fltFormulaAmount ?? null,
+      fltPercentageAmount: dicLine.fltPercentageAmount ?? null,
       fltPercentageValue: dicLine.fltPercentageValue,
       intBasisComponentID: dicLine.intBasisComponentID,
       strBasisComponentName: dicLine.strBasisComponentName ?? null,
@@ -231,6 +241,8 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         blnIsFlexiBasketLine: isFlexiBasketLinePayload(dicLine),
         strFlexiComponentRole: isFlexiBasketLinePayload(dicLine) ? "basket" : normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
         fltFixedAmount: isLineValueSource(dicLine.strValueSource, "fixed") ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
+        fltFormulaAmount: isLineValueSource(dicLine.strValueSource, "formula") ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
+        fltPercentageAmount: isLineValueSource(dicLine.strValueSource, "percentage") ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
         fltPercentageValue: isLineValueSource(dicLine.strValueSource, "percentage") ? formatOptionalNumber(dicLine.fltPercentageValue) : null,
         intBasisComponentID: isLineValueSource(dicLine.strValueSource, "percentage") ? dicLine.intBasisComponentID : null,
         strFormulaExpression: isLineValueSource(dicLine.strValueSource, "formula") ? formatOptionalText(dicLine.strFormulaExpression) : null,
@@ -299,6 +311,8 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
     blnIncludedInCtc: true,
     strComponentCategory: "",
     fltFixedAmount: "",
+    fltFormulaAmount: "",
+    fltPercentageAmount: "",
     fltPercentageValue: "",
     intBasisComponentID: "",
     strFormulaExpression: "",
