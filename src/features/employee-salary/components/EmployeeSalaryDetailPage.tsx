@@ -1724,14 +1724,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       blnIsCurrentAssignedStructure
         ? objDetail?.lstComponentLines ?? []
         : [];
-    const lstReusableOverrides = blnIsCurrentAssignedStructure ? dicRevisionForm.lstOverrides : [];
-
     const dicNextForm = {
       ...dicRevisionForm,
       intSalaryStructureID,
       lstOverrides: buildOverrideRows(
         lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
-        lstReusableOverrides,
+        [],
         blnIsCurrentAssignedStructure ? objFlexiAllocation : null,
         dicSalaryComponentByID,
         t
@@ -1764,7 +1762,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           ...dicPrev,
           lstOverrides: buildOverrideRows(
             lstStructureComponents.length > 0 ? lstStructureComponents : lstFallbackCurrentLines,
-            dicPreview.lstComponentLines,
+            [],
             dicPreview.objFlexiAllocation,
             dicSalaryComponentByID,
             t
