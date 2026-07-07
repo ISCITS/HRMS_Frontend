@@ -18,7 +18,7 @@ function normalizePayslipCompanyName(strCompanyName: string | null | undefined) 
     return "-";
   }
   if (["acma india", "acme india"].includes(strValue.toLowerCase())) {
-    return "ABC India pvt ltd";
+    return PAYSLIP_COMPANY_DISPLAY_NAME;
   }
   return strValue;
 }

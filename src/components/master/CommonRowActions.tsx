@@ -18,6 +18,7 @@ type CommonRowActionsProps = {
   editButtonControlId?: string;
   deleteButtonControlId?: string;
   statusSwitchControlId?: string;
+  testIdPrefix?: string;
   rowKey?: string | number;
   onView?: () => void;
   onEdit?: () => void;
@@ -35,6 +36,7 @@ export default function CommonRowActions({
   editButtonControlId = "common-row-actions.edit.button",
   deleteButtonControlId = "common-row-actions.delete.button",
   statusSwitchControlId = "common-row-actions.status.switch",
+  testIdPrefix,
   rowKey,
   onView,
   onEdit,
@@ -42,26 +44,30 @@ export default function CommonRowActions({
   onToggle,
 }: CommonRowActionsProps) {
   const objRowDataProps = rowKey === undefined ? {} : { "data-row-key": String(rowKey) };
+  const strViewButtonControlId = testIdPrefix ? `${testIdPrefix}.view.button` : viewButtonControlId;
+  const strEditButtonControlId = testIdPrefix ? `${testIdPrefix}.edit.button` : editButtonControlId;
+  const strDeleteButtonControlId = testIdPrefix ? `${testIdPrefix}.delete.button` : deleteButtonControlId;
+  const strStatusSwitchControlId = testIdPrefix ? `${testIdPrefix}.status.switch` : statusSwitchControlId;
 
   return (
     <Box className={styles.actionCell}>
       {blnCanView && onView ? (
-        <button {...objRowDataProps} data-controlid={viewButtonControlId} className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
-          <VisibilityRoundedIcon fontSize="small" />
+        <button {...objRowDataProps} data-controlid={strViewButtonControlId} className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={onView}>
+          <VisibilityRoundedIcon data-testid={undefined} data-controlid={`${strViewButtonControlId}.icon`} fontSize="small" />
         </button>
       ) : null}
       {blnCanEdit && onEdit ? (
-        <button {...objRowDataProps} data-controlid={editButtonControlId} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
-          <EditRoundedIcon fontSize="small" />
+        <button {...objRowDataProps} data-controlid={strEditButtonControlId} className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={onEdit}>
+          <EditRoundedIcon data-testid={undefined} data-controlid={`${strEditButtonControlId}.icon`} fontSize="small" />
         </button>
       ) : null}
       {blnCanDelete && onDelete ? (
-        <button {...objRowDataProps} data-controlid={deleteButtonControlId} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
-          <DeleteRoundedIcon fontSize="small" />
+        <button {...objRowDataProps} data-controlid={strDeleteButtonControlId} className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={onDelete}>
+          <DeleteRoundedIcon data-testid={undefined} data-controlid={`${strDeleteButtonControlId}.icon`} fontSize="small" />
         </button>
       ) : null}
       {blnCanToggle && onToggle ? (
-        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} controlId={statusSwitchControlId} />
+        <ActiveStatusSwitch blnIsActive={blnToggleActive} onChange={onToggle} controlId={strStatusSwitchControlId} />
       ) : null}
     </Box>
   );

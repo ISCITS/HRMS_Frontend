@@ -323,7 +323,7 @@ export default function SalaryComponentListPage() {
         const blnSelected = lstSelectedIds.includes(dicRow.intID);
         return {
           id: dicRow.intID,
-          select: <Checkbox inputProps={{ "controlId": "salary-components.list.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicRow.intID)} />,
+          select: <Checkbox data-controlid="salary-components.list.row.select.checkbox" data-row-key={String(dicRow.intID)} inputProps={{ "data-controlid": "salary-components.list.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicRow.intID)} />,
           action: (
             <CommonRowActions
               testIdPrefix="salary-components.list.row"
@@ -342,7 +342,7 @@ export default function SalaryComponentListPage() {
           strPfEsic: getPfEsicLabel(dicRow.blnIncludeInPF, dicRow.blnIncludeInESIC),
           blnDeclarationRequired: dicRow.blnDeclarationRequired ? t("yes", "Yes") : t("no", "No"),
           blnIsActive: (
-            <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+            <span data-controlid="salary-components.list.row.status.pill" data-row-key={String(dicRow.intID)} className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
               {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
             </span>
           ),
@@ -357,12 +357,12 @@ export default function SalaryComponentListPage() {
         field: "select",
         headerName: (
           <Checkbox
-            controlId="salary-components.list.select-all.checkbox"
+            data-controlid="salary-components.list.select-all.checkbox"
             checked={blnAllFilteredSelected}
             indeterminate={blnSomeFilteredSelected}
             onChange={toggleSelectAll}
             disabled={lstFilteredRows.length === 0}
-            inputProps={{ "controlId": "salary-components.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            inputProps={{ "data-controlid": "salary-components.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
           />
         ),
         sortable: false,
@@ -384,27 +384,27 @@ export default function SalaryComponentListPage() {
   );
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} data-controlid="salary-components.list.page">
       <Box className={styles.topBar}>
-        <Button controlId="salary-components.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button data-controlid="salary-components.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button", "Back")}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         {strRightsError ? (
-          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          <Typography data-controlid="salary-components.list.rights-error.message" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography data-controlid="salary-components.list.read-only.message" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Salary Component.")}
           </Typography>
         ) : null}
 
         <Box className={styles.searchRow}>
           <TextField
-            controlId="salary-components.list.search-name.input"
-            inputProps={{ "controlId": "salary-components.list.search-name.input" }}
+            data-controlid="salary-components.list.search-name.input"
+            inputProps={{ "data-controlid": "salary-components.list.search-name.input" }}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
             onKeyDown={handleSearchTextKeyDown}
@@ -412,8 +412,8 @@ export default function SalaryComponentListPage() {
             fullWidth
           />
           <TextField
-            controlId="salary-components.list.search-code.input"
-            inputProps={{ "controlId": "salary-components.list.search-code.input" }}
+            data-controlid="salary-components.list.search-code.input"
+            inputProps={{ "data-controlid": "salary-components.list.search-code.input" }}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value.toUpperCase() }))}
             onKeyDown={handleSearchTextKeyDown}
@@ -421,26 +421,26 @@ export default function SalaryComponentListPage() {
             fullWidth
           />
           <TextField
-            controlId="salary-components.list.search-status.select"
-            inputProps={{ "controlId": "salary-components.list.search-status.select" }}
+            data-controlid="salary-components.list.search-status.select"
+            inputProps={{ "data-controlid": "salary-components.list.search-status.select" }}
             select
             label={t("search_status_label", "Status")}
             value={dicSearchDraft.status}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, status: objEvent.target.value as SearchForm["status"] }))}
             fullWidth
           >
-            <MenuItem controlId="salary-components.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
-            <MenuItem controlId="salary-components.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
-            <MenuItem controlId="salary-components.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button controlId="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
+            <Button data-controlid="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
               {t("search_button", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              controlId="salary-components.list.clear.button"
+              data-controlid="salary-components.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -454,28 +454,28 @@ export default function SalaryComponentListPage() {
         </Box>
 
         {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
+          <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-processing.state">
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
-          <Box className={styles.bulkBar}>
+          <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-actions.bar">
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${t("bulk_rows_selected", "rows selected")}`}</Typography>
-            {blnCanEdit ? <Button controlId="salary-components.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
-            {blnCanEdit ? <Button controlId="salary-components.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
-            {blnCanDelete ? <Button controlId="salary-components.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Delete")}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="salary-components.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="salary-components.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
+            {blnCanDelete ? <Button data-controlid="salary-components.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Delete")}</Button> : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
         {blnLoading || blnRightsLoading ? (
-          <Box className={styles.emptyState}>
+          <Box className={styles.emptyState} data-controlid="salary-components.list.loading.state">
             <CircularProgress size={24} />
             <Typography sx={{ mt: 1 }}>{t("loading_salary_components", "Loading salary components...")}</Typography>
           </Box>
         ) : !blnCanView ? (
-          <Box className={styles.emptyState}>
+          <Box className={styles.emptyState} data-controlid="salary-components.list.access-denied.state">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary component access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary component visibility.")}</Typography>
           </Box>
@@ -492,7 +492,7 @@ export default function SalaryComponentListPage() {
             emptyMessage={t("no_salary_components_found", "No salary components found.")}
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                {blnCanAdd ? <Button controlId="salary-components.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(`/salary-components/add?backRoute=${encodeURIComponent(strCurrentListRoute)}`)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
+                {blnCanAdd ? <Button data-controlid="salary-components.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(`/salary-components/add?backRoute=${encodeURIComponent(strCurrentListRoute)}`)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
               </Box>
             )}
             testIdPrefix="salary-components.list"
@@ -515,8 +515,8 @@ export default function SalaryComponentListPage() {
 
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading", "Loading...") : t("processing", "Processing...")} intZIndex={1400} />
 
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+      <Snackbar data-controlid="salary-components.list.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert data-controlid="salary-components.list.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
           {objToast.strMessage}
         </Alert>
       </Snackbar>

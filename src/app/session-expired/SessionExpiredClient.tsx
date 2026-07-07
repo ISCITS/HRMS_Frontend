@@ -5,12 +5,14 @@ import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { authHelpers } from "@/lib/auth";
 
 export default function SessionExpiredClient() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const strTenantUUID = objSearchParams.get("tenantUuid")?.trim() ?? "";
+  const { t } = useModuleLabels("session-expired", "Unable to load session labels.");
 
   useEffect(() => {
     authHelpers.resetSessionExpiryRedirect();
@@ -36,9 +38,9 @@ export default function SessionExpiredClient() {
           >
             <HistoryRoundedIcon color="primary" sx={{ fontSize: 34 }} />
           </Box>
-          <Typography variant="h4">Session expired</Typography>
+          <Typography variant="h4">{t("title", "Session expired")}</Typography>
           <Typography sx={{ color: "#64748b" }}>
-            Your session has ended due to inactivity. Login again to continue securely.
+            {t("message", "Your session has ended due to inactivity. Login again to continue securely.")}
           </Typography>
           {strTenantUUID ? (
             <Typography variant="body2" sx={{ color: "#94a3b8" }}>
@@ -46,7 +48,7 @@ export default function SessionExpiredClient() {
             </Typography>
           ) : null}
           <Button data-controlid="auth.session-expired.login-again.button" variant="contained" size="large" onClick={handleLoginAgain} sx={{ mt: 1, minWidth: 180 }}>
-            Login again
+            {t("login_again", "Login again")}
           </Button>
         </Stack>
       </Paper>
