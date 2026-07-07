@@ -380,11 +380,15 @@ export default function HrItDeclarationListPage() {
             renderInput={(objParams) => (
               <TextField
                 {...objParams}
-                controlId="salary.hr-it-declarations.search.employee.select"
+                data-controlid="salary.hr-it-declarations.search.employee.select"
                 size="small"
                 required
                 label="Employee"
                 fullWidth
+                inputProps={{
+                  ...objParams.inputProps,
+                  "data-controlid": "salary.hr-it-declarations.search.employee.select",
+                }}
                 InputProps={{
                   ...objParams.InputProps,
                   endAdornment: (
@@ -398,26 +402,28 @@ export default function HrItDeclarationListPage() {
             )}
           />
           <TextField
-            controlId="salary.hr-it-declarations.search.financial-year.select"
+            data-controlid="salary.hr-it-declarations.search.financial-year.select"
             select
             size="small"
             label="Financial Year"
             value={strSearchFinancialYearCode}
             onChange={(objEvent) => setStrSearchFinancialYearCode(objEvent.target.value)}
             fullWidth
+            inputProps={{ "data-controlid": "salary.hr-it-declarations.search.financial-year.select" }}
           >
             {lstFyOptions.map((strFy) => (
               <MenuItem key={strFy} value={strFy}>{strFy}</MenuItem>
             ))}
           </TextField>
           <TextField
-            controlId="salary.hr-it-declarations.search.regime.select"
+            data-controlid="salary.hr-it-declarations.search.regime.select"
             select
             size="small"
             label="Tax Regime"
             value={strSearchRegime}
             onChange={(objEvent) => setStrSearchRegime(objEvent.target.value as ItDeclarationRegime)}
             fullWidth
+            inputProps={{ "data-controlid": "salary.hr-it-declarations.search.regime.select" }}
           >
             {lstRegimeOptions.map((strRegime) => (
               <MenuItem key={strRegime} value={strRegime}>{strRegime}</MenuItem>
