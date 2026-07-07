@@ -202,6 +202,7 @@ type RevisionBreakdownComponentRow = {
 type SalarySummaryMetrics = {
   decAnnualCtc: number;
   decGrossMonthly: number;
+  decGrossMonthlyAfterDeclaration: number;
   decBasicAnnual: number;
   decHraAnnual: number;
   decEmployerContributionAnnual: number;
@@ -760,6 +761,10 @@ function calculateSalarySummaryMetrics(
   const decAnnualCtc = dicBaseSummaryMetrics.decAnnualCtc;
   return {
     decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly,
+    decGrossMonthlyAfterDeclaration: Math.max(
+      dicBaseSummaryMetrics.decGrossMonthly - (decApprovedFlexiAnnual / 12),
+      0
+    ),
     decAnnualCtc,
     decBasicAnnual: dicBaseSummaryMetrics.decBasicAnnual,
     decHraAnnual: dicBaseSummaryMetrics.decHraAnnual,
@@ -853,6 +858,7 @@ function calculateRevisionSalarySummaryMetrics(
   return {
     decAnnualCtc,
     decGrossMonthly: dicResolvedMetrics.decPayableEarningsMonthly + (decFlexiBucketAnnual / 12),
+    decGrossMonthlyAfterDeclaration: dicResolvedMetrics.decPayableEarningsMonthly + (decResidualTaxableAnnual / 12),
     decBasicAnnual: dicResolvedMetrics.decBasicAnnual,
     decHraAnnual: dicResolvedMetrics.decHraAnnual,
     decEmployerContributionAnnual: dicResolvedMetrics.decEmployerContributionAnnual,
@@ -1530,6 +1536,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     () => objFormOptions?.lstSalaryStructures.find((dicStructure) => dicStructure.intID === dicRevisionForm.intSalaryStructureID)?.lstComponents ?? [],
     [dicRevisionForm.intSalaryStructureID, objFormOptions?.lstSalaryStructures]
   );
+  const dicInitialRevisionForm = useMemo(
+    () => buildRevisionForm(objDetail, objFormOptions, lstSalaryComponents, t),
+    [lstSalaryComponents, objDetail, objFormOptions, t]
+  );
+  const blnRevisionFormMatchesCurrentSnapshot = useMemo(
+    () => JSON.stringify(dicRevisionForm) === JSON.stringify(dicInitialRevisionForm),
+    [dicInitialRevisionForm, dicRevisionForm]
+  );
   const dicRevisionSalarySummaryMetrics = useMemo(
     () => calculateRevisionSalarySummaryMetrics(lstSelectedRevisionStructureComponents, dicRevisionForm, dicSalaryComponentByID),
     [dicRevisionForm, dicSalaryComponentByID, lstSelectedRevisionStructureComponents]
@@ -1659,6 +1673,15 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     () => calculateSalarySummaryMetrics(objDetail, dicFlexiTotals, lstFlexiRows, dicSalaryComponentByID),
     [dicFlexiTotals, dicSalaryComponentByID, lstFlexiRows, objDetail]
   );
+  const dicRevisionLiveImpactDisplayMetrics = blnRevisionFormMatchesCurrentSnapshot
+    ? {
+        decAnnualCtc: dicSalarySummaryMetrics.decAnnualCtc,
+        decGrossMonthly: dicSalarySummaryMetrics.decGrossMonthly,
+      }
+    : {
+        decAnnualCtc: dicRevisionSalarySummaryMetrics.decAnnualCtc,
+        decGrossMonthly: dicRevisionSalarySummaryMetrics.decGrossMonthly,
+      };
   const lstRevisionCurrentBreakdownComponentRows: RevisionBreakdownComponentRow[] = useMemo(() => {
     return (objDetail?.lstComponentLines ?? [])
       .filter((dicLine) =>
@@ -2801,6 +2824,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
               </Typography>
             </Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_annual_ctc", "Annual CTC")}</Typography>
+              <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionLiveImpactDisplayMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_gross_monthly", "Gross Monthly")}</Typography>
+              <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionLiveImpactDisplayMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
+            </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>{t("employee_salary_flexi_basket_available", "Flexi Bucket Available")}</Typography>
               <Typography sx={{ color: "#172554", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(decFlexiPayAllocationAnnual, strCurrencyCode)}</Typography>
