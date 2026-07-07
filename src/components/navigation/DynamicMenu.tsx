@@ -858,7 +858,11 @@ export default function DynamicMenu({
       );
     }
 
-    if (strRoute.includes("/hr/it-declaration") || strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
+    if (strRoute.includes("/hr/it-declaration")) {
+      return strModuleName || "Employee IT Declaration";
+    }
+
+    if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
       return "IT Declaration";
     }
 
