@@ -1298,7 +1298,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
   const refTranslate = useRef(t);
-  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly, objRights } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [objFlexiDeclarationContext, setObjFlexiDeclarationContext] = useState<FlexiDeclarationContextRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
@@ -1315,6 +1315,13 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
   const [intHistoryPage, setIntHistoryPage] = useState(1);
   const [intHistoryRowsPerPage, setIntHistoryRowsPerPage] = useState(10);
+  function hasPermissionCode(strCode: string) {
+    const strNormalizedCode = strCode.trim().toUpperCase();
+    return Object.entries(objRights.dicAllowedActions || {}).some(([strModuleCode, lstActions]) =>
+      strModuleCode.trim().toUpperCase() === strNormalizedCode ||
+      lstActions.some((strAction) => strAction.trim().toUpperCase() === strNormalizedCode)
+    );
+  }
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
@@ -1323,6 +1330,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
   const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
+  const blnCanViewWageBreakdownPreview = hasPermissionCode("WAGES_VIEW") && !blnIsRevisionMode;
 
   useEffect(() => {
     refTranslate.current = t;
@@ -3143,48 +3151,54 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             ) : (
               <Alert severity="info">{t("employee_salary_no_flexi_bucket_available", "No Flexi Bucket is available for this employee.")}</Alert>
             )}
-            <Box sx={{ background: "#fff7ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
-              <Typography sx={{ color: "#9a3412", fontSize: "0.82rem", fontWeight: 800 }}>
-                Wage Breakdown Preview
-              </Typography>
-            </Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage Total</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decWageAnnual, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Non-Wage Total</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decNonWageAnnual, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage % of CTC</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{dicSalarySummaryMetrics.decWagePercentOfCtc.toFixed(2)}%</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Minimum Required Wage</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decMinimumRequiredWageAnnual, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Shortfall</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decDeemedWageShortfallAnnual, strCurrencyCode)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Base</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
-            </Stack>
+            {blnCanViewWageBreakdownPreview ? (
+              <>
+                <Box sx={{ background: "#fff7ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
+                  <Typography sx={{ color: "#9a3412", fontSize: "0.82rem", fontWeight: 800 }}>
+                    Wage Breakdown Preview
+                  </Typography>
+                </Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage Total</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decWageAnnual, strCurrencyCode)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Non-Wage Total</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decNonWageAnnual, strCurrencyCode)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage % of CTC</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{dicSalarySummaryMetrics.decWagePercentOfCtc.toFixed(2)}%</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Minimum Required Wage</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decMinimumRequiredWageAnnual, strCurrencyCode)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Shortfall</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decDeemedWageShortfallAnnual, strCurrencyCode)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                  <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Base</Typography>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
+                </Stack>
+              </>
+            ) : null}
 
             {dicSalarySummaryMetrics.strFlexiWarning ? (
               <Alert severity="warning">{dicSalarySummaryMetrics.strFlexiWarning}</Alert>
             ) : null}
 
-            <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
-              <Stack direction="row" spacing={0.8} alignItems="flex-start">
-                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
-                <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
-                  Wage rule preview for statutory calculation. Final applicability depends on statutory configuration and payroll processing.
-                </Typography>
-              </Stack>
-            </Box>
+            {blnCanViewWageBreakdownPreview ? (
+              <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
+                <Stack direction="row" spacing={0.8} alignItems="flex-start">
+                  <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
+                  <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                    Wage rule preview for statutory calculation. Final applicability depends on statutory configuration and payroll processing.
+                  </Typography>
+                </Stack>
+              </Box>
+            ) : null}
           </Stack>
         </Paper>
       </Box>
