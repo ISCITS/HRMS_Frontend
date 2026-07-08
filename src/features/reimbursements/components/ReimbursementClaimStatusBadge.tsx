@@ -3,6 +3,7 @@
 import { Chip } from "@mui/material";
 
 import { formatStatusLabel } from "@/features/reimbursements/formatters";
+import { useReimbursementLabels } from "@/features/reimbursements/hooks/useReimbursementLabels";
 import type { ReimbursementClaimStatus, ReimbursementItemStatus, ReimbursementProofStatus } from "@/features/reimbursements/types";
 
 type StatusBadgeProps = {
@@ -19,10 +20,13 @@ function getStatusTextColor(strStatus?: string | null) {
 }
 
 export default function ReimbursementClaimStatusBadge({ strStatus, size = "small" }: StatusBadgeProps) {
+  const { t } = useReimbursementLabels();
+  const strNormalizedStatus = (strStatus || "").toLowerCase();
+
   return (
     <Chip
       size={size}
-      label={formatStatusLabel(strStatus)}
+      label={t(`status_${strNormalizedStatus}`, formatStatusLabel(strStatus))}
       sx={{
         minWidth: 0,
         height: 30,

@@ -463,7 +463,7 @@ export default function FlexiPayDeclarationPage() {
   const [blnEvaluating, setBlnEvaluating] = useState(false);
   const [strError, setStrError] = useState("");
   const [strToast, setStrToast] = useState("");
-  const [strSavingLabel, setStrSavingLabel] = useState("Processing declaration...");
+  const [strSavingLabel, setStrSavingLabel] = useState(() => t("processing", "Processing declaration..."));
   const [strRemarks, setStrRemarks] = useState("");
   const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(() => buildFallbackContext(strFinancialYearCode));
   const [dicDraftInputs, setDicDraftInputs] = useState<DraftInputMap>(() => buildInitialDraftInputs(buildFallbackContext(strFinancialYearCode)));
@@ -476,6 +476,68 @@ export default function FlexiPayDeclarationPage() {
   const [blnShowReviewReadOnlyNotice, setBlnShowReviewReadOnlyNotice] = useState(true);
   const [blnShowReviewActionNotice, setBlnShowReviewActionNotice] = useState(true);
   const strActiveFinancialYearCode = objContext?.strFinancialYearCode || strFinancialYearCode;
+  const formatTranslatedStatus = useCallback((strStatus?: string | null) => {
+    const strNormalizedStatus = normalizeText(strStatus || "draft").replace(/[\s-]+/g, "_");
+    return t(strNormalizedStatus, formatStatus(strStatus));
+  }, [t]);
+  const getTranslatedRegimeLabel = useCallback((strLabel?: string | null) => {
+    const strNormalized = normalizeText(strLabel).replace(/[-_]+/g, " ");
+    if (!strNormalized) return t("not_selected", "Not selected");
+    if (strNormalized.includes("new")) return t("new_regime", "New Regime");
+    if (strNormalized.includes("old")) return t("old_regime", "Old Regime");
+    if (strNormalized.includes("both") || strNormalized === "all" || strNormalized === "all regimes") return t("both_regimes", "Both Regimes");
+    return String(strLabel || "").replace(/[-_]+/g, " ").trim();
+  }, [t]);
+  const getTranslatedSelectedTaxRegimeLabel = useCallback(() => getTranslatedRegimeLabel(getSelectedTaxRegimeLabel(objContext)), [getTranslatedRegimeLabel, objContext]);
+  const getTranslatedEligibilityChipConfig = useCallback((objRow: FlexiDeclarationLineRecord) => {
+    const objChip = getEligibilityChipConfig(objRow);
+    const strEligibilityState = getEligibilityState(objRow);
+    return {
+      ...objChip,
+      strLabel: t(strEligibilityState, objChip.strLabel)
+    };
+  }, [t]);
+  const getTranslatedLineReasonText = useCallback((objRow: FlexiDeclarationLineRecord) => {
+    const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+    const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
+    const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
+    if (objRow.blnRegimeEligible === false) {
+      return objRow.strRegimeEligibilityReason || objRow.strEligibilityReason || t("component_not_eligible_regime", "Component is not eligible for the selected IT regime.");
+    }
+    if (objRow.strEligibilityDetailsReason) return objRow.strEligibilityDetailsReason;
+    if (decAnnualCap <= 0) return t("no_entitlement_configured", "No entitlement configured.");
+    if (["approved", "locked"].includes(strItemStatus) && decDeclaredAnnual > 0) return t("approved_locked", "Approved / Locked");
+    if (strItemStatus === "submitted" && decDeclaredAnnual > 0) return t("submitted_via_ess", "Submitted via ESS");
+    if (decDeclaredAnnual <= 0) return t("not_declared", "Not declared");
+    if (!(objRow.lstEligibilityRules || []).length) return t("eligible_by_default", "Eligible by default");
+    return objRow.strEligibilityReason || t("eligible_by_default", "Eligible by default");
+  }, [t]);
+  const translateKnownFlexiText = useCallback((strValue?: string | null) => {
+    const strDisplayValue = String(strValue || "").trim();
+    const strNormalized = normalizeText(strDisplayValue.replace(/\s+\*$/, "")).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const dicKnownKeys: Record<string, string> = {
+      vehicle_information: "vehicle_information",
+      employee_has_car: "employee_has_car",
+      required_for_car_lease_fuel_and_driver_related_flexi_benefits: "employee_has_car_help",
+      car_ownership_type: "car_ownership_type",
+      used_for_car_lease_company_car_fuel_and_driver_eligibility: "car_ownership_type_help",
+      own_car: "own_car",
+      company_car: "company_car",
+      fuel_reimbursement: "fuel_reimbursement",
+      medical_reimbursement: "medical_reimbursement",
+      mobile_reimbursement: "mobile_reimbursement",
+      travel_reimbursement: "travel_reimbursement",
+      basic_salary: "basic_salary",
+      hra: "hra",
+      employer_contribution: "employer_contribution",
+      flexi_bucket: "flexi_bucket",
+      residual_taxable_preview: "residual_taxable_preview",
+      approved_locked: "approved_locked",
+      eligible_by_default: "eligible_by_default",
+    };
+    const strKey = dicKnownKeys[strNormalized];
+    return strKey ? t(strKey, strDisplayValue) : strDisplayValue;
+  }, [t]);
 
   const syncLocalStateFromContext = useCallback((objData: FlexiDeclarationContextRecord, strMessage?: string) => {
     setObjContext(objData);
@@ -511,13 +573,13 @@ export default function FlexiPayDeclarationPage() {
     } catch (objError) {
       if (intLoadSequenceRef.current !== intLoadSequence) return;
       setObjContext(buildFallbackContext(strFinancialYearCode));
-      setStrError(objError instanceof Error ? objError.message : "Unable to load flexi declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_load", "Unable to load flexi declaration."));
     } finally {
       if (intLoadSequenceRef.current === intLoadSequence) {
         setBlnLoading(false);
       }
     }
-  }, [blnRouteHasDeclarationID, intRouteDeclarationID, strFinancialYearCode, syncLocalStateFromContext]);
+  }, [blnRouteHasDeclarationID, intRouteDeclarationID, strFinancialYearCode, syncLocalStateFromContext, t]);
 
   useEffect(() => {
     void loadContext();
@@ -537,7 +599,7 @@ export default function FlexiPayDeclarationPage() {
   );
   const blnShowEssSubmitAction = blnShowEssDraftAction;
   const strCurrencyCode = objContext?.objAssignedStructure?.strCurrencyCode || "INR";
-  const strSelectedTaxRegimeLabel = getSelectedTaxRegimeLabel(objContext);
+  const strSelectedTaxRegimeLabel = getTranslatedSelectedTaxRegimeLabel();
   const blnCanApproveAction = canDoAny("approve");
   const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
   const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
@@ -547,7 +609,7 @@ export default function FlexiPayDeclarationPage() {
   const blnCanRejectCurrent = blnShowWorkflowActions && ["submitted", "locked"].includes(strNormalizedWorkflowStatus) && blnCanRejectAction;
   const blnCanLockCurrent = blnShowWorkflowActions && ["submitted", "locked"].includes(strNormalizedWorkflowStatus) && blnCanLockAction;
   const blnCanReleaseCurrent = blnShowWorkflowActions && ["submitted", "locked"].includes(strNormalizedWorkflowStatus) && blnCanReleaseAction;
-  const strPageModeLabel = blnReviewEntryMode ? "Approval Review" : "ESS Declaration";
+  const strPageModeLabel = blnReviewEntryMode ? t("approval_review", "Approval Review") : t("ess_declaration", "ESS Declaration");
 
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
@@ -742,7 +804,7 @@ export default function FlexiPayDeclarationPage() {
     if (Object.entries(dicGroups).length === 0) {
       return (
         <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>
-          {objContext?.strEligibilityQuestionsMessage || "No eligibility questions are configured for this flexi declaration."}
+          {objContext?.strEligibilityQuestionsMessage || t("no_eligibility_questions_configured", "No eligibility questions are configured for this flexi declaration.")}
         </Typography>
       );
     }
@@ -777,7 +839,7 @@ export default function FlexiPayDeclarationPage() {
               <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
                 {getQuestionIcon(strGroupCode, strAccent)}
                 <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: strAccent }}>
-                  {objGroup.strGroupLabel}
+                  {translateKnownFlexiText(objGroup.strGroupLabel)}
                 </Typography>
               </Stack>
               <Box sx={{ display: "grid", gap: 0.75 }}>
@@ -789,7 +851,7 @@ export default function FlexiPayDeclarationPage() {
                     <Box sx={{ minWidth: 0 }}>
                       <Stack direction="row" spacing={0.45} alignItems="flex-start" sx={{ minWidth: 0 }}>
                         <Typography sx={{ fontWeight: 800, fontSize: "0.73rem", lineHeight: 1.2, color: blnQuestionDisabled ? "#0f4c81" : "#0f172a" }}>
-                          {objQuestion.strQuestionLabel}
+                          {translateKnownFlexiText(objQuestion.strQuestionLabel)}
                           {objQuestion.blnIsRequired ? " *" : ""}
                         </Typography>
                         {objQuestion.blnShowInfoIcon ? (
@@ -836,7 +898,7 @@ export default function FlexiPayDeclarationPage() {
                       </Stack>
                       {objQuestion.strHelpText ? (
                         <Typography sx={{ color: blnQuestionDisabled ? "#246b8f" : "#64748b", fontSize: "0.64rem", mt: 0.18, lineHeight: 1.15 }}>
-                          {objQuestion.strHelpText}
+                          {translateKnownFlexiText(objQuestion.strHelpText)}
                         </Typography>
                       ) : null}
                       {objQuestion.strValidationMessage ? (
@@ -897,7 +959,7 @@ export default function FlexiPayDeclarationPage() {
         setStrError("");
       } catch (objError) {
         if (intEvaluateSequenceRef.current !== intSequence) return;
-        setStrError(objError instanceof Error ? objError.message : "Unable to evaluate flexi declaration.");
+        setStrError(objError instanceof Error ? objError.message : t("unable_evaluate", "Unable to evaluate flexi declaration."));
       } finally {
         if (intEvaluateSequenceRef.current === intSequence) {
           setBlnEvaluating(false);
@@ -915,6 +977,7 @@ export default function FlexiPayDeclarationPage() {
     strCurrentSignature,
     strActiveFinancialYearCode,
     strRemarks,
+    t,
   ]);
 
   useEffect(() => {
@@ -955,11 +1018,11 @@ export default function FlexiPayDeclarationPage() {
 
   function validateDeclarationForAction(strAction: "draft" | "submit") {
     if (lstDisplayedRows.length === 0) {
-      setStrError("No flexi components are available for this salary structure.");
+      setStrError(t("no_flexi_pay_configured_current_salary_structure", "No flexi pay is configured for the current salary structure."));
       return false;
     }
     if (blnAllocationExceeded) {
-      setStrError("Declared flexi amount exceeds the available basket.");
+      setStrError(t("amount_exceeds_basket", "Declared flexi amount exceeds the available basket."));
       return false;
     }
     if (blnHasRowValidationErrors) {
@@ -973,7 +1036,7 @@ export default function FlexiPayDeclarationPage() {
       return false;
     }
     if (strAction === "submit" && lstPayloadRows.length === 0) {
-      setStrError("Enter a declared annual amount for at least one eligible flexi component.");
+      setStrError(t("enter_declared_amount", "Enter a declared annual amount for at least one eligible flexi component."));
       return false;
     }
     return true;
@@ -1008,7 +1071,7 @@ export default function FlexiPayDeclarationPage() {
 
   async function handleSaveDraft() {
     if (!validateDeclarationForAction("draft")) return;
-    setStrSavingLabel("Saving draft...");
+    setStrSavingLabel(t("saving_draft", "Saving draft..."));
     setBlnSaving(true);
     setStrError("");
     try {
@@ -1019,18 +1082,18 @@ export default function FlexiPayDeclarationPage() {
         strRemarks,
         dicEligibilityAnswers,
       );
-      syncLocalStateFromContext(objData, "Draft saved successfully.");
+      syncLocalStateFromContext(objData, t("draft_saved_success", "Draft saved successfully."));
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save draft.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_save_draft", "Unable to save draft."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
   async function handleSubmit(): Promise<boolean> {
     if (!validateDeclarationForAction("submit")) return false;
-    setStrSavingLabel("Submitting declaration...");
+    setStrSavingLabel(t("submitting", "Submitting declaration..."));
     setBlnSaving(true);
     setStrError("");
     try {
@@ -1041,14 +1104,14 @@ export default function FlexiPayDeclarationPage() {
         strRemarks,
         dicEligibilityAnswers,
       );
-      syncLocalStateFromContext(objData, "Declaration submitted successfully.");
+      syncLocalStateFromContext(objData, t("submitted_success", "Declaration submitted successfully."));
       return true;
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to submit declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_submit", "Unable to submit declaration."));
       return false;
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
@@ -1070,7 +1133,7 @@ export default function FlexiPayDeclarationPage() {
 
   async function handleApproveReview() {
     if (!blnCanApproveCurrent) return;
-    setStrSavingLabel("Approving declaration...");
+    setStrSavingLabel(t("approving", "Approving declaration..."));
     setBlnSaving(true);
     setStrError("");
     try {
@@ -1083,68 +1146,68 @@ export default function FlexiPayDeclarationPage() {
         })),
         strRemarks,
       });
-      setStrToast(t("flexi_pay_declaration_approve_success", "Declaration approved successfully."));
+      setStrToast(t("approve_success", "Declaration approved successfully."));
       navigateAfterReviewAction(false);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to approve declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_approve", "Unable to approve declaration."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
   async function handleLockReview() {
     if (!blnCanLockCurrent) return;
-    setStrSavingLabel("Locking declaration...");
+    setStrSavingLabel(t("locking", "Locking declaration..."));
     setBlnSaving(true);
     setStrError("");
     try {
       await waitForNextPaint();
       await hrFlexiDeclarationReviewService.lock(intRouteDeclarationID, strRemarks);
-      setStrToast(t("flexi_pay_declaration_lock_success", "Declaration locked successfully."));
+      setStrToast(t("lock_success", "Declaration locked successfully."));
       navigateAfterReviewAction(false);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to lock declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_lock", "Unable to lock declaration."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
   async function handleReleaseReview() {
     if (!blnCanReleaseCurrent) return;
-    setStrSavingLabel("Releasing declaration...");
+    setStrSavingLabel(t("releasing", "Releasing declaration..."));
     setBlnSaving(true);
     setStrError("");
     try {
       await waitForNextPaint();
       await hrFlexiDeclarationReviewService.release(intRouteDeclarationID, strRemarks);
-      setStrToast(t("flexi_pay_declaration_release_success", "Declaration released successfully."));
+      setStrToast(t("release_success", "Declaration released successfully."));
       navigateAfterReviewAction(true);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to release declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_release", "Unable to release declaration."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
   async function handleDecisionReview() {
     if (!strReviewActionMode) return;
-    setStrSavingLabel("Rejecting declaration...");
+    setStrSavingLabel(t("rejecting", "Rejecting declaration..."));
     setBlnSaving(true);
     setStrError("");
     try {
       await waitForNextPaint();
       await hrFlexiDeclarationReviewService.reject(intRouteDeclarationID, strRemarks);
-      setStrToast(t("flexi_pay_declaration_reject_success", "Declaration rejected."));
+      setStrToast(t("reject_success", "Declaration rejected."));
       setStrReviewActionMode(null);
       navigateAfterReviewAction(true);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to update declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_update", "Unable to update declaration."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Processing declaration...");
+      setStrSavingLabel(t("processing", "Processing declaration..."));
     }
   }
 
@@ -1170,7 +1233,7 @@ export default function FlexiPayDeclarationPage() {
             size="small"
           />
           <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: blnChecked ? "#2563eb" : "#64748b" }}>
-            {blnChecked ? "Yes" : "No"}
+            {blnChecked ? t("yes", "Yes") : t("no", "No")}
           </Typography>
         </Box>
       );
@@ -1193,10 +1256,10 @@ export default function FlexiPayDeclarationPage() {
           }
           sx={{ width: 120, ...OBJ_ELIGIBILITY_FIELD_SX }}
         >
-          <MenuItem value="">Select</MenuItem>
+          <MenuItem value="">{t("select", "Select")}</MenuItem>
           {lstOptions.map((objOption) => (
             <MenuItem key={objOption.strValue} value={objOption.strValue}>
-              {objOption.strLabel}
+              {translateKnownFlexiText(objOption.strLabel)}
             </MenuItem>
           ))}
         </TextField>
@@ -1266,7 +1329,7 @@ export default function FlexiPayDeclarationPage() {
   }
 
   if (blnLoading) {
-    return <BlockingLoader blnOpen strLabel="Loading flexi declaration details..." />;
+    return <BlockingLoader blnOpen strLabel={t("loading_details", "Loading flexi declaration details...")} />;
   }
 
   return (
@@ -1288,19 +1351,19 @@ export default function FlexiPayDeclarationPage() {
       {objContext?.strIneligibilityReason && !objContext.blnCanDeclare ? (
         <Alert severity="info">{objContext.strIneligibilityReason}</Alert>
       ) : null}
-      {blnAllocationExceeded ? <Alert severity="error">Declared flexi amount exceeds the available basket.</Alert> : null}
+      {blnAllocationExceeded ? <Alert severity="error">{t("amount_exceeds_basket", "Declared flexi amount exceeds the available basket.")}</Alert> : null}
       {lstValidationMessages.map((strMessage) => (
         <Alert key={strMessage} severity="warning">{strMessage}</Alert>
       ))}
       {objContext?.blnHasHiddenComponents ? (
-        <Alert severity="info">Some components are hidden because eligibility conditions are not met.</Alert>
+        <Alert severity="info">{t("hidden_components_info", "Some components are hidden because eligibility conditions are not met.")}</Alert>
       ) : null}
       {blnReviewEntryMode && blnShowReviewReadOnlyNotice ? (
         <Alert
           severity="info"
           action={(
             <IconButton
-              aria-label="Close review read only notice"
+              aria-label={t("close_review_notice", "Close review notice")}
               color="inherit"
               size="small"
               onClick={() => setBlnShowReviewReadOnlyNotice(false)}
@@ -1309,18 +1372,18 @@ export default function FlexiPayDeclarationPage() {
             </IconButton>
           )}
         >
-          Approval Review: declaration amount fields are read-only here unless HR override is explicitly supported.
+          {t("review_read_only_notice", "Approval Review: declaration amount fields are read-only here unless HR override is explicitly supported.")}
         </Alert>
       ) : null}
       {!blnShowWorkflowActions && strNormalizedWorkflowStatus === "submitted" ? (
-        <Alert severity="info">Submitted values are shown for preview. Payroll should use approved or locked values after approval.</Alert>
+        <Alert severity="info">{t("submitted_preview_notice", "Submitted values are shown for preview. Payroll should use approved or locked values after approval.")}</Alert>
       ) : null}
       {blnShowWorkflowActions && blnShowReviewActionNotice ? (
         <Alert
           severity="info"
           action={(
             <IconButton
-              aria-label="Close review action notice"
+              aria-label={t("close_review_notice", "Close review notice")}
               color="inherit"
               size="small"
               onClick={() => setBlnShowReviewActionNotice(false)}
@@ -1329,7 +1392,7 @@ export default function FlexiPayDeclarationPage() {
             </IconButton>
           )}
         >
-          Approval Review: use Approve, Reject, Lock or Release based on the declaration status.
+          {t("review_action_notice", "Approval Review: use Approve, Reject, Lock or Release based on the declaration status.")}
         </Alert>
       ) : null}
 
@@ -1348,15 +1411,15 @@ export default function FlexiPayDeclarationPage() {
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Box>
             <Typography sx={{ fontWeight: 900, color: "#f8fcff", fontSize: "1.05rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeName || "Employee"}
+              {objContext?.objEmployeeSummary?.strEmployeeName || t("employee", "Employee")}
             </Typography>
             <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | FY {strActiveFinancialYearCode} | {strPageModeLabel} | Current Status {formatStatus(strWorkflowStatus)} | IT Regime {strSelectedTaxRegimeLabel}
+              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | {t("fy", "FY")} {strActiveFinancialYearCode} | {strPageModeLabel} | {t("current_status", "Current Status")} {formatTranslatedStatus(strWorkflowStatus)} | {t("it_regime", "IT Regime")} {strSelectedTaxRegimeLabel}
             </Typography>
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip label={formatStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
+            <Chip label={formatTranslatedStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
             <Button
               size="small"
               variant="outlined"
@@ -1364,11 +1427,11 @@ export default function FlexiPayDeclarationPage() {
               sx={objHeaderActionButtonSx}
               onClick={() => objRouter.push(strBackPath)}
             >
-              {t("flexi_pay_declaration_back", "Back")}
+              {t("back", "Back")}
             </Button>
             {!blnShowWorkflowActions && blnShowEssDraftAction ? (
               <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanSaveDraft} onClick={() => void handleSaveDraft()}>
-                Draft
+                {t("draft_button", "Draft")}
               </Button>
             ) : null}
             {!blnShowWorkflowActions && blnShowEssSubmitAction ? (
@@ -1385,27 +1448,27 @@ export default function FlexiPayDeclarationPage() {
                   }
                 }}
               >
-                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? "Resubmit" : "Submit"}
+                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? t("resubmit", "Resubmit") : t("submit", "Submit")}
               </Button>
             ) : null}
             {blnShowWorkflowActions ? (
               <>
                 <Button size="small" variant="outlined" color="error" disabled={!blnCanRejectCurrent || blnSaving} onClick={() => setStrReviewActionMode("reject")}>
-                  {t("flexi_pay_declaration_reject", "Reject")}
+                  {t("reject", "Reject")}
                 </Button>
                 {blnCanReleaseCurrent ? (
                   <Button size="small" variant="outlined" disabled={blnSaving} sx={objHeaderActionButtonSx} onClick={() => void handleReleaseReview()}>
-                    {t("flexi_pay_declaration_release", "Release")}
+                    {t("release", "Release")}
                   </Button>
                 ) : null}
                 {blnCanLockCurrent ? (
                   <Button size="small" variant="outlined" disabled={blnSaving} sx={objHeaderActionButtonSx} onClick={() => void handleLockReview()}>
-                    {t("flexi_pay_declaration_lock", "Lock")}
+                    {t("lock", "Lock")}
                   </Button>
                 ) : null}
                 {blnCanApproveCurrent ? (
                   <Button size="small" variant="outlined" disabled={blnSaving || blnAllocationExceeded} sx={objHeaderActionButtonSx} onClick={() => void handleApproveReview()}>
-                    {t("flexi_pay_declaration_approve", "Approve")}
+                    {t("approve", "Approve")}
                   </Button>
                 ) : null}
               </>
@@ -1416,31 +1479,31 @@ export default function FlexiPayDeclarationPage() {
 
       <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(7, minmax(0, 1fr))" } }}>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Mode</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("mode", "Mode")}</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{strPageModeLabel}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #2563eb" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Current Status</Typography>
-          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatStatus(strWorkflowStatus)}</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("current_status", "Current Status")}</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatTranslatedStatus(strWorkflowStatus)}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #0d9488" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Flexi Basket Available</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("flexi_basket_available", "Flexi Basket Available")}</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #d97706" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Declared Flexi</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("declared_flexi", "Declared Flexi")}</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decDeclaredAnnual, strCurrencyCode)}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #db2777" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Residual Taxable Balance</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("residual_taxable_balance", "Residual Taxable Balance")}</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #7c3aed" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Assigned Salary Structure</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("assigned_salary_structure", "Assigned Salary Structure")}</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{objContext?.objAssignedStructure?.strStructureName || "-"}</Typography>
         </Paper>
         <Paper variant="outlined" sx={{ p: 0.7, borderRadius: "10px", borderLeft: "3px solid #f59e0b" }}>
-          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>Tax Regime</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.68rem" }}>{t("tax_regime", "Tax Regime")}</Typography>
           <Chip
             size="small"
             variant="outlined"
@@ -1463,9 +1526,9 @@ export default function FlexiPayDeclarationPage() {
             <Box sx={{ p: 0.75, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
               <Stack direction={{ xs: "column", md: "row" }} spacing={0.75} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>Eligibility Questions</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.88rem" }}>{t("eligibility_questions", "Eligibility Questions")}</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.72rem", mt: 0.1 }}>
-                    Components are enabled from the selected IT regime. Related questions remain available for eligible components.
+                    {t("eligibility_help", "Components are enabled from the selected IT regime. Related questions remain available for eligible components.")}
                   </Typography>
                 </Box>
                 {lstAllEligibilityQuestions.length > intEligibilityPreviewLimit ? (
@@ -1475,7 +1538,7 @@ export default function FlexiPayDeclarationPage() {
                     onClick={() => setBlnEligibilityDialogOpen(true)}
                     sx={{ alignSelf: { xs: "flex-start", md: "center" }, backgroundColor: "#2563eb", "&:hover": { backgroundColor: "#1d4ed8" } }}
                   >
-                    Show More
+                    {t("show_more", "Show More")}
                   </Button>
                 ) : null}
               </Stack>
@@ -1488,45 +1551,45 @@ export default function FlexiPayDeclarationPage() {
           <Paper sx={{ p: 1.25, borderRadius: "18px", border: "1px solid #cfe3ff", display: "flex" }}>
             <Stack spacing={1.15} sx={{ width: "100%" }}>
               <Stack direction="row" spacing={0.6} alignItems="center">
-                <Typography sx={{ fontWeight: 900, color: "#172554", fontSize: "0.95rem" }}>Salary Impact Summary</Typography>
-                <Tooltip title="This is an estimate. Final payroll impact will be based on approved declaration and payroll processing." enterTouchDelay={0}>
+                <Typography sx={{ fontWeight: 900, color: "#172554", fontSize: "0.95rem" }}>{t("salary_impact_summary", "Salary Impact Summary")}</Typography>
+                <Tooltip title={t("salary_impact_tooltip", "This is an estimate. Final payroll impact will be based on approved declaration and payroll processing.")} enterTouchDelay={0}>
                   <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 16, cursor: "pointer" }} />
                 </Tooltip>
               </Stack>
 
               <Stack spacing={0.9}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Annual CTC</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("annual_ctc", "Annual CTC")}</Typography>
                   <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decAnnualCtc, strCurrencyCode)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Gross Monthly</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("gross_monthly", "Gross Monthly")}</Typography>
                   <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decGrossMonthly, strCurrencyCode)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Flexi Basket Available</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("flexi_basket_available", "Flexi Basket Available")}</Typography>
                   <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decBasketAnnual, strCurrencyCode)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Declared Flexi</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("declared_flexi", "Declared Flexi")}</Typography>
                   <Typography sx={{ color: blnAllocationExceeded ? "#dc2626" : "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>
                     {formatCurrency(decDeclaredAnnual, strCurrencyCode)}
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Taxable Balance</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("residual_taxable_balance", "Residual Taxable Balance")}</Typography>
                   <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decResidualAnnual, strCurrencyCode)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Residual Component</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("residual_component", "Residual Component")}</Typography>
                   <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem", textAlign: "right" }}>{strResidualComponentName}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Monthly Driver Salary</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("monthly_driver_salary", "Monthly Driver Salary")}</Typography>
                   <Typography sx={{ color: "#0f172a", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decDeclaredMonthly, strCurrencyCode)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>Monthly Residual Taxable</Typography>
+                  <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: "0.78rem" }}>{t("monthly_residual_taxable", "Monthly Residual Taxable")}</Typography>
                   <Typography sx={{ color: "#059669", fontWeight: 900, fontSize: "0.8rem" }}>{formatCurrency(decResidualMonthly, strCurrencyCode)}</Typography>
                 </Box>
               </Stack>
@@ -1540,14 +1603,14 @@ export default function FlexiPayDeclarationPage() {
             fullWidth
             maxWidth="lg"
           >
-            <DialogTitle>All Eligibility Questions</DialogTitle>
+            <DialogTitle>{t("all_eligibility_questions", "All Eligibility Questions")}</DialogTitle>
             <DialogContent dividers sx={{ p: 1.25 }}>
               <Box sx={{ display: "grid", gap: 1 }}>
                 {renderEligibilityQuestionGroups(dicQuestionGroups)}
               </Box>
             </DialogContent>
             <DialogActions sx={{ px: 1.5, py: 1 }}>
-              <Button onClick={() => setBlnEligibilityDialogOpen(false)}>Close</Button>
+              <Button onClick={() => setBlnEligibilityDialogOpen(false)}>{t("close", "Close")}</Button>
             </DialogActions>
           </Dialog>
 
@@ -1557,30 +1620,30 @@ export default function FlexiPayDeclarationPage() {
             fullWidth
             maxWidth="sm"
           >
-            <DialogTitle>Confirm Declaration Submission</DialogTitle>
+            <DialogTitle>{t("confirm_submission", "Confirm Declaration Submission")}</DialogTitle>
             <DialogContent dividers sx={{ p: 1.5 }}>
               <Stack spacing={1.25}>
                 {strError ? <Alert severity="error">{strError}</Alert> : null}
                 <Alert severity="info">
-                  Please review your declared amounts before submitting. Once submitted, the declaration moves for approval and cannot be edited unless it is returned, released, or rejected back to you.
+                  {t("submission_info", "Please review your declared amounts before submitting. Once submitted, the declaration moves for approval and cannot be edited unless it is returned, released, or rejected back to you.")}
                 </Alert>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip label={`Declared Flexi: ${formatCurrency(decDeclaredAnnual, strCurrencyCode)}`} />
-                  <Chip label={`Residual Taxable Balance: ${formatCurrency(decResidualAnnual, strCurrencyCode)}`} />
+                  <Chip label={`${t("declared_flexi", "Declared Flexi")}: ${formatCurrency(decDeclaredAnnual, strCurrencyCode)}`} />
+                  <Chip label={`${t("residual_taxable_balance", "Residual Taxable Balance")}: ${formatCurrency(decResidualAnnual, strCurrencyCode)}`} />
                 </Stack>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>Declaration Remarks</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>{t("declaration_remarks", "Declaration Remarks")}</Typography>
                 <TextField
                   multiline
                   minRows={3}
                   value={strRemarks}
                   onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
                   disabled={blnSaving}
-                  placeholder="Optional remarks for this submission"
+                  placeholder={t("optional_remarks", "Optional remarks for this submission")}
                 />
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 1.5, py: 1 }}>
-              <Button onClick={() => setBlnSubmitDialogOpen(false)} disabled={blnSaving}>Cancel</Button>
+              <Button onClick={() => setBlnSubmitDialogOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button>
               <Button
                 variant="contained"
                 color="warning"
@@ -1588,7 +1651,7 @@ export default function FlexiPayDeclarationPage() {
                 disabled={blnSaving}
                 onClick={() => void handleConfirmSubmit()}
               >
-                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? "Confirm Resubmit" : "Confirm Submit"}
+                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? t("confirm_resubmit", "Confirm Resubmit") : t("confirm_submit", "Confirm Submit")}
               </Button>
           </DialogActions>
           </Dialog>
@@ -1599,10 +1662,10 @@ export default function FlexiPayDeclarationPage() {
             fullWidth
             maxWidth="sm"
           >
-            <DialogTitle>{t("flexi_pay_declaration_reject_dialog_title", "Reject Declaration")}</DialogTitle>
+            <DialogTitle>{t("reject_dialog_title", "Reject Declaration")}</DialogTitle>
             <DialogContent dividers sx={{ p: 1.5 }}>
               <Stack spacing={1.25}>
-                <Typography sx={{ mb: 0.25 }}>{t("flexi_pay_declaration_reviewer_remarks_hint", "Reviewer remarks will be saved on the declaration.")}</Typography>
+                <Typography sx={{ mb: 0.25 }}>{t("reviewer_remarks_hint", "Reviewer remarks will be saved on the declaration.")}</Typography>
                 <TextField
                   fullWidth
                   multiline
@@ -1614,9 +1677,9 @@ export default function FlexiPayDeclarationPage() {
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 1.5, py: 1 }}>
-              <Button onClick={() => setStrReviewActionMode(null)} disabled={blnSaving}>{t("flexi_pay_declaration_cancel", "Cancel")}</Button>
+              <Button onClick={() => setStrReviewActionMode(null)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button>
               <Button variant="contained" onClick={() => void handleDecisionReview()} disabled={blnSaving || !strRemarks.trim()}>
-                {t("flexi_pay_declaration_confirm", "Confirm")}
+                {t("confirm", "Confirm")}
               </Button>
             </DialogActions>
           </Dialog>
@@ -1625,12 +1688,12 @@ export default function FlexiPayDeclarationPage() {
             <Box sx={{ p: 1.2, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>Eligible Flexi Components</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>{t("eligible_flexi_components", "Eligible Flexi Components")}</Typography>
                   <Typography sx={{ color: "#64748b", fontSize: "0.76rem", mt: 0.25 }}>
-                    Annual Cap is entitlement only. Monthly Impact is always based on Declared Annual divided by 12.
+                    {t("components_help", "Annual Cap is entitlement only. Monthly Impact is always based on Declared Annual divided by 12.")}
                   </Typography>
                 </Box>
-                <Chip label={`${intEligibleFlexiComponentCount} eligible / ${lstDisplayedRows.length} total`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
+                <Chip label={`${intEligibleFlexiComponentCount} ${t("eligible_total", "eligible")} / ${lstDisplayedRows.length} ${t("total", "total")}`} sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 700 }} />
               </Stack>
             </Box>
 
@@ -1657,33 +1720,33 @@ export default function FlexiPayDeclarationPage() {
                 </colgroup>
                 <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
                   <TableRow>
-                    <TableCell>Component</TableCell>
-                    <TableCell>Eligibility</TableCell>
-                    <TableCell>Regime</TableCell>
-                    <TableCell align="right">Annual Cap</TableCell>
-                    <TableCell align="right">Declared Annual</TableCell>
-                    <TableCell align="right">Monthly Impact</TableCell>
-                    <TableCell>Proof</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Reason / Action</TableCell>
+                    <TableCell>{t("component", "Component")}</TableCell>
+                    <TableCell>{t("eligibility", "Eligibility")}</TableCell>
+                    <TableCell>{t("regime", "Regime")}</TableCell>
+                    <TableCell align="right">{t("annual_cap", "Annual Cap")}</TableCell>
+                    <TableCell align="right">{t("declared_annual", "Declared Annual")}</TableCell>
+                    <TableCell align="right">{t("monthly_impact", "Monthly Impact")}</TableCell>
+                    <TableCell>{t("proof", "Proof")}</TableCell>
+                    <TableCell>{t("status", "Status")}</TableCell>
+                    <TableCell>{t("reason_action", "Reason / Action")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {lstDisplayedRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
-                        No flexi components are available.
+                        {t("no_components_available", "No flexi components are available.")}
                       </TableCell>
                     </TableRow>
                   ) : (
                     lstDisplayedRows.map((objDisplayRow) => {
                       const objRow = objDisplayRow.objSelectedLine;
-                      const objEligibilityChip = getEligibilityChipConfig(objRow);
+                      const objEligibilityChip = getTranslatedEligibilityChipConfig(objRow);
                       return (
                         <TableRow key={objDisplayRow.intRowKey}>
                           <TableCell>
                             <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
-                              {objRow.strComponentName || objRow.strComponentCode || "Component"}
+                              {translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "Component")}
                             </Typography>
                           </TableCell>
                           <TableCell>
@@ -1693,7 +1756,7 @@ export default function FlexiPayDeclarationPage() {
                                 color={objEligibilityChip.strColor}
                                 label={objEligibilityChip.strLabel}
                                 sx={{
-                                  minWidth: objEligibilityChip.strLabel === "Not Eligible" ? 96 : 82,
+                                  minWidth: getEligibilityState(objRow) === "not_eligible" ? 96 : 82,
                                   height: 22,
                                   maxWidth: "none",
                                   "& .MuiChip-label": { px: 0.85, overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" },
@@ -1701,7 +1764,7 @@ export default function FlexiPayDeclarationPage() {
                               />
                               {objDisplayRow.decMultiplier > 1 ? (
                                 <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
-                                  Multiplier x {objDisplayRow.decMultiplier}
+                                  {t("multiplier", "Multiplier")} x {objDisplayRow.decMultiplier}
                                 </Typography>
                               ) : null}
                             </Stack>
@@ -1710,7 +1773,7 @@ export default function FlexiPayDeclarationPage() {
                             <Chip
                               size="small"
                               variant="outlined"
-                              label={getComponentRegimeDisplayLabel(objRow)}
+                              label={getTranslatedRegimeLabel(getComponentRegimeDisplayLabel(objRow))}
                               color={getRegimeChipColor(objRow.strEligibilityApplicableRegime || objRow.strComponentApplicableRegime)}
                               sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
                             />
@@ -1747,11 +1810,11 @@ export default function FlexiPayDeclarationPage() {
                             />
                           </TableCell>
                           <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                          <TableCell>{objRow.blnProofRequired ? "Required" : "No"}</TableCell>
+                          <TableCell>{objRow.blnProofRequired ? t("required", "Required") : t("no", "No")}</TableCell>
                           <TableCell>
                             <Chip
                               size="small"
-                              label={objRow.strDeclarationItemStatus ? formatStatus(objRow.strDeclarationItemStatus) : "Draft"}
+                              label={objRow.strDeclarationItemStatus ? formatTranslatedStatus(objRow.strDeclarationItemStatus) : t("draft", "Draft")}
                               color={getStatusTone(objRow.strDeclarationItemStatus)}
                               sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.8, overflow: "hidden", textOverflow: "ellipsis" } }}
                             />
@@ -1771,14 +1834,14 @@ export default function FlexiPayDeclarationPage() {
                                   overflow: "hidden",
                                 }}
                               >
-                                {getLineReasonText(objRow)}
+                                {translateKnownFlexiText(getTranslatedLineReasonText(objRow))}
                               </Typography>
                               <IconButton
                                 size="small"
                                 disabled={!blnCanEditDeclaration || Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0) <= 0 || blnSaving}
                                 onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
                                 sx={{ color: "#dc2626", flex: "0 0 auto", p: 0.35 }}
-                                aria-label={`Clear ${objRow.strComponentName || objRow.strComponentCode || "component"} amount`}
+                                aria-label={`${t("clear_component_amount", "Clear component amount")}: ${translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "component")}`}
                               >
                                 <DeleteOutlineRoundedIcon fontSize="small" />
                               </IconButton>
@@ -1796,21 +1859,21 @@ export default function FlexiPayDeclarationPage() {
           <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" } }}>
             <Paper sx={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #dbe3ef" }}>
               <Box sx={{ p: 1.12, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>Fixed Salary Components</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>{t("fixed_salary_components", "Fixed Salary Components")}</Typography>
               </Box>
               <TableContainer>
                 <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Component</TableCell>
-                      <TableCell align="right">Annual</TableCell>
-                      <TableCell align="right">Monthly</TableCell>
+                      <TableCell>{t("component", "Component")}</TableCell>
+                      <TableCell align="right">{t("annual", "Annual")}</TableCell>
+                      <TableCell align="right">{t("monthly", "Monthly")}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {lstFixedSalaryRows.map((objRow) => (
                       <TableRow key={objRow.strLabel}>
-                        <TableCell>{objRow.strLabel}</TableCell>
+                        <TableCell>{translateKnownFlexiText(objRow.strLabel)}</TableCell>
                         <TableCell align="right">{formatCurrency(objRow.decAnnual, strCurrencyCode)}</TableCell>
                         <TableCell align="right">{formatCurrency(objRow.decAnnual / 12, strCurrencyCode)}</TableCell>
                       </TableRow>
@@ -1822,21 +1885,21 @@ export default function FlexiPayDeclarationPage() {
 
             <Paper sx={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #dbe3ef" }}>
               <Box sx={{ p: 1.12, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>Estimated Salary Split After Declaration</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>{t("estimated_salary_split", "Estimated Salary Split After Declaration")}</Typography>
               </Box>
               <TableContainer>
                 <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Bucket</TableCell>
-                      <TableCell align="right">Annual</TableCell>
-                      <TableCell align="right">Monthly</TableCell>
+                      <TableCell>{t("bucket", "Bucket")}</TableCell>
+                      <TableCell align="right">{t("annual", "Annual")}</TableCell>
+                      <TableCell align="right">{t("monthly", "Monthly")}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {[
-                      { strLabel: "Declared Flexi", decAnnual: decDeclaredAnnual },
-                      { strLabel: "Residual Taxable Balance", decAnnual: decResidualAnnual },
+                      { strLabel: t("declared_flexi", "Declared Flexi"), decAnnual: decDeclaredAnnual },
+                      { strLabel: t("residual_taxable_balance", "Residual Taxable Balance"), decAnnual: decResidualAnnual },
                     ].map((objRow) => (
                       <TableRow key={objRow.strLabel}>
                         <TableCell>{objRow.strLabel}</TableCell>
@@ -1849,7 +1912,7 @@ export default function FlexiPayDeclarationPage() {
               </TableContainer>
               <Box sx={{ p: 1, borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
                 <Typography sx={{ color: "#64748b", fontSize: "0.72rem" }}>
-                  This is an estimate. Final payroll impact will be based on approved declaration and payroll processing.
+                  {t("salary_impact_tooltip", "This is an estimate. Final payroll impact will be based on approved declaration and payroll processing.")}
                 </Typography>
               </Box>
             </Paper>

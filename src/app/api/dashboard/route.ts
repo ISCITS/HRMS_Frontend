@@ -60,9 +60,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const strPayrollMonth = request.nextUrl.searchParams.get("payroll_month")?.trim() || "";
-    const strBackendPath = strPayrollMonth
-      ? `/api/v1/dashboard?payroll_month=${encodeURIComponent(strPayrollMonth)}`
-      : "/api/v1/dashboard";
+    const strLanguageID = request.nextUrl.searchParams.get("language_id")?.trim() || "";
+    const objBackendParams = new URLSearchParams();
+    if (strPayrollMonth) {
+      objBackendParams.set("payroll_month", strPayrollMonth);
+    }
+    if (strLanguageID) {
+      objBackendParams.set("language_id", strLanguageID);
+    }
+    const strQueryString = objBackendParams.toString();
+    const strBackendPath = strQueryString ? `/api/v1/dashboard?${strQueryString}` : "/api/v1/dashboard";
     const objResult = await callBackendApi<ApiEnvelope<DashboardResponse>>(strBackendPath, {
       method: "GET",
       cache: "no-store",

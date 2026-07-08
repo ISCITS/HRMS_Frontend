@@ -147,6 +147,39 @@ function hasDisplayAmount(decAmount: number | null | undefined) {
   return Number(decAmount ?? 0) > 0;
 }
 
+function toLabelKey(strValue: string | null | undefined) {
+  return String(strValue ?? "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function formatDynamicFallback(strValue: string | null | undefined) {
+  const strTrimmed = String(strValue ?? "").trim();
+  if (!strTrimmed) {
+    return "-";
+  }
+  return strTrimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function translateDynamicLabel(
+  t: (strKey: string, strFallback?: string) => string,
+  strValue: string | null | undefined,
+  strPrefix = ""
+) {
+  const strKey = toLabelKey(strValue);
+  if (!strKey) {
+    return "-";
+  }
+  return t(strPrefix ? `${strPrefix}_${strKey}` : strKey, formatDynamicFallback(strValue));
+}
+
 function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
   const lstHeaders = [
     "Employee Code",
@@ -495,7 +528,9 @@ export default function PayrollResultListPage({
     <Box className={styles.page}>
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
         {blnPayslipScreen
-          ? t("payslip_breadcrumbs", "Payroll / Payslips")
+          ? (blnEssMode
+              ? t("ess_breadcrumbs", "ESS / My Payslips")
+              : t("payslip_breadcrumbs", "Payroll / Payslips"))
           : t("breadcrumbs", "Payroll / Payroll Results")}
       </Typography>
 
@@ -516,7 +551,7 @@ export default function PayrollResultListPage({
             <Box>
               <Typography className={styles.title}>
                 {blnPayslipScreen
-                  ? t("payslips_title", "Payslips")
+                  ? (blnEssMode ? t("ess_page_title", "My Payslips") : t("payslips_title", "Payslips"))
                   : t("payroll_results_title", "Payroll Results")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.4 }}>
@@ -951,8 +986,8 @@ export default function PayrollResultListPage({
                         )}
                       >
                         {blnPayslipScreen
-                          ? dicRow.strPayslipStatus || t("status_generated", "Generated")
-                          : dicRow.strStatus}
+                          ? translateDynamicLabel(t, dicRow.strPayslipStatus || "Generated", "status")
+                          : translateDynamicLabel(t, dicRow.strStatus, "status")}
                       </span>
                     </td>
                     {blnPayslipScreen ? <td>{formatDateTime(dicRow.dtPayslipGeneratedOn)}</td> : null}
@@ -1044,7 +1079,7 @@ export default function PayrollResultListPage({
                   {t("status", "Status")}
                 </Typography>
                 <Typography sx={{ fontWeight: 700 }}>
-                  {objPreviewRecord.strStatus}
+                  {translateDynamicLabel(t, objPreviewRecord.strStatus, "status")}
                 </Typography>
               </Box>
               <Box>
@@ -1079,9 +1114,9 @@ export default function PayrollResultListPage({
                       ) : null}
                       {lstPreviewLines.map((dicLine) => (
                         <tr key={dicLine.intID}>
-                          <td>{dicLine.strComponentName || dicLine.strComponentCode}</td>
-                          <td>{dicLine.strComponentCategory || "-"}</td>
-                          <td>{dicLine.strLineType || "-"}</td>
+                          <td>{translateDynamicLabel(t, dicLine.strComponentName || dicLine.strComponentCode)}</td>
+                          <td>{translateDynamicLabel(t, dicLine.strComponentCategory)}</td>
+                          <td>{translateDynamicLabel(t, dicLine.strLineType)}</td>
                           <td>{formatCurrency(dicLine.decAmount)}</td>
                         </tr>
                       ))}

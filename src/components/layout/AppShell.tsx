@@ -31,6 +31,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -107,9 +108,11 @@ function getLocalizedHeaderTitle(
   strPathname: string,
   strHeaderModuleName: string,
   tHeader: (strKey: string, strFallback?: string) => string,
-  tCommon: (strKey: string, strFallback?: string) => string
+  tCommon: (strKey: string, strFallback?: string) => string,
+  strBackRoute = ""
 ) {
   const strLowerPath = (strPathname || "").toLowerCase();
+  const strLowerBackRoute = (strBackRoute || "").toLowerCase();
 
   if (!strHeaderModuleName) {
     return getCommonPageTitle(strPathname, tCommon);
@@ -158,9 +161,24 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "payslips") {
-    return stripMasterTitle(
-      tHeader("page_title", getLastBreadcrumbSegment(tHeader("breadcrumbs", "Payroll / Payslips")))
-    );
+    const blnEssPayslipContext =
+      strLowerPath.startsWith("/ess/my-payslips") ||
+      strLowerPath.startsWith("/ess/my-payslip") ||
+      strLowerBackRoute.startsWith("/ess/my-payslips") ||
+      strLowerBackRoute.startsWith("/ess/my-payslip");
+    const blnDetailContext =
+      Boolean(strLowerPath.match(/^\/(reports|payroll)\/payslips\/\d+/)) ||
+      Boolean(strLowerPath.match(/^\/payroll\/payslip\/\d+/)) ||
+      Boolean(strLowerPath.match(/^\/ess\/my-payslips\/\d+/)) ||
+      Boolean(strLowerPath.match(/^\/ess\/my-payslip\/\d+/));
+    if (blnDetailContext) {
+      return blnEssPayslipContext
+        ? tHeader("ess_page_title_view", "Ess / My Payslips / View")
+        : tHeader("page_title_view", "Payroll / Payslips / View");
+    }
+    return blnEssPayslipContext
+      ? tHeader("ess_header_title", "Ess / My Payslips")
+      : tHeader("header_title", "Payroll / Payslips");
   }
 
   if (strHeaderModuleName === "payroll-results") {
@@ -196,11 +214,44 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "it-declaration") {
-    return "IT Declaration";
+    return tHeader("page_title", "IT Declaration");
   }
 
   if (strHeaderModuleName === "flexi-pay-declaration") {
-    return "Flexi Pay Declaration";
+    return tHeader("page_title", "Flexi Pay Declaration");
+  }
+
+  if (strHeaderModuleName === "reimbursements") {
+    if (strLowerPath === "/ess/reimbursements/new") {
+      return tHeader("page_title_new", "Ess / Reimbursements / New");
+    }
+    if (strLowerPath.match(/^\/ess\/reimbursements\/\d+\/edit$/)) {
+      return tHeader("page_title_edit", "Ess / Reimbursements / Edit");
+    }
+    if (strLowerPath.match(/^\/ess\/reimbursements\/\d+$/)) {
+      return tHeader("page_title_view", "Ess / Reimbursements / View");
+    }
+    return tHeader("page_title", "Ess / Reimbursements");
+  }
+  if (strHeaderModuleName === "loans-advances") {
+    if (strLowerPath === "/ess/loans-advances/new") {
+      return tHeader("ess_page_title_new", "Ess / Loans Advances / New");
+    }
+    if (strLowerPath.match(/^\/ess\/loans-advances\/\d+$/)) {
+      return tHeader("ess_page_title_view", "Ess / Loans Advances / View");
+    }
+    if (strLowerPath === "/payroll/loans-advances/new") {
+      return tHeader("page_title_new", "Payroll / Loans Advances / New");
+    }
+    if (strLowerPath.match(/^\/payroll\/loans-advances\/\d+$/)) {
+      return tHeader("page_title_view", "Payroll / Loans Advances / View");
+    }
+    return strLowerPath.startsWith("/ess/")
+      ? tHeader("ess_header_title", "Ess / Loans Advances")
+      : tHeader("header_title", "Payroll / Loans Advances");
+  }
+  if (strHeaderModuleName === "calendar") {
+    return tHeader("header_title", "Ess / Calendar");
   }
 
   return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
@@ -469,7 +520,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         setStrBootstrapError("");
-        await ensureMenuLoaded(authHelpers.getLanguageID(), true);
+        const intResolvedLanguageID = authHelpers.getLanguageID();
+        await Promise.all([
+          labelService.preloadAllLabels(intResolvedLanguageID),
+          ensureMenuLoaded(intResolvedLanguageID, true)
+        ]);
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
@@ -573,7 +628,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setObjMenu({ lstMenuItems: [], strHomeRoute: "/dashboard" });
     try {
       await loadWorkspaceContext(intRequestedLanguageID);
-      await ensureMenuLoaded(intRequestedLanguageID, true);
+      await Promise.all([
+        labelService.refreshAllLabels(intRequestedLanguageID),
+        ensureMenuLoaded(intRequestedLanguageID, true)
+      ]);
       setBlnLanguageShellReady(true);
     } catch (objError) {
       if (isSessionExpiredError(objError)) {
@@ -614,19 +672,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
   const strEmployeeReimbursementFormTitle = strLowerPathname === "/ess/reimbursements/new"
-    ? "Add Claim Reimbursement"
+    ? tHeader("add_claim_reimbursement", "Add Claim Reimbursement")
     : strLowerPathname.match(/^\/ess\/reimbursements\/\d+\/edit$/)
-      ? "Edit Claim Reimbursement"
-      : "View Claim Reimbursement";
+      ? tHeader("edit_claim_reimbursement", "Edit Claim Reimbursement")
+      : tHeader("view_claim_reimbursement", "View Claim Reimbursement");
   const strPageTitle = blnEmployeeReimbursementFormContext
     ? strEmployeeReimbursementFormTitle
     : blnEmployeeReimbursementContext
-      ? "Employee Reimbursements"
+      ? tHeader("employee_reimbursements", "Employee Reimbursements")
     : getLocalizedHeaderTitle(
         strPathname,
         strHeaderModuleName,
         tHeader,
-        tCommon
+        tCommon,
+        objSearchParams.get("backRoute") || ""
       );
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
