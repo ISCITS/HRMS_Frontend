@@ -1,4 +1,5 @@
 import { masterApiService } from "@/services/master/MasterApiService";
+import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
 import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
@@ -86,7 +87,16 @@ export const employeeSalaryService = {
 
   async getFormOptions(): Promise<EmployeeSalaryFormOptions> {
     const objResult = await masterApiService.getEmployeeSalaryFormOptions();
-    return objResult.Data;
+    return {
+      ...objResult.Data,
+      lstSalaryStructures: (objResult.Data.lstSalaryStructures ?? []).map((dicStructure) => ({
+        ...dicStructure,
+        strLabel: resolveLookupDisplayLabel({
+          strDisplayName: dicStructure.strLabel,
+          strValueCode: dicStructure.strCode,
+        }),
+      })),
+    };
   },
 
   async getEmployeeSalaryDetail(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {

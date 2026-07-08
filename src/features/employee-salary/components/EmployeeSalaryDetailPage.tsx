@@ -36,7 +36,7 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
+import { calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
   EmployeeSalaryComponentLine,
@@ -68,6 +68,10 @@ const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMP
 const lstFlexiDeclarationStatuses = ["submitted", "approved", "locked", "released", "returned", "rejected"];
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function hasLookupSnapshot(intValue: number | null | undefined) {
+  return Number.isInteger(Number(intValue)) && Number(intValue) > 0;
 }
 
 function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "INR") {
@@ -447,9 +451,13 @@ function isInformationCategory(strCategory: string | null | undefined) {
 }
 
 function isWageComponent(
-  dicLine: { strWageType?: string | null; intSalaryComponentID?: number | null },
+  dicLine: { strWageType?: string | null; intWageTypeSnapshotID?: number | null; intSalaryComponentID?: number | null },
   dicSalaryComponentByID?: Map<number, SalaryComponentApiRecord>
 ) {
+  if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
+    const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
+    return strWageTypeToken === "wage" || strWageTypeToken === "wages";
+  }
   const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
   if (strWageTypeToken === "wage" || strWageTypeToken === "wages") {
     return true;
@@ -469,25 +477,6 @@ function isWageComponent(
     return false;
   }
   return Boolean(dicSalaryComponent?.blnIsWages);
-}
-
-function calculateWageBreakdownMetrics(
-  decAnnualCtc: number,
-  decWageAnnual: number,
-  decNonWageAnnual: number
-) {
-  const decResolvedNonWageAnnual = Math.max(decAnnualCtc - decWageAnnual, decNonWageAnnual, 0);
-  const decMinimumRequiredWageAnnual = decAnnualCtc * 0.5;
-  const decDeemedWageShortfallAnnual = Math.max(decMinimumRequiredWageAnnual - decWageAnnual, 0);
-  const decDeemedWageAnnual = decWageAnnual + decDeemedWageShortfallAnnual;
-  return {
-    decWageAnnual,
-    decNonWageAnnual: decResolvedNonWageAnnual,
-    decMinimumRequiredWageAnnual,
-    decDeemedWageShortfallAnnual,
-    decDeemedWageAnnual,
-    decWagePercentOfCtc: decAnnualCtc > 0 ? (decWageAnnual / decAnnualCtc) * 100 : 0
-  };
 }
 
 function isCtcIncludedWagePreviewComponent(dicLine: EmployeeSalaryComponentLine) {
@@ -746,19 +735,11 @@ function calculateSalarySummaryMetrics(
     }
     return decTotal + getNumberValue(dicLine.decAmountMonthly);
   }, 0);
-  const dicWageMetrics = lstComponentLines.reduce((dicTotal, dicLine) => {
-    if (!isCtcIncludedWagePreviewComponent(dicLine)) {
-      return dicTotal;
-    }
-    const decAnnualAmount = getNumberValue(dicLine.decAmountAnnual);
-    if (isWageComponent(dicLine, dicSalaryComponentByID)) {
-      dicTotal.decWageAnnual += decAnnualAmount;
-    } else {
-      dicTotal.decNonWageAnnual += decAnnualAmount;
-    }
-    return dicTotal;
-  }, { decWageAnnual: 0, decNonWageAnnual: 0 });
   const decAnnualCtc = dicBaseSummaryMetrics.decAnnualCtc;
+  const dicWageMetrics = calculateEmployeeSalaryWageMetrics(
+    lstComponentLines.filter((dicLine) => isCtcIncludedWagePreviewComponent(dicLine)),
+    decAnnualCtc
+  );
   return {
     decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly,
     decGrossMonthlyAfterDeclaration: Math.max(
@@ -775,7 +756,7 @@ function calculateSalarySummaryMetrics(
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    ...calculateWageBreakdownMetrics(decAnnualCtc, dicWageMetrics.decWageAnnual, dicWageMetrics.decNonWageAnnual),
+    ...dicWageMetrics,
     strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType === "other"
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",
@@ -820,7 +801,7 @@ function calculateRevisionSalarySummaryMetrics(
     const strComponentName = dicComponent.strComponentName ?? dicComponent.strComponentCode ?? "";
     const strCategory = dicComponent.strComponentCategory ?? "";
     const blnIsFlexiBucket = Boolean(dicComponent.blnIsFlexiBasket || dicComponent.blnIsFlexiBasketLine || isFlexiPayComponentName(strComponentName));
-    const blnIsFlexiAllocation = setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) || Boolean(dicComponent.blnIsFlexiBenefit);
+    const blnIsFlexiAllocation = setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) || Boolean(dicComponent.blnIsFlexiBenefit || hasLookupSnapshot(dicComponent.intReimbursementTypeSnapshotID));
 
     if (isBasicComponentName(strComponentName)) {
       dicTotal.decBasicAnnual += decAnnualAmount;
@@ -868,7 +849,17 @@ function calculateRevisionSalarySummaryMetrics(
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    ...calculateWageBreakdownMetrics(decAnnualCtc, dicResolvedMetrics.decWageAnnual, dicResolvedMetrics.decNonWageAnnual),
+    ...calculateEmployeeSalaryWageMetrics(
+      lstStructureComponents
+        .filter((dicComponent) => !setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) && dicComponent.blnIncludedInCtc !== false)
+        .map((dicComponent) => ({
+          strWageType: dicComponent.strWageType,
+          intWageTypeSnapshotID: dicComponent.intWageTypeSnapshotID,
+          blnIncludedInCtc: dicComponent.blnIncludedInCtc,
+          decAmountAnnual: getNumberValue(dicComponent.decAmountAnnual ?? (getNumberValue(dicComponent.decAmountMonthly) * 12)),
+        })),
+      decAnnualCtc
+    ),
     strFlexiWarning: decFlexiBucketAnnual > 0 && decApprovedFlexiAnnual <= 0
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",

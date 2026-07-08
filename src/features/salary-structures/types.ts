@@ -15,6 +15,8 @@ export type SalaryStructureOption = {
   intID: number;
   strLabel: string;
   strCode?: string;
+  strValueCode?: string;
+  strDescription?: string | null;
   intFlexiComponentEligibilityID?: number | null;
   blnIsFlexiComponentEligible?: boolean;
   blnIsFlexiBasket?: boolean;
@@ -43,8 +45,16 @@ export type SalaryStructureOption = {
   strContributionType?: string | null;
   strEligibilitySummary?: string | null;
   strValueSource?: string | null;
+  intValueSourceID?: number | null;
   strCalcMethod?: string | null;
   strFormulaExpression?: string | null;
+  intComponentCategoryID?: number | null;
+  intCtcTreatmentID?: number | null;
+  intTaxTreatmentID?: number | null;
+  intWageTypeID?: number | null;
+  intPayslipSectionID?: number | null;
+  intReimbursementTypeID?: number | null;
+  intSettlementModeID?: number | null;
   intBasisComponentID?: number | null;
   lstDependencyComponentIDs?: number[];
   fltPercentageValue?: number | null;
@@ -82,6 +92,7 @@ export type SalaryStructureLineFormValue = {
   strRowID: string;
   intSalaryComponentID: number | "";
   intLineOrder: number;
+  intValueSourceID: number | "";
   strValueSource: string;
   strComponentCode: string;
   strComponentName: string;
@@ -90,6 +101,13 @@ export type SalaryStructureLineFormValue = {
   strWageType?: string;
   strRoundingRule?: string;
   strPayslipSection?: string;
+  intComponentCategorySnapshotID: number | "";
+  intCtcTreatmentSnapshotID: number | "";
+  intTaxTreatmentSnapshotID: number | "";
+  intWageTypeSnapshotID: number | "";
+  intPayslipSectionSnapshotID: number | "";
+  intReimbursementTypeSnapshotID: number | "";
+  intSettlementModeSnapshotID: number | "";
   blnIsFlexiBasketLine: boolean;
   strFlexiComponentRole: string;
   blnIncludedInCtc: boolean;
@@ -162,10 +180,18 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     strWageType?: string | null;
     strRoundingRule?: string | null;
     strPayslipSection?: string | null;
+    intComponentCategorySnapshotID?: number | null;
+    intCtcTreatmentSnapshotID?: number | null;
+    intTaxTreatmentSnapshotID?: number | null;
+    intWageTypeSnapshotID?: number | null;
+    intPayslipSectionSnapshotID?: number | null;
+    intReimbursementTypeSnapshotID?: number | null;
+    intSettlementModeSnapshotID?: number | null;
     blnIsFlexiBasketLine: boolean;
     strFlexiComponentRole: string | null;
     blnIncludedInCtc: boolean;
     strComponentCategory: string | null;
+    intValueSourceID?: number | null;
     intLineOrder: number;
     strValueSource: string;
     fltFixedAmount: number | null;
@@ -194,6 +220,7 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
 export type SalaryStructureFormOptions = {
   lstSalaryComponents: SalaryStructureOption[];
   lstLanguages: SalaryStructureOption[];
+  lstValueSourceLookups?: SalaryStructureOption[];
   lstValueSources: string[];
   lstCurrencies: string[];
 };

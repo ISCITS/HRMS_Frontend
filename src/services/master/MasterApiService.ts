@@ -355,6 +355,15 @@ export type EmployeeLookupOptionApiRecord = {
   strCode?: string;
 };
 
+export type PayrollLookupOptionApiRecord = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+  strDescription?: string | null;
+  intDisplayOrder?: number | null;
+  blnIsActive?: boolean;
+};
+
 export type EmployeeFormOptionsApiRecord = {
   lstEmploymentTypes: EmployeeLookupOptionApiRecord[];
   lstDepartments: EmployeeLookupOptionApiRecord[];
@@ -456,15 +465,23 @@ export type SalaryComponentApiRecord = {
   strComponentName: string;
   strComponentDescription?: string | null;
   blnIsWages: boolean;
+  intComponentCategoryID?: number | null;
   strComponentCategory: string;
+  intComponentGroupID?: number | null;
   strComponentGroup: string | null;
+  intCalcMethodID?: number | null;
   strCalcMethod: string;
   strFormulaExpression: string | null;
   decDefaultPercentageValue?: number | null;
   intDefaultBasisComponentID?: number | null;
+  intRoundingRuleID?: number | null;
   strRoundingRule: string | null;
+  intDefaultPeriodicityID?: number | null;
   strDefaultPeriodicity: string;
+  intTaxTreatmentID?: number | null;
   strTaxTreatment: string | null;
+  intCtcTreatmentID?: number | null;
+  intWageTypeID?: number | null;
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
@@ -472,21 +489,28 @@ export type SalaryComponentApiRecord = {
   blnIncludeInTaxableIncome: boolean;
   blnIncludedInCtc?: boolean;
   blnIncludeInPayslip: boolean;
+  intPayslipSectionID?: number | null;
   strPayslipSection: string | null;
   intDisplayOrder: number;
   blnIsReimbursement?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
+  intFlexiComponentTypeID?: number | null;
   strFlexiComponentType?: string | null;
+  intReimbursementTypeID?: number | null;
   strReimbursementType?: string | null;
+  intSettlementMethodID?: number | null;
   strSettlementMethod?: string | null;
   blnRequiresBills?: boolean;
   blnExpenseDateRequired?: boolean;
   blnAllowPartialApproval?: boolean;
   intApplicableForWhichTaxRegime?: number | null;
+  intApplicableTaxRegimeID?: number | null;
   decAnnualLimitAmount?: number | null;
   decMonthlyLimitAmount?: number | null;
+  intClaimLimitTypeID?: number | null;
   strClaimLimitType?: string | null;
+  intFlexiBalanceHandlingID?: number | null;
   blnAllowExcessClaim?: boolean;
   blnExcessClaimTaxable?: boolean;
   intResidualComponentID?: number | null;
@@ -576,15 +600,150 @@ export type SalaryComponentFormOptionsApiRecord = {
     }>;
   }>;
   lstResidualComponents?: EmployeeLookupOptionApiRecord[];
+  lstComponentCategoryLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstComponentCategories: string[];
+  lstComponentGroupLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstComponentGroups: string[];
+  lstCalcMethodLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstCalcMethods: string[];
+  lstRoundingRuleLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstRoundingRules: string[];
+  lstDefaultPeriodicityLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstDefaultPeriodicities: string[];
+  lstTaxTreatmentLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstTaxTreatments: string[];
+  lstCtcTreatmentLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstWageTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstReimbursementTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstReimbursementTypes?: string[];
+  lstSettlementMethodLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstSettlementMethods?: string[];
+  lstClaimLimitTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstClaimLimitTypes?: string[];
+  lstFlexiComponentTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstFlexiBalanceHandlingLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstPayslipSectionLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstApplicableTaxRegimeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
 };
 
 export type SalaryStructureComponentApiRecord = {
@@ -597,10 +756,18 @@ export type SalaryStructureComponentApiRecord = {
   strWageType?: string | null;
   strRoundingRule?: string | null;
   strPayslipSection?: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
   blnIsFlexiBasketLine?: boolean;
   strFlexiComponentRole?: string | null;
   blnIncludedInCtc?: boolean;
   strComponentCategory?: string | null;
+  intValueSourceID?: number | null;
   intLineOrder: number;
   strValueSource: string;
   fltFixedAmount: number | null;
@@ -697,7 +864,15 @@ export type SalaryStructureFormOptionsApiRecord = {
     strContributionType?: string | null;
     strEligibilitySummary?: string | null;
     strValueSource?: string | null;
+    intValueSourceID?: number | null;
     strFormulaExpression?: string | null;
+    intComponentCategoryID?: number | null;
+    intCtcTreatmentID?: number | null;
+    intTaxTreatmentID?: number | null;
+    intWageTypeID?: number | null;
+    intPayslipSectionID?: number | null;
+    intReimbursementTypeID?: number | null;
+    intSettlementModeID?: number | null;
     intBasisComponentID?: number | null;
     fltPercentageValue?: number | null;
     fltMinAmount?: number | null;
@@ -718,6 +893,15 @@ export type SalaryStructureFormOptionsApiRecord = {
     decReimbursementMaxClaimYearlyLimit?: number | null;
   }>;
   lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstValueSourceLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstValueSources: string[];
   lstCurrencies: string[];
 };
@@ -751,6 +935,16 @@ export type EmployeeSalaryStructureComponentOptionApiRecord = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  intValueSourceID?: number | null;
+  strValueSourceCode?: string | null;
+  strCtcTreatment?: string | null;
   strValueSource: string;
   decFormulaAmount?: number | null;
   decPercentageValue?: number | null;
@@ -770,6 +964,14 @@ export type EmployeeSalaryComponentLineApiRecord = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  strCtcTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
   decAmountMonthly: number | null;
@@ -961,6 +1163,23 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.DepartmentList
+    });
+  },
+
+  getPayrollLookupOptions(
+    strDomainCode: string,
+    intLanguageID?: number | null,
+    strLanguageCode?: string | null,
+  ) {
+    return requestApi<PayrollLookupOptionApiRecord[]>({
+      strPath: MasterApiResource.PayrollLookups,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: {
+        domain_code: strDomainCode,
+        ...(intLanguageID ? { language_id: intLanguageID } : {}),
+        ...(strLanguageCode ? { language_code: strLanguageCode } : {}),
+      },
+      strMenuAction: MasterMenuAction.PayrollLookupList,
     });
   },
 
@@ -2121,10 +2340,12 @@ export const masterApiService = {
     });
   },
 
-  getSalaryComponentFormOptions() {
+  getSalaryComponentFormOptions(intLanguageID?: number | null) {
+    const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<SalaryComponentFormOptionsApiRecord>({
       strPath: MasterApiResource.SalaryComponentFormOptions,
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
       strMenuAction: MasterMenuAction.SalaryComponentFormOptions
     });
   },

@@ -58,6 +58,7 @@ export enum UiKeyboardKey {
 
 export enum MasterApiResource {
   Translate = "/masters/translate",
+  PayrollLookups = "/masters/payroll-lookups",
   Departments = "/masters/departments",
   Designations = "/masters/designations",
   Banks = "/masters/banks",
@@ -179,6 +180,7 @@ export enum MasterMenuAction {
   SalaryComponentList = "MASTER_SALARY_COMPONENT_LIST",
   SalaryComponentGet = "MASTER_SALARY_COMPONENT_GET",
   SalaryComponentFormOptions = "MASTER_SALARY_COMPONENT_FORM_OPTIONS",
+  PayrollLookupList = "MASTER_SALARY_COMPONENT_FORM_OPTIONS",
   SalaryComponentCreate = "MASTER_SALARY_COMPONENT_CREATE",
   SalaryComponentUpdate = "MASTER_SALARY_COMPONENT_UPDATE",
   SalaryComponentStatus = "MASTER_SALARY_COMPONENT_STATUS",
