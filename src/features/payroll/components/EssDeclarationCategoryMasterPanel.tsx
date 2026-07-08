@@ -139,7 +139,10 @@ function normalizeMaxLimitAppliedAt(objValue: unknown): MaxLimitAppliedAt {
   return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
 }
 
-function formatMaxLimitAppliedAt(strValue: MaxLimitAppliedAt) {
+function formatMaxLimitAppliedAt(strValue: MaxLimitAppliedAt, dicOptionLabels?: Record<MaxLimitAppliedAt, string>) {
+  if (dicOptionLabels?.[strValue]) {
+    return dicOptionLabels[strValue];
+  }
   return lstMaxLimitAppliedAtOptions.find((dicOption) => dicOption.strValue === strValue)?.strLabel ?? "Entry Level";
 }
 
@@ -308,6 +311,7 @@ export default function EssDeclarationCategoryMasterPanel({
     update: t("update", "Update"),
     yes: t("yes", "Yes"),
     no: t("no", "No"),
+    all: t("all", "All"),
   };
 
   const dicLabels = {
@@ -377,6 +381,10 @@ export default function EssDeclarationCategoryMasterPanel({
     validationNameDuplicate: t("validation_name_duplicate", "Category name already exists."),
     validationNameMin: t("validation_name_min", "Category name must be at least 3 characters long."),
     validationNameRequired: t("validation_name_required", "Category name is required."),
+  };
+  const dicMaxLimitAppliedAtLabels: Record<MaxLimitAppliedAt, string> = {
+    ENTRY_LEVEL: t("option_entry_level", "Entry Level"),
+    APPROVAL_LEVEL: t("option_approval_level", "Approval Level"),
   };
 
   const blnHasMutatingRights = canDoAny("add") || canDoAny("edit") || canDoAny("delete") || canDoAny("export");
@@ -859,7 +867,7 @@ export default function EssDeclarationCategoryMasterPanel({
                 size="small"
                 helperText={t("max_limit_applied_at_help", "Entry Level validates during employee declaration; Approval Level validates during review.")}
               >
-                {lstMaxLimitAppliedAtOptions.map((dicOption) => <MenuItem key={dicOption.strValue} value={dicOption.strValue}>{dicOption.strLabel}</MenuItem>)}
+                {lstMaxLimitAppliedAtOptions.map((dicOption) => <MenuItem key={dicOption.strValue} value={dicOption.strValue}>{dicMaxLimitAppliedAtLabels[dicOption.strValue]}</MenuItem>)}
               </TextField>
               <Box
                 className={styles.switchRow}
@@ -966,7 +974,7 @@ export default function EssDeclarationCategoryMasterPanel({
               {renderInfoRow(t("summary_code", "Category Code"), dicForm.code.trim() || t("summary_empty", "Not set"))}
               {renderInfoRow(t("summary_kind", "Declaration Kind"), dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
               {renderInfoRow(t("summary_limit", "Max Limit"), dicForm.maxLimitAmount.trim() || t("summary_unlimited", "Not specified"))}
-              {renderInfoRow(t("summary_limit_applied_at", "Limit Applied At"), formatMaxLimitAppliedAt(dicForm.maxLimitAppliedAt))}
+              {renderInfoRow(t("summary_limit_applied_at", "Limit Applied At"), formatMaxLimitAppliedAt(dicForm.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels))}
               {renderInfoRow(t("summary_proof", "Proof"), dicForm.proofRequired ? t("summary_required", "Required") : t("summary_optional", "Optional"))}
               {renderInfoRow(
                 t("summary_component", "Salary Component"),
@@ -994,7 +1002,7 @@ export default function EssDeclarationCategoryMasterPanel({
           <TextField controlId="ess-declaration-category.list.search-name.input" inputProps={{ "controlId": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField controlId="ess-declaration-category.list.search-code.input" inputProps={{ "controlId": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
           <TextField controlId="ess-declaration-category.list.search-status.select" inputProps={{ "controlId": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem controlId="ess-declaration-category.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem controlId="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
             <MenuItem controlId="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="ess-declaration-category.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
@@ -1088,7 +1096,7 @@ export default function EssDeclarationCategoryMasterPanel({
                       <td>{dicCategory.declarationKind}</td>
                       <td>{dicCategory.linkedSalaryComponentName || "-"}</td>
                       <td>{formatAmount(dicCategory.maxLimitAmount)}</td>
-                      <td>{formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt)}</td>
+                      <td>{formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels)}</td>
                       <td>{dicCategory.proofRequired ? dicCommonLabels.yes : dicCommonLabels.no}</td>
                       <td><span className={`${styles.statusPill} ${dicCategory.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>

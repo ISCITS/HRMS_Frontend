@@ -110,6 +110,20 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   }
 
   if (
+    strLowerRoute === "/payroll/results" ||
+    strLowerRoute.startsWith("/payroll/results/")
+  ) {
+    return "/payroll/results";
+  }
+
+  if (
+    strLowerRoute === "/payroll/payslips" &&
+    (strModuleCode.includes("payroll_result") || strModuleName.includes("payroll result"))
+  ) {
+    return "/payroll/results";
+  }
+
+  if (
     strModuleCode.includes("payslip") ||
     strModuleName.includes("payslip") ||
     strLowerRoute.includes("payslip")
@@ -118,20 +132,6 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     const strLastSegment = lstSegments.at(-1) ?? "";
     const blnDetailRoute = /^\d+$/.test(strLastSegment);
     return blnDetailRoute ? `/reports/payslips/${strLastSegment}` : "/reports/payslips";
-  }
-
-  if (
-    strLowerRoute === "/payroll/results" &&
-    (strModuleCode.includes("payslip") || strModuleName.includes("payslip"))
-  ) {
-    return "/reports/payslips";
-  }
-
-  if (
-    strLowerRoute === "/payroll/payslips" &&
-    (strModuleCode.includes("payroll_result") || strModuleName.includes("payroll result"))
-  ) {
-    return "/payroll/results";
   }
 
   if (
@@ -277,8 +277,8 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
       lstChildren: [
         ...lstChildren,
         {
-          strModuleCode: "PAYSLIPS",
-          strModuleName: "Payslips",
+          strModuleCode: "PAYROLL_RESULTS",
+          strModuleName: "Payroll Results",
           strRoute: "/reports/payslips",
           strIconName: "ReceiptLong",
           lstPermissionCodes: ["PAYSLIP_LIST"],
@@ -360,7 +360,7 @@ function appendGeneratedReimbursementsMenu(lstItems: MenuItem[]): MenuItem[] {
         ...lstChildren,
         {
           strModuleCode: "PAYROLL_REIMBURSEMENTS",
-          strModuleName: "Reimbursements",
+          strModuleName: "Employee Reimbursements",
           strRoute: "/payroll/reimbursements",
           strIconName: "ReceiptLong",
           lstPermissionCodes: ["PAYROLL_REIMBURSEMENTS_VIEW"],
@@ -763,6 +763,7 @@ export default function DynamicMenu({
   const { t: tPayrollResults } = useModuleLabels("payroll-results");
   const { t: tEmployeePayrollInput } = useModuleLabels("employee-payroll-input");
   const { t: tTaxRegimes } = useModuleLabels("tax-regimes");
+  const { t: tTaxDeclarationComponents } = useModuleLabels("tax-declaration-components");
   const { t: tStatutoryRules } = useModuleLabels("statutory-rules");
 
   function preferResolvedLabel(strResolvedLabel: string, strMenuName: string, strFallback: string) {
@@ -787,6 +788,37 @@ export default function DynamicMenu({
     }
 
     return strDefaultLabel;
+  }
+
+  function resolveKnownMenuLabel(strMenuName: string, strDefaultLabel: string, strHindiLabel: string) {
+    const strTrimmedMenuName = strMenuName.trim();
+    const normalizeLabel = (strLabel: string) =>
+      strLabel.toLowerCase().replace(/&/g, "and").replace(/\s+/g, " ").trim();
+
+    if (
+      intLanguageID === 2 &&
+      (!strTrimmedMenuName || normalizeLabel(strTrimmedMenuName) === normalizeLabel(strDefaultLabel))
+    ) {
+      return strHindiLabel;
+    }
+
+    return strTrimmedMenuName || strDefaultLabel;
+  }
+
+  function resolvePayrollResultsMenuLabel(strMenuName: string) {
+    const strResolvedPayrollResultsLabel = tPayrollResults("page_title", "Payroll Results").trim();
+    if (strResolvedPayrollResultsLabel && strResolvedPayrollResultsLabel !== "Payroll Results") {
+      return strResolvedPayrollResultsLabel;
+    }
+
+    if (intLanguageID === 2) {
+      return "पेरोल परिणाम";
+    }
+
+    const strTrimmedMenuName = strMenuName.trim();
+    return strTrimmedMenuName.toLowerCase().includes("payslip")
+      ? "Payroll Results"
+      : strTrimmedMenuName || "Payroll Results";
   }
 
   function resolveMenuLabel(objItem: MenuItem) {
@@ -859,7 +891,7 @@ export default function DynamicMenu({
     }
 
     if (strRoute.includes("/hr/it-declaration")) {
-      return strModuleName || "Employee IT Declaration";
+      return resolveKnownMenuLabel(strModuleName, "Employee IT Declaration", "कर्मचारी आईटी घोषणा");
     }
 
     if (
@@ -912,14 +944,14 @@ export default function DynamicMenu({
     }
 
     if (strRoute.includes("/payroll/results") || strModuleCode.includes("payroll_result")) {
-      return preferResolvedLabel(
-        tPayrollResults("page_title", "Payroll Results"),
-        strModuleName,
-        "Payroll Results"
-      );
+      return resolvePayrollResultsMenuLabel(strModuleName);
     }
 
-    if (strRoute.includes("/reports/payslips") || strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
+    if (strRoute.includes("/reports/payslips")) {
+      return resolvePayrollResultsMenuLabel(strModuleName);
+    }
+
+    if (strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
       return preferResolvedLabel(
         tPayslips("payslips_title", "Payslips"),
         strModuleName,
@@ -955,16 +987,28 @@ export default function DynamicMenu({
       );
     }
 
+    if (
+      strRoute.includes("/masters/tax-declaration-component") ||
+      strModuleCode.includes("tax_declaration_component") ||
+      strModuleCode.includes("ess_declaration_category")
+    ) {
+      return preferResolvedLabel(
+        tTaxDeclarationComponents("page_title", "Tax Declaration Component"),
+        strModuleName,
+        "Tax Declaration Component"
+      );
+    }
+
     if (strRoute.includes("/payroll/reimbursements") || strModuleCode.includes("reimbursement")) {
-      return strModuleName || "Reimbursements";
+      return resolveKnownMenuLabel(strModuleName, "Employee Reimbursements", "कर्मचारी प्रतिपूर्ति");
     }
 
     if (strRoute.includes("/payroll/fnf-settlements") || strModuleCode.includes("fnf")) {
-      return strModuleName || "Full and Final Settlement";
+      return resolveKnownMenuLabel(strModuleName, "Full and Final Settlement", "पूर्ण और अंतिम निपटान");
     }
 
     if (strRoute.includes("/payroll/loans-advances") || (strModuleCode.includes("loan") && strModuleCode.includes("advance"))) {
-      return strModuleName || "Loans & Advances";
+      return resolveKnownMenuLabel(strModuleName, "Loans & Advances", "ऋण और अग्रिम");
     }
 
     if (strRoute.includes("/calendar")) {
@@ -972,19 +1016,19 @@ export default function DynamicMenu({
     }
 
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {
-      return strModuleName || "Payroll Register";
+      return resolveKnownMenuLabel(strModuleName, "Payroll Register", "पेरोल रजिस्टर");
     }
 
     if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
-      return strModuleName || "Bank File";
+      return resolveKnownMenuLabel(strModuleName, "Bank File", "बैंक फ़ाइल");
     }
 
     if (strRoute.includes("/reports/statutory") || strModuleCode.includes("statutory_report")) {
-      return strModuleName || "Statutory Reports";
+      return resolveKnownMenuLabel(strModuleName, "Statutory Reports", "वैधानिक रिपोर्ट");
     }
 
     if (strModuleCode === "employee_services" || strModuleName.trim().toLowerCase() === "employee services") {
-      return strModuleName || "Employee Services";
+      return resolveKnownMenuLabel(strModuleName, "Employee Services", "कर्मचारी सेवाएं");
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
