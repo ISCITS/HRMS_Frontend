@@ -862,12 +862,16 @@ export default function DynamicMenu({
       return strModuleName || "Employee IT Declaration";
     }
 
-    if (strRoute.includes("/salary/ess-declarations") || strRoute.includes("/salary/it-declaration")) {
-      return "IT Declaration";
+    if (
+      strRoute.includes("/ess/it-declaration") ||
+      strRoute.includes("/salary/ess-declarations") ||
+      strRoute.includes("/salary/it-declaration")
+    ) {
+      return strModuleName || "IT Declaration";
     }
 
     if (strRoute.includes("/salary/flexi-pay-declarations") || strRoute.includes("/salary/flexi-pay-declaration")) {
-      return "Flexi Pay Declaration";
+      return strModuleName || "Flexi Pay Declaration";
     }
 
     if (strRoute.includes("/payroll-cycles") || strRoute.includes("/payroll/cycles")) {
@@ -961,6 +965,10 @@ export default function DynamicMenu({
 
     if (strRoute.includes("/payroll/loans-advances") || (strModuleCode.includes("loan") && strModuleCode.includes("advance"))) {
       return strModuleName || "Loans & Advances";
+    }
+
+    if (strRoute.includes("/calendar")) {
+      return strModuleName || "Calendar";
     }
 
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {

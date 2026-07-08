@@ -3,15 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { DefaultContextValue } from "@/Common/enums/AppEnums";
 import { getAccessTokenFromCookie, getAccessTokenFromRequest } from "@/app/api/auth/AuthProxy";
 import { apiConstants } from "@/config/constants";
+import type { AllLabelsResponse } from "@/features/labels/types";
 import { callBackendApi } from "@/lib/BackendApi";
 import { generateCSRFToken } from "@/lib/csrfToken";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import { getServerAppOrigin, getServerCsrfSecretKey } from "@/lib/serverSecurity";
-import type { ModuleLabelsResponse } from "@/features/labels/types";
 
-type LabelRequestPayload = {
+type AllLabelRequestPayload = {
   language_id?: string | number | null;
-  module_name?: string | null;
 };
 
 function buildLabelHeaders(objRequest: NextRequest, strAccessToken: string) {
@@ -24,17 +23,16 @@ function buildLabelHeaders(objRequest: NextRequest, strAccessToken: string) {
     Origin: strFrontendOrigin,
     [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), "LABELS_READ"),
     "X-Tenant-Id": strTenantID,
-    "X-Company-Id": strCompanyID
+    "X-Company-Id": strCompanyID,
   };
 }
 
-async function proxyLabels(objRequest: NextRequest, objPayload: LabelRequestPayload) {
+async function proxyAllLabels(objRequest: NextRequest, objPayload: AllLabelRequestPayload) {
   const strLanguageID = String(objPayload.language_id ?? "").trim();
-  const strModuleName = String(objPayload.module_name ?? "").trim();
 
-  if (!strLanguageID || !strModuleName) {
+  if (!strLanguageID) {
     return NextResponse.json(
-      { message: "language_id and module_name are required." },
+      { message: "language_id is required." },
       { status: 400 }
     );
   }
@@ -45,27 +43,27 @@ async function proxyLabels(objRequest: NextRequest, objPayload: LabelRequestPayl
       return NextResponse.json({ message: "Unauthenticated." }, { status: 401 });
     }
 
-    const objResolvedLabels = await callBackendApi<ModuleLabelsResponse | { payload?: string }>(
-      `/api/v1/labels?language_id=${encodeURIComponent(strLanguageID)}&module_name=${encodeURIComponent(strModuleName)}`,
+    const objResolvedLabels = await callBackendApi<AllLabelsResponse | { payload?: string }>(
+      `/api/v1/labels/all?language_id=${encodeURIComponent(strLanguageID)}`,
       {
         method: "GET",
         cache: "no-store",
-        headers: buildLabelHeaders(objRequest, strAccessToken)
+        headers: buildLabelHeaders(objRequest, strAccessToken),
       }
     ).then((objLabels) =>
       typeof objLabels === "object" &&
       objLabels !== null &&
       "payload" in objLabels &&
       typeof objLabels.payload === "string"
-        ? decryptPayload<ModuleLabelsResponse>(objLabels.payload)
-        : (objLabels as ModuleLabelsResponse)
+        ? decryptPayload<AllLabelsResponse>(objLabels.payload)
+        : (objLabels as AllLabelsResponse)
     );
 
     return NextResponse.json(objResolvedLabels, { status: 200 });
   } catch (objError) {
     return NextResponse.json(
       {
-        message: objError instanceof Error ? objError.message : "Unable to load labels."
+        message: objError instanceof Error ? objError.message : "Unable to load labels.",
       },
       { status: 502 }
     );
@@ -73,13 +71,12 @@ async function proxyLabels(objRequest: NextRequest, objPayload: LabelRequestPayl
 }
 
 export async function GET(objRequest: NextRequest) {
-  return proxyLabels(objRequest, {
+  return proxyAllLabels(objRequest, {
     language_id: objRequest.nextUrl.searchParams.get("language_id"),
-    module_name: objRequest.nextUrl.searchParams.get("module_name")
   });
 }
 
 export async function POST(objRequest: NextRequest) {
-  const objPayload = await objRequest.json().catch(() => ({} as LabelRequestPayload));
-  return proxyLabels(objRequest, objPayload);
+  const objPayload = await objRequest.json().catch(() => ({} as AllLabelRequestPayload));
+  return proxyAllLabels(objRequest, objPayload);
 }

@@ -54,7 +54,13 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "employee-payroll-input";
   }
-  if (strLowerPath.startsWith("/reports/payslips") || strLowerPath.startsWith("/payroll/payslips")) {
+  if (
+    strLowerPath.startsWith("/reports/payslips") ||
+    strLowerPath.startsWith("/payroll/payslips") ||
+    strLowerPath.startsWith("/payroll/payslip") ||
+    strLowerPath.startsWith("/ess/my-payslips") ||
+    strLowerPath.startsWith("/ess/my-payslip")
+  ) {
     return "payslips";
   }
   if (strLowerPath.startsWith("/payroll/results")) {
@@ -87,6 +93,22 @@ export function resolveRouteModuleName(strPathname: string) {
     strLowerPath.startsWith("/salary/flexi-pay-declarations")
   ) {
     return "flexi-pay-declaration";
+  }
+  if (
+    strLowerPath.startsWith("/ess/reimbursements") ||
+    strLowerPath.startsWith("/payroll/reimbursements") ||
+    strLowerPath.startsWith("/payroll/employee-reimbursement")
+  ) {
+    return "reimbursements";
+  }
+  if (
+    strLowerPath.startsWith("/ess/loans-advances") ||
+    strLowerPath.startsWith("/payroll/loans-advances")
+  ) {
+    return "loans-advances";
+  }
+  if (strLowerPath.startsWith("/ess/calendar")) {
+    return "calendar";
   }
 
   return "";

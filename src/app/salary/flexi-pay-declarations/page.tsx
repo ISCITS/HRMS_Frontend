@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
 import {
   flexiPayDeclarationService,
   type FlexiDeclarationSummaryRecord,
@@ -44,6 +45,14 @@ function formatStatus(strStatus?: string | null) {
     .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
+function getStatusLabelKey(strStatus?: string | null) {
+  return String(strStatus || "draft")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function getStatusColor(strStatus?: string | null): "default" | "warning" | "success" | "error" {
   const strValue = String(strStatus || "").toLowerCase();
   if (["approved", "locked"].includes(strValue)) return "success";
@@ -54,10 +63,16 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
 
 export default function SalaryFlexiPayDeclarationsRoute() {
   const objRouter = useRouter();
+  const { t } = useFlexiPayDeclarationLabels();
   const strCurrentFinancialYearCode = getCurrentFinancialYearCode();
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [objSummary, setObjSummary] = useState<FlexiDeclarationSummaryRecord | null>(null);
+
+  const getTranslatedStatus = (strStatus?: string | null) => {
+    const strStatusKey = getStatusLabelKey(strStatus);
+    return t(strStatusKey, formatStatus(strStatus));
+  };
 
   useEffect(() => {
     let blnMounted = true;
@@ -70,7 +85,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
         setObjSummary(objData);
       } catch (objError) {
         if (!blnMounted) return;
-        setStrError(objError instanceof Error ? objError.message : "Unable to load Flexi Pay Declaration.");
+        setStrError(objError instanceof Error ? objError.message : t("unable_load_flexi_pay_declaration", "Unable to load Flexi Pay Declaration."));
         setObjSummary(null);
       } finally {
         if (blnMounted) setBlnLoading(false);
@@ -81,7 +96,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     return () => {
       blnMounted = false;
     };
-  }, [strCurrentFinancialYearCode]);
+  }, [strCurrentFinancialYearCode, t]);
 
   const objListRow = useMemo(() => {
     const strCurrencyCode = objSummary?.objAssignedStructure?.strCurrencyCode || "INR";
@@ -129,22 +144,24 @@ export default function SalaryFlexiPayDeclarationsRoute() {
       >
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Box>
-            <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>Flexi Pay Declaration</Typography>
+            <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>
+              {t("page_title", "Flexi Pay Declaration")}
+            </Typography>
             <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>
-              Employee declaration list
+              {t("employee_declaration_list", "Employee declaration list")}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" label={`Financial Year ${objListRow.strFinancialYearCode}`} />
-            <Chip size="small" label={`History ${objListRow.intHistoryCount}`} />
-            <Chip size="small" color={getStatusColor(objListRow.strStatus)} label={formatStatus(objListRow.strStatus)} />
+            <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} />
+            <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} />
+            <Chip size="small" color={getStatusColor(objListRow.strStatus)} label={getTranslatedStatus(objListRow.strStatus)} />
           </Stack>
         </Stack>
       </Paper>
 
       {objSummary && !objSummary.blnCanDeclare ? (
         <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
-          {objSummary.strIneligibilityReason || "No flexi pay is configured for the current salary structure."}
+          {objSummary.strIneligibilityReason || t("no_flexi_pay_configured_current_salary_structure", "No flexi pay is configured for the current salary structure.")}
         </Alert>
       ) : null}
 
@@ -153,16 +170,16 @@ export default function SalaryFlexiPayDeclarationsRoute() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Employee Code</th>
-                <th>Employee Name</th>
-                <th>Financial Year</th>
-                <th>Assigned Salary Structure</th>
-                <th>Current Status</th>
-                <th>Flexi Basket Available</th>
-                <th>Declared Flexi</th>
-                <th>Residual Taxable Balance</th>
-                <th>History Count</th>
+                <th>{t("action", "Action")}</th>
+                <th>{t("employee_code", "Employee Code")}</th>
+                <th>{t("employee_name", "Employee Name")}</th>
+                <th>{t("financial_year", "Financial Year")}</th>
+                <th>{t("assigned_salary_structure", "Assigned Salary Structure")}</th>
+                <th>{t("current_status", "Current Status")}</th>
+                <th>{t("flexi_basket_available", "Flexi Basket Available")}</th>
+                <th>{t("declared_flexi", "Declared Flexi")}</th>
+                <th>{t("residual_taxable_balance", "Residual Taxable Balance")}</th>
+                <th>{t("history_count", "History Count")}</th>
               </tr>
             </thead>
             <tbody>
@@ -175,7 +192,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
                       endIcon={<ArrowForwardRoundedIcon />}
                       onClick={() => objRouter.push("/salary/flexi-pay-declaration")}
                     >
-                      {objListRow.blnCanDeclare ? "Open" : "View"}
+                      {objListRow.blnCanDeclare ? t("open", "Open") : t("view", "View")}
                     </Button>
                   </td>
                   <td>{objListRow.strEmployeeCode}</td>
@@ -186,7 +203,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
                     <Chip
                       size="small"
                       color={getStatusColor(objListRow.strStatus)}
-                      label={formatStatus(objListRow.strStatus)}
+                      label={getTranslatedStatus(objListRow.strStatus)}
                     />
                   </td>
                   <td>{formatCurrency(objListRow.decBasket, objListRow.strCurrencyCode)}</td>
@@ -197,7 +214,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
               ) : (
                 <tr>
                   <td colSpan={10} className={styles.emptyState}>
-                    Flexi declaration summary is not available right now.
+                    {t("flexi_declaration_summary_not_available", "Flexi declaration summary is not available right now.")}
                   </td>
                 </tr>
               )}

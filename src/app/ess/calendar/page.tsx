@@ -18,9 +18,12 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+
 type CalendarMarker = {
   strType: "holiday" | "approved_leave" | "pending_leave" | "important";
-  strLabel: string;
+  strLabelKey: string;
+  strFallbackLabel: string;
 };
 
 type CalendarCell = {
@@ -29,15 +32,24 @@ type CalendarCell = {
   lstMarkers: CalendarMarker[];
 };
 
-const lstWeekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dicMarkerByDay: Record<number, CalendarMarker[]> = {
-  2: [{ strType: "holiday", strLabel: "Maharashtra Day" }],
-  6: [{ strType: "approved_leave", strLabel: "Casual Leave" }],
-  12: [{ strType: "pending_leave", strLabel: "WFH + Leave Pending" }],
-  18: [{ strType: "important", strLabel: "Payroll Lock Date" }],
-  22: [{ strType: "holiday", strLabel: "Company Holiday" }],
-  26: [{ strType: "important", strLabel: "R&D Townhall" }],
+  2: [{ strType: "holiday", strLabelKey: "event_maharashtra_day", strFallbackLabel: "Maharashtra Day" }],
+  6: [{ strType: "approved_leave", strLabelKey: "event_casual_leave", strFallbackLabel: "Casual Leave" }],
+  12: [{ strType: "pending_leave", strLabelKey: "event_wfh_leave_pending", strFallbackLabel: "WFH + Leave Pending" }],
+  18: [{ strType: "important", strLabelKey: "event_payroll_lock_date", strFallbackLabel: "Payroll Lock Date" }],
+  22: [{ strType: "holiday", strLabelKey: "event_company_holiday", strFallbackLabel: "Company Holiday" }],
+  26: [{ strType: "important", strLabelKey: "event_rd_townhall", strFallbackLabel: "R&D Townhall" }],
 };
+
+const lstWeekdayLabelKeys = [
+  { strKey: "weekday_sun", strFallback: "Sun" },
+  { strKey: "weekday_mon", strFallback: "Mon" },
+  { strKey: "weekday_tue", strFallback: "Tue" },
+  { strKey: "weekday_wed", strFallback: "Wed" },
+  { strKey: "weekday_thu", strFallback: "Thu" },
+  { strKey: "weekday_fri", strFallback: "Fri" },
+  { strKey: "weekday_sat", strFallback: "Sat" },
+];
 
 function buildMonthCells(objDisplayMonth: Date) {
   const intYear = objDisplayMonth.getFullYear();
@@ -110,12 +122,20 @@ function getCellBackground(lstMarkers: CalendarMarker[], blnCurrentMonth: boolea
 }
 
 export default function EssCalendarPage() {
+  const { t, strLanguageCode } = useModuleLabels("calendar", "Unable to load calendar labels.");
   const [objDisplayMonth, setObjDisplayMonth] = useState(() => {
     const objNow = new Date();
     return new Date(objNow.getFullYear(), objNow.getMonth(), 1);
   });
-  const strMonthLabel = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(objDisplayMonth);
+  const strMonthLabel = new Intl.DateTimeFormat(strLanguageCode === "hi" ? "hi-IN" : "en-IN", { month: "long", year: "numeric" }).format(objDisplayMonth);
   const lstCells = useMemo(() => buildMonthCells(objDisplayMonth), [objDisplayMonth]);
+
+  function formatLabel(strTemplate: string, dicValues: Record<string, string | number>) {
+    return Object.entries(dicValues).reduce(
+      (strText, [strKey, objValue]) => strText.replaceAll(`{${strKey}}`, String(objValue)),
+      strTemplate
+    );
+  }
 
   function showPreviousMonth() {
     setObjDisplayMonth((objPreviousMonth) =>
@@ -161,15 +181,16 @@ export default function EssCalendarPage() {
               <CalendarMonthRoundedIcon />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Calendar</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{t("page_title", "Calendar")}</Typography>
               <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-                Leaves, holidays, and important payroll dates in one place.
+                {t("subtitle", "Leaves, holidays, and important payroll dates in one place.")}
               </Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.7} alignItems="center">
             <Button
               controlId="ess.calendar.previous-month.button"
+              aria-label={t("previous_month", "Previous month")}
               size="small"
               onClick={showPreviousMonth}
               sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
@@ -189,6 +210,7 @@ export default function EssCalendarPage() {
             />
             <Button
               controlId="ess.calendar.next-month.button"
+              aria-label={t("next_month", "Next month")}
               size="small"
               onClick={showNextMonth}
               sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
@@ -203,7 +225,7 @@ export default function EssCalendarPage() {
               sx={{ color: "white", borderColor: "rgba(255,255,255,0.48)", textTransform: "none", fontWeight: 700 }}
               variant="outlined"
             >
-              Today
+              {t("today", "Today")}
             </Button>
           </Stack>
         </Stack>
@@ -213,15 +235,15 @@ export default function EssCalendarPage() {
         <Grid item xs={12} lg={8.5}>
           <Paper sx={{ p: 1.25, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
             <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mb: 1 }}>
-              <Chip size="small" label="Holiday" sx={{ bgcolor: "#ccfbf1", color: "#115e59", fontWeight: 700 }} />
-              <Chip size="small" label="Approved Leave" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 700 }} />
-              <Chip size="small" label="Pending Leave" sx={{ bgcolor: "#fef3c7", color: "#92400e", fontWeight: 700 }} />
-              <Chip size="small" label="Important Date" sx={{ bgcolor: "#ede9fe", color: "#6d28d9", fontWeight: 700 }} />
+              <Chip size="small" label={t("legend_holiday", "Holiday")} sx={{ bgcolor: "#ccfbf1", color: "#115e59", fontWeight: 700 }} />
+              <Chip size="small" label={t("legend_approved_leave", "Approved Leave")} sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 700 }} />
+              <Chip size="small" label={t("legend_pending_leave", "Pending Leave")} sx={{ bgcolor: "#fef3c7", color: "#92400e", fontWeight: 700 }} />
+              <Chip size="small" label={t("legend_important_date", "Important Date")} sx={{ bgcolor: "#ede9fe", color: "#6d28d9", fontWeight: 700 }} />
             </Stack>
 
             <Grid container spacing={0.8}>
-              {lstWeekdayLabels.map((strWeekday) => (
-                <Grid item xs key={strWeekday}>
+              {lstWeekdayLabelKeys.map((objWeekday) => (
+                <Grid item xs key={objWeekday.strKey}>
                   <Typography
                     sx={{
                       textAlign: "center",
@@ -231,7 +253,7 @@ export default function EssCalendarPage() {
                       py: 0.35,
                     }}
                   >
-                    {strWeekday}
+                    {t(objWeekday.strKey, objWeekday.strFallback)}
                   </Typography>
                 </Grid>
               ))}
@@ -279,7 +301,7 @@ export default function EssCalendarPage() {
                   <Stack spacing={0.35} sx={{ mt: 0.35 }}>
                     {objCell.lstMarkers.slice(0, 2).map((objMarker) => (
                       <Typography
-                        key={`${objCell.intDay}-${objMarker.strType}-${objMarker.strLabel}`}
+                        key={`${objCell.intDay}-${objMarker.strType}-${objMarker.strLabelKey}`}
                         sx={{
                           px: 0.5,
                           py: 0.1,
@@ -293,7 +315,7 @@ export default function EssCalendarPage() {
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {objMarker.strLabel}
+                        {t(objMarker.strLabelKey, objMarker.strFallbackLabel)}
                       </Typography>
                     ))}
                   </Stack>
@@ -307,25 +329,25 @@ export default function EssCalendarPage() {
           <Stack spacing={1.25}>
             <Paper sx={{ p: 1.25, borderRadius: "18px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.9rem", mb: 0.8 }}>
-                Important Details
+                {t("important_details", "Important Details")}
               </Typography>
               <Stack spacing={0.6}>
                 <Stack direction="row" spacing={0.7} alignItems="center">
                   <EventAvailableRoundedIcon sx={{ color: "#0f766e", fontSize: 18 }} />
                   <Typography sx={{ fontSize: "0.8rem", color: "#1e293b", fontWeight: 600 }}>
-                    02 May: Maharashtra Day Holiday
+                    {t("event_maharashtra_day_holiday", "02 May: Maharashtra Day Holiday")}
                   </Typography>
                 </Stack>
                 <Stack direction="row" spacing={0.7} alignItems="center">
                   <CurrencyRupeeRoundedIcon sx={{ color: "#1d4ed8", fontSize: 18 }} />
                   <Typography sx={{ fontSize: "0.8rem", color: "#1e293b", fontWeight: 600 }}>
-                    18 May: Payroll Lock Date
+                    {t("event_payroll_lock_date_detail", "18 May: Payroll Lock Date")}
                   </Typography>
                 </Stack>
                 <Stack direction="row" spacing={0.7} alignItems="center">
                   <CelebrationRoundedIcon sx={{ color: "#7c3aed", fontSize: 18 }} />
                   <Typography sx={{ fontSize: "0.8rem", color: "#1e293b", fontWeight: 600 }}>
-                    26 May: R&D Townhall
+                    {t("event_rd_townhall_detail", "26 May: R&D Townhall")}
                   </Typography>
                 </Stack>
               </Stack>
@@ -333,20 +355,20 @@ export default function EssCalendarPage() {
 
             <Paper sx={{ p: 1.25, borderRadius: "18px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.9rem", mb: 0.8 }}>
-                Leave Summary
+                {t("leave_summary", "Leave Summary")}
               </Typography>
               <Stack spacing={0.6}>
                 <Stack direction="row" spacing={0.7} alignItems="center">
                   <BeachAccessRoundedIcon sx={{ color: "#166534", fontSize: 18 }} />
                   <Typography sx={{ fontSize: "0.8rem", color: "#1e293b", fontWeight: 600 }}>
-                    Approved Leaves: 2
+                    {formatLabel(t("approved_leaves_count", "Approved Leaves: {count}"), { count: 2 })}
                   </Typography>
                 </Stack>
                 <Typography sx={{ fontSize: "0.8rem", color: "#334155" }}>
-                  Pending Leave Requests: 1
+                  {formatLabel(t("pending_leave_requests_count", "Pending Leave Requests: {count}"), { count: 1 })}
                 </Typography>
                 <Typography sx={{ fontSize: "0.8rem", color: "#334155" }}>
-                  Leave Balance (CL): 8 days
+                  {formatLabel(t("leave_balance_cl_days", "Leave Balance (CL): {count} days"), { count: 8 })}
                 </Typography>
               </Stack>
             </Paper>

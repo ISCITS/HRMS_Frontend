@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -1042,7 +1042,7 @@ function ReadinessPanel({ objReadiness, t, blnCompact = false }: { objReadiness:
             />
           </Stack>
           <Box sx={{ transform: blnCompact ? "scale(0.56)" : "none", transformOrigin: blnCompact ? "center center" : "right center", flexShrink: 0, mt: blnCompact ? -0.75 : 0 }}>
-            <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={t("ready", "Ready")} />
+            <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={dashboardTextFallback("ready", t, "Ready")} />
           </Box>
         </Stack>
         {!blnCompact ? (
@@ -1135,7 +1135,7 @@ function ExceptionPanel({ lstItems, lstGroups, t }: { lstItems: Array<{ strCode:
                       <Chip label={formatStatusText(objItem.strSeverity, t)} size="small" sx={{ height: 22, borderRadius: "999px", backgroundColor: objTone.surface, color: objTone.accent, fontWeight: 700, fontSize: "0.67rem", border: `1px solid ${objTone.border}` }} />
                     </Stack>
                     <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.75rem" }}>
-                      {objItem.strReason}
+                      {translateDashboardText(objItem.strReason, t, objItem.strReason)}
                     </Typography>
                   </Box>
                   <Typography sx={{ color: objTone.accent, fontWeight: 800, fontSize: "0.84rem", whiteSpace: "nowrap" }}>
@@ -1251,7 +1251,7 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Box>
             ))}
           </Stack>
-          {blnShowItRing ? <ProgressRing decPercent={(intPrimary / Math.max(intPrimary + intSecondary, 1)) * 100} strColor={objTone.accent} strLabel="Filed" /> : null}
+          {blnShowItRing ? <ProgressRing decPercent={(intPrimary / Math.max(intPrimary + intSecondary, 1)) * 100} strColor={objTone.accent} strLabel={dashboardTextFallback("filed", t, "Filed")} /> : null}
         </Stack>
       ) : null}
       {blnReimbursement ? (
@@ -1268,7 +1268,7 @@ function SummaryPanel({ objWidget, t }: { objWidget: DashboardWidget; t: RoleBas
               </Grid>
             ))}
           </Grid>
-          {blnShowReimbursementRing ? <ProgressRing decPercent={decPercent} strColor={objTone.accent} strLabel="Approved" /> : null}
+          {blnShowReimbursementRing ? <ProgressRing decPercent={decPercent} strColor={objTone.accent} strLabel={dashboardTextFallback("approved", t, "Approved")} /> : null}
         </Stack>
       ) : null}
       {blnStatutory ? (
@@ -1738,23 +1738,23 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     : String(objWelcome.strLocationName || "-");
   const strEmployeeCode = String(objEmployeeProfile?.strEmployeeCode || objWelcome.strEmployeeCode || objUserContext.objEmployee?.strEmployeeCode || "-");
   const strReportingManager = objEmployeeProfile
-    ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstManagers, objEmployeeProfile.intManagerEmployeeID, "Not assigned")
-    : String(objWelcome.strReportingManager || "Not assigned");
+    ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstManagers, objEmployeeProfile.intManagerEmployeeID, t("not_assigned", "Not assigned"))
+    : String(objWelcome.strReportingManager || t("not_assigned", "Not assigned"));
   const strWorkEmail = String(objEmployeeProfile?.strWorkEmail || objWelcome.strWorkEmail || objUserContext.objUser.strEmailAddress || "-");
   const strEmploymentType = objEmployeeProfile
     ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstEmploymentTypes, objEmployeeProfile.intEmploymentTypeID, "-")
     : String(objWelcome.strEmploymentType || "-");
   const lstResolvedProfileChecks = objEmployeeProfile ? [
-    { strCode: "employee_code", strLabel: "Employee Code", blnComplete: Boolean(objEmployeeProfile.strEmployeeCode?.trim()) },
-    { strCode: "work_email", strLabel: "Work Email", blnComplete: Boolean(objEmployeeProfile.strWorkEmail?.trim()) },
-    { strCode: "department", strLabel: "Department", blnComplete: Boolean(objEmployeeProfile.intDepartmentID) },
-    { strCode: "location", strLabel: "Location", blnComplete: Boolean(objEmployeeProfile.intLocationID) },
-    { strCode: "employment_type", strLabel: "Employment Type", blnComplete: Boolean(objEmployeeProfile.intEmploymentTypeID) },
-    { strCode: "manager", strLabel: "Reporting Manager", blnComplete: Boolean(objEmployeeProfile.intManagerEmployeeID) },
-    { strCode: "joining_date", strLabel: "Joined On", blnComplete: Boolean(objEmployeeProfile.dtDateOfJoining) },
-    { strCode: "address", strLabel: "Address", blnComplete: Boolean(objEmployeeAddress?.strAddressLine1?.trim()) },
-    { strCode: "pan", strLabel: "PAN", blnComplete: Boolean(objEmployeeStatutory?.strPanNumber?.trim()) },
-    { strCode: "pf_uan", strLabel: "PF / UAN", blnComplete: Boolean(objEmployeeStatutory?.strUanNumber?.trim()) || Boolean(objEmployeeStatutory?.strPfNumber?.trim()) },
+    { strCode: "employee_code", strLabel: t("employee_code", "Employee Code"), blnComplete: Boolean(objEmployeeProfile.strEmployeeCode?.trim()) },
+    { strCode: "work_email", strLabel: t("work_email", "Work Email"), blnComplete: Boolean(objEmployeeProfile.strWorkEmail?.trim()) },
+    { strCode: "department", strLabel: t("department", "Department"), blnComplete: Boolean(objEmployeeProfile.intDepartmentID) },
+    { strCode: "location", strLabel: t("location", "Location"), blnComplete: Boolean(objEmployeeProfile.intLocationID) },
+    { strCode: "employment_type", strLabel: t("employment_type", "Employment Type"), blnComplete: Boolean(objEmployeeProfile.intEmploymentTypeID) },
+    { strCode: "manager", strLabel: t("reporting_manager", "Reporting Manager"), blnComplete: Boolean(objEmployeeProfile.intManagerEmployeeID) },
+    { strCode: "joining_date", strLabel: t("joined_on", "Joined On"), blnComplete: Boolean(objEmployeeProfile.dtDateOfJoining) },
+    { strCode: "address", strLabel: t("address", "Address"), blnComplete: Boolean(objEmployeeAddress?.strAddressLine1?.trim()) },
+    { strCode: "pan", strLabel: t("pan", "PAN"), blnComplete: Boolean(objEmployeeStatutory?.strPanNumber?.trim()) },
+    { strCode: "pf_uan", strLabel: t("pf_uan", "PF / UAN"), blnComplete: Boolean(objEmployeeStatutory?.strUanNumber?.trim()) || Boolean(objEmployeeStatutory?.strPfNumber?.trim()) },
   ] : lstProfileChecks;
   const intProfileCompletionPercent = objEmployeeProfile
     ? Math.round((lstResolvedProfileChecks.filter((objCheck) => objCheck.blnComplete).length / Math.max(lstResolvedProfileChecks.length, 1)) * 100)
@@ -1784,11 +1784,11 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const decTotalDeductions = Number(objPay.decTotalDeductions || 0) > 0
     ? Number(objPay.decTotalDeductions || 0)
     : Math.max(decGrossEarnings - decNetPay, 0);
-  const strCurrentMonthPaySubtitle = String(
+  const strCurrentMonthPaySubtitle = translateDashboardText(String(
     objPay.strSubtitle
     || objEmployeeSalarySummary?.objCurrentSalarySnapshot?.dtEffectiveFrom
     || "Current Month"
-  );
+  ), t);
   const strCurrentMonthPayTitle = blnHasPayrollResult ? t("current_month_pay", "Current Month Pay") : t("salary_estimate", "Salary Estimate");
   const intCompletedChecks = lstResolvedProfileChecks.filter((objCheck) => objCheck.blnComplete).length;
   const strDashboardTitle = t("ess_title_heading", "Employee Self Service Dashboard");
@@ -1993,11 +1993,11 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                 <Stack key={objAction.strCode} direction="row" alignItems="center" spacing={1} sx={{ py: 0.5 }}>
                   <Chip size="small" label={formatStatusText(String(objAction.strPriority || "low"), t)} sx={{ minWidth: 72, justifyContent: "center", backgroundColor: prioritySoftColor(String(objAction.strPriority || "low")), color: priorityColor(String(objAction.strPriority || "low")), fontWeight: 800, textTransform: "capitalize" }} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.82rem" }}>{objAction.strLabel}</Typography>
+                    <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.82rem" }}>{translateDashboardText(objAction.strLabel, t, objAction.strLabel)}</Typography>
                   </Box>
                   <Typography sx={{ color: ESS_COLORS.muted, fontSize: "0.76rem", minWidth: 78, textAlign: "right" }}>{objAction.strDueDate ? formatDateLabel(String(objAction.strDueDate), t) : "-"}</Typography>
                   <Link href={objAction.strRoutePath || "/dashboard"} style={{ textDecoration: "none" }}>
-                    <Button size="small" sx={{ minWidth: 76, borderRadius: "10px", backgroundColor: prioritySoftColor(String(objAction.strPriority || "low")), color: priorityColor(String(objAction.strPriority || "low")), textTransform: "none", fontWeight: 800 }}>{objAction.strActionLabel || t("update", "Update")}</Button>
+                    <Button size="small" sx={{ minWidth: 76, borderRadius: "10px", backgroundColor: prioritySoftColor(String(objAction.strPriority || "low")), color: priorityColor(String(objAction.strPriority || "low")), textTransform: "none", fontWeight: 800 }}>{objAction.strActionLabel ? translateDashboardText(objAction.strActionLabel, t, objAction.strActionLabel) : t("update", "Update")}</Button>
                   </Link>
                 </Stack>
               )) : <Typography sx={{ color: ESS_COLORS.muted }}>{t("no_pending_actions", "No pending actions.")}</Typography>}
@@ -2042,7 +2042,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                   <Link href={objAction.strRoutePath || "/dashboard"} style={{ textDecoration: "none", display: "block" }}>
                     <Box sx={{ p: 1.15, borderRadius: "14px", border: `1px solid ${ESS_COLORS.border}`, backgroundColor: quickActionColor(objAction.strActionCode), minHeight: 92, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0.7 }}>
                       {renderEssQuickActionIcon(objAction.strActionCode)}
-                      <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.77rem", textAlign: "center", lineHeight: 1.25 }}>{objAction.strActionName}</Typography>
+                      <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.77rem", textAlign: "center", lineHeight: 1.25 }}>{translateDashboardText(objAction.strActionName, t, objAction.strActionName)}</Typography>
                     </Box>
                   </Link>
                 </Grid>
@@ -2062,7 +2062,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                 <Grid item xs={12} sm={6} key={objCheck.strCode}>
                   <Box sx={{ p: 1.05, borderRadius: "12px", border: `1px solid ${ESS_COLORS.border}`, backgroundColor: "#FFFFFF" }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                      <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.8rem" }}>{objCheck.strLabel}</Typography>
+                      <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.8rem" }}>{translateDashboardText(objCheck.strLabel, t, objCheck.strLabel)}</Typography>
                       <Chip size="small" label={objCheck.blnComplete ? t("verified", "Verified") : t("pending", "Pending")} sx={{ backgroundColor: objCheck.blnComplete ? ESS_COLORS.softGreen : ESS_COLORS.softOrange, color: objCheck.blnComplete ? ESS_COLORS.green : ESS_COLORS.orange, fontWeight: 700 }} />
                     </Stack>
                   </Box>
@@ -2607,10 +2607,113 @@ function normalizeDashboardWidgetKey(strValue: string) {
     .replace(/^_+|_+$/g, "");
 }
 
+const DASHBOARD_HINDI_TEXT_FALLBACKS: Record<string, string> = {
+  approved: "अनुमोदित",
+  filed: "दाखिल",
+  missing_tax_regime: "कर व्यवस्था अनुपलब्ध",
+  open_issues_in_run: "रन में खुले मुद्दे",
+  payroll_tax_and_reimbursement: "पेरोल, कर और प्रतिपूर्ति",
+  pending_approval_workloads_still_require_review: "लंबित अनुमोदन कार्यभार की अभी समीक्षा आवश्यक है।",
+  ready: "तैयार",
+  ready_with_warnings: "चेतावनियों के साथ तैयार",
+  tax_regime_missing: "कर व्यवस्था अनुपलब्ध",
+  employees_missing_tax_regime_can_affect_tds_accuracy: "जिन कर्मचारियों की कर व्यवस्था अनुपलब्ध है, वे TDS सटीकता को प्रभावित कर सकते हैं।",
+  keep_statutory_identifiers_complete_before_payout: "भुगतान से पहले वैधानिक पहचान विवरण पूर्ण रखें।",
+  update_pf_uan_details_for_statutory_readiness: "वैधानिक तैयारी के लिए PF/UAN विवरण अपडेट करें।",
+};
+
+const DASHBOARD_HINDI_TEXT_FALLBACK_OVERRIDES: Record<string, string> = {
+  approved: "स्वीकृत",
+  approved_amount: "स्वीकृत राशि",
+  approved_claims: "स्वीकृत दावे",
+  complete: "पूर्ण",
+  current_month: "वर्तमान माह",
+  current_month_pay: "वर्तमान माह का वेतन",
+  declared_amount: "घोषित राशि",
+  department: "विभाग",
+  download_payslip: "पेस्लिप डाउनलोड करें",
+  emp_code: "कर्मचारी कोड",
+  employee_code: "कर्मचारी कोड",
+  employment_type: "रोजगार प्रकार",
+  ess_title: "आपका स्वागत है, आपके लिए ताजा जानकारी यहां है",
+  ess_title_heading: "कर्मचारी स्वयं सेवा डैशबोर्ड",
+  flexi_pay_declaration: "फ्लेक्सी पे घोषणा",
+  gross_earnings: "सकल आय",
+  high: "उच्च",
+  improve_profile: "प्रोफ़ाइल सुधारें",
+  it_declaration: "आईटी घोषणा",
+  joined_on: "ज्वाइनिंग तिथि",
+  latest_payslip: "नवीनतम पेस्लिप",
+  latest_status: "नवीनतम स्थिति",
+  location: "स्थान",
+  low: "कम",
+  medium: "मध्यम",
+  my_payslips: "मेरी पेस्लिप",
+  my_profile: "मेरी प्रोफ़ाइल",
+  net_pay: "शुद्ध वेतन",
+  no_compliance_data_available: "कोई अनुपालन डेटा उपलब्ध नहीं है।",
+  no_payslips: "अभी कोई पेस्लिप जनरेट नहीं हुई है।",
+  no_pending_actions: "कोई लंबित कार्य नहीं।",
+  not_assigned: "असाइन नहीं किया गया",
+  not_available: "उपलब्ध नहीं",
+  overview: "अवलोकन",
+  paid: "भुगतान किया गया",
+  paid_amount: "भुगतान राशि",
+  pan: "पैन",
+  payslip_available_after_release: "पेरोल रिलीज़ के बाद पेस्लिप उपलब्ध होगी।",
+  pending: "लंबित",
+  pending_actions: "लंबित कार्य",
+  pf_uan: "पीएफ / यूएएन",
+  profile_completeness: "प्रोफ़ाइल पूर्णता",
+  profile_compliance_health: "प्रोफ़ाइल और अनुपालन स्थिति",
+  proof_pending: "प्रमाण लंबित",
+  quick_actions: "त्वरित कार्य",
+  recent_payslips: "हाल की पेस्लिप",
+  reimbursement_summary: "प्रतिपूर्ति सारांश",
+  reimbursements: "प्रतिपूर्ति",
+  reporting_manager: "रिपोर्टिंग मैनेजर",
+  salary_estimate: "वेतन अनुमान",
+  submitted: "जमा किया गया",
+  submitted_amount: "जमा राशि",
+  tax_regime: "कर व्यवस्था",
+  total_amount: "कुल राशि",
+  total_claims: "कुल दावे",
+  total_deductions: "कुल कटौतियां",
+  update: "अपडेट करें",
+  update_profile: "प्रोफ़ाइल अपडेट करें",
+  verified: "सत्यापित",
+  view_all: "सभी देखें",
+  view_all_actions: "सभी कार्य देखें",
+  view_details: "विवरण देखें",
+  view_my_claims: "मेरे दावे देखें",
+  view_update: "देखें / अपडेट करें",
+  work_email: "कार्य ईमेल",
+};
+function hasDevanagariText(strValue: string) {
+  return /[\u0900-\u097F]/.test(strValue || "");
+}
+
+function shouldUseHindiDashboardFallback(t: RoleBasedDashboardProps["t"]) {
+  return ["payroll_dashboard", "current_status", "exception_first", "approval_queue", "payroll_readiness", "ess_title_heading", "my_payslips", "profile_completeness", "current_month_pay"]
+    .some((strKey) => hasDevanagariText(t(strKey, "")));
+}
+
+function dashboardTextFallback(strKey: string, t: RoleBasedDashboardProps["t"], strFallback: string) {
+  const strTranslated = t(strKey, "");
+  if (strTranslated) return strTranslated;
+  if (shouldUseHindiDashboardFallback(t) && DASHBOARD_HINDI_TEXT_FALLBACK_OVERRIDES[strKey]) {
+    return DASHBOARD_HINDI_TEXT_FALLBACK_OVERRIDES[strKey];
+  }
+  if (shouldUseHindiDashboardFallback(t) && DASHBOARD_HINDI_TEXT_FALLBACKS[strKey]) {
+    return DASHBOARD_HINDI_TEXT_FALLBACKS[strKey];
+  }
+  return strFallback;
+}
+
 function translateDashboardText(strValue: string | undefined, t: RoleBasedDashboardProps["t"], strFallback = "") {
   const strResolved = String(strValue || strFallback || "").trim();
   if (!strResolved) return "";
-  return t(normalizeDashboardWidgetKey(strResolved), strResolved);
+  return dashboardTextFallback(normalizeDashboardWidgetKey(strResolved), t, strResolved);
 }
 
 function getStageColor(strStatus: TrackerStage["strStatus"]) {
@@ -2953,14 +3056,14 @@ function chipBackground(strStatus: string) {
 
 function formatStatusText(strStatus: string, t: RoleBasedDashboardProps["t"]) {
   const strNormalized = String(strStatus || "").trim().toLowerCase();
-  if (!strNormalized) return t("pending", "Pending");
+  if (!strNormalized) return dashboardTextFallback("pending", t, "Pending");
   const strKey = normalizeDashboardWidgetKey(strNormalized);
   const strFallback = strNormalized
     .split(/[_\s]+/)
     .filter(Boolean)
     .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
     .join(" ");
-  return t(strKey, strFallback);
+  return dashboardTextFallback(strKey, t, strFallback);
 }
 
 
@@ -3036,3 +3139,4 @@ function buildConicGradient(lstPoints: Array<ChartPoint & { intValue: number }>)
   });
   return `conic-gradient(${lstStops.join(", ")})`;
 }
+

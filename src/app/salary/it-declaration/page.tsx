@@ -50,6 +50,7 @@ import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type FlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
@@ -416,6 +417,7 @@ function FlowNode({ strLabel, intStep, blnActive }: { strLabel: string; intStep:
 export default function SalaryEssDeclarationsPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
+  const { t } = useModuleLabels("it-declaration");
   const strFinancialYearCode = (objSearchParams.get("fy") || "").trim() || strDefaultFinancialYearCode;
   const strRouteRegime = (objSearchParams.get("regime") || "").trim();
   const blnRouteCompare = (objSearchParams.get("compare") || "").trim() === "1";
@@ -481,6 +483,23 @@ export default function SalaryEssDeclarationsPage() {
     strDefaultRegime: "Old Regime" as Regime,
     blnAllowEmployeeOptOut: true,
   });
+
+  const getRegimeLabel = (strRegime: string) => {
+    if (strRegime === "Old Regime") return t("old_regime", "Old Regime");
+    if (strRegime === "New Regime") return t("new_regime", "New Regime");
+    if (strRegime === "Either Regime") return t("either_regime", "Either Regime");
+    return strRegime;
+  };
+
+  const getStatusLabel = (strStatus: string) => {
+    if (strStatus === "Submitted") return t("submitted", "Submitted");
+    if (strStatus === "Draft") return t("draft", "Draft");
+    if (strStatus === "Completed") return t("completed", "Completed");
+    if (strStatus === "Proof Pending") return t("proof_pending", "Proof Pending");
+    if (strStatus === "In Progress") return t("in_progress", "In Progress");
+    if (strStatus === "Not Started") return t("not_started", "Not Started");
+    return strStatus;
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -551,7 +570,7 @@ export default function SalaryEssDeclarationsPage() {
       status: (
         <Chip
           size="small"
-          label={objRow.strStatus}
+          label={getStatusLabel(objRow.strStatus)}
           sx={{
             fontWeight: 700,
             color: objRow.strStatus === "Completed" ? "#166534" : objRow.strStatus === "Proof Pending" ? "#9a3412" : objRow.strStatus === "In Progress" ? "#9a3412" : "#475569",
@@ -569,20 +588,20 @@ export default function SalaryEssDeclarationsPage() {
           onClick={() => openEditModal(objRow)}
         >
           {blnLocked
-            ? (objRow.decDeclaredAmount > 0 ? "View" : "-")
-            : (objRow.decDeclaredAmount > 0 ? "View / Edit" : blnStarted ? "Add" : "Start")}
+            ? (objRow.decDeclaredAmount > 0 ? t("view", "View") : "-")
+            : (objRow.decDeclaredAmount > 0 ? t("view_edit", "View / Edit") : blnStarted ? t("add", "Add") : t("start", "Start"))}
         </Button>
       ),
     }));
-  }, [blnLocked, blnStarted, lstSectionRows]);
+  }, [blnLocked, blnStarted, lstSectionRows, t]);
   const lstDeclarationColumns: CommonTableColumn<(typeof lstDeclarationGridRows)[number]>[] = [
-    { field: "category", headerName: "Category", width: 130 },
-    { field: "section", headerName: "Section", width: 90, sortable: false },
-    { field: "description", headerName: "Description", width: 180, sortable: false },
-    { field: "declaredAmount", headerName: "Declared Amount", width: 150, sortable: false },
-    { field: "maxLimit", headerName: "Max Limit", width: 100, sortable: false },
-    { field: "status", headerName: "Status", width: 120, sortable: false },
-    { field: "action", headerName: "Action", width: 100, sortable: false, align: "center", exportable: false },
+    { field: "category", headerName: t("category", "Category"), width: 130 },
+    { field: "section", headerName: t("section", "Section"), width: 90, sortable: false },
+    { field: "description", headerName: t("description", "Description"), width: 180, sortable: false },
+    { field: "declaredAmount", headerName: t("declared_amount", "Declared Amount"), width: 150, sortable: false },
+    { field: "maxLimit", headerName: t("max_limit", "Max Limit"), width: 100, sortable: false },
+    { field: "status", headerName: t("status", "Status"), width: 120, sortable: false },
+    { field: "action", headerName: t("action", "Action"), width: 100, sortable: false, align: "center", exportable: false },
   ];
   const decDeclaredTotal = useMemo(
     () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
@@ -680,34 +699,34 @@ export default function SalaryEssDeclarationsPage() {
       dicNameCount.set(strNameKey, (dicNameCount.get(strNameKey) ?? 0) + 1);
     }
     if (Array.from(dicNameCount.values()).some((intCount) => intCount > 1)) {
-      return "Duplicate investment is not allowed.";
+      return t("duplicate_investment_not_allowed", "Duplicate investment is not allowed.");
     }
     for (const objEntry of lstSectionEditEntries) {
       const strName = objEntry.strInvestmentName.trim();
       const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
-      if (!strName) return "Investment name is required for all rows.";
-      if (!objEntry.strAmountInput.trim()) return "Declared amount is required for all rows.";
-      if (!Number.isFinite(decAmount) || decAmount < 0) return "All row amounts must be valid positive values.";
-      if (decAmount <= 0) return "Declared amount must be greater than zero for all rows.";
-      if (blnApplyMaxLimitAtEntry && decAmount > decAmountMaxInput) return `Amount cannot exceed ${formatCurrency(decAmountMaxInput)}.`;
+      if (!strName) return t("investment_name_required_all_rows", "Investment name is required for all rows.");
+      if (!objEntry.strAmountInput.trim()) return t("declared_amount_required_all_rows", "Declared amount is required for all rows.");
+      if (!Number.isFinite(decAmount) || decAmount < 0) return t("all_row_amounts_valid_positive", "All row amounts must be valid positive values.");
+      if (decAmount <= 0) return t("declared_amount_greater_zero_all_rows", "Declared amount must be greater than zero for all rows.");
+      if (blnApplyMaxLimitAtEntry && decAmount > decAmountMaxInput) return `${t("amount_cannot_exceed", "Amount cannot exceed")} ${formatCurrency(decAmountMaxInput)}.`;
       if (objEditRow.blnProofRequired && decAmount > 0 && !objEntry.objProof && !objEntry.objProofFileInput) {
-        return "Proof upload is required for this section.";
+        return t("proof_upload_required_section", "Proof upload is required for this section.");
       }
     }
     if (blnApplyMaxLimitAtEntry && decActiveMaxLimit != null && decSectionEditTotal > decActiveMaxLimit) {
-      return `Section total cannot exceed ${formatCurrency(decActiveMaxLimit)}.`;
+      return `${t("section_total_cannot_exceed", "Section total cannot exceed")} ${formatCurrency(decActiveMaxLimit)}.`;
     }
     return "";
-  }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit, blnApplyMaxLimitAtEntry]);
+  }, [objEditRow, lstSectionEditEntries, decActiveMaxLimit, blnApplyMaxLimitAtEntry, t]);
   const blnSaveEditDisabled = Boolean(strSectionEditError);
   const strSectionEditWarning = useMemo(() => {
     if (!objEditRow || blnApplyMaxLimitAtEntry) return "";
     for (const objEntry of lstSectionEditEntries) {
       const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
-      if (decAmount > decAmountMaxInput) return `Amount ${formatCurrency(decAmount)} exceeds ${formatCurrency(decAmountMaxInput)}. Limit is enforced at approval — please ensure the value is correct.`;
+      if (decAmount > decAmountMaxInput) return `${t("amount", "Amount")} ${formatCurrency(decAmount)} ${t("exceeds", "exceeds")} ${formatCurrency(decAmountMaxInput)}. ${t("approval_limit_warning", "Limit is enforced at approval - please ensure the value is correct.")}`;
     }
     return "";
-  }, [objEditRow, lstSectionEditEntries, blnApplyMaxLimitAtEntry]);
+  }, [objEditRow, lstSectionEditEntries, blnApplyMaxLimitAtEntry, t]);
 
   function hydrateFromApi(objData: ItDeclarationDto) {
     const blnSummaryFallback = Boolean(objData.objSummary?.blnSummaryFallback);
@@ -758,7 +777,7 @@ export default function SalaryEssDeclarationsPage() {
       setStrWarning(
         objData.objSummary?.strSummaryWarning?.trim()
           ? `Tax summary is in preview mode: ${objData.objSummary.strSummaryWarning}`
-          : "Tax summary is in preview mode due to missing tax setup."
+          : t("tax_summary_preview_missing_setup", "Tax summary is in preview mode due to missing tax setup.")
       );
       setBlnDismissWarningAlert(false);
     }
@@ -920,7 +939,7 @@ export default function SalaryEssDeclarationsPage() {
         setBlnCompareModalOpen(true);
       }
     } catch (objError) {
-      const strApiError = formatApiErrorForUi(objError, "Unable to load IT declaration.");
+      const strApiError = formatApiErrorForUi(objError, t("unable_load_it_declaration", "Unable to load IT declaration."));
       const blnItDeclarationRouteMissing = objError instanceof ApiRequestError && objError.intStatusCode === 404;
       try {
         const lstMasterRows = await loadRowsFromCategoryMaster();
@@ -929,16 +948,16 @@ export default function SalaryEssDeclarationsPage() {
         if (lstMasterRows.length > 0) {
           setStrWarning(
             blnItDeclarationRouteMissing
-              ? "IT declaration API is not available in current backend build. Loaded declaration sections from Tax Declaration master."
-              : `${strApiError} Loaded declaration sections from Tax Declaration Component master.`
+              ? t("it_declaration_api_unavailable_loaded_master", "IT declaration API is not available in current backend build. Loaded declaration sections from Tax Declaration master.")
+              : `${strApiError} ${t("loaded_declaration_sections_from_master", "Loaded declaration sections from Tax Declaration Component master.")}`
           );
         } else {
-          setStrError("Unable to refresh declaration summary. Please try again.");
+          setStrError(t("unable_refresh_declaration_summary", "Unable to refresh declaration summary. Please try again."));
           setBlnRetryRefresh(true);
         }
       } catch {
         setLstRows([]);
-        setStrError("Unable to refresh declaration summary. Please try again.");
+        setStrError(t("unable_refresh_declaration_summary", "Unable to refresh declaration summary. Please try again."));
         setBlnRetryRefresh(true);
       }
     } finally {
@@ -985,7 +1004,7 @@ export default function SalaryEssDeclarationsPage() {
   async function runCompareAndOpenModal() {
     if (blnLocked) return;
     setBlnSaving(true);
-    setStrSavingLabel("Saving changes and comparing...");
+    setStrSavingLabel(t("saving_changes_comparing", "Saving changes and comparing..."));
     setStrError("");
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
@@ -995,32 +1014,32 @@ export default function SalaryEssDeclarationsPage() {
       setBlnCompared(true);
       setBlnCompareModalOpen(true);
     } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to compare tax."));
+      setStrError(formatApiErrorForUi(objError, t("unable_compare_tax", "Unable to compare tax.")));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Saving...");
+      setStrSavingLabel(t("saving", "Saving..."));
     }
   }
 
   async function saveDraft() {
     if (blnLocked) return;
     setBlnSaving(true);
-    setStrSavingLabel("Saving draft...");
+    setStrSavingLabel(t("saving_draft", "Saving draft..."));
     setStrError("");
     try {
       if (objEditRow) {
         await saveDeclarationEdit();
-        setStrSuccessToast("Draft saved successfully.");
+        setStrSuccessToast(t("draft_saved_successfully", "Draft saved successfully."));
         return;
       }
       await persistDraftToDb();
       setBlnDraftSaved(true);
-      setStrSuccessToast("Draft saved successfully.");
+      setStrSuccessToast(t("draft_saved_successfully", "Draft saved successfully."));
     } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to save declaration draft."));
+      setStrError(formatApiErrorForUi(objError, t("unable_save_declaration_draft", "Unable to save declaration draft.")));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Saving...");
+      setStrSavingLabel(t("saving", "Saving..."));
     }
   }
 
@@ -1087,7 +1106,7 @@ export default function SalaryEssDeclarationsPage() {
       return !strName || !objEntry.strAmountInput.trim() || !Number.isFinite(decAmount) || decAmount <= 0;
     });
     if (blnHasIncompleteRow) {
-      setStrWarning("Complete Investment name and Declared amount for current rows before adding a new investment.");
+      setStrWarning(t("complete_investment_before_adding", "Complete Investment name and Declared amount for current rows before adding a new investment."));
       return;
     }
     setLstSectionEditEntries((lstCurrent) => [
@@ -1122,7 +1141,7 @@ export default function SalaryEssDeclarationsPage() {
     }
 
     if (!intResolvedDeclarationID) {
-      throw new Error("Unable to resolve declaration ID for proof upload.");
+      throw new Error(t("unable_resolve_declaration_id_proof_upload", "Unable to resolve declaration ID for proof upload."));
     }
 
     objLatestData = await saveCurrentItem(intResolvedDeclarationID, objPayload);
@@ -1145,7 +1164,7 @@ export default function SalaryEssDeclarationsPage() {
     if (strSectionEditError) return;
     setBlnModalSaving(true);
     try {
-      setStrSavingLabel("Saving declaration rows...");
+      setStrSavingLabel(t("saving_declaration_rows", "Saving declaration rows..."));
       setBlnSaving(true);
       let intLastResolvedDeclarationID = intDeclarationID;
 
@@ -1188,10 +1207,10 @@ export default function SalaryEssDeclarationsPage() {
       setObjEditRow(null);
       setLstSectionEditEntries([]);
       setBlnDraftSaved(true);
-      setStrSuccessToast("Declaration rows saved successfully.");
+      setStrSuccessToast(t("declaration_rows_saved_successfully", "Declaration rows saved successfully."));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Saving...");
+      setStrSavingLabel(t("saving", "Saving..."));
       setBlnModalSaving(false);
     }
   }
@@ -1207,12 +1226,12 @@ export default function SalaryEssDeclarationsPage() {
 
   async function submitDeclaration() {
     if (!blnDeclarationConfirm) {
-      setStrWarning("Please check confirmation checkbox before final submit.");
+      setStrWarning(t("please_check_confirmation_checkbox", "Please check confirmation checkbox before final submit."));
       setBlnSubmitModalOpen(false);
       return;
     }
     setBlnSaving(true);
-    setStrSavingLabel("Saving changes and submitting...");
+    setStrSavingLabel(t("saving_changes_submitting", "Saving changes and submitting..."));
     setStrError("");
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
@@ -1221,39 +1240,39 @@ export default function SalaryEssDeclarationsPage() {
       hydrateFromApi(objData);
       setBlnSubmitModalOpen(false);
       setBlnDraftSaved(true);
-      setStrSuccessToast("Declaration submitted successfully.");
+      setStrSuccessToast(t("declaration_submitted_successfully", "Declaration submitted successfully."));
       if (blnHrMode) {
         objRouter.push(strBackPath);
       }
     } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to submit declaration."));
+      setStrError(formatApiErrorForUi(objError, t("unable_submit_declaration", "Unable to submit declaration.")));
     } finally {
       setBlnSaving(false);
-      setStrSavingLabel("Saving...");
+      setStrSavingLabel(t("saving", "Saving..."));
     }
   }
 
   async function copyPreviousFinancialYear() {
     if (blnLocked) return;
     setBlnSaving(true);
-    setStrSavingLabel("Copying previous FY...");
+    setStrSavingLabel(t("copying_previous_fy", "Copying previous FY..."));
     setStrError("");
     try {
       const intResolvedDeclarationID = await persistDraftToDb();
       if (!intResolvedDeclarationID) return;
       const objData = await copyPreviousCurrentDeclaration(intResolvedDeclarationID);
       hydrateFromApi(objData);
-      setStrSuccessToast("Previous FY declaration copied.");
+      setStrSuccessToast(t("previous_fy_declaration_copied", "Previous FY declaration copied."));
       setBlnCompared(false);
     } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, "Unable to copy previous FY declaration."));
+      setStrError(formatApiErrorForUi(objError, t("unable_copy_previous_fy_declaration", "Unable to copy previous FY declaration.")));
     } finally {
       setBlnSaving(false);
     }
   }
 
   if (blnLoading) {
-    return <BlockingLoader blnOpen strLabel="Loading IT Declaration..." />;
+    return <BlockingLoader blnOpen strLabel={t("loading_it_declaration", "Loading IT Declaration...")} />;
   }
 
   async function persistDraftToDb() {
@@ -1274,7 +1293,7 @@ export default function SalaryEssDeclarationsPage() {
     }
 
     if (!intResolvedDeclarationID) {
-      throw new Error("Unable to resolve declaration ID for draft save.");
+      throw new Error(t("unable_resolve_declaration_id_draft_save", "Unable to resolve declaration ID for draft save."));
     }
 
     for (const objPendingRow of lstPendingRows) {
@@ -1301,13 +1320,13 @@ export default function SalaryEssDeclarationsPage() {
               sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
               onClick={() => objRouter.push(strBackPath)}
             >
-              Back
+              {t("back", "Back")}
             </Button>
             <Stack direction="row" spacing={0.9} alignItems="center" sx={{ mt: 0.1 }}>
               <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />
               <Box>
-                <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2, mb: 0.2 }}>IT Declaration & Tax Planning</Typography>
-                <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem", lineHeight: 1.2 }}>Financial Year {strFinancialYearCode}</Typography>
+                <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2, mb: 0.2 }}>{t("page_title", "Income Tax Declaration")}</Typography>
+                <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem", lineHeight: 1.2 }}>{t("financial_year", "Financial Year")} {strFinancialYearCode}</Typography>
               </Box>
             </Stack>
           </Stack>
@@ -1326,13 +1345,13 @@ export default function SalaryEssDeclarationsPage() {
                   "& .Mui-checked": { color: "#ffffff !important" },
                 }}
               >
-                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`Old Regime${objDerivedCalc.strRecommendedRegime === "Old Regime" ? " (Recommended)" : ""}`} />
-                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label="New Regime" />
+                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`${getRegimeLabel("Old Regime")}${objDerivedCalc.strRecommendedRegime === "Old Regime" ? ` (${t("recommended", "Recommended")})` : ""}`} />
+                <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label={getRegimeLabel("New Regime")} />
               </RadioGroup>
               {!blnHideActionButtons ? (
                 <>
                   <Button controlId="salary.it-declaration.save-draft.button" variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
-                    Save Draft
+                    {t("save_draft", "Save Draft")}
                   </Button>
                   {blnCopyAllowedBeforeCreateOnly && strFlowStatus === "NOT_STARTED" ? (
                     <Button
@@ -1359,11 +1378,11 @@ export default function SalaryEssDeclarationsPage() {
                         },
                       }}
                     >
-                      Copy Previous FY
+                      {t("copy_previous_fy", "Copy Previous FY")}
                     </Button>
                   ) : null}
 <Button controlId="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
-                    Submit Declaration
+                    {t("submit_declaration", "Submit Declaration")}
                   </Button>
                 </>
               ) : null}
@@ -1371,10 +1390,10 @@ export default function SalaryEssDeclarationsPage() {
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (
               <>
                 <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
-                  Regime is locked by policy. Default regime: {objRegimeConfig.strDefaultRegime}
+                  {t("regime_locked_by_policy", "Regime is locked by policy. Default regime:")} {getRegimeLabel(objRegimeConfig.strDefaultRegime)}
                 </Typography>
                 <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
-                  If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.
+                  {t("default_new_regime_warning", "If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.")}
                 </Typography>
               </>
             ) : null}
@@ -1394,7 +1413,7 @@ export default function SalaryEssDeclarationsPage() {
               </IconButton>
             }
           >
-            Draft saved
+            {t("draft_saved", "Draft saved")}
           </Alert>
         </Fade>
       ) : null}
@@ -1410,7 +1429,7 @@ export default function SalaryEssDeclarationsPage() {
               </IconButton>
             }
           >
-            Unsaved changes
+            {t("unsaved_changes", "Unsaved changes")}
           </Alert>
         </Fade>
       ) : null}
@@ -1438,7 +1457,7 @@ export default function SalaryEssDeclarationsPage() {
             sx={{ borderRadius: "8px", py: 0.1 }}
             action={
               <Stack direction="row" spacing={0.4} alignItems="center">
-                {blnRetryRefresh ? <Button color="inherit" size="small" onClick={() => void loadDeclaration()}>Retry</Button> : null}
+                {blnRetryRefresh ? <Button color="inherit" size="small" onClick={() => void loadDeclaration()}>{t("retry", "Retry")}</Button> : null}
                 <IconButton size="small" color="inherit" onClick={() => setBlnDismissErrorAlert(true)}>
                   <CloseRoundedIcon fontSize="small" />
                 </IconButton>
@@ -1452,19 +1471,19 @@ export default function SalaryEssDeclarationsPage() {
 
       <Grid container spacing={0.8}>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Declaration Status" strValue={strFlowStatus === "SUBMITTED" ? "Submitted" : blnHasAnyFilled ? "Draft" : "Not Started"} strSubValue={`Last updated: ${strLastUpdated}`} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel={t("declaration_status", "Declaration Status")} strValue={getStatusLabel(strFlowStatus === "SUBMITTED" ? "Submitted" : blnHasAnyFilled ? "Draft" : "Not Started")} strSubValue={`${t("last_updated", "Last updated")}: ${strLastUpdated}`} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Selected Regime" strValue={strSelectedRegime || "Old Regime"} strSubValue={objDerivedCalc.strRecommendedRegime === "Either Regime" ? "Either regime works" : objDerivedCalc.strRecommendedRegime === "Old Regime" ? "Recommended" : ""} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel={t("selected_regime", "Selected Regime")} strValue={getRegimeLabel(strSelectedRegime || "Old Regime")} strSubValue={objDerivedCalc.strRecommendedRegime === "Either Regime" ? t("either_regime_works", "Either regime works") : objDerivedCalc.strRecommendedRegime === "Old Regime" ? t("recommended", "Recommended") : ""} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel="Estimated Tax Saving" strValue={formatCurrency(objDerivedCalc.decSavings)} strSubValue={objDerivedCalc.blnPreviewOnly ? "Estimated preview only" : "(Old vs New Regime)"} objIcon={<SavingsOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel={t("estimated_tax_saving", "Estimated Tax Saving")} strValue={formatCurrency(objDerivedCalc.decSavings)} strSubValue={objDerivedCalc.blnPreviewOnly ? t("estimated_preview_only", "Estimated preview only") : t("old_vs_new_regime", "(Old vs New Regime)")} objIcon={<SavingsOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
-            strLabel="Gross Salary"
+            strLabel={t("gross_salary", "Gross Salary")}
             strValue={formatCurrency(objDerivedCalc.decGrossSalary)}
-            strSubValue={objDerivedCalc.decGrossSalary > 0 ? "From payroll data" : "Payroll gross not available"}
+            strSubValue={objDerivedCalc.decGrossSalary > 0 ? t("from_payroll_data", "From payroll data") : t("payroll_gross_not_available", "Payroll gross not available")}
             objIcon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />}
           />
         </Grid>
@@ -1473,7 +1492,7 @@ export default function SalaryEssDeclarationsPage() {
       <Paper sx={{ p: 0.8, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
           {lstStepper.map((strStep, intIndex) => (
-            <FlowNode key={strStep} strLabel={strStep} intStep={intIndex + 1} blnActive={intIndex <= intActiveStep} />
+            <FlowNode key={strStep} strLabel={t(`step_${intIndex + 1}`, strStep)} intStep={intIndex + 1} blnActive={intIndex <= intActiveStep} />
           ))}
         </Stack>
       </Paper>
@@ -1481,8 +1500,8 @@ export default function SalaryEssDeclarationsPage() {
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>Your Declarations</Typography>
-              <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked}>Refresh Amounts</Button>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{t("your_declarations", "Your Declarations")}</Typography>
+              <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked}>{t("refresh_amounts", "Refresh Amounts")}</Button>
             </Stack>
             <Box sx={{ height: intDeclarationTableMaxHeight, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
               <CommonTable
@@ -1493,7 +1512,7 @@ export default function SalaryEssDeclarationsPage() {
                 hideToolbar
                 minTableWidth={840}
                 withPaper={false}
-                emptyMessage="No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API."
+                emptyMessage={t("no_declaration_sections", "No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.")}
               />
             </Box>
           </Paper>
@@ -1502,49 +1521,49 @@ export default function SalaryEssDeclarationsPage() {
         <Grid item xs={12} lg={4}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>Tax Summary (Live)</Typography>
-              <Tooltip title="View detailed tax calculation">
+              <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>{t("tax_summary_live", "Tax Summary (Live)")}</Typography>
+              <Tooltip title={t("view_detailed_tax_calculation", "View detailed tax calculation")}>
                 <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
                   <InfoOutlinedIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Tooltip>
             </Stack>
             <Stack spacing={0.72}>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Gross Salary</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Total Exemptions</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Taxable Income (Old)</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableOld)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Taxable Income (New)</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableNew)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("gross_salary", "Gross Salary")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_exemptions", "Total Exemptions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_old", "Taxable Income (Old)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableOld)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_new", "Taxable Income (New)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableNew)}</Typography></Stack>
               <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (Old)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(objDerivedCalc.decOldTax)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>Estimated Tax (New)</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(objDerivedCalc.decNewTax)}</Typography></Stack>
-              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>Estimated preview only</Typography> : null}
-              {objDerivedCalc.blnPreviewOnly && objDerivedCalc.blnRuleBasedFallback ? <Typography sx={{ fontSize: "0.73rem", color: "#94a3b8" }}>Some sections require backend rule-based calculation.</Typography> : null}
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_old", "Estimated Tax (Old)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(objDerivedCalc.decOldTax)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_new", "Estimated Tax (New)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(objDerivedCalc.decNewTax)}</Typography></Stack>
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>{t("estimated_preview_only", "Estimated preview only")}</Typography> : null}
+              {objDerivedCalc.blnPreviewOnly && objDerivedCalc.blnRuleBasedFallback ? <Typography sx={{ fontSize: "0.73rem", color: "#94a3b8" }}>{t("rule_based_calculation_required", "Some sections require backend rule-based calculation.")}</Typography> : null}
             </Stack>
             <Paper sx={{ mt: 1, p: 1, borderRadius: "8px", border: "1px solid #bde3cb", backgroundColor: "#f0fdf4" }}>
-              <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, color: "#166534" }}>Recommended Regime</Typography>
-              <Typography sx={{ fontSize: "1rem", fontWeight: 900, color: "#14532d" }}>{objDerivedCalc.strRecommendedRegime}</Typography>
-              <Typography sx={{ fontSize: "0.8rem", color: "#166534", mt: 0.2, fontWeight: 700 }}>Estimated Tax Saving: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
+              <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, color: "#166534" }}>{t("recommended_regime", "Recommended Regime")}</Typography>
+              <Typography sx={{ fontSize: "1rem", fontWeight: 900, color: "#14532d" }}>{getRegimeLabel(objDerivedCalc.strRecommendedRegime)}</Typography>
+              <Typography sx={{ fontSize: "0.8rem", color: "#166534", mt: 0.2, fontWeight: 700 }}>{t("estimated_tax_saving", "Estimated Tax Saving")}: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
             </Paper>
           </Paper>
         </Grid>
       </Grid>
 
       <Dialog open={blnRegimeModalOpen} onClose={() => setBlnRegimeModalOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Select Tax Regime</DialogTitle>
+        <DialogTitle>{t("select_tax_regime", "Select Tax Regime")}</DialogTitle>
         <DialogContent>
           <RadioGroup value={strRegimeDraft} onChange={(objEvent) => setStrRegimeDraft(objEvent.target.value as Regime)}>
-            <FormControlLabel value="Old Regime" control={<Radio />} label="Old Regime (Recommended)" />
-            <FormControlLabel value="New Regime" control={<Radio />} label="New Regime" />
+            <FormControlLabel value="Old Regime" control={<Radio />} label={`${getRegimeLabel("Old Regime")} (${t("recommended", "Recommended")})`} />
+            <FormControlLabel value="New Regime" control={<Radio />} label={getRegimeLabel("New Regime")} />
           </RadioGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnRegimeModalOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void confirmRegime()}>Continue</Button>
+          <Button onClick={() => setBlnRegimeModalOpen(false)}>{t("cancel", "Cancel")}</Button>
+          <Button variant="contained" onClick={() => void confirmRegime()}>{t("continue", "Continue")}</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={Boolean(objEditRow)} onClose={closeEditModal} maxWidth="lg" fullWidth>
-        <DialogTitle sx={{ py: 1.1, px: 2 }}>Edit Declaration ({objEditRow?.strSection})</DialogTitle>
+        <DialogTitle sx={{ py: 1.1, px: 2 }}>{t("edit_declaration", "Edit Declaration")} ({objEditRow?.strSection})</DialogTitle>
         <DialogContent sx={{ pt: "8px !important", pb: "6px !important" }}>
           <Stack spacing={1}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -1556,11 +1575,11 @@ export default function SalaryEssDeclarationsPage() {
                   sx={{ minHeight: 28, px: 1.05, fontSize: "0.74rem", textTransform: "none", borderRadius: "8px", backgroundColor: "#0b3f73", "&:hover": { backgroundColor: "#0a355f" } }}
                   onClick={addInvestmentRow}
                 >
-                  Add Investment
+                  {t("add_investment", "Add Investment")}
                 </Button>
               ) : <Box />}
               <Typography sx={{ color: "#334155", fontSize: "0.82rem", fontWeight: 800 }}>
-                Section total: {formatCurrency(decSectionEditTotal)}
+                {t("section_total", "Section total")}: {formatCurrency(decSectionEditTotal)}
               </Typography>
             </Stack>
             <Stack spacing={0.5}>
@@ -1592,10 +1611,10 @@ export default function SalaryEssDeclarationsPage() {
                             return (
                               <TextField
                                 {...params}
-                                label="Investment name *"
+                                label={t("investment_name_required", "Investment name *")}
                                 size="small"
                                 error={blnDuplicate || blnMandatoryMissing}
-                                helperText={blnDuplicate ? "Duplicate investment is not allowed." : blnMandatoryMissing ? "Investment name is mandatory." : undefined}
+                                helperText={blnDuplicate ? t("duplicate_investment_not_allowed", "Duplicate investment is not allowed.") : blnMandatoryMissing ? t("investment_name_mandatory", "Investment name is mandatory.") : undefined}
                                 InputProps={{ ...params.InputProps, readOnly: blnLocked }}
                                 sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                                 fullWidth
@@ -1606,7 +1625,7 @@ export default function SalaryEssDeclarationsPage() {
                       </Box>
                       <Box sx={{ width: { xs: "100%", lg: "19%" } }}>
                         <TextField
-                          label="Declared amount *"
+                          label={t("declared_amount_required", "Declared amount *")}
                           size="small"
                           inputMode="numeric"
                           value={objEntry.strAmountInput}
@@ -1618,7 +1637,7 @@ export default function SalaryEssDeclarationsPage() {
                           }}
                           sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                           error={!objEntry.strAmountInput.trim() || Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0}
-                          helperText={!objEntry.strAmountInput.trim() ? "Declared amount is mandatory." : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? "Amount must be greater than zero." : undefined}
+                          helperText={!objEntry.strAmountInput.trim() ? t("declared_amount_mandatory", "Declared amount is mandatory.") : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? t("amount_greater_than_zero", "Amount must be greater than zero.") : undefined}
                           InputProps={{ readOnly: blnLocked }}
                           fullWidth
                         />
@@ -1645,7 +1664,7 @@ export default function SalaryEssDeclarationsPage() {
                               "&:hover": { borderColor: "#1d4ed8", backgroundColor: "#dbeafe" },
                             }}
                           >
-                            {objEntry.objProof || objEntry.objProofFileInput ? "Replace" : "Upload"}
+                            {objEntry.objProof || objEntry.objProofFileInput ? t("replace", "Replace") : t("upload", "Upload")}
                             <input
                               hidden
                               type="file"
@@ -1660,7 +1679,7 @@ export default function SalaryEssDeclarationsPage() {
                           </Button>
                         ) : null}
                         {!blnLocked ? (
-                          <Tooltip title="Delete">
+                          <Tooltip title={t("delete", "Delete")}>
                             <IconButton
                               size="small"
                               sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
@@ -1670,7 +1689,7 @@ export default function SalaryEssDeclarationsPage() {
                                     const objData = await deleteCurrentItem(intDeclarationID, objEntry.intItemID);
                                     hydrateFromApi(objData);
                                   } catch (objError) {
-                                    setStrError(formatApiErrorForUi(objError, "Unable to delete investment row."));
+                                    setStrError(formatApiErrorForUi(objError, t("unable_delete_investment_row", "Unable to delete investment row.")));
                                     return;
                                   }
                                 }
@@ -1693,10 +1712,10 @@ export default function SalaryEssDeclarationsPage() {
                         }}
                       >
                         {objEntry.objProofFileInput
-                          ? `Selected: ${objEntry.objProofFileInput.name}`
+                          ? `${t("selected", "Selected")}: ${objEntry.objProofFileInput.name}`
                           : objEntry.objProof?.strFileName
-                            ? `Uploaded: ${objEntry.objProof.strFileName}`
-                            : "No proof uploaded"}
+                            ? `${t("uploaded", "Uploaded")}: ${objEntry.objProof.strFileName}`
+                            : t("no_proof_uploaded", "No proof uploaded")}
                       </Typography>
                     </Stack>
                   </Stack>
@@ -1705,16 +1724,16 @@ export default function SalaryEssDeclarationsPage() {
             </Stack>
             {decActiveMaxLimit != null ? (
               <Typography sx={{ color: blnApplyMaxLimitAtEntry && decSectionEditTotal > decActiveMaxLimit ? "#b91c1c" : "#64748b", fontSize: "0.74rem", mt: -0.35 }}>
-                Max allowed{!blnApplyMaxLimitAtEntry ? " (checked at approval, not enforced here)" : ""} under {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
+                {t("max_allowed", "Max allowed")}{!blnApplyMaxLimitAtEntry ? ` ${t("checked_at_approval_not_enforced", "(checked at approval, not enforced here)")}` : ""} {t("under", "under")} {objEditRow?.strSection}: {formatCurrency(decActiveMaxLimit)}
               </Typography>
             ) : null}
             <Typography sx={{ color: objEditRow?.blnProofRequired ? "#b45309" : "#64748b", fontSize: "0.74rem", mt: -0.35, fontWeight: 700 }}>
-              Proof: {objEditRow?.blnProofRequired ? "Mandatory" : "Optional"}
+              {t("proof", "Proof")}: {objEditRow?.blnProofRequired ? t("mandatory", "Mandatory") : t("optional", "Optional")}
             </Typography>
             <Typography sx={{ color: "#b45309", fontSize: "0.72rem", mt: -0.15, lineHeight: 1.2, fontWeight: 600 }}>
-              Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.
+              {t("supported_document_types", "Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.")}
             </Typography>
-            {strSectionEditError && strSectionEditError !== "Investment name is required for all rows." && strSectionEditError !== "Declared amount is required for all rows." ? (
+            {strSectionEditError ? (
               <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700, mt: 0.2 }}>{strSectionEditError}</Typography>
             ) : null}
             {strSectionEditWarning ? (
@@ -1723,10 +1742,10 @@ export default function SalaryEssDeclarationsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeEditModal}>{blnLocked ? "Close" : "Cancel"}</Button>
+          <Button onClick={closeEditModal}>{blnLocked ? t("close", "Close") : t("cancel", "Cancel")}</Button>
           {!blnLocked ? (
             <Button variant="contained" onClick={() => void saveDeclarationEdit()} disabled={blnSaveEditDisabled || blnModalSaving}>
-              {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : "Save"}
+              {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : t("save", "Save")}
             </Button>
           ) : null}
         </DialogActions>
@@ -1735,8 +1754,8 @@ export default function SalaryEssDeclarationsPage() {
       <Dialog open={blnCompareModalOpen} onClose={() => setBlnCompareModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ py: 1, px: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography sx={{ fontWeight: 800 }}>Compare Tax</Typography>
-            <Tooltip title="View detailed tax calculation">
+          <Typography sx={{ fontWeight: 800 }}>{t("compare_tax", "Compare Tax")}</Typography>
+            <Tooltip title={t("view_detailed_tax_calculation", "View detailed tax calculation")}>
               <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
                 <InfoOutlinedIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -1749,19 +1768,19 @@ export default function SalaryEssDeclarationsPage() {
               <Table size="small">
                 <TableHead sx={{ backgroundColor: "#f8fafc" }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800 }}>Metric</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Old Regime</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>New Regime</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{t("metric", "Metric")}</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{getRegimeLabel("Old Regime")}</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{getRegimeLabel("New Regime")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Taxable Income</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("taxable_income", "Taxable Income")}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableOld)}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableNew)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Estimated Tax</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("estimated_tax", "Estimated Tax")}</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "#166534" : "#0f172a", backgroundColor: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "rgba(220,252,231,0.62)" : undefined }}>
                       {formatCurrency(objDerivedCalc.decOldTax)}
                     </TableCell>
@@ -1774,36 +1793,36 @@ export default function SalaryEssDeclarationsPage() {
             </TableContainer>
             <Paper sx={{ p: 1, borderRadius: "8px", border: "1px solid #bde3cb", backgroundColor: "#f0fdf4" }}>
               <Typography sx={{ color: "#166534", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Recommended Regime
+                {t("recommended_regime", "Recommended Regime")}
               </Typography>
-              <Typography sx={{ color: "#14532d", fontSize: "1rem", fontWeight: 900 }}>{objDerivedCalc.strRecommendedRegime}</Typography>
+              <Typography sx={{ color: "#14532d", fontSize: "1rem", fontWeight: 900 }}>{getRegimeLabel(objDerivedCalc.strRecommendedRegime)}</Typography>
             </Paper>
             <Alert severity="info" sx={{ borderRadius: "10px" }}>
-              <Typography sx={{ fontWeight: 800 }}>Estimated Savings: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
+              <Typography sx={{ fontWeight: 800 }}>{t("estimated_savings", "Estimated Savings")}: {formatCurrency(objDerivedCalc.decSavings)}</Typography>
               <Typography sx={{ fontSize: "0.8rem", mt: 0.2 }}>
-                {objDerivedCalc.strRecommendedRegime === "Either Regime" ? "Both regimes currently result in the same estimated tax." : `${objDerivedCalc.strRecommendedRegime} is recommended because it gives the lower estimated tax based on your current declaration entries.`}
+                {objDerivedCalc.strRecommendedRegime === "Either Regime" ? t("both_regimes_same_tax", "Both regimes currently result in the same estimated tax.") : `${getRegimeLabel(objDerivedCalc.strRecommendedRegime)} ${t("recommended_reason", "is recommended because it gives the lower estimated tax based on your current declaration entries.")}`}
               </Typography>
-              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.76rem", mt: 0.35 }}>Estimated preview only</Typography> : null}
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.76rem", mt: 0.35 }}>{t("estimated_preview_only", "Estimated preview only")}</Typography> : null}
             </Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnCompareModalOpen(false)}>Back</Button>
-          <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>Continue to Submit</Button>
+          <Button onClick={() => setBlnCompareModalOpen(false)}>{t("back", "Back")}</Button>
+          <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>{t("continue_to_submit", "Continue to Submit")}</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={blnTaxCalcInfoOpen} onClose={() => setBlnTaxCalcInfoOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ py: 1.1 }}>Tax Calculation Details</DialogTitle>
+        <DialogTitle sx={{ py: 1.1 }}>{t("tax_calculation_details", "Tax Calculation Details")}</DialogTitle>
         <DialogContent sx={{ pt: "10px !important" }}>
           <Stack spacing={1}>
             <Alert severity="info" sx={{ borderRadius: "8px" }}>
               <Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>
-                Old Regime taxable income is reduced by eligible exemptions. New Regime uses gross salary in this summary view.
+                {t("tax_calculation_info", "Old Regime taxable income is reduced by eligible exemptions. New Regime uses gross salary in this summary view.")}
               </Typography>
               {objDerivedCalc.blnPreviewOnly ? (
                 <Typography sx={{ fontSize: "0.76rem", mt: 0.25 }}>
-                  Showing estimated values based on current saved/unsaved declaration inputs.
+                  {t("showing_estimated_values", "Showing estimated values based on current saved/unsaved declaration inputs.")}
                 </Typography>
               ) : null}
             </Alert>
@@ -1811,12 +1830,12 @@ export default function SalaryEssDeclarationsPage() {
               <Grid item xs={12} md={6}>
                 <Paper sx={{ p: 0.85, borderRadius: "8px", border: "1px solid #bfdbfe", background: "linear-gradient(140deg, #eff6ff 0%, #f8fbff 100%)", height: "100%" }}>
                   <Stack spacing={0.22}>
-                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#1e3a8a" }}>Formula Guide</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>A = Gross Salary</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>B = Eligible Exemptions considered for that regime</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>Taxable Income = A - B</Typography>
+                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#1e3a8a" }}>{t("formula_guide", "Formula Guide")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_a_gross_salary", "A = Gross Salary")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_b_eligible_exemptions", "B = Eligible Exemptions considered for that regime")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_taxable_income_a_b", "Taxable Income = A - B")}</Typography>
                     <Typography sx={{ fontSize: "0.73rem", color: "#475569", mt: 0.1 }}>
-                      In this view, declaration-based exemptions are applied to Old Regime. For New Regime, B is shown as 0.
+                      {t("formula_guide_note", "In this view, declaration-based exemptions are applied to Old Regime. For New Regime, B is shown as 0.")}
                     </Typography>
                   </Stack>
                 </Paper>
@@ -1824,21 +1843,21 @@ export default function SalaryEssDeclarationsPage() {
               <Grid item xs={12} md={6}>
                 <Paper sx={{ p: 0.85, borderRadius: "8px", border: "1px solid #bbf7d0", background: "linear-gradient(140deg, #f0fdf4 0%, #f8fff8 100%)", height: "100%" }}>
                   <Stack spacing={0.22}>
-                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#166534" }}>Tax Amount Formula Flow</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>C = Taxable Income (A - B)</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>D = Estimated Tax (from regime slab rules in payroll tax engine)</Typography>
-                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>Effective Tax Rate = D / C</Typography>
+                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "#166534" }}>{t("tax_amount_formula_flow", "Tax Amount Formula Flow")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_c_taxable_income", "C = Taxable Income (A - B)")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_d_estimated_tax", "D = Estimated Tax (from regime slab rules in payroll tax engine)")}</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#1f2937" }}>{t("formula_effective_tax_rate", "Effective Tax Rate = D / C")}</Typography>
                 <Typography sx={{ fontSize: "0.73rem", color: "#475569", mt: 0.1 }}>
-                  Old: {formatPercent(decOldEffectiveRate)} | New: {formatPercent(decNewEffectiveRate)}
+                  {t("old", "Old")}: {formatPercent(decOldEffectiveRate)} | {t("new", "New")}: {formatPercent(decNewEffectiveRate)}
                 </Typography>
                 <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>
-                  Old rate = {formatCurrency(objDerivedCalc.decOldTax)} / {formatCurrency(objDerivedCalc.decTaxableOld)} × 100 = {formatPercent(decOldEffectiveRate)}
+                  {t("old_rate", "Old rate")} = {formatCurrency(objDerivedCalc.decOldTax)} / {formatCurrency(objDerivedCalc.decTaxableOld)} x 100 = {formatPercent(decOldEffectiveRate)}
                 </Typography>
                 <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>
-                  New rate = {formatCurrency(objDerivedCalc.decNewTax)} / {formatCurrency(objDerivedCalc.decTaxableNew)} × 100 = {formatPercent(decNewEffectiveRate)}
+                  {t("new_rate", "New rate")} = {formatCurrency(objDerivedCalc.decNewTax)} / {formatCurrency(objDerivedCalc.decTaxableNew)} x 100 = {formatPercent(decNewEffectiveRate)}
                 </Typography>
                 <Typography sx={{ fontSize: "0.73rem", color: "#475569" }}>
-                  Estimated Savings = |Estimated Tax (Old) - Estimated Tax (New)|
+                  {t("estimated_savings_formula", "Estimated Savings = |Estimated Tax (Old) - Estimated Tax (New)|")}
                 </Typography>
                   </Stack>
                 </Paper>
@@ -1848,42 +1867,42 @@ export default function SalaryEssDeclarationsPage() {
               <Table size="small">
                 <TableHead sx={{ backgroundColor: "#f8fafc" }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800 }}>Calculation Step</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Old Regime</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>New Regime</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{t("calculation_step", "Calculation Step")}</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{getRegimeLabel("Old Regime")}</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>{getRegimeLabel("New Regime")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Gross Salary (A)</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("gross_salary_a", "Gross Salary (A)")}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decGrossSalary)}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decGrossSalary)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Total Declared Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("total_declared_amount", "Total Declared Amount")}</TableCell>
                     <TableCell>{formatCurrency(decDeclaredTotal)}</TableCell>
                     <TableCell>{formatCurrency(decDeclaredTotal)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Eligible Exemptions (B)</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("eligible_exemptions_b", "Eligible Exemptions (B)")}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decExemptions)}</TableCell>
                     <TableCell>{formatCurrency(0)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Taxable Income (A - B)</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("taxable_income_a_b", "Taxable Income (A - B)")}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableOld)}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableNew)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Estimated Tax</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("estimated_tax", "Estimated Tax")}</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{formatCurrency(objDerivedCalc.decOldTax)}</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{formatCurrency(objDerivedCalc.decNewTax)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Estimated Savings</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t("estimated_savings", "Estimated Savings")}</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: "#166534" }}>{formatCurrency(objDerivedCalc.decSavings)}</TableCell>
                     <TableCell sx={{ color: "#64748b" }}>
-                      {objDerivedCalc.strRecommendedRegime === "Either Regime" ? "No difference" : `${objDerivedCalc.strRecommendedRegime} recommended`}
+                      {objDerivedCalc.strRecommendedRegime === "Either Regime" ? t("no_difference", "No difference") : `${getRegimeLabel(objDerivedCalc.strRecommendedRegime)} ${t("recommended_lower", "recommended")}`}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -1892,31 +1911,31 @@ export default function SalaryEssDeclarationsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnTaxCalcInfoOpen(false)}>Close</Button>
+          <Button onClick={() => setBlnTaxCalcInfoOpen(false)}>{t("close", "Close")}</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={blnSubmitModalOpen} onClose={() => setBlnSubmitModalOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Submit Declaration</DialogTitle>
+        <DialogTitle>{t("submit_declaration", "Submit Declaration")}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1}>
             <Paper sx={{ p: 0.9, borderRadius: "8px", border: "1px solid #dbe3ef", backgroundColor: "#f8fafc" }}>
-              <Typography sx={{ fontWeight: 800, fontSize: "0.83rem", color: "#0f172a", mb: 0.4 }}>Declaration Summary</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: "0.83rem", color: "#0f172a", mb: 0.4 }}>{t("declaration_summary", "Declaration Summary")}</Typography>
               <Stack spacing={0.35}>
-                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Selected Regime</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{strSelectedRegime || strRecommendedRegimeSelectable}</Typography></Stack>
-                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Total Declared Amount</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(decDeclaredTotal)}</Typography></Stack>
-                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Estimated Savings</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(objDerivedCalc.decSavings)}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("selected_regime", "Selected Regime")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{getRegimeLabel(strSelectedRegime || strRecommendedRegimeSelectable)}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_declared_amount", "Total Declared Amount")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(decDeclaredTotal)}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("estimated_savings", "Estimated Savings")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(objDerivedCalc.decSavings)}</Typography></Stack>
               </Stack>
-              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.72rem", color: "#64748b", mt: 0.5 }}>Estimated preview only</Typography> : null}
+              {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.72rem", color: "#64748b", mt: 0.5 }}>{t("estimated_preview_only", "Estimated preview only")}</Typography> : null}
             </Paper>
             <Alert severity="warning" sx={{ borderRadius: "8px" }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.82rem" }}>After submission:</Typography>
-              <Typography sx={{ fontSize: "0.8rem" }}>Editing will be locked.</Typography>
-              <Typography sx={{ fontSize: "0.8rem" }}>Selected regime cannot be changed.</Typography>
-              <Typography sx={{ fontSize: "0.8rem" }}>Uploaded proofs cannot be modified.</Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.82rem" }}>{t("after_submission", "After submission:")}</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>{t("editing_locked_after_submit", "Editing will be locked.")}</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>{t("regime_cannot_change", "Selected regime cannot be changed.")}</Typography>
+              <Typography sx={{ fontSize: "0.8rem" }}>{t("proofs_cannot_modify", "Uploaded proofs cannot be modified.")}</Typography>
             </Alert>
             <Typography sx={{ fontSize: "0.83rem", color: "#334155" }}>
-              Please confirm that your declaration details and uploaded proofs are final and accurate before submitting.
+              {t("submit_confirmation_message", "Please confirm that your declaration details and uploaded proofs are final and accurate before submitting.")}
             </Typography>
             <FormControlLabel
               sx={{ m: 0, alignItems: "flex-start" }}
@@ -1933,19 +1952,19 @@ export default function SalaryEssDeclarationsPage() {
                   }}
                 />
               }
-              label={<Typography sx={{ fontSize: "0.8rem" }}>I confirm details are correct (required before final submit).</Typography>}
+              label={<Typography sx={{ fontSize: "0.8rem" }}>{t("confirm_details_correct", "I confirm details are correct (required before final submit).")}</Typography>}
             />
             {!blnDeclarationConfirm ? (
               <Typography sx={{ fontSize: "0.75rem", color: "#b45309", mt: -0.3 }}>
-                Please check this confirmation before submitting.
+                {t("please_check_confirmation", "Please check this confirmation before submitting.")}
               </Typography>
             ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnSubmitModalOpen(false)}>Cancel</Button>
+          <Button onClick={() => setBlnSubmitModalOpen(false)}>{t("cancel", "Cancel")}</Button>
           <Button variant="contained" onClick={() => void submitDeclaration()} disabled={blnSubmitModalLoading}>
-            {blnSubmitModalLoading ? <CircularProgress size={16} color="inherit" /> : "Confirm & Submit"}
+            {blnSubmitModalLoading ? <CircularProgress size={16} color="inherit" /> : t("confirm_submit", "Confirm & Submit")}
           </Button>
         </DialogActions>
       </Dialog>

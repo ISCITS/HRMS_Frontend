@@ -43,6 +43,14 @@ function getEmployeeName(objRow: LoanAdvanceRecord) {
   return objRow.objEmployee?.strEmployeeName || objRow.objEmployee?.strEmployeeCode || "-";
 }
 
+function toLabelKey(strValue?: string | null) {
+  return (strValue || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRoute: string | null; lstChildren: never[] }[] }[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
@@ -154,7 +162,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
           </TextField>
           <TextField select size="small" label={t("filter_category", "Category")} value={dicFilters.category_id} onChange={(e) => setDicFilters((d) => ({ ...d, category_id: e.target.value }))}>
             <MenuItem value="">{t("all_categories", "All categories")}</MenuItem>
-            {lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{objCategory.strCategoryName}</MenuItem>)}
+            {lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
           </TextField>
           <TextField select size="small" label={t("filter_status", "Status")} value={dicFilters.status} onChange={(e) => setDicFilters((d) => ({ ...d, status: e.target.value }))}>
             {lstStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}</MenuItem>)}
@@ -196,14 +204,14 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
                     <td><Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography><Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography></td>
                     <td>{objRow.objEmployee?.strDepartmentName || "-"}</td>
                     <td>{t(`type_${objRow.strRequestType}`, objRow.strRequestType)}</td>
-                    <td>{objRow.objCategory?.strCategoryName || "-"}</td>
+                    <td>{objRow.objCategory?.strCategoryName ? t(toLabelKey(objRow.objCategory.strCategoryName), objRow.objCategory.strCategoryName) : "-"}</td>
                     <td>{formatCurrency(objRow.decRequestedAmount)}</td>
                     <td>{formatCurrency(objRow.decApprovedAmount)}</td>
                     <td>{formatCurrency(objRow.decTotalOutstandingAmount)}</td>
                     <td>{formatCurrency(objRow.decInstallmentAmount)}</td>
                     <td>{formatMonth(objRow.dtRecoveryStartMonth)}</td>
                     <td>{objRow.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No")}</td>
-                    <td><LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} /></td>
+                    <td><LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} t={t} /></td>
                   </tr>
                 )) : <tr><td colSpan={12} className={styles.emptyState}>{t("empty_message", "No loans or advances found.")}</td></tr>}
               </tbody>
