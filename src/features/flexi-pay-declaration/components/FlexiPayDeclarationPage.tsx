@@ -657,7 +657,7 @@ export default function FlexiPayDeclarationPage() {
   const blnHasRowValidationErrors = lstDisplayedRows.some((objRow) => Boolean(objRow.objSelectedLine.strValidationMessage));
   const intDeclaredAnnualColumnWidth = blnHasRowValidationErrors ? 236 : 116;
   const intDeclaredAnnualFieldWidth = blnHasRowValidationErrors ? 218 : 104;
-  const intFlexiComponentTableMinWidth = 982 + intDeclaredAnnualColumnWidth;
+  const intFlexiComponentTableMinWidth = 918 + intDeclaredAnnualColumnWidth;
   const blnHasEligibilityAnswerValues = hasAnyEligibilityAnswers(dicEligibilityAnswers);
   const lstValidationMessages = objContext?.validation_messages || [];
   const strResidualComponentName = dicBaseSummaryMetrics.strResidualComponentName;
@@ -1651,7 +1651,6 @@ export default function FlexiPayDeclarationPage() {
                   <col style={{ width: 94 }} />
                   <col style={{ width: intDeclaredAnnualColumnWidth }} />
                   <col style={{ width: 92 }} />
-                  <col style={{ width: 64 }} />
                   <col style={{ width: 70 }} />
                   <col style={{ width: 252 }} />
                 </colgroup>
@@ -1663,7 +1662,6 @@ export default function FlexiPayDeclarationPage() {
                     <TableCell align="right">Annual Cap</TableCell>
                     <TableCell align="right">Declared Annual</TableCell>
                     <TableCell align="right">Monthly Impact</TableCell>
-                    <TableCell>Proof</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Reason / Action</TableCell>
                   </TableRow>
@@ -1671,7 +1669,7 @@ export default function FlexiPayDeclarationPage() {
                 <TableBody>
                   {lstDisplayedRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
+                      <TableCell colSpan={8} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
                         No flexi components are available.
                       </TableCell>
                     </TableRow>
@@ -1747,7 +1745,6 @@ export default function FlexiPayDeclarationPage() {
                             />
                           </TableCell>
                           <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                          <TableCell>{objRow.blnProofRequired ? "Required" : "No"}</TableCell>
                           <TableCell>
                             <Chip
                               size="small"
