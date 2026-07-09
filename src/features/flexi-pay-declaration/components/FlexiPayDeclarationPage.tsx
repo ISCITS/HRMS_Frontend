@@ -719,7 +719,7 @@ export default function FlexiPayDeclarationPage() {
   const blnHasRowValidationErrors = lstDisplayedRows.some((objRow) => Boolean(objRow.objSelectedLine.strValidationMessage));
   const intDeclaredAnnualColumnWidth = blnHasRowValidationErrors ? 236 : 116;
   const intDeclaredAnnualFieldWidth = blnHasRowValidationErrors ? 218 : 104;
-  const intFlexiComponentTableMinWidth = 982 + intDeclaredAnnualColumnWidth;
+  const intFlexiComponentTableMinWidth = 918 + intDeclaredAnnualColumnWidth;
   const blnHasEligibilityAnswerValues = hasAnyEligibilityAnswers(dicEligibilityAnswers);
   const lstValidationMessages = objContext?.validation_messages || [];
   const strResidualComponentName = dicBaseSummaryMetrics.strResidualComponentName;
@@ -1714,7 +1714,6 @@ export default function FlexiPayDeclarationPage() {
                   <col style={{ width: 94 }} />
                   <col style={{ width: intDeclaredAnnualColumnWidth }} />
                   <col style={{ width: 92 }} />
-                  <col style={{ width: 64 }} />
                   <col style={{ width: 70 }} />
                   <col style={{ width: 252 }} />
                 </colgroup>
@@ -1736,6 +1735,7 @@ export default function FlexiPayDeclarationPage() {
                     <TableRow>
                       <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
                         {t("no_components_available", "No flexi components are available.")}
+                      </TableCell>
                       </TableCell>
                     </TableRow>
                   ) : (
