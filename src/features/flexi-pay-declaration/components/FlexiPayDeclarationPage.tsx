@@ -10,6 +10,7 @@ import LunchDiningRoundedIcon from "@mui/icons-material/LunchDiningRounded";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import {
   Alert,
   Box,
@@ -49,6 +50,7 @@ import {
   type FlexiDeclarationContextRecord,
   type FlexiDeclarationLineRecord,
   type FlexiEligibilityQuestionRecord,
+  type FlexiProofPayload,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -57,6 +59,7 @@ type DraftInputMap = Record<number, string>;
 type EligibilityAnswerMap = Record<string, string | number | boolean | null>;
 type ComponentSelectionMap = Record<number, number>;
 type LinkedQuestionSelectionMap = Record<number, string>;
+type ProofFileMap = Record<number, FlexiProofPayload | null>;
 const intEligibilityPreviewLimit = 6;
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 const objHeaderActionButtonSx = {
@@ -224,6 +227,71 @@ function getStatusTone(strStatus?: string | null): "default" | "success" | "warn
   return "default";
 }
 
+function mergeEligibilityQuestions(
+  lstQuestions: FlexiEligibilityQuestionRecord[] | undefined,
+): FlexiEligibilityQuestionRecord[] {
+  const dicQuestionsByCode = new Map<string, FlexiEligibilityQuestionRecord>();
+  (lstQuestions || []).forEach((objQuestion) => {
+    const strQuestionCode = normalizeText(objQuestion.strQuestionCode);
+    if (!strQuestionCode) return;
+    const objExisting = dicQuestionsByCode.get(strQuestionCode);
+    if (!objExisting) {
+      dicQuestionsByCode.set(strQuestionCode, {
+        ...objQuestion,
+        strQuestionCode,
+        lstLinkedComponentIDs: [...(objQuestion.lstLinkedComponentIDs || [])],
+      });
+      return;
+    }
+
+    const setLinkedComponentIDs = new Set<number>([
+      ...(objExisting.lstLinkedComponentIDs || []),
+      ...(objQuestion.lstLinkedComponentIDs || []),
+    ]);
+    const decExistingMaxValue = objExisting.decMaxValue;
+    const decNextMaxValue = objQuestion.decMaxValue;
+
+    dicQuestionsByCode.set(strQuestionCode, {
+      ...objExisting,
+      strQuestionLabel: objExisting.strQuestionLabel || objQuestion.strQuestionLabel,
+      strHelpText: objExisting.strHelpText || objQuestion.strHelpText,
+      strHint: objExisting.strHint || objQuestion.strHint,
+      blnIsRequired: Boolean(objExisting.blnIsRequired || objQuestion.blnIsRequired),
+      blnIsEmployeeEditable: Boolean(objExisting.blnIsEmployeeEditable || objQuestion.blnIsEmployeeEditable),
+      blnIsDisabled: Boolean(objExisting.blnIsDisabled && objQuestion.blnIsDisabled),
+      blnShowInfoIcon: Boolean(objExisting.blnShowInfoIcon || objQuestion.blnShowInfoIcon),
+      strDisabledReason: objExisting.strDisabledReason || objQuestion.strDisabledReason,
+      strInfoMessage: objExisting.strInfoMessage || objQuestion.strInfoMessage,
+      strApplicableRegime:
+        objExisting.strApplicableRegime === objQuestion.strApplicableRegime
+          ? objExisting.strApplicableRegime
+          : "both",
+      lstLinkedComponentIDs: Array.from(setLinkedComponentIDs),
+      decMinValue:
+        objExisting.decMinValue == null
+          ? objQuestion.decMinValue
+          : objQuestion.decMinValue == null
+            ? objExisting.decMinValue
+            : Math.min(objExisting.decMinValue, objQuestion.decMinValue),
+      decMaxValue:
+        decExistingMaxValue == null
+          ? decNextMaxValue
+          : decNextMaxValue == null
+            ? decExistingMaxValue
+            : Math.min(decExistingMaxValue, decNextMaxValue),
+      objAnswerValue: objExisting.objAnswerValue ?? objQuestion.objAnswerValue,
+      blnAnswerValid: objExisting.blnAnswerValid ?? objQuestion.blnAnswerValid,
+      strValidationMessage: objExisting.strValidationMessage || objQuestion.strValidationMessage,
+      decEffectiveMultiplier: Math.max(
+        Number(objExisting.decEffectiveMultiplier ?? 0),
+        Number(objQuestion.decEffectiveMultiplier ?? 0),
+      ) || undefined,
+    });
+  });
+
+  return Array.from(dicQuestionsByCode.values());
+}
+
 function buildFallbackContext(strFinancialYearCode: string): FlexiDeclarationContextRecord {
   return {
     strFinancialYearCode,
@@ -273,14 +341,55 @@ function buildAnswerMap(objContext: FlexiDeclarationContextRecord) {
   return { ...(objContext.objEligibilityAnswers || {}) };
 }
 
-function buildStateSignature(dicDraftInputs: DraftInputMap, dicEligibilityAnswers: EligibilityAnswerMap, strRemarks: string) {
+function buildProofMap(objContext: FlexiDeclarationContextRecord) {
+  return (objContext.lstDeclarationLines || []).reduce<ProofFileMap>((dicAcc, objLine) => {
+    if (objLine.blnProofUploaded && objLine.strProofFileName) {
+      dicAcc[objLine.intSalaryComponentID] = {
+        strFileName: objLine.strProofFileName,
+        strContentType: objLine.strProofContentType || "application/octet-stream",
+        intFileSizeBytes: Number(objLine.intProofFileSizeBytes || 0),
+        strBase64Content: "",
+      };
+    }
+    return dicAcc;
+  }, {});
+}
+
+function buildStateSignature(
+  dicDraftInputs: DraftInputMap,
+  dicEligibilityAnswers: EligibilityAnswerMap,
+  strRemarks: string,
+  dicProofFiles: ProofFileMap = {},
+) {
   const lstDraftEntries = Object.entries(dicDraftInputs).sort(([a], [b]) => Number(a) - Number(b));
   const lstAnswerEntries = Object.entries(dicEligibilityAnswers).sort(([a], [b]) => a.localeCompare(b));
+  const lstProofEntries = Object.entries(dicProofFiles)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([strComponentID, objProof]) => [
+      strComponentID,
+      objProof
+        ? {
+            strFileName: objProof.strFileName,
+            strContentType: objProof.strContentType,
+            intFileSizeBytes: objProof.intFileSizeBytes,
+            intContentLength: objProof.strBase64Content.length,
+          }
+        : null,
+    ]);
   return JSON.stringify({
     lstDraftEntries,
     lstAnswerEntries,
+    lstProofEntries,
     strRemarks: strRemarks.trim(),
   });
+}
+
+function formatFileSize(intFileSizeBytes?: number | null) {
+  const intSize = Number(intFileSizeBytes || 0);
+  if (!Number.isFinite(intSize) || intSize <= 0) return "";
+  if (intSize >= 1024 * 1024) return `${(intSize / (1024 * 1024)).toFixed(1)} MB`;
+  if (intSize >= 1024) return `${Math.round(intSize / 1024)} KB`;
+  return `${intSize} B`;
 }
 
 const OBJ_ELIGIBILITY_FIELD_SX = {
@@ -457,6 +566,7 @@ export default function FlexiPayDeclarationPage() {
   const strLastSyncedSignatureRef = useRef("");
   const strLastAutoSavedSignatureRef = useRef("");
   const strLastEvaluatedSignatureRef = useRef("");
+  const dicProofInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -468,6 +578,7 @@ export default function FlexiPayDeclarationPage() {
   const [objContext, setObjContext] = useState<FlexiDeclarationContextRecord | null>(() => buildFallbackContext(strFinancialYearCode));
   const [dicDraftInputs, setDicDraftInputs] = useState<DraftInputMap>(() => buildInitialDraftInputs(buildFallbackContext(strFinancialYearCode)));
   const [dicEligibilityAnswers, setDicEligibilityAnswers] = useState<EligibilityAnswerMap>({});
+  const [dicProofFiles, setDicProofFiles] = useState<ProofFileMap>({});
   const [dicSelectedComponents, setDicSelectedComponents] = useState<ComponentSelectionMap>({});
   const [dicSelectedQuestions, setDicSelectedQuestions] = useState<LinkedQuestionSelectionMap>({});
   const [blnEligibilityDialogOpen, setBlnEligibilityDialogOpen] = useState(false);
@@ -543,15 +654,17 @@ export default function FlexiPayDeclarationPage() {
     setObjContext(objData);
     const dicNextDraftInputs = buildInitialDraftInputs(objData);
     const dicNextAnswers = buildAnswerMap(objData);
+    const dicNextProofFiles = buildProofMap(objData);
     const dicNextSelectedComponents = buildInitialComponentSelections(objData);
     const dicNextSelectedQuestions = buildInitialQuestionSelections(objData);
     const strNextRemarks = objData.objDeclaration?.strRemarks || "";
     setDicDraftInputs(dicNextDraftInputs);
     setDicEligibilityAnswers(dicNextAnswers);
+    setDicProofFiles(dicNextProofFiles);
     setDicSelectedComponents(dicNextSelectedComponents);
     setDicSelectedQuestions(dicNextSelectedQuestions);
     setStrRemarks(strNextRemarks);
-    const strSignature = buildStateSignature(dicNextDraftInputs, dicNextAnswers, strNextRemarks);
+    const strSignature = buildStateSignature(dicNextDraftInputs, dicNextAnswers, strNextRemarks, dicNextProofFiles);
     strLastSyncedSignatureRef.current = strSignature;
     strLastAutoSavedSignatureRef.current = strSignature;
     strLastEvaluatedSignatureRef.current = strSignature;
@@ -729,8 +842,8 @@ export default function FlexiPayDeclarationPage() {
   );
 
   const strCurrentSignature = useMemo(
-    () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks),
-    [dicDraftInputs, dicEligibilityAnswers, strRemarks],
+    () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks, dicProofFiles),
+    [dicDraftInputs, dicEligibilityAnswers, dicProofFiles, strRemarks],
   );
 
   const lstPayloadRows = useMemo(() => {
@@ -742,10 +855,14 @@ export default function FlexiPayDeclarationPage() {
         intSalaryComponentID: objRow.intSalaryComponentID,
         decDeclaredAmountAnnual: objRow.decInputAnnual,
         strRemarks: objRow.strDeclarationItemRemarks || null,
+        objProof: dicProofFiles[objRow.intSalaryComponentID]?.strBase64Content
+          ? dicProofFiles[objRow.intSalaryComponentID]
+          : null,
+        blnClearProof: dicProofFiles[objRow.intSalaryComponentID] === null && Boolean(objRow.blnProofUploaded),
       });
     });
     return Array.from(dicRows.values());
-  }, [lstDisplayedRows]);
+  }, [dicProofFiles, lstDisplayedRows]);
 
   const blnCanSaveDraft = Boolean(
     blnShowEssDraftAction
@@ -763,9 +880,22 @@ export default function FlexiPayDeclarationPage() {
     && !blnHasRowValidationErrors
     && lstPayloadRows.length > 0,
   );
+  const lstMergedEligibilityQuestions = useMemo(
+    () => mergeEligibilityQuestions(objContext?.lstEligibilityQuestions),
+    [objContext?.lstEligibilityQuestions],
+  );
+  const lstMissingProofRows = useMemo(
+    () =>
+      lstDisplayedRows.filter((objDisplayRow) => {
+        const objRow = objDisplayRow.objSelectedLine;
+        if (!objRow.blnProofRequired || objRow.decInputAnnual <= 0) return false;
+        return !dicProofFiles[objRow.intSalaryComponentID];
+      }),
+    [dicProofFiles, lstDisplayedRows],
+  );
 
   const dicQuestionGroups = useMemo(() => {
-    return (objContext?.lstEligibilityQuestions || []).reduce<Record<string, { strGroupLabel: string; lstQuestions: FlexiEligibilityQuestionRecord[] }>>(
+    return lstMergedEligibilityQuestions.reduce<Record<string, { strGroupLabel: string; lstQuestions: FlexiEligibilityQuestionRecord[] }>>(
       (dicAcc, objQuestion) => {
         const strGroupCode = objQuestion.strGroupCode || "other_eligibility";
         const strGroupLabel = objQuestion.strGroupLabel || "Other Eligibility";
@@ -777,7 +907,7 @@ export default function FlexiPayDeclarationPage() {
       },
       {},
     );
-  }, [objContext?.lstEligibilityQuestions]);
+  }, [lstMergedEligibilityQuestions]);
 
   const lstAllEligibilityQuestions = useMemo(
     () => Object.values(dicQuestionGroups).flatMap((objGroup) => objGroup.lstQuestions),
@@ -984,6 +1114,7 @@ export default function FlexiPayDeclarationPage() {
     if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnCanEditDeclaration) return;
     if (strCurrentSignature === strLastAutoSavedSignatureRef.current) return;
     if (lstPayloadRows.length === 0 && !blnHasEligibilityAnswerValues && strRemarks.trim().length === 0) return;
+    if (lstMissingProofRows.length > 0) return;
 
     const intTimer = window.setTimeout(async () => {
       try {
@@ -993,7 +1124,7 @@ export default function FlexiPayDeclarationPage() {
           strRemarks,
           dicEligibilityAnswers,
         );
-        if (strCurrentSignature === buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks)) {
+        if (strCurrentSignature === buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks, dicProofFiles)) {
           strLastAutoSavedSignatureRef.current = strCurrentSignature;
         }
       } catch {
@@ -1014,6 +1145,8 @@ export default function FlexiPayDeclarationPage() {
     strActiveFinancialYearCode,
     strRemarks,
     dicDraftInputs,
+    dicProofFiles,
+    lstMissingProofRows.length,
   ]);
 
   function validateDeclarationForAction(strAction: "draft" | "submit") {
@@ -1033,6 +1166,15 @@ export default function FlexiPayDeclarationPage() {
       const strVisibleIssues = lstRowIssues.slice(0, 3).join(" | ");
       const strMoreIssues = lstRowIssues.length > 3 ? ` | +${lstRowIssues.length - 3} more` : "";
       setStrError(`Fix declaration validation issue${lstRowIssues.length > 1 ? "s" : ""}: ${strVisibleIssues}${strMoreIssues}`);
+      return false;
+    }
+    if (lstMissingProofRows.length > 0) {
+      const strProofIssues = lstMissingProofRows
+        .map((objDisplayRow) => translateKnownFlexiText(objDisplayRow.objSelectedLine.strComponentName || objDisplayRow.objSelectedLine.strComponentCode) || t("component", "Component"))
+        .slice(0, 3)
+        .join(" | ");
+      const strMoreIssues = lstMissingProofRows.length > 3 ? ` | +${lstMissingProofRows.length - 3} more` : "";
+      setStrError(`${t("proof_required_before_save", "Upload proof documents before saving.")} ${strProofIssues}${strMoreIssues}`);
       return false;
     }
     if (strAction === "submit" && lstPayloadRows.length === 0) {
@@ -1067,6 +1209,52 @@ export default function FlexiPayDeclarationPage() {
       ...dicPrevious,
       [intSelectedComponentID]: "0",
     }));
+  }
+
+  function openProofPicker(intSalaryComponentID: number) {
+    dicProofInputRefs.current[intSalaryComponentID]?.click();
+  }
+
+  async function handleProofFileSelected(intSalaryComponentID: number, objFile: File | null) {
+    if (!objFile) return;
+    try {
+      const strBase64Content = await new Promise<string>((fnResolve, fnReject) => {
+        const objReader = new FileReader();
+        objReader.onload = () => {
+          const strResult = String(objReader.result || "");
+          const intSeparatorIndex = strResult.indexOf(",");
+          fnResolve(intSeparatorIndex >= 0 ? strResult.slice(intSeparatorIndex + 1) : strResult);
+        };
+        objReader.onerror = () => fnReject(objReader.error || new Error("Unable to read file."));
+        objReader.readAsDataURL(objFile);
+      });
+      setDicProofFiles((dicPrevious) => ({
+        ...dicPrevious,
+        [intSalaryComponentID]: {
+          strFileName: objFile.name,
+          strContentType: objFile.type || "application/octet-stream",
+          intFileSizeBytes: objFile.size,
+          strBase64Content,
+        },
+      }));
+      setStrError("");
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("unable_read_proof", "Unable to read proof file."));
+    } finally {
+      if (dicProofInputRefs.current[intSalaryComponentID]) {
+        dicProofInputRefs.current[intSalaryComponentID]!.value = "";
+      }
+    }
+  }
+
+  function handleClearProofFile(intSalaryComponentID: number) {
+    setDicProofFiles((dicPrevious) => ({
+      ...dicPrevious,
+      [intSalaryComponentID]: null,
+    }));
+    if (dicProofInputRefs.current[intSalaryComponentID]) {
+      dicProofInputRefs.current[intSalaryComponentID]!.value = "";
+    }
   }
 
   async function handleSaveDraft() {
@@ -1714,7 +1902,8 @@ export default function FlexiPayDeclarationPage() {
                   <col style={{ width: 94 }} />
                   <col style={{ width: intDeclaredAnnualColumnWidth }} />
                   <col style={{ width: 92 }} />
-                  <col style={{ width: 70 }} />
+                  <col style={{ width: 196 }} />
+                  <col style={{ width: 92 }} />
                   <col style={{ width: 252 }} />
                 </colgroup>
                 <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
@@ -1735,7 +1924,6 @@ export default function FlexiPayDeclarationPage() {
                     <TableRow>
                       <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
                         {t("no_components_available", "No flexi components are available.")}
-                      </TableCell>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -1810,7 +1998,69 @@ export default function FlexiPayDeclarationPage() {
                             />
                           </TableCell>
                           <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                          <TableCell>{objRow.blnProofRequired ? t("required", "Required") : t("no", "No")}</TableCell>
+                          <TableCell>
+                            {objRow.blnProofRequired ? (
+                              <Stack spacing={0.45} sx={{ minWidth: 0 }}>
+                                <Chip
+                                  size="small"
+                                  color={dicProofFiles[objRow.intSalaryComponentID] ? "success" : "warning"}
+                                  variant={dicProofFiles[objRow.intSalaryComponentID] ? "filled" : "outlined"}
+                                  label={dicProofFiles[objRow.intSalaryComponentID] ? t("proof_uploaded", "Proof Uploaded") : t("proof_required", "Proof Required")}
+                                  sx={{ alignSelf: "flex-start", maxWidth: "100%" }}
+                                />
+                                {dicProofFiles[objRow.intSalaryComponentID]?.strFileName ? (
+                                  <Typography sx={{ color: "#64748b", fontSize: "0.62rem", lineHeight: 1.15, wordBreak: "break-word" }}>
+                                    {dicProofFiles[objRow.intSalaryComponentID]?.strFileName}
+                                    {dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes
+                                      ? ` (${formatFileSize(dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes)})`
+                                      : ""}
+                                  </Typography>
+                                ) : null}
+                                {objRow.decInputAnnual > 0 && !dicProofFiles[objRow.intSalaryComponentID] ? (
+                                  <Typography sx={{ color: "#dc2626", fontSize: "0.62rem", lineHeight: 1.15 }}>
+                                    {t("proof_mandatory_before_save", "Upload proof before saving this declaration.")}
+                                  </Typography>
+                                ) : null}
+                                {blnCanEditDeclaration ? (
+                                  <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<UploadFileRoundedIcon />}
+                                      onClick={() => openProofPicker(objRow.intSalaryComponentID)}
+                                      controlId={`flexi-proof.upload.${objRow.intSalaryComponentID}.button`}
+                                      sx={{ minWidth: 0, px: 0.8, py: 0.15, fontSize: "0.62rem", textTransform: "none" }}
+                                    >
+                                      {dicProofFiles[objRow.intSalaryComponentID] ? t("replace", "Replace") : t("upload", "Upload")}
+                                    </Button>
+                                    {dicProofFiles[objRow.intSalaryComponentID] ? (
+                                      <Button
+                                        size="small"
+                                        color="error"
+                                        onClick={() => handleClearProofFile(objRow.intSalaryComponentID)}
+                                        controlId={`flexi-proof.clear.${objRow.intSalaryComponentID}.button`}
+                                        sx={{ minWidth: 0, px: 0.6, py: 0.15, fontSize: "0.62rem", textTransform: "none" }}
+                                      >
+                                        {t("remove", "Remove")}
+                                      </Button>
+                                    ) : null}
+                                    <input
+                                      ref={(objElement) => {
+                                        dicProofInputRefs.current[objRow.intSalaryComponentID] = objElement;
+                                      }}
+                                      type="file"
+                                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                      style={{ display: "none" }}
+                                      data-controlid={`flexi-proof.file.${objRow.intSalaryComponentID}.input`}
+                                      onChange={(objEvent) => void handleProofFileSelected(objRow.intSalaryComponentID, objEvent.target.files?.[0] || null)}
+                                    />
+                                  </Stack>
+                                ) : null}
+                              </Stack>
+                            ) : (
+                              t("no", "No")
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Chip
                               size="small"

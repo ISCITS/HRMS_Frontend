@@ -139,6 +139,7 @@ export default function ITDeclarationReviewListPage() {
   const blnCanExport = canDoAny("export");
   const lstSummary = useMemo(
     () => [
+      ["Draft", objSummary.draft || 0],
       ["Submitted", objSummary.submitted || 0],
       ["Under Review", objSummary.under_review || 0],
       ["Approved", objSummary.approved || 0],
@@ -170,11 +171,37 @@ export default function ITDeclarationReviewListPage() {
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1, flexWrap: "wrap" }}>
             <Box>
               <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem", lineHeight: 1.2 }}>IT Declaration Review</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>Financial Year Dashboard</Typography>
+              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>All declaration records load by default. Use filters only when you want to narrow the queue.</Typography>
             </Box>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 0.8,
+                width: "100%",
+                maxWidth: { xs: "100%", md: 760 },
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: "repeat(3, minmax(0, 1fr))",
+                  lg: "repeat(4, minmax(0, 1fr))",
+                },
+                justifyContent: { xs: "stretch", md: "flex-end" },
+              }}
+            >
             {lstSummary.map(([strLabel, intCount]) => (
-              <Box key={strLabel} sx={{ border: "1px solid rgba(255,255,255,0.45)", borderRadius: "8px", px: 1, py: 0.55, minWidth: 104, backgroundColor: "rgba(8,47,73,0.28)" }}>
+              <Box
+                key={strLabel}
+                sx={{
+                  border: "1px solid rgba(255,255,255,0.45)",
+                  borderRadius: "8px",
+                  px: 1,
+                  py: 0.75,
+                  minHeight: 62,
+                  backgroundColor: "rgba(8,47,73,0.28)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{strLabel}</Typography>
                 <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{intCount}</Typography>
               </Box>

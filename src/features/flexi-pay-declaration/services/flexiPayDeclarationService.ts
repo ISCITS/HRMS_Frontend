@@ -7,6 +7,15 @@ type FlexiDeclarationItemPayload = {
   intSalaryComponentID: number;
   decDeclaredAmountAnnual: number;
   strRemarks?: string | null;
+  objProof?: FlexiProofPayload | null;
+  blnClearProof?: boolean;
+};
+
+export type FlexiProofPayload = {
+  strFileName: string;
+  strContentType: string;
+  intFileSizeBytes: number;
+  strBase64Content: string;
 };
 
 export type FlexiDeclarationRecord = {
@@ -47,6 +56,11 @@ export type FlexiDeclarationLineRecord = {
   decDraftApprovedAnnual?: number | null;
   strDeclarationItemStatus?: string | null;
   strDeclarationItemRemarks?: string | null;
+  strProofFileName?: string | null;
+  strProofContentType?: string | null;
+  intProofFileSizeBytes?: number | null;
+  dtProofUploadedOn?: string | null;
+  blnProofUploaded?: boolean | null;
   blnEligible?: boolean | null;
   blnRegimeEligible?: boolean | null;
   blnEligibilityDetailsSatisfied?: boolean | null;

@@ -38,6 +38,11 @@ Never duplicate calculation logic.
 25. Keep changes minimal, modular and production-ready.
 26. Add clear comments only where business logic changes.
 27. Remove temporary/demo code after implementation unless explicitly required.
+28. Every interactive UI element must include a unique `data-control-id` attribute for automation.
+29. This is mandatory for all user-interactive controls, including buttons, icons, action buttons, input fields, dropdowns, checkboxes, radio buttons, toggle switches, alerts and alert actions, dialogs/modals, links, events, and any other clickable or focusable control.
+30. If a shared wrapper/component accepts a prop such as `controlId`, it must still render a unique `data-control-id` attribute in the final DOM/native test surface.
+31. Do not reuse the same `data-control-id` across different interactive elements on the same screen.
+32. For all new screens or features, every interactive UI element must include a unique data-control-id attribute as part of the implementation. When modifying or enhancing an existing screen, developers must review all interactive elements and add data-control-id attributes to any elements where they are missing, ensuring the entire screen complies with this standard.
 
 ==========================================================
 BEFORE WRITING CODE
