@@ -39,6 +39,7 @@ export type EmployeeSalaryStructureComponentOption = {
   intSettlementModeSnapshotID?: number | null;
   strBasisComponentName?: string | null;
   strWageType?: string | null;
+  blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
@@ -88,6 +89,7 @@ export type EmployeeSalaryComponentLine = {
   intReimbursementTypeSnapshotID?: number | null;
   intSettlementModeSnapshotID?: number | null;
   strWageType?: string | null;
+  blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;

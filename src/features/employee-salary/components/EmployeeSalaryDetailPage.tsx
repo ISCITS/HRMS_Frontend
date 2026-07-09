@@ -451,9 +451,12 @@ function isInformationCategory(strCategory: string | null | undefined) {
 }
 
 function isWageComponent(
-  dicLine: { strWageType?: string | null; intWageTypeSnapshotID?: number | null; intSalaryComponentID?: number | null },
+  dicLine: { strWageType?: string | null; intWageTypeSnapshotID?: number | null; intSalaryComponentID?: number | null; blnIsWages?: boolean | null },
   dicSalaryComponentByID?: Map<number, SalaryComponentApiRecord>
 ) {
+  if (typeof dicLine.blnIsWages === "boolean") {
+    return dicLine.blnIsWages;
+  }
   if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
     const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
     return strWageTypeToken === "wage" || strWageTypeToken === "wages";
@@ -855,6 +858,7 @@ function calculateRevisionSalarySummaryMetrics(
         .map((dicComponent) => ({
           strWageType: dicComponent.strWageType,
           intWageTypeSnapshotID: dicComponent.intWageTypeSnapshotID,
+          blnIsWages: isWageComponent(dicComponent, dicSalaryComponentByID),
           blnIncludedInCtc: dicComponent.blnIncludedInCtc,
           decAmountAnnual: getNumberValue(dicComponent.decAmountAnnual ?? (getNumberValue(dicComponent.decAmountMonthly) * 12)),
         })),

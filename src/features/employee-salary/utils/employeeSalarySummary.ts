@@ -12,6 +12,7 @@ type EmployeeSalarySummaryComponentLine = {
   intReimbursementTypeSnapshotID?: number | null;
   intSettlementModeSnapshotID?: number | null;
   strWageType?: string | null;
+  blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
@@ -141,7 +142,10 @@ function isCtcIncludedEarning(dicLine: EmployeeSalarySummaryComponentLine) {
     dicLine.blnIncludedInCtc !== false;
 }
 
-export function isEmployeeSalaryWageComponent(dicLine: Pick<EmployeeSalarySummaryComponentLine, "strWageType" | "intWageTypeSnapshotID">) {
+export function isEmployeeSalaryWageComponent(dicLine: Pick<EmployeeSalarySummaryComponentLine, "strWageType" | "intWageTypeSnapshotID" | "blnIsWages">) {
+  if (typeof dicLine.blnIsWages === "boolean") {
+    return dicLine.blnIsWages;
+  }
   if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
     return normalizeSelectToken(dicLine.strWageType ?? "").startsWith("wage");
   }
