@@ -114,6 +114,13 @@ function resolveLookupCode(
   return findLookupOption(lstOptions, intID)?.strValueCode ?? "";
 }
 
+function resolveLookupID(
+  lstOptions: SalaryComponentLookupOption[] | undefined,
+  strValue?: string | null,
+) {
+  return findLookupOptionByValue(lstOptions, strValue)?.intID ?? "";
+}
+
 function syncLookupBackedFields(
   dicValues: SalaryComponentFormValues,
   objOptions: SalaryComponentFormOptions,
@@ -527,6 +534,7 @@ export default function SalaryComponentEditorPage({
   const lstTaxTreatmentOptions = objFormOptions?.lstTaxTreatmentLookups ?? [];
   const lstReimbursementTypeOptions = objFormOptions?.lstReimbursementTypeLookups ?? [];
   const lstSettlementMethodOptions = objFormOptions?.lstSettlementMethodLookups ?? [];
+  const lstClaimLimitTypeOptions = objFormOptions?.lstClaimLimitTypeLookups ?? [];
   const lstPayslipSections = objFormOptions?.lstPayslipSectionLookups ?? [];
   const strCategoryCode = resolveLookupCode(lstCategoryOptions, dicForm.intComponentCategoryID);
   const strCalcMethodCode = resolveLookupCode(lstCalcMethodOptions, dicForm.intCalcMethodID);
@@ -863,17 +871,31 @@ export default function SalaryComponentEditorPage({
 
   useEffect(() => {
     setDicForm((dicPrevious) => {
-      const blnReimbursementCategory = isCategory(dicPrevious.strComponentCategory, "reimbursement");
-      const blnFlexiBucketCategory = isCategory(dicPrevious.strComponentCategory, "flexi bucket") || isCategory(dicPrevious.strComponentCategory, "flexi basket");
-      const blnDeductionCategory = isCategory(dicPrevious.strComponentCategory, "deduction");
-      const blnEmployerContributionCategory = isCategory(dicPrevious.strComponentCategory, "employer contribution") || isCategory(dicPrevious.strComponentCategory, "contribution");
-      const blnEarningCategory = isCategory(dicPrevious.strComponentCategory, "earning");
-      const blnInformationCategory = isCategory(dicPrevious.strComponentCategory, "information");
+      const strCategoryValue = resolveLookupCode(lstCategoryOptions, dicPrevious.intComponentCategoryID) || dicPrevious.strComponentCategory;
+      const strReimbursementTypeValue = resolveLookupCode(lstReimbursementTypeOptions, dicPrevious.intReimbursementTypeID) || dicPrevious.strReimbursementType;
+      const strSettlementMethodValue = resolveLookupCode(lstSettlementMethodOptions, dicPrevious.intSettlementMethodID) || dicPrevious.strSettlementMethod;
+      const strPayslipSectionValue = resolveLookupCode(lstPayslipSections, dicPrevious.intPayslipSectionID) || dicPrevious.strPayslipSection;
+      const blnReimbursementCategory = isCategory(strCategoryValue, "reimbursement");
+      const blnFlexiBucketCategory = isCategory(strCategoryValue, "flexi bucket") || isCategory(strCategoryValue, "flexi basket");
+      const blnDeductionCategory = isCategory(strCategoryValue, "deduction");
+      const blnEmployerContributionCategory = isCategory(strCategoryValue, "employer contribution") || isCategory(strCategoryValue, "contribution");
+      const blnEarningCategory = isCategory(strCategoryValue, "earning");
+      const blnInformationCategory = isCategory(strCategoryValue, "information");
       const dicNext = {
         ...dicPrevious,
+        strComponentCategory: strCategoryValue,
         blnIsReimbursement: blnReimbursementCategory,
         blnIsEmployeeDeduction: blnDeductionCategory,
         blnIsEmployerContribution: blnEmployerContributionCategory,
+      };
+      const applyLookupValue = (
+        strIDField: keyof SalaryComponentFormValues,
+        strTextField: keyof SalaryComponentFormValues,
+        lstOptions: SalaryComponentLookupOption[] | undefined,
+        strValue: string,
+      ) => {
+        dicNext[strIDField] = resolveLookupID(lstOptions, strValue) as SalaryComponentFormValues[keyof SalaryComponentFormValues];
+        dicNext[strTextField] = strValue as SalaryComponentFormValues[keyof SalaryComponentFormValues];
       };
       if (blnFlexiBucketCategory) {
         dicNext.strComponentGroup = "Benefits";
@@ -885,38 +907,38 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludeInGratuity = false;
         dicNext.blnIncludeInRemuneration = false;
         dicNext.blnIncludeInPayslip = false;
-        dicNext.strPayslipSection = "";
-        dicNext.strReimbursementType = "none";
-        dicNext.strSettlementMethod = "none";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
+        applyLookupValue("intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, "none");
+        applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "none");
         dicNext.blnRequiresBills = false;
         dicNext.blnExpenseDateRequired = true;
         dicNext.blnAllowPartialApproval = true;
-        dicNext.strClaimLimitType = "none";
+        applyLookupValue("intClaimLimitTypeID", "strClaimLimitType", lstClaimLimitTypeOptions, "none");
         dicNext.strMonthlyLimitAmount = "";
         dicNext.strAnnualLimitAmount = "";
       } else if (blnReimbursementCategory && dicNext.blnIsFlexiBenefit) {
-        dicNext.strReimbursementType = "ctc_based";
+        applyLookupValue("intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, "ctc_based");
         dicNext.blnIncludedInCtc = true;
-        dicNext.strSettlementMethod = "payroll";
+        applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "payroll");
         dicNext.blnIncludeInPayslip = true;
-        dicNext.strPayslipSection = "Reimbursements";
-      } else if (dicNext.strReimbursementType === "ctc_based") {
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "reimbursements");
+      } else if (isCategory(strReimbursementTypeValue, "ctc_based")) {
         dicNext.blnIncludedInCtc = true;
-        dicNext.strSettlementMethod = "payroll";
+        applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "payroll");
         if (blnReimbursementCategory) {
           dicNext.blnIncludeInPayslip = true;
-          dicNext.strPayslipSection = "Reimbursements";
+          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "reimbursements");
         }
-      } else if (dicNext.strReimbursementType === "non_ctc_based") {
+      } else if (isCategory(strReimbursementTypeValue, "non_ctc_based")) {
         dicNext.blnIncludedInCtc = false;
-        dicNext.strSettlementMethod = "finance";
+        applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "finance");
         dicNext.blnIncludeInPayslip = false;
-        dicNext.strPayslipSection = "";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
       }
-      if (dicNext.strSettlementMethod === "finance") {
+      if (isCategory(strSettlementMethodValue, "finance")) {
         dicNext.blnAutoPushToPayroll = false;
         dicNext.blnFinanceSettlementRequired = true;
-      } else if (dicNext.strSettlementMethod === "payroll") {
+      } else if (isCategory(strSettlementMethodValue, "payroll")) {
         dicNext.blnFinanceSettlementRequired = false;
       }
       if (blnReimbursementCategory) {
@@ -936,17 +958,17 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInRemuneration = false;
         dicNext.blnIncludeInPayslip = true;
-        dicNext.strPayslipSection = "Deductions";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "deductions");
       }
       if (blnEarningCategory) {
         dicNext.blnIncludedInCtc = true;
         dicNext.blnIncludeInPayslip = true;
-        dicNext.strPayslipSection = "Earnings";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "earnings");
       }
       if (blnEmployerContributionCategory) {
         dicNext.blnIncludedInCtc = true;
-        if (!dicNext.strPayslipSection) {
-          dicNext.strPayslipSection = "Employer Contributions";
+        if (!strPayslipSectionValue) {
+          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "employer contributions");
         }
       }
       if (blnInformationCategory) {
@@ -955,20 +977,20 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludeInESIC = false;
         dicNext.blnIncludeInGratuity = false;
         dicNext.blnIncludeInRemuneration = false;
-        dicNext.strPayslipSection = dicNext.blnIncludeInPayslip ? "Information" : "";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, dicNext.blnIncludeInPayslip ? "information" : "");
       }
       if (!dicNext.blnIncludeInPayslip) {
-        dicNext.strPayslipSection = "";
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
       }
       if (!blnReimbursementCategory) {
         dicNext.blnIsFlexiBenefit = blnFlexiBucketCategory;
         dicNext.lstFlexiEligibilityRules = [];
-        dicNext.strReimbursementType = "none";
-        dicNext.strSettlementMethod = "none";
+        applyLookupValue("intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, "none");
+        applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "none");
         dicNext.blnRequiresBills = false;
         dicNext.blnAutoPushToPayroll = false;
         dicNext.blnFinanceSettlementRequired = false;
-        dicNext.strClaimLimitType = "none";
+        applyLookupValue("intClaimLimitTypeID", "strClaimLimitType", lstClaimLimitTypeOptions, "none");
         dicNext.strMonthlyLimitAmount = "";
         dicNext.strAnnualLimitAmount = "";
       }
@@ -998,7 +1020,7 @@ export default function SalaryComponentEditorPage({
       }
       return dicNext;
     });
-  }, [dicForm.strComponentCategory, dicForm.strReimbursementType, dicForm.strSettlementMethod, dicForm.blnRequiresBills, dicForm.blnIncludeInPayslip, dicForm.blnIsFlexiBenefit]);
+  }, [dicForm.intComponentCategoryID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intPayslipSectionID, dicForm.blnRequiresBills, dicForm.blnIncludeInPayslip, dicForm.blnIsFlexiBenefit, lstCategoryOptions, lstClaimLimitTypeOptions, lstPayslipSections, lstReimbursementTypeOptions, lstSettlementMethodOptions]);
 
   async function handleSave() {
     if (!blnCanSave) {
