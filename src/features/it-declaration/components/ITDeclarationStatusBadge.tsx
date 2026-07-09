@@ -19,13 +19,13 @@ function normalizeStatus(strStatus: string) {
   return (strStatus || "draft").trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-export default function ITDeclarationStatusBadge({ strStatus }: { strStatus: string }) {
+export default function ITDeclarationStatusBadge({ strStatus, strLabel }: { strStatus: string; strLabel?: string }) {
   const strNormalized = normalizeStatus(strStatus);
   const objTone = dicToneByStatus[strNormalized] ?? dicToneByStatus.draft;
   return (
     <Chip
       size="small"
-      label={strStatus || "Draft"}
+      label={strLabel || strStatus || "Draft"}
       sx={{ fontWeight: 700, backgroundColor: objTone.background, color: objTone.color }}
     />
   );

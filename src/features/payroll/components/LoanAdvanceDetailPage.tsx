@@ -135,6 +135,14 @@ function getEmployeeLabel(objEmployee: EmployeeListRecord) {
   return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
 }
 
+function toLabelKey(strValue?: string | null) {
+  return (strValue || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function getScheduleOutstanding(objSchedule?: LoanAdvanceScheduleRecord | null) {
   const decPrincipalDue = Number(objSchedule?.decPrincipalDueAmount || 0);
   const decInterestDue = Math.max(0, Number(objSchedule?.decTotalDueAmount || 0) - decPrincipalDue);
@@ -508,7 +516,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     if (!objPolicy) return null;
     return (
       <Alert severity={objPolicy.blnPreventDuplicateActive && blnHasActiveWarning ? "warning" : "info"} sx={{ borderRadius: "8px" }}>
-        <Typography sx={{ fontWeight: 900 }}>{objPolicy.strCategoryName}</Typography>
+        <Typography sx={{ fontWeight: 900 }}>{t(toLabelKey(objPolicy.strCategoryName), objPolicy.strCategoryName)}</Typography>
         <Typography sx={{ fontSize: "0.82rem" }}>
           {objPolicy.strCategoryDescription || t("policy_default", "Category policy is applied to amount, installment, interest, payroll recovery, and tax checks.")}
         </Typography>
@@ -536,7 +544,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                 <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
                 <td>{formatCurrency(objRow.decRecoveredTotalAmount)}</td>
                 <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
-                <td>{objRow.strScheduleStatus}</td>
+                <td>{t(`status_${objRow.strScheduleStatus}`, objRow.strScheduleStatus.replaceAll("_", " "))}</td>
               </tr>
             ))}
           </tbody>
@@ -556,7 +564,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
           </Box>
           <Box className={styles.headerActions}>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
-            {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} /> : null}
+            {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
             {renderWorkflowActions()}
           </Box>
         </Box>
@@ -604,7 +612,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                 </TextField>
                 <TextField select size="small" label={t("field_category", "Category")} value={dicValues.intCategoryID} disabled={blnReadonly} onChange={(e) => updateValue("intCategoryID", e.target.value ? Number(e.target.value) : "")}>
                   <MenuItem value="">{t("select_category", "Select category")}</MenuItem>
-                  {lstFilteredCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={objCategory.intID}>{objCategory.strCategoryName}</MenuItem>)}
+                  {lstFilteredCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={objCategory.intID}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
                 </TextField>
                 <TextField size="small" type="date" label={t("field_request_date", "Request Date")} InputLabelProps={{ shrink: true }} value={dicValues.dtRequestDate} disabled={blnReadonly} onChange={(e) => updateValue("dtRequestDate", e.target.value)} />
                 <TextField size="small" label={t("field_requested_amount", "Requested Amount")} value={dicValues.decRequestedAmount} disabled={blnReadonly} onChange={(e) => updateValue("decRequestedAmount", e.target.value)} />
@@ -644,7 +652,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
               <table className={`${styles.table} ${styles.fnfDenseTable}`}>
                 <thead><tr><th>{t("ledger_event", "Event")}</th><th>{t("ledger_from", "From")}</th><th>{t("ledger_to", "To")}</th><th>{t("ledger_amount", "Amount")}</th><th>{t("ledger_balance", "Balance")}</th><th>{t("ledger_remarks", "Remarks")}</th><th>{t("ledger_on", "On")}</th></tr></thead>
                 <tbody>
-                  {(objRecord?.lstLedger || []).map((objLedger) => <tr key={objLedger.intID}><td>{objLedger.strLedgerEvent.replaceAll("_", " ")}</td><td>{objLedger.strFromStatus || "-"}</td><td>{objLedger.strToStatus || "-"}</td><td>{formatCurrency(objLedger.decEventAmount)}</td><td>{formatCurrency(objLedger.decBalanceAfterEvent)}</td><td>{objLedger.strRemarks || "-"}</td><td>{formatDate(objLedger.dtEventOn)}</td></tr>)}
+                  {(objRecord?.lstLedger || []).map((objLedger) => <tr key={objLedger.intID}><td>{t(toLabelKey(objLedger.strLedgerEvent), objLedger.strLedgerEvent.replaceAll("_", " "))}</td><td>{objLedger.strFromStatus ? t(`status_${objLedger.strFromStatus}`, objLedger.strFromStatus.replaceAll("_", " ")) : "-"}</td><td>{objLedger.strToStatus ? t(`status_${objLedger.strToStatus}`, objLedger.strToStatus.replaceAll("_", " ")) : "-"}</td><td>{formatCurrency(objLedger.decEventAmount)}</td><td>{formatCurrency(objLedger.decBalanceAfterEvent)}</td><td>{objLedger.strRemarks || "-"}</td><td>{formatDate(objLedger.dtEventOn)}</td></tr>)}
                   {!(objRecord?.lstLedger || []).length ? <tr><td colSpan={7} className={styles.emptyState}>{t("ledger_empty", "No ledger history found.")}</td></tr> : null}
                 </tbody>
               </table>

@@ -10,6 +10,7 @@ const strLanguageSwitchTokenKey = "hrms_language_switch_token";
 const strLanguageSwitchLanguageKey = "hrms_language_switch_language_id";
 const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
+const strLabelsRefreshedEventName = "hrms:labels-refreshed";
 
 const dicModuleConstantMap: Record<string, unknown> = {
   common: dicConstant.common,
@@ -148,6 +149,7 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
   const [strLanguageCode, setStrLanguageCode] = useState("en");
   const [blnLoadingLabels, setBlnLoadingLabels] = useState(true);
   const [strLabelError, setStrLabelError] = useState("");
+  const [intRefreshToken, setIntRefreshToken] = useState(0);
 
   useEffect(() => {
     function syncLanguage() {
@@ -162,6 +164,20 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
       window.removeEventListener("hrms:language-changed", syncLanguage as EventListener);
     };
   }, []);
+
+  useEffect(() => {
+    function refreshLabels(objEvent: Event) {
+      const intRefreshedLanguageID = Number((objEvent as CustomEvent<{ intLanguageID?: number }>).detail?.intLanguageID ?? "");
+      if (!Number.isFinite(intRefreshedLanguageID) || intRefreshedLanguageID === intLanguageID) {
+        setIntRefreshToken((intCurrentValue) => intCurrentValue + 1);
+      }
+    }
+
+    window.addEventListener(strLabelsRefreshedEventName, refreshLabels);
+    return () => {
+      window.removeEventListener(strLabelsRefreshedEventName, refreshLabels);
+    };
+  }, [intLanguageID]);
 
   useEffect(() => {
     let blnMounted = true;
@@ -228,7 +244,7 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
     return () => {
       blnMounted = false;
     };
-  }, [intLanguageID, strFallbackError, strModuleName]);
+  }, [intLanguageID, intRefreshToken, strFallbackError, strModuleName]);
 
   const t = useCallback((strKey: string, strFallback?: string) => {
     if (dicLabels[strKey]) {

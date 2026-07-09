@@ -477,14 +477,14 @@ export default function SalaryStructureListPage() {
                         />
                         {blnCanClone ? (
                           <button
-                            controlId="salary-structures.list.row.clone.button"
+                            data-controlid="salary-structures.list.row.clone.button"
                             data-row-key={String(dicRow.intID)}
                             className={`${styles.iconButton} ${styles.editIcon}`}
                             type="button"
                             onClick={() => handleCloneOpen(dicRow.intID)}
                             title={t("clone_button", "Clone")}
                           >
-                            <ContentCopyRoundedIcon fontSize="small" />
+                            <ContentCopyRoundedIcon data-testid={undefined} data-controlid="salary-structures.list.row.clone.button.icon" fontSize="small" />
                           </button>
                         ) : null}
                       </Box>

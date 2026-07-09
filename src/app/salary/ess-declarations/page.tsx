@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { itDeclarationService, type ItDeclarationDashboardCardDto, type ItDeclarationRegime } from "@/features/it-declaration/services/itDeclarationService";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 
@@ -50,6 +51,7 @@ function canEditDeclarationByStatus(strStatus?: string | null) {
 
 export default function SalaryEssDeclarationsPage() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("it-declaration");
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [strCurrentFy, setStrCurrentFy] = useState("");
@@ -62,6 +64,25 @@ export default function SalaryEssDeclarationsPage() {
   const [strSearchRegime, setStrSearchRegime] = useState("");
   const [strSearchStatus, setStrSearchStatus] = useState("All");
   const [dicAppliedFilters, setDicAppliedFilters] = useState({ fy: "", regime: "", status: "All" });
+
+  const getRegimeLabel = (strRegime: string) => {
+    if (strRegime === "Old Regime") return t("old_regime", "Old Regime");
+    if (strRegime === "New Regime") return t("new_regime", "New Regime");
+    return strRegime;
+  };
+
+  const getStatusLabel = (strStatus?: string | null) => {
+    const strNormalized = String(strStatus || "draft").trim().toLowerCase();
+    if (strNormalized === "draft") return t("draft", "Draft");
+    if (strNormalized === "submitted") return t("submitted", "Submitted");
+    if (strNormalized === "under_review") return t("under_review", "Under Review");
+    if (strNormalized === "released") return t("released", "Released");
+    if (strNormalized === "resubmitted") return t("resubmitted", "Resubmitted");
+    if (strNormalized === "approved") return t("approved", "Approved");
+    if (strNormalized === "locked") return t("locked", "Locked");
+    if (strNormalized === "rejected") return t("rejected", "Rejected");
+    return String(strStatus || t("draft", "Draft"));
+  };
 
   function mapDeclarationToDashboardCard(objDeclaration: Awaited<ReturnType<typeof itDeclarationService.getDeclaration>>, strFallbackFy: string): ItDeclarationDashboardCardDto | null {
     if (!objDeclaration?.intDeclarationID) return null;
@@ -155,7 +176,7 @@ export default function SalaryEssDeclarationsPage() {
         setStrError(
           objError instanceof Error
             ? objError.message
-            : "Unable to load IT declaration dashboard."
+            : t("unable_load_it_declaration_dashboard", "Unable to load IT declaration dashboard.")
         );
       }
     } finally {
@@ -223,7 +244,7 @@ export default function SalaryEssDeclarationsPage() {
       await itDeclarationService.startDeclaration(strFy, strRegime);
       await openDeclaration(strFy, strRegime);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to create IT declaration.");
+      setStrError(objError instanceof Error ? objError.message : t("unable_create_it_declaration", "Unable to create IT declaration."));
     } finally {
       setStrBusyKey("");
     }
@@ -254,9 +275,9 @@ export default function SalaryEssDeclarationsPage() {
     return lstFilteredRows.map((objRow) => ({
       id: objRow.intDeclarationID,
       fy: objRow.strFinancialYearCode,
-      regime: objRow.strTaxRegime,
+      regime: getRegimeLabel(objRow.strTaxRegime),
       status: (
-        <ITDeclarationStatusBadge strStatus={String(objRow.strStatus || "draft")} />
+        <ITDeclarationStatusBadge strStatus={String(objRow.strStatus || "draft")} strLabel={getStatusLabel(objRow.strStatus)} />
       ),
       declared: formatCurrency(objRow.decDeclaredAmount),
       approved: formatCurrency(objRow.decApprovedAmount),
@@ -264,21 +285,21 @@ export default function SalaryEssDeclarationsPage() {
       action: (
         <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
           <Button controlId="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            {canEditDeclarationByStatus(objRow.strStatus) ? "Continue" : "View"}
+            {canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
           </Button>
         </Stack>
       ),
     }));
-  }, [lstFilteredRows, strBusyKey]);
+  }, [lstFilteredRows, strBusyKey, t]);
 
   const lstColumns: CommonTableColumn<(typeof lstGridRows)[number]>[] = [
-    { field: "action", headerName: "Action", width: 120, sortable: false, exportable: false, align: "center" },
-    { field: "fy", headerName: "FY", width: 160 },
-    { field: "regime", headerName: "Regime", width: 180 },
-    { field: "status", headerName: "Status", width: 140, sortable: false },
-    { field: "declared", headerName: "Declared", width: 150, align: "right" },
-    { field: "approved", headerName: "Approved", width: 150, align: "right" },
-    { field: "lastUpdated", headerName: "Last Updated", width: 160 },
+    { field: "action", headerName: t("action", "Action"), width: 120, sortable: false, exportable: false, align: "center" },
+    { field: "fy", headerName: t("fy", "FY"), width: 160 },
+    { field: "regime", headerName: t("regime", "Regime"), width: 180 },
+    { field: "status", headerName: t("status", "Status"), width: 140, sortable: false },
+    { field: "declared", headerName: t("declared", "Declared"), width: 150, align: "right" },
+    { field: "approved", headerName: t("approved", "Approved"), width: 150, align: "right" },
+    { field: "lastUpdated", headerName: t("last_updated", "Last Updated"), width: 160 },
   ];
 
   if (blnLoading) {
@@ -304,9 +325,9 @@ export default function SalaryEssDeclarationsPage() {
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Stack direction="row" spacing={1} alignItems="center">
             <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>IT Declaration</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>{t("dashboard_title", "IT Declaration")}</Typography>
               <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-                Financial Year Dashboard
+                {t("financial_year_dashboard", "Financial Year Dashboard")}
               </Typography>
             </Box>
           </Stack>
@@ -320,7 +341,7 @@ export default function SalaryEssDeclarationsPage() {
             controlId="salary.ess-declarations.search.financial-year.input"
             value={strSearchFy}
             onChange={(objEvent) => setStrSearchFy(objEvent.target.value)}
-            placeholder="Search FY"
+            placeholder={t("search_fy", "Search FY")}
             size="small"
             fullWidth
           />
@@ -328,7 +349,7 @@ export default function SalaryEssDeclarationsPage() {
             controlId="salary.ess-declarations.search.regime.input"
             value={strSearchRegime}
             onChange={(objEvent) => setStrSearchRegime(objEvent.target.value)}
-            placeholder="Search Regime"
+            placeholder={t("search_regime", "Search Regime")}
             size="small"
             fullWidth
           />
@@ -340,15 +361,15 @@ export default function SalaryEssDeclarationsPage() {
             size="small"
             fullWidth
           >
-            <MenuItem value="All">All</MenuItem>
-            <MenuItem value="draft">Draft</MenuItem>
-            <MenuItem value="submitted">Submitted</MenuItem>
-            <MenuItem value="under_review">Under Review</MenuItem>
-            <MenuItem value="released">Released</MenuItem>
-            <MenuItem value="resubmitted">Resubmitted</MenuItem>
-            <MenuItem value="approved">Approved</MenuItem>
-            <MenuItem value="locked">Locked</MenuItem>
-            <MenuItem value="rejected">Rejected</MenuItem>
+            <MenuItem value="All">{t("all", "All")}</MenuItem>
+            <MenuItem value="draft">{t("draft", "Draft")}</MenuItem>
+            <MenuItem value="submitted">{t("submitted", "Submitted")}</MenuItem>
+            <MenuItem value="under_review">{t("under_review", "Under Review")}</MenuItem>
+            <MenuItem value="released">{t("released", "Released")}</MenuItem>
+            <MenuItem value="resubmitted">{t("resubmitted", "Resubmitted")}</MenuItem>
+            <MenuItem value="approved">{t("approved", "Approved")}</MenuItem>
+            <MenuItem value="locked">{t("locked", "Locked")}</MenuItem>
+            <MenuItem value="rejected">{t("rejected", "Rejected")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
@@ -358,7 +379,7 @@ export default function SalaryEssDeclarationsPage() {
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicAppliedFilters({ fy: strSearchFy, regime: strSearchRegime, status: strSearchStatus })}
             >
-              Search
+              {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
@@ -374,7 +395,7 @@ export default function SalaryEssDeclarationsPage() {
                 setDicAppliedFilters({ fy: "", regime: "", status: "All" });
               }}
             >
-              Clear
+              {t("clear", "Clear")}
             </Button>
           </Box>
         </Box>
@@ -387,29 +408,29 @@ export default function SalaryEssDeclarationsPage() {
           rowIdField={"id"}
           toolbarLeft={(
             <Button controlId="salary.ess-declarations.add.button" className={styles.primaryButton} variant="contained" startIcon={<AddCircleOutlineRoundedIcon />} onClick={openAddDeclarationDialog}>
-              Add Declaration
+              {t("add_declaration", "Add Declaration")}
             </Button>
           )}
           showExportOptions
           showPaginationSummary
           exportFileName="it-declaration-list"
-          emptyMessage="No IT declarations found for this employee."
+          emptyMessage={t("no_it_declarations_found", "No IT declarations found for this employee.")}
           withPaper={false}
         />
       </Box>
 
       {strCurrentFy && lstCurrentFyRows.length === 0 ? (
-        <Alert severity="info">No declaration started for current FY {strCurrentFy}. Use Add Declaration.</Alert>
+        <Alert severity="info">{t("no_declaration_started_current_fy", "No declaration started for current FY")} {strCurrentFy}. {t("use_add_declaration", "Use Add Declaration.")}</Alert>
       ) : null}
 
       <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth controlId="salary.ess-declarations.add.dialog">
-        <DialogTitle>Add Declaration</DialogTitle>
+        <DialogTitle>{t("add_declaration", "Add Declaration")}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
             <TextField
               controlId="salary.ess-declarations.add.financial-year.select"
               select
-              label="Financial Year"
+              label={t("financial_year", "Financial Year")}
               value={strAddFy}
               onChange={(objEvent) => setStrAddFy(objEvent.target.value)}
               size="small"
@@ -417,37 +438,37 @@ export default function SalaryEssDeclarationsPage() {
             >
               {lstFyOptions.map((strFy) => (
                 <MenuItem key={strFy} value={strFy} disabled={setDeclaredFy.has(strFy)}>
-                  {strFy} {setDeclaredFy.has(strFy) ? "(Already declared)" : ""}
+                  {strFy} {setDeclaredFy.has(strFy) ? t("already_declared", "(Already declared)") : ""}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               controlId="salary.ess-declarations.add.regime.select"
               select
-              label="Tax Regime"
+              label={t("tax_regime", "Tax Regime")}
               value={strAddRegime}
               onChange={(objEvent) => setStrAddRegime(objEvent.target.value as ItDeclarationRegime)}
               size="small"
               fullWidth
             >
               <MenuItem value="Old Regime">
-                Old Regime
+                {t("old_regime", "Old Regime")}
               </MenuItem>
               <MenuItem value="New Regime">
-                New Regime
+                {t("new_regime", "New Regime")}
               </MenuItem>
             </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button controlId="salary.ess-declarations.add.cancel.button" onClick={() => setBlnAddDialogOpen(false)}>Cancel</Button>
+          <Button controlId="salary.ess-declarations.add.cancel.button" onClick={() => setBlnAddDialogOpen(false)}>{t("cancel", "Cancel")}</Button>
           <Button
             controlId="salary.ess-declarations.add.confirm.button"
             variant="contained"
             disabled={!strAddFy || !!strBusyKey}
             onClick={() => void createFromDialog()}
           >
-            Create
+            {t("create", "Create")}
           </Button>
         </DialogActions>
       </Dialog>

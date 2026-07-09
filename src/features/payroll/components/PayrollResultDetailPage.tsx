@@ -191,6 +191,35 @@ function formatBasisLabel(strValue: string | null | undefined) {
     .join(" ");
 }
 
+function toLabelKey(strValue: string | null | undefined) {
+  return String(strValue ?? "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function translateDynamicLabel(
+  t: (strKey: string, strFallback?: string) => string,
+  strValue: string | null | undefined,
+  strPrefix = "",
+  strFallback?: string
+) {
+  const strKey = toLabelKey(strValue);
+  if (!strKey) {
+    return "-";
+  }
+  return t(strPrefix ? `${strPrefix}_${strKey}` : strKey, strFallback ?? formatBasisLabel(strValue));
+}
+
+function formatLabelTemplate(strTemplate: string, dicValues: Record<string, string | number>) {
+  return Object.entries(dicValues).reduce(
+    (strOutput, [strKey, objValue]) => strOutput.replaceAll(`{${strKey}}`, String(objValue)),
+    strTemplate
+  );
+}
+
 function getLineAnnualAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
   const objTrace = dicLine.objCalculationTrace;
   const objAnnualValue = getCalculationTraceValue(
@@ -567,7 +596,7 @@ export default function PayrollResultDetailPage({
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="flex-start">
               <Chip
-                label={objResult.strStatus}
+                label={translateDynamicLabel(t, objResult.strStatus, "status")}
                 sx={{
                   alignSelf: { xs: "flex-start", sm: "center" },
                   background: dicStatusTone.background,
@@ -707,7 +736,7 @@ export default function PayrollResultDetailPage({
                 <DetailValue strLabel={t("residual_flexi", "Residual Flexi")} strValue={formatCurrency(objResult.decResidualFlexiAmount ?? 0)} />
                 <DetailValue
                   strLabel={t("status", "Status")}
-                  objValue={<Chip label={objResult.strStatus} size="small" sx={{ ...dicStatusTone, fontWeight: 800, width: "fit-content" }} />}
+                  objValue={<Chip label={translateDynamicLabel(t, objResult.strStatus, "status")} size="small" sx={{ ...dicStatusTone, fontWeight: 800, width: "fit-content" }} />}
                 />
               </SummaryBlock>
 
@@ -734,7 +763,7 @@ export default function PayrollResultDetailPage({
                 <DetailValue strLabel={t("minimum_required_wage", "Minimum Required Wage")} strValue={formatOptionalCurrency(dicWageRulePreview.minimum_required_wage)} />
                 <DetailValue strLabel={t("deemed_wage_shortfall", "Deemed Wage Shortfall")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_shortfall ?? 0)} />
                 <DetailValue strLabel={t("deemed_wage_base", "Deemed Wage Base")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_base ?? 0)} />
-                <DetailValue strLabel={t("calculation_basis", "Calculation Basis")} strValue={formatBasisLabel(dicWageRulePreview.calculation_basis)} />
+                <DetailValue strLabel={t("calculation_basis", "Calculation Basis")} strValue={translateDynamicLabel(t, dicWageRulePreview.calculation_basis, "", formatBasisLabel(dicWageRulePreview.calculation_basis))} />
                 <DetailValue strLabel={t("threshold", "Threshold")} strValue={formatPercent(dicWageRulePreview.threshold_percent)} />
                 <Alert severity="info" sx={{ borderRadius: "12px", alignItems: "flex-start" }}>
                   {t(
@@ -845,10 +874,10 @@ export default function PayrollResultDetailPage({
                     lstResultLines.map((dicLine) => (
                       <tr key={dicLine.intID}>
                         <td>{dicLine.strComponentCode}</td>
-                        <td>{dicLine.strComponentName}</td>
+                        <td>{translateDynamicLabel(t, dicLine.strComponentName)}</td>
                         <td>
                           <Chip
-                            label={dicLine.strComponentCategory || "-"}
+                            label={translateDynamicLabel(t, dicLine.strComponentCategory)}
                             size="small"
                             sx={{
                               ...getCategoryChipSx(dicLine.strComponentCategory),
@@ -857,15 +886,15 @@ export default function PayrollResultDetailPage({
                             }}
                           />
                         </td>
-                        <td>{dicLine.strLineType || "-"}</td>
+                        <td>{translateDynamicLabel(t, dicLine.strLineType)}</td>
                         <td>{formatCurrency(dicLine.decAmount)}</td>
                         <td>{formatOptionalCurrency(getLineAnnualAmount(dicLine))}</td>
                         <td>{formatCurrency(getLineMonthlyAmount(dicLine) ?? 0)}</td>
-                        <td>{getPayrollImpactLabel(dicLine)}</td>
-                        <td>{dicLine.strCalculationSource || dicLine.strSourceType || "-"}</td>
-                        <td>{getTaxableLabel(dicLine)}</td>
-                        <td>{getCtcIncludedLabel(dicLine)}</td>
-                        <td>{dicLine.strPayslipSection || "-"}</td>
+                        <td>{translateDynamicLabel(t, getPayrollImpactLabel(dicLine))}</td>
+                        <td>{translateDynamicLabel(t, dicLine.strCalculationSource || dicLine.strSourceType)}</td>
+                        <td>{translateDynamicLabel(t, getTaxableLabel(dicLine))}</td>
+                        <td>{translateDynamicLabel(t, getCtcIncludedLabel(dicLine))}</td>
+                        <td>{translateDynamicLabel(t, dicLine.strPayslipSection)}</td>
                         <td>{dicLine.strRemarks || "-"}</td>
                       </tr>
                     ))
@@ -884,7 +913,14 @@ export default function PayrollResultDetailPage({
               }}
             >
               <Typography sx={{ color: "#475569", fontSize: "0.92rem" }}>
-                {`Showing 1 to ${lstResultLines.length} of ${lstResultLines.length} results`}
+                {formatLabelTemplate(
+                  t("showing_results", "Showing {from} to {to} of {total} results"),
+                  {
+                    from: lstResultLines.length ? 1 : 0,
+                    to: lstResultLines.length,
+                    total: lstResultLines.length,
+                  }
+                )}
               </Typography>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Button

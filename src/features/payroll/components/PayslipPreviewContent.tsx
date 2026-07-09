@@ -18,7 +18,7 @@ function normalizePayslipCompanyName(strCompanyName: string | null | undefined) 
     return "-";
   }
   if (["acma india", "acme india"].includes(strValue.toLowerCase())) {
-    return "ABC India pvt ltd";
+    return PAYSLIP_COMPANY_DISPLAY_NAME;
   }
   return strValue;
 }
@@ -47,6 +47,38 @@ function formatDate(strDate: string | null) {
   }).format(new Date(strDate));
 }
 
+function toLabelKey(strValue: string | null | undefined) {
+  return String(strValue ?? "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function formatDynamicFallback(strValue: string | null | undefined) {
+  const strTrimmed = String(strValue ?? "").trim();
+  if (!strTrimmed) {
+    return "-";
+  }
+  return strTrimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function translateDynamicLabel(
+  t: (strKey: string, strFallback?: string) => string,
+  strValue: string | null | undefined
+) {
+  const strKey = toLabelKey(strValue);
+  if (!strKey) {
+    return "-";
+  }
+  return t(strKey, formatDynamicFallback(strValue));
+}
+
 function DetailRow({
   strLabel,
   strValue,
@@ -70,12 +102,14 @@ function LineTable({
   strComponentLabel,
   strAmountLabel,
   strNoLinesLabel,
+  translateLineLabel,
 }: {
   strTitle: string;
   lstLines: PayslipLineRecord[];
   strComponentLabel: string;
   strAmountLabel: string;
   strNoLinesLabel: string;
+  translateLineLabel: (strValue: string | null | undefined) => string;
 }) {
   const lstVisibleLines = lstLines.filter((dicLine) => hasDisplayAmount(dicLine.decAmount));
 
@@ -96,7 +130,7 @@ function LineTable({
             {lstVisibleLines.length ? (
               lstVisibleLines.map((dicLine, intIndex) => (
                 <tr key={`${dicLine.strGroupCode}-${dicLine.strLineCode ?? dicLine.strLineLabel}-${intIndex}`}>
-                  <td>{dicLine.strLineLabel}</td>
+                  <td>{translateLineLabel(dicLine.strLineLabel)}</td>
                   <td style={{ textAlign: "right" }}>{formatCurrency(dicLine.decAmount)}</td>
                 </tr>
               ))
@@ -129,6 +163,7 @@ export default function PayslipPreviewContent({
     strComponentLabel: t("component", "Component"),
     strAmountLabel: t("amount", "Amount"),
     strNoLinesLabel: t("no_lines", "No lines"),
+    translateLineLabel: (strValue: string | null | undefined) => translateDynamicLabel(t, strValue),
   };
 
   return (
