@@ -4,9 +4,18 @@ type EmployeeSalarySummaryComponentLine = {
   strComponentCode?: string | null;
   strComponentName?: string | null;
   strComponentCategory?: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  strWageType?: string | null;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
+  strCtcTreatment?: string | null;
   decAmountMonthly?: number | null;
   decAmountAnnual?: number | null;
 };
@@ -55,6 +64,10 @@ function normalizeSelectToken(strValue: string | null | undefined) {
   return String(strValue || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
 
+function hasLookupSnapshot(intValue: number | null | undefined) {
+  return Number.isInteger(Number(intValue)) && Number(intValue) > 0;
+}
+
 function isFlexiPayComponentName(strValue: string) {
   const strToken = normalizeSelectToken(strValue);
   return strToken === "flexipay" || strToken === "flexibucket";
@@ -98,19 +111,23 @@ function isFlexiBucketLine(dicLine: Pick<EmployeeSalarySummaryComponentLine, "bl
   );
 }
 
-function isFlexiAllocationLine(dicLine: Pick<EmployeeSalarySummaryComponentLine, "blnIsFlexiBenefit" | "strComponentCode" | "strComponentCategory" | "strComponentName">) {
+function isFlexiAllocationLine(dicLine: Pick<EmployeeSalarySummaryComponentLine, "blnIsFlexiBenefit" | "strComponentCode" | "strComponentCategory" | "strComponentName" | "intReimbursementTypeSnapshotID">) {
   const strCategory = normalizeSelectToken(dicLine.strComponentCategory ?? "");
   const strCode = normalizeSelectToken(dicLine.strComponentCode ?? "");
   return Boolean(
     dicLine.blnIsFlexiBenefit ||
+    hasLookupSnapshot(dicLine.intReimbursementTypeSnapshotID) ||
     strCategory.includes("reimbursement") ||
     strCode.includes("flexi")
   ) && !isFlexiBucketLine(dicLine);
 }
 
-function isNonCtcReimbursementLine(dicLine: Pick<EmployeeSalarySummaryComponentLine, "blnIncludedInCtc" | "strComponentCategory" | "blnIsFlexiBasket" | "strComponentCode" | "strComponentName">) {
+function isNonCtcReimbursementLine(dicLine: Pick<EmployeeSalarySummaryComponentLine, "blnIncludedInCtc" | "strComponentCategory" | "blnIsFlexiBasket" | "strComponentCode" | "strComponentName" | "intReimbursementTypeSnapshotID" | "intCtcTreatmentSnapshotID" | "strCtcTreatment">) {
   const strCategory = normalizeSelectToken(dicLine.strComponentCategory ?? "");
-  return strCategory.includes("reimbursement") && dicLine.blnIncludedInCtc === false && !isFlexiBucketLine(dicLine);
+  const blnIsReimbursement = hasLookupSnapshot(dicLine.intReimbursementTypeSnapshotID) || strCategory.includes("reimbursement");
+  const strCtcTreatmentToken = normalizeSelectToken(dicLine.strCtcTreatment ?? "");
+  const blnExcludedByLookup = hasLookupSnapshot(dicLine.intCtcTreatmentSnapshotID) && dicLine.blnIncludedInCtc === false;
+  return blnIsReimbursement && (blnExcludedByLookup || strCtcTreatmentToken.includes("notincluded") || dicLine.blnIncludedInCtc === false) && !isFlexiBucketLine(dicLine);
 }
 
 function isCtcIncludedEarning(dicLine: EmployeeSalarySummaryComponentLine) {
@@ -122,6 +139,34 @@ function isCtcIncludedEarning(dicLine: EmployeeSalarySummaryComponentLine) {
     !isInformationCategory(dicLine.strComponentCategory) &&
     !isNonCtcReimbursementLine(dicLine) &&
     dicLine.blnIncludedInCtc !== false;
+}
+
+export function isEmployeeSalaryWageComponent(dicLine: Pick<EmployeeSalarySummaryComponentLine, "strWageType" | "intWageTypeSnapshotID">) {
+  if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
+    return normalizeSelectToken(dicLine.strWageType ?? "").startsWith("wage");
+  }
+  const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
+  return strWageTypeToken === "wage" || strWageTypeToken === "wages";
+}
+
+export function calculateEmployeeSalaryWageMetrics(lstComponentLines: EmployeeSalarySummaryComponentLine[], decAnnualCtc: number) {
+  const decWageAnnual = lstComponentLines.reduce((decTotal, dicLine) => {
+    if (!isCtcIncludedEarning(dicLine) || !isEmployeeSalaryWageComponent(dicLine)) {
+      return decTotal;
+    }
+    return decTotal + getNumberValue(dicLine.decAmountAnnual);
+  }, 0);
+  const decNonWageAnnual = Math.max(decAnnualCtc - decWageAnnual, 0);
+  const decMinimumRequiredWageAnnual = decAnnualCtc * 0.5;
+  const decDeemedWageShortfallAnnual = Math.max(decMinimumRequiredWageAnnual - decWageAnnual, 0);
+  return {
+    decWageAnnual,
+    decNonWageAnnual,
+    decMinimumRequiredWageAnnual,
+    decDeemedWageShortfallAnnual,
+    decDeemedWageAnnual: decWageAnnual + decDeemedWageShortfallAnnual,
+    decWagePercentOfCtc: decAnnualCtc > 0 ? (decWageAnnual / decAnnualCtc) * 100 : 0,
+  };
 }
 
 function getEmployeeFlexiBucketAmounts(objSource: EmployeeSalarySummarySource | null) {

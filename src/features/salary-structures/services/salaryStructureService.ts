@@ -7,6 +7,7 @@ import {
   type SalaryStructureTextApiRecord
 } from "@/services/master/MasterApiService";
 import { authHelpers } from "@/lib/auth";
+import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
 import type {
   SalaryStructureCloneValues,
   SalaryStructureDetailRecord,
@@ -49,6 +50,41 @@ function formatOptionalInteger(objValue: number | string | "") {
 
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function mapValueSourceLookups(
+  lstLookups: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+  }> | undefined,
+  lstLegacyValues: string[] = []
+) {
+  if (lstLookups && lstLookups.length > 0) {
+    return lstLookups.map((dicLookup) => ({
+      intID: dicLookup.intID,
+      strLabel: resolveLookupDisplayLabel({
+        strDisplayName: dicLookup.strDisplayName,
+        strValueCode: dicLookup.strValueCode,
+      }),
+      strCode: dicLookup.strValueCode,
+      strValueCode: dicLookup.strValueCode,
+      strDescription: dicLookup.strDescription ?? null,
+    }));
+  }
+
+  return lstLegacyValues.map((strValue, intIndex) => ({
+    intID: intIndex + 1,
+    strLabel: resolveLookupDisplayLabel({
+      strDisplayName: strValue,
+      strLegacyValue: strValue,
+      strValueCode: strValue,
+    }),
+    strCode: strValue,
+    strValueCode: strValue,
+    strDescription: null,
+  }));
 }
 
 function isFlexiBucketToken(strValue: string) {
@@ -118,6 +154,7 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     strRowID: createRowID(),
     intSalaryComponentID: dicLine.intSalaryComponentID,
     intLineOrder: dicLine.intLineOrder,
+    intValueSourceID: dicLine.intValueSourceID ?? "",
     strValueSource: dicLine.strValueSource,
     strComponentCode: dicLine.strComponentCode ?? "",
     strComponentName: dicLine.strComponentName,
@@ -126,6 +163,13 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     strWageType: dicLine.strWageType ?? "",
     strRoundingRule: dicLine.strRoundingRule ?? "",
     strPayslipSection: dicLine.strPayslipSection ?? "",
+    intComponentCategorySnapshotID: dicLine.intComponentCategorySnapshotID ?? "",
+    intCtcTreatmentSnapshotID: dicLine.intCtcTreatmentSnapshotID ?? "",
+    intTaxTreatmentSnapshotID: dicLine.intTaxTreatmentSnapshotID ?? "",
+    intWageTypeSnapshotID: dicLine.intWageTypeSnapshotID ?? "",
+    intPayslipSectionSnapshotID: dicLine.intPayslipSectionSnapshotID ?? "",
+    intReimbursementTypeSnapshotID: dicLine.intReimbursementTypeSnapshotID ?? "",
+    intSettlementModeSnapshotID: dicLine.intSettlementModeSnapshotID ?? "",
     blnIsFlexiBasketLine: Boolean(dicLine.blnIsFlexiBasketLine),
     strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
     blnIncludedInCtc: Boolean(dicLine.blnIncludedInCtc ?? true),
@@ -181,10 +225,18 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       strWageType: dicLine.strWageType ?? null,
       strRoundingRule: dicLine.strRoundingRule ?? null,
       strPayslipSection: dicLine.strPayslipSection ?? null,
+      intComponentCategorySnapshotID: dicLine.intComponentCategorySnapshotID ?? null,
+      intCtcTreatmentSnapshotID: dicLine.intCtcTreatmentSnapshotID ?? null,
+      intTaxTreatmentSnapshotID: dicLine.intTaxTreatmentSnapshotID ?? null,
+      intWageTypeSnapshotID: dicLine.intWageTypeSnapshotID ?? null,
+      intPayslipSectionSnapshotID: dicLine.intPayslipSectionSnapshotID ?? null,
+      intReimbursementTypeSnapshotID: dicLine.intReimbursementTypeSnapshotID ?? null,
+      intSettlementModeSnapshotID: dicLine.intSettlementModeSnapshotID ?? null,
       blnIsFlexiBasketLine: Boolean(dicLine.blnIsFlexiBasketLine),
       strFlexiComponentRole: normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
       blnIncludedInCtc: Boolean(dicLine.blnIncludedInCtc ?? true),
       strComponentCategory: dicLine.strComponentCategory ?? null,
+      intValueSourceID: dicLine.intValueSourceID ?? null,
       intLineOrder: dicLine.intLineOrder,
       strValueSource: dicLine.strValueSource,
       fltFixedAmount: dicLine.fltFixedAmount,
@@ -237,7 +289,15 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
       .map((dicLine) => ({
         intSalaryComponentID: dicLine.intSalaryComponentID,
         intLineOrder: dicLine.intLineOrder,
+        intValueSourceID: formatOptionalInteger(dicLine.intValueSourceID),
         strValueSource: dicLine.strValueSource,
+        intComponentCategorySnapshotID: formatOptionalInteger(dicLine.intComponentCategorySnapshotID),
+        intCtcTreatmentSnapshotID: formatOptionalInteger(dicLine.intCtcTreatmentSnapshotID),
+        intTaxTreatmentSnapshotID: formatOptionalInteger(dicLine.intTaxTreatmentSnapshotID),
+        intWageTypeSnapshotID: formatOptionalInteger(dicLine.intWageTypeSnapshotID),
+        intPayslipSectionSnapshotID: formatOptionalInteger(dicLine.intPayslipSectionSnapshotID),
+        intReimbursementTypeSnapshotID: formatOptionalInteger(dicLine.intReimbursementTypeSnapshotID),
+        intSettlementModeSnapshotID: formatOptionalInteger(dicLine.intSettlementModeSnapshotID),
         blnIsFlexiBasketLine: isFlexiBasketLinePayload(dicLine),
         strFlexiComponentRole: isFlexiBasketLinePayload(dicLine) ? "basket" : normalizeSalaryStructureFlexiRole(dicLine.strFlexiComponentRole),
         fltFixedAmount: isLineValueSource(dicLine.strValueSource, "fixed") ? formatOptionalNumber(dicLine.fltFixedAmount) : null,
@@ -298,6 +358,7 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
     strRowID: createRowID(),
     intSalaryComponentID: "",
     intLineOrder,
+    intValueSourceID: "",
     strValueSource: "Fixed",
     strComponentCode: "",
     strComponentName: "",
@@ -306,6 +367,13 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
     strWageType: "",
     strRoundingRule: "",
     strPayslipSection: "",
+    intComponentCategorySnapshotID: "",
+    intCtcTreatmentSnapshotID: "",
+    intTaxTreatmentSnapshotID: "",
+    intWageTypeSnapshotID: "",
+    intPayslipSectionSnapshotID: "",
+    intReimbursementTypeSnapshotID: "",
+    intSettlementModeSnapshotID: "",
     blnIsFlexiBasketLine: false,
     strFlexiComponentRole: "normal",
     blnIncludedInCtc: true,
@@ -372,10 +440,14 @@ function mergeFlexiEligibilityIntoOptions(
       const intComponentID = getFlexiEligibilityComponentID(dicRecord);
       return intComponentID > 0 && !setExistingComponentIDs.has(intComponentID);
     })
-    .map((dicRecord) => ({
+      .map((dicRecord) => ({
       intID: getFlexiEligibilityComponentID(dicRecord),
       strCode: getFlexiEligibilityCode(dicRecord),
-      strLabel: getFlexiEligibilityName(dicRecord) || `Flexi Component #${getFlexiEligibilityComponentID(dicRecord)}`,
+      strLabel: resolveLookupDisplayLabel({
+        strDisplayName: getFlexiEligibilityName(dicRecord),
+        strFallbackLabel: `Flexi Component #${getFlexiEligibilityComponentID(dicRecord)}`,
+        strValueCode: getFlexiEligibilityCode(dicRecord),
+      }),
       intFlexiComponentEligibilityID: getFlexiEligibilityRecordID(dicRecord) || null,
       blnIsFlexiComponentEligible: isFlexiEligibilityActive(dicRecord),
       blnIsActive: true,
@@ -421,6 +493,13 @@ function mergeSalaryComponentMetadataIntoOptions(
         strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
         strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
         strWageType: dicComponent.strWageType ?? dicOption.strWageType,
+        intComponentCategoryID: dicComponent.intComponentCategoryID ?? dicOption.intComponentCategoryID,
+        intCtcTreatmentID: dicComponent.intCtcTreatmentID ?? dicOption.intCtcTreatmentID,
+        intTaxTreatmentID: dicComponent.intTaxTreatmentID ?? dicOption.intTaxTreatmentID,
+        intWageTypeID: dicComponent.intWageTypeID ?? dicOption.intWageTypeID,
+        intPayslipSectionID: dicComponent.intPayslipSectionID ?? dicOption.intPayslipSectionID,
+        intReimbursementTypeID: dicComponent.intReimbursementTypeID ?? dicOption.intReimbursementTypeID,
+        intSettlementModeID: dicComponent.intSettlementMethodID ?? dicOption.intSettlementModeID,
         blnIsWages: dicComponent.blnIsWages ?? dicOption.blnIsWages,
         blnIncludedInCtc: dicComponent.blnIncludedInCtc ?? dicOption.blnIncludedInCtc,
         blnIncludeInPayslip: dicComponent.blnIncludeInPayslip ?? dicOption.blnIncludeInPayslip,
@@ -528,7 +607,10 @@ export const salaryStructureService = {
     ]);
     const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
     const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, objSalaryComponentsResult.Data);
-    return mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []);
+    return {
+      ...mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []),
+      lstValueSourceLookups: mapValueSourceLookups(objOptionsResult.Data.lstValueSourceLookups, objOptionsResult.Data.lstValueSources ?? []),
+    };
   },
 
   async saveFlexiComponentEligibility(dicValues: SalaryStructureFormValues): Promise<void> {

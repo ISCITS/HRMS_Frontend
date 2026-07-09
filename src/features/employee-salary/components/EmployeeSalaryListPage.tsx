@@ -23,10 +23,9 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
+import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import type {
-  EmployeeSalaryComponentLine,
   EmployeeSalaryDetailRecord,
-  EmployeeSalaryFlexiAllocationSummary,
   EmployeeSalaryListRecord
 } from "@/features/employee-salary/types";
 
@@ -64,110 +63,12 @@ function formatDate(strDate: string | null) {
   }).format(new Date(strDate));
 }
 
-function normalizeSelectToken(strValue: string) {
-  return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
-}
-
-function getNumberValue(objValue: number | string | null | undefined) {
-  if (objValue === null || typeof objValue === "undefined" || objValue === "") {
-    return 0;
-  }
-  const decValue = typeof objValue === "number" ? objValue : Number(String(objValue).replace(/,/g, ""));
-  return Number.isFinite(decValue) ? decValue : 0;
-}
-
-function isFlexiPayComponentName(strValue: string) {
-  return normalizeSelectToken(strValue) === "flexipay";
-}
-
-function isResidualTaxableComponentName(strValue: string) {
-  return normalizeSelectToken(strValue).includes("residualtaxable");
-}
-
-function isEmployerContributionCategory(strCategory: string | null | undefined) {
-  return normalizeSelectToken(strCategory ?? "").includes("employer");
-}
-
-function isDeductionCategory(strCategory: string | null | undefined) {
-  return normalizeSelectToken(strCategory ?? "").includes("deduction");
-}
-
-function isInformationCategory(strCategory: string | null | undefined) {
-  return normalizeSelectToken(strCategory ?? "").includes("information");
-}
-
-function isEmployerPfComponent(dicLine: Pick<EmployeeSalaryComponentLine, "strComponentName" | "strComponentCode" | "strComponentCategory">) {
-  const strName = normalizeSelectToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
-  const strCategory = normalizeSelectToken(dicLine.strComponentCategory ?? "");
-  return strName.includes("pf") && (strName.includes("employer") || strCategory.includes("employer"));
-}
-
-function isFlexiBucketLine(dicLine: EmployeeSalaryComponentLine) {
-  const strName = normalizeSelectToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
-  return Boolean(dicLine.blnIsFlexiBasket || strName === "flexipay" || strName === "flexibucket");
-}
-
-function isFlexiAllocationLine(dicLine: EmployeeSalaryComponentLine) {
-  const strCategory = normalizeSelectToken(dicLine.strComponentCategory ?? "");
-  const strCode = normalizeSelectToken(dicLine.strComponentCode ?? "");
-  return Boolean(
-    dicLine.blnIsFlexiBenefit ||
-    strCategory.includes("reimbursement") ||
-    strCode.includes("flexi")
-  ) && !isFlexiBucketLine(dicLine);
-}
-
-function isNonCtcReimbursementLine(dicLine: EmployeeSalaryComponentLine) {
-  const strCategory = normalizeSelectToken(dicLine.strComponentCategory ?? "");
-  return strCategory.includes("reimbursement") && dicLine.blnIncludedInCtc === false && !isFlexiBucketLine(dicLine);
-}
-
-function isCtcIncludedEarning(dicLine: EmployeeSalaryComponentLine) {
-  return !isFlexiBucketLine(dicLine) &&
-    !isFlexiAllocationLine(dicLine) &&
-    !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
-    !isEmployerContributionCategory(dicLine.strComponentCategory) &&
-    !isDeductionCategory(dicLine.strComponentCategory) &&
-    !isInformationCategory(dicLine.strComponentCategory) &&
-    !isNonCtcReimbursementLine(dicLine) &&
-    dicLine.blnIncludedInCtc !== false;
-}
-
-function getFlexiAllocationSummary(
-  objDetail: EmployeeSalaryDetailRecord | null
-): EmployeeSalaryFlexiAllocationSummary {
-  return objDetail?.objFlexiAllocation ?? { blnHasFlexiBasket: false, lstAllocationLines: [] };
-}
-
-function getFlexiBucketAnnualAmount(objDetail: EmployeeSalaryDetailRecord | null) {
-  const objFlexiAllocation = getFlexiAllocationSummary(objDetail);
-  return getNumberValue(objFlexiAllocation.decFlexiBasketAvailableAnnual) ||
-    getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiBasketAnnualAmount) ||
-    getNumberValue(objFlexiAllocation.decBalanceFlexiAnnual) + getNumberValue(objFlexiAllocation.decAllocatedFlexiAnnual) ||
-    getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiBalanceAnnualAmount) + getNumberValue(objDetail?.objCurrentSalarySnapshot?.decFlexiAllocatedAnnualAmount);
-}
-
 function getCalculatedDisplayAmounts(objDetail: EmployeeSalaryDetailRecord) {
-  const decFlexiBucketAnnual = getFlexiBucketAnnualAmount(objDetail);
-  const decEmployerContributionAnnual = objDetail.lstComponentLines.reduce((decTotal, dicLine) => {
-    if (!isEmployerContributionCategory(dicLine.strComponentCategory) && !isEmployerPfComponent(dicLine)) {
-      return decTotal;
-    }
-    if (dicLine.blnIncludedInCtc === false) {
-      return decTotal;
-    }
-    return decTotal + getNumberValue(dicLine.decAmountAnnual);
-  }, 0);
-  const decCtcIncludedEarningsAnnual = objDetail.lstComponentLines.reduce((decTotal, dicLine) => (
-    isCtcIncludedEarning(dicLine) ? decTotal + getNumberValue(dicLine.decAmountAnnual) : decTotal
-  ), 0);
-  const decPayableEarningsMonthly = objDetail.lstComponentLines.reduce((decTotal, dicLine) => (
-    isCtcIncludedEarning(dicLine) ? decTotal + getNumberValue(dicLine.decAmountMonthly) : decTotal
-  ), 0);
+  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objDetail);
 
   return {
-    decCtcAnnual: decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual,
-    decGrossMonthly: decPayableEarningsMonthly + (decFlexiBucketAnnual / 12)
+    decCtcAnnual: dicBaseSummaryMetrics.decAnnualCtc,
+    decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly
   };
 }
 

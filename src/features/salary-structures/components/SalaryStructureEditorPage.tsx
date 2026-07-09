@@ -158,21 +158,39 @@ function getComponentValueSource(dicComponent: SalaryStructureFormOptions["lstSa
 }
 
 function resolveValueSourceOption(
-  lstValueSources: string[],
+  lstValueSources: Array<{ intID: number; strLabel: string; strCode?: string; strValueCode?: string }>,
   strRawValueSource: string
 ) {
   const strNormalizedValue = normalizeSelectToken(strRawValueSource);
-  const strMatchedOption = lstValueSources.find((strOption) => normalizeSelectToken(strOption) === strNormalizedValue);
-  if (strMatchedOption) {
-    return strMatchedOption;
+  const dicMatchedOption = lstValueSources.find((dicOption) =>
+    normalizeSelectToken(dicOption.strLabel) === strNormalizedValue
+    || normalizeSelectToken(dicOption.strCode ?? "") === strNormalizedValue
+    || normalizeSelectToken(dicOption.strValueCode ?? "") === strNormalizedValue
+  );
+  if (dicMatchedOption) {
+    return dicMatchedOption;
   }
   if (strNormalizedValue === "percentage" || strNormalizedValue === "percent") {
-    return "Percentage";
+    return lstValueSources.find((dicOption) => normalizeSelectToken(dicOption.strLabel) === "percentage") ?? { intID: 0, strLabel: "Percentage" };
   }
   if (strNormalizedValue === "formula" || strNormalizedValue === "calculated") {
-    return "Formula";
+    return lstValueSources.find((dicOption) => normalizeSelectToken(dicOption.strLabel) === "formula") ?? { intID: 0, strLabel: "Formula" };
   }
-  return "Fixed";
+  return lstValueSources.find((dicOption) => normalizeSelectToken(dicOption.strLabel) === "fixed") ?? { intID: 0, strLabel: "Fixed" };
+}
+
+function getValueSourceOptionByID(
+  lstValueSources: Array<{ intID: number; strLabel: string; strCode?: string; strValueCode?: string }>,
+  intValueSourceID: number | "",
+  strFallbackValueSource: string
+) {
+  if (intValueSourceID !== "") {
+    const dicMatchedOption = lstValueSources.find((dicOption) => dicOption.intID === intValueSourceID);
+    if (dicMatchedOption) {
+      return dicMatchedOption;
+    }
+  }
+  return resolveValueSourceOption(lstValueSources, strFallbackValueSource);
 }
 
 function getComponentBasisComponentID(dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined) {
@@ -469,7 +487,7 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
-  const lstValueSourceOptions = objFormOptions?.lstValueSources ?? [];
+  const lstValueSourceOptions = objFormOptions?.lstValueSourceLookups ?? [];
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
@@ -1017,10 +1035,11 @@ export default function SalaryStructureEditorPage({
         if (strField === "intSalaryComponentID") {
           const dicComponent = dicSelectedComponent;
           const blnIsFlexiBasket = getFlexiRoleForComponent(dicComponent) === "Flexi Bucket";
-          const strValueSource = resolveValueSourceOption(
+          const dicValueSourceOption = resolveValueSourceOption(
             lstValueSourceOptions,
             getComponentValueSource(dicComponent, dicLine.strValueSource)
           );
+          const strValueSource = dicValueSourceOption.strLabel;
           const objBasisComponentID = getComponentBasisComponentID(dicComponent);
           const fltComponentPercentageValue = getComponentPercentageValue(dicComponent);
           const setMappedComponentIDs = new Set(
@@ -1052,10 +1071,18 @@ export default function SalaryStructureEditorPage({
               ?? (dicComponent?.blnIsWages ? "Wages" : "Non Wages"),
             strRoundingRule: dicComponent?.strRoundingRule ?? "",
             strPayslipSection: dicComponent?.strPayslipSection ?? "",
+            intComponentCategorySnapshotID: dicComponent?.intComponentCategoryID ?? "",
+            intCtcTreatmentSnapshotID: dicComponent?.intCtcTreatmentID ?? "",
+            intTaxTreatmentSnapshotID: dicComponent?.intTaxTreatmentID ?? "",
+            intWageTypeSnapshotID: dicComponent?.intWageTypeID ?? "",
+            intPayslipSectionSnapshotID: dicComponent?.intPayslipSectionID ?? "",
+            intReimbursementTypeSnapshotID: dicComponent?.intReimbursementTypeID ?? "",
+            intSettlementModeSnapshotID: dicComponent?.intSettlementModeID ?? "",
             blnIsFlexiBasketLine: blnIsFlexiBasket,
             strFlexiComponentRole: getFlexiRoleTokenForComponent(dicComponent),
             blnIncludedInCtc: Boolean(dicComponent?.blnIncludedInCtc ?? true),
             strComponentCategory: dicComponent?.strComponentCategory ?? "",
+            intValueSourceID: dicValueSourceOption.intID || dicComponent?.intValueSourceID || "",
             strValueSource,
             strFormulaExpression: normalizeSelectToken(strValueSource) === "formula"
               ? (dicComponent?.strFormulaExpression ?? "")
@@ -1074,11 +1101,13 @@ export default function SalaryStructureEditorPage({
           };
         }
         if (strField === "strValueSource") {
-          const strNormalizedValueSource = normalizeSelectToken(String(objValue));
+          const dicSelectedValueSource = getValueSourceOptionByID(lstValueSourceOptions, Number(objValue), String(objValue));
+          const strNormalizedValueSource = normalizeSelectToken(dicSelectedValueSource.strLabel);
           if (strNormalizedValueSource === "fixed") {
             return {
               ...dicLine,
-              strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+              intValueSourceID: Number(objValue),
+              strValueSource: dicSelectedValueSource.strLabel,
               fltFormulaAmount: "",
               fltPercentageAmount: "",
               fltPercentageValue: "",
@@ -1089,7 +1118,8 @@ export default function SalaryStructureEditorPage({
           if (strNormalizedValueSource === "percentage" || strNormalizedValueSource === "percent") {
             return {
               ...dicLine,
-              strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+              intValueSourceID: Number(objValue),
+              strValueSource: dicSelectedValueSource.strLabel,
               fltPercentageAmount: dicLine.fltFixedAmount,
               fltFormulaAmount: "",
               strFormulaExpression: ""
@@ -1097,7 +1127,8 @@ export default function SalaryStructureEditorPage({
           }
           return {
             ...dicLine,
-            strValueSource: resolveValueSourceOption(lstValueSourceOptions, String(objValue)),
+            intValueSourceID: Number(objValue),
+            strValueSource: dicSelectedValueSource.strLabel,
             fltFormulaAmount: dicLine.fltFixedAmount,
             fltPercentageAmount: "",
             fltFixedAmount: "",
@@ -1815,16 +1846,16 @@ export default function SalaryStructureEditorPage({
                       <TextField
                         select
                         size="small"
-                        value={resolveValueSourceOption(lstValueSourceOptions, dicLine.strValueSource)}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", objEvent.target.value)}
+                        value={getValueSourceOptionByID(lstValueSourceOptions, dicLine.intValueSourceID, dicLine.strValueSource).intID}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strValueSource", Number(objEvent.target.value))}
                         disabled={blnFieldDisabled}
                         controlId="salary-structures.editor.line.value-source.select"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID })}
                         SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.value-source.select", { "data-row-key": dicLine.strRowID }) }}
                         sx={{ minWidth: 136 }}
                       >
-                        {(objFormOptions?.lstValueSources ?? []).map((strValueSource) => (
-                          <MenuItem key={strValueSource} value={strValueSource} controlId={`salary-structures.editor.line.value-source.${normalizeSelectToken(strValueSource)}.option`}>{strValueSource}</MenuItem>
+                        {lstValueSourceOptions.map((dicValueSource) => (
+                          <MenuItem key={dicValueSource.intID} value={dicValueSource.intID} controlId={`salary-structures.editor.line.value-source.${normalizeSelectToken(dicValueSource.strCode || dicValueSource.strLabel)}.option`}>{dicValueSource.strLabel}</MenuItem>
                         ))}
                       </TextField>
                     </td>

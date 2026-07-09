@@ -23,7 +23,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -43,6 +43,7 @@ import type {
   SalaryComponentFlexiEligibilityQuestion,
   SalaryComponentFormOptions,
   SalaryComponentFormValues,
+  SalaryComponentLookupOption,
   SalaryComponentTextFormValue
 } from "@/features/salary-components/types";
 
@@ -74,6 +75,203 @@ function resolveSelectValue(lstOptions: string[], strValue: string | null | unde
     (strOption) => normalizeSelectToken(strOption) === strNormalizedValue
   );
   return strMatchedValue ?? strValue;
+}
+
+function normalizeLookupToken(strValue: string | null | undefined) {
+  return normalizeSelectToken(strValue ?? "");
+}
+
+function findLookupOption(
+  lstOptions: SalaryComponentLookupOption[] | undefined,
+  intID: number | "",
+) {
+  if (intID !== "") {
+    return lstOptions?.find((dicOption) => dicOption.intID === intID);
+  }
+  return undefined;
+}
+
+function findLookupOptionByValue(
+  lstOptions: SalaryComponentLookupOption[] | undefined,
+  strValue?: string | null,
+) {
+  const strNormalizedValue = normalizeLookupToken(strValue);
+  if (!strNormalizedValue) {
+    return undefined;
+  }
+
+  return lstOptions?.find((dicOption) => (
+    normalizeLookupToken(dicOption.strValueCode) === strNormalizedValue
+    || normalizeLookupToken(dicOption.strDisplayName) === strNormalizedValue
+    || normalizeLookupToken(dicOption.strLegacyValue) === strNormalizedValue
+  ));
+}
+
+function resolveLookupCode(
+  lstOptions: SalaryComponentLookupOption[] | undefined,
+  intID: number | "",
+) {
+  return findLookupOption(lstOptions, intID)?.strValueCode ?? "";
+}
+
+function syncLookupBackedFields(
+  dicValues: SalaryComponentFormValues,
+  objOptions: SalaryComponentFormOptions,
+  blnUseTextFallback = true,
+): SalaryComponentFormValues {
+  type LookupIDField =
+    | "intComponentCategoryID"
+    | "intComponentGroupID"
+    | "intCalcMethodID"
+    | "intRoundingRuleID"
+    | "intDefaultPeriodicityID"
+    | "intTaxTreatmentID"
+    | "intReimbursementTypeID"
+    | "intSettlementMethodID"
+    | "intClaimLimitTypeID"
+    | "intPayslipSectionID";
+  type LookupTextField =
+    | "strComponentCategory"
+    | "strComponentGroup"
+    | "strCalcMethod"
+    | "strRoundingRule"
+    | "strDefaultPeriodicity"
+    | "strTaxTreatment"
+    | "strReimbursementType"
+    | "strSettlementMethod"
+    | "strClaimLimitType"
+    | "strPayslipSection";
+
+  const lstFieldMappings: Array<{
+    strIDField: LookupIDField;
+    strLegacyField: LookupTextField;
+    lstOptions: SalaryComponentLookupOption[] | undefined;
+  }> = [
+    {
+      strIDField: "intComponentCategoryID",
+      strLegacyField: "strComponentCategory",
+      lstOptions: objOptions.lstComponentCategoryLookups,
+    },
+    {
+      strIDField: "intComponentGroupID",
+      strLegacyField: "strComponentGroup",
+      lstOptions: objOptions.lstComponentGroupLookups,
+    },
+    {
+      strIDField: "intCalcMethodID",
+      strLegacyField: "strCalcMethod",
+      lstOptions: objOptions.lstCalcMethodLookups,
+    },
+    {
+      strIDField: "intRoundingRuleID",
+      strLegacyField: "strRoundingRule",
+      lstOptions: objOptions.lstRoundingRuleLookups,
+    },
+    {
+      strIDField: "intDefaultPeriodicityID",
+      strLegacyField: "strDefaultPeriodicity",
+      lstOptions: objOptions.lstDefaultPeriodicityLookups,
+    },
+    {
+      strIDField: "intTaxTreatmentID",
+      strLegacyField: "strTaxTreatment",
+      lstOptions: objOptions.lstTaxTreatmentLookups,
+    },
+    {
+      strIDField: "intReimbursementTypeID",
+      strLegacyField: "strReimbursementType",
+      lstOptions: objOptions.lstReimbursementTypeLookups,
+    },
+    {
+      strIDField: "intSettlementMethodID",
+      strLegacyField: "strSettlementMethod",
+      lstOptions: objOptions.lstSettlementMethodLookups,
+    },
+    {
+      strIDField: "intClaimLimitTypeID",
+      strLegacyField: "strClaimLimitType",
+      lstOptions: objOptions.lstClaimLimitTypeLookups,
+    },
+    {
+      strIDField: "intPayslipSectionID",
+      strLegacyField: "strPayslipSection",
+      lstOptions: objOptions.lstPayslipSectionLookups,
+    },
+  ];
+
+  const dicNextValues = { ...dicValues };
+  function applyLookupField<TIDField extends LookupIDField, TTextField extends LookupTextField>(
+    strIDField: TIDField,
+    strLegacyField: TTextField,
+    lstOptions: SalaryComponentLookupOption[] | undefined,
+  ) {
+    const dicOptionFromID = findLookupOption(lstOptions, dicNextValues[strIDField]);
+    const dicOptionFromValue = blnUseTextFallback
+      ? findLookupOptionByValue(
+          lstOptions,
+          dicNextValues[strLegacyField],
+        )
+      : undefined;
+    const dicOption = dicOptionFromID ?? dicOptionFromValue;
+    if (!dicOption) {
+      return;
+    }
+    dicNextValues[strIDField] = dicOption.intID as SalaryComponentFormValues[TIDField];
+    dicNextValues[strLegacyField] = (
+      dicOption.strLegacyValue
+      ?? dicOption.strDisplayName
+      ?? dicOption.strValueCode
+    ) as SalaryComponentFormValues[TTextField];
+  }
+
+  lstFieldMappings.forEach(({ strIDField, strLegacyField, lstOptions }) => {
+    applyLookupField(strIDField, strLegacyField, lstOptions);
+  });
+
+  return dicNextValues;
+}
+
+function haveLookupBackedFieldsChanged(
+  dicPrevious: SalaryComponentFormValues,
+  dicNext: SalaryComponentFormValues,
+) {
+  return (
+    dicPrevious.intComponentCategoryID !== dicNext.intComponentCategoryID
+    || dicPrevious.strComponentCategory !== dicNext.strComponentCategory
+    || dicPrevious.intComponentGroupID !== dicNext.intComponentGroupID
+    || dicPrevious.strComponentGroup !== dicNext.strComponentGroup
+    || dicPrevious.intCalcMethodID !== dicNext.intCalcMethodID
+    || dicPrevious.strCalcMethod !== dicNext.strCalcMethod
+    || dicPrevious.intRoundingRuleID !== dicNext.intRoundingRuleID
+    || dicPrevious.strRoundingRule !== dicNext.strRoundingRule
+    || dicPrevious.intDefaultPeriodicityID !== dicNext.intDefaultPeriodicityID
+    || dicPrevious.strDefaultPeriodicity !== dicNext.strDefaultPeriodicity
+    || dicPrevious.intTaxTreatmentID !== dicNext.intTaxTreatmentID
+    || dicPrevious.strTaxTreatment !== dicNext.strTaxTreatment
+    || dicPrevious.intReimbursementTypeID !== dicNext.intReimbursementTypeID
+    || dicPrevious.strReimbursementType !== dicNext.strReimbursementType
+    || dicPrevious.intSettlementMethodID !== dicNext.intSettlementMethodID
+    || dicPrevious.strSettlementMethod !== dicNext.strSettlementMethod
+    || dicPrevious.intClaimLimitTypeID !== dicNext.intClaimLimitTypeID
+    || dicPrevious.strClaimLimitType !== dicNext.strClaimLimitType
+    || dicPrevious.intPayslipSectionID !== dicNext.intPayslipSectionID
+    || dicPrevious.strPayslipSection !== dicNext.strPayslipSection
+  );
+}
+
+function handleLookupSelection(
+  setDicForm: Dispatch<SetStateAction<SalaryComponentFormValues>>,
+  strIDField: keyof SalaryComponentFormValues,
+  strLegacyField: keyof SalaryComponentFormValues,
+  lstOptions: SalaryComponentLookupOption[] | undefined,
+  intSelectedID: number | "",
+) {
+  const dicOption = findLookupOption(lstOptions, intSelectedID);
+  setDicForm((dicPrevious) => ({
+    ...dicPrevious,
+    [strIDField]: intSelectedID,
+    [strLegacyField]: dicOption?.strLegacyValue ?? dicOption?.strDisplayName ?? dicOption?.strValueCode ?? "",
+  }));
 }
 
 function buildInputTestIdProps(strTestId: string) {
@@ -225,6 +423,7 @@ export default function SalaryComponentEditorPage({
   const objRouter = useRouter();
   const { t } = useSalaryComponentLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstSalaryComponentModuleCodes);
+  const [intCurrentLanguageID, setIntCurrentLanguageID] = useState<number | null>(() => authHelpers.getLanguageID());
   const [objFormOptions, setObjFormOptions] = useState<SalaryComponentFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<SalaryComponentFormValues>(createInitialSalaryComponentForm());
   const [objDetail, setObjDetail] = useState<SalaryComponentDetailRecord | null>(null);
@@ -245,6 +444,19 @@ export default function SalaryComponentEditorPage({
   const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
 
   useEffect(() => {
+    function syncLanguage() {
+      setIntCurrentLanguageID(authHelpers.getLanguageID());
+    }
+
+    window.addEventListener("storage", syncLanguage);
+    window.addEventListener("hrms:language-changed", syncLanguage as EventListener);
+    return () => {
+      window.removeEventListener("storage", syncLanguage);
+      window.removeEventListener("hrms:language-changed", syncLanguage as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
     let blnMounted = true;
     async function loadData() {
       if (blnRightsLoading) {
@@ -259,7 +471,7 @@ export default function SalaryComponentEditorPage({
       setBlnLoading(true);
       setStrError("");
       try {
-        const objOptions = await salaryComponentService.getFormOptions();
+        const objOptions = await salaryComponentService.getFormOptions(intCurrentLanguageID);
         if (!blnMounted) {
           return;
         }
@@ -270,10 +482,10 @@ export default function SalaryComponentEditorPage({
             return;
           }
           setObjDetail(dicDetail);
-          setDicForm(toSalaryComponentFormValues(dicDetail));
+          setDicForm(syncLookupBackedFields(toSalaryComponentFormValues(dicDetail), objOptions, false));
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
-          setDicForm((dicPrevious) => ({
+          setDicForm((dicPrevious) => syncLookupBackedFields({
             ...dicPrevious,
             lstTexts: dicPrevious.lstTexts.map((dicText, intIndex) => intIndex === 0
               ? {
@@ -282,7 +494,7 @@ export default function SalaryComponentEditorPage({
                   strLanguageName: objOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intEnglishID)?.strLabel ?? ""
                 }
               : dicText)
-          }));
+          }, objOptions));
         }
       } catch (objError) {
         if (blnMounted) {
@@ -298,7 +510,7 @@ export default function SalaryComponentEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intSalaryComponentID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, intSalaryComponentID, strMode]);
 
   const dicDependencyOptionByID = useMemo(() => {
     return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -307,15 +519,24 @@ export default function SalaryComponentEditorPage({
   const dicFlexiEligibilityQuestionByID = useMemo(() => {
     return new Map(lstFlexiEligibilityQuestions.map((dicQuestion) => [dicQuestion.intID, dicQuestion]));
   }, [lstFlexiEligibilityQuestions]);
-  const lstCategoryOptions = objFormOptions?.lstComponentCategories ?? [];
-  const lstGroupOptions = objFormOptions?.lstComponentGroups ?? [];
-  const lstPayslipSections = ["Earnings", "Deductions", "Reimbursements", "Information", "Employer Contributions"];
-  const blnIsEarningCategory = isCategory(dicForm.strComponentCategory, "earning");
-  const blnIsDeductionCategory = isCategory(dicForm.strComponentCategory, "deduction");
-  const blnIsEmployerContributionCategory = isCategory(dicForm.strComponentCategory, "employer contribution") || isCategory(dicForm.strComponentCategory, "contribution");
-  const blnIsReimbursementCategory = isCategory(dicForm.strComponentCategory, "reimbursement");
-  const blnIsFlexiBucketCategory = isCategory(dicForm.strComponentCategory, "flexi bucket") || isCategory(dicForm.strComponentCategory, "flexi basket");
-  const blnIsInformationCategory = isCategory(dicForm.strComponentCategory, "information");
+  const lstCategoryOptions = objFormOptions?.lstComponentCategoryLookups ?? [];
+  const lstGroupOptions = objFormOptions?.lstComponentGroupLookups ?? [];
+  const lstCalcMethodOptions = objFormOptions?.lstCalcMethodLookups ?? [];
+  const lstRoundingRuleOptions = objFormOptions?.lstRoundingRuleLookups ?? [];
+  const lstDefaultPeriodicityOptions = objFormOptions?.lstDefaultPeriodicityLookups ?? [];
+  const lstTaxTreatmentOptions = objFormOptions?.lstTaxTreatmentLookups ?? [];
+  const lstReimbursementTypeOptions = objFormOptions?.lstReimbursementTypeLookups ?? [];
+  const lstSettlementMethodOptions = objFormOptions?.lstSettlementMethodLookups ?? [];
+  const lstPayslipSections = objFormOptions?.lstPayslipSectionLookups ?? [];
+  const strCategoryCode = resolveLookupCode(lstCategoryOptions, dicForm.intComponentCategoryID);
+  const strCalcMethodCode = resolveLookupCode(lstCalcMethodOptions, dicForm.intCalcMethodID);
+  const strClaimLimitTypeCode = resolveLookupCode(objFormOptions?.lstClaimLimitTypeLookups, dicForm.intClaimLimitTypeID);
+  const blnIsEarningCategory = isCategory(strCategoryCode, "earning");
+  const blnIsDeductionCategory = isCategory(strCategoryCode, "deduction");
+  const blnIsEmployerContributionCategory = isCategory(strCategoryCode, "employer contribution") || isCategory(strCategoryCode, "contribution");
+  const blnIsReimbursementCategory = isCategory(strCategoryCode, "reimbursement");
+  const blnIsFlexiBucketCategory = isCategory(strCategoryCode, "flexi bucket") || isCategory(strCategoryCode, "flexi basket");
+  const blnIsInformationCategory = isCategory(strCategoryCode, "information");
   const blnShowFlexiSection = blnIsReimbursementCategory || blnIsFlexiBucketCategory;
   const blnShowFlexiBucketConfiguration = blnIsFlexiBucketCategory;
   const blnShowFlexiReimbursementConfiguration = blnIsReimbursementCategory;
@@ -329,10 +550,10 @@ export default function SalaryComponentEditorPage({
     { value: 1, label: "New Regime" },
     { value: 0, label: "Old Regime" },
   ] as const;
-  const blnShowCalculationDependencies = isCalculationMethod(dicForm.strCalcMethod, "formula");
-  const blnShowFormulaExpression = isCalculationMethod(dicForm.strCalcMethod, "formula");
-  const blnShowPercentageCalculationFields = isCalculationMethod(dicForm.strCalcMethod, "percentage");
-  const blnShowManualCalculationHelp = isCalculationMethod(dicForm.strCalcMethod, "manual");
+  const blnShowCalculationDependencies = isCalculationMethod(strCalcMethodCode, "formula");
+  const blnShowFormulaExpression = isCalculationMethod(strCalcMethodCode, "formula");
+  const blnShowPercentageCalculationFields = isCalculationMethod(strCalcMethodCode, "percentage");
+  const blnShowManualCalculationHelp = isCalculationMethod(strCalcMethodCode, "manual");
   const blnShowRemunerationFlag = blnIsEarningCategory;
   const blnShowStatutoryFlags = blnIsEarningCategory;
   const blnShowOnlyActiveAndOverride = blnIsDeductionCategory;
@@ -341,8 +562,8 @@ export default function SalaryComponentEditorPage({
   const blnShowPayrollProcessingGroup = blnShowRemunerationFlag || blnShowOnlyActiveAndOverride;
   const blnShowContributionTypeGroup = blnIsEarningCategory || blnIsEmployerContributionCategory;
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
-  const blnApplyMonthlyLimit = dicForm.strClaimLimitType === "monthly" || dicForm.strClaimLimitType === "both";
-  const blnApplyYearlyLimit = dicForm.strClaimLimitType === "yearly" || dicForm.strClaimLimitType === "both";
+  const blnApplyMonthlyLimit = strClaimLimitTypeCode === "monthly" || strClaimLimitTypeCode === "both";
+  const blnApplyYearlyLimit = strClaimLimitTypeCode === "yearly" || strClaimLimitTypeCode === "both";
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID()
@@ -631,6 +852,16 @@ export default function SalaryComponentEditorPage({
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
   useEffect(() => {
+    if (!objFormOptions) {
+      return;
+    }
+    setDicForm((dicPrevious) => {
+      const dicNext = syncLookupBackedFields(dicPrevious, objFormOptions);
+      return haveLookupBackedFieldsChanged(dicPrevious, dicNext) ? dicNext : dicPrevious;
+    });
+  }, [objFormOptions, dicForm.intComponentCategoryID, dicForm.intComponentGroupID, dicForm.intCalcMethodID, dicForm.intRoundingRuleID, dicForm.intDefaultPeriodicityID, dicForm.intTaxTreatmentID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intClaimLimitTypeID, dicForm.intPayslipSectionID]);
+
+  useEffect(() => {
     setDicForm((dicPrevious) => {
       const blnReimbursementCategory = isCategory(dicPrevious.strComponentCategory, "reimbursement");
       const blnFlexiBucketCategory = isCategory(dicPrevious.strComponentCategory, "flexi bucket") || isCategory(dicPrevious.strComponentCategory, "flexi basket");
@@ -862,7 +1093,15 @@ export default function SalaryComponentEditorPage({
         ? await salaryComponentService.updateSalaryComponent(intSalaryComponentID, dicForm)
         : await salaryComponentService.createSalaryComponent(dicForm);
       setObjDetail(dicSavedRecord);
-      setDicForm(toSalaryComponentFormValues(dicSavedRecord));
+      setDicForm((dicPrevious) => {
+        const dicNextForm = toSalaryComponentFormValues(dicSavedRecord);
+        return objFormOptions
+          ? syncLookupBackedFields(dicNextForm, objFormOptions)
+          : {
+              ...dicPrevious,
+              ...dicNextForm,
+            };
+      });
       setStrSuccess(
         strMode === "edit"
           ? t("salary_component_updated", "Salary component updated successfully.")
@@ -1012,9 +1251,9 @@ export default function SalaryComponentEditorPage({
             inputProps={buildInputTestIdProps("salary-components.editor.component-name.input")}
           />
 
-          <TextField select label={t("component_category", "Component Category")} value={resolveSelectValue(lstCategoryOptions, dicForm.strComponentCategory)} onChange={(objEvent) => updateRootField("strComponentCategory", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
-            {lstCategoryOptions.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(strOption)}.option`}>{getCategoryLabel(strOption)}</MenuItem>
+          <TextField select label={t("component_category", "Component Category")} value={dicForm.intComponentCategoryID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentCategoryID", "strComponentCategory", lstCategoryOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
+            {lstCategoryOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getCategoryLabel(dicOption.strDisplayName)}</MenuItem>
             ))}
           </TextField>
           <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.75, minHeight: 56 }}>
@@ -1034,10 +1273,10 @@ export default function SalaryComponentEditorPage({
               {t("ctc_treatment_help", "CTC Treatment is derived from component category and reimbursement configuration.")}
             </Typography>
           </Box>
-          <TextField select label={t("component_group", "Component Group")} value={resolveSelectValue(lstGroupOptions, dicForm.strComponentGroup)} onChange={(objEvent) => updateRootField("strComponentGroup", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
+          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
-            {lstGroupOptions.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+            {lstGroupOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
           <TextField
@@ -1099,26 +1338,26 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>2. {t("calculation_setup", "Calculation Setup")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField select label={t("calculation_method", "Calculation Method")} value={resolveSelectValue(objFormOptions?.lstCalcMethods ?? [], dicForm.strCalcMethod)} onChange={(objEvent) => updateRootField("strCalcMethod", objEvent.target.value)} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
-            {(objFormOptions?.lstCalcMethods ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.calculation-method.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+          <TextField select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intCalcMethodID", "strCalcMethod", lstCalcMethodOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
+            {lstCalcMethodOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.calculation-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("rounding_rule", "Rounding Rule")} value={resolveSelectValue(objFormOptions?.lstRoundingRules ?? [], dicForm.strRoundingRule)} onChange={(objEvent) => updateRootField("strRoundingRule", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.rounding-rule.select")}>
+          <TextField select label={t("rounding_rule", "Rounding Rule")} value={dicForm.intRoundingRuleID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intRoundingRuleID", "strRoundingRule", lstRoundingRuleOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.rounding-rule.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.rounding-rule.none.option">{t("none", "None")}</MenuItem>
-            {(objFormOptions?.lstRoundingRules ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.rounding-rule.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+            {lstRoundingRuleOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.rounding-rule.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("default_periodicity", "Default Periodicity")} value={resolveSelectValue(objFormOptions?.lstDefaultPeriodicities ?? [], dicForm.strDefaultPeriodicity)} onChange={(objEvent) => updateRootField("strDefaultPeriodicity", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.default-periodicity.select")}>
-            {(objFormOptions?.lstDefaultPeriodicities ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.default-periodicity.${normalizeSelectToken(strOption)}.option`}>{strOption}</MenuItem>
+          <TextField select label={t("default_periodicity", "Default Periodicity")} value={dicForm.intDefaultPeriodicityID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intDefaultPeriodicityID", "strDefaultPeriodicity", lstDefaultPeriodicityOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.default-periodicity.select")}>
+            {lstDefaultPeriodicityOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-periodicity.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
-          <TextField select label={t("tax_treatment", "Tax Treatment")} value={resolveSelectValue(objFormOptions?.lstTaxTreatments ?? [], dicForm.strTaxTreatment)} onChange={(objEvent) => updateRootField("strTaxTreatment", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.tax-treatment.select")}>
+          <TextField select label={t("tax_treatment", "Tax Treatment")} value={dicForm.intTaxTreatmentID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intTaxTreatmentID", "strTaxTreatment", lstTaxTreatmentOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.tax-treatment.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.tax-treatment.none.option">{t("none", "None")}</MenuItem>
-            {(objFormOptions?.lstTaxTreatments ?? []).map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.tax-treatment.${normalizeSelectToken(strOption)}.option`}>{getTaxTreatmentLabel(strOption)}</MenuItem>
+            {lstTaxTreatmentOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.tax-treatment.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getTaxTreatmentLabel(dicOption.strDisplayName)}</MenuItem>
             ))}
           </TextField>
           {blnShowPercentageCalculationFields ? (
@@ -1206,35 +1445,37 @@ export default function SalaryComponentEditorPage({
             <FormControlLabel sx={{ m: 0, minHeight: 56, alignItems: "center" }} control={<Switch checked={dicForm.blnIsFlexiBenefit} onChange={(objEvent) => setDicForm((dicPrevious) => ({
               ...dicPrevious,
               blnIsFlexiBenefit: objEvent.target.checked,
+              intReimbursementTypeID: objEvent.target.checked ? (findLookupOptionByValue(lstReimbursementTypeOptions, "ctc_based")?.intID ?? "") : "",
               strReimbursementType: objEvent.target.checked ? "ctc_based" : "none",
+              intSettlementMethodID: objEvent.target.checked ? (findLookupOptionByValue(lstSettlementMethodOptions, "payroll")?.intID ?? "") : "",
               strSettlementMethod: objEvent.target.checked ? "payroll" : "none",
             }))} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.is-flexi-benefit.switch")} />} label={t("is_flexi_reimbursement", blnIsReimbursementCategory ? "Is Flexi Reimbursement" : "Is Flexi Benefit")} />
             <TextField
               select
               label={t("reimbursement_type", "Reimbursement Type")}
-              value={dicForm.strReimbursementType}
-              onChange={(objEvent) => updateRootField("strReimbursementType", objEvent.target.value as SalaryComponentFormValues["strReimbursementType"])}
+              value={dicForm.intReimbursementTypeID}
+              onChange={(objEvent) => handleLookupSelection(setDicForm, "intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
               disabled={blnFieldDisabled || !dicForm.blnIsReimbursement || blnIsFlexiReimbursement}
               fullWidth
               {...buildSelectTestIdProps("salary-components.editor.reimbursement-type.select")}
             >
-              <MenuItem value="none" data-controlid="salary-components.editor.reimbursement-type.none.option">{t("select", "Select")}</MenuItem>
-              {(objFormOptions?.lstReimbursementTypes ?? []).map((strOption) => (
-                <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.reimbursement-type.${normalizeSelectToken(strOption)}.option`}>{t(`reimbursement_type_${strOption}`, strOption === "ctc_based" ? "CTC Based" : "Non-CTC Based")}</MenuItem>
+              <MenuItem value="" data-controlid="salary-components.editor.reimbursement-type.none.option">{t("select", "Select")}</MenuItem>
+              {lstReimbursementTypeOptions.map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.reimbursement-type.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`reimbursement_type_${dicOption.strValueCode}`, dicOption.strDisplayName)}</MenuItem>
               ))}
             </TextField>
             <TextField
               select
               label={t("settlement_method", "Settlement Method")}
-              value={dicForm.strSettlementMethod}
-              onChange={(objEvent) => updateRootField("strSettlementMethod", objEvent.target.value as SalaryComponentFormValues["strSettlementMethod"])}
-              disabled={blnFieldDisabled || blnIsFlexiReimbursement || dicForm.strReimbursementType !== "none"}
+              value={dicForm.intSettlementMethodID}
+              onChange={(objEvent) => handleLookupSelection(setDicForm, "intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              disabled={blnFieldDisabled || blnIsFlexiReimbursement || dicForm.intReimbursementTypeID !== ""}
               fullWidth
               {...buildSelectTestIdProps("salary-components.editor.settlement-method.select")}
             >
-              <MenuItem value="none" data-controlid="salary-components.editor.settlement-method.none.option">{t("select", "Select")}</MenuItem>
-              {(objFormOptions?.lstSettlementMethods ?? []).map((strOption) => (
-                <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.settlement-method.${normalizeSelectToken(strOption)}.option`}>{t(`settlement_method_${strOption}`, strOption === "payroll" ? "Payroll" : "Finance")}</MenuItem>
+              <MenuItem value="" data-controlid="salary-components.editor.settlement-method.none.option">{t("select", "Select")}</MenuItem>
+              {lstSettlementMethodOptions.map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.settlement-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`settlement_method_${dicOption.strValueCode}`, dicOption.strDisplayName)}</MenuItem>
               ))}
             </TextField>
             <TextField
@@ -1488,10 +1729,10 @@ export default function SalaryComponentEditorPage({
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
-          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.strPayslipSection} onChange={(objEvent) => updateRootField("strPayslipSection", objEvent.target.value)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
+          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayslipSectionID", "strPayslipSection", lstPayslipSections, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
-            {lstPayslipSections.map((strOption) => (
-              <MenuItem key={strOption} value={strOption} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(strOption)}.option`}>{t(`payslip_section_${normalizeSelectToken(strOption)}`, getPayslipSectionLabel(strOption))}</MenuItem>
+            {lstPayslipSections.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`payslip_section_${normalizeSelectToken(dicOption.strValueCode)}`, getPayslipSectionLabel(dicOption.strDisplayName))}</MenuItem>
             ))}
           </TextField>
           <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
