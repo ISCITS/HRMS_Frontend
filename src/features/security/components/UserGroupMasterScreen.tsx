@@ -179,13 +179,24 @@ export default function UserGroupMasterScreen() {
   const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((intID) => lstFilteredRecords.some((objRecord) => objRecord.intID === intID));
   const lstTableRows = useMemo<UserGroupTableRow[]>(() => lstFilteredRecords.map((objRecord) => {
     const blnSelected = lstSelectedIds.includes(objRecord.intID);
+    const strRowControlPrefix = `security.user-group.list.row.${objRecord.intID}`;
     return {
       intID: objRecord.intID,
-      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(objRecord.intID)} inputProps={{ "controlId": "security.user-group.list.row.select.checkbox", "data-row-key": objRecord.intID } as InputHTMLAttributes<HTMLInputElement>} />,
+      select: (
+        <Checkbox
+          checked={blnSelected}
+          onChange={() => toggleSelection(objRecord.intID)}
+          inputProps={{
+            controlId: `${strRowControlPrefix}.select.checkbox`,
+            "data-control-id": `${strRowControlPrefix}.select.checkbox`,
+            "data-row-key": objRecord.intID,
+          } as InputHTMLAttributes<HTMLInputElement>}
+        />
+      ),
       rowActions: (
         <Box className={styles.actionCell}>
-          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)} controlId="security.user-group.list.row.view.button" data-row-key={objRecord.intID}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
-          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)} controlId="security.user-group.list.row.edit.button" data-row-key={objRecord.intID}><EditOutlinedIcon fontSize="small" /></button> : null}
+          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)} data-control-id={`${strRowControlPrefix}.view.button`} data-row-key={objRecord.intID}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
+          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)} data-control-id={`${strRowControlPrefix}.edit.button`} data-row-key={objRecord.intID}><EditOutlinedIcon fontSize="small" /></button> : null}
         </Box>
       ),
       strGroupCode: objRecord.strGroupCode,
@@ -203,12 +214,14 @@ export default function UserGroupMasterScreen() {
       field: "select",
       headerName: (
         <Checkbox
-          controlId="security.user-group.list.select-all.checkbox"
           checked={blnAllFilteredSelected}
           indeterminate={blnSomeFilteredSelected}
           onChange={toggleSelectAll}
           disabled={lstFilteredRecords.length === 0}
-          inputProps={{ "controlId": "security.user-group.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          inputProps={{
+            controlId: "security.user-group.list.select-all.checkbox",
+            "data-control-id": "security.user-group.list.select-all.checkbox",
+          } as InputHTMLAttributes<HTMLInputElement>}
         />
       ),
       width: 64,
@@ -323,14 +336,22 @@ export default function UserGroupMasterScreen() {
             placeholder={dicLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))}
-            controlId="security.user-group.search.name.input"
+            slotProps={{
+              htmlInput: {
+                "data-control-id": "security.user-group.search.name.input",
+              },
+            }}
             fullWidth
           />
           <TextField
             placeholder={dicLabels.searchCodePlaceholder}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))}
-            controlId="security.user-group.search.code.input"
+            slotProps={{
+              htmlInput: {
+                "data-control-id": "security.user-group.search.code.input",
+              },
+            }}
             fullWidth
           />
           <TextField
@@ -340,19 +361,23 @@ export default function UserGroupMasterScreen() {
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as "All" | "Active" | "Inactive" }))
             }
-            controlId="security.user-group.search.status.select"
+            SelectProps={{
+              SelectDisplayProps: {
+                "data-control-id": "security.user-group.search.status.select",
+              },
+            }}
             fullWidth
           >
-            <MenuItem value="All">{dicLabels.searchStatusAll}</MenuItem>
-            <MenuItem value="Active">{dicLabels.searchStatusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicLabels.searchStatusInactive}</MenuItem>
+            <MenuItem value="All" data-control-id="security.user-group.search.status.all.option">{dicLabels.searchStatusAll}</MenuItem>
+            <MenuItem value="Active" data-control-id="security.user-group.search.status.active.option">{dicLabels.searchStatusActive}</MenuItem>
+            <MenuItem value="Inactive" data-control-id="security.user-group.search.status.inactive.option">{dicLabels.searchStatusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
-              controlId="security.user-group.search.button"
+              data-control-id="security.user-group.search.button"
             >
               {dicLabels.searchButton}
             </Button>
@@ -366,7 +391,7 @@ export default function UserGroupMasterScreen() {
                 setDicSearchDraft(dicEmpty);
                 setDicSearchApplied(dicEmpty);
               }}
-              controlId="security.user-group.clear.button"
+              data-control-id="security.user-group.clear.button"
             >
               {dicLabels.clearButton}
             </Button>
@@ -413,7 +438,7 @@ export default function UserGroupMasterScreen() {
               toolbarLeft={
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   {blnCanAdd ? (
-                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} controlId="security.user-group.add.button">
+                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
                       {dicLabels.addButton}
                     </Button>
                   ) : null}

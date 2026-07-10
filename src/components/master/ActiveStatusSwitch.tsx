@@ -5,6 +5,7 @@ import Switch, { type SwitchProps } from "@mui/material/Switch";
 
 type ActiveStatusSwitchInputProps = InputHTMLAttributes<HTMLInputElement> & {
   controlId?: string;
+  "data-control-id"?: string;
   "data-controlid"?: string;
 };
 

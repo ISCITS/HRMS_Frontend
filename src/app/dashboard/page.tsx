@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Box, Button, Stack, Typography } from "@mui/material";
 
-import RoleBasedDashboard from "@/components/dashboard/RoleBasedDashboard";
+import RoleBasedDashboard from "../../components/dashboard/RoleBasedDashboard";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useDashboardLabels } from "@/features/dashboard/hooks/useDashboardLabels";
