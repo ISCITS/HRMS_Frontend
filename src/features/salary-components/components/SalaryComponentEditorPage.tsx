@@ -1383,7 +1383,6 @@ export default function SalaryComponentEditorPage({
             ))}
           </TextField>
           <TextField select label={t("rounding_rule", "Rounding Rule")} value={dicForm.intRoundingRuleID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intRoundingRuleID", "strRoundingRule", lstRoundingRuleOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.rounding-rule.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.rounding-rule.none.option">{t("none", "None")}</MenuItem>
             {lstRoundingRuleOptions.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.rounding-rule.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}

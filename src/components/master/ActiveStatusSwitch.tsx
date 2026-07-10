@@ -29,10 +29,10 @@ export default function ActiveStatusSwitch({
 }: ActiveStatusSwitchProps) {
   const strStateLabel = blnIsActive ? "Active ON" : "Inactive OFF";
   const objInputProps = (inputProps ?? {}) as ActiveStatusSwitchInputProps;
+  const { controlId: strInputControlId, ...objInputPropsWithoutControlId } = objInputProps;
   const objResolvedInputProps = {
-    ...objInputProps,
-    controlId: typeof objInputProps.controlId === "string" ? objInputProps.controlId : controlId,
-    "data-controlid": objInputProps["data-controlid"] ?? testId ?? objInputProps.controlId ?? controlId,
+    ...objInputPropsWithoutControlId,
+    "data-controlid": objInputProps["data-controlid"] ?? testId ?? strInputControlId ?? controlId,
     "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;
 
