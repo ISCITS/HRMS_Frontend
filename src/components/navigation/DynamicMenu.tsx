@@ -822,7 +822,7 @@ export default function DynamicMenu({
   }
 
   function resolveMenuLabel(objItem: MenuItem) {
-    const strRoute = (objItem.strRoute ?? "").toLowerCase();
+    const strRoute = (resolveMenuRoute(objItem) ?? objItem.strRoute ?? "").toLowerCase();
     const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
     const strModuleName = objItem.strModuleName.trim();
 

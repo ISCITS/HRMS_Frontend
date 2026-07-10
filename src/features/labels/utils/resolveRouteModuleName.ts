@@ -55,6 +55,18 @@ export function resolveRouteModuleName(strPathname: string) {
     return "employee-payroll-input";
   }
   if (
+    strLowerPath.startsWith("/ess/my-profile") ||
+    strLowerPath.startsWith("/profile")
+  ) {
+    return "my-profile";
+  }
+  if (strLowerPath.startsWith("/ess/my-bank-details")) {
+    return "my-bank-details";
+  }
+  if (strLowerPath.startsWith("/payroll/results")) {
+    return "payroll-results";
+  }
+  if (
     strLowerPath.startsWith("/reports/payslips") ||
     strLowerPath.startsWith("/payroll/payslips") ||
     strLowerPath.startsWith("/payroll/payslip") ||
@@ -62,9 +74,6 @@ export function resolveRouteModuleName(strPathname: string) {
     strLowerPath.startsWith("/ess/my-payslip")
   ) {
     return "payslips";
-  }
-  if (strLowerPath.startsWith("/payroll/results")) {
-    return "payroll-results";
   }
   if (
     strLowerPath.startsWith("/payroll/process-log") ||

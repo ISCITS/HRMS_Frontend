@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeBankFormValues, EmployeeFormOptions } from "@/features/employee/types";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { authApiService } from "@/services";
 
 const dicEmptyForm: EmployeeBankFormValues = {
@@ -31,6 +32,7 @@ const dicEmptyForm: EmployeeBankFormValues = {
 };
 
 export default function EssMyBankDetailsPage() {
+  const { t } = useModuleLabels("my-bank-details", "Unable to load bank details labels.");
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<EmployeeBankFormValues>(dicEmptyForm);
@@ -50,7 +52,7 @@ export default function EssMyBankDetailsPage() {
         }
         const intCurrentEmployeeID = objCurrentUser.Data.objUser.intEmployeeID ?? null;
         if (!intCurrentEmployeeID) {
-          setStrError("No employee is linked to the current user.");
+          setStrError(t("error_employee_not_linked", "No employee is linked to the current user."));
           return;
         }
         setIntEmployeeID(intCurrentEmployeeID);
@@ -75,7 +77,7 @@ export default function EssMyBankDetailsPage() {
         });
       } catch (objError: unknown) {
         if (blnMounted) {
-          setStrError(objError instanceof Error ? objError.message : "Unable to load bank details.");
+          setStrError(objError instanceof Error ? objError.message : t("error_load_bank_details", "Unable to load bank details."));
         }
       } finally {
         if (blnMounted) {
@@ -89,7 +91,7 @@ export default function EssMyBankDetailsPage() {
     return () => {
       blnMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const blnCanSave = useMemo(() => {
     const blnHasBank = Number(dicForm.intBankID) > 0;
@@ -117,9 +119,9 @@ export default function EssMyBankDetailsPage() {
         strAccountNumber: dicSaved.strAccountNumber ?? dicPrevious.strAccountNumber,
         strIfscCode: dicSaved.strIfscCode ?? ""
       }));
-      setStrSuccess("Bank details saved successfully.");
+      setStrSuccess(t("success_saved", "Bank details saved successfully."));
     } catch (objError: unknown) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to save bank details.");
+      setStrError(objError instanceof Error ? objError.message : t("error_save_bank_details", "Unable to save bank details."));
     } finally {
       setBlnSaving(false);
     }
@@ -130,7 +132,7 @@ export default function EssMyBankDetailsPage() {
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
           <CircularProgress />
-          <Typography color="text.secondary">Loading bank details...</Typography>
+          <Typography color="text.secondary">{t("loading_bank_details", "Loading bank details...")}</Typography>
         </Stack>
       </Box>
     );
@@ -163,14 +165,14 @@ export default function EssMyBankDetailsPage() {
               <AccountBalanceRoundedIcon />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>My Bank Details</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{t("page_title", "My Bank Details")}</Typography>
               <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-                Keep your account information updated for salary and reimbursements.
+                {t("subtitle", "Keep your account information updated for salary and reimbursements.")}
               </Typography>
             </Box>
           </Stack>
           <Chip
-            label="Primary Account"
+            label={t("primary_account", "Primary Account")}
             sx={{
               alignSelf: "flex-start",
               fontWeight: 700,
@@ -193,7 +195,7 @@ export default function EssMyBankDetailsPage() {
       >
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1.5 }}>
           <AccountBalanceRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>My Bank Details</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("page_title", "My Bank Details")}</Typography>
         </Stack>
 
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
@@ -205,13 +207,13 @@ export default function EssMyBankDetailsPage() {
               controlId="ess.my-bank-details.bank.select"
               fullWidth
               select
-              label="Bank"
+              label={t("field_bank", "Bank")}
               value={dicForm.intBankID}
               onChange={(objEvent) => {
                 setDicForm((dicPrevious) => ({ ...dicPrevious, intBankID: Number(objEvent.target.value) || "" }));
               }}
             >
-              <MenuItem value="">Select bank</MenuItem>
+              <MenuItem value="">{t("select_bank", "Select bank")}</MenuItem>
               {(objFormOptions?.lstBanks ?? []).map((dicBank) => (
                 <MenuItem key={dicBank.intID} value={dicBank.intID}>{dicBank.strLabel}</MenuItem>
               ))}
@@ -221,7 +223,7 @@ export default function EssMyBankDetailsPage() {
             <TextField
               controlId="ess.my-bank-details.account-holder-name.input"
               fullWidth
-              label="Account Holder Name"
+              label={t("field_account_holder_name", "Account Holder Name")}
               value={dicForm.strAccountHolderName}
               onChange={(objEvent) => {
                 setDicForm((dicPrevious) => ({ ...dicPrevious, strAccountHolderName: objEvent.target.value }));
@@ -232,7 +234,7 @@ export default function EssMyBankDetailsPage() {
             <TextField
               controlId="ess.my-bank-details.account-number.input"
               fullWidth
-              label="Account Number"
+              label={t("field_account_number", "Account Number")}
               value={dicForm.strAccountNumber}
               onChange={(objEvent) => {
                 setDicForm((dicPrevious) => ({ ...dicPrevious, strAccountNumber: objEvent.target.value }));
@@ -243,7 +245,7 @@ export default function EssMyBankDetailsPage() {
             <TextField
               controlId="ess.my-bank-details.ifsc-code.input"
               fullWidth
-              label="IFSC Code"
+              label={t("field_ifsc_code", "IFSC Code")}
               value={dicForm.strIfscCode}
               onChange={(objEvent) => {
                 setDicForm((dicPrevious) => ({ ...dicPrevious, strIfscCode: objEvent.target.value.toUpperCase() }));
@@ -261,7 +263,7 @@ export default function EssMyBankDetailsPage() {
             onClick={onSaveBankDetails}
             sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}
           >
-            {blnSaving ? "Saving..." : "Save"}
+            {blnSaving ? t("saving", "Saving...") : t("save", "Save")}
           </Button>
         </Stack>
       </Paper>

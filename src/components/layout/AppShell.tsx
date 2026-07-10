@@ -254,6 +254,17 @@ function getLocalizedHeaderTitle(
     return tHeader("header_title", "Ess / Calendar");
   }
 
+  if (strHeaderModuleName === "my-profile") {
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("edit_header_title", "Ess / My Profile / Edit");
+    }
+    return tHeader("header_title", "Ess / My Profile");
+  }
+
+  if (strHeaderModuleName === "my-bank-details") {
+    return tHeader("header_title", "Ess / My Bank Details");
+  }
+
   return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
 }
 

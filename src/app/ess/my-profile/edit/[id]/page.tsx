@@ -1,4 +1,4 @@
-import EmployeeEditorScreen from "@/features/employee/components/EmployeeEditorScreen";
+import MyProfileEditClient from "./MyProfileEditClient";
 
 type EssMyProfileEditPageProps = {
   params: Promise<{ id: string }>;
@@ -7,14 +7,5 @@ type EssMyProfileEditPageProps = {
 export default async function EssMyProfileEditPage({ params }: EssMyProfileEditPageProps) {
   const { id } = await params;
 
-  return (
-    <EmployeeEditorScreen
-      strMode="edit"
-      intEmployeeID={Number(id)}
-      strBackRoute="/ess/my-profile"
-      lstAccessModuleCodes={["MY_PROFILE"]}
-      strMenuActionOverride="MY_PROFILE"
-      strPageTitleOverride="Edit My Profile"
-    />
-  );
+  return <MyProfileEditClient intEmployeeID={Number(id)} />;
 }
