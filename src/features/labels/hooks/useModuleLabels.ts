@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import dicConstant from "@/constants/Constant.json";
 import { labelService } from "@/features/labels/services/labelService";
+import { normalizeLabelModuleName } from "@/features/labels/utils/normalizeLabelModuleName";
 import { authHelpers } from "@/lib/auth";
 
 const strLanguageSwitchTokenKey = "hrms_language_switch_token";
@@ -138,6 +139,31 @@ function resolveConstantFallback(strModuleName: string, strKey: string) {
   return toTitleCase(strKey);
 }
 
+function buildLabelLookupKeys(strModuleName: string, strKey: string) {
+  const strTrimmedKey = strKey.trim();
+  const strLowerKey = strTrimmedKey.toLowerCase();
+  const strUnderscoreLowerKey = strLowerKey.replace(/-/g, "_");
+  const strModulePrefix = `${normalizeLabelModuleName(strModuleName).replace(/[-\s]+/g, "_").toUpperCase()}_`;
+  const lstLookupKeys = [
+    strKey,
+    strTrimmedKey,
+    strLowerKey,
+    strUnderscoreLowerKey,
+  ];
+
+  if (strTrimmedKey.toUpperCase().startsWith(strModulePrefix)) {
+    const strPrefixStrippedKey = strTrimmedKey.slice(strModulePrefix.length);
+    const strPrefixStrippedLowerKey = strPrefixStrippedKey.toLowerCase();
+    lstLookupKeys.push(
+      strPrefixStrippedKey,
+      strPrefixStrippedLowerKey,
+      strPrefixStrippedLowerKey.replace(/-/g, "_")
+    );
+  }
+
+  return Array.from(new Set(lstLookupKeys.filter(Boolean)));
+}
+
 export function useModuleLabels(strModuleName: string, strFallbackError = "") {
   const [intLanguageID, setIntLanguageID] = useState<number | null>(() => {
     if (typeof window === "undefined") {
@@ -247,8 +273,10 @@ export function useModuleLabels(strModuleName: string, strFallbackError = "") {
   }, [intLanguageID, intRefreshToken, strFallbackError, strModuleName]);
 
   const t = useCallback((strKey: string, strFallback?: string) => {
-    if (dicLabels[strKey]) {
-      return dicLabels[strKey];
+    for (const strLookupKey of buildLabelLookupKeys(strModuleName, strKey)) {
+      if (dicLabels[strLookupKey]) {
+        return dicLabels[strLookupKey];
+      }
     }
     if (typeof strFallback === "string") {
       return strFallback;

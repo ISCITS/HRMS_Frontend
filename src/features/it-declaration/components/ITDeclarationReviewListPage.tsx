@@ -23,6 +23,7 @@ import {
   hrItDeclarationReviewService,
   type HrItDeclarationListRecord,
 } from "@/features/it-declaration/services/itDeclarationService";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -42,19 +43,7 @@ const dicEmptyFilters: ItDeclarationFilters = {
   strStatus: "",
 };
 
-function downloadCsv(strFileName: string, lstRows: HrItDeclarationListRecord[]) {
-  const lstHeaders = [
-    "Employee Code",
-    "Employee Name",
-    "Financial Year",
-    "Tax Regime",
-    "Declared Total",
-    "Approved Total",
-    "Proof Pending",
-    "Status",
-    "Submitted On",
-    "Last Updated",
-  ];
+function downloadCsv(strFileName: string, lstRows: HrItDeclarationListRecord[], lstHeaders: string[]) {
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((objRow) =>
@@ -92,6 +81,7 @@ function formatDisplayLabel(strValue: string) {
 
 export default function ITDeclarationReviewListPage() {
   const objRouter = useRouter();
+  const { t } = useModuleLabels("it-declaration-review", "Unable to load IT declaration review labels.");
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny, objRights } =
     useModuleActionAccess(["PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
   const [lstRows, setLstRows] = useState<HrItDeclarationListRecord[]>([]);
@@ -120,7 +110,7 @@ export default function ITDeclarationReviewListPage() {
       setObjSummary(objData.objSummary || {});
       setIntPage(1);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load IT declaration review list.");
+      setStrError(objError instanceof Error ? objError.message : t("IT_DECLARATION_REVIEW_UNABLE_LOAD_LIST", "Unable to load IT declaration review list."));
     } finally {
       setBlnLoading(false);
     }
@@ -137,17 +127,59 @@ export default function ITDeclarationReviewListPage() {
     hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW") ||
     hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanExport = canDoAny("export");
+  function getStatusLabel(strStatus: string) {
+    const strNormalized = String(strStatus || "").trim().toLowerCase().replace(/\s+/g, "_");
+    const dicStatusKeys: Record<string, [string, string]> = {
+      draft: ["IT_DECLARATION_REVIEW_DRAFT", "Draft"],
+      submitted: ["IT_DECLARATION_REVIEW_SUBMITTED", "Submitted"],
+      under_review: ["IT_DECLARATION_REVIEW_UNDER_REVIEW", "Under Review"],
+      approved: ["IT_DECLARATION_REVIEW_APPROVED", "Approved"],
+      released: ["IT_DECLARATION_REVIEW_RELEASED", "Released"],
+      locked: ["IT_DECLARATION_REVIEW_LOCKED", "Locked"],
+      proof_pending: ["IT_DECLARATION_REVIEW_PROOF_PENDING", "Proof Pending"],
+      partially_approved: ["IT_DECLARATION_REVIEW_PARTIALLY_APPROVED", "Partially Approved"],
+      resubmitted: ["IT_DECLARATION_REVIEW_RESUBMITTED", "Resubmitted"],
+      rejected: ["IT_DECLARATION_REVIEW_REJECTED", "Rejected"],
+    };
+    const [strKey, strFallback] = dicStatusKeys[strNormalized] ?? ["IT_DECLARATION_REVIEW_DRAFT", "Draft"];
+    return t(strKey, strFallback);
+  }
+  function getTaxRegimeLabel(strRegime: string) {
+    const strNormalized = String(strRegime || "").trim().toLowerCase();
+    if (strNormalized === "new" || strNormalized === "new regime") {
+      return t("IT_DECLARATION_REVIEW_NEW_REGIME", "New Regime");
+    }
+    if (strNormalized === "old" || strNormalized === "old regime") {
+      return t("IT_DECLARATION_REVIEW_OLD_REGIME", "Old Regime");
+    }
+    return formatDisplayLabel(strRegime);
+  }
+  const lstCsvHeaders = useMemo(
+    () => [
+      t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE", "Employee Code"),
+      t("IT_DECLARATION_REVIEW_EMPLOYEE_NAME", "Employee Name"),
+      t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year"),
+      t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime"),
+      t("IT_DECLARATION_REVIEW_DECLARED_TOTAL", "Declared Total"),
+      t("IT_DECLARATION_REVIEW_APPROVED_TOTAL", "Approved Total"),
+      t("IT_DECLARATION_REVIEW_PROOF_PENDING", "Proof Pending"),
+      t("IT_DECLARATION_REVIEW_STATUS", "Status"),
+      t("IT_DECLARATION_REVIEW_SUBMITTED_ON", "Submitted On"),
+      t("IT_DECLARATION_REVIEW_LAST_UPDATED", "Last Updated"),
+    ],
+    [t],
+  );
   const lstSummary = useMemo(
     () => [
-      ["Draft", objSummary.draft || 0],
-      ["Submitted", objSummary.submitted || 0],
-      ["Under Review", objSummary.under_review || 0],
-      ["Approved", objSummary.approved || 0],
-      ["Released", objSummary.released || 0],
-      ["Locked", objSummary.locked || 0],
-      ["Proof Pending", objSummary.proof_pending || 0],
+      [t("IT_DECLARATION_REVIEW_DRAFT", "Draft"), objSummary.draft || 0],
+      [t("IT_DECLARATION_REVIEW_SUBMITTED", "Submitted"), objSummary.submitted || 0],
+      [t("IT_DECLARATION_REVIEW_UNDER_REVIEW", "Under Review"), objSummary.under_review || 0],
+      [t("IT_DECLARATION_REVIEW_APPROVED", "Approved"), objSummary.approved || 0],
+      [t("IT_DECLARATION_REVIEW_RELEASED", "Released"), objSummary.released || 0],
+      [t("IT_DECLARATION_REVIEW_LOCKED", "Locked"), objSummary.locked || 0],
+      [t("IT_DECLARATION_REVIEW_PROOF_PENDING", "Proof Pending"), objSummary.proof_pending || 0],
     ],
-    [objSummary],
+    [objSummary, t],
   );
   const intPageCount = Math.max(1, Math.ceil(lstRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -158,20 +190,20 @@ export default function ITDeclarationReviewListPage() {
   );
 
   if (blnLoading || blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel="Loading IT declaration review..." />;
+    return <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_REVIEW_LOADING", "Loading IT declaration review...")} />;
   }
 
   return (
     <Stack spacing={0.8} className={styles.page}>
-      {!blnCanView ? <Alert severity="warning">You do not have permission to view this screen.</Alert> : null}
+      {!blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_REVIEW_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box sx={{ borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", overflow: "hidden" }}>
         <Box sx={{ p: 1.1, background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1, flexWrap: "wrap" }}>
             <Box>
-              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem", lineHeight: 1.2 }}>IT Declaration Review</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>All declaration records load by default. Use filters only when you want to narrow the queue.</Typography>
+              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem", lineHeight: 1.2 }}>{t("IT_DECLARATION_REVIEW_TITLE", "IT Declaration Review")}</Typography>
+              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>{t("IT_DECLARATION_REVIEW_SUBTITLE", "All declaration records load by default. Use filters only when you want to narrow the queue.")}</Typography>
             </Box>
             <Box
               sx={{
@@ -213,23 +245,23 @@ export default function ITDeclarationReviewListPage() {
 
       <Box className={styles.controlsCard} sx={{ mt: 0, mb: 0 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-          <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" />
-          <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" />
-          <TextField select size="small" label="Tax Regime" value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select">
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="old">Old</MenuItem>
-            <MenuItem value="new">New</MenuItem>
+          <TextField size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" />
+          <TextField size="small" label={t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE_NAME", "Employee Code/Name")} value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" />
+          <TextField select size="small" label={t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime")} value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select">
+            <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
+            <MenuItem value="old">{t("IT_DECLARATION_REVIEW_OLD", "Old")}</MenuItem>
+            <MenuItem value="new">{t("IT_DECLARATION_REVIEW_NEW", "New")}</MenuItem>
           </TextField>
-          <TextField select size="small" label="Status" value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select">
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="submitted">Submitted</MenuItem>
-            <MenuItem value="under_review">Under Review</MenuItem>
-            <MenuItem value="approved">Approved</MenuItem>
-            <MenuItem value="released">Released</MenuItem>
-            <MenuItem value="locked">Locked</MenuItem>
+          <TextField select size="small" label={t("IT_DECLARATION_REVIEW_STATUS", "Status")} value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select">
+            <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
+            <MenuItem value="submitted">{t("IT_DECLARATION_REVIEW_SUBMITTED", "Submitted")}</MenuItem>
+            <MenuItem value="under_review">{t("IT_DECLARATION_REVIEW_UNDER_REVIEW", "Under Review")}</MenuItem>
+            <MenuItem value="approved">{t("IT_DECLARATION_REVIEW_APPROVED", "Approved")}</MenuItem>
+            <MenuItem value="released">{t("IT_DECLARATION_REVIEW_RELEASED", "Released")}</MenuItem>
+            <MenuItem value="locked">{t("IT_DECLARATION_REVIEW_LOCKED", "Locked")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} controlId="it-declaration.review-list.search.button">Search</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} controlId="it-declaration.review-list.search.button">{t("IT_DECLARATION_REVIEW_SEARCH", "Search")}</Button>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
@@ -239,7 +271,7 @@ export default function ITDeclarationReviewListPage() {
               }}
               controlId="it-declaration.review-list.clear.button"
             >
-              Clear
+              {t("IT_DECLARATION_REVIEW_CLEAR", "Clear")}
             </Button>
           </Box>
         </Box>
@@ -249,15 +281,15 @@ export default function ITDeclarationReviewListPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("it_declaration_review.csv", lstRows)} controlId="it-declaration.review-list.export-excel.button">
-                Export Excel
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("it_declaration_review.csv", lstRows, lstCsvHeaders)} controlId="it-declaration.review-list.export-excel.button">
+                {t("IT_DECLARATION_REVIEW_EXPORT_EXCEL", "Export Excel")}
               </Button>
             ) : null}
           </Box>
           {lstRows.length > 0 ? (
             <Box className={styles.paginationBar} sx={{ p: 0 }}>
               <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>Rows per page</Typography>
+                <Typography className={styles.paginationLabel}>{t("IT_DECLARATION_REVIEW_ROWS_PER_PAGE", "Rows per page")}</Typography>
                 <TextField
                   select
                   size="small"
@@ -276,7 +308,7 @@ export default function ITDeclarationReviewListPage() {
                   ))}
                 </TextField>
                 <Typography className={styles.paginationRange}>
-                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstRows.length)} of {lstRows.length}
+                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstRows.length)} {t("IT_DECLARATION_REVIEW_OF", "of")} {lstRows.length}
                 </Typography>
               </Box>
               <Pagination count={intPageCount} page={intCurrentPage} onChange={(_e, intValue) => setIntPage(intValue)} size="small" color="primary" showFirstButton showLastButton />
@@ -288,40 +320,40 @@ export default function ITDeclarationReviewListPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Actions</th>
-                <th>Employee Code</th>
-                <th>Employee Name</th>
-                <th>Financial Year</th>
-                <th>Tax Regime</th>
-                <th>Declared Total</th>
-                <th>Approved Total</th>
-                <th>Proof Pending</th>
-                <th>Status</th>
-                <th>Submitted On</th>
-                <th>Last Updated</th>
+                <th>{t("IT_DECLARATION_REVIEW_ACTIONS", "Actions")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE", "Employee Code")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_EMPLOYEE_NAME", "Employee Name")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_DECLARED_TOTAL", "Declared Total")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_APPROVED_TOTAL", "Approved Total")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_PROOF_PENDING", "Proof Pending")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_STATUS", "Status")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_SUBMITTED_ON", "Submitted On")}</th>
+                <th>{t("IT_DECLARATION_REVIEW_LAST_UPDATED", "Last Updated")}</th>
               </tr>
             </thead>
             <tbody>
               {lstRows.length === 0 ? (
                 <tr>
-                  <td className={styles.emptyState} colSpan={11}>No records found.</td>
+                  <td className={styles.emptyState} colSpan={11}>{t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.")}</td>
                 </tr>
               ) : (
                 lstVisibleRows.map((objRow) => (
                   <tr key={objRow.strDeclarationCode}>
                     <td>
                       <Button size="small" disabled={!blnCanView} onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)} controlId="it-declaration.review-list.row.view.button" data-row-key={objRow.intDeclarationID}>
-                        View
+                        {t("IT_DECLARATION_REVIEW_VIEW", "View")}
                       </Button>
                     </td>
                     <td>{objRow.strEmployeeCode}</td>
                     <td>{objRow.strEmployeeName}</td>
                     <td>{objRow.strFinancialYearCode}</td>
-                      <td>{formatDisplayLabel(objRow.strTaxRegime)}</td>
+                      <td>{getTaxRegimeLabel(objRow.strTaxRegime)}</td>
                       <td>{`INR ${objInrFormatter.format(Number(objRow.decDeclaredTotalAmount || 0))}`}</td>
                       <td>{`INR ${objInrFormatter.format(Number(objRow.decApprovedTotalAmount || 0))}`}</td>
                       <td>{objRow.intProofPendingCount}</td>
-                      <td><ITDeclarationStatusBadge strStatus={formatDisplayLabel(objRow.strStatus)} /></td>
+                      <td><ITDeclarationStatusBadge strStatus={objRow.strStatus} strLabel={getStatusLabel(objRow.strStatus)} /></td>
                     <td>{objRow.strSubmittedOn || "-"}</td>
                     <td>{objRow.strLastUpdated || "-"}</td>
                   </tr>
