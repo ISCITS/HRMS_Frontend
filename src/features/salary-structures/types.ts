@@ -51,7 +51,6 @@ export type SalaryStructureOption = {
   intComponentCategoryID?: number | null;
   intCtcTreatmentID?: number | null;
   intTaxTreatmentID?: number | null;
-  intWageTypeID?: number | null;
   intPayslipSectionID?: number | null;
   intReimbursementTypeID?: number | null;
   intSettlementModeID?: number | null;
@@ -104,7 +103,6 @@ export type SalaryStructureLineFormValue = {
   intComponentCategorySnapshotID: number | "";
   intCtcTreatmentSnapshotID: number | "";
   intTaxTreatmentSnapshotID: number | "";
-  intWageTypeSnapshotID: number | "";
   intPayslipSectionSnapshotID: number | "";
   intReimbursementTypeSnapshotID: number | "";
   intSettlementModeSnapshotID: number | "";
@@ -183,7 +181,6 @@ export type SalaryStructureDetailRecord = SalaryStructureListRecord & {
     intComponentCategorySnapshotID?: number | null;
     intCtcTreatmentSnapshotID?: number | null;
     intTaxTreatmentSnapshotID?: number | null;
-    intWageTypeSnapshotID?: number | null;
     intPayslipSectionSnapshotID?: number | null;
     intReimbursementTypeSnapshotID?: number | null;
     intSettlementModeSnapshotID?: number | null;

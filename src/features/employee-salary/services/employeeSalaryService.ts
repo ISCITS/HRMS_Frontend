@@ -70,6 +70,10 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
 export type EmployeeSalaryRevisionPreviewRecord = {
   lstComponentLines: Array<{
     intSalaryComponentID: number;
+    strComponentCode?: string | null;
+    strComponentName?: string | null;
+    strComponentCategory?: string | null;
+    blnIsWages?: boolean | null;
     decAmountMonthly?: number | null;
     decAmountAnnual?: number | null;
     decPercentageValue?: number | null;
@@ -77,6 +81,14 @@ export type EmployeeSalaryRevisionPreviewRecord = {
     blnIsOverride?: boolean;
   }>;
   objFlexiAllocation: EmployeeSalaryFlexiAllocationSummary;
+  dicWageAdjustmentPreview?: {
+    decWageAmount?: number | null;
+    decNonWageAmount?: number | null;
+    decWagePercent?: number | null;
+    decMinimumRequiredWage?: number | null;
+    decShortfallAmount?: number | null;
+    decStatutoryWageAmount?: number | null;
+  } | null;
 };
 
 export const employeeSalaryService = {

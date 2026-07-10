@@ -7,11 +7,9 @@ type EmployeeSalarySummaryComponentLine = {
   intComponentCategorySnapshotID?: number | null;
   intCtcTreatmentSnapshotID?: number | null;
   intTaxTreatmentSnapshotID?: number | null;
-  intWageTypeSnapshotID?: number | null;
   intPayslipSectionSnapshotID?: number | null;
   intReimbursementTypeSnapshotID?: number | null;
   intSettlementModeSnapshotID?: number | null;
-  strWageType?: string | null;
   blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
@@ -142,15 +140,8 @@ function isCtcIncludedEarning(dicLine: EmployeeSalarySummaryComponentLine) {
     dicLine.blnIncludedInCtc !== false;
 }
 
-export function isEmployeeSalaryWageComponent(dicLine: Pick<EmployeeSalarySummaryComponentLine, "strWageType" | "intWageTypeSnapshotID" | "blnIsWages">) {
-  if (typeof dicLine.blnIsWages === "boolean") {
-    return dicLine.blnIsWages;
-  }
-  if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
-    return normalizeSelectToken(dicLine.strWageType ?? "").startsWith("wage");
-  }
-  const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
-  return strWageTypeToken === "wage" || strWageTypeToken === "wages";
+export function isEmployeeSalaryWageComponent(dicLine: Pick<EmployeeSalarySummaryComponentLine, "blnIsWages">) {
+  return Boolean(dicLine.blnIsWages);
 }
 
 export function calculateEmployeeSalaryWageMetrics(lstComponentLines: EmployeeSalarySummaryComponentLine[], decAnnualCtc: number) {

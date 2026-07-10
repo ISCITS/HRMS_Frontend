@@ -33,12 +33,10 @@ export type EmployeeSalaryStructureComponentOption = {
   intComponentCategorySnapshotID?: number | null;
   intCtcTreatmentSnapshotID?: number | null;
   intTaxTreatmentSnapshotID?: number | null;
-  intWageTypeSnapshotID?: number | null;
   intPayslipSectionSnapshotID?: number | null;
   intReimbursementTypeSnapshotID?: number | null;
   intSettlementModeSnapshotID?: number | null;
   strBasisComponentName?: string | null;
-  strWageType?: string | null;
   blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
@@ -84,11 +82,9 @@ export type EmployeeSalaryComponentLine = {
   intComponentCategorySnapshotID?: number | null;
   intCtcTreatmentSnapshotID?: number | null;
   intTaxTreatmentSnapshotID?: number | null;
-  intWageTypeSnapshotID?: number | null;
   intPayslipSectionSnapshotID?: number | null;
   intReimbursementTypeSnapshotID?: number | null;
   intSettlementModeSnapshotID?: number | null;
-  strWageType?: string | null;
   blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;

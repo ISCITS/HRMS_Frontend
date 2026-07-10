@@ -489,7 +489,13 @@ export default function SalaryComponentEditorPage({
             return;
           }
           setObjDetail(dicDetail);
-          setDicForm(syncLookupBackedFields(toSalaryComponentFormValues(dicDetail), objOptions, false));
+          setDicForm(
+            syncLookupBackedFields(
+              ensureTenantLanguageRows(toSalaryComponentFormValues(dicDetail)),
+              objOptions,
+              false
+            )
+          );
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => syncLookupBackedFields({
@@ -572,9 +578,20 @@ export default function SalaryComponentEditorPage({
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
   const blnApplyMonthlyLimit = strClaimLimitTypeCode === "monthly" || strClaimLimitTypeCode === "both";
   const blnApplyYearlyLimit = strClaimLimitTypeCode === "yearly" || strClaimLimitTypeCode === "both";
-  const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
+  const intEnglishLanguageID =
+    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID
+    ?? null;
+  const intHindiLanguageID =
+    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID
+    ?? null;
+  const intDefaultLanguageID =
+    intEnglishLanguageID
+    ?? authHelpers.getLanguageID()
+    ?? objFormOptions?.lstLanguages[0]?.intID
+    ?? 1;
   const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID()
+    intHindiLanguageID
+    ?? authHelpers.getSecondaryLanguageID()
     ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
     ?? intDefaultLanguageID;
 
