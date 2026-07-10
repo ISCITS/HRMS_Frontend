@@ -36,6 +36,24 @@ function extractHtmlPayload(objData: unknown): string {
     return (objData as { raw: string }).raw;
   }
 
+  if (
+    objData &&
+    typeof objData === "object" &&
+    "Data" in objData &&
+    typeof (objData as { Data?: unknown }).Data === "string"
+  ) {
+    return (objData as { Data: string }).Data;
+  }
+
+  if (
+    objData &&
+    typeof objData === "object" &&
+    "strHtml" in objData &&
+    typeof (objData as { strHtml?: unknown }).strHtml === "string"
+  ) {
+    return (objData as { strHtml: string }).strHtml;
+  }
+
   return "";
 }
 
@@ -85,8 +103,19 @@ export const payslipService = {
   async getDownloadHtml(intPayslipID: number): Promise<string> {
     const objResponse = await axiosInstance.get(
       `${ApiRoutePrefix.ApiV1}/payslips/${intPayslipID}/download`,
-      { csrfMenuAction: "PAYSLIP_EXPORT" }
+      {
+        csrfMenuAction: "PAYSLIP_EXPORT",
+        responseType: "text",
+        headers: {
+          Accept: "text/html",
+          "x-skip-payload-encryption": "true",
+        },
+      }
     );
-    return extractHtmlPayload(objResponse.data);
+    const strHtml = extractHtmlPayload(objResponse.data);
+    if (!strHtml.trim()) {
+      throw new Error("Payslip document is empty.");
+    }
+    return strHtml;
   },
 };

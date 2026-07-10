@@ -90,6 +90,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/tax-regimes") || strLowerPath.startsWith("/tax-regimes")) {
     return "tax-regimes";
   }
+  if (strLowerPath.startsWith("/payroll/it-declaration-review")) {
+    return "it-declaration-review";
+  }
   if (
     strLowerPath.startsWith("/hr/it-declaration") ||
     strLowerPath.startsWith("/salary/it-declaration") ||

@@ -39,12 +39,11 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
+import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import type {
-  PayslipPreviewRecord,
   PayslipRunListRecord,
   PayrollProcessSummary,
   PayrollRunDetailRecord,
@@ -275,7 +274,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
-  const [objPayslipPreview, setObjPayslipPreview] = useState<PayslipPreviewRecord | null>(null);
+  const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
@@ -491,8 +490,16 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      const dicPayslip = await payslipService.getPayslipPreview(intRunID, dicRow.intEmployeeID);
-      setObjPayslipPreview(dicPayslip);
+      let intPayslipID = dicRow.intPayslipID;
+      if (!intPayslipID) {
+        const dicPayslip = await generatePayslip(dicRow);
+        intPayslipID = dicPayslip?.intPayslipID ?? null;
+      }
+      if (!intPayslipID) {
+        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
+        return;
+      }
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
@@ -905,7 +912,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          {objPayslipPreview ? <PayslipPreviewContent objPayslip={objPayslipPreview} /> : null}
+          {strPayslipPreviewHtml ? <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} /> : null}
         </DialogContent>
       </Dialog>
     </Box>
