@@ -481,7 +481,6 @@ export type SalaryComponentApiRecord = {
   intTaxTreatmentID?: number | null;
   strTaxTreatment: string | null;
   intCtcTreatmentID?: number | null;
-  intWageTypeID?: number | null;
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
@@ -661,15 +660,6 @@ export type SalaryComponentFormOptionsApiRecord = {
   }>;
   lstTaxTreatments: string[];
   lstCtcTreatmentLookups?: Array<{
-    intID: number;
-    strValueCode: string;
-    strDisplayName: string;
-    strDescription?: string | null;
-    intDisplayOrder?: number | null;
-    blnIsActive?: boolean;
-    strLegacyValue?: string | null;
-  }>;
-  lstWageTypeLookups?: Array<{
     intID: number;
     strValueCode: string;
     strDisplayName: string;

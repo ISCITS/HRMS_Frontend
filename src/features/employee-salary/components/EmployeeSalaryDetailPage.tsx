@@ -35,7 +35,7 @@ import {
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
-import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
+import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
 import { calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
@@ -451,45 +451,35 @@ function isInformationCategory(strCategory: string | null | undefined) {
 }
 
 function isWageComponent(
-  dicLine: { strWageType?: string | null; intWageTypeSnapshotID?: number | null; intSalaryComponentID?: number | null; blnIsWages?: boolean | null },
+  dicLine: { intSalaryComponentID?: number | null; blnIsWages?: boolean | null; strComponentCode?: string | null; strComponentName?: string | null },
   dicSalaryComponentByID?: Map<number, SalaryComponentApiRecord>
 ) {
   if (typeof dicLine.blnIsWages === "boolean") {
     return dicLine.blnIsWages;
   }
-  if (hasLookupSnapshot(dicLine.intWageTypeSnapshotID)) {
-    const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
-    return strWageTypeToken === "wage" || strWageTypeToken === "wages";
-  }
-  const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
-  if (strWageTypeToken === "wage" || strWageTypeToken === "wages") {
-    return true;
-  }
-  if (strWageTypeToken === "nonwage") {
-    return false;
-  }
-  const dicSalaryComponent =
+  const dicSalaryComponentByIDLookup =
     dicLine.intSalaryComponentID != null
       ? dicSalaryComponentByID?.get(dicLine.intSalaryComponentID)
       : null;
-  const strResolvedWageTypeToken = normalizeSelectToken(dicSalaryComponent?.strWageType ?? "");
-  if (strResolvedWageTypeToken === "wage" || strResolvedWageTypeToken === "wages") {
-    return true;
+  if (typeof dicSalaryComponentByIDLookup?.blnIsWages === "boolean") {
+    return dicSalaryComponentByIDLookup.blnIsWages;
   }
-  if (strResolvedWageTypeToken === "nonwage") {
+  const strComponentCodeToken = normalizeSelectToken(dicLine.strComponentCode ?? "");
+  const strComponentNameToken = normalizeSelectToken(dicLine.strComponentName ?? "");
+  if (!strComponentCodeToken && !strComponentNameToken) {
     return false;
   }
-  return Boolean(dicSalaryComponent?.blnIsWages);
-}
-
-function isCtcIncludedWagePreviewComponent(dicLine: EmployeeSalaryComponentLine) {
-  return !isFlexiBucketLine(dicLine) &&
-    !isFlexiAllocationLine(dicLine) &&
-    !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
-    !isDeductionCategory(dicLine.strComponentCategory) &&
-    !isInformationCategory(dicLine.strComponentCategory) &&
-    !isNonCtcReimbursementLine(dicLine) &&
-    dicLine.blnIncludedInCtc !== false;
+  for (const dicSalaryComponent of dicSalaryComponentByID?.values() ?? []) {
+    const strMasterCodeToken = normalizeSelectToken(dicSalaryComponent.strComponentCode ?? "");
+    const strMasterNameToken = normalizeSelectToken(dicSalaryComponent.strComponentName ?? "");
+    if (
+      (strComponentCodeToken && strComponentCodeToken === strMasterCodeToken) ||
+      (strComponentNameToken && strComponentNameToken === strMasterNameToken)
+    ) {
+      return Boolean(dicSalaryComponent.blnIsWages);
+    }
+  }
+  return false;
 }
 
 function getApprovedFlexiStatus(strStatus: string | null | undefined) {
@@ -740,7 +730,13 @@ function calculateSalarySummaryMetrics(
   }, 0);
   const decAnnualCtc = dicBaseSummaryMetrics.decAnnualCtc;
   const dicWageMetrics = calculateEmployeeSalaryWageMetrics(
-    lstComponentLines.filter((dicLine) => isCtcIncludedWagePreviewComponent(dicLine)),
+    lstComponentLines
+      .filter((dicLine) => !isFlexiAllocationLine(dicLine) && dicLine.blnIncludedInCtc !== false)
+      .map((dicLine) => ({
+        blnIsWages: isWageComponent(dicLine, dicSalaryComponentByID),
+        blnIncludedInCtc: dicLine.blnIncludedInCtc,
+        decAmountAnnual: getNumberValue(dicLine.decAmountAnnual ?? (getNumberValue(dicLine.decAmountMonthly) * 12)),
+      })),
     decAnnualCtc
   );
   return {
@@ -770,7 +766,8 @@ function calculateSalarySummaryMetrics(
 function calculateRevisionSalarySummaryMetrics(
   lstStructureComponents: EmployeeSalaryStructureComponentOption[],
   dicRevisionForm: EmployeeSalaryRevisionFormValues,
-  dicSalaryComponentByID: Map<number, SalaryComponentApiRecord>
+  dicSalaryComponentByID: Map<number, SalaryComponentApiRecord>,
+  mapPreviewComponentByID?: Map<number, EmployeeSalaryRevisionPreviewRecord["lstComponentLines"][number]>
 ): SalarySummaryMetrics {
   const setFlexiAllocationComponentIDs = new Set(
     dicRevisionForm.lstFlexiAllocations
@@ -821,7 +818,13 @@ function calculateRevisionSalarySummaryMetrics(
     if (dicComponent.blnIncludedInCtc !== false) {
       dicTotal.decCtcIncludedEarningsAnnual += decAnnualAmount;
       dicTotal.decPayableEarningsMonthly += decMonthlyAmount;
-      if (isWageComponent(dicComponent, dicSalaryComponentByID)) {
+      const dicPreviewComponent = mapPreviewComponentByID?.get(dicComponent.intSalaryComponentID);
+      if (isWageComponent({
+        ...dicComponent,
+        blnIsWages: dicPreviewComponent?.blnIsWages ?? dicComponent.blnIsWages,
+        strComponentCode: dicPreviewComponent?.strComponentCode ?? dicComponent.strComponentCode,
+        strComponentName: dicPreviewComponent?.strComponentName ?? dicComponent.strComponentName,
+      }, dicSalaryComponentByID)) {
         dicTotal.decWageAnnual += decAnnualAmount;
       } else {
         dicTotal.decNonWageAnnual += decAnnualAmount;
@@ -838,6 +841,11 @@ function calculateRevisionSalarySummaryMetrics(
     decNonWageAnnual: 0
   });
   const decAnnualCtc = dicResolvedMetrics.decCtcIncludedEarningsAnnual + dicResolvedMetrics.decEmployerContributionAnnual + decFlexiBucketAnnual;
+  const decWageRemunerationBase = dicResolvedMetrics.decWageAnnual + dicResolvedMetrics.decNonWageAnnual;
+  const decMinimumRequiredWageAnnual = decWageRemunerationBase * 0.5;
+  const decDeemedWageShortfallAnnual = Math.max(decMinimumRequiredWageAnnual - dicResolvedMetrics.decWageAnnual, 0);
+  const decDeemedWageAnnual = dicResolvedMetrics.decWageAnnual + decDeemedWageShortfallAnnual;
+  const decWagePercentOfCtc = decWageRemunerationBase > 0 ? (dicResolvedMetrics.decWageAnnual / decWageRemunerationBase) * 100 : 0;
 
   return {
     decAnnualCtc,
@@ -852,18 +860,12 @@ function calculateRevisionSalarySummaryMetrics(
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    ...calculateEmployeeSalaryWageMetrics(
-      lstStructureComponents
-        .filter((dicComponent) => !setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) && dicComponent.blnIncludedInCtc !== false)
-        .map((dicComponent) => ({
-          strWageType: dicComponent.strWageType,
-          intWageTypeSnapshotID: dicComponent.intWageTypeSnapshotID,
-          blnIsWages: isWageComponent(dicComponent, dicSalaryComponentByID),
-          blnIncludedInCtc: dicComponent.blnIncludedInCtc,
-          decAmountAnnual: getNumberValue(dicComponent.decAmountAnnual ?? (getNumberValue(dicComponent.decAmountMonthly) * 12)),
-        })),
-      decAnnualCtc
-    ),
+    decWageAnnual: dicResolvedMetrics.decWageAnnual,
+    decNonWageAnnual: dicResolvedMetrics.decNonWageAnnual,
+    decMinimumRequiredWageAnnual,
+    decDeemedWageShortfallAnnual,
+    decDeemedWageAnnual,
+    decWagePercentOfCtc,
     strFlexiWarning: decFlexiBucketAnnual > 0 && decApprovedFlexiAnnual <= 0
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",
@@ -1298,6 +1300,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [objFlexiDeclarationContext, setObjFlexiDeclarationContext] = useState<FlexiDeclarationContextRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
+  const [objRevisionPreview, setObjRevisionPreview] = useState<EmployeeSalaryRevisionPreviewRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -1346,9 +1349,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setBlnLoading(true);
       setStrError("");
       try {
-        const [dicDetail, dicFormOptions, dicSalaryComponents] = await Promise.all([
-          employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID),
-          employeeSalaryService.getFormOptions(),
+        const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID);
+        const [dicFormOptions, dicSalaryComponents] = await Promise.all([
+          employeeSalaryService.getFormOptions().catch(() => ({
+            lstEmployees: [],
+            lstSalaryStructures: [],
+          })),
           masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
         ]);
         let intDeclarationID = dicDetail.objFlexiDeclaration?.intDeclarationID ?? null;
@@ -1379,6 +1385,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         setObjFlexiDeclarationContext(dicFlexiDeclarationContext);
         setObjFormOptions(dicFormOptions);
         setLstSalaryComponents(dicSalaryComponents.Data);
+        setObjRevisionPreview(null);
         setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, dicSalaryComponents.Data, refTranslate.current));
       } catch (objError) {
         if (blnMounted) {
@@ -1547,9 +1554,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     () => JSON.stringify(dicRevisionForm) === JSON.stringify(dicInitialRevisionForm),
     [dicInitialRevisionForm, dicRevisionForm]
   );
-  const dicRevisionSalarySummaryMetrics = useMemo(
-    () => calculateRevisionSalarySummaryMetrics(lstSelectedRevisionStructureComponents, dicRevisionForm, dicSalaryComponentByID),
-    [dicRevisionForm, dicSalaryComponentByID, lstSelectedRevisionStructureComponents]
+  const mapRevisionPreviewComponentByID = useMemo(
+    () => new Map((objRevisionPreview?.lstComponentLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])),
+    [objRevisionPreview]
+  );
+  const dicResolvedRevisionSalarySummaryMetrics = useMemo(
+    () => calculateRevisionSalarySummaryMetrics(
+      lstSelectedRevisionStructureComponents,
+      dicRevisionForm,
+      dicSalaryComponentByID,
+      mapRevisionPreviewComponentByID
+    ),
+    [dicRevisionForm, dicSalaryComponentByID, lstSelectedRevisionStructureComponents, mapRevisionPreviewComponentByID]
   );
   const decRevisionFlexiBalanceAnnual = Math.max(decFlexiPayAllocationAnnual - decDialogFlexiAllocated, 0);
   const decRevisionNetPayrollImpactMonthly = decRevisionFlexiBalanceAnnual / 12;
@@ -1568,7 +1584,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           intSalaryComponentID: dicOverride.intSalaryComponentID,
           strComponentName: dicOverride.strComponentName,
           decAnnualAmount,
-          decPercentOfCtc: dicRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decAnnualAmount / dicRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
+          decPercentOfCtc: dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decAnnualAmount / dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
         };
       })
       .filter((dicRow) => dicRow.decAnnualAmount > 0);
@@ -1581,7 +1597,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           intSalaryComponentID: dicAllocation.intSalaryComponentID,
           strComponentName: dicAllocation.strComponentName,
           decAnnualAmount,
-          decPercentOfCtc: dicRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decAnnualAmount / dicRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
+          decPercentOfCtc: dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decAnnualAmount / dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
         };
       })
       .filter((dicRow) => dicRow.decAnnualAmount > 0);
@@ -1590,11 +1606,11 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           intSalaryComponentID: -1,
           strComponentName: t("employee_salary_residual_taxable_allowance", "Residual Taxable Component"),
           decAnnualAmount: decRevisionFlexiBalanceAnnual,
-          decPercentOfCtc: dicRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decRevisionFlexiBalanceAnnual / dicRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
+          decPercentOfCtc: dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc > 0 ? (decRevisionFlexiBalanceAnnual / dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc) * 100 : null
         }]
       : [];
     return [...lstNonFlexiRows, ...lstDeclaredFlexiRows, ...lstResidualRows];
-  }, [decRevisionFlexiBalanceAnnual, dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides, dicRevisionSalarySummaryMetrics.decAnnualCtc, t]);
+  }, [decRevisionFlexiBalanceAnnual, dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc, dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides, t]);
   const lstRevisionOverrideRows = useMemo(() => {
     const setFlexiAllocationComponentIDs = new Set(
       dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
@@ -1682,8 +1698,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         decGrossMonthly: dicSalarySummaryMetrics.decGrossMonthly,
       }
     : {
-        decAnnualCtc: dicRevisionSalarySummaryMetrics.decAnnualCtc,
-        decGrossMonthly: dicRevisionSalarySummaryMetrics.decGrossMonthly,
+        decAnnualCtc: dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc,
+        decGrossMonthly: dicResolvedRevisionSalarySummaryMetrics.decGrossMonthly,
       };
   const lstRevisionCurrentBreakdownComponentRows: RevisionBreakdownComponentRow[] = useMemo(() => {
     return (objDetail?.lstComponentLines ?? [])
@@ -1780,6 +1796,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       if (refStructurePreviewRequest.current !== intRequestID) {
         return;
       }
+      setObjRevisionPreview(dicPreview);
       setDicRevisionForm((dicPrev) => {
         if (dicPrev.intSalaryStructureID !== intSalaryStructureID) {
           return dicPrev;
@@ -2867,31 +2884,31 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage Components Total</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decWageAnnual, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Non-Wage Components Total</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decNonWageAnnual, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decNonWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Wage % of CTC</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{dicRevisionSalarySummaryMetrics.decWagePercentOfCtc.toFixed(2)}%</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{dicResolvedRevisionSalarySummaryMetrics.decWagePercentOfCtc.toFixed(2)}%</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Minimum Required Wage</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decMinimumRequiredWageAnnual, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decMinimumRequiredWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage Shortfall</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decDeemedWageShortfallAnnual, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decDeemedWageShortfallAnnual, strCurrencyCode)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage for Statutory Calculation</Typography>
-              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRevisionSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
 
-            {dicRevisionSalarySummaryMetrics.strFlexiWarning ? (
-              <Alert severity="warning">{dicRevisionSalarySummaryMetrics.strFlexiWarning}</Alert>
+            {dicResolvedRevisionSalarySummaryMetrics.strFlexiWarning ? (
+              <Alert severity="warning">{dicResolvedRevisionSalarySummaryMetrics.strFlexiWarning}</Alert>
             ) : null}
 
             <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>

@@ -33,7 +33,7 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
+import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
@@ -389,6 +389,7 @@ export default function PayrollResultDetailPage({
   const { t } = useModuleLabels("payslips");
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
   const [objPayslip, setObjPayslip] = useState<PayslipPreviewRecord | null>(null);
+  const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [strError, setStrError] = useState("");
@@ -453,11 +454,13 @@ export default function PayrollResultDetailPage({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicPayslip = await payslipService.getPayslipPreview(
-        objResult.intPayrollRunID,
-        objResult.intEmployeeID
-      );
+      const dicPayslip = await ensureGeneratedPayslip();
+      if (!dicPayslip?.intPayslipID) {
+        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
+        return;
+      }
       setObjPayslip(dicPayslip);
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip.intPayslipID));
     } catch (objError) {
       setStrError(
         objError instanceof Error ? objError.message : "Unable to load payslip preview."
@@ -967,7 +970,7 @@ export default function PayrollResultDetailPage({
             </Box>
           </Paper>
 
-          {objPayslip ? (
+          {strPayslipPreviewHtml ? (
             <Paper
               sx={{
                 borderRadius: "24px",
@@ -981,7 +984,7 @@ export default function PayrollResultDetailPage({
                 <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
                 {t("payslip_preview", "Payslip Preview")}
               </Typography>
-              <PayslipPreviewContent objPayslip={objPayslip} />
+              <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} />
             </Paper>
           ) : null}
         </Stack>

@@ -127,7 +127,6 @@ export type SalaryComponentFormValues = {
   intTaxTreatmentID: number | "";
   strTaxTreatment: string;
   intCtcTreatmentID: number | "";
-  intWageTypeID: number | "";
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
@@ -186,7 +185,6 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   intTaxTreatmentID?: number | null;
   strTaxTreatment: string | null;
   intCtcTreatmentID?: number | null;
-  intWageTypeID?: number | null;
   intReimbursementTypeID?: number | null;
   intSettlementMethodID?: number | null;
   intClaimLimitTypeID?: number | null;
@@ -245,7 +243,6 @@ export type SalaryComponentFormOptions = {
   lstTaxTreatmentLookups?: SalaryComponentLookupOption[];
   lstTaxTreatments: string[];
   lstCtcTreatmentLookups?: SalaryComponentLookupOption[];
-  lstWageTypeLookups?: SalaryComponentLookupOption[];
   lstReimbursementTypeLookups?: SalaryComponentLookupOption[];
   lstReimbursementTypes: string[];
   lstSettlementMethodLookups?: SalaryComponentLookupOption[];

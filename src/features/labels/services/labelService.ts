@@ -11,8 +11,8 @@ const dicLabelResponseCache = new Map<string, ModuleLabelsResponse>();
 const dicAllLabelRequestCache = new Map<string, Promise<AllLabelsResponse>>();
 const setHydratedAllLabelCache = new Set<string>();
 const intPersistentCacheTtlMs = 10 * 60 * 1000;
-const strPersistentCachePrefix = "hrms_label_cache:v3:";
-const strPersistentAllCachePrefix = "hrms_all_label_cache:v3:";
+const strPersistentCachePrefix = "hrms_label_cache:v4:";
+const strPersistentAllCachePrefix = "hrms_all_label_cache:v4:";
 const strLabelsRefreshedEventName = "hrms:labels-refreshed";
 
 type PersistentLabelCacheEntry = {

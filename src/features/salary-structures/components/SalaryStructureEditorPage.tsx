@@ -206,16 +206,9 @@ function getComponentPercentageValue(dicComponent: SalaryStructureFormOptions["l
 }
 
 function isWageComponent(
-  dicLine: { strWageType?: string | null; intSalaryComponentID?: number | "" | null },
+  dicLine: { intSalaryComponentID?: number | "" | null },
   dicSalaryComponentByID?: Map<number, SalaryStructureFormOptions["lstSalaryComponents"][number]>
 ) {
-  const strWageTypeToken = normalizeSelectToken(dicLine.strWageType ?? "");
-  if (strWageTypeToken === "wage" || strWageTypeToken === "wages") {
-    return true;
-  }
-  if (strWageTypeToken === "nonwage" || strWageTypeToken === "nonwages") {
-    return false;
-  }
   const intSalaryComponentID =
     typeof dicLine.intSalaryComponentID === "number"
       ? dicLine.intSalaryComponentID
@@ -223,13 +216,6 @@ function isWageComponent(
   const dicSalaryComponent = Number.isFinite(intSalaryComponentID) && intSalaryComponentID > 0
     ? dicSalaryComponentByID?.get(intSalaryComponentID)
     : undefined;
-  const strResolvedWageTypeToken = normalizeSelectToken(dicSalaryComponent?.strWageType ?? "");
-  if (strResolvedWageTypeToken === "wage" || strResolvedWageTypeToken === "wages") {
-    return true;
-  }
-  if (strResolvedWageTypeToken === "nonwage" || strResolvedWageTypeToken === "nonwages") {
-    return false;
-  }
   return Boolean(dicSalaryComponent?.blnIsWages);
 }
 
@@ -940,7 +926,7 @@ export default function SalaryStructureEditorPage({
           }
           if (dicComponent?.blnIncludedInCtc !== false) {
             dicFormulaAggregates.ctcAnnual += fltResolvedAmount * 12;
-            if (isWageComponent({ strWageType: dicComponent?.strWageType, intSalaryComponentID }, dicComponentByID)) {
+            if (isWageComponent({ intSalaryComponentID }, dicComponentByID)) {
               dicFormulaAggregates.wageMonthly += fltResolvedAmount;
             } else {
               dicFormulaAggregates.nonWageMonthly += fltResolvedAmount;
@@ -1074,7 +1060,6 @@ export default function SalaryStructureEditorPage({
             intComponentCategorySnapshotID: dicComponent?.intComponentCategoryID ?? "",
             intCtcTreatmentSnapshotID: dicComponent?.intCtcTreatmentID ?? "",
             intTaxTreatmentSnapshotID: dicComponent?.intTaxTreatmentID ?? "",
-            intWageTypeSnapshotID: dicComponent?.intWageTypeID ?? "",
             intPayslipSectionSnapshotID: dicComponent?.intPayslipSectionID ?? "",
             intReimbursementTypeSnapshotID: dicComponent?.intReimbursementTypeID ?? "",
             intSettlementModeSnapshotID: dicComponent?.intSettlementModeID ?? "",
