@@ -5,6 +5,7 @@ import Switch, { type SwitchProps } from "@mui/material/Switch";
 
 type ActiveStatusSwitchInputProps = InputHTMLAttributes<HTMLInputElement> & {
   controlId?: string;
+  "data-control-id"?: string;
   "data-controlid"?: string;
 };
 
@@ -32,7 +33,8 @@ export default function ActiveStatusSwitch({
   const objResolvedInputProps = {
     ...objInputProps,
     controlId: typeof objInputProps.controlId === "string" ? objInputProps.controlId : controlId,
-    "data-controlid": objInputProps["data-controlid"] ?? testId ?? objInputProps.controlId ?? controlId,
+    "data-control-id": objInputProps["data-control-id"] ?? testId ?? objInputProps.controlId ?? controlId,
+    "data-controlid": objInputProps["data-controlid"] ?? objInputProps["data-control-id"] ?? testId ?? objInputProps.controlId ?? controlId,
     "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;
 

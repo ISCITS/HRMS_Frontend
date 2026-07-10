@@ -169,7 +169,7 @@ export default function UserGroupMasterDialog({
       open={blnOpen}
       onClose={blnSaving ? undefined : onClose}
       onKeyDown={handleSingleDialogActionEnter}
-      controlId="security.user-group.dialog"
+      data-control-id="security.user-group.dialog"
       fullWidth
       maxWidth="md"
       PaperProps={{
@@ -191,11 +191,11 @@ export default function UserGroupMasterDialog({
       <Tabs
         value={intActiveTab}
         onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
-        controlId="security.user-group.dialog.tabs"
+        data-control-id="security.user-group.dialog.tabs"
         sx={{ px: 1.5, borderBottom: "1px solid #e2e8f0", minHeight: 54 }}
       >
-        <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} controlId="security.user-group.dialog.basic-details.tab" />
-        <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} controlId="security.user-group.dialog.rights.tab" />
+        <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} data-control-id="security.user-group.dialog.basic-details.tab" />
+        <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} data-control-id="security.user-group.dialog.rights.tab" />
       </Tabs>
 
       <DialogContent sx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -214,7 +214,11 @@ export default function UserGroupMasterDialog({
                 onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
                 disabled={blnReadOnly}
                 required
-                controlId="security.user-group.dialog.group-code.input"
+                slotProps={{
+                  htmlInput: {
+                    "data-control-id": "security.user-group.dialog.group-code.input",
+                  },
+                }}
               />
               <TextField
                 label={dicLabels.fieldGroupName}
@@ -222,7 +226,11 @@ export default function UserGroupMasterDialog({
                 onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
                 disabled={blnReadOnly}
                 required
-                controlId="security.user-group.dialog.group-name.input"
+                slotProps={{
+                  htmlInput: {
+                    "data-control-id": "security.user-group.dialog.group-name.input",
+                  },
+                }}
               />
             </Box>
 
@@ -233,7 +241,11 @@ export default function UserGroupMasterDialog({
               disabled={blnReadOnly}
               multiline
               minRows={3}
-              controlId="security.user-group.dialog.group-description.input"
+              slotProps={{
+                htmlInput: {
+                  "data-control-id": "security.user-group.dialog.group-description.input",
+                },
+              }}
             />
 
             <TextField
@@ -242,7 +254,11 @@ export default function UserGroupMasterDialog({
               value={objForm.intCompanyID == null ? "tenant" : "company"}
               onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
               disabled={blnReadOnly || intCurrentCompanyID == null}
-              controlId="security.user-group.dialog.group-scope.select"
+              SelectProps={{
+                SelectDisplayProps: {
+                  "data-control-id": "security.user-group.dialog.group-scope.select",
+                },
+              }}
               helperText={
                 intCurrentCompanyID == null
                   ? dicLabels.scopeNoCompany
@@ -251,8 +267,8 @@ export default function UserGroupMasterDialog({
                     : dicLabels.scopeCompanyScoped.replace("{companyId}", String(objForm.intCompanyID))
               }
             >
-              <MenuItem value="tenant">{dicLabels.scopeTenantOption}</MenuItem>
-              <MenuItem value="company">{dicLabels.scopeCompanyOption}</MenuItem>
+              <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
+              <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
             </TextField>
 
             <Box
@@ -277,6 +293,7 @@ export default function UserGroupMasterDialog({
                 blnIsActive={objForm.blnIsActive}
                 onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
                 disabled={blnReadOnly}
+                controlId="security.user-group.dialog.is-active.switch"
                 testId="security.user-group.dialog.is-active.switch"
               />
             </Box>
@@ -323,7 +340,7 @@ export default function UserGroupMasterDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 2.5, py: 2, borderTop: "1px solid #e2e8f0", gap: 1 }}>
-        <Button variant="outlined" onClick={onClose} disabled={blnSaving} controlId="security.user-group.dialog.cancel.button" sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700 }}>
+        <Button variant="outlined" onClick={onClose} disabled={blnSaving} data-control-id="security.user-group.dialog.cancel.button" sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700 }}>
           {blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
         </Button>
         {!blnReadOnly ? (
@@ -331,7 +348,7 @@ export default function UserGroupMasterDialog({
             variant="contained"
             onClick={() => onSave(serializeRights(lstRightsNodes))}
             disabled={blnSaving || blnMetadataLoading}
-            controlId="security.user-group.dialog.save.button"
+            data-control-id="security.user-group.dialog.save.button"
             sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, px: 2.5 }}
           >
             {strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}

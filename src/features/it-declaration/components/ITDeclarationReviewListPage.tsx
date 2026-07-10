@@ -168,23 +168,32 @@ export default function ITDeclarationReviewListPage() {
 
       <Box sx={{ borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", overflow: "hidden" }}>
         <Box sx={{ p: 1.1, background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1, flexWrap: "wrap" }}>
-            <Box>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 1,
+              alignItems: { xs: "flex-start", lg: "center" },
+              gridTemplateColumns: {
+                xs: "1fr",
+                lg: "minmax(280px, 320px) minmax(0, 1fr)",
+              },
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem", lineHeight: 1.2 }}>IT Declaration Review</Typography>
               <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>All declaration records load by default. Use filters only when you want to narrow the queue.</Typography>
             </Box>
             <Box
               sx={{
                 display: "grid",
-                gap: 0.8,
+                gap: 0.7,
                 width: "100%",
-                maxWidth: { xs: "100%", md: 760 },
                 gridTemplateColumns: {
                   xs: "repeat(2, minmax(0, 1fr))",
                   sm: "repeat(3, minmax(0, 1fr))",
-                  lg: "repeat(4, minmax(0, 1fr))",
+                  md: "repeat(4, minmax(0, 1fr))",
+                  lg: "repeat(7, minmax(0, 1fr))",
                 },
-                justifyContent: { xs: "stretch", md: "flex-end" },
               }}
             >
             {lstSummary.map(([strLabel, intCount]) => (
@@ -193,17 +202,17 @@ export default function ITDeclarationReviewListPage() {
                 sx={{
                   border: "1px solid rgba(255,255,255,0.45)",
                   borderRadius: "8px",
-                  px: 1,
-                  py: 0.75,
-                  minHeight: 62,
+                  px: 0.9,
+                  py: 0.55,
+                  minHeight: { xs: 56, lg: 48 },
                   backgroundColor: "rgba(8,47,73,0.28)",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
                 }}
               >
-                <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{strLabel}</Typography>
-                <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{intCount}</Typography>
+                <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: { xs: "0.72rem", lg: "0.68rem" }, lineHeight: 1.05, whiteSpace: "nowrap" }}>{strLabel}</Typography>
+                <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: { xs: "0.9rem", lg: "0.86rem" }, lineHeight: 1.15, mt: 0.2 }}>{intCount}</Typography>
               </Box>
             ))}
             </Box>
@@ -213,14 +222,14 @@ export default function ITDeclarationReviewListPage() {
 
       <Box className={styles.controlsCard} sx={{ mt: 0, mb: 0 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-          <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" />
-          <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" />
-          <TextField select size="small" label="Tax Regime" value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select">
+          <TextField size="small" label="Financial Year" value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" inputProps={{ controlId: "it-declaration.review-list.financial-year.input" }} />
+          <TextField size="small" label="Employee Code/Name" value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" inputProps={{ controlId: "it-declaration.review-list.employee.input" }} />
+          <TextField select size="small" label="Tax Regime" value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select" inputProps={{ controlId: "it-declaration.review-list.tax-regime.select" }}>
             <MenuItem value="">All</MenuItem>
             <MenuItem value="old">Old</MenuItem>
             <MenuItem value="new">New</MenuItem>
           </TextField>
-          <TextField select size="small" label="Status" value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select">
+          <TextField select size="small" label="Status" value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select" inputProps={{ controlId: "it-declaration.review-list.status.select" }}>
             <MenuItem value="">All</MenuItem>
             <MenuItem value="submitted">Submitted</MenuItem>
             <MenuItem value="under_review">Under Review</MenuItem>
@@ -268,6 +277,7 @@ export default function ITDeclarationReviewListPage() {
                   }}
                   className={styles.rowsPerPageSelect}
                   controlId="it-declaration.review-list.rows-per-page.select"
+                  inputProps={{ controlId: "it-declaration.review-list.rows-per-page.select" }}
                 >
                   {lstRowsPerPageOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)}>

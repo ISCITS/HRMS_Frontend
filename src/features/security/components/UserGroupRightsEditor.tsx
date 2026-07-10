@@ -259,6 +259,9 @@ function renderActionRow(
           disabled={blnReadOnly}
           onChange={(objEvent) => fnToggleAllowed(objNode.intMenuID, objAction.intActionID, objEvent.target.checked)}
           size="small"
+          inputProps={{
+            "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.action.${objAction.intActionID}.switch`,
+          }}
           sx={{ ml: 1 }}
         />
       </Box>
@@ -298,6 +301,7 @@ function renderNodeRows(
             variant="text"
             onClick={() => fnToggleExpand(objNode.intMenuID)}
             startIcon={blnExpanded ? <ExpandMoreRoundedIcon /> : <ChevronRightRoundedIcon />}
+            data-control-id={`security.user-group.dialog.rights.menu.${objNode.intMenuID}.expand.button`}
             sx={{
               minWidth: 0,
               px: 0.25,
@@ -318,6 +322,9 @@ function renderNodeRows(
             disabled={blnReadOnly}
             onChange={(objEvent) => fnToggleNodeAllowed(objNode.intMenuID, objEvent.target.checked)}
             size="small"
+            inputProps={{
+              "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.switch`,
+            }}
           />
         </Box>
       </Box>
@@ -429,10 +436,14 @@ export default function UserGroupRightsEditor({
         }}
       >
         <TextField
-          controlId="security.user-group-rights-editor.search.input"
           placeholder={dicLabels.searchPlaceholder}
           value={strSearch}
           onChange={(objEvent) => setStrSearch(objEvent.target.value)}
+          slotProps={{
+            htmlInput: {
+              "data-control-id": "security.user-group-rights-editor.search.input",
+            },
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -442,7 +453,7 @@ export default function UserGroupRightsEditor({
           }}
         />
         <Button
-          controlId="security.user-group-rights-editor.expand-all.button"
+          data-control-id="security.user-group-rights-editor.expand-all.button"
           variant="outlined"
           startIcon={<ExpandMoreRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set(collectMenuIDs(lstNodes)))}
@@ -451,7 +462,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.expandAll}
         </Button>
         <Button
-          controlId="security.user-group-rights-editor.collapse-all.button"
+          data-control-id="security.user-group-rights-editor.collapse-all.button"
           variant="outlined"
           startIcon={<ExpandLessRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set())}
@@ -460,7 +471,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.collapseAll}
         </Button>
         <Button
-          controlId="security.user-group-rights-editor.reset.button"
+          data-control-id="security.user-group-rights-editor.reset.button"
           variant="outlined"
           startIcon={<RestartAltRoundedIcon />}
           disabled={blnReadOnly}
