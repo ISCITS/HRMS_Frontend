@@ -4,6 +4,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
+import type { PayrollRunOption } from "@/features/payroll/types";
 
 export type PayrollReimbursementFilters = {
   strStatus: string;
@@ -103,6 +104,15 @@ export const payrollReimbursementService = {
       strMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
     });
     return objResult.Data;
+  },
+
+  async listEligiblePayrollRuns(intClaimID: number): Promise<PayrollRunOption[]> {
+    const objResult = await requestApi<PayrollRunOption[]>({
+      strPath: `/payroll/reimbursements/${intClaimID}/payroll-runs`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
+    });
+    return objResult.Data ?? [];
   },
 
   async startReview(intClaimID: number): Promise<ReimbursementClaimDto> {
