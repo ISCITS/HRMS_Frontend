@@ -532,19 +532,32 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }
         setStrBootstrapError("");
         const intResolvedLanguageID = authHelpers.getLanguageID();
-        await Promise.all([
-          labelService.preloadAllLabels(intResolvedLanguageID),
+        const lstBootstrapResults = await Promise.allSettled([
+          // Older backend images do not expose the optional bulk label endpoint.
+          // Keep shell bootstrap resilient and let per-module label loading fall back.
+          labelService.preloadAllLabels(intResolvedLanguageID).catch(() => undefined),
           ensureMenuLoaded(intResolvedLanguageID, true)
         ]);
+
+        const objRejectedBootstrapStep = lstBootstrapResults.find(
+          (objResult) => objResult.status === "rejected"
+        );
+
+        if (objRejectedBootstrapStep?.status === "rejected") {
+          const objReason = objRejectedBootstrapStep.reason;
+          if (isSessionExpiredError(objReason)) {
+            throw objReason;
+          }
+          console.error("App shell bootstrap step failed.", objReason);
+        }
       })
       .catch((objError: unknown) => {
         if (blnMounted) {
           if (isSessionExpiredError(objError)) {
             redirectToSessionExpired();
           } else {
-            setStrBootstrapError(
-              objError instanceof Error ? objError.message : "Unable to prepare your workspace."
-            );
+            console.error("App shell bootstrap failed.", objError);
+            setStrBootstrapError("");
           }
         }
       })

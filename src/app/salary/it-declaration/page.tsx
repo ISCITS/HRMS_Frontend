@@ -5,6 +5,8 @@ import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRou
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
@@ -49,6 +51,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
@@ -156,6 +159,15 @@ function resolveRowStatus(objRow: DeclarationRow) {
   if (objRow.decDeclaredAmount > 0) return "Completed" as const;
   if (objRow.strInvestmentName.trim()) return "In Progress" as const;
   return "Not Started" as const;
+}
+
+function base64ToObjectUrl(strBase64: string, strMimeType: string): string {
+  const strBinary = atob(strBase64);
+  const bytArray = new Uint8Array(strBinary.length);
+  for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
+    bytArray[intIndex] = strBinary.charCodeAt(intIndex);
+  }
+  return URL.createObjectURL(new Blob([bytArray], { type: strMimeType || "application/octet-stream" }));
 }
 
 function parseMaxLimit(objMaxLimit: unknown) {
@@ -474,9 +486,14 @@ export default function SalaryEssDeclarationsPage() {
     decGrossSalary: 0,
     decExemptions: 0,
     decTaxableIncome: 0,
+    decTaxableIncomeOld: 0,
+    decTaxableIncomeNew: 0,
     decOldTax: 0,
     decNewTax: 0,
     decSavings: 0,
+    blnSelectedRegimePayrollAligned: false,
+    strSelectedRegimeTaxBasis: "declared",
+    strSummaryNote: "",
     strRecommendedRegime: "Old Regime" as Regime,
   });
   const [objRegimeConfig, setObjRegimeConfig] = useState({
@@ -492,12 +509,19 @@ export default function SalaryEssDeclarationsPage() {
   };
 
   const getStatusLabel = (strStatus: string) => {
-    if (strStatus === "Submitted") return t("submitted", "Submitted");
-    if (strStatus === "Draft") return t("draft", "Draft");
-    if (strStatus === "Completed") return t("completed", "Completed");
-    if (strStatus === "Proof Pending") return t("proof_pending", "Proof Pending");
-    if (strStatus === "In Progress") return t("in_progress", "In Progress");
-    if (strStatus === "Not Started") return t("not_started", "Not Started");
+    const strNormalized = String(strStatus || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (strNormalized === "submitted") return t("submitted", "Submitted");
+    if (strNormalized === "draft") return t("draft", "Draft");
+    if (strNormalized === "released") return t("released", "Released");
+    if (strNormalized === "completed") return t("completed", "Completed");
+    if (strNormalized === "proof_pending") return t("proof_pending", "Proof Pending");
+    if (strNormalized === "in_progress") return t("in_progress", "In Progress");
+    if (strNormalized === "not_started") return t("not_started", "Not Started");
+    if (strNormalized === "approved") return t("approved", "Approved");
+    if (strNormalized === "rejected") return t("rejected", "Rejected");
+    if (strNormalized === "resubmitted") return t("resubmitted", "Resubmitted");
+    if (strNormalized === "under_review") return t("under_review", "Under Review");
+    if (strNormalized === "locked") return t("locked", "Locked");
     return strStatus;
   };
 
@@ -520,8 +544,7 @@ export default function SalaryEssDeclarationsPage() {
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
   const blnHideActionButtons = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
-  const blnDraftLikeActionsAllowed = ["draft", "released", "rejected", "resubmitted"].includes(strDeclarationStatusNormalized);
-  const blnCopyAllowedBeforeCreateOnly = !intDeclarationID;
+  const blnDraftLikeActionsAllowed = ["draft", "released"].includes(strDeclarationStatusNormalized);
   const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
@@ -634,7 +657,8 @@ export default function SalaryEssDeclarationsPage() {
       const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
       const decSavingsAbs = Math.abs(decOld - decNew);
       const strRecommended = decOld === decNew ? "Either Regime" : decOld < decNew ? "Old Regime" : "New Regime";
-      const decTaxableOldFromSummary = Math.max(0, objTaxSummary.decTaxableIncome || 0);
+      const decTaxableOldFromSummary = Math.max(0, objTaxSummary.decTaxableIncomeOld ?? objTaxSummary.decTaxableIncome || 0);
+      const decTaxableNewFromSummary = Math.max(0, objTaxSummary.decTaxableIncomeNew ?? decGross);
       const decExemptionsFromTaxableDelta = Math.max(0, decGross - decTaxableOldFromSummary);
       const decExemptionsFromApi = Math.max(0, objTaxSummary.decExemptions || 0);
       const decEffectiveExemptions = decExemptionsFromApi > 0 ? decExemptionsFromApi : decExemptionsFromTaxableDelta;
@@ -644,7 +668,7 @@ export default function SalaryEssDeclarationsPage() {
         decGrossSalary: decGross,
         decExemptions: decEffectiveExemptions,
         decTaxableOld: decTaxableOldFromSummary,
-        decTaxableNew: Math.max(0, decGross),
+        decTaxableNew: decTaxableNewFromSummary,
         decOldTax: decOld,
         decNewTax: decNew,
         decSavings: decSavingsAbs,
@@ -768,9 +792,14 @@ export default function SalaryEssDeclarationsPage() {
       decGrossSalary: objData.objSummary?.decGrossSalary ?? 0,
       decExemptions: objData.objSummary?.decExemptions ?? 0,
       decTaxableIncome: objData.objSummary?.decTaxableIncome ?? 0,
+      decTaxableIncomeOld: objData.objSummary?.decTaxableIncomeOld ?? objData.objSummary?.decTaxableIncome ?? 0,
+      decTaxableIncomeNew: objData.objSummary?.decTaxableIncomeNew ?? objData.objSummary?.decGrossSalary ?? 0,
       decOldTax: objData.objSummary?.decOldTax ?? 0,
       decNewTax: objData.objSummary?.decNewTax ?? 0,
       decSavings: objData.objSummary?.decSavings ?? 0,
+      blnSelectedRegimePayrollAligned: Boolean(objData.objSummary?.blnSelectedRegimePayrollAligned),
+      strSelectedRegimeTaxBasis: objData.objSummary?.strSelectedRegimeTaxBasis ?? "declared",
+      strSummaryNote: objData.objSummary?.strSummaryNote ?? "",
       strRecommendedRegime: (objData.objSummary?.strRecommendedRegime ?? "Old Regime") as Regime,
     });
     if (blnSummaryFallback) {
@@ -897,6 +926,39 @@ export default function SalaryEssDeclarationsPage() {
       : itDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile);
   }
 
+  async function previewCurrentProof(intItemIDToPreview: number) {
+    if (!intDeclarationID) return;
+    try {
+      const objPreview = blnHrMode
+        ? await hrItDeclarationService.previewItemProof(intDeclarationID, intItemIDToPreview)
+        : await itDeclarationService.previewItemProof(intDeclarationID, intItemIDToPreview);
+      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
+      window.open(strUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
+    } catch (objError) {
+      setStrError(formatApiErrorForUi(objError, t("unable_view_proof", "Unable to view uploaded proof.")));
+    }
+  }
+
+  async function downloadCurrentProof(intItemIDToDownload: number, strFallbackFileName: string) {
+    if (!intDeclarationID) return;
+    try {
+      const objPreview = blnHrMode
+        ? await hrItDeclarationService.previewItemProof(intDeclarationID, intItemIDToDownload)
+        : await itDeclarationService.previewItemProof(intDeclarationID, intItemIDToDownload);
+      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strUrl;
+      objAnchor.download = objPreview.strFileName || strFallbackFileName;
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strUrl);
+    } catch (objError) {
+      setStrError(formatApiErrorForUi(objError, t("unable_download_proof", "Unable to download uploaded proof.")));
+    }
+  }
+
   async function listCurrentInvestmentOptions(strSection: string) {
     return blnHrMode
       ? hrItDeclarationService.listInvestmentOptions(strSection)
@@ -913,12 +975,6 @@ export default function SalaryEssDeclarationsPage() {
     return blnHrMode
       ? hrItDeclarationService.submitDeclaration(intResolvedDeclarationID)
       : itDeclarationService.submitDeclaration(intResolvedDeclarationID);
-  }
-
-  async function copyPreviousCurrentDeclaration(intResolvedDeclarationID: number) {
-    return blnHrMode
-      ? hrItDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID)
-      : itDeclarationService.copyPreviousDeclaration(intResolvedDeclarationID);
   }
 
   async function loadDeclaration() {
@@ -1239,7 +1295,6 @@ export default function SalaryEssDeclarationsPage() {
       const objData = await submitCurrentDeclaration(intResolvedDeclarationID);
       hydrateFromApi(objData);
       setBlnSubmitModalOpen(false);
-      setBlnDraftSaved(true);
       setStrSuccessToast(t("declaration_submitted_successfully", "Declaration submitted successfully."));
       if (blnHrMode) {
         objRouter.push(strBackPath);
@@ -1249,25 +1304,6 @@ export default function SalaryEssDeclarationsPage() {
     } finally {
       setBlnSaving(false);
       setStrSavingLabel(t("saving", "Saving..."));
-    }
-  }
-
-  async function copyPreviousFinancialYear() {
-    if (blnLocked) return;
-    setBlnSaving(true);
-    setStrSavingLabel(t("copying_previous_fy", "Copying previous FY..."));
-    setStrError("");
-    try {
-      const intResolvedDeclarationID = await persistDraftToDb();
-      if (!intResolvedDeclarationID) return;
-      const objData = await copyPreviousCurrentDeclaration(intResolvedDeclarationID);
-      hydrateFromApi(objData);
-      setStrSuccessToast(t("previous_fy_declaration_copied", "Previous FY declaration copied."));
-      setBlnCompared(false);
-    } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, t("unable_copy_previous_fy_declaration", "Unable to copy previous FY declaration.")));
-    } finally {
-      setBlnSaving(false);
     }
   }
 
@@ -1325,7 +1361,10 @@ export default function SalaryEssDeclarationsPage() {
             <Stack direction="row" spacing={0.9} alignItems="center" sx={{ mt: 0.1 }}>
               <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />
               <Box>
-                <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2, mb: 0.2 }}>{t("page_title", "Income Tax Declaration")}</Typography>
+                <Stack direction="row" spacing={0.7} alignItems="center" flexWrap="wrap" sx={{ mb: 0.2 }}>
+                  <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2 }}>{t("page_title", "Income Tax Declaration")}</Typography>
+                  <ITDeclarationStatusBadge strStatus={strDeclarationStatus || "draft"} strLabel={getStatusLabel(strDeclarationStatus || "draft")} />
+                </Stack>
                 <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem", lineHeight: 1.2 }}>{t("financial_year", "Financial Year")} {strFinancialYearCode}</Typography>
               </Box>
             </Stack>
@@ -1348,40 +1387,12 @@ export default function SalaryEssDeclarationsPage() {
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`${getRegimeLabel("Old Regime")}${objDerivedCalc.strRecommendedRegime === "Old Regime" ? ` (${t("recommended", "Recommended")})` : ""}`} />
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label={getRegimeLabel("New Regime")} />
               </RadioGroup>
-              {!blnHideActionButtons ? (
+              {!blnHideActionButtons && blnDraftLikeActionsAllowed ? (
                 <>
                   <Button controlId="salary.it-declaration.save-draft.button" variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
                     {t("save_draft", "Save Draft")}
                   </Button>
-                  {blnCopyAllowedBeforeCreateOnly && strFlowStatus === "NOT_STARTED" ? (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={blnLocked || blnSaving}
-                      onClick={() => void copyPreviousFinancialYear()}
-                      sx={{
-                        minHeight: 30,
-                        borderRadius: "8px",
-                        backgroundColor: "#1d4ed8",
-                        color: "#ffffff",
-                        fontWeight: 700,
-                        fontSize: "0.76rem",
-                        textTransform: "none",
-                        boxShadow: "none",
-                        "&:hover": { backgroundColor: "#1e40af" },
-                        "&.Mui-disabled": {
-                          backgroundColor: "rgba(148,163,184,0.35)",
-                          color: "rgba(226,232,240,0.92)",
-                          border: "1px dashed rgba(203,213,225,0.65)",
-                          cursor: "not-allowed",
-                          boxShadow: "none",
-                        },
-                      }}
-                    >
-                      {t("copy_previous_fy", "Copy Previous FY")}
-                    </Button>
-                  ) : null}
-<Button controlId="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+                  <Button controlId="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     {t("submit_declaration", "Submit Declaration")}
                   </Button>
                 </>
@@ -1471,7 +1482,7 @@ export default function SalaryEssDeclarationsPage() {
 
       <Grid container spacing={0.8}>
         <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard strLabel={t("declaration_status", "Declaration Status")} strValue={getStatusLabel(strFlowStatus === "SUBMITTED" ? "Submitted" : blnHasAnyFilled ? "Draft" : "Not Started")} strSubValue={`${t("last_updated", "Last updated")}: ${strLastUpdated}`} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
+          <SummaryCard strLabel={t("declaration_status", "Declaration Status")} strValue={getStatusLabel(strDeclarationStatus || "draft")} strSubValue={`${t("last_updated", "Last updated")}: ${strLastUpdated}`} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard strLabel={t("selected_regime", "Selected Regime")} strValue={getRegimeLabel(strSelectedRegime || "Old Regime")} strSubValue={objDerivedCalc.strRecommendedRegime === "Either Regime" ? t("either_regime_works", "Either regime works") : objDerivedCalc.strRecommendedRegime === "Old Regime" ? t("recommended", "Recommended") : ""} objIcon={<VerifiedUserOutlinedIcon sx={{ fontSize: 18 }} />} />
@@ -1536,6 +1547,11 @@ export default function SalaryEssDeclarationsPage() {
               <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_old", "Estimated Tax (Old)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(objDerivedCalc.decOldTax)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_new", "Estimated Tax (New)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(objDerivedCalc.decNewTax)}</Typography></Stack>
+              {objTaxSummary.blnSelectedRegimePayrollAligned && objTaxSummary.strSummaryNote ? (
+                <Typography sx={{ fontSize: "0.73rem", color: "#166534", fontWeight: 700 }}>
+                  {objTaxSummary.strSummaryNote}
+                </Typography>
+              ) : null}
               {objDerivedCalc.blnPreviewOnly ? <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>{t("estimated_preview_only", "Estimated preview only")}</Typography> : null}
               {objDerivedCalc.blnPreviewOnly && objDerivedCalc.blnRuleBasedFallback ? <Typography sx={{ fontSize: "0.73rem", color: "#94a3b8" }}>{t("rule_based_calculation_required", "Some sections require backend rule-based calculation.")}</Typography> : null}
             </Stack>
@@ -1699,6 +1715,28 @@ export default function SalaryEssDeclarationsPage() {
                               <DeleteOutlineRoundedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
+                        ) : null}
+                        {objEntry.objProof && objEntry.intItemID ? (
+                          <>
+                            <Tooltip title={t("view", "View")}>
+                              <IconButton
+                                size="small"
+                                sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
+                                onClick={() => void previewCurrentProof(objEntry.intItemID as number)}
+                              >
+                                <VisibilityRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={t("download", "Download")}>
+                              <IconButton
+                                size="small"
+                                sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
+                                onClick={() => void downloadCurrentProof(objEntry.intItemID as number, objEntry.objProof?.strFileName || "proof")}
+                              >
+                                <DownloadRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </>
                         ) : null}
                       </Stack>
                       <Typography

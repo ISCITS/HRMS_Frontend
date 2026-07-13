@@ -66,10 +66,15 @@ export type ItDeclarationSummaryDto = {
   decGrossSalary: number;
   decExemptions: number;
   decTaxableIncome: number;
+  decTaxableIncomeOld?: number;
+  decTaxableIncomeNew?: number;
   decOldTax: number;
   decNewTax: number;
   decSavings: number;
   blnSummaryFallback?: boolean;
+  blnSelectedRegimePayrollAligned?: boolean;
+  strSelectedRegimeTaxBasis?: "declared" | "approved" | string;
+  strSummaryNote?: string;
   strSummaryWarning?: string;
   strRecommendedRegime: ItDeclarationRegime;
 };

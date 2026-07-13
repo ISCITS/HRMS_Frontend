@@ -88,6 +88,7 @@ export default function ITDeclarationReviewListPage() {
   const [objSummary, setObjSummary] = useState<Record<string, number>>({});
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const [blnDismissNoPermission, setBlnDismissNoPermission] = useState(false);
   const [dicFiltersDraft, setDicFiltersDraft] = useState<ItDeclarationFilters>(dicEmptyFilters);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
@@ -195,8 +196,8 @@ export default function ITDeclarationReviewListPage() {
 
   return (
     <Stack spacing={0.8} className={styles.page}>
-      {!blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_REVIEW_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {!blnCanView && !blnDismissNoPermission ? <Alert severity="warning" onClose={() => setBlnDismissNoPermission(true)}>{t("IT_DECLARATION_REVIEW_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
+      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
       <Box sx={{ borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", overflow: "hidden" }}>
         <Box sx={{ p: 1.1, background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
