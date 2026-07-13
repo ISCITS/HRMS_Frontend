@@ -65,6 +65,7 @@ type DeclarationRow = {
   strSection: string;
   strCategory?: string;
   strDescription: string;
+  strApplicableRegime?: "old" | "new" | "both";
   strMaxLimitDisplay: string;
   decMaxEligibleAmount?: number | null;
   strMaxLimitAppliedAt?: MaxLimitAppliedAt;
@@ -195,6 +196,26 @@ function resolveMaxLimitAmount(objRecord: Record<string, unknown>) {
 function normalizeMaxLimitAppliedAt(objValue: unknown): MaxLimitAppliedAt {
   const strValue = String(objValue || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
   return strValue === "APPROVAL_LEVEL" ? "APPROVAL_LEVEL" : "ENTRY_LEVEL";
+}
+
+function normalizeApplicableRegime(objValue: unknown): "old" | "new" | "both" {
+  const strValue = String(objValue || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (strValue === "new" || strValue === "new_regime") return "new";
+  if (strValue === "old" || strValue === "old_regime") return "old";
+  if (strValue === "all" || strValue === "both" || strValue === "both_regimes") return "both";
+  return "old";
+}
+
+function resolveRegimeBucket(strRegime: Regime | ""): "old" | "new" {
+  return strRegime === "New Regime" ? "new" : "old";
+}
+
+function filterMasterRowsByRegime(lstMasterRows: DeclarationRow[], strRegime: Regime | "") {
+  const strBucket = resolveRegimeBucket(strRegime);
+  return lstMasterRows.filter((objRow) => {
+    const strApplicableRegime = normalizeApplicableRegime(objRow.strApplicableRegime);
+    return strApplicableRegime === "both" || strApplicableRegime === strBucket;
+  });
 }
 
 function resolveBooleanFlag(objValue: unknown, blnDefault = false) {
@@ -447,6 +468,7 @@ export default function SalaryEssDeclarationsPage() {
   const [strDeclarationStatus, setStrDeclarationStatus] = useState<ItDeclarationDto["strDeclarationStatus"]>("draft");
   const [strSelectedRegime, setStrSelectedRegime] = useState<Regime | "">("");
   const [lstRows, setLstRows] = useState<DeclarationRow[]>([]);
+  const [lstMasterRows, setLstMasterRows] = useState<DeclarationRow[]>([]);
   const [strLastUpdated, setStrLastUpdated] = useState(getDateLabel());
   const [blnDraftSaved, setBlnDraftSaved] = useState(false);
   const [strSuccessToast, setStrSuccessToast] = useState("");
@@ -545,7 +567,11 @@ export default function SalaryEssDeclarationsPage() {
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
   const blnHideActionButtons = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
   const blnDraftLikeActionsAllowed = ["draft", "released"].includes(strDeclarationStatusNormalized);
-  const blnRegimeSwitchDisabled = blnLocked || !objRegimeConfig.blnAllowEmployeeOptOut;
+  const blnRegimeSwitchDisabled =
+    blnLocked ||
+    blnHideActionButtons ||
+    !blnDraftLikeActionsAllowed ||
+    !objRegimeConfig.blnAllowEmployeeOptOut;
   const blnStarted = strFlowStatus !== "NOT_STARTED";
   const blnDraftStatus = !blnLocked && (strFlowStatus === "REGIME_SELECTED" || strFlowStatus === "IN_PROGRESS");
   const blnHasAnyFilled = useMemo(() => lstRows.some((objRow) => objRow.decDeclaredAmount > 0), [lstRows]);
@@ -657,7 +683,7 @@ export default function SalaryEssDeclarationsPage() {
       const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
       const decSavingsAbs = Math.abs(decOld - decNew);
       const strRecommended = decOld === decNew ? "Either Regime" : decOld < decNew ? "Old Regime" : "New Regime";
-      const decTaxableOldFromSummary = Math.max(0, objTaxSummary.decTaxableIncomeOld ?? objTaxSummary.decTaxableIncome || 0);
+      const decTaxableOldFromSummary = Math.max(0, objTaxSummary.decTaxableIncomeOld ?? (objTaxSummary.decTaxableIncome || 0));
       const decTaxableNewFromSummary = Math.max(0, objTaxSummary.decTaxableIncomeNew ?? decGross);
       const decExemptionsFromTaxableDelta = Math.max(0, decGross - decTaxableOldFromSummary);
       const decExemptionsFromApi = Math.max(0, objTaxSummary.decExemptions || 0);
@@ -830,6 +856,11 @@ export default function SalaryEssDeclarationsPage() {
       strSection: (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
       strCategory,
       strDescription,
+      strApplicableRegime: normalizeApplicableRegime(
+        objCategory.strApplicableRegime ??
+        objCategoryRecord.applicableRegime ??
+        objCategoryRecord.applicable_regime
+      ),
       strMaxLimitDisplay,
       decMaxEligibleAmount: decMaxLimitAmount,
       strMaxLimitAppliedAt: normalizeMaxLimitAppliedAt(objCategory.strMaxLimitAppliedAt ?? objCategoryRecord.strMaximumLimitAppliedAt ?? objCategoryRecord.max_limit_applied_at ?? objCategoryRecord.maximum_limit_applied_at),
@@ -876,6 +907,11 @@ export default function SalaryEssDeclarationsPage() {
       throw objLastError;
     }
     return [];
+  }
+
+  function applyRegimeRows(strNextRegime: Regime, lstMasterRuleRows = lstMasterRows) {
+    const lstVisibleMasterRows = filterMasterRowsByRegime(lstMasterRuleRows, strNextRegime);
+    setLstRows((lstCurrentRows) => applyActiveMasterRules(lstCurrentRows, lstVisibleMasterRows));
   }
 
   async function getCurrentDeclaration(intPreferredDeclarationID?: number | null) {
@@ -985,11 +1021,16 @@ export default function SalaryEssDeclarationsPage() {
     try {
       const objData = strRouteRegime ? await startCurrentDeclaration(strInitialRegime) : await getCurrentDeclaration();
       hydrateFromApi(objData);
-      const lstMasterRows = await loadRowsFromCategoryMaster().catch(() => []);
+      const lstMasterRowsLoaded = await loadRowsFromCategoryMaster().catch(() => []);
+      setLstMasterRows(lstMasterRowsLoaded);
+      const lstVisibleMasterRows = filterMasterRowsByRegime(
+        lstMasterRowsLoaded,
+        (objData.strSelectedRegime || strInitialRegime || "Old Regime") as Regime
+      );
       if (!objData.lstItems?.length) {
-        setLstRows(lstMasterRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) })));
-      } else if (lstMasterRows.length > 0) {
-        setLstRows((lstCurrentRows) => applyActiveMasterRules(lstCurrentRows, lstMasterRows));
+        setLstRows(lstVisibleMasterRows.map((objRow) => ({ ...objRow, strStatus: resolveRowStatus(objRow) })));
+      } else if (lstVisibleMasterRows.length > 0) {
+        setLstRows((lstCurrentRows) => applyActiveMasterRules(lstCurrentRows, lstVisibleMasterRows));
       }
       if (blnRouteCompare) {
         setBlnCompareModalOpen(true);
@@ -999,7 +1040,8 @@ export default function SalaryEssDeclarationsPage() {
       const blnItDeclarationRouteMissing = objError instanceof ApiRequestError && objError.intStatusCode === 404;
       try {
         const lstMasterRows = await loadRowsFromCategoryMaster();
-        setLstRows(lstMasterRows);
+        setLstMasterRows(lstMasterRows);
+        setLstRows(filterMasterRowsByRegime(lstMasterRows, strSelectedRegime || strInitialRegime || "Old Regime"));
         setBlnSummaryFromApi(false);
         if (lstMasterRows.length > 0) {
           setStrWarning(
@@ -1044,6 +1086,11 @@ export default function SalaryEssDeclarationsPage() {
     if (!(blnRegimeDirty || Object.keys(dicDirtyRows).length > 0)) return;
     setBlnDismissUnsavedAlert(false);
   }, [blnRegimeDirty, dicDirtyRows]);
+
+  useEffect(() => {
+    if (!blnRegimeDirty || !strSelectedRegime || lstMasterRows.length === 0) return;
+    applyRegimeRows(strSelectedRegime, lstMasterRows);
+  }, [blnRegimeDirty, strSelectedRegime, lstMasterRows]);
 
   useEffect(() => {
     if (!strWarning) return;

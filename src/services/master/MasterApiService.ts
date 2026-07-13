@@ -160,6 +160,7 @@ export type EssDeclarationCategoryApiRecord = {
   strCategoryName: string;
   strCategoryDescription?: string | null;
   strDeclarationKind: string;
+  strApplicableRegime?: "old" | "new" | "both" | string | null;
   intLinkedSalaryComponentID: number | null;
   strLinkedSalaryComponentName?: string | null;
   decMaxLimitAmount: number | null;
@@ -1456,6 +1457,7 @@ export const masterApiService = {
     strCategoryName: string;
     strCategoryDescription: string | null;
     strDeclarationKind: string;
+    strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
     strMaxLimitAppliedAt?: string;
@@ -1475,6 +1477,7 @@ export const masterApiService = {
     strCategoryName: string;
     strCategoryDescription: string | null;
     strDeclarationKind: string;
+    strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
     strMaxLimitAppliedAt?: string;

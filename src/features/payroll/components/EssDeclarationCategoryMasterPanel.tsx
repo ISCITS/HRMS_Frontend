@@ -5,7 +5,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, MenuItem, Pagination, Paper, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, MenuItem, Pagination, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,6 +23,7 @@ import { EssDeclarationCategoryApiRecord, masterApiService, SalaryComponentApiRe
 type CategoryStatus = "Active" | "Inactive";
 type CategoryMode = "add" | "edit" | "view";
 type MaxLimitAppliedAt = "ENTRY_LEVEL" | "APPROVAL_LEVEL";
+type ApplicableRegime = "old" | "new" | "both";
 
 type EssDeclarationCategoryRecord = {
   id: string;
@@ -30,6 +31,7 @@ type EssDeclarationCategoryRecord = {
   name: string;
   description: string;
   declarationKind: string;
+  applicableRegime: ApplicableRegime;
   linkedSalaryComponentId: number | null;
   linkedSalaryComponentName: string;
   maxLimitAmount: number | null;
@@ -43,6 +45,7 @@ type EssDeclarationCategoryForm = {
   name: string;
   description: string;
   declarationKind: string;
+  applicableRegime: ApplicableRegime;
   linkedSalaryComponentId: number | "";
   maxLimitAmount: string;
   maxLimitAppliedAt: MaxLimitAppliedAt;
@@ -74,6 +77,7 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
   name: "",
   description: "",
   declarationKind: "",
+  applicableRegime: "both",
   linkedSalaryComponentId: "",
   maxLimitAmount: "",
   maxLimitAppliedAt: "ENTRY_LEVEL",
@@ -93,6 +97,11 @@ const lstMaxLimitAppliedAtOptions: Array<{ strValue: MaxLimitAppliedAt; strLabel
   { strValue: "ENTRY_LEVEL", strLabel: "Entry Level" },
   { strValue: "APPROVAL_LEVEL", strLabel: "Approval Level" },
 ];
+const lstApplicableRegimeOptions: Array<{ strValue: ApplicableRegime; strLabel: string }> = [
+  { strValue: "old", strLabel: "Old Regime" },
+  { strValue: "new", strLabel: "New Regime" },
+  { strValue: "both", strLabel: "Both Regimes" },
+];
 
 type EssDeclarationCategoryMasterPanelProps = {
   strEntityLabel?: string;
@@ -105,6 +114,12 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
   const strCategoryName = objRecord.strCategoryName ?? objRecord.strName ?? objRecord.category_name;
   const strCategoryDescription = objRecord.strCategoryDescription ?? objRecord.strDescription ?? objRecord.category_description;
   const strDeclarationKind = objRecord.strDeclarationKind ?? objRecord.strKind ?? objRecord.declaration_kind;
+  const strApplicableRegime =
+    objRecord.strApplicableRegime
+    ?? objRecord.applicableRegime
+    ?? objRecord.applicable_regime
+    ?? objRecord.str_applicable_regime
+    ?? objRecord.regime;
   const intLinkedSalaryComponentID = objRecord.intLinkedSalaryComponentID ?? objRecord.intSalaryComponentID ?? objRecord.linked_salary_component_id;
   const strLinkedSalaryComponentName = objRecord.strLinkedSalaryComponentName ?? objRecord.strSalaryComponentName ?? objRecord.linked_salary_component_name;
   const decMaxLimitAmount = objRecord.decMaxLimitAmount ?? objRecord.decMaxLimit ?? objRecord.max_limit_amount;
@@ -125,6 +140,7 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
     name: String(strCategoryName ?? ""),
     description: String(strCategoryDescription ?? ""),
     declarationKind: String(strDeclarationKind ?? ""),
+    applicableRegime: normalizeApplicableRegime(strApplicableRegime),
     linkedSalaryComponentId: Number.isFinite(intLinkedSalaryComponentIDResolved) ? intLinkedSalaryComponentIDResolved : null,
     linkedSalaryComponentName: String(strLinkedSalaryComponentName ?? ""),
     maxLimitAmount: Number.isFinite(decMaxLimitResolved) ? decMaxLimitResolved : null,
@@ -132,6 +148,20 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
     proofRequired: Boolean(blnProofRequired),
     status: Boolean(blnIsActive) ? "Active" : "Inactive",
   };
+}
+
+function normalizeApplicableRegime(objValue: unknown): ApplicableRegime {
+  const strValue = String(objValue || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (strValue === "all" || strValue === "both" || strValue === "both_regimes") return "both";
+  if (strValue === "new" || strValue === "new_regime") return "new";
+  if (strValue === "old" || strValue === "old_regime") return "old";
+  return "both";
+}
+
+function formatApplicableRegime(strValue: ApplicableRegime) {
+  if (strValue === "new") return "New Regime";
+  if (strValue === "old") return "Old Regime";
+  return "Both Regimes";
 }
 
 function normalizeMaxLimitAppliedAt(objValue: unknown): MaxLimitAppliedAt {
@@ -189,11 +219,11 @@ function formatAmount(numValue: number | null) {
 }
 
 function downloadCsv(strFileName: string, lstRows: EssDeclarationCategoryRecord[]) {
-  const lstHeaders = ["Category Name", "Category Code", "Declaration Kind", "Linked Salary Component", "Max Limit Amount", "Maximum Limit Applied At", "Proof Required", "Status"];
+  const lstHeaders = ["Category Name", "Category Code", "Declaration Kind", "Applicable Regime", "Linked Salary Component", "Max Limit Amount", "Maximum Limit Applied At", "Proof Required", "Status"];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
-      [dicRow.name, dicRow.code, dicRow.declarationKind, dicRow.linkedSalaryComponentName, dicRow.maxLimitAmount == null ? "" : dicRow.maxLimitAmount, formatMaxLimitAppliedAt(dicRow.maxLimitAppliedAt), dicRow.proofRequired ? "Yes" : "No", dicRow.status]
+      [dicRow.name, dicRow.code, dicRow.declarationKind, formatApplicableRegime(dicRow.applicableRegime), dicRow.linkedSalaryComponentName, dicRow.maxLimitAmount == null ? "" : dicRow.maxLimitAmount, formatMaxLimitAppliedAt(dicRow.maxLimitAppliedAt), dicRow.proofRequired ? "Yes" : "No", dicRow.status]
         .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
         .join(","),
     ),
@@ -218,6 +248,7 @@ function exportPdf(strTitle: string, lstRows: EssDeclarationCategoryRecord[]) {
       <td>${dicRow.name}</td>
       <td>${dicRow.code}</td>
       <td>${dicRow.declarationKind}</td>
+      <td>${formatApplicableRegime(dicRow.applicableRegime)}</td>
       <td>${dicRow.linkedSalaryComponentName || "-"}</td>
       <td>${formatAmount(dicRow.maxLimitAmount)}</td>
       <td>${formatMaxLimitAppliedAt(dicRow.maxLimitAppliedAt)}</td>
@@ -246,6 +277,7 @@ function exportPdf(strTitle: string, lstRows: EssDeclarationCategoryRecord[]) {
               <th>Category Name</th>
               <th>Category Code</th>
               <th>Declaration Kind</th>
+              <th>Applicable Regime</th>
               <th>Linked Salary Component</th>
               <th>Max Limit Amount</th>
               <th>Maximum Limit Applied At</th>
@@ -348,6 +380,7 @@ export default function EssDeclarationCategoryMasterPanel({
     fieldCategoryCode: t("field_category_code", "Category Code"),
     fieldCategoryName: t("field_category_name", "Category Name"),
     fieldDeclarationKind: t("field_declaration_kind", "Declaration Kind"),
+    fieldApplicableRegime: t("field_applicable_regime", "Applicable Regime"),
     fieldDescription: t("field_description", "Description"),
     fieldIsActive: t("field_is_active", "Is Active"),
     fieldLinkedSalaryComponent: t("field_linked_salary_component", "Linked Salary Component"),
@@ -366,6 +399,7 @@ export default function EssDeclarationCategoryMasterPanel({
     tableCategoryCode: t("table_category_code", "Category Code"),
     tableCategoryName: t("table_category_name", "Category Name"),
     tableDeclarationKind: t("table_declaration_kind", "Declaration Kind"),
+    tableApplicableRegime: t("table_applicable_regime", "Applicable Regime"),
     tableLinkedSalaryComponent: t("table_linked_salary_component", "Linked Salary Component"),
     tableMaxLimitAmount: t("table_max_limit_amount", "Max Limit"),
     tableMaxLimitAppliedAt: t("table_max_limit_applied_at", "Maximum Limit Applied At"),
@@ -376,6 +410,7 @@ export default function EssDeclarationCategoryMasterPanel({
     validationCodeFormat: t("validation_code_format", "Category code must be 2-50 characters and contain only letters, numbers, spaces, hyphen, underscore, slash, ampersand, or period."),
     validationCodeRequired: t("validation_code_required", "Category code is required."),
     validationDeclarationKindRequired: t("validation_declaration_kind_required", "Declaration kind is required."),
+    validationApplicableRegimeRequired: t("validation_applicable_regime_required", "Applicable regime is required."),
     validationMaxLimitAmount: t("validation_max_limit_amount", "Max limit amount must be a valid amount greater than zero."),
     validationMaxLimitRequired: t("validation_max_limit_required", "Max limit amount is required."),
     validationNameDuplicate: t("validation_name_duplicate", "Category name already exists."),
@@ -399,62 +434,8 @@ export default function EssDeclarationCategoryMasterPanel({
     }
     setBlnLoading(true);
     try {
-      const lstActionFallbacks = [
-        "MASTER_ESS_DECLARATION_CATEGORY_LIST",
-        "MASTER_TAX_DECLARATION_COMPONENT_LIST",
-        "TAX_DECLARATION_COMPONENT_LIST",
-        "TAX_DECLARATION_COMPONENT_VIEW",
-        "ESS_IT_DECLARATION_VIEW",
-      ];
-      const lstEndpointAttempts: Array<{ strSource: "tax-declaration-components" | "ess-declaration-categories"; strMenuAction: string }> = [
-        ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "ess-declaration-categories" as const, strMenuAction })),
-        ...lstActionFallbacks.map((strMenuAction) => ({ strSource: "tax-declaration-components" as const, strMenuAction })),
-      ];
-      let lstRawRecords: unknown[] = [];
-      let strSource = "ess-declaration-categories";
-      const lstAttemptNotes: string[] = [];
-      let strLastAccessError = "";
-      let objLastError: unknown = null;
-      let blnAnySuccessfulCall = false;
-
-      for (const dicAttempt of lstEndpointAttempts) {
-        try {
-          const objResult = dicAttempt.strSource === "tax-declaration-components"
-            ? await masterApiService.getTaxDeclarationComponents(dicAttempt.strMenuAction)
-            : await masterApiService.getEssDeclarationCategoriesWithAction(dicAttempt.strMenuAction);
-          blnAnySuccessfulCall = true;
-          objLastError = null;
-          lstRawRecords = resolveCategoryRows(objResult.Data as unknown);
-          lstAttemptNotes.push(`${dicAttempt.strSource}:${dicAttempt.strMenuAction}:${lstRawRecords.length}`);
-          if (lstRawRecords.length > 0) {
-            strSource = `${dicAttempt.strSource} (${dicAttempt.strMenuAction})`;
-            break;
-          }
-        } catch (objError) {
-          const strMessage = objError instanceof Error ? objError.message : "request failed";
-          const strLowerMessage = strMessage.toLowerCase();
-          lstAttemptNotes.push(`${dicAttempt.strSource}:${dicAttempt.strMenuAction}:ERR`);
-          if (strLowerMessage.includes("access is not available")) {
-            strLastAccessError = strMessage;
-            continue;
-          }
-          // tax-declaration-components is optional in older backend builds.
-          if (dicAttempt.strSource === "tax-declaration-components" && strLowerMessage.includes("not found")) {
-            continue;
-          }
-          objLastError = objError;
-          continue;
-        }
-      }
-
-      if (lstRawRecords.length === 0) {
-        if (!blnAnySuccessfulCall && objLastError) {
-          throw objLastError;
-        }
-        if (!blnAnySuccessfulCall && strLastAccessError) {
-          throw new Error(strLastAccessError);
-        }
-      }
+      const objResult = await masterApiService.getEssDeclarationCategories();
+      const lstRawRecords = resolveCategoryRows(objResult.Data as unknown);
       const lstMappedRecords = lstRawRecords
         .map((objRecord, intIndex) => {
           const dicMapped = mapEssDeclarationCategoryRecord(objRecord as EssDeclarationCategoryApiRecord);
@@ -466,7 +447,7 @@ export default function EssDeclarationCategoryMasterPanel({
       setLstCategories(lstMappedRecords);
       setLstSelectedIds([]);
       setIntPage(1);
-      setStrLoadDiagnostics(`Loaded ${lstMappedRecords.length} row(s) from ${strSource}. Attempts: ${lstAttemptNotes.join(", ")}`);
+      setStrLoadDiagnostics(`Loaded ${lstMappedRecords.length} row(s) from ess-declaration-categories.`);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
       setLstCategories([]);
@@ -564,6 +545,7 @@ export default function EssDeclarationCategoryMasterPanel({
       name: dicCategory.name,
       description: dicCategory.description,
       declarationKind: dicCategory.declarationKind,
+      applicableRegime: dicCategory.applicableRegime,
       linkedSalaryComponentId: dicCategory.linkedSalaryComponentId ?? "",
       maxLimitAmount: dicCategory.maxLimitAmount == null ? "" : String(dicCategory.maxLimitAmount),
       maxLimitAppliedAt: dicCategory.maxLimitAppliedAt,
@@ -629,6 +611,9 @@ export default function EssDeclarationCategoryMasterPanel({
     if (!strDeclarationKind) {
       dicNextErrors.declarationKind = dicLabels.validationDeclarationKindRequired;
     }
+    if (!dicForm.applicableRegime) {
+      dicNextErrors.applicableRegime = dicLabels.validationApplicableRegimeRequired;
+    }
 
     if (!dicForm.maxLimitAmount.trim()) {
       dicNextErrors.maxLimitAmount = dicLabels.validationMaxLimitRequired;
@@ -662,6 +647,7 @@ export default function EssDeclarationCategoryMasterPanel({
       name: dicForm.name.trim(),
       description: dicForm.description.trim(),
       declarationKind: dicForm.declarationKind.trim(),
+      applicableRegime: dicForm.applicableRegime,
       linkedSalaryComponentId: dicForm.linkedSalaryComponentId === "" ? null : Number(dicForm.linkedSalaryComponentId),
       linkedSalaryComponentName: dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? "",
       maxLimitAmount: dicForm.maxLimitAmount.trim() ? Number(dicForm.maxLimitAmount) : null,
@@ -675,6 +661,7 @@ export default function EssDeclarationCategoryMasterPanel({
       strCategoryName: dicLocalRecord.name,
       strCategoryDescription: dicForm.description.trim() || null,
       strDeclarationKind: dicLocalRecord.declarationKind,
+      strApplicableRegime: dicLocalRecord.applicableRegime,
       intLinkedSalaryComponentID: dicLocalRecord.linkedSalaryComponentId,
       decMaxLimitAmount: dicLocalRecord.maxLimitAmount,
       strMaxLimitAppliedAt: dicLocalRecord.maxLimitAppliedAt,
@@ -835,6 +822,41 @@ export default function EssDeclarationCategoryMasterPanel({
                 disabled={blnDialogReadOnly}
                 size="small"
               />
+              <Box
+                sx={{
+                  gridColumn: { xs: "1 / -1", md: "1 / -1" },
+                  px: 1,
+                  py: 0.7,
+                  borderRadius: "8px",
+                  border: `1px solid ${dicErrors.applicableRegime ? "#d32f2f" : "rgba(203,213,225,0.9)"}`,
+                  background: "#fff",
+                }}
+              >
+                <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700, mb: 0.4 }}>
+                  {`${dicLabels.fieldApplicableRegime} *`}
+                </Typography>
+                <RadioGroup
+                  row
+                  value={dicForm.applicableRegime}
+                  onChange={(objEvent) => {
+                    setDicErrors((dicPrevious) => ({ ...dicPrevious, applicableRegime: undefined }));
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, applicableRegime: normalizeApplicableRegime(objEvent.target.value) }));
+                  }}
+                >
+                  {lstApplicableRegimeOptions.map((dicOption) => (
+                    <FormControlLabel
+                      key={dicOption.strValue}
+                      value={dicOption.strValue}
+                      control={<Radio size="small" disabled={blnDialogReadOnly} />}
+                      label={dicOption.strLabel}
+                      disabled={blnDialogReadOnly}
+                    />
+                  ))}
+                </RadioGroup>
+                <Typography sx={{ color: dicErrors.applicableRegime ? "#d32f2f" : "#64748b", fontSize: "0.72rem", lineHeight: 1.25 }}>
+                  {dicErrors.applicableRegime || t("applicable_regime_help", "Choose which tax regime this declaration component belongs to.")}
+                </Typography>
+              </Box>
             </Box>,
           )}
 
@@ -973,6 +995,7 @@ export default function EssDeclarationCategoryMasterPanel({
             <Box sx={{ mt: 0.75 }}>
               {renderInfoRow(t("summary_code", "Category Code"), dicForm.code.trim() || t("summary_empty", "Not set"))}
               {renderInfoRow(t("summary_kind", "Declaration Kind"), dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
+              {renderInfoRow(t("summary_applicable_regime", "Applicable Regime"), formatApplicableRegime(dicForm.applicableRegime))}
               {renderInfoRow(t("summary_limit", "Max Limit"), dicForm.maxLimitAmount.trim() || t("summary_unlimited", "Not specified"))}
               {renderInfoRow(t("summary_limit_applied_at", "Limit Applied At"), formatMaxLimitAppliedAt(dicForm.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels))}
               {renderInfoRow(t("summary_proof", "Proof"), dicForm.proofRequired ? t("summary_required", "Required") : t("summary_optional", "Optional"))}
@@ -1061,6 +1084,7 @@ export default function EssDeclarationCategoryMasterPanel({
                 <col style={{ width: "116px" }} />
                 <col />
                 <col style={{ width: "190px" }} />
+                <col style={{ width: "150px" }} />
                 <col style={{ width: "210px" }} />
                 <col style={{ width: "300px" }} />
                 <col style={{ width: "140px" }} />
@@ -1075,6 +1099,7 @@ export default function EssDeclarationCategoryMasterPanel({
                   <th>{dicLabels.tableCategoryName}</th>
                   <th>{dicLabels.tableCategoryCode}</th>
                   <th>{dicLabels.tableDeclarationKind}</th>
+                  <th>{dicLabels.tableApplicableRegime}</th>
                   <th>{dicLabels.tableLinkedSalaryComponent}</th>
                   <th>{dicLabels.tableMaxLimitAmount}</th>
                   <th>{dicLabels.tableMaxLimitAppliedAt}</th>
@@ -1084,7 +1109,7 @@ export default function EssDeclarationCategoryMasterPanel({
               </thead>
               <tbody>
                 {lstFilteredCategories.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={10}>{dicLabels.emptyMessage}</td></tr>
+                  <tr><td className={styles.emptyState} colSpan={11}>{dicLabels.emptyMessage}</td></tr>
                 ) : lstVisibleCategories.map((dicCategory) => {
                   const blnSelected = lstSelectedIds.includes(dicCategory.id);
                   return (
@@ -1094,6 +1119,7 @@ export default function EssDeclarationCategoryMasterPanel({
                       <td>{dicCategory.name}</td>
                       <td>{dicCategory.code}</td>
                       <td>{dicCategory.declarationKind}</td>
+                      <td>{formatApplicableRegime(dicCategory.applicableRegime)}</td>
                       <td>{dicCategory.linkedSalaryComponentName || "-"}</td>
                       <td>{formatAmount(dicCategory.maxLimitAmount)}</td>
                       <td>{formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels)}</td>
