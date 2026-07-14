@@ -32,6 +32,10 @@ function isReimbursementCategory(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "") === "reimbursement";
 }
 
+function normalizeLookupCode(strValue: string) {
+  return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
 function normalizeCategory(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -158,6 +162,13 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     intPayslipSectionID: dicRecord.intPayslipSectionID ?? null,
     strPayslipSection: dicRecord.strPayslipSection ?? null,
     intDisplayOrder: Number(dicRecord.intDisplayOrder ?? 10),
+    intLwpTreatmentID: dicRecord.intLwpTreatmentID ?? null,
+    strLwpTreatmentCode: dicRecord.strLwpTreatmentCode ?? "NONE",
+    strLwpTreatment: dicRecord.strLwpTreatment ?? null,
+    intLwpReducedAmountHandlingID: dicRecord.intLwpReducedAmountHandlingID ?? null,
+    strLwpReducedAmountHandlingCode: dicRecord.strLwpReducedAmountHandlingCode ?? "NOT_APPLICABLE",
+    strLwpReducedAmountHandling: dicRecord.strLwpReducedAmountHandling ?? null,
+    strLwpProrationFormula: dicRecord.strLwpProrationFormula ?? null,
     blnIsReimbursement: Boolean(dicRecord.blnIsReimbursement),
     blnIsFlexiBenefit: Boolean(dicRecord.blnIsFlexiBenefit),
     blnIsFlexiBasket: Boolean(dicRecord.blnIsFlexiBasket),
@@ -296,8 +307,13 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnIncludedInCtc: true,
     blnIncludeInPayslip: true,
     intPayslipSectionID: "",
-    strPayslipSection: "Earnings",
+    strPayslipSection: "",
     strDisplayOrder: "10",
+    intLwpTreatmentID: "",
+    strLwpTreatmentCode: "NONE",
+    intLwpReducedAmountHandlingID: "",
+    strLwpReducedAmountHandlingCode: "NOT_APPLICABLE",
+    strLwpProrationFormula: "",
     blnIsFlexiBenefit: false,
     blnIsReimbursement: false,
     intReimbursementTypeID: "",
@@ -364,6 +380,11 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     intPayslipSectionID: dicRecord.intPayslipSectionID ?? "",
     strPayslipSection: dicRecord.strPayslipSection ?? "",
     strDisplayOrder: String(dicRecord.intDisplayOrder ?? 10),
+    intLwpTreatmentID: dicRecord.intLwpTreatmentID ?? "",
+    strLwpTreatmentCode: dicRecord.strLwpTreatmentCode ?? "NONE",
+    intLwpReducedAmountHandlingID: dicRecord.intLwpReducedAmountHandlingID ?? "",
+    strLwpReducedAmountHandlingCode: dicRecord.strLwpReducedAmountHandlingCode ?? "NOT_APPLICABLE",
+    strLwpProrationFormula: dicRecord.strLwpProrationFormula ?? "",
     blnIsFlexiBenefit: Boolean(dicRecord.blnIsFlexiBenefit),
     blnIsReimbursement: Boolean(dicRecord.blnIsReimbursement),
     intReimbursementTypeID: dicRecord.intReimbursementTypeID ?? "",
@@ -448,6 +469,8 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
   const strNormalizedCalcMethod = dicValues.strCalcMethod.trim().toLowerCase().replace(/[\s_-]+/g, "");
   const intDefaultBasisComponentID = dicValues.intDefaultBasisComponentID === "" ? null : Number(dicValues.intDefaultBasisComponentID);
   const decDefaultPercentageValue = dicValues.strDefaultPercentageValue.trim() ? Number(dicValues.strDefaultPercentageValue) : null;
+  const strLwpTreatmentCode = dicValues.strLwpTreatmentCode.trim() || "NONE";
+  const blnLwpReducedAmountHandlingApplies = blnIsFlexiReimbursement && normalizeLookupCode(strLwpTreatmentCode) !== "none";
   const lstDependencyComponentIDs = sanitizeDependencyIDs(
     [
       ...(blnPersistDependencyMapping ? dicValues.lstDependencyComponentIDs : []),
@@ -485,7 +508,12 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnIncludeInPayslip: dicValues.blnIncludeInPayslip,
     intPayslipSectionID: dicValues.blnIncludeInPayslip && dicValues.intPayslipSectionID !== "" ? Number(dicValues.intPayslipSectionID) : null,
     strPayslipSection: dicValues.blnIncludeInPayslip ? formatOptionalText(dicValues.strPayslipSection) : null,
-    intDisplayOrder: dicValues.blnIncludeInPayslip ? Number(dicValues.strDisplayOrder) || 10 : 10,
+    intDisplayOrder: dicValues.blnIncludeInPayslip ? Number(dicValues.strDisplayOrder) || 10 : 0,
+    intLwpTreatmentID: dicValues.intLwpTreatmentID === "" ? null : Number(dicValues.intLwpTreatmentID),
+    strLwpTreatmentCode,
+    intLwpReducedAmountHandlingID: blnLwpReducedAmountHandlingApplies && dicValues.intLwpReducedAmountHandlingID !== "" ? Number(dicValues.intLwpReducedAmountHandlingID) : null,
+    strLwpReducedAmountHandlingCode: blnLwpReducedAmountHandlingApplies ? (dicValues.strLwpReducedAmountHandlingCode.trim() || "NOT_APPLICABLE") : "NOT_APPLICABLE",
+    strLwpProrationFormula: formatOptionalText(dicValues.strLwpProrationFormula),
     blnIsFlexiBenefit: dicValues.blnIsFlexiBenefit,
     blnIsReimbursement: blnIsReimbursement,
     intFlexiComponentTypeID: dicValues.intFlexiComponentTypeID === "" ? null : Number(dicValues.intFlexiComponentTypeID),
@@ -647,6 +675,8 @@ export const salaryComponentService = {
       lstFlexiComponentTypeLookups: mapLookupOptions(objResult.Data.lstFlexiComponentTypeLookups),
       lstFlexiBalanceHandlingLookups: mapLookupOptions(objResult.Data.lstFlexiBalanceHandlingLookups),
       lstPayslipSectionLookups: mapLookupOptions(objResult.Data.lstPayslipSectionLookups, ["Earnings", "Deductions", "Reimbursements", "Information", "Employer Contributions"]),
+      lstLwpTreatmentLookups: mapLookupOptions(objResult.Data.lstLwpTreatmentLookups),
+      lstLwpReducedAmountHandlingLookups: mapLookupOptions(objResult.Data.lstLwpReducedAmountHandlingLookups),
       lstApplicableTaxRegimeLookups: mapLookupOptions(objResult.Data.lstApplicableTaxRegimeLookups),
       lstReimbursementTypes: objResult.Data.lstReimbursementTypes ?? [],
       lstSettlementMethods: objResult.Data.lstSettlementMethods ?? [],

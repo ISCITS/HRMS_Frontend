@@ -47,6 +47,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   strScopeType?: PayrollRunScopeType;
   intScopedEmployeeID?: number | null;
   dtPayrollMonth: string;
+  decCalendarDays?: number | null;
   strStatus: string;
   blnIsLocked: boolean;
 };
@@ -468,11 +469,25 @@ export type EmployeePayrollInputRecord = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  decCalendarDays: number | null;
+  decWorkingDays: number | null;
+  decPaidDays: number | null;
+  decPayableDays: number | null;
   decLwpDays: number | null;
   decLopDays: number | null;
+  strManualLwpSource: string | null;
+  dtManualLwpCapturedOn: string | null;
+  intManualLwpCapturedBy: number | null;
+  strManualLwpReason: string | null;
   strRemarks: string | null;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
+  lstValidationMessages?: Array<{
+    strLevel: string;
+    strCode: string;
+    strMessage: string;
+    blnBlocking: boolean;
+  }>;
 };
 
 export type EmployeePayrollInputListRecord = EmployeePayrollInputRecord;
@@ -492,8 +507,16 @@ export type EmployeePayrollInputFormLine = {
 export type EmployeePayrollInputFormValues = {
   intPayrollRunID: number | "";
   intEmployeeID: number | "";
+  strCalendarDays: string;
+  strWorkingDays: string;
+  strPaidDays: string;
+  strPayableDays: string;
   strLwpDays: string;
   strLopDays: string;
+  strManualLwpReason: string;
+  strManualLwpSource: string;
+  dtManualLwpCapturedOn: string | null;
+  intManualLwpCapturedBy: number | null;
   strRemarks: string;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
@@ -538,6 +561,7 @@ export type PayrollResultLineRecord = {
   blnIncludeInPayslip?: boolean;
   strCalculationSource?: string | null;
   objCalculationTrace?: Record<string, unknown> | null;
+  dicLwpTrace?: Record<string, unknown> | null;
   blnIsWages?: boolean | null;
   blnIncludeInRemuneration?: boolean | null;
   strPayslipSection?: string | null;
@@ -600,6 +624,8 @@ export type PayrollResultRecord = {
   decDeductionAmount: number;
   decTaxAmount: number;
   decNetPayAmount: number;
+  decOriginalSalaryAmount?: number;
+  decLwpReductionAmount?: number;
   decGrossEarningsAmount: number;
   decEmployeeDeductionTotal: number;
   decTaxTotal: number;
@@ -632,6 +658,7 @@ export type PayrollResultRecord = {
   dtPeriodEndDate?: string | null;
   decCalendarDays?: number | null;
   decPaidDays: number | null;
+  decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
   strPayslipNumber: string | null;
@@ -740,6 +767,8 @@ export type PayslipPreviewRecord = {
   };
   lstEarnings: PayslipLineRecord[];
   lstDeductions: PayslipLineRecord[];
+  lstReimbursements?: PayslipLineRecord[];
+  lstStatutoryInformation?: PayslipLineRecord[];
   lstInformation: PayslipLineRecord[];
   lstEmployerContributions: PayslipLineRecord[];
   dicTax?: {

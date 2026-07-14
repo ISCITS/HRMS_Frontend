@@ -37,6 +37,15 @@ export type FlexiDeclarationLineRecord = {
   strComponentApplicableRegimeLabel?: string | null;
   strEligibilityApplicableRegime?: string | null;
   strEligibilityApplicableRegimeLabel?: string | null;
+  intPayslipSectionID?: number | null;
+  strPayslipSection?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatment?: string | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandling?: string | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  blnIsLwpProrated?: boolean | null;
   strStructureApplicableRegime?: string | null;
   strApplicableRegime?: string | null;
   strEmployeeApplicableRegime?: string | null;

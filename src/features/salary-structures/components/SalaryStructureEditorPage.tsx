@@ -1057,6 +1057,14 @@ export default function SalaryStructureEditorPage({
               ?? (dicComponent?.blnIsWages ? "Wages" : "Non Wages"),
             strRoundingRule: dicComponent?.strRoundingRule ?? "",
             strPayslipSection: dicComponent?.strPayslipSection ?? "",
+            strPayslipSectionSnapshotCode: dicComponent?.strPayslipSection ?? "",
+            intLwpTreatmentSnapshotID: dicComponent?.intLwpTreatmentID ?? "",
+            strLwpTreatmentSnapshotCode: dicComponent?.strLwpTreatmentCode ?? "",
+            strLwpTreatment: dicComponent?.strLwpTreatment ?? dicComponent?.strLwpTreatmentCode ?? "",
+            intLwpReducedAmountHandlingSnapshotID: dicComponent?.intLwpReducedAmountHandlingID ?? "",
+            strLwpReducedAmountHandlingSnapshotCode: dicComponent?.strLwpReducedAmountHandlingCode ?? "",
+            strLwpReducedAmountHandling: dicComponent?.strLwpReducedAmountHandling ?? dicComponent?.strLwpReducedAmountHandlingCode ?? "",
+            strLwpProrationFormulaSnapshot: dicComponent?.strLwpProrationFormula ?? "",
             intComponentCategorySnapshotID: dicComponent?.intComponentCategoryID ?? "",
             intCtcTreatmentSnapshotID: dicComponent?.intCtcTreatmentID ?? "",
             intTaxTreatmentSnapshotID: dicComponent?.intTaxTreatmentID ?? "",
@@ -1771,6 +1779,36 @@ export default function SalaryStructureEditorPage({
                     dicComponent.strComponentGroup || t("component_group_unset", "Component Group not set"),
                     getFlexiRoleForLine(dicLine, dicComponent),
                   ].filter(Boolean) : [];
+                  const strPolicyNotConfigured = t("not_configured", "Not configured");
+                  const objPolicyTooltip = (
+                    <Stack spacing={0.45}>
+                      <Typography sx={{ fontSize: "0.72rem", fontWeight: 800 }}>
+                        {t("component_policy_snapshot", "Component Policy Snapshot")}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.7rem" }}>
+                        {t("payslip_section", "Payslip Section")}: {dicLine.strPayslipSection || dicLine.strPayslipSectionSnapshotCode || strPolicyNotConfigured}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.7rem" }}>
+                        {t("lwp_treatment", "LWP Treatment")}: {dicLine.strLwpTreatment || dicLine.strLwpTreatmentSnapshotCode || strPolicyNotConfigured}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.7rem" }}>
+                        {t("lwp_reduced_amount_handling", "Reduced Amount Handling")}: {dicLine.strLwpReducedAmountHandling || dicLine.strLwpReducedAmountHandlingSnapshotCode || strPolicyNotConfigured}
+                      </Typography>
+                      {dicLine.strLwpProrationFormulaSnapshot ? (
+                        <Typography sx={{ fontSize: "0.7rem" }}>
+                          {t("custom_proration_formula", "Custom Proration Formula")}: {dicLine.strLwpProrationFormulaSnapshot}
+                        </Typography>
+                      ) : null}
+                      {isFlexiBasketLine(dicLine) ? (
+                        <Typography sx={{ fontSize: "0.68rem", color: "#cbd5e1" }}>
+                          {t(
+                            "flexi_basket_lwp_not_directly_prorated",
+                            "Flexi Basket is not directly prorated. Individual declared options follow their component policy."
+                          )}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  );
                   return (
                   <tr key={dicLine.strRowID}>
                     <td style={{ background: "#ffffff", left: 0, paddingBottom: 4, paddingTop: 4, position: "sticky", verticalAlign: "top", zIndex: 2 }}>
@@ -1804,7 +1842,7 @@ export default function SalaryStructureEditorPage({
                             </MenuItem>
                           ))}
                         </TextField>
-                        <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ minHeight: 18 }}>
+                        <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ alignItems: "center", minHeight: 18 }}>
                           {lstLineBadges.length === 0 ? (
                             <Typography sx={{ color: "#94a3b8", fontSize: "0.68rem" }}>-</Typography>
                           ) : lstLineBadges.map((strBadge) => (
@@ -1824,6 +1862,23 @@ export default function SalaryStructureEditorPage({
                               {strBadge}
                             </Box>
                           ))}
+                          {dicLine.intSalaryComponentID ? (
+                            <Tooltip title={objPolicyTooltip} arrow enterTouchDelay={0}>
+                              <IconButton
+                                size="small"
+                                aria-label={t("component_policy_snapshot", "Component Policy Snapshot")}
+                                controlId="salary-structures.editor.line.policy-snapshot.tooltip"
+                                sx={{
+                                  color: "#64748b",
+                                  height: 20,
+                                  p: 0,
+                                  width: 20
+                                }}
+                              >
+                                <InfoOutlinedIcon sx={{ fontSize: "0.9rem" }} />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
                         </Stack>
                       </Stack>
                     </td>

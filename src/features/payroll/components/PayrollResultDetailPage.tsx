@@ -282,6 +282,57 @@ function getCtcIncludedLabel(dicLine: PayrollResultDetailRecord["lstLines"][numb
   return dicLine.blnIncludeInGross ? "Yes" : "-";
 }
 
+function getLineLwpTrace(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  const objDirectTrace = asRecord(dicLine.dicLwpTrace);
+  if (objDirectTrace) {
+    return objDirectTrace;
+  }
+  return asRecord(asRecord(dicLine.objCalculationTrace)?.lwp);
+}
+
+function formatTraceNumber(objValue: unknown) {
+  if (typeof objValue === "number") {
+    return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(objValue);
+  }
+  if (typeof objValue === "string" && objValue.trim() !== "") {
+    const fltValue = Number(objValue);
+    return Number.isFinite(fltValue)
+      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(fltValue)
+      : objValue;
+  }
+  return "-";
+}
+
+function getLwpExplanation(
+  t: (strKey: string, strFallback?: string) => string,
+  dicLine: PayrollResultDetailRecord["lstLines"][number]
+) {
+  const objTrace = getLineLwpTrace(dicLine);
+  if (!objTrace) {
+    return "-";
+  }
+  const strTreatment = String(objTrace.lwp_treatment_code ?? objTrace.treatment ?? "NONE");
+  const strHandling = String(objTrace.reduced_handling_code ?? objTrace.handling ?? "NOT_APPLICABLE");
+  if (strTreatment === "NONE") {
+    return t("lwp_trace_none", "No LWP reduction");
+  }
+  return formatLabelTemplate(
+    t(
+      "lwp_trace_summary",
+      "{treatment}: {paid}/{denominator}, factor {factor}, reduced {reduced}, handling {handling}, residual {residual}"
+    ),
+    {
+      treatment: translateDynamicLabel(t, strTreatment),
+      paid: formatTraceNumber(objTrace.paid_units),
+      denominator: formatTraceNumber(objTrace.denominator_units ?? objTrace.denominator),
+      factor: formatTraceNumber(objTrace.proration_factor ?? objTrace.factor),
+      reduced: formatCurrency(Number(objTrace.reduced_amount ?? 0)),
+      handling: translateDynamicLabel(t, strHandling),
+      residual: formatCurrency(Number(objTrace.residual_transfer_amount ?? 0)),
+    }
+  );
+}
+
 function KpiCard({
   strLabel,
   strValue,
@@ -863,13 +914,14 @@ export default function PayrollResultDetailPage({
                     <th>{t("taxable", "Taxable")}</th>
                     <th>{t("ctc_included", "CTC Included")}</th>
                     <th>{t("payslip_section", "Payslip Section")}</th>
+                    <th>{t("lwp_audit", "LWP Audit")}</th>
                     <th>{t("remarks", "Remarks")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lstResultLines.length === 0 ? (
                     <tr>
-                      <td colSpan={13} className={styles.emptyState}>
+                      <td colSpan={14} className={styles.emptyState}>
                         {t("line_empty", "No payroll result lines found.")}
                       </td>
                     </tr>
@@ -898,6 +950,7 @@ export default function PayrollResultDetailPage({
                         <td>{translateDynamicLabel(t, getTaxableLabel(dicLine))}</td>
                         <td>{translateDynamicLabel(t, getCtcIncludedLabel(dicLine))}</td>
                         <td>{translateDynamicLabel(t, dicLine.strPayslipSection)}</td>
+                        <td>{getLwpExplanation(t, dicLine)}</td>
                         <td>{dicLine.strRemarks || "-"}</td>
                       </tr>
                     ))

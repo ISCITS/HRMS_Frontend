@@ -159,6 +159,8 @@ export default function PayslipPreviewContent({
   const dicTotals = objPayslip.dicTotals;
   const dicSummary = objPayslip.dicSummary;
   const dicFooter = objPayslip.dicFooter;
+  const lstReimbursements = objPayslip.lstReimbursements ?? [];
+  const lstStatutoryInformation = objPayslip.lstStatutoryInformation ?? [];
   const dicLineTableLabels = {
     strComponentLabel: t("component", "Component"),
     strAmountLabel: t("amount", "Amount"),
@@ -257,6 +259,26 @@ export default function PayslipPreviewContent({
       <Box sx={{ mt: 2 }}>
         <LineTable strTitle={t("information", "Information")} lstLines={objPayslip.lstInformation} {...dicLineTableLabels} />
       </Box>
+
+      {lstReimbursements.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
+        <Box sx={{ mt: 2 }}>
+          <LineTable
+            strTitle={t("reimbursements", "Reimbursements")}
+            lstLines={lstReimbursements}
+            {...dicLineTableLabels}
+          />
+        </Box>
+      ) : null}
+
+      {lstStatutoryInformation.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
+        <Box sx={{ mt: 2 }}>
+          <LineTable
+            strTitle={t("statutory_information", "Statutory Information")}
+            lstLines={lstStatutoryInformation}
+            {...dicLineTableLabels}
+          />
+        </Box>
+      ) : null}
 
       {objPayslip.lstEmployerContributions.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
         <Box sx={{ mt: 2 }}>

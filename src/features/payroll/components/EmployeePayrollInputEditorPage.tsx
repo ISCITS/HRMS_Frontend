@@ -70,6 +70,15 @@ function parseAmount(strValue: string) {
   return Number.isFinite(decValue) ? decValue : 0;
 }
 
+function parseOptionalDecimal(strValue: string) {
+  const strTrimmedValue = strValue.trim();
+  if (!strTrimmedValue) {
+    return null;
+  }
+  const decValue = Number(strTrimmedValue);
+  return Number.isFinite(decValue) ? decValue : Number.NaN;
+}
+
 function parseSelectNumber(strValue: string): number | "" {
   if (!strValue) {
     return "";
@@ -240,7 +249,19 @@ export default function EmployeePayrollInputEditorPage({
   );
 
   const blnFormLocked =
-    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked";
+    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked" || Boolean(dicSelectedRun?.blnIsLocked);
+
+  useEffect(() => {
+    if (!dicSelectedRun?.decCalendarDays || dicForm.strCalendarDays.trim()) {
+      return;
+    }
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      strCalendarDays: dicPrevious.strCalendarDays.trim()
+        ? dicPrevious.strCalendarDays
+        : String(dicSelectedRun.decCalendarDays ?? ""),
+    }));
+  }, [dicSelectedRun?.decCalendarDays, dicForm.strCalendarDays]);
 
   function translateStatus(strStatus: string | null | undefined) {
     switch (strStatus) {
@@ -312,6 +333,46 @@ export default function EmployeePayrollInputEditorPage({
     }
     if (!dicForm.intPayrollRunID) {
       return t("payroll_run_required", "Payroll run is required.");
+    }
+    if (dicSelectedRun?.blnIsLocked) {
+      return t("payroll_run_locked_error", "Locked payroll runs cannot accept payroll input changes.");
+    }
+    const lstDayFields = [
+      { strValue: dicForm.strCalendarDays, strLabel: t("calendar_days", "Calendar Days") },
+      { strValue: dicForm.strWorkingDays, strLabel: t("working_days", "Working Days") },
+      { strValue: dicForm.strPaidDays, strLabel: t("paid_days", "Paid Days") },
+      { strValue: dicForm.strPayableDays, strLabel: t("payable_days", "Payable Days") },
+      { strValue: dicForm.strLwpDays, strLabel: t("lwp_days_short", "LWP Days") },
+      { strValue: dicForm.strLopDays, strLabel: t("lop_days_short", "LOP Days") },
+    ];
+    for (const dicDayField of lstDayFields) {
+      const decValue = parseOptionalDecimal(dicDayField.strValue);
+      if (Number.isNaN(decValue)) {
+        return t("days_invalid", "{{field}} must be a valid number.").replace("{{field}}", dicDayField.strLabel);
+      }
+      if (decValue !== null && decValue < 0) {
+        return t("days_negative", "{{field}} cannot be negative.").replace("{{field}}", dicDayField.strLabel);
+      }
+    }
+    const decLwpDays = parseOptionalDecimal(dicForm.strLwpDays) ?? 0;
+    const decLopDays = parseOptionalDecimal(dicForm.strLopDays) ?? 0;
+    const decDenominator =
+      parseOptionalDecimal(dicForm.strPayableDays) ??
+      parseOptionalDecimal(dicForm.strWorkingDays) ??
+      parseOptionalDecimal(dicForm.strCalendarDays) ??
+      dicSelectedRun?.decCalendarDays ??
+      null;
+    if (decDenominator !== null && decDenominator <= 0 && (decLwpDays > 0 || decLopDays > 0)) {
+      return t("denominator_required", "A positive payroll-period denominator is required for LWP/LOP days.");
+    }
+    if (decDenominator !== null && decLwpDays > decDenominator) {
+      return t("lwp_exceeds_denominator", "LWP days cannot exceed the payroll-period denominator.");
+    }
+    if (decDenominator !== null && decLwpDays + decLopDays > decDenominator) {
+      return t("payable_days_negative", "Paid/payable days cannot be negative.");
+    }
+    if ((decLwpDays > 0 || decLopDays > 0) && !dicForm.strManualLwpReason.trim()) {
+      return t("manual_lwp_reason_required", "Manual LWP/LOP reason is required when LWP or LOP days are entered.");
     }
     if (
       dicForm.lstLines.some(
@@ -512,6 +573,7 @@ export default function EmployeePayrollInputEditorPage({
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
+      {dicSelectedRun?.blnIsLocked ? <Alert severity="warning">{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
 
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.18fr) minmax(420px, 0.82fr)" }, alignItems: "start" }}>
         <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
@@ -576,8 +638,15 @@ export default function EmployeePayrollInputEditorPage({
               </Typography>
             </Box>
             <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(170px, 290px))" }, justifyContent: "start" }}>
-              <TextField label={t("lwp_days", "LWP (Leave Without Pay)")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="Enter LWP Days" helperText={t("lwp_days_help", "Leave Without Pay days to be considered for payroll calculation.")} fullWidth sx={objFieldSx} />
-              <TextField label={t("lop_days", "LOP (Loss of Pay)")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder="Enter LOP Days" helperText={t("lop_days_help", "Additional Loss of Pay days impacting salary calculation.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("calendar_days", "Calendar Days")} value={dicForm.strCalendarDays} onChange={(objEvent) => updateField("strCalendarDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_calendar_days", "Enter Calendar Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("calendar_days_help", "Payroll-period calendar days.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("working_days", "Working Days")} value={dicForm.strWorkingDays} onChange={(objEvent) => updateField("strWorkingDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_working_days", "Enter Working Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("working_days_help", "HR-entered working days for the period.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("paid_days", "Paid Days")} value={dicForm.strPaidDays} onChange={(objEvent) => updateField("strPaidDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_paid_days", "Enter Paid Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("paid_days_help", "Actual paid days entered by HR.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("payable_days", "Payable Days")} value={dicForm.strPayableDays} onChange={(objEvent) => updateField("strPayableDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_payable_days", "Enter Payable Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("payable_days_help", "Applicable denominator used for LWP/LOP validation when entered.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("lwp_days", "LWP (Leave Without Pay)")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_lwp_days", "Enter LWP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lwp_days_help", "Manual Leave Without Pay days for payroll processing.")} fullWidth sx={objFieldSx} />
+              <TextField type="number" label={t("lop_days", "LOP (Loss of Pay)")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_lop_days", "Enter LOP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lop_days_help", "Manual Loss of Pay days for payroll processing.")} fullWidth sx={objFieldSx} />
+              <TextField label={t("manual_lwp_reason", "Manual LWP/LOP Reason")} value={dicForm.strManualLwpReason} onChange={(objEvent) => updateField("strManualLwpReason", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_manual_lwp_reason", "Enter Manual LWP/LOP Reason")} helperText={t("manual_lwp_reason_help", "Reason is required when LWP or LOP days are entered.")} fullWidth multiline minRows={2} sx={{ ...objFieldSx, gridColumn: { xs: "auto", xl: "1 / -1" } }} />
+              <TextField label={t("manual_lwp_source", "Manual Source")} value={dicForm.strManualLwpSource} InputProps={{ readOnly: true }} placeholder={t("manual_source_system", "System Captured")} fullWidth sx={objReadOnlyFieldSx} />
+              <TextField label={t("manual_lwp_captured_on", "Captured On")} value={dicForm.dtManualLwpCapturedOn ?? ""} InputProps={{ readOnly: true }} placeholder={t("captured_on_placeholder", "Captured On")} fullWidth sx={objReadOnlyFieldSx} />
             </Box>
           </Stack>
         </Paper>

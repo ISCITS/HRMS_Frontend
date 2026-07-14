@@ -163,6 +163,14 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
     strWageType: dicLine.strWageType ?? "",
     strRoundingRule: dicLine.strRoundingRule ?? "",
     strPayslipSection: dicLine.strPayslipSection ?? "",
+    strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode ?? "",
+    intLwpTreatmentSnapshotID: dicLine.intLwpTreatmentSnapshotID ?? dicLine.intLwpTreatmentID ?? "",
+    strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode ?? dicLine.strLwpTreatmentCode ?? "",
+    strLwpTreatment: dicLine.strLwpTreatment ?? dicLine.strLwpTreatmentSnapshotCode ?? dicLine.strLwpTreatmentCode ?? "",
+    intLwpReducedAmountHandlingSnapshotID: dicLine.intLwpReducedAmountHandlingSnapshotID ?? dicLine.intLwpReducedAmountHandlingID ?? "",
+    strLwpReducedAmountHandlingSnapshotCode: dicLine.strLwpReducedAmountHandlingSnapshotCode ?? dicLine.strLwpReducedAmountHandlingCode ?? "",
+    strLwpReducedAmountHandling: dicLine.strLwpReducedAmountHandling ?? dicLine.strLwpReducedAmountHandlingSnapshotCode ?? dicLine.strLwpReducedAmountHandlingCode ?? "",
+    strLwpProrationFormulaSnapshot: dicLine.strLwpProrationFormulaSnapshot ?? dicLine.strLwpProrationFormula ?? "",
     intComponentCategorySnapshotID: dicLine.intComponentCategorySnapshotID ?? "",
     intCtcTreatmentSnapshotID: dicLine.intCtcTreatmentSnapshotID ?? "",
     intTaxTreatmentSnapshotID: dicLine.intTaxTreatmentSnapshotID ?? "",
@@ -198,7 +206,7 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
     blnIsDefault: dicRecord.blnIsDefault,
     blnIsActive: dicRecord.blnIsActive,
     strScopeLabel: dicRecord.strScopeLabel ?? "Company",
-    intComponentCount: dicRecord.intComponentCount ?? dicRecord.lstComponents.length,
+    intComponentCount: dicRecord.intComponentCount ?? (dicRecord.lstComponents ?? []).length,
     dicStructureSummary: {
       fltTotalCtc: Number(dicRecord.dicStructureSummary?.fltTotalCtc ?? 0),
       fltGrossAnnual: Number(dicRecord.dicStructureSummary?.fltGrossAnnual ?? 0),
@@ -224,6 +232,19 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
       strWageType: dicLine.strWageType ?? null,
       strRoundingRule: dicLine.strRoundingRule ?? null,
       strPayslipSection: dicLine.strPayslipSection ?? null,
+      strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode ?? null,
+      intLwpTreatmentID: dicLine.intLwpTreatmentID ?? null,
+      strLwpTreatmentCode: dicLine.strLwpTreatmentCode ?? null,
+      strLwpTreatment: dicLine.strLwpTreatment ?? null,
+      intLwpTreatmentSnapshotID: dicLine.intLwpTreatmentSnapshotID ?? dicLine.intLwpTreatmentID ?? null,
+      strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode ?? dicLine.strLwpTreatmentCode ?? null,
+      intLwpReducedAmountHandlingID: dicLine.intLwpReducedAmountHandlingID ?? null,
+      strLwpReducedAmountHandlingCode: dicLine.strLwpReducedAmountHandlingCode ?? null,
+      strLwpReducedAmountHandling: dicLine.strLwpReducedAmountHandling ?? null,
+      intLwpReducedAmountHandlingSnapshotID: dicLine.intLwpReducedAmountHandlingSnapshotID ?? dicLine.intLwpReducedAmountHandlingID ?? null,
+      strLwpReducedAmountHandlingSnapshotCode: dicLine.strLwpReducedAmountHandlingSnapshotCode ?? dicLine.strLwpReducedAmountHandlingCode ?? null,
+      strLwpProrationFormula: dicLine.strLwpProrationFormula ?? null,
+      strLwpProrationFormulaSnapshot: dicLine.strLwpProrationFormulaSnapshot ?? dicLine.strLwpProrationFormula ?? null,
       intComponentCategorySnapshotID: dicLine.intComponentCategorySnapshotID ?? null,
       intCtcTreatmentSnapshotID: dicLine.intCtcTreatmentSnapshotID ?? null,
       intTaxTreatmentSnapshotID: dicLine.intTaxTreatmentSnapshotID ?? null,
@@ -293,6 +314,12 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         intCtcTreatmentSnapshotID: formatOptionalInteger(dicLine.intCtcTreatmentSnapshotID),
         intTaxTreatmentSnapshotID: formatOptionalInteger(dicLine.intTaxTreatmentSnapshotID),
         intPayslipSectionSnapshotID: formatOptionalInteger(dicLine.intPayslipSectionSnapshotID),
+        strPayslipSectionSnapshotCode: formatOptionalText(dicLine.strPayslipSectionSnapshotCode),
+        intLwpTreatmentSnapshotID: formatOptionalInteger(dicLine.intLwpTreatmentSnapshotID),
+        strLwpTreatmentSnapshotCode: formatOptionalText(dicLine.strLwpTreatmentSnapshotCode),
+        intLwpReducedAmountHandlingSnapshotID: formatOptionalInteger(dicLine.intLwpReducedAmountHandlingSnapshotID),
+        strLwpReducedAmountHandlingSnapshotCode: formatOptionalText(dicLine.strLwpReducedAmountHandlingSnapshotCode),
+        strLwpProrationFormulaSnapshot: formatOptionalText(dicLine.strLwpProrationFormulaSnapshot),
         intReimbursementTypeSnapshotID: formatOptionalInteger(dicLine.intReimbursementTypeSnapshotID),
         intSettlementModeSnapshotID: formatOptionalInteger(dicLine.intSettlementModeSnapshotID),
         blnIsFlexiBasketLine: isFlexiBasketLinePayload(dicLine),
@@ -364,6 +391,14 @@ export function createEmptyLineRow(intLineOrder: number): SalaryStructureLineFor
     strWageType: "",
     strRoundingRule: "",
     strPayslipSection: "",
+    strPayslipSectionSnapshotCode: "",
+    intLwpTreatmentSnapshotID: "",
+    strLwpTreatmentSnapshotCode: "",
+    strLwpTreatment: "",
+    intLwpReducedAmountHandlingSnapshotID: "",
+    strLwpReducedAmountHandlingSnapshotCode: "",
+    strLwpReducedAmountHandling: "",
+    strLwpProrationFormulaSnapshot: "",
     intComponentCategorySnapshotID: "",
     intCtcTreatmentSnapshotID: "",
     intTaxTreatmentSnapshotID: "",
@@ -425,12 +460,13 @@ function mergeFlexiEligibilityIntoOptions(
   dicOptions: SalaryStructureFormOptions,
   lstEligibilityRecords: FlexiComponentEligibilityApiRecord[]
 ): SalaryStructureFormOptions {
+  const lstSalaryComponents = dicOptions.lstSalaryComponents ?? [];
   const dicEligibilityByComponentID = new Map(
     lstEligibilityRecords
       .map((dicRecord) => [getFlexiEligibilityComponentID(dicRecord), dicRecord] as const)
       .filter(([intComponentID]) => intComponentID > 0)
   );
-  const setExistingComponentIDs = new Set(dicOptions.lstSalaryComponents.map((dicComponent) => dicComponent.intID));
+  const setExistingComponentIDs = new Set(lstSalaryComponents.map((dicComponent) => dicComponent.intID));
   const lstEligibilityOnlyComponents = lstEligibilityRecords
     .filter((dicRecord) => {
       const intComponentID = getFlexiEligibilityComponentID(dicRecord);
@@ -451,7 +487,7 @@ function mergeFlexiEligibilityIntoOptions(
   return {
     ...dicOptions,
     lstSalaryComponents: [
-      ...dicOptions.lstSalaryComponents.map((dicComponent) => {
+      ...lstSalaryComponents.map((dicComponent) => {
         const dicEligibility = dicEligibilityByComponentID.get(dicComponent.intID);
         if (!dicEligibility) {
           return dicComponent;
@@ -474,7 +510,7 @@ function mergeSalaryComponentMetadataIntoOptions(
   const dicComponentByID = new Map(lstSalaryComponents.map((dicComponent) => [dicComponent.intID, dicComponent]));
   return {
     ...dicOptions,
-    lstSalaryComponents: dicOptions.lstSalaryComponents.map((dicOption) => {
+    lstSalaryComponents: (dicOptions.lstSalaryComponents ?? []).map((dicOption) => {
       const dicComponent = dicComponentByID.get(dicOption.intID);
       if (!dicComponent) {
         return dicOption;
@@ -493,6 +529,13 @@ function mergeSalaryComponentMetadataIntoOptions(
         intCtcTreatmentID: dicComponent.intCtcTreatmentID ?? dicOption.intCtcTreatmentID,
         intTaxTreatmentID: dicComponent.intTaxTreatmentID ?? dicOption.intTaxTreatmentID,
         intPayslipSectionID: dicComponent.intPayslipSectionID ?? dicOption.intPayslipSectionID,
+        intLwpTreatmentID: dicComponent.intLwpTreatmentID ?? dicOption.intLwpTreatmentID,
+        strLwpTreatmentCode: dicComponent.strLwpTreatmentCode ?? dicOption.strLwpTreatmentCode,
+        strLwpTreatment: dicComponent.strLwpTreatment ?? dicOption.strLwpTreatment,
+        intLwpReducedAmountHandlingID: dicComponent.intLwpReducedAmountHandlingID ?? dicOption.intLwpReducedAmountHandlingID,
+        strLwpReducedAmountHandlingCode: dicComponent.strLwpReducedAmountHandlingCode ?? dicOption.strLwpReducedAmountHandlingCode,
+        strLwpReducedAmountHandling: dicComponent.strLwpReducedAmountHandling ?? dicOption.strLwpReducedAmountHandling,
+        strLwpProrationFormula: dicComponent.strLwpProrationFormula ?? dicOption.strLwpProrationFormula,
         intReimbursementTypeID: dicComponent.intReimbursementTypeID ?? dicOption.intReimbursementTypeID,
         intSettlementModeID: dicComponent.intSettlementMethodID ?? dicOption.intSettlementModeID,
         blnIsWages: dicComponent.blnIsWages ?? dicOption.blnIsWages,
@@ -511,6 +554,31 @@ function mergeSalaryComponentMetadataIntoOptions(
       };
     })
   };
+}
+
+function extractSalaryComponentRecords(objData: unknown): SalaryComponentApiRecord[] {
+  if (Array.isArray(objData)) {
+    return objData as SalaryComponentApiRecord[];
+  }
+  if (objData && typeof objData === "object") {
+    const dicData = objData as {
+      lstSalaryComponents?: SalaryComponentApiRecord[];
+      lstRecords?: SalaryComponentApiRecord[];
+      lstRows?: SalaryComponentApiRecord[];
+      Data?: SalaryComponentApiRecord[];
+    };
+    return dicData.lstSalaryComponents ?? dicData.lstRecords ?? dicData.lstRows ?? dicData.Data ?? [];
+  }
+  return [];
+}
+
+async function getSalaryComponentsForMetadata(): Promise<SalaryComponentApiRecord[]> {
+  try {
+    const objSalaryComponentsResult = await masterApiService.getSalaryComponents();
+    return extractSalaryComponentRecords(objSalaryComponentsResult.Data);
+  } catch {
+    return [];
+  }
 }
 
 async function getFlexiComponentEligibilityWithTimeout(intTimeoutMs = 1500) {
@@ -596,12 +664,12 @@ export const salaryStructureService = {
   },
 
   async getFormOptions(): Promise<SalaryStructureFormOptions> {
-    const [objOptionsResult, objSalaryComponentsResult] = await Promise.all([
+    const [objOptionsResult, lstSalaryComponents] = await Promise.all([
       masterApiService.getSalaryStructureFormOptions(authHelpers.getLanguageID() ?? 1),
-      masterApiService.getSalaryComponents()
+      getSalaryComponentsForMetadata()
     ]);
     const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
-    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, objSalaryComponentsResult.Data);
+    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, lstSalaryComponents);
     return {
       ...mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []),
       lstValueSourceLookups: mapValueSourceLookups(objOptionsResult.Data.lstValueSourceLookups, objOptionsResult.Data.lstValueSources ?? []),

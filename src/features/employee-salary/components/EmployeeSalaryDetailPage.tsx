@@ -16,11 +16,13 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   MenuItem,
   Pagination,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -83,6 +85,16 @@ function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "
     currency: strCurrencyCode,
     maximumFractionDigits: 0
   }).format(decValue);
+}
+
+function formatPolicyCode(strValue?: string | null) {
+  const strTrimmedValue = String(strValue ?? "").trim();
+  return strTrimmedValue ? strTrimmedValue.replace(/_/g, " ") : "-";
+}
+
+function shouldShowReducedHandling(strValue?: string | null) {
+  const strNormalizedValue = normalizeSelectToken(String(strValue ?? ""));
+  return Boolean(strNormalizedValue) && strNormalizedValue !== "notapplicable";
 }
 
 function formatCurrencyWithTwoDecimals(decValue: number | null | undefined, strCurrencyCode = "INR") {
@@ -159,6 +171,9 @@ type ComponentGridRow = {
   strComponentName: string;
   strCategory: string;
   strValueType: string;
+  strPayslipSectionSnapshotCode?: string | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
   strAnnual: string;
   strMonthly: string;
   blnIsOverride: boolean;
@@ -241,6 +256,9 @@ type OverrideSourceLine = {
   decDefaultAmountMonthly?: number | null;
   decDefaultAmountAnnual?: number | null;
   decDefaultPercentageValue?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
 };
 
 type ExistingOverrideLine = {
@@ -1076,6 +1094,9 @@ function buildOverrideRows(
         `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
       blnAllowManualOverride: dicLine.blnAllowManualOverride,
       strBasisComponentName: strResolvedBasisComponentName,
+      strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode,
+      strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode,
+      strLwpReducedAmountHandlingSnapshotCode: dicLine.strLwpReducedAmountHandlingSnapshotCode,
       decAmountMonthly: formatOptionalDefaultValue(decInputMonthly),
       decAmountAnnual: formatOptionalDefaultValue(decInputAnnual),
       decPercentageValue: formatOptionalDefaultValue(
@@ -1462,6 +1483,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
         strCategory: dicLine.strComponentCategory ?? "-",
         strValueType: dicLine.strComponentValueType,
+        strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode,
+        strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode,
+        strLwpReducedAmountHandlingSnapshotCode: dicLine.strLwpReducedAmountHandlingSnapshotCode,
         strAnnual: formatCurrency(decAnnualAmount, strCurrencyCode),
         strMonthly: formatCurrency(decMonthlyAmount, strCurrencyCode),
         blnIsOverride: dicLine.blnIsOverride,
@@ -1976,6 +2000,62 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           {t("employee_salary_back_button", "Back")}
         </Button>
       </Box>
+    );
+  }
+
+  function renderComponentPolicyIndicators(dicPolicy: {
+    strPayslipSectionSnapshotCode?: string | null;
+    strLwpTreatmentSnapshotCode?: string | null;
+    strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  }) {
+    const strPayslipSection = formatPolicyCode(dicPolicy.strPayslipSectionSnapshotCode);
+    const strLwpTreatment = formatPolicyCode(dicPolicy.strLwpTreatmentSnapshotCode ?? "NONE");
+    const strReducedHandling = formatPolicyCode(dicPolicy.strLwpReducedAmountHandlingSnapshotCode);
+    const blnShowReducedHandling = shouldShowReducedHandling(dicPolicy.strLwpReducedAmountHandlingSnapshotCode);
+    const lstIndicatorRows = [
+      { strKey: "payslip", strLabel: t("employee_salary_payslip_section", "Payslip Section"), strValue: strPayslipSection },
+      { strKey: "lwp", strLabel: t("employee_salary_lwp_treatment", "LWP Treatment"), strValue: strLwpTreatment },
+      ...(blnShowReducedHandling ? [{ strKey: "reduced", strLabel: t("employee_salary_reduced_amount_handling", "Reduced Amount Handling"), strValue: strReducedHandling }] : [])
+    ];
+
+    return (
+      <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 0.35 }}>
+        <Box
+          component="span"
+          sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "999px", color: "#172554", fontSize: "0.68rem", fontWeight: 800, px: 0.75, py: 0.2 }}
+        >
+          {`${t("employee_salary_payslip_section_short", "Payslip")}: ${strPayslipSection}`}
+        </Box>
+        <Box
+          component="span"
+          sx={{ background: "#eef3fb", border: "1px solid #d8e2f0", borderRadius: "999px", color: "#334155", fontSize: "0.68rem", fontWeight: 800, px: 0.75, py: 0.2 }}
+        >
+          {`${t("employee_salary_lwp_treatment_short", "LWP")}: ${strLwpTreatment}`}
+        </Box>
+        {blnShowReducedHandling ? (
+          <Box
+            component="span"
+            sx={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "999px", color: "#9a3412", fontSize: "0.68rem", fontWeight: 800, px: 0.75, py: 0.2 }}
+          >
+            {`${t("employee_salary_reduced_amount_short", "Reduced")}: ${strReducedHandling}`}
+          </Box>
+        ) : null}
+        <Tooltip
+          title={(
+            <Stack spacing={0.25}>
+              {lstIndicatorRows.map((dicRow) => (
+                <Typography key={dicRow.strKey} sx={{ color: "#fff", fontSize: "0.72rem" }}>
+                  {`${dicRow.strLabel}: ${dicRow.strValue}`}
+                </Typography>
+              ))}
+            </Stack>
+          )}
+        >
+          <IconButton size="small" aria-label={t("employee_salary_policy_snapshot", "Policy Snapshot")} sx={{ height: 22, width: 22, p: 0.25 }}>
+            <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
     );
   }
 
@@ -2675,6 +2755,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                     <tr key={dicOverride.intSalaryComponentID}>
                       <td>
                         <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strComponentName}</Typography>
+                        {renderComponentPolicyIndicators(dicOverride)}
                       </td>
                       <td>
                         <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
@@ -2991,7 +3072,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   </tr>
                 ) : lstVisibleComponentRows.map((dicRow) => (
                   <tr key={dicRow.intEmployeeSalaryComponentID}>
-                    <td>{dicRow.strComponentName}</td>
+                    <td>
+                      <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicRow.strComponentName}</Typography>
+                      {renderComponentPolicyIndicators(dicRow)}
+                    </td>
                     <td>{dicRow.strCategory}</td>
                     <td>{dicRow.strValueType}</td>
                     <td>{dicRow.strAnnual}</td>

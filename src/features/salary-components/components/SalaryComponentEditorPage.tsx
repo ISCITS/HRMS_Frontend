@@ -136,7 +136,9 @@ function syncLookupBackedFields(
     | "intReimbursementTypeID"
     | "intSettlementMethodID"
     | "intClaimLimitTypeID"
-    | "intPayslipSectionID";
+    | "intPayslipSectionID"
+    | "intLwpTreatmentID"
+    | "intLwpReducedAmountHandlingID";
   type LookupTextField =
     | "strComponentCategory"
     | "strComponentGroup"
@@ -147,7 +149,9 @@ function syncLookupBackedFields(
     | "strReimbursementType"
     | "strSettlementMethod"
     | "strClaimLimitType"
-    | "strPayslipSection";
+    | "strPayslipSection"
+    | "strLwpTreatmentCode"
+    | "strLwpReducedAmountHandlingCode";
 
   const lstFieldMappings: Array<{
     strIDField: LookupIDField;
@@ -204,6 +208,16 @@ function syncLookupBackedFields(
       strLegacyField: "strPayslipSection",
       lstOptions: objOptions.lstPayslipSectionLookups,
     },
+    {
+      strIDField: "intLwpTreatmentID",
+      strLegacyField: "strLwpTreatmentCode",
+      lstOptions: objOptions.lstLwpTreatmentLookups,
+    },
+    {
+      strIDField: "intLwpReducedAmountHandlingID",
+      strLegacyField: "strLwpReducedAmountHandlingCode",
+      lstOptions: objOptions.lstLwpReducedAmountHandlingLookups,
+    },
   ];
 
   const dicNextValues = { ...dicValues };
@@ -224,11 +238,7 @@ function syncLookupBackedFields(
       return;
     }
     dicNextValues[strIDField] = dicOption.intID as SalaryComponentFormValues[TIDField];
-    dicNextValues[strLegacyField] = (
-      dicOption.strLegacyValue
-      ?? dicOption.strDisplayName
-      ?? dicOption.strValueCode
-    ) as SalaryComponentFormValues[TTextField];
+    dicNextValues[strLegacyField] = dicOption.strValueCode as SalaryComponentFormValues[TTextField];
   }
 
   lstFieldMappings.forEach(({ strIDField, strLegacyField, lstOptions }) => {
@@ -263,6 +273,10 @@ function haveLookupBackedFieldsChanged(
     || dicPrevious.strClaimLimitType !== dicNext.strClaimLimitType
     || dicPrevious.intPayslipSectionID !== dicNext.intPayslipSectionID
     || dicPrevious.strPayslipSection !== dicNext.strPayslipSection
+    || dicPrevious.intLwpTreatmentID !== dicNext.intLwpTreatmentID
+    || dicPrevious.strLwpTreatmentCode !== dicNext.strLwpTreatmentCode
+    || dicPrevious.intLwpReducedAmountHandlingID !== dicNext.intLwpReducedAmountHandlingID
+    || dicPrevious.strLwpReducedAmountHandlingCode !== dicNext.strLwpReducedAmountHandlingCode
   );
 }
 
@@ -277,7 +291,7 @@ function handleLookupSelection(
   setDicForm((dicPrevious) => ({
     ...dicPrevious,
     [strIDField]: intSelectedID,
-    [strLegacyField]: dicOption?.strLegacyValue ?? dicOption?.strDisplayName ?? dicOption?.strValueCode ?? "",
+    [strLegacyField]: dicOption?.strValueCode ?? "",
   }));
 }
 
@@ -369,23 +383,6 @@ function getTaxTreatmentLabel(strValue: string) {
   }
 }
 
-function getPayslipSectionLabel(strValue: string) {
-  switch (normalizeSelectToken(strValue)) {
-    case "earnings":
-      return "Earnings";
-    case "deductions":
-      return "Deductions";
-    case "reimbursements":
-      return "Reimbursements";
-    case "information":
-      return "Information";
-    case "employercontributions":
-      return "Employer Contributions";
-    default:
-      return strValue;
-  }
-}
-
 function resolveEligibilityQuestionLabel(dicQuestion: SalaryComponentFlexiEligibilityQuestion | undefined, intLanguageID: number) {
   if (!dicQuestion) {
     return "";
@@ -438,6 +435,7 @@ export default function SalaryComponentEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [blnPayslipSectionTouched, setBlnPayslipSectionTouched] = useState(false);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
 
@@ -489,6 +487,7 @@ export default function SalaryComponentEditorPage({
             return;
           }
           setObjDetail(dicDetail);
+          setBlnPayslipSectionTouched(true);
           setDicForm(
             syncLookupBackedFields(
               ensureTenantLanguageRows(toSalaryComponentFormValues(dicDetail)),
@@ -542,9 +541,13 @@ export default function SalaryComponentEditorPage({
   const lstSettlementMethodOptions = objFormOptions?.lstSettlementMethodLookups ?? [];
   const lstClaimLimitTypeOptions = objFormOptions?.lstClaimLimitTypeLookups ?? [];
   const lstPayslipSections = objFormOptions?.lstPayslipSectionLookups ?? [];
+  const lstLwpTreatmentOptions = objFormOptions?.lstLwpTreatmentLookups ?? [];
+  const lstLwpReducedAmountHandlingOptions = objFormOptions?.lstLwpReducedAmountHandlingLookups ?? [];
   const strCategoryCode = resolveLookupCode(lstCategoryOptions, dicForm.intComponentCategoryID);
   const strCalcMethodCode = resolveLookupCode(lstCalcMethodOptions, dicForm.intCalcMethodID);
   const strClaimLimitTypeCode = resolveLookupCode(objFormOptions?.lstClaimLimitTypeLookups, dicForm.intClaimLimitTypeID) || dicForm.strClaimLimitType;
+  const strLwpTreatmentCode = resolveLookupCode(lstLwpTreatmentOptions, dicForm.intLwpTreatmentID) || dicForm.strLwpTreatmentCode;
+  const strLwpReducedAmountHandlingCode = resolveLookupCode(lstLwpReducedAmountHandlingOptions, dicForm.intLwpReducedAmountHandlingID) || dicForm.strLwpReducedAmountHandlingCode;
   const blnIsEarningCategory = isCategory(strCategoryCode, "earning");
   const blnIsDeductionCategory = isCategory(strCategoryCode, "deduction");
   const blnIsEmployerContributionCategory = isCategory(strCategoryCode, "employer contribution") || isCategory(strCategoryCode, "contribution");
@@ -576,6 +579,13 @@ export default function SalaryComponentEditorPage({
   const blnShowPayrollProcessingGroup = blnShowRemunerationFlag || blnShowOnlyActiveAndOverride;
   const blnShowContributionTypeGroup = blnIsEarningCategory || blnIsEmployerContributionCategory;
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
+  const blnShowLwpTreatmentSection = !blnIsFlexiBucketCategory && (blnIsEarningCategory || blnIsReimbursementCategory);
+  const blnShowLwpReducedAmountHandling = blnShowLwpTreatmentSection && blnIsFlexiReimbursement && !isCategory(strLwpTreatmentCode, "none");
+  const blnShowLwpCustomFormula = isCategory(strLwpTreatmentCode, "custom formula") || isCategory(strLwpTreatmentCode, "custom_formula");
+  const blnLwpReturnToResidualSelected = blnShowLwpReducedAmountHandling && (
+    isCategory(strLwpReducedAmountHandlingCode, "return to residual") || isCategory(strLwpReducedAmountHandlingCode, "return_to_residual")
+  );
+  const intAdditionalSectionCount = Number(blnShowFlexiSection) + Number(blnShowLwpTreatmentSection);
   const strNormalizedClaimLimitTypeCode = normalizeLookupToken(strClaimLimitTypeCode);
   const blnApplyMonthlyLimit = strNormalizedClaimLimitTypeCode === "monthly" || strNormalizedClaimLimitTypeCode === "both";
   const blnApplyYearlyLimit = strNormalizedClaimLimitTypeCode === "yearly" || strNormalizedClaimLimitTypeCode === "both";
@@ -679,6 +689,50 @@ export default function SalaryComponentEditorPage({
 
   function updateRootField<TKey extends keyof SalaryComponentFormValues>(strField: TKey, objValue: SalaryComponentFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function applyLookupSelection(
+    dicValues: SalaryComponentFormValues,
+    strIDField: keyof SalaryComponentFormValues,
+    strTextField: keyof SalaryComponentFormValues,
+    lstOptions: SalaryComponentLookupOption[] | undefined,
+    strValue: string,
+  ) {
+    return {
+      ...dicValues,
+      [strIDField]: resolveLookupID(lstOptions, strValue) as SalaryComponentFormValues[keyof SalaryComponentFormValues],
+      [strTextField]: findLookupOptionByValue(lstOptions, strValue)?.strValueCode ?? strValue,
+    };
+  }
+
+  function handlePayslipSectionSelection(intSelectedID: number | "") {
+    setBlnPayslipSectionTouched(true);
+    handleLookupSelection(setDicForm, "intPayslipSectionID", "strPayslipSection", lstPayslipSections, intSelectedID);
+  }
+
+  function handleLwpTreatmentSelection(intSelectedID: number | "") {
+    const dicOption = findLookupOption(lstLwpTreatmentOptions, intSelectedID);
+    const strSelectedCode = dicOption?.strValueCode ?? "";
+    setDicForm((dicPrevious) => {
+      let dicNext: SalaryComponentFormValues = {
+        ...dicPrevious,
+        intLwpTreatmentID: intSelectedID,
+        strLwpTreatmentCode: strSelectedCode,
+      };
+      if (isCategory(strSelectedCode, "none") || !blnIsFlexiReimbursement) {
+        dicNext = applyLookupSelection(
+          {
+            ...dicNext,
+            strLwpProrationFormula: isCategory(strSelectedCode, "none") ? "" : dicNext.strLwpProrationFormula,
+          },
+          "intLwpReducedAmountHandlingID",
+          "strLwpReducedAmountHandlingCode",
+          lstLwpReducedAmountHandlingOptions,
+          "NOT_APPLICABLE",
+        );
+      }
+      return dicNext;
+    });
   }
 
   function updateFlexiEligibilityRule(
@@ -889,7 +943,7 @@ export default function SalaryComponentEditorPage({
       const dicNext = syncLookupBackedFields(dicPrevious, objFormOptions);
       return haveLookupBackedFieldsChanged(dicPrevious, dicNext) ? dicNext : dicPrevious;
     });
-  }, [objFormOptions, dicForm.intComponentCategoryID, dicForm.intComponentGroupID, dicForm.intCalcMethodID, dicForm.intRoundingRuleID, dicForm.intDefaultPeriodicityID, dicForm.intTaxTreatmentID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intClaimLimitTypeID, dicForm.intPayslipSectionID]);
+  }, [objFormOptions, dicForm.intComponentCategoryID, dicForm.intComponentGroupID, dicForm.intCalcMethodID, dicForm.intRoundingRuleID, dicForm.intDefaultPeriodicityID, dicForm.intTaxTreatmentID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intClaimLimitTypeID, dicForm.intPayslipSectionID, dicForm.intLwpTreatmentID, dicForm.intLwpReducedAmountHandlingID]);
 
   useEffect(() => {
     setDicForm((dicPrevious) => {
@@ -916,8 +970,15 @@ export default function SalaryComponentEditorPage({
         lstOptions: SalaryComponentLookupOption[] | undefined,
         strValue: string,
       ) => {
-        dicNext[strIDField] = resolveLookupID(lstOptions, strValue) as SalaryComponentFormValues[keyof SalaryComponentFormValues];
-        dicNext[strTextField] = strValue as SalaryComponentFormValues[keyof SalaryComponentFormValues];
+        const dicOption = findLookupOptionByValue(lstOptions, strValue);
+        dicNext[strIDField] = (dicOption?.intID ?? "") as SalaryComponentFormValues[keyof SalaryComponentFormValues];
+        dicNext[strTextField] = (dicOption?.strValueCode ?? strValue) as SalaryComponentFormValues[keyof SalaryComponentFormValues];
+      };
+      const applyPayslipSectionDefault = (strValue: string) => {
+        if (strMode !== "add" || blnPayslipSectionTouched || strPayslipSectionValue) {
+          return;
+        }
+        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, strValue);
       };
       if (blnFlexiBucketCategory) {
         dicNext.strComponentGroup = "Benefits";
@@ -943,13 +1004,13 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludedInCtc = true;
         applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "payroll");
         dicNext.blnIncludeInPayslip = true;
-        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "reimbursements");
+        applyPayslipSectionDefault("reimbursements");
       } else if (isCategory(strReimbursementTypeValue, "ctc_based")) {
         dicNext.blnIncludedInCtc = true;
         applyLookupValue("intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, "payroll");
         if (blnReimbursementCategory) {
           dicNext.blnIncludeInPayslip = true;
-          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "reimbursements");
+          applyPayslipSectionDefault("reimbursements");
         }
       } else if (isCategory(strReimbursementTypeValue, "non_ctc_based")) {
         dicNext.blnIncludedInCtc = false;
@@ -980,18 +1041,16 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInRemuneration = false;
         dicNext.blnIncludeInPayslip = true;
-        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "deductions");
+        applyPayslipSectionDefault("deductions");
       }
       if (blnEarningCategory) {
         dicNext.blnIncludedInCtc = true;
         dicNext.blnIncludeInPayslip = true;
-        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "earnings");
+        applyPayslipSectionDefault("earnings");
       }
       if (blnEmployerContributionCategory) {
         dicNext.blnIncludedInCtc = true;
-        if (!strPayslipSectionValue) {
-          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "employer contributions");
-        }
+        applyPayslipSectionDefault("employer contributions");
       }
       if (blnInformationCategory) {
         dicNext.blnIncludedInCtc = false;
@@ -999,7 +1058,9 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludeInESIC = false;
         dicNext.blnIncludeInGratuity = false;
         dicNext.blnIncludeInRemuneration = false;
-        applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, dicNext.blnIncludeInPayslip ? "information" : "");
+        if (dicNext.blnIncludeInPayslip) {
+          applyPayslipSectionDefault("information");
+        }
       }
       if (!dicNext.blnIncludeInPayslip) {
         applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
@@ -1042,7 +1103,7 @@ export default function SalaryComponentEditorPage({
       }
       return dicNext;
     });
-  }, [dicForm.intComponentCategoryID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intPayslipSectionID, dicForm.blnRequiresBills, dicForm.blnIncludeInPayslip, dicForm.blnIsFlexiBenefit, lstCategoryOptions, lstClaimLimitTypeOptions, lstPayslipSections, lstReimbursementTypeOptions, lstSettlementMethodOptions]);
+  }, [blnPayslipSectionTouched, dicForm.intComponentCategoryID, dicForm.intReimbursementTypeID, dicForm.intSettlementMethodID, dicForm.intPayslipSectionID, dicForm.blnRequiresBills, dicForm.blnIncludeInPayslip, dicForm.blnIsFlexiBenefit, lstCategoryOptions, lstClaimLimitTypeOptions, lstPayslipSections, lstReimbursementTypeOptions, lstSettlementMethodOptions, strMode]);
 
   async function handleSave() {
     if (!blnCanSave) {
@@ -1070,6 +1131,14 @@ export default function SalaryComponentEditorPage({
     }
     if (dicForm.blnIncludeInPayslip && (!dicForm.strDisplayOrder.trim() || Number(dicForm.strDisplayOrder) <= 0)) {
       setStrError(t("display_order_required", "Display Order is required when Show on Payslip is enabled."));
+      return;
+    }
+    if (blnShowLwpCustomFormula && !dicForm.strLwpProrationFormula.trim()) {
+      setStrError(t("lwp_custom_formula_required", "Custom Proration Formula is required for custom LWP treatment."));
+      return;
+    }
+    if (blnLwpReturnToResidualSelected && (objFormOptions?.lstResidualComponents ?? []).length === 0) {
+      setStrError(t("lwp_return_to_residual_unavailable", "RETURN_TO_RESIDUAL requires an available residual component configuration."));
       return;
     }
     if (blnShowPercentageCalculationFields) {
@@ -1748,8 +1817,77 @@ export default function SalaryComponentEditorPage({
       </Paper>
       ) : null}
 
+      {blnShowLwpTreatmentSection ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "5." : "4."} {t("payslip_configuration", "Payslip Configuration")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "5." : "4."} {t("lwp_lop_treatment", "LWP / LOP Treatment")}</Typography>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2,
+            alignItems: "start",
+            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+          }}
+        >
+          <TextField
+            select
+            label={t("lwp_treatment", "LWP Treatment")}
+            value={dicForm.intLwpTreatmentID}
+            onChange={(objEvent) => handleLwpTreatmentSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+            disabled={blnFieldDisabled}
+            fullWidth
+            {...buildSelectTestIdProps("salary-components.editor.lwp-treatment.select")}
+          >
+            {lstLwpTreatmentOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.lwp-treatment.${normalizeSelectToken(dicOption.strValueCode)}.option`}>
+                {dicOption.strDisplayName}
+              </MenuItem>
+            ))}
+          </TextField>
+          {blnShowLwpReducedAmountHandling ? (
+            <TextField
+              select
+              label={t("lwp_reduced_amount_handling", "Reduced Amount Handling")}
+              value={dicForm.intLwpReducedAmountHandlingID}
+              onChange={(objEvent) => handleLookupSelection(setDicForm, "intLwpReducedAmountHandlingID", "strLwpReducedAmountHandlingCode", lstLwpReducedAmountHandlingOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              disabled={blnFieldDisabled}
+              fullWidth
+              {...buildSelectTestIdProps("salary-components.editor.lwp-reduced-amount-handling.select")}
+            >
+              {lstLwpReducedAmountHandlingOptions.map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.lwp-reduced-amount-handling.${normalizeSelectToken(dicOption.strValueCode)}.option`}>
+                  {dicOption.strDisplayName}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
+          {blnShowLwpCustomFormula ? (
+            <TextField
+              required
+              label={t("custom_proration_formula", "Custom Proration Formula")}
+              value={dicForm.strLwpProrationFormula}
+              onChange={(objEvent) => updateRootField("strLwpProrationFormula", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              fullWidth
+              data-controlid="salary-components.editor.lwp-proration-formula.input"
+              inputProps={buildInputTestIdProps("salary-components.editor.lwp-proration-formula.input")}
+            />
+          ) : null}
+        </Box>
+        {blnLwpReturnToResidualSelected && (objFormOptions?.lstResidualComponents ?? []).length === 0 ? (
+          <Alert severity="warning" sx={{ mt: 1.5 }}>
+            {t("lwp_return_to_residual_unavailable", "RETURN_TO_RESIDUAL requires an available residual component configuration.")}
+          </Alert>
+        ) : null}
+        {blnIsFlexiReimbursement ? (
+          <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 1.25 }}>
+            {t("lwp_flexi_option_note", "Individual flexi options can define their own LWP treatment. Flexi Basket itself is not directly prorated.")}
+          </Typography>
+        ) : null}
+      </Paper>
+      ) : null}
+
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{`${4 + intAdditionalSectionCount}.`} {t("payslip_configuration", "Payslip Configuration")}</Typography>
         {blnIsFlexiBucketCategory ? (
           <Alert severity="info" sx={{ mb: 2 }}>
             {t(
@@ -1772,10 +1910,10 @@ export default function SalaryComponentEditorPage({
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
-          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayslipSectionID", "strPayslipSection", lstPayslipSections, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
+          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handlePayslipSectionSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
             {lstPayslipSections.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`payslip_section_${normalizeSelectToken(dicOption.strValueCode)}`, getPayslipSectionLabel(dicOption.strDisplayName))}</MenuItem>
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
           <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
@@ -1783,7 +1921,7 @@ export default function SalaryComponentEditorPage({
      </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "6." : "5."} {t("tax_declaration_configuration", "Tax / Declaration Configuration")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{`${5 + intAdditionalSectionCount}.`} {t("tax_declaration_configuration", "Tax / Declaration Configuration")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.declaration-required.switch")} />} label={t("declaration_required", "Declaration required")} />
           {!blnIsReimbursementCategory ? <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required_tax_exemption", "Proof Required for Tax Exemption")} /> : null}
@@ -1793,7 +1931,7 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{blnShowFlexiSection ? "7." : "6."} {t("translations", "Translations")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{`${6 + intAdditionalSectionCount}.`} {t("translations", "Translations")}</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
               {t("multilingual_text_help", "Add translated component names and descriptions for supported languages.")}
             </Typography>

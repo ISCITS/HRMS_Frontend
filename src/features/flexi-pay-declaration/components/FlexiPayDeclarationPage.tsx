@@ -107,6 +107,10 @@ function normalizeToken(strValue?: string | null) {
   return normalizeText(strValue).replace(/[\s_-]+/g, "");
 }
 
+function normalizeCode(strValue?: string | null) {
+  return String(strValue || "").trim().toUpperCase();
+}
+
 function normalizeAmount(strValue: string) {
   const decValue = Number(strValue);
   if (!Number.isFinite(decValue) || decValue < 0) return 0;
@@ -164,6 +168,11 @@ function getEligibilityState(objRow: FlexiDeclarationLineRecord) {
     return "eligible_by_default";
   }
   return "eligible";
+}
+
+function isLwpProratedFlexiOption(objRow: FlexiDeclarationLineRecord) {
+  const strTreatmentCode = normalizeCode(objRow.strLwpTreatmentCode || objRow.strLwpTreatment);
+  return Boolean(objRow.blnIsLwpProrated || (strTreatmentCode && strTreatmentCode !== "NONE"));
 }
 
 function getEligibilityChipConfig(objRow: FlexiDeclarationLineRecord): {
@@ -1936,6 +1945,33 @@ export default function FlexiPayDeclarationPage() {
                             <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
                               {translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "Component")}
                             </Typography>
+                            {isLwpProratedFlexiOption(objRow) ? (
+                              <Tooltip
+                                title={t(
+                                  "lwp_prorated_in_payroll_help",
+                                  "This option keeps normal ESS entitlement here. Payroll applies LWP treatment during processing."
+                                )}
+                              >
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                  label={t("lwp_prorated_in_payroll", "LWP prorated in payroll")}
+                                  sx={{
+                                    mt: 0.45,
+                                    height: 20,
+                                    maxWidth: "100%",
+                                    "& .MuiChip-label": {
+                                      px: 0.65,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      fontSize: "0.58rem",
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            ) : null}
                           </TableCell>
                           <TableCell>
                             <Stack spacing={0.5}>

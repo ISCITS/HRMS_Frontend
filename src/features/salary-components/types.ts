@@ -18,6 +18,13 @@ export type SalaryComponentListRecord = {
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
   intDisplayOrder: number;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  strLwpTreatment?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpReducedAmountHandling?: string | null;
+  strLwpProrationFormula?: string | null;
   blnIsReimbursement: boolean;
   blnIsFlexiBenefit: boolean;
   blnIsFlexiBasket?: boolean;
@@ -136,6 +143,11 @@ export type SalaryComponentFormValues = {
   intPayslipSectionID: number | "";
   strPayslipSection: string;
   strDisplayOrder: string;
+  intLwpTreatmentID: number | "";
+  strLwpTreatmentCode: string;
+  intLwpReducedAmountHandlingID: number | "";
+  strLwpReducedAmountHandlingCode: string;
+  strLwpProrationFormula: string;
   blnIsFlexiBenefit: boolean;
   blnIsReimbursement: boolean;
   intReimbursementTypeID: number | "";
@@ -252,5 +264,7 @@ export type SalaryComponentFormOptions = {
   lstFlexiComponentTypeLookups?: SalaryComponentLookupOption[];
   lstFlexiBalanceHandlingLookups?: SalaryComponentLookupOption[];
   lstPayslipSectionLookups?: SalaryComponentLookupOption[];
+  lstLwpTreatmentLookups?: SalaryComponentLookupOption[];
+  lstLwpReducedAmountHandlingLookups?: SalaryComponentLookupOption[];
   lstApplicableTaxRegimeLookups?: SalaryComponentLookupOption[];
 };

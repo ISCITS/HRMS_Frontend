@@ -73,6 +73,13 @@ export type EmployeeSalaryRevisionPreviewRecord = {
     strComponentCode?: string | null;
     strComponentName?: string | null;
     strComponentCategory?: string | null;
+    intPayslipSectionSnapshotID?: number | null;
+    strPayslipSectionSnapshotCode?: string | null;
+    intLwpTreatmentSnapshotID?: number | null;
+    strLwpTreatmentSnapshotCode?: string | null;
+    intLwpReducedAmountHandlingSnapshotID?: number | null;
+    strLwpReducedAmountHandlingSnapshotCode?: string | null;
+    strLwpProrationFormulaSnapshot?: string | null;
     blnIsWages?: boolean | null;
     decAmountMonthly?: number | null;
     decAmountAnnual?: number | null;
