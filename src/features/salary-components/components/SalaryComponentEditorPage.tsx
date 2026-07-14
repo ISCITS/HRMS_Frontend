@@ -544,7 +544,7 @@ export default function SalaryComponentEditorPage({
   const lstPayslipSections = objFormOptions?.lstPayslipSectionLookups ?? [];
   const strCategoryCode = resolveLookupCode(lstCategoryOptions, dicForm.intComponentCategoryID);
   const strCalcMethodCode = resolveLookupCode(lstCalcMethodOptions, dicForm.intCalcMethodID);
-  const strClaimLimitTypeCode = resolveLookupCode(objFormOptions?.lstClaimLimitTypeLookups, dicForm.intClaimLimitTypeID);
+  const strClaimLimitTypeCode = resolveLookupCode(objFormOptions?.lstClaimLimitTypeLookups, dicForm.intClaimLimitTypeID) || dicForm.strClaimLimitType;
   const blnIsEarningCategory = isCategory(strCategoryCode, "earning");
   const blnIsDeductionCategory = isCategory(strCategoryCode, "deduction");
   const blnIsEmployerContributionCategory = isCategory(strCategoryCode, "employer contribution") || isCategory(strCategoryCode, "contribution");
@@ -576,8 +576,9 @@ export default function SalaryComponentEditorPage({
   const blnShowPayrollProcessingGroup = blnShowRemunerationFlag || blnShowOnlyActiveAndOverride;
   const blnShowContributionTypeGroup = blnIsEarningCategory || blnIsEmployerContributionCategory;
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
-  const blnApplyMonthlyLimit = strClaimLimitTypeCode === "monthly" || strClaimLimitTypeCode === "both";
-  const blnApplyYearlyLimit = strClaimLimitTypeCode === "yearly" || strClaimLimitTypeCode === "both";
+  const strNormalizedClaimLimitTypeCode = normalizeLookupToken(strClaimLimitTypeCode);
+  const blnApplyMonthlyLimit = strNormalizedClaimLimitTypeCode === "monthly" || strNormalizedClaimLimitTypeCode === "both";
+  const blnApplyYearlyLimit = strNormalizedClaimLimitTypeCode === "yearly" || strNormalizedClaimLimitTypeCode === "both";
   const intEnglishLanguageID =
     objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID
     ?? null;
@@ -750,10 +751,12 @@ export default function SalaryComponentEditorPage({
     setDicForm((dicPrevious) => {
       const blnMonthly = strLimitType === "monthly"
         ? blnChecked
-        : dicPrevious.strClaimLimitType === "monthly" || dicPrevious.strClaimLimitType === "both";
+        : normalizeLookupToken(resolveLookupCode(lstClaimLimitTypeOptions, dicPrevious.intClaimLimitTypeID) || dicPrevious.strClaimLimitType) === "monthly"
+          || normalizeLookupToken(resolveLookupCode(lstClaimLimitTypeOptions, dicPrevious.intClaimLimitTypeID) || dicPrevious.strClaimLimitType) === "both";
       const blnYearly = strLimitType === "yearly"
         ? blnChecked
-        : dicPrevious.strClaimLimitType === "yearly" || dicPrevious.strClaimLimitType === "both";
+        : normalizeLookupToken(resolveLookupCode(lstClaimLimitTypeOptions, dicPrevious.intClaimLimitTypeID) || dicPrevious.strClaimLimitType) === "yearly"
+          || normalizeLookupToken(resolveLookupCode(lstClaimLimitTypeOptions, dicPrevious.intClaimLimitTypeID) || dicPrevious.strClaimLimitType) === "both";
       let strClaimLimitType: SalaryComponentFormValues["strClaimLimitType"] = "none";
       if (blnMonthly && blnYearly) {
         strClaimLimitType = "both" as SalaryComponentFormValues["strClaimLimitType"];
@@ -762,8 +765,10 @@ export default function SalaryComponentEditorPage({
       } else if (blnYearly) {
         strClaimLimitType = "yearly";
       }
+      const dicClaimLimitTypeOption = findLookupOptionByValue(lstClaimLimitTypeOptions, strClaimLimitType);
       return {
         ...dicPrevious,
+        intClaimLimitTypeID: dicClaimLimitTypeOption?.intID ?? "",
         strClaimLimitType,
         strMonthlyLimitAmount: blnMonthly ? dicPrevious.strMonthlyLimitAmount : "",
         strAnnualLimitAmount: blnYearly ? dicPrevious.strAnnualLimitAmount : "",
