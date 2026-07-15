@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import RuleFolderRoundedIcon from "@mui/icons-material/RuleFolderRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
@@ -14,7 +15,7 @@ import {
   Stack,
   Switch,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,12 +24,8 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
-import {
-  createInitialTaxRegimeForm,
-  taxRegimeService,
-  toTaxRegimeFormValues
-} from "@/features/tax-regimes/services/taxRegimeService";
-import type { TaxRegimeFormOptions, TaxRegimeFormValues } from "@/features/tax-regimes/types";
+import { createInitialTaxRegimeForm, taxRegimeService, toTaxRegimeFormValues } from "@/features/tax-regimes/services/taxRegimeService";
+import type { TaxRegimeFormOptions, TaxRegimeFormValues, TaxRegimeTextFormValue } from "@/features/tax-regimes/types";
 
 type TaxRegimeEditorPageProps = {
   strMode: "add" | "edit" | "view";
@@ -37,8 +34,18 @@ type TaxRegimeEditorPageProps = {
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
 
-function getDefaultEffectiveFromYear(objOptions: TaxRegimeFormOptions, strCurrentValue: string) {
+function getDefaultTaxYearCode(objOptions: TaxRegimeFormOptions, strCurrentValue: string) {
   return strCurrentValue || objOptions.strDefaultEffectiveFromYear || objOptions.lstFinancialYears[0] || "";
+}
+
+function createFallbackTextRow(intLanguageID: number, strLanguageName: string): TaxRegimeTextFormValue {
+  return {
+    strRowID: `${Date.now()}-${intLanguageID}`,
+    intLanguageID,
+    strLanguageName,
+    strRegimeName: "",
+    strDescription: "",
+  };
 }
 
 export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegimeEditorPageProps) {
@@ -63,7 +70,6 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
 
   useEffect(() => {
     let blnMounted = true;
-
     async function loadData() {
       if (blnRightsLoading) {
         return;
@@ -82,17 +88,29 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
           return;
         }
         setObjFormOptions(objOptions);
+        const lstLanguageRows = (objOptions.lstLanguages.length > 0 ? objOptions.lstLanguages : [{ intID: 1, strLabel: "English", strCode: "en" }]).map((dicLanguage) =>
+          createFallbackTextRow(dicLanguage.intID, dicLanguage.strLabel),
+        );
         if (strMode !== "add" && intTaxRegimeID) {
           const dicDetail = await taxRegimeService.getTaxRegimeById(intTaxRegimeID);
           if (!blnMounted) {
             return;
           }
-          setDicForm(toTaxRegimeFormValues(dicDetail));
+          const dicNextForm = toTaxRegimeFormValues(dicDetail);
+          dicNextForm.lstTexts = lstLanguageRows.map((dicLanguageRow) => {
+            const dicExisting = dicNextForm.lstTexts.find((dicText) => dicText.intLanguageID === dicLanguageRow.intLanguageID);
+            return dicExisting ?? dicLanguageRow;
+          });
+          setDicForm(dicNextForm);
         } else {
           setDicForm((dicPrevious) => ({
             ...dicPrevious,
             strCountryCode: objOptions.lstCountries[0]?.strCode ?? dicPrevious.strCountryCode,
-            strEffectiveFromYear: getDefaultEffectiveFromYear(objOptions, dicPrevious.strEffectiveFromYear)
+            strTaxYearCode: getDefaultTaxYearCode(objOptions, dicPrevious.strTaxYearCode),
+            strEffectiveFromYear: getDefaultTaxYearCode(objOptions, dicPrevious.strEffectiveFromYear),
+            intRegimeTypeID: objOptions.lstRegimeTypeLookups[0]?.intID ?? "",
+            strRegimeTypeCode: objOptions.lstRegimeTypeLookups[0]?.strValueCode ?? dicPrevious.strRegimeTypeCode,
+            lstTexts: lstLanguageRows,
           }));
         }
       } catch (objError) {
@@ -105,34 +123,38 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         }
       }
     }
-
     loadData().catch(() => undefined);
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, strMode]);
-
-  const dicCountryByCode = useMemo(() => {
-    return new Map((objFormOptions?.lstCountries ?? []).map((dicOption) => [dicOption.strCode ?? String(dicOption.intID), dicOption]));
-  }, [objFormOptions]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, strMode, t]);
 
   const lstEffectiveYearOptions = useMemo(() => {
     const lstOptions = [...(objFormOptions?.lstFinancialYears ?? [])];
-    if (dicForm.strEffectiveFromYear && !lstOptions.includes(dicForm.strEffectiveFromYear)) {
-      lstOptions.unshift(dicForm.strEffectiveFromYear);
+    if (dicForm.strTaxYearCode && !lstOptions.includes(dicForm.strTaxYearCode)) {
+      lstOptions.unshift(dicForm.strTaxYearCode);
     }
     return lstOptions;
-  }, [dicForm.strEffectiveFromYear, objFormOptions]);
+  }, [dicForm.strTaxYearCode, objFormOptions]);
 
   function updateField<TKey extends keyof TaxRegimeFormValues>(strField: TKey, objValue: TaxRegimeFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
-  function updateDefaultRegime(blnIsDefaultRegime: boolean) {
+  function updateTextRow(strRowID: string, strField: keyof TaxRegimeTextFormValue, objValue: string) {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
-      blnIsDefaultRegime,
-      blnAllowEmployeeOptOut: blnIsDefaultRegime ? dicPrevious.blnAllowEmployeeOptOut : false
+      lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID ? { ...dicText, [strField]: objValue } : dicText),
+      strRegimeName: strField === "strRegimeName" && dicPrevious.lstTexts[0]?.strRowID === strRowID ? objValue : dicPrevious.strRegimeName,
+    }));
+  }
+
+  function updateRegimeType(intLookupID: number) {
+    const dicSelectedLookup = objFormOptions?.lstRegimeTypeLookups.find((dicLookup) => dicLookup.intID === intLookupID);
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      intRegimeTypeID: intLookupID,
+      strRegimeTypeCode: dicSelectedLookup?.strValueCode ?? dicPrevious.strRegimeTypeCode,
     }));
   }
 
@@ -140,8 +162,8 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
     if (!blnCanSave) {
       return;
     }
-    if (!dicForm.strRegimeCode.trim() || !dicForm.strRegimeName.trim() || !dicForm.strCountryCode.trim() || !dicForm.strEffectiveFromYear.trim()) {
-      setStrError(t("validation_required_fields", "Regime code, regime name, country, and effective from year are required."));
+    if (!dicForm.strRegimeCode.trim() || !dicForm.strTaxYearCode.trim() || !dicForm.lstTexts.some((dicText) => dicText.strRegimeName.trim())) {
+      setStrError(t("validation_required_fields", "Regime code, tax year, and at least one regime name are required."));
       return;
     }
     setBlnSaving(true);
@@ -152,11 +174,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         ? await taxRegimeService.updateTaxRegime(intTaxRegimeID, dicForm)
         : await taxRegimeService.createTaxRegime(dicForm);
       setDicForm(toTaxRegimeFormValues(dicSavedRecord));
-      setStrSuccess(
-        strMode === "edit"
-          ? t("update_success", "Tax regime updated successfully.")
-          : t("create_success", "Tax regime created successfully.")
-      );
+      setStrSuccess(strMode === "edit" ? t("update_success", "Tax regime updated successfully.") : t("create_success", "Tax regime created successfully."));
       if (strMode === "add") {
         objRouter.push(`/payroll/tax-regimes/edit/${dicSavedRecord.intID}`);
       }
@@ -182,9 +200,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
     return (
       <Box className={styles.emptyState}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-          {strMode === "add"
-            ? t("access_denied_add", "Tax regime create access is not available for your user group.")
-            : t("access_denied", "Tax regime access is not available for your user group.")}
+          {strMode === "add" ? t("access_denied_add", "Tax regime create access is not available for your user group.") : t("access_denied", "Tax regime access is not available for your user group.")}
         </Typography>
         <Typography sx={{ mt: 1, color: "#64748b" }}>
           {t("access_denied_help", "Contact your administrator if you need tax regime access.")}
@@ -196,55 +212,37 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)"
-        }}
-      >
+      <Paper sx={{ borderRadius: "28px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)" }}>
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
-              
+              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+                {strMode === "add" ? t("add_tax_regime", "Add Tax Regime") : blnForcedViewMode ? t("view_tax_regime", "View Tax Regime") : t("edit_tax_regime", "Edit Tax Regime")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+                {t("editor_description", "Configure the effective-dated tax regime header and use the action cards below for slabs and detailed tax rules.")}
+              </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button controlId="tax-regimes.editor.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
                 {t("back_to_list", "Back to list")}
               </Button>
-              {strMode !== "add" && intTaxRegimeID && !blnForcedViewMode ? (
-                <Button controlId="tax-regimes.editor.manage-slabs.button" className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
-                  {t("manage_slabs", "Manage slabs")}
-                </Button>
+              {strMode !== "add" && intTaxRegimeID ? (
+                <>
+                  <Button className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
+                    {t("manage_slabs", "Manage Slabs")}
+                  </Button>
+                  <Button className={styles.secondaryButton} startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>
+                    {t("manage_tax_rules", "Manage Tax Rules")}
+                  </Button>
+                </>
               ) : null}
               {blnCanSave ? (
-                <Button controlId="tax-regimes.editor.save.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
+                <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
                   {blnSaving ? t("saving", "Saving...") : t("save", "Save Tax Regime")}
                 </Button>
               ) : null}
             </Stack>
-          </Stack>
-
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_country", "Country")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicCountryByCode.get(dicForm.strCountryCode)?.strLabel || dicForm.strCountryCode || t("not_selected", "Not selected")}
-              </Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("effective_from_year", "Effective From Year")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicForm.strEffectiveFromYear ? `FY ${dicForm.strEffectiveFromYear}` : t("not_selected", "Not selected")}
-              </Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("default_regime", "Default Regime")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicForm.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
-              </Typography>
-            </Paper>
           </Stack>
         </Stack>
       </Paper>
@@ -253,93 +251,82 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Regimes.")}</Alert> : null}
 
-      <Paper
-        sx={{
-          borderRadius: "24px",
-          p: { xs: 2, md: 3 },
-          border: "1px solid rgba(187, 213, 232, 0.7)",
-          boxShadow: "var(--app-shadow-soft)"
-        }}
-      >
+      <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(187, 213, 232, 0.7)", boxShadow: "var(--app-shadow-soft)" }}>
         <Stack spacing={2.5}>
-          <Box>
-            <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information", "Basic Information")}</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.5 }}>
-              {t("basic_information_help", "Keep the regime code concise, the name business-friendly, and default the setup to India unless you intentionally prepare another country profile.")}
-            </Typography>
+          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information", "Basic Information")}</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+            <TextField label={t("regime_code", "Regime Code")} value={dicForm.strRegimeCode} onChange={(objEvent) => updateField("strRegimeCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled || strMode === "edit"} fullWidth helperText={strMode === "edit" ? t("regime_code_read_only", "Regime code is immutable after creation.") : t("regime_code_help", "Use a stable, business-friendly regime code.")} />
+            <TextField label={t("country", "Country")} select value={dicForm.strCountryCode} onChange={(objEvent) => updateField("strCountryCode", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+              {(objFormOptions?.lstCountries ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.strCode ?? dicOption.intID} value={dicOption.strCode ?? ""}>{dicOption.strLabel}</MenuItem>
+              ))}
+            </TextField>
+            <TextField label={t("currency", "Currency")} value={dicForm.strCurrencyCode} onChange={(objEvent) => updateField("strCurrencyCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
+            <TextField label={t("tax_year", "Tax Year")} select value={dicForm.strTaxYearCode} onChange={(objEvent) => { updateField("strTaxYearCode", objEvent.target.value); updateField("strEffectiveFromYear", objEvent.target.value); }} disabled={blnFieldDisabled} fullWidth>
+              {lstEffectiveYearOptions.map((strYearCode) => (
+                <MenuItem key={strYearCode} value={strYearCode}>{strYearCode}</MenuItem>
+              ))}
+            </TextField>
+            <TextField label={t("effective_from", "Effective From")} type="date" value={dicForm.dtEffectiveFrom} onChange={(objEvent) => updateField("dtEffectiveFrom", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label={t("effective_to", "Effective To")} type="date" value={dicForm.dtEffectiveTo} onChange={(objEvent) => updateField("dtEffectiveTo", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth InputLabelProps={{ shrink: true }} />
+            <TextField label={t("regime_type", "Regime Calculation Type")} select value={dicForm.intRegimeTypeID} onChange={(objEvent) => updateRegimeType(Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth helperText={t("regime_type_help", "For India, Old and New regimes usually stay Progressive.")}>
+              {(objFormOptions?.lstRegimeTypeLookups ?? []).map((dicLookup) => (
+                <MenuItem key={dicLookup.intID} value={dicLookup.intID}>{dicLookup.strDisplayName}</MenuItem>
+              ))}
+            </TextField>
+            <TextField label={t("rounding_rule", "Tax Rounding Rule")} value={dicForm.strRoundingRuleCode} onChange={(objEvent) => updateField("strRoundingRuleCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
+            <TextField label={t("legal_reference", "Legal Reference")} value={dicForm.strLegalReference} onChange={(objEvent) => updateField("strLegalReference", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+            <TextField label={t("configuration_notes", "Configuration Notes")} value={dicForm.strConfigurationNotes} onChange={(objEvent) => updateField("strConfigurationNotes", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={3} sx={{ gridColumn: { md: "1 / span 2" } }} />
           </Box>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
-              gap: 2
-            }}
-          >
-            <TextField
-              label={t("regime_code", "Regime Code")}
-              value={dicForm.strRegimeCode}
-              onChange={(objEvent) => updateField("strRegimeCode", objEvent.target.value.toUpperCase())}
-              disabled={blnFieldDisabled}
-              fullWidth
-            />
+          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
+            <FormControlLabel control={<Switch checked={dicForm.blnIsDefaultRegime} onChange={(objEvent) => updateField("blnIsDefaultRegime", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("set_as_default_regime", "Set as Default Regime")} />
+            <FormControlLabel control={<Switch checked={dicForm.blnAllowEmployeeOptOut} onChange={(objEvent) => updateField("blnAllowEmployeeOptOut", objEvent.target.checked)} disabled={blnFieldDisabled || !dicForm.blnIsDefaultRegime} />} label={t("allow_employee_opt_out", "Allow Employee Opt-Out")} />
+            <FormControlLabel control={<Switch checked={dicForm.blnStandardDeductionEnabled} onChange={(objEvent) => updateField("blnStandardDeductionEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("standard_deduction_enabled", "Standard Deduction Enabled")} />
+            <FormControlLabel control={<Switch checked={dicForm.blnRebateEnabled} onChange={(objEvent) => updateField("blnRebateEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("rebate_enabled", "Rebate Enabled")} />
+            <FormControlLabel control={<Switch checked={dicForm.blnSurchargeEnabled} onChange={(objEvent) => updateField("blnSurchargeEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("surcharge_enabled", "Surcharge Enabled")} />
+            <FormControlLabel control={<Switch checked={dicForm.blnCessEnabled} onChange={(objEvent) => updateField("blnCessEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("cess_enabled", "Cess Enabled")} />
+            <FormControlLabel control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />} label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")} />
+          </Box>
 
-            <TextField
-              label={t("regime_name", "Regime Name")}
-              value={dicForm.strRegimeName}
-              onChange={(objEvent) => updateField("strRegimeName", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              fullWidth
-            />
-
-            <TextField
-              label={t("country", "Country")}
-              select
-              value={dicForm.strCountryCode}
-              onChange={(objEvent) => updateField("strCountryCode", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              fullWidth
-            >
-              {(objFormOptions?.lstCountries ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.strCode ?? dicOption.intID} value={dicOption.strCode ?? ""}>
-                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              label={t("effective_from_year", "Effective From Year")}
-              select
-              value={dicForm.strEffectiveFromYear}
-              onChange={(objEvent) => updateField("strEffectiveFromYear", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              fullWidth
-              required
-            >
-              {lstEffectiveYearOptions.map((strFinancialYearCode) => (
-                <MenuItem key={strFinancialYearCode} value={strFinancialYearCode}>
-                  {`FY ${strFinancialYearCode}`}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-              <FormControlLabel
-                control={<Switch checked={dicForm.blnIsDefaultRegime} onChange={(objEvent) => updateDefaultRegime(objEvent.target.checked)} disabled={blnFieldDisabled} />}
-                label={t("set_as_default_regime", "Set as Default Regime")}
-              />
-              <FormControlLabel
-                control={<Switch checked={dicForm.blnAllowEmployeeOptOut} onChange={(objEvent) => updateField("blnAllowEmployeeOptOut", objEvent.target.checked)} disabled={blnFieldDisabled || !dicForm.blnIsDefaultRegime} />}
-                label={t("allow_employee_opt_out", "Allow Employee Opt-Out")}
-              />
-              <FormControlLabel
-                control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-                label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
-              />
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+            <TextField label={t("standard_deduction_amount", "Default Standard Deduction Amount")} value={dicForm.decStandardDeductionAmount} onChange={(objEvent) => updateField("decStandardDeductionAmount", objEvent.target.value)} disabled={blnFieldDisabled} />
+            <TextField label={t("cess_rate_percent", "Cess Rate % Summary")} value={dicForm.decCessRatePercent} onChange={(objEvent) => updateField("decCessRatePercent", objEvent.target.value)} disabled={blnFieldDisabled} />
+            <TextField label={t("calculation_priority", "Calculation Priority")} value={dicForm.intCalculationPriority} onChange={(objEvent) => updateField("intCalculationPriority", objEvent.target.value)} disabled={blnFieldDisabled} />
+            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <Typography sx={{ fontSize: "0.875rem", color: "#64748b" }}>{t("regime_type_snapshot", "Regime Type")}</Typography>
+              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicForm.strRegimeTypeCode}</Typography>
             </Box>
           </Box>
         </Stack>
       </Paper>
+
+      <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Stack spacing={2}>
+          <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("multilingual_text", "Regime Name Translations")}</Typography>
+          {dicForm.lstTexts.map((dicText) => (
+            <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "200px 1fr 1fr" }, gap: 2 }}>
+              <TextField label={t("language", "Language")} value={dicText.strLanguageName} disabled fullWidth />
+              <TextField label={t("regime_name", "Regime Name")} value={dicText.strRegimeName} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strRegimeName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+              <TextField label={t("description", "Description")} value={dicText.strDescription} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
+            </Box>
+          ))}
+        </Stack>
+      </Paper>
+
+      {strMode !== "add" && intTaxRegimeID ? (
+        <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)" }}>
+          <Stack spacing={2}>
+            <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("manage_tax_rules", "Manage Tax Rules")}</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+              <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>{t("manage_standard_deduction", "Standard Deduction")}</Button>
+              <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/rebate`)}>{t("manage_rebate", "Rebate")}</Button>
+              <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/surcharge`)}>{t("manage_surcharge", "Surcharge")}</Button>
+              <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/cess`)}>{t("manage_cess", "Cess")}</Button>
+            </Box>
+          </Stack>
+        </Paper>
+      ) : null}
     </Stack>
   );
 }

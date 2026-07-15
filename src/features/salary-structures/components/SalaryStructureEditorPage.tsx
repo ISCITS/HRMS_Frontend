@@ -1778,6 +1778,9 @@ export default function SalaryStructureEditorPage({
                     dicComponent.blnIsWages ? t("wage", "Wage") : t("non_wage", "Non-Wage"),
                     dicComponent.strComponentGroup || t("component_group_unset", "Component Group not set"),
                     getFlexiRoleForLine(dicLine, dicComponent),
+                    dicComponent.strLwpTreatmentCode && dicComponent.strLwpTreatmentCode !== "NONE"
+                      ? `${t("lwp", "LWP")}: ${t(`lwp_treatment_${normalizeSelectToken(dicComponent.strLwpTreatmentCode)}`, dicComponent.strLwpTreatmentCode)}`
+                      : null,
                   ].filter(Boolean) : [];
                   const strPolicyNotConfigured = t("not_configured", "Not configured");
                   const objPolicyTooltip = (

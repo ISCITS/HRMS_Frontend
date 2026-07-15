@@ -28,7 +28,7 @@ import {
   Switch,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -258,6 +258,22 @@ function getPayrollImpactLabel(dicLine: PayrollResultDetailRecord["lstLines"][nu
     return "Gross Earning";
   }
   return "Informational";
+}
+
+function getLineLwpSummary(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
+  const objTrace = asRecord(asRecord(dicLine.objCalculationTrace)?.lwp);
+  if (!objTrace) {
+    return null;
+  }
+  const strTreatment = getStringValue(objTrace, "lwp_treatment_code");
+  if (!strTreatment || strTreatment === "NONE") {
+    return null;
+  }
+  return {
+    strTreatment,
+    decReducedAmount: getNumberValue(objTrace, "reduced_amount") ?? 0,
+    strOutcome: getCalculationTraceValue(objTrace, "reduced_handling_code", "handling", "reduced_handling_outcome") as string | null,
+  };
 }
 
 function getTaxableLabel(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
@@ -527,8 +543,8 @@ export default function PayrollResultDetailPage({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.generatePayslip(
-        objResult.intPayrollRunID,
-        objResult.intEmployeeID
+        objResult!.intPayrollRunID,
+        objResult!.intEmployeeID
       );
       setObjPayslip(dicPayslip);
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
@@ -564,7 +580,7 @@ export default function PayrollResultDetailPage({
       } else {
         downloadPayslipHtml(
           strHtml,
-          buildPayslipFileName("payslip", dicPayslip.strPayslipNumber, objResult.strEmployeeCode)
+          buildPayslipFileName("payslip", dicPayslip.strPayslipNumber, objResult!.strEmployeeCode)
         );
       }
     } catch (objError) {
@@ -586,6 +602,7 @@ export default function PayrollResultDetailPage({
 
   const dicStatusTone = getStatusTone(objResult.strStatus);
   const dicWageRulePreview = getWageRulePreview(objResult);
+  const dicTaxSummary = objResult.dicTaxSummary;
 
   return (
     <Box
@@ -620,7 +637,7 @@ export default function PayrollResultDetailPage({
                   fontWeight: 700,
                   "&:hover": { background: "transparent", color: "#5d7fb8" },
                 }}
-                controlId="payroll.result-detail.back.button"
+                data-controlid="payroll.result-detail.back.button"
               >
                 {t("back_to_list", "Back to List")}
               </Button>
@@ -678,21 +695,21 @@ export default function PayrollResultDetailPage({
                       textTransform: "none",
                       fontWeight: 800,
                     }}
-                    controlId="payroll.result-detail.actions.button"
+                    data-controlid="payroll.result-detail.actions.button"
                   >
                     {t("download_payslip", "Download")}
                   </Button>
                   <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
-                    <MenuItem onClick={() => { handleCloseActions(); void loadPayslipPreview(); }} controlId="payroll.result-detail.preview-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void loadPayslipPreview(); }} data-controlid="payroll.result-detail.preview-payslip.button">
                       {t("preview_payslip", "Preview Payslip")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void generatePayslip(); }} controlId="payroll.result-detail.generate-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void generatePayslip(); }} data-controlid="payroll.result-detail.generate-payslip.button">
                       {t("generate_payslip", "Generate")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} controlId="payroll.result-detail.download-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} data-controlid="payroll.result-detail.download-payslip.button">
                       {t("download_payslip", "Download")}
                     </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} controlId="payroll.result-detail.print-payslip.button">
+                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} data-controlid="payroll.result-detail.print-payslip.button">
                       {t("print_payslip", "Print")}
                     </MenuItem>
                   </Menu>
@@ -797,7 +814,17 @@ export default function PayrollResultDetailPage({
               <SummaryBlock strTitle={t("tax_summary", "Tax Summary")} objIcon={<ReceiptLongRoundedIcon sx={{ color: "#4f46e5", fontSize: 22 }} />}>
                 <DetailValue strLabel={t("tax_regime", "Tax Regime")} strValue={objResult.strRegimeUsed || "-"} />
                 <DetailValue strLabel={t("taxable_income", "Taxable Income")} strValue={formatCurrency(objResult.decTaxableIncome)} />
-                <DetailValue strLabel={t("annual_tax", "Annual Tax")} strValue={formatCurrency(objResult.decAnnualTaxAmount)} />
+                <DetailValue strLabel={t("projected_taxable_income", "Projected Taxable Income")} strValue={formatCurrency(dicTaxSummary?.decProjectedTaxableIncome ?? objResult.decTaxableIncome)} />
+                <DetailValue strLabel={t("exemptions", "Exemptions")} strValue={formatCurrency(dicTaxSummary?.decExemptionAmount ?? 0)} />
+                <DetailValue strLabel={t("declared_deductions", "Declared Deductions")} strValue={formatCurrency(dicTaxSummary?.decDeclaredDeductionAmount ?? 0)} />
+                <DetailValue strLabel={t("standard_deduction", "Standard Deduction")} strValue={formatCurrency(dicTaxSummary?.decStandardDeductionAmount ?? 0)} />
+                <DetailValue strLabel={t("tax_before_rebate", "Tax Before Rebate")} strValue={formatCurrency(dicTaxSummary?.decTaxBeforeRebate ?? objResult.decAnnualTaxAmount)} />
+                <DetailValue strLabel={t("rebate_relief", "Rebate + Relief")} strValue={formatCurrency((dicTaxSummary?.decRebateAmount ?? 0) + (dicTaxSummary?.decMarginalRebateReliefAmount ?? 0))} />
+                <DetailValue strLabel={t("surcharge_net", "Surcharge (Net)")} strValue={formatCurrency((dicTaxSummary?.decSurchargeAmount ?? 0) - (dicTaxSummary?.decMarginalSurchargeReliefAmount ?? 0))} />
+                <DetailValue strLabel={t("cess", "Cess")} strValue={formatCurrency(dicTaxSummary?.decCessAmount ?? 0)} />
+                <DetailValue strLabel={t("annual_tax", "Annual Tax")} strValue={formatCurrency(dicTaxSummary?.decTotalTaxLiability ?? objResult.decAnnualTaxAmount)} />
+                <DetailValue strLabel={t("monthly_tds", "Monthly TDS")} strValue={formatCurrency(dicTaxSummary?.decMonthlyTds ?? objResult.decMonthlyTds)} />
+                <DetailValue strLabel={t("slab_profile", "Slab Profile")} strValue={dicTaxSummary?.strSlabProfileCode || "-"} />
               </SummaryBlock>
 
               <SummaryBlock strTitle={t("run_summary", "Payroll Run Summary")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />}>
@@ -878,14 +905,14 @@ export default function PayrollResultDetailPage({
                   <Switch
                     checked={false}
                     disabled
-                    inputProps={{ "controlId": "payroll.result-detail.group-by-category.switch" }}
+                    inputProps={{ "data-controlid": "payroll.result-detail.group-by-category.switch" } as InputHTMLAttributes<HTMLInputElement>}
                   />
                 </Stack>
                 <Button
                   className={styles.secondaryButton}
                   startIcon={<FilterAltOutlinedIcon />}
                   disabled
-                  controlId="payroll.result-detail.filter.button"
+                  data-controlid="payroll.result-detail.filter.button"
                 >
                   {t("filter", "Filter")}
                 </Button>
@@ -913,7 +940,6 @@ export default function PayrollResultDetailPage({
                     <th>{t("calculation_source", "Calculation Source")}</th>
                     <th>{t("taxable", "Taxable")}</th>
                     <th>{t("ctc_included", "CTC Included")}</th>
-                    <th>{t("payslip_section", "Payslip Section")}</th>
                     <th>{t("lwp_audit", "LWP Audit")}</th>
                     <th>{t("remarks", "Remarks")}</th>
                   </tr>
@@ -926,7 +952,9 @@ export default function PayrollResultDetailPage({
                       </td>
                     </tr>
                   ) : (
-                    lstResultLines.map((dicLine) => (
+                    lstResultLines.map((dicLine) => {
+                      const objLwpSummary = getLineLwpSummary(dicLine);
+                      return (
                       <tr key={dicLine.intID}>
                         <td>{dicLine.strComponentCode}</td>
                         <td>{translateDynamicLabel(t, dicLine.strComponentName)}</td>
@@ -950,10 +978,18 @@ export default function PayrollResultDetailPage({
                         <td>{translateDynamicLabel(t, getTaxableLabel(dicLine))}</td>
                         <td>{translateDynamicLabel(t, getCtcIncludedLabel(dicLine))}</td>
                         <td>{translateDynamicLabel(t, dicLine.strPayslipSection)}</td>
-                        <td>{getLwpExplanation(t, dicLine)}</td>
+                        <td>
+                          {objLwpSummary ? (
+                            <span data-controlid="payroll.result-detail.line.lwp-summary" title={objLwpSummary.strOutcome ?? ""}>
+                              {translateDynamicLabel(t, objLwpSummary.strTreatment, "lwp_treatment")}
+                              {objLwpSummary.decReducedAmount > 0 ? ` (-${formatCurrency(objLwpSummary.decReducedAmount)})` : ""}
+                            </span>
+                          ) : getLwpExplanation(t, dicLine)}
+                        </td>
                         <td>{dicLine.strRemarks || "-"}</td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
