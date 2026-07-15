@@ -807,8 +807,7 @@ function calculateRevisionSalarySummaryMetrics(
     return decTotal + (decMonthly !== null ? decMonthly * 12 : 0);
   }, 0);
   const decResidualTaxableAnnual = Math.max(decFlexiBucketAnnual - decApprovedFlexiAnnual, 0);
-
-  const dicResolvedMetrics = lstStructureComponents.reduce((dicTotal, dicComponent) => {
+  const lstResolvedComponentLines = lstStructureComponents.map((dicComponent) => {
     const dicOverride = mapOverridesByComponentID.get(dicComponent.intSalaryComponentID);
     const decAnnualAmount = dicOverride
       ? getOverrideAnnualAmount(dicOverride)
@@ -816,74 +815,60 @@ function calculateRevisionSalarySummaryMetrics(
     const decMonthlyAmount = dicOverride
       ? (parseOptionalAmount(dicOverride.decAmountMonthly) ?? (decAnnualAmount / 12))
       : getNumberValue(dicComponent.decAmountMonthly ?? (decAnnualAmount / 12));
-    const strComponentName = dicComponent.strComponentName ?? dicComponent.strComponentCode ?? "";
-    const strCategory = dicComponent.strComponentCategory ?? "";
-    const blnIsFlexiBucket = Boolean(dicComponent.blnIsFlexiBasket || dicComponent.blnIsFlexiBasketLine || isFlexiPayComponentName(strComponentName));
-    const blnIsFlexiAllocation = setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) || Boolean(dicComponent.blnIsFlexiBenefit || hasLookupSnapshot(dicComponent.intReimbursementTypeSnapshotID));
-
-    if (isBasicComponentName(strComponentName)) {
-      dicTotal.decBasicAnnual += decAnnualAmount;
-    }
-    if (isHraComponentName(strComponentName)) {
-      dicTotal.decHraAnnual += decAnnualAmount;
-    }
-    if ((isEmployerContributionCategory(strCategory) || strComponentName.toLowerCase().includes("employer provident fund")) && dicComponent.blnIncludedInCtc !== false) {
-      dicTotal.decEmployerContributionAnnual += decAnnualAmount;
-    }
-    if (isDeductionCategory(strCategory) || isInformationCategory(strCategory) || blnIsFlexiBucket || blnIsFlexiAllocation) {
-      return dicTotal;
-    }
-    if (dicComponent.blnIncludedInCtc !== false) {
-      dicTotal.decCtcIncludedEarningsAnnual += decAnnualAmount;
-      dicTotal.decPayableEarningsMonthly += decMonthlyAmount;
-      const dicPreviewComponent = mapPreviewComponentByID?.get(dicComponent.intSalaryComponentID);
-      if (isWageComponent({
-        ...dicComponent,
-        blnIsWages: dicPreviewComponent?.blnIsWages ?? dicComponent.blnIsWages,
-        strComponentCode: dicPreviewComponent?.strComponentCode ?? dicComponent.strComponentCode,
-        strComponentName: dicPreviewComponent?.strComponentName ?? dicComponent.strComponentName,
-      }, dicSalaryComponentByID)) {
-        dicTotal.decWageAnnual += decAnnualAmount;
-      } else {
-        dicTotal.decNonWageAnnual += decAnnualAmount;
-      }
-    }
-    return dicTotal;
-  }, {
-    decCtcIncludedEarningsAnnual: 0,
-    decPayableEarningsMonthly: 0,
-    decEmployerContributionAnnual: 0,
-    decBasicAnnual: 0,
-    decHraAnnual: 0,
-    decWageAnnual: 0,
-    decNonWageAnnual: 0
+    const dicPreviewComponent = mapPreviewComponentByID?.get(dicComponent.intSalaryComponentID);
+    return {
+      ...dicComponent,
+      blnIsWages: dicPreviewComponent?.blnIsWages ?? dicComponent.blnIsWages,
+      strComponentCode: dicPreviewComponent?.strComponentCode ?? dicComponent.strComponentCode,
+      strComponentName: dicPreviewComponent?.strComponentName ?? dicComponent.strComponentName,
+      decAmountAnnual: decAnnualAmount,
+      decAmountMonthly: decMonthlyAmount,
+      blnIsFlexiBenefit:
+        setFlexiAllocationComponentIDs.has(dicComponent.intSalaryComponentID) ||
+        Boolean(dicComponent.blnIsFlexiBenefit || hasLookupSnapshot(dicComponent.intReimbursementTypeSnapshotID)),
+    };
   });
-  const decAnnualCtc = dicResolvedMetrics.decCtcIncludedEarningsAnnual + dicResolvedMetrics.decEmployerContributionAnnual + decFlexiBucketAnnual;
-  const decWageRemunerationBase = dicResolvedMetrics.decWageAnnual + dicResolvedMetrics.decNonWageAnnual;
-  const decMinimumRequiredWageAnnual = decWageRemunerationBase * 0.5;
-  const decDeemedWageShortfallAnnual = Math.max(decMinimumRequiredWageAnnual - dicResolvedMetrics.decWageAnnual, 0);
-  const decDeemedWageAnnual = dicResolvedMetrics.decWageAnnual + decDeemedWageShortfallAnnual;
-  const decWagePercentOfCtc = decWageRemunerationBase > 0 ? (dicResolvedMetrics.decWageAnnual / decWageRemunerationBase) * 100 : 0;
+  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics({
+    lstComponentLines: lstResolvedComponentLines,
+    objFlexiAllocation: {
+      blnHasFlexiBasket: decFlexiBucketAnnual > 0,
+      decFlexiBasketAvailableAnnual: decFlexiBucketAnnual,
+      decFlexiBasketAvailableMonthly: decFlexiBucketAnnual / 12,
+      decBalanceFlexiAnnual: decFlexiBucketAnnual,
+      decAllocatedFlexiAnnual: 0,
+    },
+  });
+  const decEmployeeDeductionsMonthly = lstResolvedComponentLines.reduce((decTotal, dicLine) => {
+    if (!isDeductionCategory(dicLine.strComponentCategory) && !isEmployeePfComponent(dicLine)) {
+      return decTotal;
+    }
+    return decTotal + getNumberValue(dicLine.decAmountMonthly);
+  }, 0);
+  const dicWageMetrics = calculateEmployeeSalaryWageMetrics(
+    lstResolvedComponentLines
+      .filter((dicLine) => !isFlexiAllocationLine(dicLine) && dicLine.blnIncludedInCtc !== false)
+      .map((dicLine) => ({
+        blnIsWages: isWageComponent(dicLine, dicSalaryComponentByID),
+        blnIncludedInCtc: dicLine.blnIncludedInCtc,
+        decAmountAnnual: getNumberValue(dicLine.decAmountAnnual ?? (getNumberValue(dicLine.decAmountMonthly) * 12)),
+      })),
+    dicBaseSummaryMetrics.decAnnualCtc
+  );
 
   return {
-    decAnnualCtc,
-    decGrossMonthly: dicResolvedMetrics.decPayableEarningsMonthly + (decFlexiBucketAnnual / 12),
-    decGrossMonthlyAfterDeclaration: dicResolvedMetrics.decPayableEarningsMonthly + (decResidualTaxableAnnual / 12),
-    decBasicAnnual: dicResolvedMetrics.decBasicAnnual,
-    decHraAnnual: dicResolvedMetrics.decHraAnnual,
-    decEmployerContributionAnnual: dicResolvedMetrics.decEmployerContributionAnnual,
-    decEmployerContributionMonthly: dicResolvedMetrics.decEmployerContributionAnnual / 12,
-    decEmployeeDeductionsMonthly: 0,
+    decAnnualCtc: dicBaseSummaryMetrics.decAnnualCtc,
+    decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly,
+    decGrossMonthlyAfterDeclaration: Math.max(dicBaseSummaryMetrics.decGrossMonthly - (decApprovedFlexiAnnual / 12), 0),
+    decBasicAnnual: dicBaseSummaryMetrics.decBasicAnnual,
+    decHraAnnual: dicBaseSummaryMetrics.decHraAnnual,
+    decEmployerContributionAnnual: dicBaseSummaryMetrics.decEmployerContributionAnnual,
+    decEmployerContributionMonthly: dicBaseSummaryMetrics.decEmployerContributionAnnual / 12,
+    decEmployeeDeductionsMonthly,
     decFlexiBucketAnnual,
     decApprovedFlexiAnnual,
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
-    decWageAnnual: dicResolvedMetrics.decWageAnnual,
-    decNonWageAnnual: dicResolvedMetrics.decNonWageAnnual,
-    decMinimumRequiredWageAnnual,
-    decDeemedWageShortfallAnnual,
-    decDeemedWageAnnual,
-    decWagePercentOfCtc,
+    ...dicWageMetrics,
     strFlexiWarning: decFlexiBucketAnnual > 0 && decApprovedFlexiAnnual <= 0
       ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
       : "",
