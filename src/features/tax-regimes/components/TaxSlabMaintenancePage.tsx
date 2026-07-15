@@ -88,7 +88,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, t]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID]);
 
   function updateLine(strRowID: string, strField: keyof TaxSlabLineFormValue, objValue: string | boolean) {
     setLstSlabs((lstPrevious) => lstPrevious.map((dicLine) => dicLine.strRowID === strRowID ? { ...dicLine, [strField]: objValue } : dicLine));

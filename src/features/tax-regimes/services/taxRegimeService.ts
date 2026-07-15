@@ -34,6 +34,14 @@ function getCurrentLanguageID() {
   return authHelpers.getLanguageID() || 1;
 }
 
+function normalizeFinancialYearCode(strValue?: string | null) {
+  const strNormalizedValue = (strValue ?? "").trim();
+  if (!strNormalizedValue) {
+    return "";
+  }
+  return strNormalizedValue.replace(/^FY\s*/i, "");
+}
+
 function formatOptionalNumber(strValue: string) {
   const strTrimmedValue = strValue.trim();
   if (!strTrimmedValue) {
@@ -73,12 +81,14 @@ function mapTaxRegimeApiRecord(dicRecord: TaxRegimeApiRecord): TaxRegimeDetailRe
     strRegimeName: dicText.strRegimeName,
     strDescription: dicText.strDescription ?? "",
   }));
+  const strTaxYearCode = normalizeFinancialYearCode(dicRecord.strTaxYearCode ?? dicRecord.strEffectiveFromYear ?? "");
+  const strEffectiveFromYear = normalizeFinancialYearCode(dicRecord.strEffectiveFromYear ?? dicRecord.strTaxYearCode ?? "");
   return {
     intID: dicRecord.intID,
     strRegimeCode: dicRecord.strRegimeCode,
     strRegimeName: dicRecord.strRegimeName,
     strCountryCode: dicRecord.strCountryCode,
-    strTaxYearCode: dicRecord.strTaxYearCode ?? dicRecord.strEffectiveFromYear ?? "",
+    strTaxYearCode,
     strRegimeTypeCode: dicRecord.strRegimeTypeCode ?? "PROGRESSIVE",
     strRegimeTypeDisplay: dicRecord.strRegimeTypeDisplay ?? dicRecord.strRegimeTypeCode ?? "PROGRESSIVE",
     blnIsDefaultRegime: dicRecord.blnIsDefaultRegime ?? false,
@@ -92,8 +102,8 @@ function mapTaxRegimeApiRecord(dicRecord: TaxRegimeApiRecord): TaxRegimeDetailRe
     blnSurchargeEnabled: dicRecord.blnSurchargeEnabled ?? false,
     blnCessEnabled: dicRecord.blnCessEnabled ?? false,
     intCountryID: dicRecord.intCountryID ?? null,
-    strCurrencyCode: dicRecord.strCurrencyCode ?? "",
-    strEffectiveFromYear: dicRecord.strEffectiveFromYear ?? "",
+    strCurrencyCode: dicRecord.strCurrencyCode ?? (dicRecord.strCountryCode === "IN" ? "INR" : ""),
+    strEffectiveFromYear,
     dtEffectiveFrom: dicRecord.dtEffectiveFrom ?? null,
     dtEffectiveTo: dicRecord.dtEffectiveTo ?? null,
     intRegimeTypeID: dicRecord.intRegimeTypeID ?? null,
@@ -310,12 +320,19 @@ function mapCessRule(dicRule: TaxCessRuleApiRecord): TaxCessRuleFormValue {
 }
 
 function mapFormOptions(objResult: Awaited<ReturnType<typeof masterApiService.getTaxRegimeFormOptions>>["Data"]): TaxRegimeFormOptions {
+  const lstFinancialYears = [...new Set((objResult.lstFinancialYears ?? []).map((strYearCode) => normalizeFinancialYearCode(strYearCode)).filter(Boolean))];
+  const strDefaultEffectiveFromYear = normalizeFinancialYearCode(objResult.strDefaultEffectiveFromYear) || lstFinancialYears[0] || "";
   return {
-    lstCountries: objResult.lstCountries,
-    lstFinancialYears: objResult.lstFinancialYears,
-    strDefaultEffectiveFromYear: objResult.strDefaultEffectiveFromYear,
-    lstRegimeTypeLookups: (objResult.lstRegimeTypeLookups ?? []) as PayrollLookupOption[],
-    lstLanguages: objResult.lstLanguages ?? [],
+    lstCountries: objResult.lstCountries?.length ? objResult.lstCountries : [{ intID: 1, strLabel: "India", strCode: "IN" }],
+    lstFinancialYears,
+    strDefaultEffectiveFromYear,
+    lstRegimeTypeLookups: (objResult.lstRegimeTypeLookups?.length ? objResult.lstRegimeTypeLookups : [{
+      intID: 1,
+      strValueCode: "PROGRESSIVE",
+      strDisplayName: "Progressive",
+      strDescription: "Default progressive slab-based regime",
+    }]) as PayrollLookupOption[],
+    lstLanguages: objResult.lstLanguages?.length ? objResult.lstLanguages : [{ intID: 1, strLabel: "English", strCode: "en" }],
   };
 }
 
@@ -356,12 +373,12 @@ export function toTaxRegimeFormValues(dicRecord: TaxRegimeDetailRecord): TaxRegi
     strRegimeCode: dicRecord.strRegimeCode,
     strRegimeName: dicRecord.strRegimeName,
     strCountryCode: dicRecord.strCountryCode,
-    strCurrencyCode: dicRecord.strCurrencyCode,
-    strTaxYearCode: dicRecord.strTaxYearCode,
-    strEffectiveFromYear: dicRecord.strEffectiveFromYear,
+    strCurrencyCode: dicRecord.strCurrencyCode || (dicRecord.strCountryCode === "IN" ? "INR" : ""),
+    strTaxYearCode: normalizeFinancialYearCode(dicRecord.strTaxYearCode),
+    strEffectiveFromYear: normalizeFinancialYearCode(dicRecord.strEffectiveFromYear || dicRecord.strTaxYearCode),
     dtEffectiveFrom: dicRecord.dtEffectiveFrom ?? "",
     dtEffectiveTo: dicRecord.dtEffectiveTo ?? "",
-    intRegimeTypeID: dicRecord.intRegimeTypeID ?? "",
+    intRegimeTypeID: dicRecord.intRegimeTypeID ?? 1,
     strRegimeTypeCode: dicRecord.strRegimeTypeCode,
     strTaxpayerTypeCode: dicRecord.strTaxpayerTypeCode,
     strRoundingRuleCode: dicRecord.strRoundingRuleCode,
@@ -478,6 +495,7 @@ export const taxRegimeService = {
   async saveTaxStandardDeductionRules(intTaxRegimeID: number, lstRules: TaxStandardDeductionRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxStandardDeductionRuleFormValue>> {
     const objResult = await masterApiService.saveTaxStandardDeductionRules(intTaxRegimeID, {
       lstRules: lstRules.map((dicRule) => ({
+        intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
         strIncomeSourceCode: dicRule.strIncomeSourceCode.trim().toUpperCase(),
         strTaxpayerTypeCode: dicRule.strTaxpayerTypeCode.trim().toUpperCase(),
@@ -504,6 +522,7 @@ export const taxRegimeService = {
   async saveTaxRebateRules(intTaxRegimeID: number, lstRules: TaxRebateRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxRebateRuleFormValue>> {
     const objResult = await masterApiService.saveTaxRebateRules(intTaxRegimeID, {
       lstRules: lstRules.map((dicRule) => ({
+        intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
         strRebateCode: dicRule.strRebateCode.trim().toUpperCase(),
         strTaxpayerTypeCode: dicRule.strTaxpayerTypeCode.trim().toUpperCase(),
@@ -532,6 +551,7 @@ export const taxRegimeService = {
   async saveTaxSurchargeSlabs(intTaxRegimeID: number, lstRules: TaxSurchargeSlabFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxSurchargeSlabFormValue>> {
     const objResult = await masterApiService.saveTaxSurchargeSlabs(intTaxRegimeID, {
       lstSlabs: lstRules.map((dicRule) => ({
+        intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
         strSurchargeProfileCode: dicRule.strSurchargeProfileCode.trim().toUpperCase(),
         decIncomeFromAmount: Number(dicRule.decIncomeFromAmount || "0"),
@@ -557,6 +577,7 @@ export const taxRegimeService = {
   async saveTaxCessRules(intTaxRegimeID: number, lstRules: TaxCessRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxCessRuleFormValue>> {
     const objResult = await masterApiService.saveTaxCessRules(intTaxRegimeID, {
       lstRules: lstRules.map((dicRule) => ({
+        intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
         strCessCode: dicRule.strCessCode.trim().toUpperCase(),
         strCessName: dicRule.strCessName.trim(),

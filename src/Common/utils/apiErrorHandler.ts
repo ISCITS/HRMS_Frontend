@@ -16,8 +16,9 @@ type ApiPayloadResponse<TData> = ApiEnvelope<TData> | { payload: string };
 type ApiErrorResponse<TData> = ApiEnvelope<TData> | { payload?: string; Msg?: string; message?: string; RequestId?: string };
 
 function buildRequestIdAwareMessage(strMessage: unknown, strRequestId?: string) {
+  const strNormalizedMessage = typeof strMessage === "string" ? strMessage.trim() : "";
   const strResolvedMessage = typeof strMessage === "string"
-    ? (strMessage.trim() || ApiDefaultMessage.RequestFailed)
+    ? (strNormalizedMessage && strNormalizedMessage !== "[]" ? strNormalizedMessage : ApiDefaultMessage.RequestFailed)
     : ApiDefaultMessage.RequestFailed;
   if (!strRequestId?.trim()) {
     return strResolvedMessage;
@@ -89,8 +90,11 @@ export async function createApiRequestError<TData>(
     if (objResponseData && "payload" in objResponseData && objResponseData.payload) {
       try {
         const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
+        const strPayloadMessage = typeof objDecryptedPayload.Msg === "string" && objDecryptedPayload.Msg.trim() !== "[]"
+          ? objDecryptedPayload.Msg
+          : strFallbackMessage;
         return new ApiRequestError(
-          objDecryptedPayload.Msg ?? strFallbackMessage,
+          strPayloadMessage,
           objDecryptedPayload.Data,
           objError.response?.status,
           objDecryptedPayload.RequestId ?? strRequestId,

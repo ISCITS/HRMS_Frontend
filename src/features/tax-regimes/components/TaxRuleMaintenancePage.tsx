@@ -133,6 +133,10 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
   const blnCanEdit = canDoAny("edit");
   const blnReadOnly = blnCanView && !blnCanEdit;
 
+  function getUniqueFinancialYears(...lstYearValues: Array<string | null | undefined>) {
+    return [...new Set(lstYearValues.map((strYearValue) => (strYearValue ?? "").trim()).filter(Boolean))];
+  }
+
   useEffect(() => {
     let blnMounted = true;
     async function loadData() {
@@ -153,7 +157,7 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
           return;
         }
         setObjRegime(dicRegime);
-        setLstFinancialYears([dicRegime.strTaxYearCode, dicRegime.strEffectiveFromYear].filter(Boolean));
+        setLstFinancialYears(getUniqueFinancialYears(dicRegime.strTaxYearCode, dicRegime.strEffectiveFromYear));
         if (strRuleType === "standard-deduction") {
           const dicWorkspace = await taxRegimeService.getTaxStandardDeductionRules(intTaxRegimeID);
           if (!blnMounted) return;
@@ -188,7 +192,7 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
     return () => {
       blnMounted = false;
     };
-  }, [blnCanView, blnRightsLoading, intTaxRegimeID, strRuleType, t]);
+  }, [blnCanView, blnRightsLoading, intTaxRegimeID, strRuleType]);
 
   function getTitle() {
     if (strRuleType === "standard-deduction") return t("manage_standard_deduction", "Manage Standard Deduction");

@@ -127,7 +127,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, strMode, t]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, strMode]);
 
   const lstEffectiveYearOptions = useMemo(() => {
     const lstOptions = [...(objFormOptions?.lstFinancialYears ?? [])];
@@ -173,7 +173,19 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
       const dicSavedRecord = strMode === "edit" && intTaxRegimeID
         ? await taxRegimeService.updateTaxRegime(intTaxRegimeID, dicForm)
         : await taxRegimeService.createTaxRegime(dicForm);
-      setDicForm(toTaxRegimeFormValues(dicSavedRecord));
+      setDicForm((dicPrevious) => {
+        const dicNextForm = toTaxRegimeFormValues(dicSavedRecord);
+        return {
+          ...dicPrevious,
+          ...dicNextForm,
+          lstTexts: dicNextForm.lstTexts.length > 0 ? dicNextForm.lstTexts : dicPrevious.lstTexts,
+          strCurrencyCode: dicNextForm.strCurrencyCode || dicPrevious.strCurrencyCode,
+          strTaxYearCode: dicNextForm.strTaxYearCode || dicPrevious.strTaxYearCode,
+          strEffectiveFromYear: dicNextForm.strEffectiveFromYear || dicPrevious.strEffectiveFromYear,
+          intRegimeTypeID: dicNextForm.intRegimeTypeID || dicPrevious.intRegimeTypeID,
+          strRegimeTypeCode: dicNextForm.strRegimeTypeCode || dicPrevious.strRegimeTypeCode,
+        };
+      });
       setStrSuccess(strMode === "edit" ? t("update_success", "Tax regime updated successfully.") : t("create_success", "Tax regime created successfully."));
       if (strMode === "add") {
         objRouter.push(`/payroll/tax-regimes/edit/${dicSavedRecord.intID}`);
