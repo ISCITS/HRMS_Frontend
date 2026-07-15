@@ -203,7 +203,13 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   intFlexiComponentTypeID?: number | null;
   intFlexiBalanceHandlingID?: number | null;
   intPayslipSectionID?: number | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpProrationFormula?: string | null;
   intApplicableTaxRegimeID?: number | null;
+  intApplicableForWhichTaxRegime?: number | null;
   intUsedInSalaryStructures: number;
   intAssignedEmployees: number;
   intFormulaReferences: number;
@@ -267,4 +273,6 @@ export type SalaryComponentFormOptions = {
   lstLwpTreatmentLookups?: SalaryComponentLookupOption[];
   lstLwpReducedAmountHandlingLookups?: SalaryComponentLookupOption[];
   lstApplicableTaxRegimeLookups?: SalaryComponentLookupOption[];
+  lstLwpTreatmentLookups?: SalaryComponentLookupOption[];
+  lstLwpReducedAmountHandlingLookups?: SalaryComponentLookupOption[];
 };

@@ -247,6 +247,35 @@ export type TaxRegimeApiRecord = {
   strEffectiveFromYear: string;
   blnIsActive: boolean;
   intSlabCount: number;
+  intSlabProfileCount?: number;
+  intCountryID?: number | null;
+  strCurrencyCode?: string | null;
+  strTaxYearCode?: string | null;
+  dtEffectiveFrom?: string | null;
+  dtEffectiveTo?: string | null;
+  intRegimeTypeID?: number | null;
+  strRegimeTypeCode?: string | null;
+  strRegimeTypeDisplay?: string | null;
+  strTaxpayerTypeCode?: string | null;
+  strRoundingRuleCode?: string | null;
+  blnStandardDeductionEnabled?: boolean;
+  decStandardDeductionAmount?: number | null;
+  blnRebateEnabled?: boolean;
+  blnMarginalRebateEnabled?: boolean;
+  blnSurchargeEnabled?: boolean;
+  blnMarginalSurchargeReliefEnabled?: boolean;
+  blnCessEnabled?: boolean;
+  decCessRatePercent?: number | null;
+  intCalculationPriority?: number | null;
+  strLegalReference?: string | null;
+  strConfigurationNotes?: string | null;
+  strDescription?: string | null;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strRegimeName: string;
+    strDescription?: string | null;
+  }>;
 };
 
 export type TaxSlabApiRecord = {
@@ -257,18 +286,119 @@ export type TaxSlabApiRecord = {
   fltTaxRatePercent: number;
   blnRebateEligible: boolean;
   blnIsActive: boolean;
+  strTaxYearCode?: string | null;
+  strSlabProfileCode?: string | null;
+  strTaxpayerTypeCode?: string | null;
+  strResidentialStatusCode?: string | null;
+  intAgeFromYears?: number | null;
+  intAgeToYears?: number | null;
+  intDisplayOrder?: number;
+  decFixedTaxAmount?: number | null;
+  dtEffectiveFrom?: string | null;
+  dtEffectiveTo?: string | null;
+  strLegalReference?: string | null;
 };
 
 export type TaxRegimeFormOptionsApiRecord = {
   lstCountries: EmployeeLookupOptionApiRecord[];
   lstFinancialYears: string[];
   strDefaultEffectiveFromYear: string;
+  lstRegimeTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+  }>;
+  lstLanguages?: EmployeeLookupOptionApiRecord[];
 };
 
 export type TaxSlabSetApiRecord = {
   objRegime: TaxRegimeApiRecord;
   lstSlabs: TaxSlabApiRecord[];
   lstFinancialYears: string[];
+};
+
+export type TaxStandardDeductionRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strIncomeSourceCode: string;
+  strTaxpayerTypeCode: string;
+  strResidentialStatusCode: string;
+  strDeductionModeCode: string;
+  decDeductionAmount: number;
+  decDeductionPercent?: number | null;
+  decMaximumDeductionAmount?: number | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxRebateRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strRebateCode: string;
+  strTaxpayerTypeCode: string;
+  strResidentialStatusCode: string;
+  decMinimumTotalIncome: number;
+  decMaximumTotalIncome: number;
+  strRebateModeCode: string;
+  decMaximumRebateAmount: number;
+  decRebatePercent?: number | null;
+  blnMarginalReliefEnabled: boolean;
+  blnExcludesSpecialRateIncome: boolean;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxSurchargeSlabApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strSurchargeProfileCode: string;
+  decIncomeFromAmount: number;
+  decIncomeToAmount?: number | null;
+  decSurchargeRatePercent: number;
+  blnMarginalReliefEnabled: boolean;
+  decMaximumRateCapPercent?: number | null;
+  intDisplayOrder: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxCessRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strCessCode: string;
+  strCessName: string;
+  decCessRatePercent: number;
+  strCalculationBaseCode: string;
+  intDisplayOrder: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxRuleSetApiRecord<TRecord> = {
+  objRegime: TaxRegimeApiRecord;
+  lstRules?: TRecord[];
+  lstSlabs?: TRecord[];
 };
 
 export type PayrollProcessLogApiRecord = {
@@ -772,7 +902,6 @@ export type SalaryStructureComponentApiRecord = {
   strWageType?: string | null;
   strRoundingRule?: string | null;
   strPayslipSection?: string | null;
-  strPayslipSectionSnapshotCode?: string | null;
   intLwpTreatmentID?: number | null;
   strLwpTreatmentCode?: string | null;
   strLwpTreatment?: string | null;
@@ -2624,27 +2753,29 @@ export const masterApiService = {
     });
   },
 
-  getTaxRegimes() {
+  getTaxRegimes(intLanguageID?: number | null) {
     return requestApi<TaxRegimeApiRecord[]>({
       strPath: MasterApiResource.TaxRegimes,
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.TaxRegimeList
     });
   },
 
-  getTaxRegime(intID: number) {
+  getTaxRegime(intID: number, intLanguageID?: number | null) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody: { intID, intLanguageID: intLanguageID ?? undefined },
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  getTaxRegimeFormOptions() {
+  getTaxRegimeFormOptions(intLanguageID?: number | null) {
     return requestApi<TaxRegimeFormOptionsApiRecord>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.TaxRegimeFormOptions
     });
   },
@@ -2695,6 +2826,78 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxSlabSave
+    });
+  },
+
+  getTaxStandardDeductionRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "standard-deductions", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxStandardDeductionRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "standard-deductions"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxRebateRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "rebates", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxRebateRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "rebates"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxSurchargeSlabs(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "surcharges", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxSurchargeSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "surcharges"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxCessRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "cess", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxCessRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "cess"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 

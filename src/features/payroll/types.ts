@@ -640,10 +640,26 @@ export type PayrollResultRecord = {
   dicTaxSummary?: {
     strRegimeUsed: string | null;
     decTaxableIncome: number;
-    decAnnualTaxAmount: number;
-    decMonthlyTds: number;
     decProjectedTaxableIncome: number;
+    decExemptionAmount: number;
+    decDeclaredDeductionAmount: number;
+    decStandardDeductionAmount: number;
+    decTotalDeductionAmount: number;
+    decAnnualTaxAmount: number;
+    decTaxBeforeRebate: number;
+    decRebateAmount: number;
+    decMarginalRebateReliefAmount: number;
+    decTaxAfterRebate: number;
+    decSurchargeAmount: number;
+    decMarginalSurchargeReliefAmount: number;
+    decTaxAfterSurcharge: number;
+    decCessAmount: number;
+    decTotalTaxLiability: number;
+    decMonthlyTds: number;
     intRemainingMonths: number | null;
+    strRegimeTypeCode?: string | null;
+    strSlabProfileCode?: string | null;
+    strTaxRuleVersion?: string | null;
   };
   decRemunerationAmount: number;
   decActualWagesAmount: number;

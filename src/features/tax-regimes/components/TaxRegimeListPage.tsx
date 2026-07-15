@@ -4,6 +4,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import RuleFolderRoundedIcon from "@mui/icons-material/RuleFolderRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -12,10 +13,9 @@ import {
   CircularProgress,
   MenuItem,
   Pagination,
-  Snackbar,
   Stack,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -32,20 +32,33 @@ type Status = "Active" | "Inactive";
 type SearchForm = {
   strName: string;
   strCode: string;
+  strCountryCode: string;
+  strTaxYearCode: string;
   strStatus: "All" | Status;
-};
-type ToastState = {
-  blnOpen: boolean;
-  strMessage: string;
-  strSeverity: "success" | "error";
 };
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
 const lstRowsPerPageOptions = [10, 20, 50];
-const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
+const dicEmptySearch: SearchForm = {
+  strName: "",
+  strCode: "",
+  strCountryCode: "",
+  strTaxYearCode: "",
+  strStatus: "All",
+};
 
-function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[]) {
-  const lstHeaders = ["Regime Code", "Regime Name", "Country", "Effective From Year", "Default Regime", "Employee Opt-Out", "Slabs", "Status"];
+function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[], t: (strKey: string, strFallback?: string) => string) {
+  const lstHeaders = [
+    t("regime_code", "Regime Code"),
+    t("regime_name", "Regime Name"),
+    t("country", "Country"),
+    t("tax_year", "Tax Year"),
+    t("standard_deduction", "Standard Deduction"),
+    t("default_regime", "Default Regime"),
+    t("employee_opt_out", "Employee Opt-Out"),
+    t("slab_profiles", "Slab Profiles / Slab Count"),
+    t("status", "Status"),
+  ];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) =>
@@ -53,15 +66,16 @@ function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[]) {
         dicRow.strRegimeCode,
         dicRow.strRegimeName,
         dicRow.strCountryCode,
-        dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : "",
+        dicRow.strTaxYearCode,
+        dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount : 0,
         dicRow.blnIsDefaultRegime ? "Yes" : "No",
         dicRow.blnAllowEmployeeOptOut ? "Yes" : "No",
-        dicRow.intSlabCount,
-        dicRow.blnIsActive ? "Active" : "Inactive"
+        `${dicRow.intSlabProfileCount} / ${dicRow.intSlabCount}`,
+        dicRow.blnIsActive ? "Active" : "Inactive",
       ]
         .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
+        .join(","),
+    ),
   ];
   const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const strUrl = URL.createObjectURL(objBlob);
@@ -72,60 +86,17 @@ function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[]) {
   URL.revokeObjectURL(strUrl);
 }
 
-function exportPdf(strTitle: string, lstRows: TaxRegimeListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.strRegimeCode}</td>
-      <td>${dicRow.strRegimeName}</td>
-      <td>${dicRow.strCountryCode}</td>
-      <td>${dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : ""}</td>
-      <td>${dicRow.blnIsDefaultRegime ? "Yes" : "No"}</td>
-      <td>${dicRow.blnAllowEmployeeOptOut ? "Yes" : "No"}</td>
-      <td>${dicRow.intSlabCount}</td>
-      <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Regime Code</th>
-              <th>Regime Name</th>
-              <th>Country</th>
-              <th>Effective From Year</th>
-              <th>Default Regime</th>
-              <th>Employee Opt-Out</th>
-              <th>Slabs</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
+function matchesSearch(dicRow: TaxRegimeListRecord, dicSearch: SearchForm) {
+  const strName = dicSearch.strName.trim().toLowerCase();
+  const strCode = dicSearch.strCode.trim().toLowerCase();
+  const strCountryCode = dicSearch.strCountryCode.trim().toLowerCase();
+  const strTaxYearCode = dicSearch.strTaxYearCode.trim().toLowerCase();
+  const blnNameMatch = !strName || dicRow.strRegimeName.toLowerCase().includes(strName);
+  const blnCodeMatch = !strCode || dicRow.strRegimeCode.toLowerCase().includes(strCode);
+  const blnCountryMatch = !strCountryCode || dicRow.strCountryCode.toLowerCase().includes(strCountryCode);
+  const blnYearMatch = !strTaxYearCode || dicRow.strTaxYearCode.toLowerCase().includes(strTaxYearCode);
+  const blnStatusMatch = dicSearch.strStatus === "All" || (dicSearch.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
+  return blnNameMatch && blnCodeMatch && blnCountryMatch && blnYearMatch && blnStatusMatch;
 }
 
 export default function TaxRegimeListPage() {
@@ -137,64 +108,55 @@ export default function TaxRegimeListPage() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
+  const [strError, setStrError] = useState("");
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
-  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-
-  async function loadTaxRegimes() {
-    if (!canViewAny()) {
-      setLstRegimes([]);
-      setIntPage(1);
-      setBlnLoading(false);
-      return;
-    }
-    setBlnLoading(true);
-    try {
-      setLstRegimes(await taxRegimeService.getTaxRegimes());
-      setIntPage(1);
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : t("load_tax_regimes_failed", "Unable to load tax regimes."), "error");
-    } finally {
-      setBlnLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (blnRightsLoading) {
-      return;
-    }
-    loadTaxRegimes().catch(() => undefined);
-  }, [blnRightsLoading]);
-
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
 
-  const lstFilteredRows = useMemo(() => {
-    return lstRegimes.filter((dicRow) => {
-      const blnNameMatch = !dicSearchApplied.strName || dicRow.strRegimeName.toLowerCase().includes(dicSearchApplied.strName.toLowerCase());
-      const blnCodeMatch = !dicSearchApplied.strCode || dicRow.strRegimeCode.toLowerCase().includes(dicSearchApplied.strCode.toLowerCase());
-      const blnStatusMatch =
-        dicSearchApplied.strStatus === "All" ||
-        (dicSearchApplied.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
-      return blnNameMatch && blnCodeMatch && blnStatusMatch;
-    });
-  }, [dicSearchApplied, lstRegimes]);
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView) {
+      setBlnLoading(blnRightsLoading);
+      return;
+    }
+    let blnMounted = true;
+    async function loadTaxRegimes() {
+      setBlnLoading(true);
+      setStrError("");
+      try {
+        const lstRecords = await taxRegimeService.getTaxRegimes();
+        if (blnMounted) {
+          setLstRegimes(lstRecords);
+          setIntPage(1);
+        }
+      } catch (objError) {
+        if (blnMounted) {
+          setStrError(objError instanceof Error ? objError.message : t("load_tax_regimes_failed", "Unable to load tax regimes."));
+        }
+      } finally {
+        if (blnMounted) {
+          setBlnLoading(false);
+        }
+      }
+    }
+    loadTaxRegimes().catch(() => undefined);
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnRightsLoading, blnCanView]);
+
+  const lstFilteredRows = useMemo(
+    () => lstRegimes.filter((dicRow) => matchesSearch(dicRow, dicSearchApplied)),
+    [dicSearchApplied, lstRegimes],
+  );
 
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
   const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
   const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
-
-  function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
-    setObjToast({ blnOpen: true, strMessage, strSeverity });
-  }
-
-  function closeToast() {
-    setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
-  }
 
   if (blnLoading || blnRightsLoading) {
     return (
@@ -225,35 +187,29 @@ export default function TaxRegimeListPage() {
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
-          <TextField controlId="tax-regimes.list.regime-code.input" inputProps={{ "controlId": "tax-regimes.list.regime-code.input" }} label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField controlId="tax-regimes.list.regime-name.input" inputProps={{ "controlId": "tax-regimes.list.regime-name.input" }} label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField controlId="tax-regimes.list.search-status.select" inputProps={{ "controlId": "tax-regimes.list.search-status.select" }} select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
-            <MenuItem controlId="tax-regimes.list.search-status.all.option" value="All">{t("all", "All")}</MenuItem>
-            <MenuItem controlId="tax-regimes.list.search-status.active.option" value="Active">{t("active", "Active")}</MenuItem>
-            <MenuItem controlId="tax-regimes.list.search-status.inactive.option" value="Inactive">{t("inactive", "Inactive")}</MenuItem>
+          <TextField label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
+          <TextField label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
+          <TextField label={t("country", "Country")} value={dicSearchDraft.strCountryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCountryCode: objEvent.target.value }))} size="small" />
+          <TextField label={t("tax_year", "Tax Year")} value={dicSearchDraft.strTaxYearCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strTaxYearCode: objEvent.target.value }))} size="small" />
+          <TextField select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+            <MenuItem value="All">{t("all", "All")}</MenuItem>
+            <MenuItem value="Active">{t("active", "Active")}</MenuItem>
+            <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button controlId="tax-regimes.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
               {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button
-              controlId="tax-regimes.list.clear.button"
-              className={styles.secondaryButton}
-              startIcon={<ClearRoundedIcon />}
-              onClick={() => {
-                setDicSearchDraft(dicEmptySearch);
-                setDicSearchApplied(dicEmptySearch);
-                setIntPage(1);
-              }}
-            >
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }}>
               {t("clear", "Clear")}
             </Button>
           </Box>
         </Box>
       </Box>
 
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Regimes.")}</Alert> : null}
 
       <Box className={styles.tableCard}>
@@ -261,36 +217,22 @@ export default function TaxRegimeListPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanAdd ? (
-              <Button controlId="tax-regimes.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("add_tax_regime", "Add Tax Regime")}
               </Button>
             ) : null}
             {blnCanExport ? (
-              <Button controlId="tax-regimes.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tax_regimes.csv", lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tax_regimes.csv", lstFilteredRows, t)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button controlId="tax-regimes.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(t("tax_regimes_title", "Tax Regimes"), lstFilteredRows)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_pdf", "Export PDF")}
               </Button>
             ) : null}
           </Box>
 
-          {!blnLoading && lstFilteredRows.length > 0 ? (
+          {lstFilteredRows.length > 0 ? (
             <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
               <Box className={styles.paginationInfo}>
                 <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-                <TextField
-                  select
-                  size="small"
-                  value={String(intRowsPerPage)}
-                  onChange={(objEvent) => {
-                    setIntRowsPerPage(Number(objEvent.target.value));
-                    setIntPage(1);
-                  }}
-                  className={styles.rowsPerPageSelect}
-                >
+                <TextField select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
                   {lstRowsPerPageOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
                   ))}
@@ -312,17 +254,18 @@ export default function TaxRegimeListPage() {
                 <th>{t("regime_code", "Regime Code")}</th>
                 <th>{t("regime_name", "Regime Name")}</th>
                 <th>{t("country", "Country")}</th>
-                <th>{t("effective_from_year", "Effective From Year")}</th>
+                <th>{t("tax_year", "Tax Year")}</th>
+                <th>{t("standard_deduction", "Standard Deduction")}</th>
                 <th>{t("default_regime", "Default Regime")}</th>
                 <th>{t("employee_opt_out", "Employee Opt-Out")}</th>
-                <th>{t("slabs", "Slabs")}</th>
+                <th>{t("slab_profiles", "Slab Profiles / Slab Count")}</th>
                 <th>{t("status", "Status")}</th>
               </tr>
             </thead>
             <tbody>
               {lstFilteredRows.length === 0 ? (
                 <tr>
-                  <td className={styles.emptyState} colSpan={9}>{t("no_records", "No tax regimes found.")}</td>
+                  <td className={styles.emptyState} colSpan={10}>{t("no_records", "No tax regimes found.")}</td>
                 </tr>
               ) : lstVisibleRows.map((dicRow) => (
                 <tr key={dicRow.intID}>
@@ -336,58 +279,34 @@ export default function TaxRegimeListPage() {
                         onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
                         onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
                       />
-                      {(blnCanView || blnCanEdit) ? (
-                        <Button
-                          controlId="tax-regimes.list.row.manage-slabs.button"
-                          data-row-key={String(dicRow.intID)}
-                          variant="outlined"
-                          size="small"
-                          startIcon={<ReceiptLongRoundedIcon />}
-                          onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)}
-                          sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}
-                        >
-                          {t("manage_slabs", "Slabs")}
-                        </Button>
-                      ) : null}
+                      <Button variant="outlined" size="small" startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
+                        {t("manage_slabs", "Slabs")}
+                      </Button>
+                      <Button variant="outlined" size="small" startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
+                        {t("manage_tax_rules", "Tax Rules")}
+                      </Button>
                     </Box>
                   </td>
                   <td>{dicRow.strRegimeCode}</td>
                   <td>
                     <Box>
                       <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strRegimeName}</Typography>
-                      <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        {dicRow.strCountryCode === "IN"
-                          ? t("india_first_hint", "India-first regime design")
-                          : t("country_ready_hint", "Country-ready regime design")}
-                      </Typography>
+                      <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicRow.strRegimeTypeDisplay}</Typography>
                     </Box>
                   </td>
                   <td>{dicRow.strCountryCode}</td>
-                  <td>{dicRow.strEffectiveFromYear ? `FY ${dicRow.strEffectiveFromYear}` : "-"}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>
-                      {dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
-                    </span>
-                  </td>
+                  <td>{dicRow.strTaxYearCode || "-"}</td>
+                  <td>{dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount.toLocaleString() : "-"}</td>
+                  <td><span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>{dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}</span></td>
                   <td>{dicRow.blnAllowEmployeeOptOut ? t("yes", "Yes") : t("no", "No")}</td>
-                  <td>{dicRow.intSlabCount}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                      {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
-                    </span>
-                  </td>
+                  <td>{dicRow.intSlabProfileCount} / {dicRow.intSlabCount}</td>
+                  <td><span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>{dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Box>
       </Box>
-
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
-          {objToast.strMessage}
-        </Alert>
-      </Snackbar>
     </Stack>
   );
 }

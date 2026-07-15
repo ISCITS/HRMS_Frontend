@@ -525,6 +525,8 @@ function mergeSalaryComponentMetadataIntoOptions(
         strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
         strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
         strWageType: dicComponent.strWageType ?? dicOption.strWageType,
+        strLwpTreatmentCode: dicComponent.strLwpTreatmentCode ?? dicOption.strLwpTreatmentCode,
+        strLwpReducedAmountHandlingCode: dicComponent.strLwpReducedAmountHandlingCode ?? dicOption.strLwpReducedAmountHandlingCode,
         intComponentCategoryID: dicComponent.intComponentCategoryID ?? dicOption.intComponentCategoryID,
         intCtcTreatmentID: dicComponent.intCtcTreatmentID ?? dicOption.intCtcTreatmentID,
         intTaxTreatmentID: dicComponent.intTaxTreatmentID ?? dicOption.intTaxTreatmentID,

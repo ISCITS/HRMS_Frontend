@@ -180,6 +180,20 @@ function parseMaxLimit(objMaxLimit: unknown) {
   return Number.isFinite(decParsed) ? decParsed : null;
 }
 
+function asObjectRecord(objValue: unknown) {
+  if (!objValue || typeof objValue !== "object" || Array.isArray(objValue)) return null;
+  return objValue as Record<string, unknown>;
+}
+
+function getNumericValue(objValue: unknown) {
+  if (typeof objValue === "number") return Number.isFinite(objValue) ? objValue : null;
+  if (typeof objValue === "string" && objValue.trim()) {
+    const decParsed = Number(objValue);
+    return Number.isFinite(decParsed) ? decParsed : null;
+  }
+  return null;
+}
+
 function resolveMaxLimitAmount(objRecord: Record<string, unknown>) {
   return parseMaxLimit(
     objRecord.decMaxLimitAmount ??
@@ -507,12 +521,19 @@ export default function SalaryEssDeclarationsPage() {
   const [objTaxSummary, setObjTaxSummary] = useState({
     decGrossSalary: 0,
     decExemptions: 0,
+    decDeductions: 0,
     decTaxableIncome: 0,
     decTaxableIncomeOld: 0,
     decTaxableIncomeNew: 0,
     decOldTax: 0,
     decNewTax: 0,
     decSavings: 0,
+    strSelectedSlabProfileCode: "",
+    strResidentialStatusCode: "",
+    intAgeYears: null as number | null,
+    objSelectedRegimeBreakdown: null as Record<string, unknown> | null,
+    objOldRegimeBreakdown: null as Record<string, unknown> | null,
+    objNewRegimeBreakdown: null as Record<string, unknown> | null,
     blnSelectedRegimePayrollAligned: false,
     strSelectedRegimeTaxBasis: "declared",
     strSummaryNote: "",
@@ -629,7 +650,7 @@ export default function SalaryEssDeclarationsPage() {
       ),
       action: (
         <Button
-          controlId="salary.it-declaration.back.button"
+          data-controlid="salary.it-declaration.back.button"
           variant="text"
           size="small"
           sx={{ fontSize: "0.76rem", fontWeight: 700 }}
@@ -724,6 +745,9 @@ export default function SalaryEssDeclarationsPage() {
   }, [blnUseSummaryAsTruth, objTaxSummary, lstRows]);
   const strRecommendedRegimeSelectable: Regime =
     objDerivedCalc.strRecommendedRegime === "New Regime" ? "New Regime" : "Old Regime";
+  const objSelectedRegimeBreakdown = asObjectRecord(objTaxSummary.objSelectedRegimeBreakdown);
+  const objOldRegimeBreakdown = asObjectRecord(objTaxSummary.objOldRegimeBreakdown);
+  const objNewRegimeBreakdown = asObjectRecord(objTaxSummary.objNewRegimeBreakdown);
   const decOldEffectiveRate = objDerivedCalc.decTaxableOld > 0 ? (objDerivedCalc.decOldTax / objDerivedCalc.decTaxableOld) * 100 : 0;
   const decNewEffectiveRate = objDerivedCalc.decTaxableNew > 0 ? (objDerivedCalc.decNewTax / objDerivedCalc.decTaxableNew) * 100 : 0;
   const intActiveStep = useMemo(() => {
@@ -817,12 +841,19 @@ export default function SalaryEssDeclarationsPage() {
     setObjTaxSummary({
       decGrossSalary: objData.objSummary?.decGrossSalary ?? 0,
       decExemptions: objData.objSummary?.decExemptions ?? 0,
+      decDeductions: objData.objSummary?.decDeductions ?? 0,
       decTaxableIncome: objData.objSummary?.decTaxableIncome ?? 0,
       decTaxableIncomeOld: objData.objSummary?.decTaxableIncomeOld ?? objData.objSummary?.decTaxableIncome ?? 0,
       decTaxableIncomeNew: objData.objSummary?.decTaxableIncomeNew ?? objData.objSummary?.decGrossSalary ?? 0,
       decOldTax: objData.objSummary?.decOldTax ?? 0,
       decNewTax: objData.objSummary?.decNewTax ?? 0,
       decSavings: objData.objSummary?.decSavings ?? 0,
+      strSelectedSlabProfileCode: objData.objSummary?.strSelectedSlabProfileCode ?? "",
+      strResidentialStatusCode: objData.objSummary?.strResidentialStatusCode ?? "",
+      intAgeYears: objData.objSummary?.intAgeYears ?? null,
+      objSelectedRegimeBreakdown: asObjectRecord(objData.objSummary?.objSelectedRegimeBreakdown) ?? null,
+      objOldRegimeBreakdown: asObjectRecord(objData.objSummary?.objOldRegimeBreakdown) ?? null,
+      objNewRegimeBreakdown: asObjectRecord(objData.objSummary?.objNewRegimeBreakdown) ?? null,
       blnSelectedRegimePayrollAligned: Boolean(objData.objSummary?.blnSelectedRegimePayrollAligned),
       strSelectedRegimeTaxBasis: objData.objSummary?.strSelectedRegimeTaxBasis ?? "declared",
       strSummaryNote: objData.objSummary?.strSummaryNote ?? "",
@@ -1105,12 +1136,17 @@ export default function SalaryEssDeclarationsPage() {
   }, [strError]);
 
   async function runCompareAndOpenModal() {
-    if (blnLocked) return;
     setBlnSaving(true);
-    setStrSavingLabel(t("saving_changes_comparing", "Saving changes and comparing..."));
+    setStrSavingLabel(
+      blnLocked
+        ? t("comparing_tax", "Comparing tax...")
+        : t("saving_changes_comparing", "Saving changes and comparing...")
+    );
     setStrError("");
     try {
-      const intResolvedDeclarationID = await persistDraftToDb();
+      const intResolvedDeclarationID = blnLocked
+        ? (intDeclarationID ?? null)
+        : await persistDraftToDb();
       if (!intResolvedDeclarationID) return;
       const objData = await compareCurrentTax(intResolvedDeclarationID);
       hydrateFromApi(objData);
@@ -1434,15 +1470,22 @@ export default function SalaryEssDeclarationsPage() {
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`${getRegimeLabel("Old Regime")}${objDerivedCalc.strRecommendedRegime === "Old Regime" ? ` (${t("recommended", "Recommended")})` : ""}`} />
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label={getRegimeLabel("New Regime")} />
               </RadioGroup>
-              {!blnHideActionButtons && blnDraftLikeActionsAllowed ? (
+              {blnDraftLikeActionsAllowed && !blnHideActionButtons ? (
                 <>
-                  <Button controlId="salary.it-declaration.save-draft.button" variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
+                  <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} disabled={!intDeclarationID && !blnHasAnyFilled} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#0f4b8b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#e0f2fe", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(255,255,255,0.35)", color: "rgba(255,255,255,0.78)" } }} data-controlid="salary.it-declaration.compare-tax.button">
+                    {t("compare_tax", "Compare Tax")}
+                  </Button>
+                  <Button data-controlid="salary.it-declaration.save-draft.button" variant="contained" size="small" onClick={() => void saveDraft()} disabled={blnLocked || !blnDraftLikeActionsAllowed} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.52)", color: "rgba(255,255,255,0.92)" } }}>
                     {t("save_draft", "Save Draft")}
                   </Button>
-                  <Button controlId="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
+                  <Button data-controlid="salary.it-declaration.submit.button" variant="contained" size="small" disabled={!blnHasAnyFilled || blnLocked || !blnDraftLikeActionsAllowed} onClick={() => setBlnSubmitModalOpen(true)} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706" }, "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.35)", color: "rgba(226,232,240,0.92)", border: "1px dashed rgba(203,213,225,0.65)", cursor: "not-allowed", boxShadow: "none" } }}>
                     {t("submit_declaration", "Submit Declaration")}
                   </Button>
                 </>
+              ) : blnLocked && intDeclarationID ? (
+                <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#0f4b8b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#e0f2fe", boxShadow: "none" } }} data-controlid="salary.it-declaration.compare-tax.button">
+                  {t("compare_tax", "Compare Tax")}
+                </Button>
               ) : null}
             </Stack>
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (
@@ -1589,11 +1632,24 @@ export default function SalaryEssDeclarationsPage() {
             <Stack spacing={0.72}>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("gross_salary", "Gross Salary")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_exemptions", "Total Exemptions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_deductions", "Total Deductions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objTaxSummary.decDeductions || 0)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_old", "Taxable Income (Old)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableOld)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_new", "Taxable Income (New)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableNew)}</Typography></Stack>
               <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_old", "Estimated Tax (Old)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#15803d" }}>{formatCurrency(objDerivedCalc.decOldTax)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>{t("estimated_tax_new", "Estimated Tax (New)")}</Typography><Typography sx={{ fontSize: "0.86rem", fontWeight: 800, color: "#b91c1c" }}>{formatCurrency(objDerivedCalc.decNewTax)}</Typography></Stack>
+              {objSelectedRegimeBreakdown ? (
+                <>
+                  <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("slab_profile", "Slab Profile")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{String(objTaxSummary.strSelectedSlabProfileCode || getNumericValue(objSelectedRegimeBreakdown.strSlabProfileCode) || objSelectedRegimeBreakdown.strSlabProfileCode || "-")}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("standard_deduction", "Standard Deduction")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(getNumericValue(objSelectedRegimeBreakdown.decStandardDeductionAmount) ?? 0)}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("tax_before_rebate", "Tax Before Rebate")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(getNumericValue(objSelectedRegimeBreakdown.decTaxBeforeRebate) ?? 0)}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("rebate", "Rebate")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency((getNumericValue(objSelectedRegimeBreakdown.decRebateAmount) ?? 0) + (getNumericValue(objSelectedRegimeBreakdown.decMarginalRebateReliefAmount) ?? 0))}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("surcharge", "Surcharge")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency((getNumericValue(objSelectedRegimeBreakdown.decSurchargeAmount) ?? 0) - (getNumericValue(objSelectedRegimeBreakdown.decMarginalSurchargeReliefAmount) ?? 0))}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("cess", "Cess")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(getNumericValue(objSelectedRegimeBreakdown.decCessAmount) ?? 0)}</Typography></Stack>
+                  <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("monthly_tds", "Monthly TDS")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700 }}>{formatCurrency(getNumericValue(objSelectedRegimeBreakdown.decMonthlyTds) ?? 0)}</Typography></Stack>
+                </>
+              ) : null}
               {objTaxSummary.blnSelectedRegimePayrollAligned && objTaxSummary.strSummaryNote ? (
                 <Typography sx={{ fontSize: "0.73rem", color: "#166534", fontWeight: 700 }}>
                   {objTaxSummary.strSummaryNote}
@@ -1864,6 +1920,20 @@ export default function SalaryEssDeclarationsPage() {
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableOld)}</TableCell>
                     <TableCell>{formatCurrency(objDerivedCalc.decTaxableNew)}</TableCell>
                   </TableRow>
+                  {objOldRegimeBreakdown || objNewRegimeBreakdown ? (
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("standard_deduction", "Standard Deduction")}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objOldRegimeBreakdown?.decStandardDeductionAmount) ?? 0)}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objNewRegimeBreakdown?.decStandardDeductionAmount) ?? 0)}</TableCell>
+                    </TableRow>
+                  ) : null}
+                  {objOldRegimeBreakdown || objNewRegimeBreakdown ? (
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("tax_before_rebate", "Tax Before Rebate")}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objOldRegimeBreakdown?.decTaxBeforeRebate) ?? 0)}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objNewRegimeBreakdown?.decTaxBeforeRebate) ?? 0)}</TableCell>
+                    </TableRow>
+                  ) : null}
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>{t("estimated_tax", "Estimated Tax")}</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "#166534" : "#0f172a", backgroundColor: objDerivedCalc.strRecommendedRegime === "Old Regime" ? "rgba(220,252,231,0.62)" : undefined }}>
@@ -1873,6 +1943,13 @@ export default function SalaryEssDeclarationsPage() {
                       {formatCurrency(objDerivedCalc.decNewTax)}
                     </TableCell>
                   </TableRow>
+                  {objOldRegimeBreakdown || objNewRegimeBreakdown ? (
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t("monthly_tds", "Monthly TDS")}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objOldRegimeBreakdown?.decMonthlyTds) ?? 0)}</TableCell>
+                      <TableCell>{formatCurrency(getNumericValue(objNewRegimeBreakdown?.decMonthlyTds) ?? 0)}</TableCell>
+                    </TableRow>
+                  ) : null}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -1893,7 +1970,9 @@ export default function SalaryEssDeclarationsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBlnCompareModalOpen(false)}>{t("back", "Back")}</Button>
-          <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>{t("continue_to_submit", "Continue to Submit")}</Button>
+          {!blnLocked && blnDraftLikeActionsAllowed ? (
+            <Button variant="contained" onClick={() => { setBlnCompareModalOpen(false); setBlnSubmitModalOpen(true); }}>{t("continue_to_submit", "Continue to Submit")}</Button>
+          ) : null}
         </DialogActions>
       </Dialog>
 

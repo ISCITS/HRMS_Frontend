@@ -1,5 +1,6 @@
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
+import { authHelpers } from "@/lib/auth";
 import type {
   SalaryComponentDetailRecord,
   SalaryComponentFlexiEligibilityRuleFormValue,
@@ -182,7 +183,6 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     blnExpenseDateRequired: Boolean(dicRecord.blnExpenseDateRequired ?? true),
     blnAllowPartialApproval: Boolean(dicRecord.blnAllowPartialApproval ?? dicRecord.blnAllowExcessClaim),
     intApplicableTaxRegimeID: dicRecord.intApplicableTaxRegimeID ?? null,
-    intApplicableForWhichTaxRegime: Number(dicRecord.intApplicableForWhichTaxRegime ?? 2),
     decAnnualLimitAmount: dicRecord.decAnnualLimitAmount ?? null,
     decMonthlyLimitAmount: dicRecord.decMonthlyLimitAmount ?? null,
     intClaimLimitTypeID: dicRecord.intClaimLimitTypeID ?? null,
@@ -395,7 +395,7 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnExpenseDateRequired: Boolean(dicRecord.blnExpenseDateRequired ?? true),
     blnAllowPartialApproval: Boolean(dicRecord.blnAllowPartialApproval ?? dicRecord.blnAllowExcessClaim),
     intApplicableTaxRegimeID: dicRecord.intApplicableTaxRegimeID ?? "",
-    intApplicableForWhichTaxRegime: Number(dicRecord.intApplicableForWhichTaxRegime ?? 2) as SalaryComponentFormValues["intApplicableForWhichTaxRegime"],
+    intApplicableForWhichTaxRegime: Number((dicRecord as SalaryComponentApiRecord).intApplicableForWhichTaxRegime ?? 2) as SalaryComponentFormValues["intApplicableForWhichTaxRegime"],
     intClaimLimitTypeID: dicRecord.intClaimLimitTypeID ?? "",
     strClaimLimitType: (dicRecord.strClaimLimitType as SalaryComponentFormValues["strClaimLimitType"]) ?? "none",
     intFlexiComponentTypeID: dicRecord.intFlexiComponentTypeID ?? "",

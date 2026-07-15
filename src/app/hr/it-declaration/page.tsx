@@ -180,17 +180,12 @@ export default function HrItDeclarationListPage() {
     const objEmployee = objFilters?.objEmployee ?? objSearchEmployee;
     const strFinancialYearCode = objFilters?.strFinancialYearCode ?? strSearchFinancialYearCode;
     const strRegime = objFilters?.strRegime ?? strSearchRegime;
-    if (!objEmployee?.intEmployeeID) {
-      setBlnHasSearched(true);
-      setLstRows([]);
-      return;
-    }
     setBlnListLoading(true);
     setBlnHasSearched(true);
     setStrError("");
     try {
       const objData = await hrItDeclarationService.getEmployeeDeclarations(
-        objEmployee.intEmployeeID,
+        objEmployee?.intEmployeeID,
         strFinancialYearCode.trim() || undefined,
       );
       if (typeof window !== "undefined") {
@@ -230,13 +225,23 @@ export default function HrItDeclarationListPage() {
   }
 
   function openDeclaration(objRow: HrEmployeeItDeclarationListRecord) {
-    if (!objSearchEmployee?.intEmployeeID) return;
+    const intEmployeeID = Number(objRow.intEmployeeID || objSearchEmployee?.intEmployeeID || 0);
+    if (!intEmployeeID) return;
     const strParams = new URLSearchParams({
-      employeeId: String(objSearchEmployee.intEmployeeID),
+      employeeId: String(intEmployeeID),
       declarationId: String(objRow.intDeclarationID),
       fy: normalizeFinancialYearCode(objRow.strFinancialYearCode || strSearchFinancialYearCode),
       regime: strSearchRegime,
-      returnTo: buildReturnTo(objSearchEmployee, strSearchFinancialYearCode || objRow.strFinancialYearCode, strSearchRegime),
+      returnTo: buildReturnTo(
+        {
+          intEmployeeID,
+          strEmployeeCode: String(objRow.strEmployeeCode || objSearchEmployee?.strEmployeeCode || ""),
+          strFullName: String(objRow.strFullName || objSearchEmployee?.strFullName || ""),
+          boolHasDeclaration: true,
+        },
+        strSearchFinancialYearCode || objRow.strFinancialYearCode,
+        strSearchRegime,
+      ),
     });
     objRouter.push(`/hr/it-declaration/declaration?${strParams.toString()}`);
   }
@@ -291,7 +296,7 @@ export default function HrItDeclarationListPage() {
       setStrSearchRegime(strRegime);
       setStrAddRegime(strRegime);
       setBlnFiltersHydrated(true);
-      if (blnAutoload && objEmployeeOption?.intEmployeeID) {
+      if (blnAutoload) {
         void loadDeclarations({
           objEmployee: objEmployeeOption,
           strFinancialYearCode,
@@ -306,6 +311,7 @@ export default function HrItDeclarationListPage() {
         intEmployeeID,
         strEmployeeCode: strQueryEmployeeCode,
         strFullName: strQueryEmployeeName,
+        boolHasDeclaration: false,
       };
       const strNormalizedFy = normalizeFinancialYearCode(strQueryFinancialYearCode);
       const strNormalizedRegime: ItDeclarationRegime = strQueryRegime === "New Regime" ? "New Regime" : "Old Regime";
@@ -337,7 +343,7 @@ export default function HrItDeclarationListPage() {
       const objEmployeeOption = objStoredFilters.objEmployee ?? null;
       const strNormalizedFy = normalizeFinancialYearCode(objStoredFilters.strFinancialYearCode);
       const strNormalizedRegime: ItDeclarationRegime = objStoredFilters.strRegime === "New Regime" ? "New Regime" : "Old Regime";
-      hydrateFromFilters(objEmployeeOption, strNormalizedFy, strNormalizedRegime, Boolean(objEmployeeOption?.intEmployeeID));
+      hydrateFromFilters(objEmployeeOption, strNormalizedFy, strNormalizedRegime, true);
     } catch {
       window.sessionStorage.removeItem(strHrListFilterStorageKey);
       setBlnFiltersHydrated(true);
@@ -460,7 +466,6 @@ export default function HrItDeclarationListPage() {
               className={styles.primaryButton}
               variant="contained"
               startIcon={<SearchRoundedIcon />}
-              disabled={!objSearchEmployee?.intEmployeeID}
               onClick={() => void loadDeclarations()}
             >
               {t("IT_DECLARATION_SEARCH", "Search")}
@@ -501,6 +506,7 @@ export default function HrItDeclarationListPage() {
             <thead>
               <tr>
                 <th>{t("IT_DECLARATION_DECLARATION", "Declaration")}</th>
+                <th>{t("IT_DECLARATION_EMPLOYEE", "Employee")}</th>
                 <th>{t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year")}</th>
                 <th>{t("IT_DECLARATION_TAX_REGIME", "Tax Regime")}</th>
                 <th>{t("IT_DECLARATION_DECLARED", "Declared")}</th>
@@ -514,11 +520,11 @@ export default function HrItDeclarationListPage() {
             <tbody>
               {lstRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <Typography sx={{ py: 3, textAlign: "center", color: "#64748b", fontSize: "0.86rem" }}>
-                      {blnHasSearched || (blnFiltersHydrated && objSearchEmployee?.intEmployeeID)
+                      {blnHasSearched || blnFiltersHydrated
                         ? t("IT_DECLARATION_NO_RECORDS_SELECTED_FILTERS", "No IT declarations found for the selected filters.")
-                        : t("IT_DECLARATION_SELECT_FILTERS_AND_SEARCH", "Select employee, financial year, tax regime and click Search.")}
+                        : t("IT_DECLARATION_SELECT_FILTERS_AND_SEARCH", "Select filters and click Search.")}
                     </Typography>
                   </td>
                 </tr>
@@ -526,6 +532,7 @@ export default function HrItDeclarationListPage() {
                 lstVisibleRows.map((objRow) => (
                   <tr key={objRow.intDeclarationID}>
                     <td>{objRow.strDeclarationCode}</td>
+                    <td>{[objRow.strEmployeeCode, objRow.strFullName].filter(Boolean).join(" - ") || "-"}</td>
                     <td>{objRow.strFinancialYearCode}</td>
                     <td>{objRow.strTaxRegime === "New Regime" ? getRegimeLabel("New Regime") : objRow.strTaxRegime === "Old Regime" ? getRegimeLabel("Old Regime") : "-"}</td>
                     <td>{formatCurrency(objRow.decDeclaredTotalAmount)}</td>

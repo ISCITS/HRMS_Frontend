@@ -65,12 +65,19 @@ export type ItDeclarationInvestmentOptionDto = {
 export type ItDeclarationSummaryDto = {
   decGrossSalary: number;
   decExemptions: number;
+  decDeductions?: number;
   decTaxableIncome: number;
   decTaxableIncomeOld?: number;
   decTaxableIncomeNew?: number;
   decOldTax: number;
   decNewTax: number;
   decSavings: number;
+  strSelectedSlabProfileCode?: string;
+  strResidentialStatusCode?: string;
+  intAgeYears?: number | null;
+  objSelectedRegimeBreakdown?: Record<string, unknown> | null;
+  objOldRegimeBreakdown?: Record<string, unknown> | null;
+  objNewRegimeBreakdown?: Record<string, unknown> | null;
   blnSummaryFallback?: boolean;
   blnSelectedRegimePayrollAligned?: boolean;
   strSelectedRegimeTaxBasis?: "declared" | "approved" | string;
@@ -282,6 +289,9 @@ export type HrItDeclarationEmployeeOption = {
 };
 
 export type HrEmployeeItDeclarationListRecord = {
+  intEmployeeID?: number;
+  strEmployeeCode?: string;
+  strFullName?: string;
   strDeclarationCode: string;
   intDeclarationID: number;
   strFinancialYearCode: string;
@@ -318,9 +328,9 @@ export const hrItDeclarationService = {
     return objResult.Data ?? [];
   },
 
-  async getEmployeeDeclarations(intEmployeeID: number, strFinancialYearCode?: string): Promise<HrEmployeeItDeclarationListDto> {
+  async getEmployeeDeclarations(intEmployeeID?: number | null, strFinancialYearCode?: string): Promise<HrEmployeeItDeclarationListDto> {
     const objQueryParams = {
-      employee_id: intEmployeeID,
+      ...(intEmployeeID ? { employee_id: intEmployeeID } : {}),
       ...(strFinancialYearCode?.trim() ? { financial_year_code: strFinancialYearCode.trim() } : {}),
     };
     const objResult = await requestApi<HrEmployeeItDeclarationListDto>({
@@ -329,7 +339,7 @@ export const hrItDeclarationService = {
       objQueryParams,
       strMenuAction: "HR_IT_DECLARATION_VIEW",
     });
-    return objResult.Data ?? { objEmployee: { intEmployeeID, strEmployeeCode: "", strFullName: "" }, lstRows: [] };
+    return objResult.Data ?? { objEmployee: { intEmployeeID: intEmployeeID ?? 0, strEmployeeCode: "", strFullName: "" }, lstRows: [] };
   },
 
   async getDeclaration(intDeclarationID: number): Promise<ItDeclarationDto> {
