@@ -6,6 +6,8 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
+import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
@@ -21,10 +23,12 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   Menu,
   MenuItem,
   Paper,
   Stack,
+  Tooltip,
   Switch,
   Typography
 } from "@mui/material";
@@ -48,6 +52,16 @@ type PayrollResultDetailPageProps = {
   intResultID: number;
   blnPayslipScreen?: boolean;
   strBackRoute?: string;
+};
+
+const SUMMARY_PAGE_SIZE = 4;
+
+type SummaryDisplayItem = {
+  key: string;
+  label: string;
+  value: ReactNode;
+  tooltip?: string;
+  tone?: "default" | "note" | "info";
 };
 
 function formatMonth(strDate: string | null) {
@@ -220,17 +234,6 @@ function formatLabelTemplate(strTemplate: string, dicValues: Record<string, stri
   );
 }
 
-function getLineAnnualAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
-  const objTrace = dicLine.objCalculationTrace;
-  const objAnnualValue = getCalculationTraceValue(
-    objTrace,
-    "approved_annual_amount",
-    "annual_amount",
-    "declared_annual_amount"
-  );
-  return typeof objAnnualValue === "number" ? objAnnualValue : null;
-}
-
 function getLineMonthlyAmount(dicLine: PayrollResultDetailRecord["lstLines"][number]) {
   const objTrace = dicLine.objCalculationTrace;
   const objMonthlyValue = getCalculationTraceValue(
@@ -353,34 +356,35 @@ function KpiCard({
   strLabel,
   strValue,
   objIcon,
-  strBorder,
   strIconBg,
   strIconColor,
+  blnEmphasis = false,
 }: {
   strLabel: string;
   strValue: string;
   objIcon: ReactNode;
-  strBorder: string;
   strIconBg: string;
   strIconColor: string;
+  blnEmphasis?: boolean;
 }) {
   return (
     <Paper
       sx={{
-        borderRadius: "22px",
-        border: `1px solid ${strBorder}`,
+        borderRadius: "12px",
+        border: "1px solid #dbe7f3",
         background: "#fff",
-        boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
-        px: 2.5,
-        py: 2.25,
+        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+        minHeight: 82,
+        px: 2,
+        py: 1.6,
       }}
     >
-      <Stack direction="row" spacing={1.8} alignItems="center">
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%" }}>
         <Box
           sx={{
-            width: 56,
-            height: 56,
-            borderRadius: "18px",
+            width: 46,
+            height: 46,
+            borderRadius: "12px",
             display: "grid",
             placeItems: "center",
             background: strIconBg,
@@ -391,10 +395,10 @@ function KpiCard({
           {objIcon}
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 800, textTransform: "uppercase" }}>
+          <Typography sx={{ color: "#344767", fontSize: "0.72rem", fontWeight: 900, textTransform: "uppercase", lineHeight: 1.25 }}>
             {strLabel}
           </Typography>
-          <Typography sx={{ color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, mt: 0.6 }}>
+          <Typography sx={{ color: blnEmphasis ? strIconColor : "#0f172a", fontSize: "1.08rem", fontWeight: 900, mt: 0.55, lineHeight: 1.15 }}>
             {strValue}
           </Typography>
         </Box>
@@ -403,47 +407,119 @@ function KpiCard({
   );
 }
 
-function DetailValue({
-  strLabel,
-  strValue,
-  objValue,
-}: {
-  strLabel: string;
-  strValue?: string;
-  objValue?: ReactNode;
-}) {
-  return (
-    <Box>
-      <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 0.55 }}>{strLabel}</Typography>
-      {objValue ?? <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>{strValue}</Typography>}
-    </Box>
-  );
-}
-
-function SummaryBlock({
+function PaginatedSummaryCard({
   strTitle,
   objIcon,
-  children,
-  blnDivider = true,
+  lstItems,
+  strAriaLabel,
 }: {
   strTitle: string;
   objIcon: ReactNode;
-  children: ReactNode;
-  blnDivider?: boolean;
+  lstItems: SummaryDisplayItem[];
+  strAriaLabel: string;
 }) {
+  const [intPage, setIntPage] = useState(0);
+  const intTotal = lstItems.length;
+  const intLastPage = Math.max(Math.ceil(intTotal / SUMMARY_PAGE_SIZE) - 1, 0);
+  const intSafePage = Math.min(intPage, intLastPage);
+  const intStart = intSafePage * SUMMARY_PAGE_SIZE;
+  const lstVisibleItems = lstItems.slice(intStart, intStart + SUMMARY_PAGE_SIZE);
+  const intRangeStart = intTotal === 0 ? 0 : intStart + 1;
+  const intRangeEnd = Math.min(intStart + SUMMARY_PAGE_SIZE, intTotal);
+  const lstRows = Array.from({ length: SUMMARY_PAGE_SIZE }, (_, intIndex) => lstVisibleItems[intIndex] ?? null);
+
   return (
-    <Box
+    <Paper
       sx={{
-        pr: { xs: 0, lg: blnDivider ? 3 : 0 },
-        borderRight: { xs: "none", lg: blnDivider ? "1px solid #e2e8f0" : "none" },
+        borderRadius: "10px",
+        border: "1px solid #dbe7f3",
+        boxShadow: "none",
+        minHeight: 270,
+        overflow: "hidden",
+        display: "grid",
+        gridTemplateRows: "45px 176px 48px",
+        background: "#fff",
       }}
     >
-      <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontWeight: 900, mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.8, borderBottom: "1px solid #e6eef7" }}>
         {objIcon}
-        {strTitle}
-      </Typography>
-      <Stack spacing={2.3}>{children}</Stack>
-    </Box>
+        <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 900, lineHeight: 1.2 }}>
+          {strTitle}
+        </Typography>
+      </Box>
+      <Box sx={{ px: 1.8 }}>
+        {lstRows.map((dicItem, intIndex) => (
+          <Box
+            key={dicItem?.key ?? `empty-${intIndex}`}
+            sx={{
+              minHeight: 44,
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) minmax(84px, auto)",
+              alignItems: "center",
+              gap: 1,
+              borderBottom: intIndex === SUMMARY_PAGE_SIZE - 1 ? "none" : "1px solid #edf3f9",
+              visibility: dicItem ? "visible" : "hidden",
+            }}
+          >
+            {dicItem ? (
+              dicItem.tone === "note" || dicItem.tone === "info" ? (
+                <Box
+                  sx={{
+                    gridColumn: "1 / -1",
+                    border: dicItem.tone === "info" ? "1px solid #bfdbfe" : "1px solid #fed7aa",
+                    background: dicItem.tone === "info" ? "#eff6ff" : "#fff7ed",
+                    color: dicItem.tone === "info" ? "#1e3a8a" : "#9a3412",
+                    borderRadius: "8px",
+                    px: 1.4,
+                    py: 0.9,
+                    fontSize: "0.78rem",
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {dicItem.value}
+                </Box>
+              ) : (
+                <>
+                  <Tooltip title={dicItem.tooltip ?? dicItem.label} arrow>
+                    <Typography sx={{ color: "#3d5273", fontSize: "0.78rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      {dicItem.label}
+                    </Typography>
+                  </Tooltip>
+                  <Tooltip title={dicItem.tooltip ?? ""} arrow disableHoverListener={!dicItem.tooltip}>
+                    <Box sx={{ color: "#0f172a", fontSize: "0.78rem", fontWeight: 900, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", whiteSpace: "normal" }}>
+                      {dicItem.value}
+                    </Box>
+                  </Tooltip>
+                </>
+              )
+            ) : null}
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, borderTop: "1px solid #e6eef7" }}>
+        <IconButton
+          size="small"
+          disabled={intSafePage === 0}
+          aria-label={`Previous ${strAriaLabel} page`}
+          onClick={() => setIntPage((intCurrent) => Math.max(intCurrent - 1, 0))}
+          sx={{ width: 32, height: 32, border: "1px solid #dbe7f3", borderRadius: "8px", color: "#1d4ed8" }}
+        >
+          <KeyboardArrowLeftRoundedIcon fontSize="small" />
+        </IconButton>
+        <Typography sx={{ color: "#20385f", fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+          {intRangeStart}-{intRangeEnd} of {intTotal}
+        </Typography>
+        <IconButton
+          size="small"
+          disabled={intSafePage >= intLastPage}
+          aria-label={`Next ${strAriaLabel} page`}
+          onClick={() => setIntPage((intCurrent) => Math.min(intCurrent + 1, intLastPage))}
+          sx={{ width: 32, height: 32, border: "1px solid #dbe7f3", borderRadius: "8px", color: "#1d4ed8" }}
+        >
+          <KeyboardArrowRightRoundedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    </Paper>
   );
 }
 
@@ -603,95 +679,195 @@ export default function PayrollResultDetailPage({
   const dicStatusTone = getStatusTone(objResult.strStatus);
   const dicWageRulePreview = getWageRulePreview(objResult);
   const dicTaxSummary = objResult.dicTaxSummary;
+  const lstEmployeeSummaryItems: SummaryDisplayItem[] = [
+    { key: "employee-code", label: t("employee_code", "Employee Code"), value: objResult.strEmployeeCode },
+    { key: "employee-name", label: t("employee_name", "Employee Name"), value: objResult.strEmployeeName, tooltip: objResult.strEmployeeName },
+    { key: "flexi-bucket", label: t("flexi_bucket", "Flexi Bucket"), value: formatCurrency(objResult.decFlexiBucketAmount ?? 0) },
+    { key: "declared-flexi", label: t("declared_flexi", "Declared Flexi"), value: formatCurrency(objResult.decDeclaredFlexiAmount ?? 0) },
+    { key: "residual-flexi", label: t("residual_flexi", "Residual Flexi"), value: formatCurrency(objResult.decResidualFlexiAmount ?? 0) },
+    {
+      key: "status",
+      label: t("status", "Status"),
+      value: <Chip label={translateDynamicLabel(t, objResult.strStatus, "status")} size="small" sx={{ ...dicStatusTone, height: 22, fontSize: "0.7rem", fontWeight: 800 }} />,
+    },
+  ];
+  const lstJobPayrollItems: SummaryDisplayItem[] = [
+    { key: "payroll-run", label: t("payroll_run", "Payroll Run"), value: objResult.strRunName, tooltip: objResult.strRunName },
+    { key: "run-code", label: t("run_code", "Run Code"), value: objResult.strRunCode },
+    { key: "payroll-month", label: t("payroll_month", "Payroll Month"), value: formatMonth(objResult.dtPayrollMonth) },
+    { key: "payroll-period", label: t("payroll_period", "Payroll Period"), value: `${objResult.dtPeriodStartDate || "-"} to ${objResult.dtPeriodEndDate || "-"}` },
+    { key: "working-days", label: t("working_days", "Working Days"), value: String(objResult.decCalendarDays ?? "-") },
+    { key: "paid-days", label: t("paid_days", "Paid Days"), value: String(objResult.decPaidDays ?? "-") },
+    { key: "lop-days", label: t("lop_days", "LOP Days"), value: String(objResult.decLopDays ?? "-") },
+    { key: "employer-contributions", label: t("employer_contribution", "Employer Contributions"), value: formatCurrency(objResult.decEmployerContributionTotal ?? 0) },
+  ];
+  const lstTaxSummaryItems: SummaryDisplayItem[] = [
+    { key: "tax-regime", label: t("tax_regime", "Tax Regime"), value: objResult.strRegimeUsed || "-" },
+    { key: "taxable-income", label: t("taxable_income", "Taxable Income"), value: formatCurrency(objResult.decTaxableIncome) },
+    { key: "projected-taxable-income", label: t("projected_taxable_income", "Projected Taxable Income"), value: formatCurrency(dicTaxSummary?.decProjectedTaxableIncome ?? objResult.decTaxableIncome) },
+    { key: "exemptions", label: t("exemptions", "Exemptions"), value: formatCurrency(dicTaxSummary?.decExemptionAmount ?? 0) },
+    { key: "declared-deductions", label: t("declared_deductions", "Declared Deductions"), value: formatCurrency(dicTaxSummary?.decDeclaredDeductionAmount ?? 0) },
+    { key: "standard-deduction", label: t("standard_deduction", "Standard Deduction"), value: formatCurrency(dicTaxSummary?.decStandardDeductionAmount ?? 0) },
+    { key: "tax-before-rebate", label: t("tax_before_rebate", "Tax Before Rebate"), value: formatCurrency(dicTaxSummary?.decTaxBeforeRebate ?? objResult.decAnnualTaxAmount) },
+    { key: "rebate-relief", label: t("rebate_relief", "Rebate + Relief"), value: formatCurrency((dicTaxSummary?.decRebateAmount ?? 0) + (dicTaxSummary?.decMarginalRebateReliefAmount ?? 0)) },
+    { key: "surcharge-net", label: t("surcharge_net", "Surcharge (Net)"), value: formatCurrency((dicTaxSummary?.decSurchargeAmount ?? 0) - (dicTaxSummary?.decMarginalSurchargeReliefAmount ?? 0)) },
+    { key: "cess", label: t("cess", "Cess"), value: formatCurrency(dicTaxSummary?.decCessAmount ?? 0) },
+    { key: "annual-tax", label: t("annual_tax", "Annual Tax"), value: formatCurrency(dicTaxSummary?.decTotalTaxLiability ?? objResult.decAnnualTaxAmount) },
+    { key: "monthly-tds", label: t("monthly_tds", "Monthly TDS"), value: formatCurrency(dicTaxSummary?.decMonthlyTds ?? objResult.decMonthlyTds) },
+    { key: "slab-profile", label: t("slab_profile", "Slab Profile"), value: dicTaxSummary?.strSlabProfileCode || "-" },
+  ];
+  const lstWageRuleItems: SummaryDisplayItem[] = [
+    { key: "wage-total", label: t("wage_total", "Wage Total"), value: formatCurrency(dicWageRulePreview.wage_total ?? 0) },
+    { key: "non-wage-total", label: t("non_wage_total", "Non-Wage Total"), value: formatCurrency(dicWageRulePreview.non_wage_total ?? 0) },
+    { key: "wage-percent-of-ctc", label: t("wage_percent_of_ctc", "Wage % of CTC"), value: formatPercent(dicWageRulePreview.wage_percent_of_ctc) },
+    { key: "minimum-required-wage", label: t("minimum_required_wage", "Minimum Required Wage"), value: formatOptionalCurrency(dicWageRulePreview.minimum_required_wage) },
+    { key: "deemed-wage-shortfall", label: t("deemed_wage_shortfall", "Deemed Wage Shortfall"), value: formatCurrency(dicWageRulePreview.deemed_wage_shortfall ?? 0) },
+    { key: "deemed-wage-base", label: t("deemed_wage_base", "Deemed Wage Base"), value: formatCurrency(dicWageRulePreview.deemed_wage_base ?? 0) },
+    { key: "calculation-basis", label: t("calculation_basis", "Calculation Basis"), value: translateDynamicLabel(t, dicWageRulePreview.calculation_basis, "", formatBasisLabel(dicWageRulePreview.calculation_basis)) },
+    { key: "threshold", label: t("threshold", "Threshold"), value: formatPercent(dicWageRulePreview.threshold_percent) },
+    {
+      key: "wage-rule-note",
+      label: t("note", "Note"),
+      value: t("wage_rule_preview_note", "Wage rule preview is for statutory calculation. Final applicability depends on statutory configuration and payroll processing."),
+      tone: "info",
+    },
+  ];
+  const lstNotesItems: SummaryDisplayItem[] = [
+    {
+      key: "remarks",
+      label: t("remarks", "Remarks"),
+      value: objResult.strRemarks || t("no_remarks", "No remarks available."),
+      tone: "note",
+    },
+    {
+      key: "calculation-engine-note",
+      label: t("calculation_engine", "Calculation Engine"),
+      value: t("generated_by_payroll_calculation_engine", "Generated by payroll calculation engine."),
+      tone: "note",
+    },
+    {
+      key: "wage-rule-help",
+      label: t("wage_rule_preview", "Wage Rule Preview"),
+      value: t("wage_rule_preview_note", "Wage rule preview is for statutory calculation. Final applicability depends on statutory configuration and payroll processing."),
+      tone: "info",
+    },
+  ];
+  const lstSummaryGuide = [
+    { key: "employee", label: t("employee_summary", "Employee Summary"), icon: <PersonOutlineRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "job", label: t("job_payroll", "Job & Payroll"), icon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "tax", label: t("tax_summary", "Tax Summary"), icon: <PercentRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "wage", label: t("wage_rule_preview", "Wage Rule Preview"), icon: <RequestQuoteRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "notes", label: t("notes", "Notes"), icon: <NoteAltOutlinedIcon sx={{ fontSize: 18 }} /> },
+  ];
 
   return (
     <Box
       sx={{
         minHeight: "100%",
-        overflow: "auto",
-        pr: 0.5,
-        pb: 3,
+        overflowX: "hidden",
+        overflowY: "auto",
+        pb: 2,
       }}
     >
       <Paper
         sx={{
-          borderRadius: "30px",
-          p: { xs: 2, md: 3 },
-          border: "1px solid rgba(191, 219, 254, 0.55)",
-          background: "radial-gradient(circle at top center, rgba(226,241,255,0.92) 0%, #ffffff 42%, #f8fbff 100%)",
-          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.06)",
+          borderRadius: "12px",
+          p: { xs: 1.5, md: 2 },
+          border: "1px solid #cfe0f5",
+          background: "#f6f9fd",
+          boxShadow: "0 16px 38px rgba(15, 23, 42, 0.05)",
+          maxWidth: "100%",
+          overflow: "hidden",
         }}
       >
-        <Stack spacing={2.8}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
-            <Stack spacing={1.7} sx={{ minWidth: 0 }}>
-              <Button
-                onClick={() => objRouter.push(strResolvedBackRoute)}
-                startIcon={<ArrowBackRoundedIcon />}
-                sx={{
-                  alignSelf: "flex-start",
-                  color: "#7c97c7",
-                  px: 0,
-                  minWidth: 0,
-                  textTransform: "none",
-                  fontWeight: 700,
-                  "&:hover": { background: "transparent", color: "#5d7fb8" },
-                }}
-                data-controlid="payroll.result-detail.back.button"
-              >
-                {t("back_to_list", "Back to List")}
-              </Button>
-              <Stack direction="row" spacing={2} alignItems="center">
+        <Stack spacing={1.7}>
+          <Paper
+            sx={{
+              borderRadius: "12px",
+              border: "1px solid #dbe7f3",
+              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+              background: "#fff",
+              px: { xs: 1.5, md: 2.4 },
+              py: 1.7,
+              minHeight: 88,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
+          >
+              <Stack direction="row" spacing={1.8} alignItems="center" sx={{ minWidth: 0 }}>
                 <Avatar
                   sx={{
-                    width: 70,
-                    height: 70,
-                    background: "linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%)",
-                    color: "#5b21b6",
-                    fontSize: "1.8rem",
-                    fontWeight: 800,
+                    width: 58,
+                    height: 58,
+                    background: "linear-gradient(135deg, #6157f2 0%, #5138d8 100%)",
+                    color: "#fff",
+                    fontSize: "1.25rem",
+                    fontWeight: 900,
+                    flexShrink: 0,
                   }}
                 >
                   {getInitials(objResult.strEmployeeName)}
                 </Avatar>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ color: "#0f172a", fontSize: { xs: "2rem", md: "2.2rem" }, fontWeight: 900, lineHeight: 1.05 }}>
+                  <Typography component="h1" sx={{ color: "#0f172a", fontSize: { xs: "1.35rem", md: "1.55rem" }, fontWeight: 900, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {objResult.strEmployeeName}
                   </Typography>
-                  <Typography sx={{ color: "#47648f", fontSize: "1rem", mt: 1 }}>
+                  <Typography sx={{ color: "#334d79", fontSize: "0.9rem", mt: 0.5, fontWeight: 600 }}>
                     {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
                   </Typography>
                 </Box>
               </Stack>
-            </Stack>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="flex-start">
-              <Chip
-                label={translateDynamicLabel(t, objResult.strStatus, "status")}
+            <Stack spacing={0.8} alignItems={{ xs: "flex-start", sm: "flex-end" }} sx={{ ml: { sm: "auto" } }}>
+              <Button
+                onClick={() => objRouter.push(strResolvedBackRoute)}
+                startIcon={<ArrowBackRoundedIcon />}
                 sx={{
-                  alignSelf: { xs: "flex-start", sm: "center" },
-                  background: dicStatusTone.background,
-                  color: dicStatusTone.color,
-                  fontWeight: 800,
-                  borderRadius: "10px",
-                  height: 32,
+                  color: "#2563eb",
+                  px: 0,
+                  minWidth: 0,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  fontSize: "0.86rem",
+                  lineHeight: 1,
+                  "& .MuiButton-startIcon": { mr: 0.6 },
+                  "&:hover": { background: "transparent", color: "#1d4ed8" },
                 }}
-              />
-              {blnPayslipScreen ? (
-                <>
+                data-controlid="payroll.result-detail.back.button"
+              >
+                {t("back_to_list", "Back to List")}
+              </Button>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="flex-start">
+                <Chip
+                  label={translateDynamicLabel(t, objResult.strStatus, "status")}
+                  sx={{
+                    alignSelf: { xs: "flex-start", sm: "center" },
+                    background: dicStatusTone.background,
+                    color: dicStatusTone.color,
+                    fontWeight: 800,
+                    borderRadius: "999px",
+                    height: 30,
+                    px: 1,
+                  }}
+                />
+                {blnPayslipScreen ? (
+                  <>
                   <Button
                     onClick={handleOpenActions}
                     endIcon={<KeyboardArrowDownRoundedIcon />}
                     startIcon={<DownloadRoundedIcon />}
                     disabled={blnPayslipLoading}
                     sx={{
-                      borderRadius: "12px",
+                      borderRadius: "10px",
                       border: "1px solid #d7e4f3",
                       color: "#0f172a",
                       background: "#fff",
                       boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
                       px: 2,
-                      height: 46,
+                      height: 38,
                       textTransform: "none",
                       fontWeight: 800,
                     }}
@@ -713,10 +889,11 @@ export default function PayrollResultDetailPage({
                       {t("print_payslip", "Print")}
                     </MenuItem>
                   </Menu>
-                </>
-              ) : null}
+                  </>
+                ) : null}
+              </Stack>
             </Stack>
-          </Stack>
+          </Paper>
 
           {strError ? <Alert severity="error">{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
@@ -725,160 +902,119 @@ export default function PayrollResultDetailPage({
           <Box
             sx={{
               display: "grid",
-              gap: 2,
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" },
+              gap: 1.5,
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
             }}
           >
             <KpiCard
               strLabel={t("gross_earnings", "Gross Earnings")}
               strValue={formatCurrency(objResult.decGrossEarningsAmount ?? objResult.decGrossAmount)}
-              objIcon={<WalletRoundedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(125, 211, 252, 0.55)"
-              strIconBg="linear-gradient(135deg, #ecfeff 0%, #d1fae5 100%)"
+              objIcon={<WalletRoundedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#dff8ef"
               strIconColor="#0f766e"
             />
             <KpiCard
               strLabel={t("employee_deductions", "Employee Deductions")}
               strValue={formatCurrency(objResult.decEmployeeDeductionTotal ?? objResult.decDeductionAmount)}
-              objIcon={<DescriptionOutlinedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(253, 186, 116, 0.55)"
-              strIconBg="linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)"
+              objIcon={<DescriptionOutlinedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#ffedd5"
               strIconColor="#f97316"
             />
             <KpiCard
               strLabel={t("tax", "Tax")}
               strValue={formatCurrency(objResult.decTaxTotal ?? objResult.decTaxAmount)}
-              objIcon={<PercentRoundedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(196, 181, 253, 0.7)"
-              strIconBg="linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)"
+              objIcon={<PercentRoundedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#ede9fe"
               strIconColor="#7c3aed"
             />
             <KpiCard
               strLabel={t("net_pay", "Net Pay")}
               strValue={formatCurrency(objResult.decNetPayAmount)}
-              objIcon={<PaymentsRoundedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(167, 243, 208, 0.75)"
-              strIconBg="linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%)"
+              objIcon={<PaymentsRoundedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#dcfce7"
               strIconColor="#16a34a"
-            />
-            <KpiCard
-              strLabel={t("employer_contribution", "Employer Contributions")}
-              strValue={formatCurrency(objResult.decEmployerContributionTotal ?? 0)}
-              objIcon={<RequestQuoteRoundedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(253, 224, 71, 0.7)"
-              strIconBg="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
-              strIconColor="#b45309"
+              blnEmphasis
             />
             <KpiCard
               strLabel={t("total_employer_cost", "Total Employer Cost")}
               strValue={formatCurrency(objResult.decTotalEmployerCost ?? 0)}
-              objIcon={<SummarizeOutlinedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(251, 146, 60, 0.55)"
-              strIconBg="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)"
+              objIcon={<SummarizeOutlinedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#fee2d5"
               strIconColor="#c2410c"
             />
           </Box>
 
           <Paper
             sx={{
-              borderRadius: "24px",
-              border: "1px solid rgba(226, 232, 240, 0.95)",
-              boxShadow: "0 20px 44px rgba(15, 23, 42, 0.05)",
+              borderRadius: "12px",
+              border: "1px solid #dbe7f3",
+              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
               background: "#fff",
-              p: 2.8,
+              p: { xs: 1.5, md: 1.8 },
             }}
           >
-            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, pb: 2, mb: 2.2, borderBottom: "1px solid #e2e8f0" }}>
+            <Typography component="h2" sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, pb: 1.3, borderBottom: "1px solid #dbe7f3" }}>
               <SummarizeOutlinedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
               {t("summary_section", "Summary")}
             </Typography>
             <Box
               sx={{
                 display: "grid",
-                gap: 3,
-                gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(5, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" },
+                borderBottom: "1px solid #e6eef7",
+                mb: 1.5,
               }}
             >
-              <SummaryBlock strTitle={t("employee_summary", "Employee Summary")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />}>
-                <DetailValue strLabel={t("employee_code", "Employee Code")} strValue={objResult.strEmployeeCode} />
-                <DetailValue strLabel={t("employee_name", "Employee Name")} strValue={objResult.strEmployeeName} />
-                <DetailValue strLabel={t("flexi_bucket", "Flexi Bucket")} strValue={formatCurrency(objResult.decFlexiBucketAmount ?? 0)} />
-                <DetailValue strLabel={t("declared_flexi", "Declared Flexi")} strValue={formatCurrency(objResult.decDeclaredFlexiAmount ?? 0)} />
-                <DetailValue strLabel={t("residual_flexi", "Residual Flexi")} strValue={formatCurrency(objResult.decResidualFlexiAmount ?? 0)} />
-                <DetailValue
-                  strLabel={t("status", "Status")}
-                  objValue={<Chip label={translateDynamicLabel(t, objResult.strStatus, "status")} size="small" sx={{ ...dicStatusTone, fontWeight: 800, width: "fit-content" }} />}
-                />
-              </SummaryBlock>
-
-              <SummaryBlock strTitle={t("tax_summary", "Tax Summary")} objIcon={<ReceiptLongRoundedIcon sx={{ color: "#4f46e5", fontSize: 22 }} />}>
-                <DetailValue strLabel={t("tax_regime", "Tax Regime")} strValue={objResult.strRegimeUsed || "-"} />
-                <DetailValue strLabel={t("taxable_income", "Taxable Income")} strValue={formatCurrency(objResult.decTaxableIncome)} />
-                <DetailValue strLabel={t("projected_taxable_income", "Projected Taxable Income")} strValue={formatCurrency(dicTaxSummary?.decProjectedTaxableIncome ?? objResult.decTaxableIncome)} />
-                <DetailValue strLabel={t("exemptions", "Exemptions")} strValue={formatCurrency(dicTaxSummary?.decExemptionAmount ?? 0)} />
-                <DetailValue strLabel={t("declared_deductions", "Declared Deductions")} strValue={formatCurrency(dicTaxSummary?.decDeclaredDeductionAmount ?? 0)} />
-                <DetailValue strLabel={t("standard_deduction", "Standard Deduction")} strValue={formatCurrency(dicTaxSummary?.decStandardDeductionAmount ?? 0)} />
-                <DetailValue strLabel={t("tax_before_rebate", "Tax Before Rebate")} strValue={formatCurrency(dicTaxSummary?.decTaxBeforeRebate ?? objResult.decAnnualTaxAmount)} />
-                <DetailValue strLabel={t("rebate_relief", "Rebate + Relief")} strValue={formatCurrency((dicTaxSummary?.decRebateAmount ?? 0) + (dicTaxSummary?.decMarginalRebateReliefAmount ?? 0))} />
-                <DetailValue strLabel={t("surcharge_net", "Surcharge (Net)")} strValue={formatCurrency((dicTaxSummary?.decSurchargeAmount ?? 0) - (dicTaxSummary?.decMarginalSurchargeReliefAmount ?? 0))} />
-                <DetailValue strLabel={t("cess", "Cess")} strValue={formatCurrency(dicTaxSummary?.decCessAmount ?? 0)} />
-                <DetailValue strLabel={t("annual_tax", "Annual Tax")} strValue={formatCurrency(dicTaxSummary?.decTotalTaxLiability ?? objResult.decAnnualTaxAmount)} />
-                <DetailValue strLabel={t("monthly_tds", "Monthly TDS")} strValue={formatCurrency(dicTaxSummary?.decMonthlyTds ?? objResult.decMonthlyTds)} />
-                <DetailValue strLabel={t("slab_profile", "Slab Profile")} strValue={dicTaxSummary?.strSlabProfileCode || "-"} />
-              </SummaryBlock>
-
-              <SummaryBlock strTitle={t("run_summary", "Payroll Run Summary")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />}>
-                <DetailValue strLabel={t("payroll_run", "Payroll Run")} strValue={objResult.strRunName} />
-                <DetailValue strLabel={t("run_code", "Run Code")} strValue={objResult.strRunCode} />
-                <DetailValue strLabel={t("payroll_month", "Payroll Month")} strValue={formatMonth(objResult.dtPayrollMonth)} />
-                <DetailValue strLabel={t("payroll_period", "Payroll Period")} strValue={`${objResult.dtPeriodStartDate || "-"} to ${objResult.dtPeriodEndDate || "-"}`} />
-                <DetailValue strLabel={t("working_days", "Working Days")} strValue={String(objResult.decCalendarDays ?? "-")} />
-                <DetailValue strLabel={t("paid_days", "Paid Days")} strValue={String(objResult.decPaidDays ?? "-")} />
-                <DetailValue strLabel={t("lop_days", "LOP Days")} strValue={String(objResult.decLopDays ?? "-")} />
-              </SummaryBlock>
-
-              <SummaryBlock strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 22 }} />}>
-                <DetailValue strLabel={t("wage_total", "Wage Total")} strValue={formatCurrency(dicWageRulePreview.wage_total ?? 0)} />
-                <DetailValue strLabel={t("non_wage_total", "Non-Wage Total")} strValue={formatCurrency(dicWageRulePreview.non_wage_total ?? 0)} />
-                <DetailValue strLabel={t("wage_percent_of_ctc", "Wage % of CTC")} strValue={formatPercent(dicWageRulePreview.wage_percent_of_ctc)} />
-                <DetailValue strLabel={t("minimum_required_wage", "Minimum Required Wage")} strValue={formatOptionalCurrency(dicWageRulePreview.minimum_required_wage)} />
-                <DetailValue strLabel={t("deemed_wage_shortfall", "Deemed Wage Shortfall")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_shortfall ?? 0)} />
-                <DetailValue strLabel={t("deemed_wage_base", "Deemed Wage Base")} strValue={formatCurrency(dicWageRulePreview.deemed_wage_base ?? 0)} />
-                <DetailValue strLabel={t("calculation_basis", "Calculation Basis")} strValue={translateDynamicLabel(t, dicWageRulePreview.calculation_basis, "", formatBasisLabel(dicWageRulePreview.calculation_basis))} />
-                <DetailValue strLabel={t("threshold", "Threshold")} strValue={formatPercent(dicWageRulePreview.threshold_percent)} />
-                <Alert severity="info" sx={{ borderRadius: "12px", alignItems: "flex-start" }}>
-                  {t(
-                    "wage_rule_preview_note",
-                    "Wage rule preview is for statutory calculation. Final applicability depends on statutory configuration and payroll processing."
-                  )}
-                </Alert>
-              </SummaryBlock>
-
-              <SummaryBlock strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 22 }} />} blnDivider={false}>
+              {lstSummaryGuide.map((dicItem, intIndex) => (
                 <Box
+                  key={dicItem.key}
                   sx={{
-                    borderRadius: "12px",
-                    border: "1px solid #fcd34d",
-                    background: "#fffbea",
-                    px: 2,
-                    py: 1.6,
-                    color: "#854d0e",
-                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 0.8,
+                    minHeight: 48,
+                    color: intIndex === 0 ? "#2563eb" : "#0f2444",
+                    fontSize: "0.78rem",
+                    fontWeight: 900,
+                    borderRight: { xs: "none", md: intIndex === lstSummaryGuide.length - 1 ? "none" : "1px solid #e6eef7" },
+                    borderBottom: intIndex === 0 ? "2px solid #2563eb" : "2px solid transparent",
                   }}
                 >
-                  {objResult.strRemarks || t("no_remarks", "No remarks available.")}
+                  {dicItem.icon}
+                  <span>{dicItem.label}</span>
                 </Box>
-              </SummaryBlock>
+              ))}
+            </Box>
+            <Box
+              sx={{
+                display: "grid",
+                gap: 1.5,
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  md: "repeat(2, minmax(0, 1fr))",
+                  xl: "1fr 1.04fr 1.08fr 1.04fr 0.95fr",
+                },
+                alignItems: "stretch",
+              }}
+            >
+              <PaginatedSummaryCard strTitle={t("employee_details", "Employee Details")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />} lstItems={lstEmployeeSummaryItems} strAriaLabel={t("employee_details", "Employee Details")} />
+              <PaginatedSummaryCard strTitle={t("job_payroll", "Job & Payroll")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#4f46e5", fontSize: 20 }} />} lstItems={lstJobPayrollItems} strAriaLabel={t("job_payroll", "Job & Payroll")} />
+              <PaginatedSummaryCard strTitle={t("tax_summary", "Tax Summary")} objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />} lstItems={lstTaxSummaryItems} strAriaLabel={t("tax_summary", "Tax Summary")} />
+              <PaginatedSummaryCard strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 20 }} />} lstItems={lstWageRuleItems} strAriaLabel={t("wage_rule_preview", "Wage Rule Preview")} />
+              <PaginatedSummaryCard strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 20 }} />} lstItems={lstNotesItems} strAriaLabel={t("notes", "Notes")} />
             </Box>
           </Paper>
 
           <Paper
             sx={{
-              borderRadius: "24px",
-              border: "1px solid rgba(226, 232, 240, 0.95)",
-              boxShadow: "0 20px 44px rgba(15, 23, 42, 0.05)",
+              borderRadius: "12px",
+              border: "1px solid #dbe7f3",
+              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
               background: "#fff",
-              p: 2.8,
+              p: { xs: 1.5, md: 1.8 },
+              maxWidth: "100%",
+              overflow: "hidden",
             }}
           >
             <Box
@@ -888,9 +1024,9 @@ export default function PayrollResultDetailPage({
                 alignItems: { xs: "stretch", lg: "center" },
                 justifyContent: "space-between",
                 gap: 1.5,
-                pb: 2,
-                mb: 2.2,
-                borderBottom: "1px solid #e2e8f0"
+                pb: 1.3,
+                mb: 1.2,
+                borderBottom: "1px solid #dbe7f3"
               }}
             >
               <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900 }}>
@@ -899,7 +1035,7 @@ export default function PayrollResultDetailPage({
               </Typography>
               <Stack direction="row" spacing={1.5} alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} flexWrap="wrap">
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography sx={{ color: "#334155", fontSize: "0.95rem" }}>
+                  <Typography sx={{ color: "#334155", fontSize: "0.82rem", fontWeight: 700 }}>
                     {t("group_by_category", "Group by Category")}
                   </Typography>
                   <Switch
@@ -922,11 +1058,12 @@ export default function PayrollResultDetailPage({
             <Box
               sx={{
                 overflowX: "auto",
-                border: "1px solid #e2e8f0",
-                borderRadius: "16px",
+                border: "1px solid #dbe7f3",
+                borderRadius: "10px",
+                maxWidth: "100%",
               }}
             >
-              <table className={styles.table}>
+              <table className={`${styles.table} ${styles.resultLinesTable}`}>
                 <thead>
                   <tr>
                     <th>{t("component_code", "Component Code")}</th>
@@ -934,12 +1071,12 @@ export default function PayrollResultDetailPage({
                     <th>{t("category", "Category")}</th>
                     <th>{t("line_type", "Line Type")}</th>
                     <th>{t("amount", "Amount")}</th>
-                    <th>{t("annual_amount", "Annual Amount")}</th>
                     <th>{t("monthly_amount", "Monthly Amount")}</th>
                     <th>{t("payroll_impact", "Payroll Impact")}</th>
                     <th>{t("calculation_source", "Calculation Source")}</th>
                     <th>{t("taxable", "Taxable")}</th>
                     <th>{t("ctc_included", "CTC Included")}</th>
+                    <th>{t("payslip_section", "Payslip Section")}</th>
                     <th>{t("lwp_audit", "LWP Audit")}</th>
                     <th>{t("remarks", "Remarks")}</th>
                   </tr>
@@ -947,7 +1084,7 @@ export default function PayrollResultDetailPage({
                 <tbody>
                   {lstResultLines.length === 0 ? (
                     <tr>
-                      <td colSpan={14} className={styles.emptyState}>
+                      <td colSpan={13} className={styles.emptyState}>
                         {t("line_empty", "No payroll result lines found.")}
                       </td>
                     </tr>
@@ -971,7 +1108,6 @@ export default function PayrollResultDetailPage({
                         </td>
                         <td>{translateDynamicLabel(t, dicLine.strLineType)}</td>
                         <td>{formatCurrency(dicLine.decAmount)}</td>
-                        <td>{formatOptionalCurrency(getLineAnnualAmount(dicLine))}</td>
                         <td>{formatCurrency(getLineMonthlyAmount(dicLine) ?? 0)}</td>
                         <td>{translateDynamicLabel(t, getPayrollImpactLabel(dicLine))}</td>
                         <td>{translateDynamicLabel(t, dicLine.strCalculationSource || dicLine.strSourceType)}</td>

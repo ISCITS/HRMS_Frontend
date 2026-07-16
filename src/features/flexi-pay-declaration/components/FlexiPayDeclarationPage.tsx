@@ -193,7 +193,7 @@ function getEligibilityChipConfig(objRow: FlexiDeclarationLineRecord): {
 }
 
 function getLineReasonText(objRow: FlexiDeclarationLineRecord) {
-  const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+  const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decDraftApprovedAnnual ?? 0);
   const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
   const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
   if (objRow.blnRegimeEligible === false) {
@@ -339,8 +339,8 @@ function buildInitialDraftInputs(objContext: FlexiDeclarationContextRecord) {
   const strWorkflowStatus = normalizeText(objContext.objDeclaration?.strWorkflowStatus ?? objContext.declaration_status ?? "draft");
   return (objContext.lstDeclarationLines || []).reduce<DraftInputMap>((dicAcc, objLine) => {
     const decInitialAnnual = ["approved", "locked"].includes(strWorkflowStatus)
-      ? Number(objLine.decDraftApprovedAnnual ?? objLine.decAllocationAnnual ?? objLine.decDraftDeclaredAnnual ?? 0)
-      : Number(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? objLine.decDraftApprovedAnnual ?? 0);
+      ? Number(objLine.decDraftApprovedAnnual ?? objLine.decDraftDeclaredAnnual ?? 0)
+      : Number(objLine.decDraftDeclaredAnnual ?? 0);
     dicAcc[objLine.intSalaryComponentID] = String(decInitialAnnual);
     return dicAcc;
   }, {});
@@ -507,7 +507,7 @@ function getRowEffectiveMultiplier(objRow: FlexiDeclarationLineRecord) {
 }
 
 function getDisplayedDeclarationAmount(objRow: FlexiDeclarationLineRecord, strStoredValue: string | undefined) {
-  const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0));
+  const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? 0));
   return String(decStoredAnnual);
 }
 
@@ -618,7 +618,7 @@ export default function FlexiPayDeclarationPage() {
     };
   }, [t]);
   const getTranslatedLineReasonText = useCallback((objRow: FlexiDeclarationLineRecord) => {
-    const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+    const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decDraftApprovedAnnual ?? 0);
     const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
     const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
     if (objRow.blnRegimeEligible === false) {
@@ -736,7 +736,7 @@ export default function FlexiPayDeclarationPage() {
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
       const decInputAnnual = normalizeAmount(
-        dicDraftInputs[objLine.intSalaryComponentID] ?? String(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? 0),
+        dicDraftInputs[objLine.intSalaryComponentID] ?? String(objLine.decDraftDeclaredAnnual ?? 0),
       );
       const decEffectiveAnnualCap = Number(objLine.decEffectiveAnnualCap ?? objLine.decAnnualLimit ?? 0);
       const strEligibilityState = getEligibilityState(objLine);
