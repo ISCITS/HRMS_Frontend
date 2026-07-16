@@ -167,6 +167,23 @@ export default function PayslipPreviewContent({
     strNoLinesLabel: t("no_lines", "No lines"),
     translateLineLabel: (strValue: string | null | undefined) => translateDynamicLabel(t, strValue),
   };
+  const lstTaxBreakdownRows = [
+    { strLabel: t("taxable_income", "Taxable Income"), decValue: dicTax?.decTaxableIncome },
+    { strLabel: t("standard_deduction", "Standard Deduction"), decValue: dicTax?.decStandardDeductionAmount },
+    { strLabel: t("tax_before_rebate", "Tax Before Rebate"), decValue: dicTax?.decTaxBeforeRebate },
+    {
+      strLabel: t("rebate_relief", "Rebate + Relief"),
+      decValue: (dicTax?.decRebateAmount ?? 0) + (dicTax?.decMarginalRebateReliefAmount ?? 0),
+    },
+    {
+      strLabel: t("surcharge_net", "Surcharge (Net)"),
+      decValue: (dicTax?.decSurchargeAmount ?? 0) - (dicTax?.decMarginalSurchargeReliefAmount ?? 0),
+    },
+    { strLabel: t("cess", "Cess"), decValue: dicTax?.decCessAmount },
+    { strLabel: t("annual_tax", "Annual Tax Amount"), decValue: dicTax?.decAnnualTaxAmount },
+    { strLabel: t("monthly_tds", "TDS This Month"), decValue: dicTax?.decCurrentMonthTds ?? dicTotals.decTaxTotal },
+    { strLabel: t("tax_total", "Tax Total"), decValue: dicTotals.decTaxTotal },
+  ];
 
   return (
     <Box sx={{ background: "#f8fbff", border: "1px solid #d9e6ef", p: 2 }}>
@@ -260,6 +277,27 @@ export default function PayslipPreviewContent({
         <LineTable strTitle={t("information", "Information")} lstLines={objPayslip.lstInformation} {...dicLineTableLabels} />
       </Box>
 
+      <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
+        <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          {t("tax_summary", "Tax Summary")}
+        </Typography>
+        <Stack spacing={0.8}>
+          <DetailRow strLabel={t("tax_regime", "Tax Regime")} strValue={dicTax?.strRegimeUsed} />
+          {lstTaxBreakdownRows.length ? (
+            lstTaxBreakdownRows.map((dicRow) => (
+              <DetailRow
+                key={dicRow.strLabel}
+                strLabel={dicRow.strLabel}
+                strValue={formatCurrency(dicRow.decValue ?? 0)}
+              />
+            ))
+          ) : (
+            <DetailRow strLabel={t("tax_summary", "Tax Summary")} strValue="-" />
+          )}
+          <DetailRow strLabel={t("slab_profile", "Slab Profile")} strValue={dicTax?.strSlabProfileCode ?? "-"} />
+        </Stack>
+      </Box>
+
       {lstReimbursements.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
         <Box sx={{ mt: 2 }}>
           <LineTable
@@ -298,7 +336,7 @@ export default function PayslipPreviewContent({
             gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
           }}
         >
-          <DetailRow strLabel={t("gross_earnings", "Gross Earnings")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
+          <DetailRow strLabel={t("gross_pay", "Gross Pay")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
           <DetailRow strLabel={t("employee_deductions", "Total Employee Deductions")} strValue={formatCurrency(dicTotals.decEmployeeDeductions)} />
           <DetailRow strLabel={t("tax_total", "Total Tax")} strValue={formatCurrency(dicTotals.decTaxTotal)} />
           <DetailRow strLabel={t("deductions", "Total Deductions")} strValue={formatCurrency(dicTotals.decTotalDeductions)} />

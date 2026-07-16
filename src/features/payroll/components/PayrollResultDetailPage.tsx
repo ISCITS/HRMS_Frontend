@@ -257,6 +257,9 @@ function getPayrollImpactLabel(dicLine: PayrollResultDetailRecord["lstLines"][nu
   if (dicLine.blnIsEmployeeDeduction) {
     return "Net Pay Reduction";
   }
+  if (String(dicLine.strPayslipSection || "").trim().toUpperCase() === "REIMBURSEMENTS") {
+    return "Reimbursement";
+  }
   if (dicLine.blnIncludeInGross) {
     return "Gross Earning";
   }
@@ -907,11 +910,27 @@ export default function PayrollResultDetailPage({
             }}
           >
             <KpiCard
-              strLabel={t("gross_earnings", "Gross Earnings")}
+              strLabel={t("gross_pay", "Gross Pay")}
               strValue={formatCurrency(objResult.decGrossEarningsAmount ?? objResult.decGrossAmount)}
               objIcon={<WalletRoundedIcon sx={{ fontSize: 25 }} />}
               strIconBg="#dff8ef"
               strIconColor="#0f766e"
+            />
+            <KpiCard
+              strLabel={t("total_earnings", "Total Earnings")}
+              strValue={formatCurrency(objResult.decEarningsSectionTotal ?? 0)}
+              objIcon={<RequestQuoteRoundedIcon sx={{ fontSize: 30 }} />}
+              strBorder="rgba(134, 239, 172, 0.65)"
+              strIconBg="linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+              strIconColor="#15803d"
+            />
+            <KpiCard
+              strLabel={t("reimbursements", "Reimbursements")}
+              strValue={formatCurrency(objResult.decReimbursementSectionTotal ?? 0)}
+              objIcon={<DescriptionOutlinedIcon sx={{ fontSize: 30 }} />}
+              strBorder="rgba(251, 191, 36, 0.55)"
+              strIconBg="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+              strIconColor="#b45309"
             />
             <KpiCard
               strLabel={t("employee_deductions", "Employee Deductions")}
