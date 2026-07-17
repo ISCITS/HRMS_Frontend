@@ -733,7 +733,7 @@ function PayrollRunDetailPageLegacy({
           <SummaryCard strLabel={t("employees_processed", "Employees Processed")} strValue={String(objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount)} />
           <SummaryCard strLabel={t("validation_errors", "Validation Errors")} strValue={String(objRun.dicSummary.intValidationErrorCount)} />
           <SummaryCard strLabel={t("warnings", "Warnings")} strValue={String(objRun.dicSummary.intValidationWarningCount)} />
-          <SummaryCard strLabel={t("gross_total", "Gross Total")} strValue={formatCurrency(objRun.decGrossPayTotal)} />
+          <SummaryCard strLabel={t("gross_pay", "Gross Pay")} strValue={formatCurrency(objRun.decGrossPayTotal)} />
           <SummaryCard strLabel={t("deduction_total", "Deductions")} strValue={formatCurrency(objRun.decDeductionTotal)} />
           <SummaryCard strLabel={t("tax_total", "Tax")} strValue={formatCurrency(objRun.decTaxTotal)} />
           <SummaryCard strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objRun.decNetPayTotal)} />

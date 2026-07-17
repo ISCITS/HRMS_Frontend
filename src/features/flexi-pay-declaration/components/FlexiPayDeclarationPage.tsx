@@ -15,6 +15,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Chip,
   Dialog,
   DialogActions,
@@ -193,7 +194,7 @@ function getEligibilityChipConfig(objRow: FlexiDeclarationLineRecord): {
 }
 
 function getLineReasonText(objRow: FlexiDeclarationLineRecord) {
-  const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+  const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decDraftApprovedAnnual ?? 0);
   const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
   const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
   if (objRow.blnRegimeEligible === false) {
@@ -241,11 +242,12 @@ function mergeEligibilityQuestions(
 ): FlexiEligibilityQuestionRecord[] {
   const dicQuestionsByCode = new Map<string, FlexiEligibilityQuestionRecord>();
   (lstQuestions || []).forEach((objQuestion) => {
-    const strQuestionCode = normalizeText(objQuestion.strQuestionCode);
-    if (!strQuestionCode) return;
-    const objExisting = dicQuestionsByCode.get(strQuestionCode);
+    const strQuestionCode = String(objQuestion.strQuestionCode || "").trim();
+    const strQuestionCodeKey = normalizeText(strQuestionCode);
+    if (!strQuestionCodeKey) return;
+    const objExisting = dicQuestionsByCode.get(strQuestionCodeKey);
     if (!objExisting) {
-      dicQuestionsByCode.set(strQuestionCode, {
+      dicQuestionsByCode.set(strQuestionCodeKey, {
         ...objQuestion,
         strQuestionCode,
         lstLinkedComponentIDs: [...(objQuestion.lstLinkedComponentIDs || [])],
@@ -260,8 +262,9 @@ function mergeEligibilityQuestions(
     const decExistingMaxValue = objExisting.decMaxValue;
     const decNextMaxValue = objQuestion.decMaxValue;
 
-    dicQuestionsByCode.set(strQuestionCode, {
+    dicQuestionsByCode.set(strQuestionCodeKey, {
       ...objExisting,
+      strQuestionCode: objExisting.strQuestionCode || strQuestionCode,
       strQuestionLabel: objExisting.strQuestionLabel || objQuestion.strQuestionLabel,
       strHelpText: objExisting.strHelpText || objQuestion.strHelpText,
       strHint: objExisting.strHint || objQuestion.strHint,
@@ -339,8 +342,8 @@ function buildInitialDraftInputs(objContext: FlexiDeclarationContextRecord) {
   const strWorkflowStatus = normalizeText(objContext.objDeclaration?.strWorkflowStatus ?? objContext.declaration_status ?? "draft");
   return (objContext.lstDeclarationLines || []).reduce<DraftInputMap>((dicAcc, objLine) => {
     const decInitialAnnual = ["approved", "locked"].includes(strWorkflowStatus)
-      ? Number(objLine.decDraftApprovedAnnual ?? objLine.decAllocationAnnual ?? objLine.decDraftDeclaredAnnual ?? 0)
-      : Number(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? objLine.decDraftApprovedAnnual ?? 0);
+      ? Number(objLine.decDraftApprovedAnnual ?? objLine.decDraftDeclaredAnnual ?? 0)
+      : Number(objLine.decDraftDeclaredAnnual ?? 0);
     dicAcc[objLine.intSalaryComponentID] = String(decInitialAnnual);
     return dicAcc;
   }, {});
@@ -507,7 +510,7 @@ function getRowEffectiveMultiplier(objRow: FlexiDeclarationLineRecord) {
 }
 
 function getDisplayedDeclarationAmount(objRow: FlexiDeclarationLineRecord, strStoredValue: string | undefined) {
-  const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0));
+  const decStoredAnnual = normalizeAmount(strStoredValue ?? String(objRow.decDraftDeclaredAnnual ?? 0));
   return String(decStoredAnnual);
 }
 
@@ -573,7 +576,6 @@ export default function FlexiPayDeclarationPage() {
   const intLoadSequenceRef = useRef(0);
   const intEvaluateSequenceRef = useRef(0);
   const strLastSyncedSignatureRef = useRef("");
-  const strLastAutoSavedSignatureRef = useRef("");
   const strLastEvaluatedSignatureRef = useRef("");
   const dicProofInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -618,7 +620,7 @@ export default function FlexiPayDeclarationPage() {
     };
   }, [t]);
   const getTranslatedLineReasonText = useCallback((objRow: FlexiDeclarationLineRecord) => {
-    const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decAllocationAnnual ?? 0);
+    const decDeclaredAnnual = Number(objRow.decDraftDeclaredAnnual ?? objRow.decDraftApprovedAnnual ?? 0);
     const decAnnualCap = Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0);
     const strItemStatus = normalizeText(objRow.strDeclarationItemStatus);
     if (objRow.blnRegimeEligible === false) {
@@ -675,8 +677,7 @@ export default function FlexiPayDeclarationPage() {
     setStrRemarks(strNextRemarks);
     const strSignature = buildStateSignature(dicNextDraftInputs, dicNextAnswers, strNextRemarks, dicNextProofFiles);
     strLastSyncedSignatureRef.current = strSignature;
-    strLastAutoSavedSignatureRef.current = strSignature;
-    strLastEvaluatedSignatureRef.current = strSignature;
+    strLastEvaluatedSignatureRef.current = buildStateSignature(dicNextDraftInputs, dicNextAnswers, strNextRemarks);
     if (strMessage) {
       setStrToast(strMessage);
     }
@@ -736,7 +737,7 @@ export default function FlexiPayDeclarationPage() {
   const lstRows = useMemo<EvaluatedLineRecord[]>(() => {
     return (objContext?.lstDeclarationLines || []).map((objLine) => {
       const decInputAnnual = normalizeAmount(
-        dicDraftInputs[objLine.intSalaryComponentID] ?? String(objLine.decDraftDeclaredAnnual ?? objLine.decAllocationAnnual ?? 0),
+        dicDraftInputs[objLine.intSalaryComponentID] ?? String(objLine.decDraftDeclaredAnnual ?? 0),
       );
       const decEffectiveAnnualCap = Number(objLine.decEffectiveAnnualCap ?? objLine.decAnnualLimit ?? 0);
       const strEligibilityState = getEligibilityState(objLine);
@@ -801,8 +802,15 @@ export default function FlexiPayDeclarationPage() {
     });
   }, [dicDraftInputs, dicEligibilityQuestionByCode, dicSelectedComponents, dicSelectedQuestions, dicSelectableRowByID, lstSelectableRows]);
 
-  const setSelectedComponentIDs = useMemo(
-    () => new Set(lstDisplayedRows.map((objRow) => objRow.objSelectedLine.intSalaryComponentID)),
+  const setVisibleQuestionCodes = useMemo(
+    () =>
+      new Set(
+        lstDisplayedRows.flatMap((objRow) =>
+          objRow.lstLinkedQuestions
+            .map((objQuestion) => String(objQuestion.strQuestionCode || "").trim())
+            .filter(Boolean),
+        ),
+      ),
     [lstDisplayedRows],
   );
 
@@ -854,6 +862,10 @@ export default function FlexiPayDeclarationPage() {
     () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks, dicProofFiles),
     [dicDraftInputs, dicEligibilityAnswers, dicProofFiles, strRemarks],
   );
+  const strEvaluationSignature = useMemo(
+    () => buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks),
+    [dicDraftInputs, dicEligibilityAnswers, strRemarks],
+  );
 
   const lstPayloadRows = useMemo(() => {
     const dicRows = new Map();
@@ -876,7 +888,6 @@ export default function FlexiPayDeclarationPage() {
   const blnCanSaveDraft = Boolean(
     blnShowEssDraftAction
     && !blnSaving
-    && !blnEvaluating
     && !blnAllocationExceeded
     && !blnHasRowValidationErrors
     && (lstPayloadRows.length > 0 || blnHasEligibilityAnswerValues || strRemarks.trim().length > 0),
@@ -884,14 +895,20 @@ export default function FlexiPayDeclarationPage() {
   const blnCanSubmit = Boolean(
     blnShowEssSubmitAction
     && !blnSaving
-    && !blnEvaluating
     && !blnAllocationExceeded
     && !blnHasRowValidationErrors
     && lstPayloadRows.length > 0,
   );
   const lstMergedEligibilityQuestions = useMemo(
-    () => mergeEligibilityQuestions(objContext?.lstEligibilityQuestions),
-    [objContext?.lstEligibilityQuestions],
+    () =>
+      mergeEligibilityQuestions(objContext?.lstEligibilityQuestions).filter((objQuestion) => {
+        const strQuestionCode = String(objQuestion.strQuestionCode || "").trim();
+        if (!strQuestionCode || setVisibleQuestionCodes.size === 0) {
+          return false;
+        }
+        return setVisibleQuestionCodes.has(strQuestionCode);
+      }),
+    [objContext?.lstEligibilityQuestions, setVisibleQuestionCodes],
   );
   const lstMissingProofRows = useMemo(
     () =>
@@ -1078,10 +1095,10 @@ export default function FlexiPayDeclarationPage() {
 
   useEffect(() => {
     if (blnLoading || !objContext?.blnCanDeclare || !blnCanEditDeclaration) return;
-    if (strCurrentSignature === strLastSyncedSignatureRef.current) return;
-    if (strCurrentSignature === strLastEvaluatedSignatureRef.current) return;
+    if (strEvaluationSignature === strLastSyncedSignatureRef.current) return;
+    if (strEvaluationSignature === strLastEvaluatedSignatureRef.current) return;
 
-    const strEvaluationSignature = strCurrentSignature;
+    const strNextEvaluationSignature = strEvaluationSignature;
     const intSequence = ++intEvaluateSequenceRef.current;
     const intTimer = window.setTimeout(async () => {
       setBlnEvaluating(true);
@@ -1093,7 +1110,7 @@ export default function FlexiPayDeclarationPage() {
           dicEligibilityAnswers,
         );
         if (intEvaluateSequenceRef.current !== intSequence) return;
-        strLastEvaluatedSignatureRef.current = strEvaluationSignature;
+        strLastEvaluatedSignatureRef.current = strNextEvaluationSignature;
         setObjContext(objData);
         setStrError("");
       } catch (objError) {
@@ -1113,49 +1130,10 @@ export default function FlexiPayDeclarationPage() {
     lstPayloadRows,
     objContext?.blnCanDeclare,
     blnCanEditDeclaration,
-    strCurrentSignature,
+    strEvaluationSignature,
     strActiveFinancialYearCode,
     strRemarks,
     t,
-  ]);
-
-  useEffect(() => {
-    if (blnLoading || blnSaving || !objContext?.objDeclaration?.intDeclarationID || !blnCanEditDeclaration) return;
-    if (strCurrentSignature === strLastAutoSavedSignatureRef.current) return;
-    if (lstPayloadRows.length === 0 && !blnHasEligibilityAnswerValues && strRemarks.trim().length === 0) return;
-    if (lstMissingProofRows.length > 0) return;
-
-    const intTimer = window.setTimeout(async () => {
-      try {
-        await flexiPayDeclarationService.saveDraft(
-          strActiveFinancialYearCode,
-          lstPayloadRows,
-          strRemarks,
-          dicEligibilityAnswers,
-        );
-        if (strCurrentSignature === buildStateSignature(dicDraftInputs, dicEligibilityAnswers, strRemarks, dicProofFiles)) {
-          strLastAutoSavedSignatureRef.current = strCurrentSignature;
-        }
-      } catch {
-        // Keep autosave silent; manual actions still surface errors.
-      }
-    }, 1400);
-
-    return () => window.clearTimeout(intTimer);
-  }, [
-    blnLoading,
-    blnSaving,
-    blnHasEligibilityAnswerValues,
-    dicEligibilityAnswers,
-    lstPayloadRows,
-    objContext?.objDeclaration?.intDeclarationID,
-    blnCanEditDeclaration,
-    strCurrentSignature,
-    strActiveFinancialYearCode,
-    strRemarks,
-    dicDraftInputs,
-    dicProofFiles,
-    lstMissingProofRows.length,
   ]);
 
   function validateDeclarationForAction(strAction: "draft" | "submit") {
@@ -1617,6 +1595,14 @@ export default function FlexiPayDeclarationPage() {
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             <Chip label={formatTranslatedStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
+            {blnEvaluating && !blnSaving ? (
+              <Chip
+                icon={<CircularProgress size={14} color="inherit" />}
+                label={t("evaluating", "Evaluating...")}
+                variant="outlined"
+                sx={{ color: "#f8fcff", borderColor: "rgba(255,255,255,0.55)" }}
+              />
+            ) : null}
             <Button
               size="small"
               variant="outlined"

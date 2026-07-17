@@ -446,6 +446,34 @@
   white-space: nowrap;
 }
 
+.resultLinesTable {
+  min-width: 1280px;
+}
+
+.resultLinesTable thead th {
+  background: #f8fbff;
+  color: #0f2444;
+  font-size: 0.74rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody td {
+  color: #20385f;
+  font-size: 0.78rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody tr:hover {
+  background: #f8fbff;
+}
+
+.resultLinesTable th:nth-child(5),
+.resultLinesTable th:nth-child(6),
+.resultLinesTable td:nth-child(5),
+.resultLinesTable td:nth-child(6) {
+  text-align: right;
+}
+
 .fnfDenseTable {
   min-width: 900px;
 }

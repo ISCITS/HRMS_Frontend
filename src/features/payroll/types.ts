@@ -627,6 +627,8 @@ export type PayrollResultRecord = {
   decOriginalSalaryAmount?: number;
   decLwpReductionAmount?: number;
   decGrossEarningsAmount: number;
+  decEarningsSectionTotal?: number;
+  decReimbursementSectionTotal?: number;
   decEmployeeDeductionTotal: number;
   decTaxTotal: number;
   decTotalEmployerCost: number;
@@ -790,10 +792,26 @@ export type PayslipPreviewRecord = {
   dicTax?: {
     strRegimeUsed: string | null;
     decTaxableIncome: number;
+    decProjectedTaxableIncome?: number;
+    decExemptionAmount?: number;
+    decDeclaredDeductionAmount?: number;
+    decStandardDeductionAmount?: number;
+    decTotalDeductionAmount?: number;
+    decTaxBeforeRebate?: number;
+    decRebateAmount?: number;
+    decMarginalRebateReliefAmount?: number;
+    decTaxAfterRebate?: number;
+    decSurchargeAmount?: number;
+    decMarginalSurchargeReliefAmount?: number;
+    decTaxAfterSurcharge?: number;
+    decCessAmount?: number;
     decAnnualTaxAmount: number;
     decCurrentMonthTds: number;
     decTotalTaxLiability: number;
     intRemainingMonths: number | null;
+    strRegimeTypeCode?: string | null;
+    strSlabProfileCode?: string | null;
+    strTaxRuleVersion?: string | null;
   };
   dicTotals: {
     decGrossEarnings: number;

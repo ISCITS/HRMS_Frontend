@@ -40,7 +40,11 @@ type TaxRuleMaintenancePageProps = {
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
 
-function createStandardDeductionRow(strTaxYearCode: string): TaxStandardDeductionRuleFormValue {
+function getTodayDateInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createStandardDeductionRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxStandardDeductionRuleFormValue {
   return {
     strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     strTaxYearCode,
@@ -51,7 +55,7 @@ function createStandardDeductionRow(strTaxYearCode: string): TaxStandardDeductio
     decDeductionAmount: "0",
     decDeductionPercent: "",
     decMaximumDeductionAmount: "",
-    dtEffectiveFrom: "",
+    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
     dtEffectiveTo: "",
     blnIsActive: true,
     strLegalReference: "",
@@ -59,7 +63,7 @@ function createStandardDeductionRow(strTaxYearCode: string): TaxStandardDeductio
   };
 }
 
-function createRebateRow(strTaxYearCode: string): TaxRebateRuleFormValue {
+function createRebateRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxRebateRuleFormValue {
   return {
     strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     strTaxYearCode,
@@ -73,14 +77,14 @@ function createRebateRow(strTaxYearCode: string): TaxRebateRuleFormValue {
     decRebatePercent: "100",
     blnMarginalReliefEnabled: false,
     blnExcludesSpecialRateIncome: true,
-    dtEffectiveFrom: "",
+    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
     dtEffectiveTo: "",
     blnIsActive: true,
     strLegalReference: "",
   };
 }
 
-function createSurchargeRow(strTaxYearCode: string): TaxSurchargeSlabFormValue {
+function createSurchargeRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxSurchargeSlabFormValue {
   return {
     strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     strTaxYearCode,
@@ -91,14 +95,14 @@ function createSurchargeRow(strTaxYearCode: string): TaxSurchargeSlabFormValue {
     blnMarginalReliefEnabled: true,
     decMaximumRateCapPercent: "",
     intDisplayOrder: "10",
-    dtEffectiveFrom: "",
+    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
     dtEffectiveTo: "",
     blnIsActive: true,
     strLegalReference: "",
   };
 }
 
-function createCessRow(strTaxYearCode: string): TaxCessRuleFormValue {
+function createCessRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxCessRuleFormValue {
   return {
     strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     strTaxYearCode,
@@ -107,7 +111,7 @@ function createCessRow(strTaxYearCode: string): TaxCessRuleFormValue {
     decCessRatePercent: "0",
     strCalculationBaseCode: "TAX_PLUS_SURCHARGE",
     intDisplayOrder: "10",
-    dtEffectiveFrom: "",
+    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
     dtEffectiveTo: "",
     blnIsActive: true,
     strLegalReference: "",
@@ -158,25 +162,26 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
         }
         setObjRegime(dicRegime);
         setLstFinancialYears(getUniqueFinancialYears(dicRegime.strTaxYearCode, dicRegime.strEffectiveFromYear));
+        const strDefaultEffectiveFrom = dicRegime.dtEffectiveFrom || undefined;
         if (strRuleType === "standard-deduction") {
           const dicWorkspace = await taxRegimeService.getTaxStandardDeductionRules(intTaxRegimeID);
           if (!blnMounted) return;
-          setLstStandardDeductionRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createStandardDeductionRow(dicRegime.strTaxYearCode)]);
+          setLstStandardDeductionRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createStandardDeductionRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
         }
         if (strRuleType === "rebate") {
           const dicWorkspace = await taxRegimeService.getTaxRebateRules(intTaxRegimeID);
           if (!blnMounted) return;
-          setLstRebateRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createRebateRow(dicRegime.strTaxYearCode)]);
+          setLstRebateRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createRebateRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
         }
         if (strRuleType === "surcharge") {
           const dicWorkspace = await taxRegimeService.getTaxSurchargeSlabs(intTaxRegimeID);
           if (!blnMounted) return;
-          setLstSurchargeSlabs(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createSurchargeRow(dicRegime.strTaxYearCode)]);
+          setLstSurchargeSlabs(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createSurchargeRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
         }
         if (strRuleType === "cess") {
           const dicWorkspace = await taxRegimeService.getTaxCessRules(intTaxRegimeID);
           if (!blnMounted) return;
-          setLstCessRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createCessRow(dicRegime.strTaxYearCode)]);
+          setLstCessRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createCessRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
         }
       } catch (objError) {
         if (blnMounted) {
@@ -203,10 +208,11 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
 
   function handleAddRow() {
     const strTaxYearCode = objRegime?.strTaxYearCode || lstFinancialYears[0] || "";
-    if (strRuleType === "standard-deduction") setLstStandardDeductionRules((lstPrevious) => [...lstPrevious, createStandardDeductionRow(strTaxYearCode)]);
-    if (strRuleType === "rebate") setLstRebateRules((lstPrevious) => [...lstPrevious, createRebateRow(strTaxYearCode)]);
-    if (strRuleType === "surcharge") setLstSurchargeSlabs((lstPrevious) => [...lstPrevious, createSurchargeRow(strTaxYearCode)]);
-    if (strRuleType === "cess") setLstCessRules((lstPrevious) => [...lstPrevious, createCessRow(strTaxYearCode)]);
+    const strDefaultEffectiveFrom = objRegime?.dtEffectiveFrom || undefined;
+    if (strRuleType === "standard-deduction") setLstStandardDeductionRules((lstPrevious) => [...lstPrevious, createStandardDeductionRow(strTaxYearCode, strDefaultEffectiveFrom)]);
+    if (strRuleType === "rebate") setLstRebateRules((lstPrevious) => [...lstPrevious, createRebateRow(strTaxYearCode, strDefaultEffectiveFrom)]);
+    if (strRuleType === "surcharge") setLstSurchargeSlabs((lstPrevious) => [...lstPrevious, createSurchargeRow(strTaxYearCode, strDefaultEffectiveFrom)]);
+    if (strRuleType === "cess") setLstCessRules((lstPrevious) => [...lstPrevious, createCessRow(strTaxYearCode, strDefaultEffectiveFrom)]);
   }
 
   function handleDeleteRow(strRowID: string) {
