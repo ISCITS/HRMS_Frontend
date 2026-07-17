@@ -4,7 +4,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { type InputHTMLAttributes, useMemo, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -264,14 +264,18 @@ export default function StatutoryReportPage() {
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
     setDicSearchApplied(dicEmptySearch);
-    setLstRows([]);
-    setSetSelectedRowIDs(new Set());
-    setStrError("");
-    setBlnHasLoadedRows(false);
-    setIntPage(1);
+    loadRows(dicEmptySearch).catch(() => undefined);
   }
 
-  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
+  useEffect(() => {
+    if (!blnCanView) {
+      return;
+    }
+    setDicSearchApplied(dicEmptySearch);
+    loadRows(dicEmptySearch).catch(() => undefined);
+  }, [blnCanView]);
+
+  if (blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel="Loading statutory reports..." />;
   }
 
@@ -309,6 +313,7 @@ export default function StatutoryReportPage() {
       </Box>
       <Box className={styles.tableCard}>
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Statutory report view access is not available for your user group.</Alert> : null}
+        {blnLoading ? <Alert severity="info" sx={{ mb: 1.5 }}>Loading statutory report rows...</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>

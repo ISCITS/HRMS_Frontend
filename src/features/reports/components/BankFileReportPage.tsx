@@ -4,7 +4,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -53,17 +53,6 @@ function toCsvValue(objValue: unknown) {
 
 function displayValue(strValue: string | null | undefined) {
   return strValue?.trim() || "-";
-}
-
-function hasSearchCriteria(dicFilters: SearchForm) {
-  return Boolean(
-    dicFilters.strSearchEmployee.trim() ||
-    dicFilters.strSearchRun.trim() ||
-    dicFilters.strDepartment.trim() ||
-    dicFilters.strLocation.trim() ||
-    dicFilters.strPayrollMonth.trim() ||
-    dicFilters.strStatus !== "All"
-  );
 }
 
 function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
@@ -227,14 +216,6 @@ export default function BankFileReportPage() {
   }
 
   function applyFilters(dicFilters: SearchForm) {
-    if (!hasSearchCriteria(dicFilters)) {
-      setStrError("Enter at least one search criterion before searching.");
-      setLstRows([]);
-      setSetSelectedRowIDs(new Set());
-      setBlnHasLoadedRows(false);
-      setIntPage(1);
-      return;
-    }
     setDicSearchDraft(dicFilters);
     setStrError("");
     setBlnFilterDialogOpen(false);
@@ -243,12 +224,15 @@ export default function BankFileReportPage() {
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
-    setLstRows([]);
-    setSetSelectedRowIDs(new Set());
-    setStrError("");
-    setBlnHasLoadedRows(false);
-    setIntPage(1);
+    loadRows(dicEmptySearch).catch(() => undefined);
   }
+
+  useEffect(() => {
+    if (!blnCanView) {
+      return;
+    }
+    loadRows(dicEmptySearch).catch(() => undefined);
+  }, [blnCanView]);
 
   if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading bank file..." />;

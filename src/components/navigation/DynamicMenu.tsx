@@ -1191,13 +1191,13 @@ export default function DynamicMenu({
       mb: 0.75,
       display: "grid",
       placeItems: "center",
-      color: blnIsActive ? "#1d4ed8" : "#2563eb",
+      color: "var(--app-primary-color)",
       backgroundColor: "transparent",
-      borderLeft: blnIsActive ? "3px solid #2563eb" : "3px solid transparent",
+      borderLeft: blnIsActive ? "3px solid var(--app-primary-color)" : "3px solid transparent",
       transition: "background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease",
       "&:hover": {
         backgroundColor: "#eff6ff",
-        color: "#1d4ed8",
+        color: "var(--app-primary-color)",
         transform: "translateX(1px)",
       },
       "& .MuiListItemIcon-root": {
@@ -1271,18 +1271,18 @@ export default function DynamicMenu({
             }}
             sx={getButtonStyles(blnHasActiveChild || blnExpanded, intDepth)}
           >
-            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild || blnExpanded ? "#2563eb" : "#64748b" }}>
+            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild || blnExpanded ? "var(--app-primary-color)" : "#64748b" }}>
               {getMenuIcon(objIconSourceItem)}
             </ListItemIcon>
             <ListItemText
               primary={resolveMenuLabel(objItem)}
               primaryTypographyProps={{
                 fontWeight: 700,
-                color: blnHasActiveChild || blnExpanded ? "#1d4ed8" : "#0f172a",
+                color: blnHasActiveChild || blnExpanded ? "var(--app-primary-color)" : "#0f172a",
                 fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
               }}
             />
-            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "#2563eb" }} /> : <ExpandMoreRoundedIcon sx={{ color: "#2563eb" }} />}
+            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "var(--app-primary-color)" }} /> : <ExpandMoreRoundedIcon sx={{ color: "var(--app-primary-color)" }} />}
           </ListItemButton>
 
           <Collapse in={blnExpanded} timeout="auto" unmountOnExit>
@@ -1308,7 +1308,7 @@ export default function DynamicMenu({
         onClick={onNavigate}
         sx={getButtonStyles(blnIsActive, intDepth)}
       >
-        <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "#2563eb" : "#64748b" }}>
+        <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "var(--app-primary-color)" : "#64748b" }}>
           {getMenuIcon(objIconSourceItem)}
         </ListItemIcon>
         <ListItemText

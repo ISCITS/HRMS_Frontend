@@ -86,7 +86,6 @@ export default function StateMasterPanel() {
     tableCode: t("table_code"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
-    loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     fieldCountry: t("field_country"),
     fieldName: t("field_name"),
@@ -379,9 +378,7 @@ export default function StateMasterPanel() {
         ) : null}
       </Box>
       <Box className={styles.tableCard}>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}><CircularProgress size={24} /><Typography sx={{ mt: 1 }}>{dicLabels.loadingRecords}</Typography></Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800, color: "#0f172a" }}>State access is not available for your user group.</Typography></Box>
         ) : (
           <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button controlId="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />

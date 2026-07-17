@@ -287,7 +287,7 @@
 }
 
 .editIcon {
-  color: #707070;
+  color: var(--app-primary-color);
 }
 
 .deleteIcon {
@@ -354,10 +354,24 @@
 }
 
 .paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
   font-size: 0.78rem;
   height: 26px;
   margin: 0;
   min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected:hover) {
+  background-color: var(--app-primary-hover);
 }
 
 .dialogPaper {

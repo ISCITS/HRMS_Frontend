@@ -216,7 +216,6 @@ export default function BankMasterPanel() {
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
-    loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     tableName: t("table_name"),
     tableCode: t("table_code"),
@@ -800,12 +799,7 @@ export default function BankMasterPanel() {
           </Box>
         ) : null}
         </Box>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState} controlId="bank-master.list.loading">
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicBankLabels.loadingRecords}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState} controlId="bank-master.no-access.message">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
@@ -928,20 +922,19 @@ export default function BankMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button controlId="bank-master.dialog.add-language.button" variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button controlId="bank-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
                   controlId="bank-master.dialog.translate.button"
-                  variant="contained"
+                  className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
                   sx={{
                     minWidth: 108,
-                    borderRadius: "12px",
-                    background: "#2563eb",
+                    minHeight: 34,
                     boxShadow: "none",
-                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                    "&:hover": { boxShadow: "none" },
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (

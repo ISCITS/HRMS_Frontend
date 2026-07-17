@@ -224,7 +224,6 @@ export default function LocationMasterPanel() {
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
-    loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     tableName: t("table_name"),
     tableCode: t("table_code"),
@@ -822,12 +821,7 @@ export default function LocationMasterPanel() {
           </Box>
         ) : null}
         </Box>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Location access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need location visibility.</Typography>
@@ -972,19 +966,18 @@ export default function LocationMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled>
+                <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  variant="contained"
+                  className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
                   sx={{
                     minWidth: 108,
-                    borderRadius: "12px",
-                    background: "#2563eb",
+                    minHeight: 34,
                     boxShadow: "none",
-                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                    "&:hover": { boxShadow: "none" },
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (

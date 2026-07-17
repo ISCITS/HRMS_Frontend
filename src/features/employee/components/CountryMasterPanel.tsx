@@ -102,7 +102,6 @@ export default function CountryMasterPanel() {
     tablePhoneCode: t("table_phone_code"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
-    loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     dialogAddTitle: t("dialog_add_title"),
     dialogEditTitle: t("dialog_edit_title"),
@@ -636,12 +635,7 @@ export default function CountryMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Country access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need country visibility.</Typography>
@@ -765,15 +759,15 @@ export default function CountryMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button variant="outlined" startIcon={<AddRoundedIcon />} disabled controlId="country-master.dialog.add-language.button">
+                <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled controlId="country-master.dialog.add-language.button" sx={{ minHeight: 34 }}>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  variant="contained"
+                  className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
                   controlId="country-master.dialog.translate.button"
-                  sx={{ minWidth: 108, borderRadius: "12px", background: "#2563eb", boxShadow: "none", "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}
+                  sx={{ minWidth: 108, minHeight: 34, boxShadow: "none", "&:hover": { boxShadow: "none" } }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
                     <CircularProgress size={18} sx={{ color: "#ffffff" }} />

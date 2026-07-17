@@ -213,6 +213,13 @@ function getLocalizedHeaderTitle(
     return tHeader("tax_regimes_title", "Tax Regimes");
   }
 
+  if (strHeaderModuleName === "salary-structures") {
+    return tHeader("page_title", "Salary Structures")
+      .split("/")
+      .map((strSegment) => strSegment.trim())
+      .filter(Boolean)[0] || "Salary Structures";
+  }
+
   if (strHeaderModuleName === "it-declaration") {
     return tHeader("page_title", "IT Declaration");
   }
@@ -976,13 +983,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{
                 width: 40,
                 height: 40,
-                border: "1px solid rgba(59, 130, 246, 0.18)",
+                border: "1px solid var(--app-primary-border)",
                 backgroundColor: "#ffffff",
-                color: "#2563eb",
+                color: "var(--app-primary-color)",
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 "&:hover": {
                   backgroundColor: "#eff6ff",
-                  color: "#1d4ed8",
+                  color: "var(--app-primary-color)",
                 }
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}

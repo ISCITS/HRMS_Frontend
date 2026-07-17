@@ -170,7 +170,6 @@ export default function DepartmentMasterPanel() {
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
-    loadingDepartments: t("loading_departments"),
     emptyMessage: t("empty_message"),
     tableName: t("table_name"),
     tableCode: t("table_code"),
@@ -741,7 +740,7 @@ export default function DepartmentMasterPanel() {
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
       <Box className={styles.topBar}>
-        <Button controlId="department-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
+        <Button data-control-id="department-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -761,8 +760,8 @@ export default function DepartmentMasterPanel() {
             <MenuItem controlId="department-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="department-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
@@ -774,25 +773,20 @@ export default function DepartmentMasterPanel() {
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDepartmentLabels.bulkRowsSelected}`}</Typography>
             {blnCanChangeStatus ? (
-              <Button controlId="department-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
+              <Button data-control-id="department-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
             ) : null}
             {blnCanChangeStatus ? (
-              <Button controlId="department-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
+              <Button data-control-id="department-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
             ) : null}
             {blnCanDelete ? (
-              <Button controlId="department-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
+              <Button data-control-id="department-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
             ) : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicDepartmentLabels.loadingDepartments}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Department access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>
@@ -814,7 +808,7 @@ export default function DepartmentMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
-                  <Button controlId="department-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                  <Button data-control-id="department-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                     {dicDepartmentLabels.addButton}
                   </Button>
                 ) : null}
@@ -923,23 +917,23 @@ export default function DepartmentMasterPanel() {
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
                 <Button
                   controlId="department-master.dialog.add-language.button"
-                  variant="outlined"
+                  className={styles.secondaryButton}
                   startIcon={<AddRoundedIcon />}
                   disabled
+                  sx={{ minHeight: 34 }}
                 >
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
                   controlId="department-master.dialog.translate.button"
-                  variant="contained"
+                  className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
                   sx={{
                     minWidth: 108,
-                    borderRadius: "12px",
-                    background: "#2563eb",
+                    minHeight: 34,
                     boxShadow: "none",
-                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                    "&:hover": { boxShadow: "none" },
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (

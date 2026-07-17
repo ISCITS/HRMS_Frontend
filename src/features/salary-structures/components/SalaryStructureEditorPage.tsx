@@ -92,6 +92,12 @@ function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
   return Math.max(...lstLines.map((dicLine) => dicLine.intLineOrder)) + 10;
 }
 
+function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
+  return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
+    || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
+    || dicLeft.strRowID.localeCompare(dicRight.strRowID);
+}
+
 function parseOptionalSelectNumber(strValue: string) {
   if (!strValue) {
     return "";
@@ -473,7 +479,26 @@ export default function SalaryStructureEditorPage({
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
   }, [objFormOptions]);
+  const lstFormulaVariableCodes = useMemo(() => {
+    const setCodes = new Set<string>();
+    dicForm.lstComponents.forEach((dicLine) => {
+      const intSalaryComponentID = Number(dicLine.intSalaryComponentID);
+      if (!Number.isFinite(intSalaryComponentID) || intSalaryComponentID <= 0) {
+        return;
+      }
+      const dicComponent = dicComponentByID.get(intSalaryComponentID);
+      const strCode = String(dicLine.strComponentCode || dicComponent?.strCode || "").trim();
+      if (strCode) {
+        setCodes.add(strCode);
+      }
+    });
+    setCodes.add("DEEMED_WAGE_BASE");
+    return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
+  }, [dicComponentByID, dicForm.lstComponents]);
   const lstValueSourceOptions = objFormOptions?.lstValueSourceLookups ?? [];
+  const lstSortedComponentLines = useMemo(() => {
+    return [...dicForm.lstComponents].sort(compareLineOrder);
+  }, [dicForm.lstComponents]);
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
@@ -1599,8 +1624,8 @@ export default function SalaryStructureEditorPage({
             </Stack>
           </Stack>
 
-          {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-          {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+          {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ borderRadius: 0 }}>{strError}</Alert> : null}
+          {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")} sx={{ borderRadius: 0 }}>{strSuccess}</Alert> : null}
           {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Salary Structure.")}</Alert> : null}
         </Stack>
       </Paper>
@@ -1769,15 +1794,16 @@ export default function SalaryStructureEditorPage({
                 </tr>
               </thead>
               <tbody>
-                {dicForm.lstComponents.map((dicLine) => {
+                {lstSortedComponentLines.map((dicLine) => {
                   const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
                   const strLineYearlyAmount = getAnnualAmountFromMonthly(dicLine.fltFixedAmount);
+                  const strFlexiRoleBadge = getFlexiRoleForLine(dicLine, dicComponent);
                   const lstLineBadges = dicComponent ? [
                     dicComponent.blnIncludedInCtc === false ? t("non_ctc", "Non-CTC") : t("ctc", "CTC"),
                     getTaxTreatmentLabel(dicComponent) || t("tax_not_configured", "Tax not configured"),
                     dicComponent.blnIsWages ? t("wage", "Wage") : t("non_wage", "Non-Wage"),
                     dicComponent.strComponentGroup || t("component_group_unset", "Component Group not set"),
-                    getFlexiRoleForLine(dicLine, dicComponent),
+                    strFlexiRoleBadge !== "Normal" ? strFlexiRoleBadge : null,
                     dicComponent.strLwpTreatmentCode && dicComponent.strLwpTreatmentCode !== "NONE"
                       ? `${t("lwp", "LWP")}: ${t(`lwp_treatment_${normalizeSelectToken(dicComponent.strLwpTreatmentCode)}`, dicComponent.strLwpTreatmentCode)}`
                       : null,
@@ -1828,23 +1854,61 @@ export default function SalaryStructureEditorPage({
                     </td>
                     <td style={{ background: "#ffffff", left: 106, paddingBottom: 4, paddingTop: 4, position: "sticky", verticalAlign: "top", zIndex: 2 }}>
                       <Stack spacing={0.45} sx={{ minWidth: 280, maxWidth: 320 }}>
-                        <TextField
-                          select
-                          size="small"
-                          value={dicLine.intSalaryComponentID}
-                          onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
-                          disabled={blnFieldDisabled}
-                          controlId="salary-structures.editor.line.salary-component.select"
-                          inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
-                          SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
-                          sx={{ width: "100%" }}
-                        >
-                          {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
-                            <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                              {dicOption.strLabel}
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                        <Stack direction="row" spacing={0.45} sx={{ alignItems: "center" }}>
+                          <TextField
+                            select
+                            size="small"
+                            value={dicLine.intSalaryComponentID}
+                            onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intSalaryComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                            disabled={blnFieldDisabled}
+                            controlId="salary-structures.editor.line.salary-component.select"
+                            inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
+                            SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
+                            sx={{ flex: 1 }}
+                          >
+                            {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
+                              <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
+                                {dicOption.strLabel}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          {dicLine.intSalaryComponentID ? (
+                            <Tooltip
+                              title={objPolicyTooltip}
+                              arrow
+                              enterTouchDelay={0}
+                              slotProps={{
+                                tooltip: {
+                                  sx: {
+                                    borderRadius: 0
+                                  }
+                                },
+                                arrow: {
+                                  sx: {
+                                    "&::before": {
+                                      borderRadius: 0
+                                    }
+                                  }
+                                }
+                              }}
+                            >
+                              <IconButton
+                                size="small"
+                                aria-label={t("component_policy_snapshot", "Component Policy Snapshot")}
+                                controlId="salary-structures.editor.line.policy-snapshot.tooltip"
+                                sx={{
+                                  color: "#64748b",
+                                  flexShrink: 0,
+                                  height: 20,
+                                  p: 0,
+                                  width: 20
+                                }}
+                              >
+                                <InfoOutlinedIcon sx={{ fontSize: "0.9rem" }} />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
+                        </Stack>
                         <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ alignItems: "center", minHeight: 18 }}>
                           {lstLineBadges.length === 0 ? (
                             <Typography sx={{ color: "#94a3b8", fontSize: "0.68rem" }}>-</Typography>
@@ -1865,23 +1929,6 @@ export default function SalaryStructureEditorPage({
                               {strBadge}
                             </Box>
                           ))}
-                          {dicLine.intSalaryComponentID ? (
-                            <Tooltip title={objPolicyTooltip} arrow enterTouchDelay={0}>
-                              <IconButton
-                                size="small"
-                                aria-label={t("component_policy_snapshot", "Component Policy Snapshot")}
-                                controlId="salary-structures.editor.line.policy-snapshot.tooltip"
-                                sx={{
-                                  color: "#64748b",
-                                  height: 20,
-                                  p: 0,
-                                  width: 20
-                                }}
-                              >
-                                <InfoOutlinedIcon sx={{ fontSize: "0.9rem" }} />
-                              </IconButton>
-                            </Tooltip>
-                          ) : null}
                         </Stack>
                       </Stack>
                     </td>
@@ -1961,18 +2008,78 @@ export default function SalaryStructureEditorPage({
                       </TextField>
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
+                      {(() => {
+                        const blnIsFormulaValueSource = normalizeSelectToken(dicLine.strValueSource) === "formula";
+                        const objFormulaHelpTooltip = (
+                          <Stack spacing={0.5}>
+                            <Typography sx={{ fontSize: "0.72rem", fontWeight: 800 }}>
+                              {t("formula_variables_title", "Available formula codes")}
+                            </Typography>
+                            {lstFormulaVariableCodes.length > 0 ? (
+                              <Stack spacing={0.25}>
+                                {lstFormulaVariableCodes.map((strCode) => (
+                                  <Typography key={strCode} sx={{ fontSize: "0.7rem", lineHeight: 1.35 }}>
+                                    - {strCode}
+                                  </Typography>
+                                ))}
+                              </Stack>
+                            ) : (
+                              <Typography sx={{ fontSize: "0.7rem", lineHeight: 1.45 }}>
+                                {t("formula_variables_empty", "No salary component codes are available in this structure yet.")}
+                              </Typography>
+                            )}
+                            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700 }}>
+                              {t("formula_example_label", "Example")}: DEEMED_WAGE_BASE * 0.08
+                            </Typography>
+                          </Stack>
+                        );
+                        return (
                       <TextField
                         size="small"
                         value={dicLine.strFormulaExpression}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "strFormulaExpression", objEvent.target.value)}
-                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "formula"}
+                        disabled={blnFieldDisabled || !blnIsFormulaValueSource}
                         controlId="salary-structures.editor.line.formula.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.formula.input", { "data-row-key": dicLine.strRowID })}
-                        helperText={normalizeSelectToken(dicLine.strValueSource) === "formula"
-                          ? t("formula_expression_help", "Available system variables: WAGE_TOTAL, NON_WAGE_TOTAL, DEEMED_WAGE_BASE, DEEMED_WAGE_SHORTFALL, CTC_ANNUAL, GROSS_ANNUAL. Example: DEEMED_WAGE_BASE * 0.08")
-                          : " "}
-                        sx={{ minWidth: 188 }}
+                        helperText=" "
+                        InputProps={blnIsFormulaValueSource ? {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Tooltip
+                                title={objFormulaHelpTooltip}
+                                arrow
+                                enterTouchDelay={0}
+                                slotProps={{
+                                  tooltip: {
+                                    sx: {
+                                      borderRadius: 0
+                                    }
+                                  },
+                                  arrow: {
+                                    sx: {
+                                      "&::before": {
+                                        borderRadius: 0
+                                      }
+                                    }
+                                  }
+                                }}
+                              >
+                                <IconButton
+                                  size="small"
+                                  edge="end"
+                                  controlId="salary-structures.editor.line.formula.tooltip"
+                                  sx={{ color: "#64748b", mr: -0.5 }}
+                                >
+                                  <InfoOutlinedIcon sx={{ fontSize: "0.95rem" }} />
+                                </IconButton>
+                              </Tooltip>
+                            </InputAdornment>
+                          )
+                        } : undefined}
+                        sx={{ minWidth: 230 }}
                       />
+                        );
+                      })()}
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
