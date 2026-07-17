@@ -213,7 +213,7 @@ function StatusPill({ strStatus }: { strStatus: string }) {
 function KpiTile({ objIcon, strLabel, strValue, strTone }: { objIcon: ReactNode; strLabel: string; strValue: string; strTone: Tone }) {
   const objTone = getToneStyles(strTone);
   return (
-    <Box sx={{ alignItems: "center", display: "flex", gap: 1.2, minHeight: 58, minWidth: 0 }}>
+    <Box sx={{ alignItems: "center", display: "flex", gap: 1, minHeight: 58, minWidth: 0 }}>
       <Box
         sx={{
           alignItems: "center",
@@ -230,8 +230,22 @@ function KpiTile({ objIcon, strLabel, strValue, strTone }: { objIcon: ReactNode;
         {objIcon}
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ color: "#475569", fontSize: "0.76rem", fontWeight: 700, lineHeight: 1.1 }}>{strLabel}</Typography>
-        <Typography sx={{ color: "#0f172a", fontSize: "0.98rem", fontWeight: 900, lineHeight: 1.2, mt: 0.35 }}>
+        <Typography sx={{ color: "#475569", fontSize: "0.75rem", fontWeight: 700, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {strLabel}
+        </Typography>
+        <Typography
+          title={strValue}
+          sx={{
+            color: "#0f172a",
+            fontSize: "clamp(0.82rem, 0.78rem + 0.12vw, 0.94rem)",
+            fontWeight: 900,
+            lineHeight: 1.2,
+            mt: 0.35,
+            overflow: "hidden",
+            overflowWrap: "anywhere",
+            textOverflow: "ellipsis",
+          }}
+        >
           {strValue}
         </Typography>
       </Box>
@@ -792,7 +806,21 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           <MenuItem onClick={() => { handleCloseActions(); objRouter.push("/payroll/results"); }}>{t("view_results", "Results")}</MenuItem>
         </Menu>
 
-        <Box sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", display: "grid", gap: { xs: 0.75, md: 1 }, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))", xl: "repeat(10, minmax(0, 1fr))" }, px: 1.25, py: 1 }}>
+        <Box
+          sx={{
+            border: "1px solid #DCE4EF",
+            borderRadius: "10px",
+            display: "grid",
+            gap: { xs: 0.75, md: 1 },
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(auto-fit, minmax(150px, 1fr))",
+            },
+            px: 1.25,
+            py: 1,
+          }}
+        >
           {lstKpis.map((dicKpi) => (
             <KpiTile key={dicKpi.strLabel} objIcon={dicKpi.objIcon} strLabel={dicKpi.strLabel} strValue={dicKpi.strValue} strTone={dicKpi.strTone} />
           ))}
@@ -812,7 +840,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           gridTemplateColumns: {
             xs: "1fr",
             md: "repeat(2, minmax(0, 1fr))",
-            xl: "minmax(250px, 0.92fr) minmax(0, 1.42fr) minmax(280px, 1fr)",
+            xl: "minmax(320px, 0.9fr) minmax(520px, 1.35fr) minmax(320px, 0.95fr)",
           },
         }}
       >
@@ -843,7 +871,13 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             </Box>
           </Box>
           <Box className={styles.tableWrap} sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", maxHeight: 248, minHeight: 248 }}>
-            <table className={styles.table} style={{ minWidth: "100%" }}>
+            <table className={styles.table} style={{ minWidth: 640 }}>
+              <colgroup>
+                <col style={{ width: 112 }} />
+                <col style={{ width: 210 }} />
+                <col style={{ width: 96 }} />
+                <col />
+              </colgroup>
               <thead>
                 <tr>
                   <th>{t("level", "Level")}</th>
