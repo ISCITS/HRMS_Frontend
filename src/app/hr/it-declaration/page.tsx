@@ -360,8 +360,8 @@ export default function HrItDeclarationListPage() {
         sx={{
           p: 1.2,
           borderRadius: "12px",
-          border: "1px solid #1e3a8a !important",
-          background: "linear-gradient(90deg, #184f94 0%, #0f7ea7 100%) !important",
+          border: "1px solid #2E73B8 !important",
+          background:"linear-gradient(90deg, #2E73B8 0%, #3D87C8 50%, #57A2DA 100%)",
           boxShadow: "0 8px 20px rgba(11, 47, 99, 0.22)",
         }}
       >
