@@ -67,6 +67,10 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" ? blnCanEdit : false;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
+  const objCompactHeaderButtonSx = {
+    minHeight: 30,
+    py: 0.35,
+  };
 
   useEffect(() => {
     let blnMounted = true;
@@ -224,27 +228,27 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "28px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)" }}>
-        <Stack spacing={2}>
+      <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)" }}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+              <Typography sx={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
                 {strMode === "add" ? t("add_tax_regime", "Add Tax Regime") : blnForcedViewMode ? t("view_tax_regime", "View Tax Regime") : t("edit_tax_regime", "Edit Tax Regime")}
               </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+              <Typography sx={{ color: "#64748b", mt: 0.5, lineHeight: 1.35 }}>
                 {t("editor_description", "Configure the effective-dated tax regime header and use the action cards below for slabs and detailed tax rules.")}
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+              <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
                 {t("back_to_list", "Back to list")}
               </Button>
               {strMode !== "add" && intTaxRegimeID ? (
                 <>
-                  <Button className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
+                  <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
                     {t("manage_slabs", "Manage Slabs")}
                   </Button>
-                  <Button className={styles.secondaryButton} startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>
+                  <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>
                     {t("manage_tax_rules", "Manage Tax Rules")}
                   </Button>
                 </>

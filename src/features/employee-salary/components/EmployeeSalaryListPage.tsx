@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   MenuItem,
   Snackbar,
   TextField,
@@ -267,12 +266,7 @@ export default function EmployeeSalaryListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnLoading || blnRightsLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{t("employee_salary_loading_records", "Loading employee salary records...")}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_access_denied", "Employee salary access is not available for your user group.")}
@@ -317,7 +311,7 @@ export default function EmployeeSalaryListPage() {
         )}
       </Box>
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading", "Loading...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("employee_salary_loading_records", "Loading employee salary records...")} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

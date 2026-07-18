@@ -52,6 +52,8 @@ const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
+const strSharedHeaderGradient = "linear-gradient(90deg, #F7FAFF 0%, #E6F0FC 45%, #D5E7F8 100%)";
+const strSidebarGradient = "linear-gradient(180deg, #FCFDFF 0%, #F5F9FE 45%, #EEF5FC 100%)";
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
@@ -109,7 +111,8 @@ function getLocalizedHeaderTitle(
   strHeaderModuleName: string,
   tHeader: (strKey: string, strFallback?: string) => string,
   tCommon: (strKey: string, strFallback?: string) => string,
-  strBackRoute = ""
+  strBackRoute = "",
+  strViewMode = ""
 ) {
   const strLowerPath = (strPathname || "").toLowerCase();
   const strLowerBackRoute = (strBackRoute || "").toLowerCase();
@@ -173,12 +176,12 @@ function getLocalizedHeaderTitle(
       Boolean(strLowerPath.match(/^\/ess\/my-payslip\/\d+/));
     if (blnDetailContext) {
       return blnEssPayslipContext
-        ? tHeader("ess_page_title_view", "Ess / My Payslips / View")
-        : tHeader("page_title_view", "Payroll / Payslips / View");
+        ? tHeader("ess_page_title_view", "View My Payslips")
+        : tHeader("page_title_view", "View Payslips");
     }
     return blnEssPayslipContext
-      ? tHeader("ess_header_title", "Ess / My Payslips")
-      : tHeader("header_title", "Payroll / Payslips");
+      ? tHeader("ess_header_title", "My Payslips")
+      : tHeader("header_title", "Payslips");
   }
 
   if (strHeaderModuleName === "payroll-results") {
@@ -214,10 +217,46 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "salary-structures") {
+    if (strLowerPath.endsWith("/add")) {
+      return tHeader("add_salary_structure", "Add Salary Structure");
+    }
+    if (strLowerPath.includes("/edit/")) {
+      return tHeader("edit_salary_structure", "Edit Salary Structure");
+    }
     return tHeader("page_title", "Salary Structures")
       .split("/")
       .map((strSegment) => strSegment.trim())
       .filter(Boolean)[0] || "Salary Structures";
+  }
+
+  if (strHeaderModuleName === "salary-components") {
+    if (strLowerPath.endsWith("/add")) {
+      return tHeader("add_salary_component", "Add Salary Component");
+    }
+    if (strLowerPath.includes("/edit/")) {
+      return tHeader("edit_salary_component", "Edit Salary Component");
+    }
+    if (strLowerPath.includes("/view/")) {
+      return tHeader("view_salary_component", "View Salary Component");
+    }
+    return tHeader("page_title", "Salary Components")
+      .split("/")
+      .map((strSegment) => strSegment.trim())
+      .filter(Boolean)[0] || "Salary Components";
+  }
+
+  if (strHeaderModuleName === "employee-salary") {
+    const blnEmployeeSalaryViewMode = strViewMode === "view";
+    if (strLowerPath.includes("/revise")) {
+      return tHeader("employee_salary_detail_title", "Employee Salary Detail");
+    }
+    if (blnEmployeeSalaryViewMode) {
+      return tHeader("employee_salary_view_title", "View Employee Salary Detail");
+    }
+    if (Boolean(strLowerPath.match(/^\/employee-salary\/\d+$/))) {
+      return tHeader("employee_salary_detail_title", "Employee Salary Detail");
+    }
+    return tHeader("page_title", "Employee Salary");
   }
 
   if (strHeaderModuleName === "it-declaration") {
@@ -241,21 +280,41 @@ function getLocalizedHeaderTitle(
     return tHeader("page_title", "Ess / Reimbursements");
   }
   if (strHeaderModuleName === "loans-advances") {
+    const blnViewMode = strViewMode === "view";
+    const blnEditMode = strViewMode === "edit";
+    const blnAddMode = strViewMode === "add";
     if (strLowerPath === "/ess/loans-advances/new") {
-      return tHeader("ess_page_title_new", "Ess / Loans Advances / New");
+      return blnAddMode ? tHeader("add_loans_advances", "Add Loans Advances") : tHeader("new_title", "New Loan or Advance");
     }
     if (strLowerPath.match(/^\/ess\/loans-advances\/\d+$/)) {
-      return tHeader("ess_page_title_view", "Ess / Loans Advances / View");
+      return blnEditMode
+        ? tHeader("edit_loans_advances", "Edit Loans Advances")
+        : blnViewMode
+          ? tHeader("view_loans_advances", "View Loans Advances")
+          : tHeader("ess_page_title_view", "ESS / Loans & Advances / View");
     }
     if (strLowerPath === "/payroll/loans-advances/new") {
-      return tHeader("page_title_new", "Payroll / Loans Advances / New");
+      return blnAddMode ? tHeader("add_loans_advances", "Add Loans Advances") : tHeader("new_title", "New Loan or Advance");
     }
     if (strLowerPath.match(/^\/payroll\/loans-advances\/\d+$/)) {
-      return tHeader("page_title_view", "Payroll / Loans Advances / View");
+      return blnEditMode
+        ? tHeader("edit_loans_advances", "Edit Loans Advances")
+        : blnViewMode
+          ? tHeader("view_loans_advances", "View Loans Advances")
+          : tHeader("page_title_view", "Payroll / Loans & Advances / View");
     }
     return strLowerPath.startsWith("/ess/")
-      ? tHeader("ess_header_title", "Ess / Loans Advances")
-      : tHeader("header_title", "Payroll / Loans Advances");
+      ? tHeader("ess_header_title", "ESS / Loans & Advances")
+      : tHeader("header_title", "Payroll / Loans & Advances");
+  }
+  if (strHeaderModuleName === "fnf-settlements") {
+    if (strLowerPath === "/payroll/fnf-settlements/new") {
+      return tHeader("new_title", "New FNF Settlement");
+    }
+    if (Boolean(strLowerPath.match(/^\/payroll\/fnf-settlements\/\d+$/))) {
+      return tHeader("detail_title", "Full & Final Settlement");
+    }
+    return tHeader("header_title", "Full & Final Settlements");
   }
   if (strHeaderModuleName === "calendar") {
     return tHeader("header_title", "Ess / Calendar");
@@ -716,7 +775,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         strHeaderModuleName,
         tHeader,
         tCommon,
-        objSearchParams.get("backRoute") || ""
+        objSearchParams.get("backRoute") || "",
+        objSearchParams.get("mode") || ""
       );
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
@@ -785,7 +845,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             px: 2.25,
             height: `${intTopBarHeight}px`,
             flexShrink: 0,
-            background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
+            background: strSharedHeaderGradient,
             color: "#0f172a",
             display: "flex",
             alignItems: "center",
@@ -820,7 +880,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               setBlnDesktopSidebarOpen(false);
             }}
             sx={{
-              color: "#2563eb",
+              color: "var(--app-primary-color)",
               backgroundColor: "rgba(37, 99, 235, 0.12)",
               border: "1px solid rgba(37, 99, 235, 0.18)",
               "&:hover": {
@@ -837,7 +897,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         <Box
           sx={{
-            p: 1.25,
+            pt: 1.25,
+            pr: 1.25,
+            pb: 1.25,
+            pl: "8px",
             flex: 1,
             minHeight: 0,
             overflowY: "auto",
@@ -956,8 +1019,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "none", lg: "flex" },
           flexDirection: "column",
           alignItems: "center",
-          background: "linear-gradient(180deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
-          borderRight: "1px solid #e2e8f0",
+          background: strSidebarGradient,
+          borderRight: "1px solid #D7E4F2",
           boxShadow: "8px 0 24px rgba(15, 23, 42, 0.08)",
           overflow: "hidden",
           cursor: "pointer",
@@ -983,13 +1046,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{
                 width: 40,
                 height: 40,
-                border: "1px solid var(--app-primary-border)",
+                border: "1px solid #D7E4F2",
                 backgroundColor: "#ffffff",
-                color: "var(--app-primary-color)",
+                color: "#5E7FA5",
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 "&:hover": {
-                  backgroundColor: "#eff6ff",
-                  color: "var(--app-primary-color)",
+                  backgroundColor: "#EAF3FC",
+                  color: "#1D5D96",
                 }
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
@@ -1026,7 +1089,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
-            color: "#2563eb",
+            color: "#1D5D96",
           }}
         >
           <LogoutRoundedIcon />
@@ -1090,12 +1153,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <AppBar
             position="sticky"
             color="inherit"
+            onClick={() => {
+              setBlnDrawerOpen(false);
+              setBlnDesktopSidebarOpen(false);
+            }}
             sx={{
               position: "relative",
               borderRadius: "24px",
               mb: 1.5,
               px: { xs: 0.25, sm: 0.75 },
-              background: "linear-gradient(90deg, #e0f2fe 0%, #e9e7ff 55%, #f3e8ff 100%)",
+              background: strSharedHeaderGradient,
               border: "1px solid rgba(255, 255, 255, 0.6)",
               boxShadow:
                 "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"

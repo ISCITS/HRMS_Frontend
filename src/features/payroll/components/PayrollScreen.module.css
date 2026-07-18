@@ -64,6 +64,20 @@
   justify-content: flex-end;
 }
 
+.detailHeader {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detailHeaderActions {
+  align-items: center;
+  margin-left: auto;
+}
+
+.detailHeaderActions :global(.MuiChip-root) {
+  align-self: center;
+}
+
 .listUtilityBar {
   align-items: center;
   display: flex;

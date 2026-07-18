@@ -2,7 +2,6 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { Alert, Autocomplete, Box, Button, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -186,8 +185,7 @@ export default function FNFSettlementCreatePage() {
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Box className={styles.fnfCreateTitleBlock}><Typography className={styles.breadcrumbs}>Payroll / Full and Final</Typography><Typography className={styles.title}>New FNF Settlement</Typography></Box>
-          <Button className={styles.secondaryButton} variant="outlined" startIcon={<CloseRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.cancel-top.button">Cancel</Button>
+          <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
         </Box>
       </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -264,7 +262,7 @@ export default function FNFSettlementCreatePage() {
         <Box className={styles.fnfWizardActions}>
           {intActiveStep > 0 ? <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handlePrevious} controlId="payroll.fnf-settlement-create.previous.button">Previous</Button> : null}
           <Box sx={{ flex: 1 }} />
-          <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.cancel.button">Cancel</Button>
+          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back.button">Back</Button>
           {intActiveStep < lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} endIcon={<ArrowForwardRoundedIcon />} onClick={handleNext} controlId="payroll.fnf-settlement-create.next.button">Next</Button> : null}
           {intActiveStep === lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={handleSubmit} disabled={blnSaving} controlId="payroll.fnf-settlement-create.submit.button">Submit</Button> : null}
         </Box>

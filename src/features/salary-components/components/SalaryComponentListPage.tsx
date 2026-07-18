@@ -328,8 +328,10 @@ export default function SalaryComponentListPage() {
             <CommonRowActions
               testIdPrefix="salary-components.list.row"
               rowKey={dicRow.intID}
+              blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
+              onView={() => objRouter.push(`/salary-components/view/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
               onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
               onDelete={() => deleteSalaryComponent(dicRow.intID)}
             />
@@ -469,12 +471,7 @@ export default function SalaryComponentListPage() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnLoading || blnRightsLoading ? (
-          <Box className={styles.emptyState} data-controlid="salary-components.list.loading.state">
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{t("loading_salary_components", "Loading salary components...")}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView ? (
           <Box className={styles.emptyState} data-controlid="salary-components.list.access-denied.state">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary component access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary component visibility.")}</Typography>
@@ -513,7 +510,7 @@ export default function SalaryComponentListPage() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading", "Loading...") : t("processing", "Processing...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading_salary_components", "Loading salary components...") : t("processing", "Processing...")} intZIndex={1400} />
 
       <Snackbar data-controlid="salary-components.list.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert data-controlid="salary-components.list.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

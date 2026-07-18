@@ -23,6 +23,13 @@ type DynamicMenuProps = {
 };
 
 const objMenuIconSx = { color: "inherit" };
+const objSidebarPalette = {
+  menuIcon: "#5E7FA5",
+  menuText: "#2F4E6F",
+  hoverBackground: "#EAF3FC",
+  activeBackground: "#DCEBFA",
+  activeAccent: "#1D5D96",
+};
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
@@ -1121,23 +1128,17 @@ export default function DynamicMenu({
 
   function getButtonStyles(blnIsActive: boolean, intDepth = 0) {
     return {
-      borderRadius: "18px",
+      borderRadius: "14px",
       mb: 0.5,
       minHeight: intDepth === 0 ? 50 : 44,
       alignItems: "center",
-      pl: 1.5 + intDepth * 2,
+      pl: `${8 + intDepth * 16}px !important`,
       pr: 1.25,
-      background: blnIsActive
-        ? "linear-gradient(135deg, rgba(219,234,254,0.92), rgba(224,242,254,0.88))"
-        : "transparent",
-      border: blnIsActive ? "1px solid rgba(96, 165, 250, 0.28)" : "1px solid transparent",
-      boxShadow: blnIsActive ? "0 10px 24px rgba(59, 130, 246, 0.12)" : "none",
-      transition: "all 160ms ease",
+      backgroundColor: blnIsActive ? objSidebarPalette.activeBackground : "transparent",
+      transition: "background-color 160ms ease, color 160ms ease",
       "&:hover": {
-        background: blnIsActive
-          ? "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(224,242,254,0.92))"
-          : "rgba(241,245,249,0.9)"
-      }
+        backgroundColor: blnIsActive ? objSidebarPalette.activeBackground : objSidebarPalette.hoverBackground,
+      },
     };
   }
 
@@ -1187,17 +1188,16 @@ export default function DynamicMenu({
       width: 44,
       height: 44,
       minWidth: 44,
-      borderRadius: "0",
+      borderRadius: "12px",
       mb: 0.75,
       display: "grid",
       placeItems: "center",
-      color: "var(--app-primary-color)",
-      backgroundColor: "transparent",
-      borderLeft: blnIsActive ? "3px solid var(--app-primary-color)" : "3px solid transparent",
-      transition: "background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease",
+      color: blnIsActive ? objSidebarPalette.activeAccent : objSidebarPalette.menuIcon,
+      backgroundColor: blnIsActive ? objSidebarPalette.activeBackground : "transparent",
+      transition: "background-color 160ms ease, color 160ms ease, transform 160ms ease",
       "&:hover": {
-        backgroundColor: "#eff6ff",
-        color: "var(--app-primary-color)",
+        backgroundColor: objSidebarPalette.hoverBackground,
+        color: objSidebarPalette.activeAccent,
         transform: "translateX(1px)",
       },
       "& .MuiListItemIcon-root": {
@@ -1271,18 +1271,18 @@ export default function DynamicMenu({
             }}
             sx={getButtonStyles(blnHasActiveChild || blnExpanded, intDepth)}
           >
-            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild || blnExpanded ? "var(--app-primary-color)" : "#64748b" }}>
+            <ListItemIcon sx={{ minWidth: 38, color: blnHasActiveChild || blnExpanded ? objSidebarPalette.activeAccent : objSidebarPalette.menuIcon }}>
               {getMenuIcon(objIconSourceItem)}
             </ListItemIcon>
             <ListItemText
               primary={resolveMenuLabel(objItem)}
               primaryTypographyProps={{
                 fontWeight: 700,
-                color: blnHasActiveChild || blnExpanded ? "var(--app-primary-color)" : "#0f172a",
+                color: blnHasActiveChild || blnExpanded ? objSidebarPalette.activeAccent : objSidebarPalette.menuText,
                 fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
               }}
             />
-            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: "var(--app-primary-color)" }} /> : <ExpandMoreRoundedIcon sx={{ color: "var(--app-primary-color)" }} />}
+            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} /> : <ExpandMoreRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} />}
           </ListItemButton>
 
           <Collapse in={blnExpanded} timeout="auto" unmountOnExit>
@@ -1308,14 +1308,14 @@ export default function DynamicMenu({
         onClick={onNavigate}
         sx={getButtonStyles(blnIsActive, intDepth)}
       >
-        <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? "var(--app-primary-color)" : "#64748b" }}>
+        <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? objSidebarPalette.activeAccent : objSidebarPalette.menuIcon }}>
           {getMenuIcon(objIconSourceItem)}
         </ListItemIcon>
         <ListItemText
           primary={resolveMenuLabel(objItem)}
           primaryTypographyProps={{
             fontWeight: blnIsActive ? 700 : 600,
-            color: intDepth === 0 ? "#0f172a" : "#334155",
+            color: blnIsActive ? objSidebarPalette.activeAccent : objSidebarPalette.menuText,
             fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
           }}
         />
@@ -1342,7 +1342,14 @@ export default function DynamicMenu({
   }
 
   return (
-    <List {...getAutomationProps("nav.menu.list")} sx={{ mt: 0 }}>
+    <List
+      {...getAutomationProps("nav.menu.list")}
+      sx={{
+        mt: 0,
+        ml: -0.5,
+        width: "calc(100% + 4px)",
+      }}
+    >
       {lstRenderedMenuItems.map((objItem) => renderMenuItem(objItem))}
     </List>
   );

@@ -3,12 +3,12 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, MenuItem, Pagination, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, FormControl, FormControlLabel, FormHelperText, FormLabel, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -85,7 +85,6 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
   status: "Active",
 };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
-const lstRowsPerPageOptions = [10, 20, 50];
 const lstModuleCodes = [
   "TAX_DECLARATION_COMPONENT",
   "MY_TAX_DECLARATIONS",
@@ -218,83 +217,6 @@ function formatAmount(numValue: number | null) {
   return Number(numValue).toFixed(2);
 }
 
-function downloadCsv(strFileName: string, lstRows: EssDeclarationCategoryRecord[]) {
-  const lstHeaders = ["Category Name", "Category Code", "Declaration Kind", "Applicable Regime", "Linked Salary Component", "Max Limit Amount", "Maximum Limit Applied At", "Proof Required", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [dicRow.name, dicRow.code, dicRow.declarationKind, formatApplicableRegime(dicRow.applicableRegime), dicRow.linkedSalaryComponentName, dicRow.maxLimitAmount == null ? "" : dicRow.maxLimitAmount, formatMaxLimitAppliedAt(dicRow.maxLimitAppliedAt), dicRow.proofRequired ? "Yes" : "No", dicRow.status]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(","),
-    ),
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: EssDeclarationCategoryRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1280,height=820");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.name}</td>
-      <td>${dicRow.code}</td>
-      <td>${dicRow.declarationKind}</td>
-      <td>${formatApplicableRegime(dicRow.applicableRegime)}</td>
-      <td>${dicRow.linkedSalaryComponentName || "-"}</td>
-      <td>${formatAmount(dicRow.maxLimitAmount)}</td>
-      <td>${formatMaxLimitAppliedAt(dicRow.maxLimitAppliedAt)}</td>
-      <td>${dicRow.proofRequired ? "Yes" : "No"}</td>
-      <td>${dicRow.status}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Category Name</th>
-              <th>Category Code</th>
-              <th>Declaration Kind</th>
-              <th>Applicable Regime</th>
-              <th>Linked Salary Component</th>
-              <th>Max Limit Amount</th>
-              <th>Maximum Limit Applied At</th>
-              <th>Proof Required</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
-
 export default function EssDeclarationCategoryMasterPanel({
   strEntityLabel = "ESS Declaration Category",
   strEntityLabelPlural = "ESS Declaration Categories",
@@ -316,8 +238,6 @@ export default function EssDeclarationCategoryMasterPanel({
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnLookupLoading, setBlnLookupLoading] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [strLoadDiagnostics, setStrLoadDiagnostics] = useState("");
@@ -446,13 +366,11 @@ export default function EssDeclarationCategoryMasterPanel({
         });
       setLstCategories(lstMappedRecords);
       setLstSelectedIds([]);
-      setIntPage(1);
       setStrLoadDiagnostics(`Loaded ${lstMappedRecords.length} row(s) from ess-declaration-categories.`);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
       setLstCategories([]);
       setLstSelectedIds([]);
-      setIntPage(1);
       setStrLoadDiagnostics(`Load failed: ${objError instanceof Error ? objError.message : "unknown error"}`);
     } finally {
       setBlnLoading(false);
@@ -529,12 +447,82 @@ export default function EssDeclarationCategoryMasterPanel({
     [dicSearchApplied, lstCategories],
   );
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredCategories.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleCategories = lstFilteredCategories.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleCategories.length > 0 && lstVisibleCategories.every((dicCategory) => lstSelectedIds.includes(dicCategory.id));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strID) => lstVisibleCategories.some((dicCategory) => dicCategory.id === strID));
+  const blnAllFilteredSelected = lstFilteredCategories.length > 0 && lstFilteredCategories.every((dicCategory) => lstSelectedIds.includes(dicCategory.id));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((strID) => lstFilteredCategories.some((dicCategory) => dicCategory.id === strID));
+
+  const lstTableRows = useMemo(
+    () => lstFilteredCategories.map((dicCategory) => {
+      const blnSelected = lstSelectedIds.includes(dicCategory.id);
+      return {
+        id: dicCategory.id,
+        select: (
+          <Checkbox
+            checked={blnSelected}
+            onChange={() => toggleSelection(dicCategory.id)}
+            inputProps={{ "data-testid": "ess-declaration-category.list.row.select.checkbox", "data-row-key": dicCategory.id } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
+        action: (
+          <CommonRowActions
+            testIdPrefix="ess-declaration-category.list.row"
+            rowKey={dicCategory.id}
+            blnCanView={blnCanView}
+            blnCanEdit={blnCanEdit}
+            blnCanDelete={blnCanDelete}
+            onView={() => openDialog("view", dicCategory)}
+            onEdit={() => openDialog("edit", dicCategory)}
+            onDelete={() => deleteCategory(dicCategory.id)}
+          />
+        ),
+        name: dicCategory.name,
+        code: dicCategory.code,
+        declarationKind: dicCategory.declarationKind,
+        applicableRegime: formatApplicableRegime(dicCategory.applicableRegime),
+        linkedSalaryComponentName: dicCategory.linkedSalaryComponentName || "-",
+        maxLimitAmount: formatAmount(dicCategory.maxLimitAmount),
+        maxLimitAppliedAt: formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels),
+        proofRequired: dicCategory.proofRequired ? dicCommonLabels.yes : dicCommonLabels.no,
+        status: (
+          <span className={`${styles.statusPill} ${dicCategory.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+            {dicCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+          </span>
+        ),
+        blnSelected
+      };
+    }),
+    [blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.no, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, dicCommonLabels.yes, dicMaxLimitAppliedAtLabels, lstFilteredCategories, lstSelectedIds]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={toggleSelectAll}
+            inputProps={{ "data-testid": "ess-declaration-category.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56
+      },
+      { field: "action", headerName: dicLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 116 },
+      { field: "name", headerName: dicLabels.tableCategoryName },
+      { field: "code", headerName: dicLabels.tableCategoryCode, width: 190 },
+      { field: "declarationKind", headerName: dicLabels.tableDeclarationKind, width: 150 },
+      { field: "applicableRegime", headerName: dicLabels.tableApplicableRegime, width: 210 },
+      { field: "linkedSalaryComponentName", headerName: dicLabels.tableLinkedSalaryComponent, width: 300 },
+      { field: "maxLimitAmount", headerName: dicLabels.tableMaxLimitAmount, align: "right", width: 140 },
+      { field: "maxLimitAppliedAt", headerName: dicLabels.tableMaxLimitAppliedAt, width: 180 },
+      { field: "proofRequired", headerName: dicLabels.tableProofRequired, width: 130 },
+      { field: "status", headerName: dicLabels.tableStatus, sortable: false, filterable: false, width: 120 }
+    ],
+    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstTableRows]
+  );
 
   function openDialog(strNextMode: CategoryMode, dicCategory?: EssDeclarationCategoryRecord) {
     setStrMode(strNextMode);
@@ -685,11 +673,11 @@ export default function EssDeclarationCategoryMasterPanel({
   }
 
   function toggleSelectAll() {
-    if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstVisibleCategories.some((dicCategory) => dicCategory.id === strID)));
+    if (blnAllFilteredSelected) {
+      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strID) => !lstFilteredCategories.some((dicCategory) => dicCategory.id === strID)));
       return;
     }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleCategories.map((dicCategory) => dicCategory.id)])]);
+    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFilteredCategories.map((dicCategory) => dicCategory.id)])]);
   }
 
   function bulkUpdateStatus(strStatus: CategoryStatus) {
@@ -784,7 +772,8 @@ export default function EssDeclarationCategoryMasterPanel({
             t("section_core_details_help", "Define the primary declaration identity used across payroll and IT declaration."),
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 1.25 }}>
               <TextField
-                label={`${dicLabels.fieldCategoryCode} *`}
+                label={dicLabels.fieldCategoryCode}
+                required
                 value={dicForm.code}
                 onChange={(objEvent) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
@@ -797,7 +786,8 @@ export default function EssDeclarationCategoryMasterPanel({
                 size="small"
               />
               <TextField
-                label={`${dicLabels.fieldCategoryName} *`}
+                label={dicLabels.fieldCategoryName}
+                required
                 value={dicForm.name}
                 onChange={(objEvent) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
@@ -810,7 +800,8 @@ export default function EssDeclarationCategoryMasterPanel({
                 size="small"
               />
               <TextField
-                label={`${dicLabels.fieldDeclarationKind} *`}
+                label={dicLabels.fieldDeclarationKind}
+                required
                 value={dicForm.declarationKind}
                 onChange={(objEvent) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, declarationKind: undefined }));
@@ -822,7 +813,9 @@ export default function EssDeclarationCategoryMasterPanel({
                 disabled={blnDialogReadOnly}
                 size="small"
               />
-              <Box
+              <FormControl
+                required
+                error={Boolean(dicErrors.applicableRegime)}
                 sx={{
                   gridColumn: { xs: "1 / -1", md: "1 / -1" },
                   px: 1,
@@ -832,9 +825,9 @@ export default function EssDeclarationCategoryMasterPanel({
                   background: "#fff",
                 }}
               >
-                <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700, mb: 0.4 }}>
-                  {`${dicLabels.fieldApplicableRegime} *`}
-                </Typography>
+                <FormLabel sx={{ color: "#0f172a !important", fontSize: "0.84rem", fontWeight: 700, mb: 0.4 }}>
+                  {dicLabels.fieldApplicableRegime}
+                </FormLabel>
                 <RadioGroup
                   row
                   value={dicForm.applicableRegime}
@@ -853,10 +846,10 @@ export default function EssDeclarationCategoryMasterPanel({
                     />
                   ))}
                 </RadioGroup>
-                <Typography sx={{ color: dicErrors.applicableRegime ? "#d32f2f" : "#64748b", fontSize: "0.72rem", lineHeight: 1.25 }}>
+                <FormHelperText sx={{ color: dicErrors.applicableRegime ? "#d32f2f" : "#64748b", fontSize: "0.72rem", lineHeight: 1.25, mx: 0 }}>
                   {dicErrors.applicableRegime || t("applicable_regime_help", "Choose which tax regime this declaration component belongs to.")}
-                </Typography>
-              </Box>
+                </FormHelperText>
+              </FormControl>
             </Box>,
           )}
 
@@ -865,7 +858,8 @@ export default function EssDeclarationCategoryMasterPanel({
             t("section_limit_policy_help", "Set the mandatory declaration cap and choose where the cap is validated."),
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 1.25 }}>
               <TextField
-                label={`${dicLabels.fieldMaxLimitAmount} *`}
+                label={dicLabels.fieldMaxLimitAmount}
+                required
                 value={dicForm.maxLimitAmount}
                 onChange={(objEvent) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, maxLimitAmount: undefined }));
@@ -881,7 +875,8 @@ export default function EssDeclarationCategoryMasterPanel({
               />
               <TextField
                 select
-                label={`${dicLabels.fieldMaxLimitAppliedAt} *`}
+                label={dicLabels.fieldMaxLimitAppliedAt}
+                required
                 value={dicForm.maxLimitAppliedAt}
                 onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, maxLimitAppliedAt: normalizeMaxLimitAppliedAt(objEvent.target.value) }))}
                 fullWidth
@@ -933,31 +928,31 @@ export default function EssDeclarationCategoryMasterPanel({
                 disabled={blnDialogReadOnly}
                 size="small"
               />
-              <Box
-                className={styles.switchRow}
-                sx={{
-                  minHeight: 34,
-                  px: 0,
-                  py: 0,
-                  justifyContent: "flex-start",
-                  gap: 1,
-                }}
-              >
-                <Typography className={styles.switchLabel} sx={{ fontSize: "0.84rem" }}>
-                  {dicLabels.fieldIsActive}
-                </Typography>
-                <ActiveStatusSwitch
-                  size="small"
-                  blnIsActive={dicForm.status === "Active"}
-                  disabled={blnDialogReadOnly}
-                  onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
-                />
-              </Box>
             </Stack>,
           )}
         </Stack>
 
         <Stack spacing={1.5}>
+          <Box
+            className={styles.switchRow}
+            sx={{
+              minHeight: 34,
+              px: 0,
+              py: 0,
+              justifyContent: "flex-end",
+              gap: 1,
+            }}
+          >
+            <Typography className={styles.switchLabel} sx={{ fontSize: "0.84rem" }}>
+              {dicLabels.fieldIsActive}
+            </Typography>
+            <ActiveStatusSwitch
+              size="small"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={blnDialogReadOnly}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+          </Box>
           {renderDialogSection(
             t("section_configuration", "Configuration"),
             t("section_configuration_help", "Map this declaration component to payroll configuration."),
@@ -1015,22 +1010,22 @@ export default function EssDeclarationCategoryMasterPanel({
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button controlId="ess-declaration-category.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
+        <Button data-testid="ess-declaration-category.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
       </Box>
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
         <Typography sx={{ display: "none" }}>{strLoadDiagnostics}</Typography>
         <Box className={styles.searchRow}>
-          <TextField controlId="ess-declaration-category.list.search-name.input" inputProps={{ "controlId": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="ess-declaration-category.list.search-code.input" inputProps={{ "controlId": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="ess-declaration-category.list.search-status.select" inputProps={{ "controlId": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem controlId="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
-            <MenuItem controlId="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem controlId="ess-declaration-category.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
+          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
+          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem data-testid="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
+            <MenuItem data-testid="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem data-testid="ess-declaration-category.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="ess-declaration-category.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="ess-declaration-category.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
@@ -1040,97 +1035,48 @@ export default function EssDeclarationCategoryMasterPanel({
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicLabels.bulkRowsSelected}</Typography>
-            {blnCanChangeStatus ? <Button controlId="ess-declaration-category.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button controlId="ess-declaration-category.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button controlId="ess-declaration-category.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}
+            {blnCanChangeStatus ? <Button data-testid="ess-declaration-category.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}
+            {blnCanChangeStatus ? <Button data-testid="ess-declaration-category.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button data-testid="ess-declaration-category.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button controlId="ess-declaration-category.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button controlId="ess-declaration-category.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicLabels.exportFileName, lstFilteredCategories)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button controlId="ess-declaration-category.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicLabels.exportTitle, lstFilteredCategories)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
+        {blnCanAdd ? (
+          <Box className={styles.tableHeaderActions}>
+            <Button
+              data-testid="ess-declaration-category.list.add.button"
+              className={styles.primaryButton}
+              startIcon={<AddRoundedIcon />}
+              onClick={() => openDialog("add")}
+              disabled={blnLoading || blnSubmitting || blnRightsLoading}
+            >
+              {dicLabels.addButton}
+            </Button>
           </Box>
-          {!blnLoading && lstFilteredCategories.length > 0 ? (
-            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
-                <TextField select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
-                  {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>)}
-                </TextField>
-                <Typography className={styles.paginationRange}>{intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredCategories.length)} {dicCommonLabels.paginationSeparator} {lstFilteredCategories.length}</Typography>
-              </Box>
-              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-            </Box>
-          ) : null}
-        </Box>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicLabels.loadingRecords}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        ) : null}
+        {!blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", `${strEntityLabel} access is not available for your user group.`)}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need this master visibility.")}</Typography>
           </Box>
         ) : (
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <colgroup>
-                <col style={{ width: "44px" }} />
-                <col style={{ width: "116px" }} />
-                <col />
-                <col style={{ width: "190px" }} />
-                <col style={{ width: "150px" }} />
-                <col style={{ width: "210px" }} />
-                <col style={{ width: "300px" }} />
-                <col style={{ width: "140px" }} />
-                <col style={{ width: "180px" }} />
-                <col style={{ width: "130px" }} />
-                <col style={{ width: "120px" }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th><Checkbox controlId="ess-declaration-category.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "ess-declaration-category.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
-                  <th>{dicLabels.tableActions}</th>
-                  <th>{dicLabels.tableCategoryName}</th>
-                  <th>{dicLabels.tableCategoryCode}</th>
-                  <th>{dicLabels.tableDeclarationKind}</th>
-                  <th>{dicLabels.tableApplicableRegime}</th>
-                  <th>{dicLabels.tableLinkedSalaryComponent}</th>
-                  <th>{dicLabels.tableMaxLimitAmount}</th>
-                  <th>{dicLabels.tableMaxLimitAppliedAt}</th>
-                  <th>{dicLabels.tableProofRequired}</th>
-                  <th>{dicLabels.tableStatus}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstFilteredCategories.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={11}>{dicLabels.emptyMessage}</td></tr>
-                ) : lstVisibleCategories.map((dicCategory) => {
-                  const blnSelected = lstSelectedIds.includes(dicCategory.id);
-                  return (
-                    <tr key={dicCategory.id} className={blnSelected ? styles.selectedRow : undefined}>
-                      <td><Checkbox controlId="ess-declaration-category.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicCategory.id)} inputProps={{ "controlId": "ess-declaration-category.list.row.select.checkbox", "data-row-key": dicCategory.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                      <td><CommonRowActions testIdPrefix="ess-declaration-category.list.row" rowKey={dicCategory.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCategory)} onEdit={() => openDialog("edit", dicCategory)} onDelete={() => deleteCategory(dicCategory.id)} /></td>
-                      <td>{dicCategory.name}</td>
-                      <td>{dicCategory.code}</td>
-                      <td>{dicCategory.declarationKind}</td>
-                      <td>{formatApplicableRegime(dicCategory.applicableRegime)}</td>
-                      <td>{dicCategory.linkedSalaryComponentName || "-"}</td>
-                      <td>{formatAmount(dicCategory.maxLimitAmount)}</td>
-                      <td>{formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels)}</td>
-                      <td>{dicCategory.proofRequired ? dicCommonLabels.yes : dicCommonLabels.no}</td>
-                      <td><span className={`${styles.statusPill} ${dicCategory.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Box>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName="ess-declaration-categories"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={dicLabels.emptyMessage}
+            testIdPrefix="ess-declaration-category.list"
+            hideToolbar
+            withPaper={false}
+            getRowSx={(objRow) => objRow.blnSelected ? { backgroundColor: "rgba(219, 234, 254, 0.45)" } : {}}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
       <CommonMasterDialog

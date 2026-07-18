@@ -9,7 +9,16 @@ import type { ReimbursementClaimStatus, ReimbursementItemStatus, ReimbursementPr
 type StatusBadgeProps = {
   strStatus?: ReimbursementClaimStatus | ReimbursementItemStatus | ReimbursementProofStatus | string | null;
   size?: "small" | "medium";
+  strTextColorOverride?: string;
 };
+
+function getStatusBackgroundColor(strStatus?: string | null) {
+  if (["approved", "partially_approved", "verified", "paid"].includes(strStatus || "")) return "#dcfce7";
+  if (["submitted", "resubmitted", "under_review", "locked", "pushed_to_payroll", "pending"].includes(strStatus || "")) return "#fef3e2";
+  if (["rejected"].includes(strStatus || "")) return "#fee2e2";
+  if (["released", "proof_pending"].includes(strStatus || "")) return "#e0f2fe";
+  return "#e2e8f0";
+}
 
 function getStatusTextColor(strStatus?: string | null) {
   if (["approved", "partially_approved", "verified", "paid"].includes(strStatus || "")) return "#15803d";
@@ -19,7 +28,7 @@ function getStatusTextColor(strStatus?: string | null) {
   return "#475569";
 }
 
-export default function ReimbursementClaimStatusBadge({ strStatus, size = "small" }: StatusBadgeProps) {
+export default function ReimbursementClaimStatusBadge({ strStatus, size = "small", strTextColorOverride }: StatusBadgeProps) {
   const { t } = useReimbursementLabels();
   const strNormalizedStatus = (strStatus || "").toLowerCase();
 
@@ -29,13 +38,14 @@ export default function ReimbursementClaimStatusBadge({ strStatus, size = "small
       label={t(`status_${strNormalizedStatus}`, formatStatusLabel(strStatus))}
       sx={{
         minWidth: 0,
-        height: 30,
+        height: 32,
         border: "none",
-        backgroundColor: "transparent",
-        color: getStatusTextColor(strStatus),
+        backgroundColor: getStatusBackgroundColor(strStatus),
+        color: strTextColorOverride ?? getStatusTextColor(strStatus),
         justifyContent: "flex-start",
         fontWeight: 800,
-        "& .MuiChip-label": { px: 0 },
+        borderRadius: "999px",
+        "& .MuiChip-label": { px: 1.75 },
       }}
     />
   );

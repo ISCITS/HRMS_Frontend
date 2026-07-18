@@ -10,7 +10,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -82,6 +82,15 @@ type ActionValues = {
   decActualInterestAmount: string;
   decTaxablePerquisiteAmount: string;
 };
+
+type LoanAdvanceFieldErrorKey =
+  | "intEmployeeID"
+  | "intCategoryID"
+  | "dtRequestDate"
+  | "decRequestedAmount"
+  | "dtRecoveryStartMonth"
+  | "intNumberOfInstallments"
+  | "strReason";
 
 function formatCurrency(decValue?: number | null) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(decValue || 0));
@@ -158,6 +167,7 @@ function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRou
 
 export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [objRecord, setObjRecord] = useState<LoanAdvanceRecord | null>(null);
@@ -172,6 +182,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [blnShowFieldErrors, setBlnShowFieldErrors] = useState(false);
   const [objActionDialog, setObjActionDialog] = useState<ActionDialogState>(null);
   const [dicActionValues, setDicActionValues] = useState<ActionValues>({
     decApprovedAmount: "",
@@ -191,6 +202,8 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   });
 
   const blnIsEssMode = strMode === "ess";
+  const strPageMode = (objSearchParams.get("mode") || (intLoanAdvanceID ? "view" : "add")).toLowerCase();
+  const blnExplicitEditMode = strPageMode === "edit";
   const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction])?.some((strAlias) => canDoAny(strAlias)) ?? false;
   const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
@@ -207,7 +220,11 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
-  const blnReadonly = Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) || (!intLoanAdvanceID && !blnCanAdd) || (Boolean(intLoanAdvanceID) && !blnCanEdit);
+  const blnReadonly =
+    strPageMode === "view" ||
+    Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) ||
+    (!intLoanAdvanceID && !blnCanAdd) ||
+    (Boolean(intLoanAdvanceID) && (!blnCanEdit || !blnExplicitEditMode));
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
   const lstFilteredCategories = useMemo(() => lstCategories.filter((objCategory) => objCategory.strRequestType === dicValues.strRequestType), [lstCategories, dicValues.strRequestType]);
   const lstSchedulePreview = useMemo(() => buildSchedulePreview(dicValues, objPolicy), [dicValues, objPolicy]);
@@ -297,17 +314,61 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     setDicValues((dicPrevious) => ({ ...dicPrevious, [strKey]: objValue }));
   }
 
+  const dicFieldErrors = useMemo<Record<LoanAdvanceFieldErrorKey, string>>(() => {
+    const dicErrors = {
+      intEmployeeID: "",
+      intCategoryID: "",
+      dtRequestDate: "",
+      decRequestedAmount: "",
+      dtRecoveryStartMonth: "",
+      intNumberOfInstallments: "",
+      strReason: "",
+    };
+
+    if (!blnIsEssMode && !dicValues.intEmployeeID && !dicValues.strEmployeeCode.trim()) {
+      dicErrors.intEmployeeID = t("validation_employee_required", "Employee is required.");
+    }
+    if (!dicValues.intCategoryID) {
+      dicErrors.intCategoryID = t("validation_category_required", "Category is required.");
+    }
+    if (!dicValues.dtRequestDate) {
+      dicErrors.dtRequestDate = t("validation_request_date_required", "Request date is required.");
+    }
+    if (Number(dicValues.decRequestedAmount || 0) <= 0) {
+      dicErrors.decRequestedAmount = t("validation_amount_required", "Requested amount must be greater than zero.");
+    } else if (objPolicy?.decMaxRequestAmount && Number(dicValues.decRequestedAmount) > objPolicy.decMaxRequestAmount) {
+      dicErrors.decRequestedAmount = t("validation_amount_policy", "Requested amount exceeds category policy.");
+    }
+    if (!dicValues.dtRecoveryStartMonth) {
+      dicErrors.dtRecoveryStartMonth = t("validation_recovery_start_month_required", "Recovery start month is required.");
+    }
+    if (Number(dicValues.intNumberOfInstallments || 0) <= 0) {
+      dicErrors.intNumberOfInstallments = t("validation_installments_required", "Installments must be greater than zero.");
+    } else if (objPolicy?.intMaxInstallments && Number(dicValues.intNumberOfInstallments) > objPolicy.intMaxInstallments) {
+      dicErrors.intNumberOfInstallments = t("validation_installment_policy", "Installments exceed category policy.");
+    }
+    if (!dicValues.strReason.trim()) {
+      dicErrors.strReason = t("validation_reason_required", "Reason is required.");
+    }
+
+    return dicErrors;
+  }, [blnIsEssMode, dicValues, objPolicy, t]);
+
+  function getFieldError(strField: LoanAdvanceFieldErrorKey) {
+    if (!blnShowFieldErrors) {
+      return "";
+    }
+    return dicFieldErrors[strField];
+  }
+
   function validateForm() {
-    if (!blnIsEssMode && !dicValues.intEmployeeID && !dicValues.strEmployeeCode.trim()) return t("validation_employee_required", "Employee is required.");
-    if (!dicValues.intCategoryID) return t("validation_category_required", "Category is required.");
-    if (Number(dicValues.decRequestedAmount || 0) <= 0) return t("validation_amount_required", "Requested amount must be greater than zero.");
-    if (Number(dicValues.intNumberOfInstallments || 0) <= 0) return t("validation_installments_required", "Installments must be greater than zero.");
-    if (objPolicy?.decMaxRequestAmount && Number(dicValues.decRequestedAmount) > objPolicy.decMaxRequestAmount) return t("validation_amount_policy", "Requested amount exceeds category policy.");
-    if (objPolicy?.intMaxInstallments && Number(dicValues.intNumberOfInstallments) > objPolicy.intMaxInstallments) return t("validation_installment_policy", "Installments exceed category policy.");
+    const strFirstFieldError = Object.values(dicFieldErrors).find(Boolean);
+    if (strFirstFieldError) return strFirstFieldError;
     return "";
   }
 
   async function saveRecord(blnSubmit = false) {
+    setBlnShowFieldErrors(true);
     const strValidation = validateForm();
     if (strValidation) {
       setStrError(strValidation);
@@ -324,6 +385,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.intID, "submit") : loanAdvanceService.action(objSaved.intID, "submit")) : objSaved;
       setObjRecord(objFinal);
       setDicValues(toLoanAdvanceForm(objFinal));
+      setBlnShowFieldErrors(false);
       setStrSuccess(blnSubmit ? t("message_submitted", "Request submitted for approval.") : t("message_saved", "Request saved."));
       if (!intLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.intID}` : `/payroll/loans-advances/${objFinal.intID}`);
       return objFinal;
@@ -556,14 +618,11 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   return (
     <Box className={`${styles.page} ${styles.detailPage}`}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
+        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`}>
           <Box>
-            <Typography className={styles.breadcrumbs}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
-            <Typography className={styles.title}>{objRecord ? `${objRecord.objEmployee?.strEmployeeName || (blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances"))}` : t("new_title", "New Loan or Advance")}</Typography>
-            {objRecord?.objEmployee?.strEmployeeCode ? <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objRecord.objEmployee.strEmployeeCode}</Typography> : null}
-          </Box>
-          <Box className={styles.headerActions}>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
+          </Box>
+          <Box className={`${styles.headerActions} ${styles.detailHeaderActions}`}>
             {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
             {renderWorkflowActions()}
           </Box>
@@ -597,7 +656,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                 ].map(([strStepKey, strStepLabel]) => <Step key={strStepKey}><StepLabel>{strStepLabel}</StepLabel></Step>)}
               </Stepper>
               <Box className={styles.fnfEditDetailsGrid}>
-                {!blnIsEssMode ? <TextField select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} disabled={blnReadonly} onChange={(e) => {
+                {!blnIsEssMode ? <TextField required select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} error={Boolean(getFieldError("intEmployeeID"))} helperText={getFieldError("intEmployeeID") || " "} disabled={blnReadonly} onChange={(e) => {
                   const objEmployee = lstEmployees.find((objRow) => objRow.intID === Number(e.target.value));
                   updateValue("intEmployeeID", e.target.value ? Number(e.target.value) : "");
                   updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
@@ -606,23 +665,23 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                   {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => <MenuItem key={objEmployee.intID} value={objEmployee.intID}>{getEmployeeLabel(objEmployee)}</MenuItem>)}
                 </TextField> : null}
                 <TextField size="small" label={blnIsEssMode ? t("field_employee", "Employee") : t("field_department", "Department")} value={blnIsEssMode ? (objRecord?.objEmployee?.strEmployeeName || t("current_employee", "Current employee")) : (objSelectedEmployee?.strDepartmentName || objRecord?.objEmployee?.strDepartmentName || "")} disabled />
-                <TextField select size="small" label={t("field_request_type", "Request Type")} value={dicValues.strRequestType} disabled={blnReadonly} onChange={(e) => { updateValue("strRequestType", e.target.value as LoanAdvanceFormValues["strRequestType"]); updateValue("intCategoryID", ""); }}>
+                <TextField required select size="small" label={t("field_request_type", "Request Type")} value={dicValues.strRequestType} disabled={blnReadonly} onChange={(e) => { updateValue("strRequestType", e.target.value as LoanAdvanceFormValues["strRequestType"]); updateValue("intCategoryID", ""); }}>
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>
                   <MenuItem value="advance">{t("type_advance", "Advance")}</MenuItem>
                 </TextField>
-                <TextField select size="small" label={t("field_category", "Category")} value={dicValues.intCategoryID} disabled={blnReadonly} onChange={(e) => updateValue("intCategoryID", e.target.value ? Number(e.target.value) : "")}>
+                <TextField required select size="small" label={t("field_category", "Category")} value={dicValues.intCategoryID} error={Boolean(getFieldError("intCategoryID"))} helperText={getFieldError("intCategoryID") || " "} disabled={blnReadonly} onChange={(e) => updateValue("intCategoryID", e.target.value ? Number(e.target.value) : "")}>
                   <MenuItem value="">{t("select_category", "Select category")}</MenuItem>
                   {lstFilteredCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={objCategory.intID}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
                 </TextField>
-                <TextField size="small" type="date" label={t("field_request_date", "Request Date")} InputLabelProps={{ shrink: true }} value={dicValues.dtRequestDate} disabled={blnReadonly} onChange={(e) => updateValue("dtRequestDate", e.target.value)} />
-                <TextField size="small" label={t("field_requested_amount", "Requested Amount")} value={dicValues.decRequestedAmount} disabled={blnReadonly} onChange={(e) => updateValue("decRequestedAmount", e.target.value)} />
-                <TextField size="small" type="month" label={t("field_recovery_start_month", "Recovery Start Month")} InputLabelProps={{ shrink: true }} value={(dicValues.dtRecoveryStartMonth || "").slice(0, 7)} disabled={blnReadonly} onChange={(e) => updateValue("dtRecoveryStartMonth", `${e.target.value}-01`)} />
-                <TextField size="small" label={t("field_installments", "Installments")} value={dicValues.intNumberOfInstallments} disabled={blnReadonly} onChange={(e) => updateValue("intNumberOfInstallments", e.target.value)} />
+                <TextField required size="small" type="date" label={t("field_request_date", "Request Date")} InputLabelProps={{ shrink: true }} value={dicValues.dtRequestDate} error={Boolean(getFieldError("dtRequestDate"))} helperText={getFieldError("dtRequestDate") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRequestDate", e.target.value)} />
+                <TextField required size="small" label={t("field_requested_amount", "Requested Amount")} value={dicValues.decRequestedAmount} error={Boolean(getFieldError("decRequestedAmount"))} helperText={getFieldError("decRequestedAmount") || " "} disabled={blnReadonly} onChange={(e) => updateValue("decRequestedAmount", e.target.value)} />
+                <TextField required size="small" type="month" label={t("field_recovery_start_month", "Recovery Start Month")} InputLabelProps={{ shrink: true }} value={(dicValues.dtRecoveryStartMonth || "").slice(0, 7)} error={Boolean(getFieldError("dtRecoveryStartMonth"))} helperText={getFieldError("dtRecoveryStartMonth") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRecoveryStartMonth", `${e.target.value}-01`)} />
+                <TextField required size="small" label={t("field_installments", "Installments")} value={dicValues.intNumberOfInstallments} error={Boolean(getFieldError("intNumberOfInstallments"))} helperText={getFieldError("intNumberOfInstallments") || " "} disabled={blnReadonly} onChange={(e) => updateValue("intNumberOfInstallments", e.target.value)} />
                 <TextField size="small" label={t("field_installment_amount", "Installment Amount")} value={dicValues.decInstallmentAmount} disabled={blnReadonly} onChange={(e) => updateValue("decInstallmentAmount", e.target.value)} />
                 <TextField select size="small" label={t("field_recovery_mode", "Recovery Mode")} value={dicValues.strRecoveryMode} disabled={blnReadonly} onChange={(e) => updateValue("strRecoveryMode", e.target.value)}>
                   {["payroll", "manual", "both"].map((strMode) => <MenuItem key={strMode} value={strMode}>{t(`recovery_${strMode}`, strMode)}</MenuItem>)}
                 </TextField>
-                <TextField className={styles.fnfEditDetailsFull} size="small" multiline minRows={2} label={t("field_reason", "Reason")} value={dicValues.strReason} disabled={blnReadonly} onChange={(e) => updateValue("strReason", e.target.value)} />
+                <TextField required className={styles.fnfEditDetailsFull} size="small" multiline minRows={2} label={t("field_reason", "Reason")} value={dicValues.strReason} error={Boolean(getFieldError("strReason"))} helperText={getFieldError("strReason") || " "} disabled={blnReadonly} onChange={(e) => updateValue("strReason", e.target.value)} />
                 <FormControlLabel control={<Checkbox checked={dicValues.blnLastInstallmentAdjustment} disabled={blnReadonly} onChange={(e) => updateValue("blnLastInstallmentAdjustment", e.target.checked)} />} label={t("field_last_adjustment", "Adjust final installment")} />
                 <FormControlLabel control={<Checkbox checked={dicValues.blnAutoDeductInPayroll} disabled={blnReadonly} onChange={(e) => updateValue("blnAutoDeductInPayroll", e.target.checked)} />} label={t("field_auto_deduct", "Auto deduct in payroll")} />
               </Box>

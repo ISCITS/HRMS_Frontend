@@ -3,14 +3,8 @@
 import {
   Alert,
   Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Stack,
-  Switch,
   Tab,
   Tabs,
   TextField,
@@ -18,9 +12,10 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import UserGroupRightsEditor, { clearMenuTreeRights, serializeRights } from "@/features/security/components/UserGroupRightsEditor";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityMenuNode, UserGroupAuthorizationMetadata, UserGroupFormPayload, UserGroupRightSaveItem } from "@/models/SecurityModels";
@@ -34,6 +29,8 @@ type UserGroupMasterDialogProps = {
   intUserGroupID: number | null;
   objForm: UserGroupFormPayload;
   blnSaving: boolean;
+  strSaveError: string;
+  dicFieldErrors: Partial<Record<"strGroupCode" | "strGroupName", string>>;
   onClose: () => void;
   onChange: (objNextForm: UserGroupFormPayload) => void;
   onSave: (lstRights: UserGroupRightSaveItem[]) => void;
@@ -45,6 +42,8 @@ export default function UserGroupMasterDialog({
   intUserGroupID,
   objForm,
   blnSaving,
+  strSaveError,
+  dicFieldErrors,
   onClose,
   onChange,
   onSave,
@@ -165,42 +164,39 @@ export default function UserGroupMasterDialog({
   };
 
   return (
-    <Dialog
-      open={blnOpen}
-      onClose={blnSaving ? undefined : onClose}
-      onKeyDown={handleSingleDialogActionEnter}
-      data-control-id="security.user-group.dialog"
-      fullWidth
-      maxWidth="md"
-      PaperProps={{
-        sx: {
-          borderRadius: 0,
-          overflow: "hidden",
-          maxHeight: "86vh",
-          minHeight: "auto",
-          background: "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
-        },
-      }}
-    >
-      <DialogTitle sx={{ px: 2.5, py: 2, borderBottom: "1px solid #e2e8f0" }}>
-        <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", color: "#0f172a" }}>
-          {strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
-        </Typography>
-      </DialogTitle>
+    <CommonMasterDialog
+      blnOpen={blnOpen}
+      onClose={onClose}
+      strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
+      strSecondaryLabel={blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
+      strPrimaryLabel={strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
+      onPrimaryAction={() => onSave(serializeRights(lstRightsNodes))}
+      blnPrimaryDisabled={blnSaving || blnMetadataLoading}
+      blnHidePrimary={blnReadOnly}
+      paperClassName={styles.dialogPaperDapartment}
+      maxWidth={false}
+      fullWidth={false}
+      titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+      contentSx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0, overflowX: "hidden" }}
+      nodeContent={(
+        <>
+          <Tabs
+            value={intActiveTab}
+            onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
+            data-control-id="security.user-group.dialog.tabs"
+            sx={{ px: 0, borderBottom: "1px solid #e2e8f0", minHeight: 42, mb: 2 }}
+          >
+            <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.basic-details.tab" />
+            <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.rights.tab" />
+          </Tabs>
 
-      <Tabs
-        value={intActiveTab}
-        onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
-        data-control-id="security.user-group.dialog.tabs"
-        sx={{ px: 1.5, borderBottom: "1px solid #e2e8f0", minHeight: 54 }}
-      >
-        <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} data-control-id="security.user-group.dialog.basic-details.tab" />
-        <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 54 }} data-control-id="security.user-group.dialog.rights.tab" />
-      </Tabs>
-
-      <DialogContent sx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {intActiveTab === 0 ? (
-          <Stack spacing={2.25} sx={{ pt: 1 }}>
+          {intActiveTab === 0 ? (
+            <Stack spacing={2.25} sx={{ pt: 1 }}>
+            {strSaveError ? (
+              <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
+                {strSaveError}
+              </Alert>
+            ) : null}
             <Box
               sx={{
                 display: "grid",
@@ -214,6 +210,8 @@ export default function UserGroupMasterDialog({
                 onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
                 disabled={blnReadOnly}
                 required
+                error={Boolean(dicFieldErrors.strGroupCode)}
+                helperText={dicFieldErrors.strGroupCode ?? ""}
                 slotProps={{
                   htmlInput: {
                     "data-control-id": "security.user-group.dialog.group-code.input",
@@ -226,6 +224,8 @@ export default function UserGroupMasterDialog({
                 onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
                 disabled={blnReadOnly}
                 required
+                error={Boolean(dicFieldErrors.strGroupName)}
+                helperText={dicFieldErrors.strGroupName ?? ""}
                 slotProps={{
                   htmlInput: {
                     "data-control-id": "security.user-group.dialog.group-name.input",
@@ -276,11 +276,11 @@ export default function UserGroupMasterDialog({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
+                px: 2,
+                py: 1.8,
                 borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
+                border: "1px solid #d7e2ee",
+                backgroundColor: "#ffffff",
               }}
             >
               <Box>
@@ -303,20 +303,20 @@ export default function UserGroupMasterDialog({
                 sx={{
                   display: "grid",
                   gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
-                  gap: 1,
+                  gap: 1.25,
                 }}
               >
-                <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
+                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryVisibleMenus}</Typography>
-                  <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
-                <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
+                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAllowedActions}</Typography>
-                  <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
-                <Box sx={{ borderRadius: 0, border: "1px solid #dbe7f0", p: 1.2 }}>
+                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAssignedUsers}</Typography>
-                  <Typography sx={{ mt: 0.55, color: "#0f172a", fontWeight: 800 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
             ) : null}
@@ -331,30 +331,14 @@ export default function UserGroupMasterDialog({
                 onChange={setLstRightsNodes}
               />
             ) : (
-              <Alert severity="info" variant="outlined" sx={{ borderRadius: 0 }}>
+              <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
                 {dicLabels.rightsMetadataEmpty}
               </Alert>
             )}
           </Box>
-        )}
-      </DialogContent>
-
-      <DialogActions sx={{ px: 2.5, py: 2, borderTop: "1px solid #e2e8f0", gap: 1 }}>
-        <Button variant="outlined" onClick={onClose} disabled={blnSaving} data-control-id="security.user-group.dialog.cancel.button" sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700 }}>
-          {blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
-        </Button>
-        {!blnReadOnly ? (
-          <Button
-            variant="contained"
-            onClick={() => onSave(serializeRights(lstRightsNodes))}
-            disabled={blnSaving || blnMetadataLoading}
-            data-control-id="security.user-group.dialog.save.button"
-            sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, px: 2.5 }}
-          >
-            {strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
-          </Button>
-        ) : null}
-      </DialogActions>
-    </Dialog>
+          )}
+        </>
+      )}
+    />
   );
 }

@@ -10,9 +10,7 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   MenuItem,
-  Pagination,
   Stack,
   TextField,
   Typography,
@@ -20,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -38,7 +37,6 @@ type SearchForm = {
 };
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
-const lstRowsPerPageOptions = [10, 20, 50];
 const dicEmptySearch: SearchForm = {
   strName: "",
   strCode: "",
@@ -46,45 +44,6 @@ const dicEmptySearch: SearchForm = {
   strTaxYearCode: "",
   strStatus: "All",
 };
-
-function downloadCsv(strFileName: string, lstRows: TaxRegimeListRecord[], t: (strKey: string, strFallback?: string) => string) {
-  const lstHeaders = [
-    t("regime_code", "Regime Code"),
-    t("regime_name", "Regime Name"),
-    t("country", "Country"),
-    t("tax_year", "Tax Year"),
-    t("standard_deduction", "Standard Deduction"),
-    t("default_regime", "Default Regime"),
-    t("employee_opt_out", "Employee Opt-Out"),
-    t("slab_profiles", "Slab Profiles / Slab Count"),
-    t("status", "Status"),
-  ];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.strRegimeCode,
-        dicRow.strRegimeName,
-        dicRow.strCountryCode,
-        dicRow.strTaxYearCode,
-        dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount : 0,
-        dicRow.blnIsDefaultRegime ? "Yes" : "No",
-        dicRow.blnAllowEmployeeOptOut ? "Yes" : "No",
-        `${dicRow.intSlabProfileCount} / ${dicRow.intSlabCount}`,
-        dicRow.blnIsActive ? "Active" : "Inactive",
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(","),
-    ),
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
 
 function matchesSearch(dicRow: TaxRegimeListRecord, dicSearch: SearchForm) {
   const strName = dicSearch.strName.trim().toLowerCase();
@@ -109,8 +68,6 @@ export default function TaxRegimeListPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [strError, setStrError] = useState("");
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
@@ -130,7 +87,6 @@ export default function TaxRegimeListPage() {
         const lstRecords = await taxRegimeService.getTaxRegimes();
         if (blnMounted) {
           setLstRegimes(lstRecords);
-          setIntPage(1);
         }
       } catch (objError) {
         if (blnMounted) {
@@ -153,20 +109,72 @@ export default function TaxRegimeListPage() {
     [dicSearchApplied, lstRegimes],
   );
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        id: dicRow.intID,
+        action: (
+          <Box className={styles.actionCell}>
+            <CommonRowActions
+              testIdPrefix="tax-regimes.list.row"
+              rowKey={dicRow.intID}
+              blnCanView={blnCanView}
+              blnCanEdit={blnCanEdit}
+              onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
+              onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
+            />
+            <Button variant="outlined" size="small" startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
+              {t("manage_slabs", "Slabs")}
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
+              {t("manage_tax_rules", "Tax Rules")}
+            </Button>
+          </Box>
+        ),
+        strRegimeCode: dicRow.strRegimeCode,
+        strRegimeName: (
+          <Box>
+            <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strRegimeName}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicRow.strRegimeTypeDisplay}</Typography>
+          </Box>
+        ),
+        strCountryCode: dicRow.strCountryCode,
+        strTaxYearCode: dicRow.strTaxYearCode || "-",
+        decStandardDeductionAmount: dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount.toLocaleString() : "-",
+        blnIsDefaultRegime: (
+          <span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>
+            {dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
+          </span>
+        ),
+        blnAllowEmployeeOptOut: dicRow.blnAllowEmployeeOptOut ? t("yes", "Yes") : t("no", "No"),
+        intSlabProfiles: `${dicRow.intSlabProfileCount} / ${dicRow.intSlabCount}`,
+        blnIsActive: (
+          <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+            {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
+          </span>
+        ),
+      })),
+    [blnCanEdit, blnCanView, lstFilteredRows, objRouter, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 280 },
+      { field: "strRegimeCode", headerName: t("regime_code", "Regime Code") },
+      { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 220 },
+      { field: "strCountryCode", headerName: t("country", "Country") },
+      { field: "strTaxYearCode", headerName: t("tax_year", "Tax Year") },
+      { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right" },
+      { field: "blnIsDefaultRegime", headerName: t("default_regime", "Default Regime"), sortable: false, filterable: false, width: 150 },
+      { field: "blnAllowEmployeeOptOut", headerName: t("employee_opt_out", "Employee Opt-Out") },
+      { field: "intSlabProfiles", headerName: t("slab_profiles", "Slab Profiles / Slab Count") },
+      { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
+    ],
+    [t]
+  );
 
   if (blnLoading || blnRightsLoading) {
-    return (
-      <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
-        <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("loading_tax_regimes", "Loading tax regimes...")}</Typography>
-        </Stack>
-      </Box>
-    );
+    return <BlockingLoader blnOpen strLabel={t("loading_tax_regimes", "Loading tax regimes...")} />;
   }
 
   if (!blnCanView) {
@@ -186,23 +194,35 @@ export default function TaxRegimeListPage() {
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
-          <TextField label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField label={t("country", "Country")} value={dicSearchDraft.strCountryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCountryCode: objEvent.target.value }))} size="small" />
-          <TextField label={t("tax_year", "Tax Year")} value={dicSearchDraft.strTaxYearCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strTaxYearCode: objEvent.target.value }))} size="small" />
-          <TextField select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+        <Box
+          className={styles.searchRow}
+          sx={{
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "minmax(180px, 0.75fr) repeat(4, minmax(170px, 1fr))",
+            },
+          }}
+        >
+          <TextField label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" fullWidth />
+          <TextField label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" fullWidth />
+          <TextField label={t("country", "Country")} value={dicSearchDraft.strCountryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCountryCode: objEvent.target.value }))} size="small" fullWidth />
+          <TextField label={t("tax_year", "Tax Year")} value={dicSearchDraft.strTaxYearCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strTaxYearCode: objEvent.target.value }))} size="small" fullWidth />
+          <TextField select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small" fullWidth>
             <MenuItem value="All">{t("all", "All")}</MenuItem>
             <MenuItem value="Active">{t("active", "Active")}</MenuItem>
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
+          <Box
+            className={styles.searchActions}
+            sx={{
+              gridColumn: { xs: "auto", md: "1 / span 2" },
+              flexWrap: "nowrap",
+            }}
+          >
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {t("search", "Search")}
             </Button>
-          </Box>
-          <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }}>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }}>
               {t("clear", "Clear")}
             </Button>
           </Box>
@@ -214,98 +234,24 @@ export default function TaxRegimeListPage() {
 
       <Box className={styles.tableCard}>
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing tax regime request...")} />
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? (
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("add_tax_regime", "Add Tax Regime")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tax_regimes.csv", lstFilteredRows, t)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-          </Box>
-
-          {lstFilteredRows.length > 0 ? (
-            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-                <TextField select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
-                  {lstRowsPerPageOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                  ))}
-                </TextField>
-                <Typography className={styles.paginationRange}>
-                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} {t("pagination_separator", "of")} {lstFilteredRows.length}
-                </Typography>
-              </Box>
-              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-            </Box>
-          ) : null}
-        </Box>
-
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t("actions", "Actions")}</th>
-                <th>{t("regime_code", "Regime Code")}</th>
-                <th>{t("regime_name", "Regime Name")}</th>
-                <th>{t("country", "Country")}</th>
-                <th>{t("tax_year", "Tax Year")}</th>
-                <th>{t("standard_deduction", "Standard Deduction")}</th>
-                <th>{t("default_regime", "Default Regime")}</th>
-                <th>{t("employee_opt_out", "Employee Opt-Out")}</th>
-                <th>{t("slab_profiles", "Slab Profiles / Slab Count")}</th>
-                <th>{t("status", "Status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstFilteredRows.length === 0 ? (
-                <tr>
-                  <td className={styles.emptyState} colSpan={10}>{t("no_records", "No tax regimes found.")}</td>
-                </tr>
-              ) : lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td>
-                    <Box className={styles.actionCell}>
-                      <CommonRowActions
-                        testIdPrefix="tax-regimes.list.row"
-                        rowKey={dicRow.intID}
-                        blnCanView={blnCanView}
-                        blnCanEdit={blnCanEdit}
-                        onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
-                        onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
-                      />
-                      <Button variant="outlined" size="small" startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-                        {t("manage_slabs", "Slabs")}
-                      </Button>
-                      <Button variant="outlined" size="small" startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-                        {t("manage_tax_rules", "Tax Rules")}
-                      </Button>
-                    </Box>
-                  </td>
-                  <td>{dicRow.strRegimeCode}</td>
-                  <td>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strRegimeName}</Typography>
-                      <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{dicRow.strRegimeTypeDisplay}</Typography>
-                    </Box>
-                  </td>
-                  <td>{dicRow.strCountryCode}</td>
-                  <td>{dicRow.strTaxYearCode || "-"}</td>
-                  <td>{dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount.toLocaleString() : "-"}</td>
-                  <td><span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>{dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}</span></td>
-                  <td>{dicRow.blnAllowEmployeeOptOut ? t("yes", "Yes") : t("no", "No")}</td>
-                  <td>{dicRow.intSlabProfileCount} / {dicRow.intSlabCount}</td>
-                  <td><span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>{dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          defaultPageSize={10}
+          pageSizeOptions={[10, 20, 50]}
+          exportFileName="tax_regimes"
+          showExportOptions={blnCanExport}
+          showPaginationSummary
+          emptyMessage={t("no_records", "No tax regimes found.")}
+          testIdPrefix="tax-regimes.list"
+          toolbarLeft={blnCanAdd ? (
+            <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              {t("add_tax_regime", "Add Tax Regime")}
+            </Button>
+          ) : undefined}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
     </Stack>
   );

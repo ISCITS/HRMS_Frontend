@@ -2,15 +2,18 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, IconButton, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { employeeService } from "@/features/employee/services/employeeService";
+import type { EmployeeListRecord } from "@/features/employee/types";
 import { loanAdvanceService } from "@/features/payroll/services/loanAdvanceService";
 import type { LoanAdvanceCategoryRecord, LoanAdvanceRecord } from "@/features/payroll/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -24,11 +27,13 @@ const lstStatuses = ["All", "draft", "sent_back", "pending_approval", "approved"
 const dicPayrollActionAliases: Record<string, string[]> = {
   view: ["loan_adv_view"],
   create: ["loan_adv_create"],
+  edit: ["loan_adv_edit"],
 };
 
 const dicEssActionAliases: Record<string, string[]> = {
   view: ["view", "list", "ess_loan_adv_view"],
   create: ["create", "add", "ess_loan_adv_create"],
+  edit: ["edit", "ess_loan_adv_edit"],
 };
 
 function formatCurrency(decValue?: number | null) {
@@ -41,6 +46,10 @@ function formatMonth(strValue?: string | null) {
 
 function getEmployeeName(objRow: LoanAdvanceRecord) {
   return objRow.objEmployee?.strEmployeeName || objRow.objEmployee?.strEmployeeCode || "-";
+}
+
+function getEmployeeLabel(objEmployee: EmployeeListRecord) {
+  return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
 }
 
 function toLabelKey(strValue?: string | null) {
@@ -60,6 +69,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [lstRows, setLstRows] = useState<LoanAdvanceRecord[]>([]);
+  const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [lstCategories, setLstCategories] = useState<LoanAdvanceCategoryRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
@@ -75,10 +85,11 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     payroll_month: "",
   });
   const blnIsEssMode = strMode === "ess";
-  const canLoanAction = (strAction: "view" | "create") =>
+  const canLoanAction = (strAction: "view" | "create" | "edit") =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction]).some((strAlias) => canDoAny(strAlias));
   const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
   const blnCanCreate = canLoanAction("create");
+  const blnCanEdit = canLoanAction("edit");
 
   useEffect(() => {
     let blnMounted = true;
@@ -136,7 +147,74 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     (blnIsEssMode ? loanAdvanceService.listEssCategories() : loanAdvanceService.listCategories()).then(setLstCategories).catch(() => setLstCategories([]));
   }, [blnRightsLoading, blnCanView, blnIsEssMode]);
 
-  const lstVisibleRows = useMemo(() => lstRows, [lstRows]);
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView || blnIsEssMode) return;
+    employeeService.getEmployees().then(setLstEmployees).catch(() => setLstEmployees([]));
+  }, [blnRightsLoading, blnCanView, blnIsEssMode]);
+
+  const lstDepartmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          lstEmployees
+            .map((objEmployee) => objEmployee.strDepartmentName?.trim())
+            .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
+        )
+      ).sort((strLeft, strRight) => strLeft.localeCompare(strRight)),
+    [lstEmployees]
+  );
+
+  const lstTableRows = useMemo(
+    () =>
+      lstRows.map((objRow) => ({
+        id: objRow.intID,
+        action: (
+          <CommonRowActions
+            testIdPrefix="loan-advance.list.row"
+            rowKey={objRow.intID}
+            blnCanView
+            blnCanEdit={blnCanEdit}
+            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=view` : `/payroll/loans-advances/${objRow.intID}?mode=view`)}
+            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=edit` : `/payroll/loans-advances/${objRow.intID}?mode=edit`)}
+          />
+        ),
+        employee: (
+          <>
+            <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>
+          </>
+        ),
+        department: objRow.objEmployee?.strDepartmentName || "-",
+        requestType: t(`type_${objRow.strRequestType}`, objRow.strRequestType),
+        category: objRow.objCategory?.strCategoryName ? t(toLabelKey(objRow.objCategory.strCategoryName), objRow.objCategory.strCategoryName) : "-",
+        requestedAmount: formatCurrency(objRow.decRequestedAmount),
+        approvedAmount: formatCurrency(objRow.decApprovedAmount),
+        outstandingAmount: formatCurrency(objRow.decTotalOutstandingAmount),
+        installmentAmount: formatCurrency(objRow.decInstallmentAmount),
+        recoveryStartMonth: formatMonth(objRow.dtRecoveryStartMonth),
+        perquisiteTax: objRow.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No"),
+        status: <LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} t={t} />,
+      })),
+    [blnCanEdit, blnIsEssMode, lstRows, objRouter, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "employee", headerName: t("table_employee", "Employee"), width: 220, sortable: false },
+      { field: "department", headerName: t("table_department", "Department"), width: 180 },
+      { field: "requestType", headerName: t("table_request_type", "Request Type"), width: 150 },
+      { field: "category", headerName: t("table_category", "Category"), width: 180 },
+      { field: "requestedAmount", headerName: t("table_requested_amount", "Requested Amount"), align: "right", width: 160 },
+      { field: "approvedAmount", headerName: t("table_approved_amount", "Approved Amount"), align: "right", width: 160 },
+      { field: "outstandingAmount", headerName: t("table_outstanding_amount", "Outstanding Amount"), align: "right", width: 170 },
+      { field: "installmentAmount", headerName: t("table_installment", "Installment"), align: "right", width: 140 },
+      { field: "recoveryStartMonth", headerName: t("table_recovery_start_month", "Recovery Start Month"), width: 170 },
+      { field: "perquisiteTax", headerName: t("table_perquisite_tax", "Perquisite Tax"), width: 140 },
+      { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 150 },
+    ],
+    [lstTableRows, t]
+  );
 
   function clearFilters() {
     const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "", payroll_month: "" };
@@ -146,17 +224,25 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
 
   return (
     <Box className={styles.page}>
+      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box>
-            <Typography className={styles.breadcrumbs}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
-            <Typography className={styles.title}>{blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}</Typography>
-          </Box>
-          {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new" : "/payroll/loans-advances/new")}>{t("add_button", "New Request")}</Button> : null}
-        </Box>
         <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", mt: 1 }}>
-          <TextField size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} />
-          <TextField size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} />
+          <TextField select size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))}>
+            <MenuItem value="">{t("all", "All")}</MenuItem>
+            {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => (
+              <MenuItem key={objEmployee.intID} value={objEmployee.strEmployeeCode}>
+                {getEmployeeLabel(objEmployee)}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))}>
+            <MenuItem value="">{t("all", "All")}</MenuItem>
+            {lstDepartmentOptions.map((strDepartment) => (
+              <MenuItem key={strDepartment} value={strDepartment}>
+                {strDepartment}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))}>
             {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
           </TextField>
@@ -181,42 +267,27 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
       {blnCanView ? (
         <Box className={styles.tableCard}>
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr>
-                <th className={styles.actionsColumn}>{t("table_actions", "Actions")}</th>
-                <th>{t("table_employee", "Employee")}</th>
-                <th>{t("table_department", "Department")}</th>
-                <th>{t("table_request_type", "Request Type")}</th>
-                <th>{t("table_category", "Category")}</th>
-                <th>{t("table_requested_amount", "Requested Amount")}</th>
-                <th>{t("table_approved_amount", "Approved Amount")}</th>
-                <th>{t("table_outstanding_amount", "Outstanding Amount")}</th>
-                <th>{t("table_installment", "Installment")}</th>
-                <th>{t("table_recovery_start_month", "Recovery Start Month")}</th>
-                <th>{t("table_perquisite_tax", "Perquisite Tax")}</th>
-                <th>{t("table_status", "Status")}</th>
-              </tr></thead>
-              <tbody>
-                {lstVisibleRows.length ? lstVisibleRows.map((objRow) => (
-                  <tr key={objRow.intID}>
-                    <td className={styles.actionsColumn}><IconButton size="small" onClick={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)} aria-label={t("open", "Open")}><OpenInNewRoundedIcon fontSize="small" /></IconButton></td>
-                    <td><Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography><Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography></td>
-                    <td>{objRow.objEmployee?.strDepartmentName || "-"}</td>
-                    <td>{t(`type_${objRow.strRequestType}`, objRow.strRequestType)}</td>
-                    <td>{objRow.objCategory?.strCategoryName ? t(toLabelKey(objRow.objCategory.strCategoryName), objRow.objCategory.strCategoryName) : "-"}</td>
-                    <td>{formatCurrency(objRow.decRequestedAmount)}</td>
-                    <td>{formatCurrency(objRow.decApprovedAmount)}</td>
-                    <td>{formatCurrency(objRow.decTotalOutstandingAmount)}</td>
-                    <td>{formatCurrency(objRow.decInstallmentAmount)}</td>
-                    <td>{formatMonth(objRow.dtRecoveryStartMonth)}</td>
-                    <td>{objRow.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No")}</td>
-                    <td><LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} t={t} /></td>
-                  </tr>
-                )) : <tr><td colSpan={12} className={styles.emptyState}>{t("empty_message", "No loans or advances found.")}</td></tr>}
-              </tbody>
-            </table>
-          </Box>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
+            showPaginationSummary
+            emptyMessage={t("empty_message", "No loans or advances found.")}
+            testIdPrefix="loan-advance.list"
+            toolbarLeft={blnCanCreate ? (
+              <Button
+                className={styles.primaryButton}
+                startIcon={<AddRoundedIcon />}
+                onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new?mode=add" : "/payroll/loans-advances/new?mode=add")}
+              >
+                {t("add_button", "New Request")}
+              </Button>
+            ) : undefined}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         </Box>
       ) : null}
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnLoadingLabels} strLabel={t("loading", "Loading loans and advances...")} />

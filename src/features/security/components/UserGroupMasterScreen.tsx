@@ -2,18 +2,14 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
-  LinearProgress,
   MenuItem,
   Snackbar,
-  Stack,
   TextField,
   Typography,
 } from "@mui/material";
@@ -21,6 +17,7 @@ import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState 
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -80,6 +77,8 @@ export default function UserGroupMasterScreen() {
   const [strMode, setStrMode] = useState<FormMode>("add");
   const [intEditingID, setIntEditingID] = useState<number | null>(null);
   const [objForm, setObjForm] = useState<UserGroupFormPayload>(objEmptyForm);
+  const [dicFieldErrors, setDicFieldErrors] = useState<Partial<Record<"strGroupCode" | "strGroupName", string>>>({});
+  const [strDialogError, setStrDialogError] = useState("");
   const [objToast, setObjToast] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -110,7 +109,8 @@ export default function UserGroupMasterScreen() {
     loading: t("loading", "Loading user groups..."),
     processing: t("processing", "Processing..."),
     errorLoad: t("error_load", "Unable to load user groups."),
-    validationRequired: t("validation_group_code_name_required", "Group code and group name are required."),
+    validationGroupCodeRequired: t("validation_group_code_required", "Group code is required."),
+    validationGroupNameRequired: t("validation_group_name_required", "Group name is required."),
     saveSuccess: t("save_success", "User group and rights saved successfully."),
     updateSuccess: t("update_success", "User group updated successfully."),
     errorSave: t("error_save", "Unable to save user group."),
@@ -194,10 +194,14 @@ export default function UserGroupMasterScreen() {
         />
       ),
       rowActions: (
-        <Box className={styles.actionCell}>
-          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)} data-control-id={`${strRowControlPrefix}.view.button`} data-row-key={objRecord.intID}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
-          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)} data-control-id={`${strRowControlPrefix}.edit.button`} data-row-key={objRecord.intID}><EditOutlinedIcon fontSize="small" /></button> : null}
-        </Box>
+        <CommonRowActions
+          testIdPrefix={strRowControlPrefix}
+          rowKey={objRecord.intID}
+          blnCanView={blnCanView}
+          blnCanEdit={blnCanEdit}
+          onView={() => openDialog("view", objRecord)}
+          onEdit={blnCanEdit ? () => openDialog("edit", objRecord) : undefined}
+        />
       ),
       strGroupCode: objRecord.strGroupCode,
       strGroupName: objRecord.strGroupName,
@@ -256,19 +260,27 @@ export default function UserGroupMasterScreen() {
     setStrMode(strNextMode);
     setIntEditingID(objRecord?.intID ?? null);
     setObjForm(objRecord ? mapRecordToForm(objRecord) : { ...objEmptyForm });
+    setDicFieldErrors({});
+    setStrDialogError("");
     setBlnDialogOpen(true);
   }
 
   async function saveRecord(lstRights: UserGroupRightSaveItem[]) {
     const strGroupCode = objForm.strGroupCode.trim();
     const strGroupName = objForm.strGroupName.trim();
+    const dicNextFieldErrors: Partial<Record<"strGroupCode" | "strGroupName", string>> = {};
 
-    if (!strGroupCode || !strGroupName) {
-      setObjToast({
-        open: true,
-        message: dicLabels.validationRequired,
-        severity: "error",
-      });
+    if (!strGroupCode) {
+      dicNextFieldErrors.strGroupCode = dicLabels.validationGroupCodeRequired;
+    }
+    if (!strGroupName) {
+      dicNextFieldErrors.strGroupName = dicLabels.validationGroupNameRequired;
+    }
+
+    setDicFieldErrors(dicNextFieldErrors);
+    setStrDialogError("");
+
+    if (Object.keys(dicNextFieldErrors).length > 0) {
       return;
     }
 
@@ -304,17 +316,15 @@ export default function UserGroupMasterScreen() {
         setBlnDialogOpen(false);
         setIntEditingID(null);
         setObjForm({ ...objEmptyForm });
+        setDicFieldErrors({});
+        setStrDialogError("");
         setObjToast({
           open: true,
           message: strSavedMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess,
           severity: "success",
         });
       },
-      fnOnError: (objError) => setObjToast({
-        open: true,
-        message: objError.message,
-        severity: "error",
-      }),
+      fnOnError: (objError) => setStrDialogError(objError.message || dicLabels.errorSave),
       fnFinally: () => setBlnSaving(false),
       strFallbackMessage: dicLabels.errorSave,
     });
@@ -400,31 +410,16 @@ export default function UserGroupMasterScreen() {
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box
-          sx={{
-            overflowX: "auto",
-            overflowY: "auto",
-            minHeight: 0,
-            flex: 1,
-          }}
-        >
-          {blnLoading || blnRightsLoading ? (
-            <Box sx={{ minHeight: 240 }}>
-              <LinearProgress />
-            </Box>
-          ) : !blnCanView ? (
-            <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
-              <Stack spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
-                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
-              </Stack>
+        <Box sx={{ overflowX: "auto", overflowY: "auto", minHeight: 0, flex: 1 }}>
+          {!blnCanView ? (
+            <Box className={styles.emptyState}>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
+              <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
             </Box>
           ) : lstFilteredRecords.length === 0 ? (
-            <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
-              <Stack spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
-                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.emptyMessage}</Typography>
-              </Stack>
+            <Box className={styles.emptyState}>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
+              <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.emptyMessage}</Typography>
             </Box>
           ) : (
             <CommonTable
@@ -434,7 +429,11 @@ export default function UserGroupMasterScreen() {
               emptyMessage={dicLabels.emptyMessage}
               exportFileName={dicLabels.exportFileName}
               showExportOptions={blnCanExport}
+              defaultPageSize={10}
+              pageSizeOptions={[10, 20, 50]}
+              showPaginationSummary
               testIdPrefix="security.user-group.list"
+              sx={{ p: 0, boxShadow: "none", background: "transparent" }}
               toolbarLeft={
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   {blnCanAdd ? (
@@ -460,12 +459,23 @@ export default function UserGroupMasterScreen() {
           setBlnDialogOpen(false);
           setIntEditingID(null);
           setObjForm({ ...objEmptyForm });
+          setDicFieldErrors({});
+          setStrDialogError("");
         }}
-        onChange={setObjForm}
+        onChange={(objNextForm) => {
+          setObjForm(objNextForm);
+          setStrDialogError("");
+          setDicFieldErrors((dicPrevious) => ({
+            strGroupCode: dicPrevious.strGroupCode && objNextForm.strGroupCode.trim() ? undefined : dicPrevious.strGroupCode,
+            strGroupName: dicPrevious.strGroupName && objNextForm.strGroupName.trim() ? undefined : dicPrevious.strGroupName,
+          }));
+        }}
+        strSaveError={strDialogError}
+        dicFieldErrors={dicFieldErrors}
         onSave={saveRecord}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSaving} strLabel={blnSaving ? dicLabels.processing : dicLabels.loading} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}

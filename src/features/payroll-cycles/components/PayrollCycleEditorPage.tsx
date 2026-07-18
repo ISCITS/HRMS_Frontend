@@ -330,6 +330,7 @@ export default function PayrollCycleEditorPage({
             <TextField
               label={t("payroll_group")}
               inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              required
               select
               value={dicForm.intPayrollGroupID}
               onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
@@ -347,6 +348,7 @@ export default function PayrollCycleEditorPage({
             <TextField
               label={t("period_type")}
               inputProps={{ "controlId": "payroll-cycles.editor.period-type.select" }}
+              required
               select
               value={dicForm.strPeriodType}
               onChange={(objEvent) => updateField("strPeriodType", objEvent.target.value)}
@@ -362,6 +364,7 @@ export default function PayrollCycleEditorPage({
             <TextField
               label={t("cycle_code")}
               inputProps={{ "controlId": "payroll-cycles.editor.cycle-code.input" }}
+              required
               value={dicForm.strCycleCode}
               onChange={(objEvent) => updateField("strCycleCode", objEvent.target.value.toUpperCase())}
               disabled={blnFieldDisabled}
@@ -371,6 +374,7 @@ export default function PayrollCycleEditorPage({
             <TextField
               label={t("cycle_name")}
               inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
+              required
               value={dicForm.strCycleName}
               onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
               disabled={blnFieldDisabled}

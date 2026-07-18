@@ -2,6 +2,7 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -240,15 +241,10 @@ export default function BankFileReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Reports / Bank File</Typography>
+      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Bank File</Typography>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography className={styles.title}>Bank File</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-              Payment-required net salary data for approved, published, or paid payroll results.
-            </Typography>
-          </Box>
+          <Box />
         </Box>
         <Box className={styles.bankFileSearchPanel}>
           <Box className={styles.bankFileSearchLinePrimary}>
@@ -272,6 +268,25 @@ export default function BankFileReportPage() {
             </Box>
           </Box>
         </Box>
+      </Box>
+
+      <Box
+        sx={{
+          alignItems: "center",
+          backgroundColor: "#f8fbff",
+          border: "1px solid rgba(191,219,254,0.7)",
+          borderRadius: "16px",
+          color: "#1f2937",
+          display: "flex",
+          gap: 1,
+          px: 1.5,
+          py: 1.25,
+        }}
+      >
+        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+          Payment-required net salary data for approved, published, or paid payroll results.
+        </Typography>
       </Box>
 
       <Box className={styles.tableCard}>

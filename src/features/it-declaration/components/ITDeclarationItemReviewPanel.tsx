@@ -8,6 +8,7 @@ import { Alert, Box, Button, Grid, Paper, Stack, TextField, Typography } from "@
 import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
 
+import styles from "@/components/master/MasterScreen.module.css";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import type { HrItDeclarationItemRecord, HrItDeclarationProofRecord } from "@/features/it-declaration/services/itDeclarationService";
 
@@ -232,7 +233,7 @@ export default function ITDeclarationItemReviewPanel({
             }}
           >
             <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} controlId="it-declaration.review.reject.button">Reject Item</Button>
-            <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} controlId="it-declaration.review.approve.button">Approve Item</Button>
+            <Button className={styles.primaryButton} size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} controlId="it-declaration.review.approve.button">Approve Item</Button>
           </Stack>
         </Grid>
       </Grid>

@@ -2,10 +2,12 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
 import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { StatutoryReportCode, StatutoryReportRow } from "@/features/payroll/types";
@@ -194,8 +196,6 @@ export default function StatutoryReportPage() {
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
@@ -206,7 +206,6 @@ export default function StatutoryReportPage() {
       setLstRows(await payrollReportService.getStatutoryReportRows(objFilters));
       setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
-      setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load statutory report.");
     } finally {
@@ -223,7 +222,6 @@ export default function StatutoryReportPage() {
   }), { decBasis: 0, decEmployee: 0, decEmployer: 0, decTotal: 0 }), [lstFilteredRows]);
   const blnSummaryReport = dicSearchApplied.strStatutoryCode === "ALL";
   const lstSummaryRows = useMemo(() => buildSummaryRows(lstFilteredRows), [lstFilteredRows]);
-  const lstPagedSourceRows = blnSummaryReport ? lstSummaryRows : lstFilteredRows;
   const dicSummaryTotals = useMemo(() => lstSummaryRows.reduce((dicAccumulator, dicRow) => ({
     decPfEmployee: dicAccumulator.decPfEmployee + dicRow.decPfEmployee,
     decPfEmployer: dicAccumulator.decPfEmployer + dicRow.decPfEmployer,
@@ -236,20 +234,15 @@ export default function StatutoryReportPage() {
     decTotalEmployer: dicAccumulator.decTotalEmployer + dicRow.decTotalEmployer,
     decGrandTotal: dicAccumulator.decGrandTotal + dicRow.decGrandTotal,
   }), { decPfEmployee: 0, decPfEmployer: 0, decEsiEmployee: 0, decEsiEmployer: 0, decPtEmployee: 0, decLwfEmployee: 0, decGratuityEmployer: 0, decTotalEmployee: 0, decTotalEmployer: 0, decGrandTotal: 0 }), [lstSummaryRows]);
-  const intPageCount = Math.max(1, Math.ceil(lstPagedSourceRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const lstVisibleSummaryRows = lstSummaryRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const lstExportRows = setSelectedRowIDs.size > 0 ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID)) : lstFilteredRows;
-  const blnAllVisibleSelected = lstVisibleRows.length > 0 && lstVisibleRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
-  const blnSomeVisibleSelected = lstVisibleRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnAllFilteredSelected = lstFilteredRows.length > 0 && lstFilteredRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnSomeFilteredSelected = lstFilteredRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
   const dicReportMeta = getReportMeta(dicSearchApplied.strStatutoryCode);
 
-  function toggleVisibleRows(blnChecked: boolean) {
+  function toggleFilteredRows(blnChecked: boolean) {
     setSetSelectedRowIDs((setPrevious) => {
       const setNext = new Set(setPrevious);
-      lstVisibleRows.forEach((dicRow) => blnChecked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID));
+      lstFilteredRows.forEach((dicRow) => blnChecked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID));
       return setNext;
     });
   }
@@ -275,19 +268,133 @@ export default function StatutoryReportPage() {
     loadRows(dicEmptySearch).catch(() => undefined);
   }, [blnCanView]);
 
+  const lstDetailTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        intID: dicRow.intID,
+        select: (
+          <Checkbox
+            size="small"
+            checked={setSelectedRowIDs.has(dicRow.intID)}
+            onChange={(objEvent) =>
+              setSetSelectedRowIDs((setPrevious) => {
+                const setNext = new Set(setPrevious);
+                if (objEvent.target.checked) {
+                  setNext.add(dicRow.intID);
+                } else {
+                  setNext.delete(dicRow.intID);
+                }
+                return setNext;
+              })
+            }
+            inputProps={{ "controlId": "reports.statutory.row.select.checkbox", "data-row-key": dicRow.intID } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
+        strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        strStatutoryName: dicRow.strStatutoryName,
+        decBasisAmount: formatCurrency(dicRow.decBasisAmount),
+        decEmployeeRatePercent: formatPercent(dicRow.decEmployeeRatePercent),
+        decEmployerRatePercent: formatPercent(dicRow.decEmployerRatePercent),
+        decEmployeeAmount: formatCurrency(dicRow.decEmployeeAmount),
+        decEmployerAmount: formatCurrency(dicRow.decEmployerAmount),
+        decTotalAmount: formatCurrency(dicRow.decTotalAmount),
+        decCeilingAmount: dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount),
+        strCalculationMode: dicRow.strCalculationMode || "-",
+        strStatus: dicRow.strStatus,
+      })),
+    [lstFilteredRows, setSelectedRowIDs],
+  );
+
+  const lstDetailTableColumns = useMemo<CommonTableColumn<(typeof lstDetailTableRows)[number]>[]>(
+    () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            size="small"
+            checked={blnAllFilteredSelected}
+            indeterminate={!blnAllFilteredSelected && blnSomeFilteredSelected}
+            onChange={(objEvent) => toggleFilteredRows(objEvent.target.checked)}
+            inputProps={{ "controlId": "reports.statutory.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            disabled={lstFilteredRows.length === 0}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
+      { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strStatutoryName", headerName: "Statutory", width: 170 },
+      { field: "decBasisAmount", headerName: "Basis", width: 140, align: "right" },
+      { field: "decEmployeeRatePercent", headerName: "Employee Rate", width: 130, align: "right" },
+      { field: "decEmployerRatePercent", headerName: "Employer Rate", width: 130, align: "right" },
+      { field: "decEmployeeAmount", headerName: "Employee Amount", width: 150, align: "right" },
+      { field: "decEmployerAmount", headerName: "Employer Amount", width: 150, align: "right" },
+      { field: "decTotalAmount", headerName: "Total", width: 140, align: "right" },
+      { field: "decCeilingAmount", headerName: "Ceiling", width: 130, align: "right" },
+      { field: "strCalculationMode", headerName: "Mode", width: 140 },
+      { field: "strStatus", headerName: "Status", width: 120 },
+    ],
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstDetailTableRows, lstFilteredRows.length],
+  );
+
+  const lstSummaryTableRows = useMemo(
+    () =>
+      lstSummaryRows.map((dicRow) => ({
+        intID: dicRow.intID,
+        strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        decPfEmployee: formatCurrency(dicRow.decPfEmployee),
+        decPfEmployer: formatCurrency(dicRow.decPfEmployer),
+        decEsiEmployee: formatCurrency(dicRow.decEsiEmployee),
+        decEsiEmployer: formatCurrency(dicRow.decEsiEmployer),
+        decPtEmployee: formatCurrency(dicRow.decPtEmployee),
+        decLwfEmployee: formatCurrency(dicRow.decLwfEmployee),
+        decGratuityEmployer: formatCurrency(dicRow.decGratuityEmployer),
+        decTotalEmployee: formatCurrency(dicRow.decTotalEmployee),
+        decTotalEmployer: formatCurrency(dicRow.decTotalEmployer),
+        decGrandTotal: formatCurrency(dicRow.decGrandTotal),
+        strStatus: dicRow.strStatus,
+      })),
+    [lstSummaryRows],
+  );
+
+  const lstSummaryTableColumns = useMemo<CommonTableColumn<(typeof lstSummaryTableRows)[number]>[]>(
+    () => [
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
+      { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "decPfEmployee", headerName: "PF Employee", width: 140, align: "right" },
+      { field: "decPfEmployer", headerName: "PF Employer", width: 140, align: "right" },
+      { field: "decEsiEmployee", headerName: "ESI Employee", width: 140, align: "right" },
+      { field: "decEsiEmployer", headerName: "ESI Employer", width: 140, align: "right" },
+      { field: "decPtEmployee", headerName: "PT", width: 110, align: "right" },
+      { field: "decLwfEmployee", headerName: "LWF", width: 110, align: "right" },
+      { field: "decGratuityEmployer", headerName: "Gratuity Employer", width: 170, align: "right" },
+      { field: "decTotalEmployee", headerName: "Total Employee", width: 150, align: "right" },
+      { field: "decTotalEmployer", headerName: "Total Employer", width: 150, align: "right" },
+      { field: "decGrandTotal", headerName: "Grand Total", width: 150, align: "right" },
+      { field: "strStatus", headerName: "Status", width: 120 },
+    ],
+    [lstSummaryTableRows],
+  );
+
   if (blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel="Loading statutory reports..." />;
   }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Reports / Statutory</Typography>
+      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Statutory Reports</Typography>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography className={styles.title}>Statutory Reports</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.4 }}>PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and return-ready statutory payroll data.</Typography>
-          </Box>
+          <Box />
         </Box>
         <Box className={styles.statutorySearchPanel}>
           <Box className={styles.statutorySearchLinePrimary}>
@@ -311,42 +418,84 @@ export default function StatutoryReportPage() {
           </Box>
         </Box>
       </Box>
+      <Box
+        sx={{
+          alignItems: "center",
+          backgroundColor: "#f8fbff",
+          border: "1px solid rgba(191,219,254,0.7)",
+          borderRadius: "16px",
+          color: "#1f2937",
+          display: "flex",
+          gap: 1,
+          px: 1.5,
+          py: 1.25,
+        }}
+      >
+        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+          PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and return-ready statutory payroll data.
+        </Typography>
+      </Box>
       <Box className={styles.tableCard}>
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Statutory report view access is not available for your user group.</Alert> : null}
-        {blnLoading ? <Alert severity="info" sx={{ mb: 1.5 }}>Loading statutory report rows...</Alert> : null}
+        <BlockingLoader blnOpen={blnLoading} strLabel="Loading statutory report rows..." />
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.listUtilityBar}>
-          <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${dicReportMeta.strFile}.csv`, lstExportRows)} controlId="reports.statutory.export-excel.button">Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicReportMeta.strLabel, lstExportRows)} controlId="reports.statutory.download-pdf.button">Download PDF</Button> : null}
-            {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
-          </Box>
-          <Box className={styles.paginationBar} sx={{ p: 0 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography>Rows per page</Typography>
-              <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }} controlId="reports.statutory.rows-per-page.select">{lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}</TextField>
-              <Typography className={styles.paginationRange}>{lstPagedSourceRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstPagedSourceRows.length)} of ${lstPagedSourceRows.length}`}</Typography>
+        <CommonTable
+          columns={blnSummaryReport ? lstSummaryTableColumns : lstDetailTableColumns}
+          rows={blnSummaryReport ? lstSummaryTableRows : lstDetailTableRows}
+          rowIdField="intID"
+          defaultPageSize={lstRowsPerPageOptions[0]}
+          pageSizeOptions={lstRowsPerPageOptions}
+          emptyMessage="No statutory report rows found for the current filters."
+          showPaginationSummary
+          withPaper={false}
+          testIdPrefix="reports.statutory"
+          toolbarLeft={(
+            <Box className={styles.listUtilityActions}>
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${dicReportMeta.strFile}.csv`, lstExportRows)} controlId="reports.statutory.export-excel.button">Export Excel</Button> : null}
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicReportMeta.strLabel, lstExportRows)} controlId="reports.statutory.download-pdf.button">Download PDF</Button> : null}
+              {!blnSummaryReport && setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
             </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
-          </Box>
-        </Box>
-        <Box className={styles.tableWrap}>
-          {blnSummaryReport ? <table className={styles.table}>
-            <thead><tr><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>PF Employee</th><th>PF Employer</th><th>ESI Employee</th><th>ESI Employer</th><th>PT</th><th>LWF</th><th>Gratuity Employer</th><th>Total Employee</th><th>Total Employer</th><th>Grand Total</th><th>Status</th></tr></thead>
-            <tbody>
-              {lstVisibleSummaryRows.length === 0 ? <tr><td colSpan={14} className={styles.emptyState}>No statutory report rows found for the current filters.</td></tr> : null}
-              {lstVisibleSummaryRows.map((dicRow) => <tr key={dicRow.intID}><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{formatCurrency(dicRow.decPfEmployee)}</td><td>{formatCurrency(dicRow.decPfEmployer)}</td><td>{formatCurrency(dicRow.decEsiEmployee)}</td><td>{formatCurrency(dicRow.decEsiEmployer)}</td><td>{formatCurrency(dicRow.decPtEmployee)}</td><td>{formatCurrency(dicRow.decLwfEmployee)}</td><td>{formatCurrency(dicRow.decGratuityEmployer)}</td><td>{formatCurrency(dicRow.decTotalEmployee)}</td><td>{formatCurrency(dicRow.decTotalEmployer)}</td><td>{formatCurrency(dicRow.decGrandTotal)}</td><td>{dicRow.strStatus}</td></tr>)}
-              {lstSummaryRows.length > 0 ? <tr><td colSpan={3}><strong>Total</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPfEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decEsiEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decPtEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decLwfEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGratuityEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployee)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decTotalEmployer)}</strong></td><td><strong>{formatCurrency(dicSummaryTotals.decGrandTotal)}</strong></td><td /></tr> : null}
-            </tbody>
-          </table> : <table className={styles.table}>
-            <thead><tr><th><Checkbox size="small" checked={blnAllVisibleSelected} indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected} onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)} inputProps={{ "controlId": "reports.statutory.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Statutory</th><th>Basis</th><th>Employee Rate</th><th>Employer Rate</th><th>Employee Amount</th><th>Employer Amount</th><th>Total</th><th>Ceiling</th><th>Mode</th><th>Status</th></tr></thead>
-            <tbody>
-              {lstVisibleRows.length === 0 ? <tr><td colSpan={14} className={styles.emptyState}>No statutory report rows found for the current filters.</td></tr> : null}
-              {lstVisibleRows.map((dicRow) => <tr key={dicRow.intID}><td><Checkbox size="small" checked={setSelectedRowIDs.has(dicRow.intID)} onChange={(objEvent) => setSetSelectedRowIDs((setPrevious) => { const setNext = new Set(setPrevious); objEvent.target.checked ? setNext.add(dicRow.intID) : setNext.delete(dicRow.intID); return setNext; })} inputProps={{ "controlId": "reports.statutory.row.select.checkbox", "data-row-key": dicRow.intID } as InputHTMLAttributes<HTMLInputElement>} /></td><td>{formatMonth(dicRow.dtPayrollMonth)}</td><td>{dicRow.strEmployeeCode}</td><td>{dicRow.strEmployeeName}</td><td>{dicRow.strStatutoryName}</td><td>{formatCurrency(dicRow.decBasisAmount)}</td><td>{formatPercent(dicRow.decEmployeeRatePercent)}</td><td>{formatPercent(dicRow.decEmployerRatePercent)}</td><td>{formatCurrency(dicRow.decEmployeeAmount)}</td><td>{formatCurrency(dicRow.decEmployerAmount)}</td><td>{formatCurrency(dicRow.decTotalAmount)}</td><td>{dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount)}</td><td>{dicRow.strCalculationMode || "-"}</td><td>{dicRow.strStatus}</td></tr>)}
-              {lstFilteredRows.length > 0 ? <tr><td colSpan={5}><strong>Total</strong></td><td><strong>{formatCurrency(dicTotals.decBasis)}</strong></td><td /><td /><td><strong>{formatCurrency(dicTotals.decEmployee)}</strong></td><td><strong>{formatCurrency(dicTotals.decEmployer)}</strong></td><td><strong>{formatCurrency(dicTotals.decTotal)}</strong></td><td /><td /><td /></tr> : null}
-            </tbody>
-          </table>}
-        </Box>
+          )}
+          footerContent={
+            blnSummaryReport ? (
+              lstSummaryRows.length > 0 ? (
+                <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+                  <Box sx={{ minWidth: 2030, display: "grid", gridTemplateColumns: "140px 140px 220px 140px 140px 140px 140px 110px 110px 170px 150px 150px 150px 120px", alignItems: "center" }}>
+                    <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 3" }}>Total</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decPfEmployee)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decPfEmployer)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decEsiEmployee)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decEsiEmployer)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decPtEmployee)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decLwfEmployee)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decGratuityEmployer)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decTotalEmployee)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decTotalEmployer)}</Typography>
+                    <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decGrandTotal)}</Typography>
+                    <Box />
+                  </Box>
+                </Box>
+              ) : null
+            ) : lstFilteredRows.length > 0 ? (
+              <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+                <Box sx={{ minWidth: 1936, display: "grid", gridTemplateColumns: "56px 140px 140px 220px 170px 140px 130px 130px 150px 150px 140px 130px 140px 120px", alignItems: "center" }}>
+                  <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>Total</Typography>
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decBasis)}</Typography>
+                  <Box />
+                  <Box />
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decEmployee)}</Typography>
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decEmployer)}</Typography>
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decTotal)}</Typography>
+                  <Box />
+                  <Box />
+                  <Box />
+                </Box>
+              </Box>
+            ) : null
+          }
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
       <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth controlId="reports.statutory.filter.dialog">
         <DialogTitle>Statutory Reports</DialogTitle>

@@ -219,6 +219,25 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   const [strConfirm, setStrConfirm] = useState<ConfirmAction>(null);
   const [blnDismissNotFound, setBlnDismissNotFound] = useState(false);
   const [blnDismissNoItems, setBlnDismissNoItems] = useState(false);
+  const objHeaderControlSx = {
+    height: 34,
+    minHeight: 34,
+    px: 1.5,
+    py: 0.5,
+    borderRadius: "8px",
+    textTransform: "none",
+    fontWeight: 700,
+    fontSize: "0.76rem",
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
+    alignSelf: "stretch",
+    "& .MuiButton-startIcon": {
+      marginRight: "6px",
+    },
+    "& .MuiSvgIcon-root": {
+      fontSize: "1.1rem",
+    },
+  } as const;
 
   function hasPermissionCode(strCode: string) {
     const strNormalized = strCode.trim().toUpperCase();
@@ -445,7 +464,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
             <Stack direction="row" spacing={1} alignItems="center">
               <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
             </Stack>
-            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
+            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="stretch">
               <ITDeclarationActionBar
                 blnLocked={blnLocked}
                 blnCanRelease={blnCanReleaseHeader}
@@ -458,7 +477,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 fnLock={() => setStrConfirm("lock")}
               />
             </Stack>
-            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
           </Stack>
         </Stack>
       </Paper>

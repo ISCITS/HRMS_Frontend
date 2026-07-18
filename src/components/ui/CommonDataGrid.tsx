@@ -41,6 +41,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
   getRowSx?: (row: T) => SxProps<Theme>;
@@ -61,6 +62,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  footerContent,
   hideToolbar = false,
   minTableWidth = 980,
   getRowSx,
@@ -98,7 +100,6 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
-  const strRowsPerPageLabel = t("rows_per_page", dicConstant.common.rowsPerPage);
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
   const orderedColumns = useMemo(() => {
@@ -267,7 +268,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
 
   const table = (
     <Stack spacing={2.5} sx={{ minHeight: 0, height: "100%" }}>
-      {!hideToolbar ? (
+      {(!hideToolbar || showPaginationSummary) ? (
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={1.5}
@@ -276,8 +277,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           sx={{ px: 1.5, pt: 1.25 }}
         >
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
-            <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
-            {showExportOptions ? (
+            {!hideToolbar ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
+            {!hideToolbar && showExportOptions ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Button data-controlid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
                   {strExportExcelLabel}
@@ -297,9 +298,6 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
             >
               <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>
-                  {strRowsPerPageLabel}
-                </Typography>
                 <TextField
                   data-controlid={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
@@ -445,6 +443,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           </TableBody>
         </Table>
       </Box>
+
+      {footerContent ? <Box>{footerContent}</Box> : null}
 
     </Stack>
   );

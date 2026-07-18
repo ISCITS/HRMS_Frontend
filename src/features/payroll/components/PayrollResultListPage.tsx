@@ -3,7 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
@@ -12,13 +12,8 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   InputAdornment,
   MenuItem,
-  Pagination,
   Stack,
   TextField,
   Typography,
@@ -26,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -70,7 +66,6 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
   strMonthScope: "Latest",
 };
-const lstRowsPerPageOptions = [10, 20, 50];
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -180,115 +175,6 @@ function translateDynamicLabel(
   return t(strPrefix ? `${strPrefix}_${strKey}` : strKey, formatDynamicFallback(strValue));
 }
 
-function downloadCsv(strFileName: string, lstRows: PayrollResultListRecord[]) {
-  const lstHeaders = [
-    "Employee Code",
-    "Employee Name",
-    "Payroll Run",
-    "Payroll Month",
-    "Gross Earnings",
-    "Employee Deductions",
-    "Tax",
-    "Net Pay",
-    "Employer Contributions",
-    "Total Employer Cost",
-    "Status",
-  ];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.strEmployeeCode,
-        dicRow.strEmployeeName,
-        dicRow.strRunName,
-        dicRow.dtPayrollMonth ?? "",
-        dicRow.decGrossEarningsAmount,
-        dicRow.decEmployeeDeductionTotal,
-        dicRow.decTaxTotal,
-        dicRow.decNetPayAmount,
-        dicRow.decEmployerContributionTotal,
-        dicRow.decTotalEmployerCost,
-        dicRow.strStatus,
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    ),
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1280,height=800");
-  if (!objWindow) {
-    return;
-  }
-  const strRows = lstRows
-    .map(
-      (dicRow) => `
-    <tr>
-      <td>${dicRow.strEmployeeCode}</td>
-      <td>${dicRow.strEmployeeName}</td>
-      <td>${dicRow.strRunName}</td>
-      <td>${dicRow.dtPayrollMonth ?? "-"}</td>
-      <td>${dicRow.decGrossEarningsAmount}</td>
-      <td>${dicRow.decEmployeeDeductionTotal}</td>
-      <td>${dicRow.decTaxTotal}</td>
-      <td>${dicRow.decNetPayAmount}</td>
-      <td>${dicRow.decEmployerContributionTotal}</td>
-      <td>${dicRow.decTotalEmployerCost}</td>
-      <td>${dicRow.strStatus}</td>
-    </tr>
-  `
-    )
-    .join("");
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Employee Code</th>
-              <th>Employee Name</th>
-              <th>Payroll Run</th>
-              <th>Payroll Month</th>
-              <th>Gross Earnings</th>
-              <th>Employee Deductions</th>
-              <th>Tax</th>
-              <th>Net Pay</th>
-              <th>Employer Contributions</th>
-              <th>Total Employer Cost</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
-
 export default function PayrollResultListPage({
   blnPayslipScreen = false,
   blnSelfOnly = false,
@@ -318,8 +204,6 @@ export default function PayrollResultListPage({
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] =
     useState<SearchForm>(dicEmptySearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objPreviewRecord, setObjPreviewRecord] =
     useState<PayrollResultDetailRecord | null>(null);
   const [intPayslipActionID, setIntPayslipActionID] = useState<number | null>(null);
@@ -341,7 +225,6 @@ export default function PayrollResultListPage({
         })
       );
       setBlnHasLoadedRows(true);
-      setIntPage(1);
     } catch (objError) {
       setStrError(
         objError instanceof Error
@@ -435,32 +318,6 @@ export default function PayrollResultListPage({
     [objPreviewRecord]
   );
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(
-    intStartIndex,
-    intStartIndex + intRowsPerPage
-  );
-  const strRangeLabel =
-    lstFilteredRows.length === 0
-      ? `0 ${t("pagination_separator", "of")} 0`
-      : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
-
-  async function openPreview(intResultID: number) {
-    try {
-      setObjPreviewRecord(
-        await payrollResultService.getPayrollResultById(intResultID)
-      );
-    } catch (objError) {
-      setStrError(
-        objError instanceof Error
-          ? objError.message
-          : "Unable to load payroll result."
-      );
-    }
-  }
-
   async function openPayslipDocument(dicRow: PayrollResultListRecord, blnPrint: boolean) {
     setIntPayslipActionID(dicRow.intID);
     setStrError("");
@@ -514,6 +371,122 @@ export default function PayrollResultListPage({
     loadResults(dicEmptySearch).catch(() => undefined);
   }
 
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        id: dicRow.intID,
+        action: (
+          <Box className={styles.actionCell} sx={{ gap: 0.75 }}>
+            <CommonRowActions
+              testIdPrefix="payroll-results.list.row"
+              rowKey={dicRow.intID}
+              blnCanView
+              blnCanEdit={blnPayslipScreen}
+              onView={() =>
+                objRouter.push(
+                  blnPayslipScreen
+                    ? (blnEssMode
+                        ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                        : `/reports/payslips/${dicRow.intID}`)
+                    : `/payroll/results/${dicRow.intID}`
+                )
+              }
+              onEdit={() =>
+                objRouter.push(
+                  dicRow.intEmployeePayrollInputID
+                    ? (blnEssMode
+                        ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit?backRoute=${strEssBackRoute}`
+                        : `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`)
+                    : (blnEssMode
+                        ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
+                        : `/reports/payslips/${dicRow.intID}`)
+                )
+              }
+            />
+            {blnPayslipScreen ? (
+              <>
+                <Button
+                  className={`${styles.secondaryButton} ${styles.compactButton}`}
+                  startIcon={<ReceiptLongRoundedIcon />}
+                  onClick={() => openPayslipDocument(dicRow, false)}
+                  disabled={intPayslipActionID === dicRow.intID}
+                >
+                  {t("download_payslip", "Download")}
+                </Button>
+                <Button
+                  className={`${styles.secondaryButton} ${styles.compactButton}`}
+                  startIcon={<PrintRoundedIcon />}
+                  onClick={() => openPayslipDocument(dicRow, true)}
+                  disabled={intPayslipActionID === dicRow.intID}
+                >
+                  {t("print_payslip", "Print")}
+                </Button>
+              </>
+            ) : null}
+          </Box>
+        ),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        strPayslipNumber: dicRow.strPayslipNumber || "-",
+        strRunName: dicRow.strRunName,
+        dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
+        decGrossEarningsAmount: formatCurrency(dicRow.decGrossEarningsAmount),
+        decEmployeeDeductionTotal: formatCurrency(dicRow.decEmployeeDeductionTotal),
+        decTaxTotal: formatCurrency(dicRow.decTaxTotal),
+        decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        decEmployerContributionTotal: formatCurrency(dicRow.decEmployerContributionTotal),
+        decTotalEmployerCost: formatCurrency(dicRow.decTotalEmployerCost),
+        strStatus: (
+          <span
+            className={styles.statusPill}
+            style={getStatusPillSx(
+              blnPayslipScreen
+                ? dicRow.strPayslipStatus || "Generated"
+                : dicRow.strStatus
+            )}
+          >
+            {blnPayslipScreen
+              ? translateDynamicLabel(t, dicRow.strPayslipStatus || "Generated", "status")
+              : translateDynamicLabel(t, dicRow.strStatus, "status")}
+          </span>
+        ),
+        dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
+      })),
+    [blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, strEssBackRoute, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
+    const lstColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: blnPayslipScreen ? 260 : 110 },
+      { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220 },
+      { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140 },
+      { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160 },
+      { field: "decEmployeeDeductionTotal", headerName: t("employee_deductions", "Employee Deductions"), align: "right", width: 180 },
+      { field: "decTaxTotal", headerName: t("tax", "Tax"), align: "right", width: 140 },
+      { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150 },
+      { field: "decEmployerContributionTotal", headerName: t("employer_contribution", "Employer Contributions"), align: "right", width: 190 },
+      { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190 },
+      { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
+    ];
+
+    if (blnPayslipScreen) {
+      lstColumns.splice(3, 0, {
+        field: "strPayslipNumber",
+        headerName: t("payslip_no", "Payslip No."),
+        width: 150,
+      });
+      lstColumns.push({
+        field: "dtPayslipGeneratedOn",
+        headerName: t("generated_on", "Generated On"),
+        width: 180,
+      });
+    }
+
+    return lstColumns;
+  }, [blnPayslipScreen, t]);
+
   if (
     blnRightsLoading ||
     blnPageInitializing ||
@@ -529,9 +502,9 @@ export default function PayrollResultListPage({
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
         {blnPayslipScreen
           ? (blnEssMode
-              ? t("ess_breadcrumbs", "ESS / My Payslips")
-              : t("payslip_breadcrumbs", "Payroll / Payslips"))
-          : t("breadcrumbs", "Payroll / Payroll Results")}
+              ? t("ess_breadcrumbs", "My Payslips")
+              : t("payslip_breadcrumbs", "Payslips"))
+          : t("breadcrumbs", "Payroll Results")}
       </Typography>
 
       <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
@@ -546,26 +519,28 @@ export default function PayrollResultListPage({
       </Box>
 
       <Box className={styles.controlsCard}>
-        {!blnEssMode && blnPayslipScreen ? (
+        {!blnEssMode ? (
           <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
             <Box>
-              <Typography className={styles.title}>
+              {/* <Typography className={styles.title}>
                 {blnPayslipScreen
-                  ? (blnEssMode ? t("ess_page_title", "My Payslips") : t("payslips_title", "Payslips"))
+                  ? t("payroll_results_title", "Payroll Results")
                   : t("payroll_results_title", "Payroll Results")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-                {blnPayslipScreen
-                  ? t("payslips_help_generated", "View, download, print, or revise generated employee payslips.")
-                  : t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
-              </Typography>
+              </Typography> */}
+              {!blnPayslipScreen ? (
+                <Typography sx={{ color: "#64748b", mt: 0.4 }}>
+                  {t(
+                    "payroll_results_help",
+                    "Review processed payroll calculations before generating payslips."
+                  )}
+                </Typography>
+              ) : null}
             </Box>
           </Box>
         ) : null}
 
         {blnPayslipScreen ? (
-          <Box className={styles.payslipSearchPanel}>
-            <Box className={styles.payslipSearchLinePrimary}>
+          <Box className={`${styles.payslipSearchPanel} ${styles.payslipSearchLinePrimary}`}>
               <TextField
                 controlId="payroll-results.list.employee-search.input"
                 value={dicSearchDraft.strSearchEmployee}
@@ -657,7 +632,6 @@ export default function PayrollResultListPage({
                   {t("clear", "Clear")}
                 </Button>
               </Box>
-            </Box>
           </Box>
         ) : null}
 
@@ -668,19 +642,11 @@ export default function PayrollResultListPage({
               border: "1px solid rgba(191,219,254,0.7)",
               borderRadius: "28px",
               px: { xs: 1.5, md: 2.5 },
-              py: { xs: 2, md: 2.2 },
+              py: { xs: 1.5, md: 1.8 },
               background: "radial-gradient(circle at top center, rgba(226,241,255,0.72) 0%, #ffffff 45%, #f8fbff 100%)",
               boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
             }}
           >
-            <Box sx={{ mb: 1.8 }}>
-              <Typography sx={{ color: "#0f172a", fontSize: { xs: "2rem", md: "2.1rem" }, fontWeight: 900, lineHeight: 1.05 }}>
-                {t("payroll_results_title", "Payroll Results")}
-              </Typography>
-              <Typography sx={{ color: "#5f7aa4", mt: 0.75, fontSize: "0.98rem" }}>
-                {t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
-              </Typography>
-            </Box>
             <Box
               sx={{
                 display: "grid",
@@ -780,7 +746,7 @@ export default function PayrollResultListPage({
                 className={styles.primaryButton}
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => applyFilters(dicSearchDraft)}
-                sx={{ minWidth: 112, height: 50, borderRadius: "14px" }}
+                sx={{ minWidth: 104, minHeight: 34, height: 34, borderRadius: "10px" }}
               >
                 {t("search", "Search")}
               </Button>
@@ -789,7 +755,7 @@ export default function PayrollResultListPage({
                 className={styles.secondaryButton}
                 startIcon={<ClearRoundedIcon />}
                 onClick={clearFilters}
-                sx={{ minWidth: 104, height: 50, borderRadius: "14px" }}
+                sx={{ minWidth: 96, minHeight: 34, height: 34, borderRadius: "10px" }}
               >
                 {t("clear", "Clear")}
               </Button>
@@ -797,6 +763,30 @@ export default function PayrollResultListPage({
           </Box>
         )}
       </Box>
+
+      {blnPayslipScreen ? (
+        <Box
+          sx={{
+            alignItems: "center",
+            backgroundColor: "#f8fbff",
+            border: "1px solid rgba(191,219,254,0.7)",
+            borderRadius: "16px",
+            color: "#1f2937",
+            display: "flex",
+            gap: 1,
+            px: 1.5,
+            py: 1.25,
+          }}
+        >
+          <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+          <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+            {t(
+              "payslips_help_generated",
+              "View, download, print, or revise generated employee payslips."
+            )}
+          </Typography>
+        </Box>
+      ) : null}
 
       <Box className={styles.tableCard}>
         {!blnCanAccessResults && !strError ? (
@@ -808,195 +798,28 @@ export default function PayrollResultListPage({
           </Alert>
         ) : null}
 
-        <Box className={styles.listUtilityBar}>
-          <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? (
-              <Button
-                controlId="payroll-results.list.export-excel.button"
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() =>
-                  downloadCsv(
-                    blnPayslipScreen ? "payslips.csv" : "payroll-results.csv",
-                    lstFilteredRows
-                  )
-                }
-              >
-                {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-            {canDoAny("export") ? (
-              <Button
-                controlId="payroll-results.list.export-pdf.button"
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() =>
-                  exportPdf(
-                    blnPayslipScreen ? "Payslips" : "Payroll Results",
-                    lstFilteredRows
-                  )
-                }
-              >
-                {t("export_pdf", "Export PDF")}
-              </Button>
-            ) : null}
-          </Box>
-
-          <Box className={styles.paginationBar} sx={{ p: 0 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography>{t("rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={intRowsPerPage}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-                sx={{ width: 92 }}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={intOption}>
-                    {intOption}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>{strRangeLabel}</Typography>
-            </Box>
-            <Pagination
-              count={intPageCount}
-              page={intCurrentPage}
-              onChange={(_, intValue) => setIntPage(intValue)}
-              color="primary"
-              size="small"
-              showFirstButton
-              showLastButton
-            />
-          </Box>
-        </Box>
-
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
-                <th>{t("employee_code", "Employee Code")}</th>
-                <th>{t("employee_name", "Employee Name")}</th>
-                {blnPayslipScreen ? <th>{t("payslip_no", "Payslip No.")}</th> : null}
-                <th>{t("payroll_run", "Payroll Run")}</th>
-                <th>{t("payroll_month", "Payroll Month")}</th>
-                <th>{t("gross_earnings", "Gross Earnings")}</th>
-                <th>{t("employee_deductions", "Employee Deductions")}</th>
-                <th>{t("tax", "Tax")}</th>
-                <th>{t("net_pay", "Net Pay")}</th>
-                <th>{t("employer_contribution", "Employer Contributions")}</th>
-                <th>{t("total_employer_cost", "Total Employer Cost")}</th>
-                <th>{t("status", "Status")}</th>
-                {blnPayslipScreen ? <th>{t("generated_on", "Generated On")}</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {lstVisibleRows.length === 0 ? (
-                <tr>
-                  <td colSpan={blnPayslipScreen ? 14 : 12} className={styles.emptyState}>
-                    {blnPayslipScreen
-                      ? t(
-                          "empty_generated_payslip_message",
-                          "No generated payslips found. Generate payslips from a processed payroll run first."
-                        )
-                      : t(
-                          "empty_message",
-                          "No payroll results found for the current filters."
-                        )}
-                  </td>
-                </tr>
-              ) : (
-                lstVisibleRows.map((dicRow) => (
-                  <tr key={dicRow.intID}>
-                    <td className={styles.actionsColumn}>
-                      <Box className={styles.actionCell} sx={{ gap: 0.75 }}>
-                        <CommonRowActions
-                          testIdPrefix="payroll-results.list.row"
-                          rowKey={dicRow.intID}
-                          blnCanView
-                          blnCanEdit={blnPayslipScreen}
-                          onView={() =>
-                            objRouter.push(
-                              blnPayslipScreen
-                                ? (blnEssMode
-                                    ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                                    : `/reports/payslips/${dicRow.intID}`)
-                                : `/payroll/results/${dicRow.intID}`
-                            )
-                          }
-                          onEdit={() =>
-                            objRouter.push(
-                              dicRow.intEmployeePayrollInputID
-                                ? (blnEssMode
-                                    ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit?backRoute=${strEssBackRoute}`
-                                    : `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`)
-                                : (blnEssMode
-                                    ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                                    : `/reports/payslips/${dicRow.intID}`)
-                            )
-                          }
-                        />
-                        {blnPayslipScreen ? (
-                          <>
-                            <Button
-                              className={styles.secondaryButton}
-                              startIcon={<ReceiptLongRoundedIcon />}
-                              onClick={() => openPayslipDocument(dicRow, false)}
-                              disabled={intPayslipActionID === dicRow.intID}
-                            >
-                              {t("download_payslip", "Download")}
-                            </Button>
-                            <Button
-                              className={styles.secondaryButton}
-                              startIcon={<PrintRoundedIcon />}
-                              onClick={() => openPayslipDocument(dicRow, true)}
-                              disabled={intPayslipActionID === dicRow.intID}
-                            >
-                              {t("print_payslip", "Print")}
-                            </Button>
-                          </>
-                        ) : null}
-                      </Box>
-                    </td>
-                    <td>{dicRow.strEmployeeCode}</td>
-                    <td>{dicRow.strEmployeeName}</td>
-                    {blnPayslipScreen ? <td>{dicRow.strPayslipNumber || "-"}</td> : null}
-                    <td>{dicRow.strRunName}</td>
-                    <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
-                    <td>{formatCurrency(dicRow.decGrossEarningsAmount)}</td>
-                    <td>{formatCurrency(dicRow.decEmployeeDeductionTotal)}</td>
-                    <td>{formatCurrency(dicRow.decTaxTotal)}</td>
-                    <td>{formatCurrency(dicRow.decNetPayAmount)}</td>
-                    <td>{formatCurrency(dicRow.decEmployerContributionTotal)}</td>
-                    <td>{formatCurrency(dicRow.decTotalEmployerCost)}</td>
-                    <td>
-                      <span
-                        className={styles.statusPill}
-                        style={getStatusPillSx(
-                          blnPayslipScreen
-                            ? dicRow.strPayslipStatus || "Generated"
-                            : dicRow.strStatus
-                        )}
-                      >
-                        {blnPayslipScreen
-                          ? translateDynamicLabel(t, dicRow.strPayslipStatus || "Generated", "status")
-                          : translateDynamicLabel(t, dicRow.strStatus, "status")}
-                      </span>
-                    </td>
-                    {blnPayslipScreen ? <td>{formatDateTime(dicRow.dtPayslipGeneratedOn)}</td> : null}
-                  </tr>
-                ))
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          defaultPageSize={10}
+          pageSizeOptions={[10, 20, 50]}
+          exportFileName={blnPayslipScreen ? "payslips" : "payroll-results"}
+          showExportOptions={canDoAny("export")}
+          showPaginationSummary
+          emptyMessage={blnPayslipScreen
+            ? t(
+                "empty_generated_payslip_message",
+                "No generated payslips found. Generate payslips from a processed payroll run first."
+              )
+            : t(
+                "empty_message",
+                "No payroll results found for the current filters."
               )}
-            </tbody>
-          </table>
-        </Box>
+          testIdPrefix="payroll-results.list"
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
 
       <CommonPayrollDialog

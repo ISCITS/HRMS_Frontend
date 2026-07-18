@@ -1619,7 +1619,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     shellBorder: "rgba(190, 210, 244, 0.72)",
     shellText: "#33446F",
     shellMuted: "#66779F",
-    hero: "linear-gradient(135deg, #F2F7FF 0%, #EEF5FF 58%, #E8F2FF 100%)",
+    hero: "linear-gradient(90deg, #F7FAFF 0%, #EDF4FC 48%, #DCEAF8 100%)",
     heroGlow: "radial-gradient(circle at top right, rgba(153, 191, 255, 0.22), rgba(153, 191, 255, 0) 62%)",
     navy: "#22345F",
     blue: "#285CFF",
@@ -1838,7 +1838,18 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
 
       <Grid container spacing={2} alignItems="stretch">
         <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 0, overflow: "hidden", background: ESS_COLORS.hero, position: "relative" }}>
+          <Paper
+            sx={{
+              ...objWhiteCardSx,
+              p: 0,
+              overflow: "hidden",
+              background: ESS_COLORS.hero,
+              position: "relative",
+              border: "1px solid #D7E4F2",
+              borderRadius: "28px",
+              boxShadow: "0 4px 14px rgba(29, 93, 150, 0.08)",
+            }}
+          >
             <Box sx={{ position: "absolute", inset: 0, background: ESS_COLORS.heroGlow, pointerEvents: "none" }} />
             <Box sx={{ p: { xs: 1.6, md: 2.1 }, position: "relative", zIndex: 1 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.6} alignItems={{ xs: "flex-start", sm: "center" }}>

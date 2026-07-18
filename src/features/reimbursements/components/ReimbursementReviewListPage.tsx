@@ -3,12 +3,14 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } from "@/features/employee/types";
@@ -24,36 +26,6 @@ const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved"
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS", "REIMBURSEMENT", "REIMBURSEMENTS"];
 const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
-const objHeaderActionButtonBaseSx = {
-  minHeight: 30,
-  maxHeight: 30,
-  px: 1.2,
-  py: 0.25,
-  borderRadius: "8px !important",
-  fontWeight: 800,
-  boxShadow: "none",
-  textTransform: "none",
-};
-const objHeaderPrimaryButtonSx = {
-  ...objHeaderActionButtonBaseSx,
-  backgroundColor: "var(--app-primary-color)",
-  color: "#ffffff",
-  "&:hover": {
-    backgroundColor: "var(--app-primary-color)",
-    boxShadow: "none",
-  },
-};
-const objHeaderSecondaryButtonSx = {
-  ...objHeaderActionButtonBaseSx,
-  border: "1px solid var(--app-secondary-border)",
-  backgroundColor: "rgba(255, 255, 255, 0.86)",
-  color: "var(--app-primary-color)",
-  "&:hover": {
-    border: "1px solid var(--app-secondary-border)",
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-  },
-};
-
 type FilterOption = {
   strValue: string;
   strLabel: string;
@@ -166,7 +138,6 @@ export default function ReimbursementReviewListPage() {
 
   const blnCanViewEssReimbursement = canViewEssAny() || canDoEssAny("list") || canDoEssAny("view") || canDoEssAny("ess_reimbursement_view") || hasEssPermissionCode("ESS_REIMBURSEMENT_VIEW");
   const blnCanEditEssReimbursement = canDoEssAny("edit") || canDoEssAny("ess_reimbursement_edit") || hasEssPermissionCode("ESS_REIMBURSEMENT_EDIT");
-  const strPageLabel = blnEmployeeReimbursementContext ? "Employee Reimbursements" : "Reimbursement Review";
 
   async function loadClaims(dicNextFilters = dicFilters) {
     if (!blnCanView) {
@@ -262,7 +233,15 @@ export default function ReimbursementReviewListPage() {
         action: blnEmployeeReimbursementContext ? (
           <Stack direction="row" spacing={0.6} justifyContent="center" flexWrap="wrap" useFlexGap>
             {blnCanViewEssReimbursement ? (
-              <Button size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))} controlId="reimbursements.review-list.row.view-ess.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
+              <IconButton
+                size="small"
+                onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))}
+                aria-label="Open reimbursement claim"
+                controlId="reimbursements.review-list.row.view-ess.button"
+                data-row-key={objClaim.intID}
+              >
+                <OpenInNewRoundedIcon fontSize="small" />
+              </IconButton>
             ) : null}
             {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
@@ -270,7 +249,15 @@ export default function ReimbursementReviewListPage() {
           </Stack>
         ) : (
           <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Button size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} controlId="reimbursements.review-list.row.open.button" data-row-key={objClaim.intID} sx={{ minWidth: 0, px: 0.8, textTransform: "none", fontWeight: 800 }}>View</Button>
+            <IconButton
+              size="small"
+              onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)}
+              aria-label="Open reimbursement claim"
+              controlId="reimbursements.review-list.row.open.button"
+              data-row-key={objClaim.intID}
+            >
+              <OpenInNewRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
         ),
         strClaimReference: (
@@ -368,10 +355,6 @@ export default function ReimbursementReviewListPage() {
     <Stack spacing={1.4}>
       <Paper sx={{ p: 1.1, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
         <Stack spacing={1.1}>
-          <Box>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{strPageLabel}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
-          </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap>
             <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
               <MenuItem value="">All statuses</MenuItem>
@@ -404,10 +387,10 @@ export default function ReimbursementReviewListPage() {
               <MenuItem value="">All locations</MenuItem>
               {lstLocationOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
             </TextField>
-            <Stack direction="row" alignItems="center" spacing={0.7}>
-              <Button size="small" variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} sx={objHeaderPrimaryButtonSx}>Search</Button>
-              <Button size="small" variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objHeaderSecondaryButtonSx}>Clear</Button>
-            </Stack>
+            <Box className={styles.searchActions}>
+              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.review-list.search.button">Search</Button>
+              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reimbursements.review-list.clear.button">Clear</Button>
+            </Box>
           </Stack>
         </Stack>
       </Paper>
@@ -433,7 +416,7 @@ export default function ReimbursementReviewListPage() {
             toolbarLeft={(
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", sm: "center" }}>
                 {blnCanCreateEssReimbursement ? (
-                  <Button size="small" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} sx={objHeaderPrimaryButtonSx}>Add Reimbursement</Button>
+                  <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} controlId="reimbursements.review-list.add.button">Add Reimbursement</Button>
                 ) : null}
               </Stack>
             )}
@@ -456,9 +439,9 @@ export default function ReimbursementReviewListPage() {
             {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
           </TextField>
         </DialogContent>
-        <DialogActions>
-          <Button size="small" onClick={() => setBlnCreateDialogOpen(false)} variant="outlined" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
-          <Button size="small" onClick={proceedToCreateForEmployee} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Proceed</Button>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button size="small" className={styles.secondaryButton} onClick={() => setBlnCreateDialogOpen(false)} controlId="reimbursements.review-list.create.cancel.button">Cancel</Button>
+          <Button size="small" className={styles.primaryButton} onClick={proceedToCreateForEmployee} controlId="reimbursements.review-list.create.proceed.button">Proceed</Button>
         </DialogActions>
       </Dialog>
     </Stack>

@@ -2300,11 +2300,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
             <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {blnEffectiveViewMode
-                  ? t("employee_salary_view_title", "View Employee Salary Detail")
-                  : t("employee_salary_detail_title", "Employee Salary Detail")}
-              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.25, maxWidth: 820 }}>
                 {t(
                   "employee_salary_detail_help",

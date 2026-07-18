@@ -37,6 +37,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/employees")) {
     return "employee";
   }
+  if (strLowerPath.startsWith("/employee-salary")) {
+    return "employee-salary";
+  }
   if (strLowerPath.startsWith("/payroll/runs")) {
     return "payroll-runs";
   }
@@ -90,6 +93,12 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/tax-regimes") || strLowerPath.startsWith("/tax-regimes")) {
     return "tax-regimes";
   }
+  if (strLowerPath.startsWith("/salary-components")) {
+    return "salary-components";
+  }
+  if (strLowerPath.startsWith("/salary-structures")) {
+    return "salary-structures";
+  }
   if (strLowerPath.startsWith("/payroll/it-declaration-review")) {
     return "it-declaration-review";
   }
@@ -118,6 +127,9 @@ export function resolveRouteModuleName(strPathname: string) {
     strLowerPath.startsWith("/payroll/loans-advances")
   ) {
     return "loans-advances";
+  }
+  if (strLowerPath.startsWith("/payroll/fnf-settlements")) {
+    return "fnf-settlements";
   }
   if (strLowerPath.startsWith("/ess/calendar")) {
     return "calendar";

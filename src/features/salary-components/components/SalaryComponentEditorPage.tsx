@@ -48,7 +48,7 @@ import type {
 } from "@/features/salary-components/types";
 
 type SalaryComponentEditorPageProps = {
-  strMode: "add" | "edit";
+  strMode: "add" | "edit" | "view";
   intSalaryComponentID?: number;
   strBackRoute?: string;
 };
@@ -442,9 +442,10 @@ export default function SalaryComponentEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
+  const blnExplicitViewMode = strMode === "view";
+  const blnReadOnly = blnExplicitViewMode || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" && blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
   const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
 
@@ -481,7 +482,7 @@ export default function SalaryComponentEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if (strMode === "edit" && intSalaryComponentID) {
+        if ((strMode === "edit" || strMode === "view") && intSalaryComponentID) {
           const dicDetail = await salaryComponentService.getSalaryComponentById(intSalaryComponentID);
           if (!blnMounted) {
             return;
@@ -1275,15 +1276,18 @@ export default function SalaryComponentEditorPage({
 
   return (
     <Stack data-controlid="salary-components.editor.page" spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "28px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)" }}>
+      <Paper
+        sx={{
+          borderRadius: "28px",
+          px: { xs: 2, md: 3 },
+          py: { xs: 1.5, md: 2 },
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)"
+        }}
+      >
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "edit"
-                  ? t("edit_salary_component", "Edit Salary Component")
-                  : t("add_salary_component", "Add Salary Component")}
-              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t(
                   "editor_description",
@@ -1318,39 +1322,41 @@ export default function SalaryComponentEditorPage({
               >
                 {t("back_button", "Back")}
               </Button>
-              <Button
-                data-controlid="salary-components.editor.save.button"
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={handleSave}
-                disabled={!blnCanSave || blnSaving}
-                 sx={{
-                  borderRadius: "14px",
-                  height: 38,
-                  minHeight: 38,
-                  py: 0,
-                  px: 2.25,
-                  minWidth: 168,
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1rem"
+              {!blnExplicitViewMode ? (
+                <Button
+                  data-controlid="salary-components.editor.save.button"
+                  className={styles.primaryButton}
+                  startIcon={<SaveRoundedIcon />}
+                  onClick={handleSave}
+                  disabled={!blnCanSave || blnSaving}
+                   sx={{
+                    borderRadius: "14px",
+                    height: 38,
+                    minHeight: 38,
+                    py: 0,
+                    px: 2.25,
+                    minWidth: 168,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
                     }
-                  }
-                }}
+                  }}
 
-              >
-                {blnSaving ? t("saving", "Saving...") : t("save_component", "Save Component")}
-              </Button>
+                >
+                  {blnSaving ? t("saving", "Saving...") : t("save_component", "Save Component")}
+                </Button>
+              ) : null}
             </Stack>
           </Stack>
 
           {strError ? <Alert data-controlid="salary-components.editor.error.alert" severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert data-controlid="salary-components.editor.success.alert" severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-          {blnReadOnly ? <Alert data-controlid="salary-components.editor.read-only.alert" severity="info">{t("read_only_mode", "You have view-only access for Salary Component.")}</Alert> : null}
+          {blnReadOnly ? <Alert data-controlid="salary-components.editor.read-only.alert" severity="info">{t("read_only_mode", blnExplicitViewMode ? "This salary component is open in view mode." : "You have view-only access for Salary Component.")}</Alert> : null}
         </Stack>
       </Paper>
 
@@ -1362,7 +1368,7 @@ export default function SalaryComponentEditorPage({
           spacing={1}
           sx={{ mb: 1.5 }}
         >
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>1. {t("basic_information", "Basic Information")}</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("basic_information", "Basic Information")}</Typography>
           <FormControlLabel
             sx={{ m: 0 }}
             control={<ActiveStatusSwitch testId="salary-components.editor.active-component.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateRootField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
@@ -1371,6 +1377,7 @@ export default function SalaryComponentEditorPage({
         </Stack>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <TextField
+            required
             label={t("component_name", "Component Name")}
             value={dicForm.strComponentName}
             onChange={(objEvent) => syncEnglishComponentText(objEvent.target.value, dicForm.strComponentDescription)}
@@ -1380,7 +1387,7 @@ export default function SalaryComponentEditorPage({
             inputProps={buildInputTestIdProps("salary-components.editor.component-name.input")}
           />
 
-          <TextField select label={t("component_category", "Component Category")} value={dicForm.intComponentCategoryID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentCategoryID", "strComponentCategory", lstCategoryOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
+          <TextField required select label={t("component_category", "Component Category")} value={dicForm.intComponentCategoryID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentCategoryID", "strComponentCategory", lstCategoryOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
             {lstCategoryOptions.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getCategoryLabel(dicOption.strDisplayName)}</MenuItem>
             ))}
@@ -1409,6 +1416,7 @@ export default function SalaryComponentEditorPage({
             ))}
           </TextField>
           <TextField
+            required
             label={t("component_code", "Component Code")}
             value={dicForm.strComponentCode}
             onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
@@ -1465,9 +1473,9 @@ export default function SalaryComponentEditorPage({
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>2. {t("calculation_setup", "Calculation Setup")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("calculation_setup", "Calculation Setup")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intCalcMethodID", "strCalcMethod", lstCalcMethodOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
+          <TextField required select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intCalcMethodID", "strCalcMethod", lstCalcMethodOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
             {lstCalcMethodOptions.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.calculation-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
@@ -1490,6 +1498,7 @@ export default function SalaryComponentEditorPage({
           </TextField>
           {blnShowPercentageCalculationFields ? (
             <TextField
+              required
               select
               label={t("base_component", "Base Component")}
               value={dicForm.intDefaultBasisComponentID}
@@ -1510,6 +1519,7 @@ export default function SalaryComponentEditorPage({
           ) : null}
           {blnShowPercentageCalculationFields ? (
             <TextField
+              required
               type="number"
               label={t("percentage_value", "%")}
               value={dicForm.strDefaultPercentageValue}
@@ -1546,9 +1556,10 @@ export default function SalaryComponentEditorPage({
 
       {blnShowFlexiBucketConfiguration ? (
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("flexi_bucket_settings", "Flexi Bucket Settings")}</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("flexi_bucket_settings", "Flexi Bucket Settings")}</Typography>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(320px, 420px)" }, alignItems: "start" }}>
             <TextField
+              required
               select
               label={t("residual_component", "Residual Component")}
               value={dicForm.intResidualComponentID}
@@ -1568,7 +1579,7 @@ export default function SalaryComponentEditorPage({
 
       {blnShowFlexiReimbursementConfiguration ? (
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>3. {t("reimbursement_configuration", "Reimbursement Configuration")}</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("reimbursement_configuration", "Reimbursement Configuration")}</Typography>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 0.9fr) repeat(5, minmax(0, 1fr))" }, alignItems: "start" }}>
             <FormControlLabel sx={{ m: 0, minHeight: 56, alignItems: "center" }} control={<Switch checked={dicForm.blnIsFlexiBenefit} onChange={(objEvent) => setDicForm((dicPrevious) => ({
               ...dicPrevious,
@@ -1675,7 +1686,7 @@ export default function SalaryComponentEditorPage({
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
             <Box>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>4. {t("flexi_eligibility_rules", "Flexi Eligibility Rules")}</Typography>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("flexi_eligibility_rules", "Flexi Eligibility Rules")}</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
                 {t("flexi_eligibility_rules_help", "Define employee eligibility conditions for this Flexi reimbursement. Components without eligibility rules are available by default if allowed in salary structure.")}
               </Typography>
@@ -1706,7 +1717,7 @@ export default function SalaryComponentEditorPage({
             <Alert severity="info">{t("flexi_eligibility_rules_empty", "No eligibility rules configured. This component will be available by default when allowed in salary structure.")}</Alert>
           ) : (
             <Stack spacing={1.5}>
-              {dicForm.lstFlexiEligibilityRules.map((dicRule, intIndex) => {
+              {dicForm.lstFlexiEligibilityRules.map((dicRule) => {
                 const objQuestion = dicFlexiEligibilityQuestionByID.get(Number(dicRule.intEligibilityQuestionID));
                 const lstSelectOptions = Array.isArray(objQuestion?.objOptionJSON) ? objQuestion.objOptionJSON : [];
                 const blnBooleanQuestion = objQuestion?.strAnswerType === "boolean";
@@ -1716,7 +1727,7 @@ export default function SalaryComponentEditorPage({
                 return (
                   <Box key={dicRule.strRowID} data-controlid="salary-components.editor.flexi-eligibility.rule.row" data-row-key={dicRule.strRowID} sx={{ border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
                     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-                      <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("rule_title", "Rule")} {intIndex + 1}</Typography>
+                      <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("rule_title", "Rule")}</Typography>
                       <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveFlexiEligibilityRule(dicRule.strRowID)} disabled={blnFieldDisabled} data-controlid="salary-components.editor.flexi-eligibility.remove-rule.button" data-row-key={dicRule.strRowID}>
                         {t("remove_rule", "Remove Rule")}
                       </Button>
@@ -1783,7 +1794,7 @@ export default function SalaryComponentEditorPage({
 
       {blnShowFlagsSection ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? (blnIsFlexiReimbursement ? "5." : "4.") : "3."} {t("statutory_and_payroll_flags", "Statutory & Payroll Flags")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("statutory_and_payroll_flags", "Statutory & Payroll Flags")}</Typography>
         <Box sx={{ border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", overflow: "hidden", background: "#fff" }}>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: `repeat(${(blnShowPayrollProcessingGroup ? 1 : 0) + (blnShowContributionTypeGroup ? 1 : 0) + (blnShowStatutoryFlags ? 1 : 0)}, minmax(0, 1fr))` }, borderBottom: "1px solid rgba(203,213,225,0.8)" }}>
             {blnShowStatutoryFlags ? (
@@ -1835,7 +1846,7 @@ export default function SalaryComponentEditorPage({
 
       {blnShowLwpTreatmentSection ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "5." : "4."} {t("lwp_lop_treatment", "LWP / LOP Treatment")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("lwp_lop_treatment", "LWP / LOP Treatment")}</Typography>
         <Box
           sx={{
             display: "grid",
@@ -1903,7 +1914,7 @@ export default function SalaryComponentEditorPage({
       ) : null}
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{`${4 + intAdditionalSectionCount}.`} {t("payslip_configuration", "Payslip Configuration")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("payslip_configuration", "Payslip Configuration")}</Typography>
         {blnIsFlexiBucketCategory ? (
           <Alert severity="info" sx={{ mb: 2 }}>
             {t(
@@ -1926,18 +1937,18 @@ export default function SalaryComponentEditorPage({
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
-          <TextField select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handlePayslipSectionSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
+          <TextField required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory} select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handlePayslipSectionSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
             <MenuItem value="" data-controlid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
             {lstPayslipSections.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
-          <TextField label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
+          <TextField required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory} label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
         </Box>
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{`${5 + intAdditionalSectionCount}.`} {t("tax_declaration_configuration", "Tax / Declaration Configuration")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("tax_declaration_configuration", "Tax / Declaration Configuration")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.declaration-required.switch")} />} label={t("declaration_required", "Declaration required")} />
           {!blnIsReimbursementCategory ? <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required_tax_exemption", "Proof Required for Tax Exemption")} /> : null}
@@ -1947,7 +1958,7 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{`${6 + intAdditionalSectionCount}.`} {t("translations", "Translations")}</Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("translations", "Translations")}</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
               {t("multilingual_text_help", "Add translated component names and descriptions for supported languages.")}
             </Typography>
@@ -1970,13 +1981,15 @@ export default function SalaryComponentEditorPage({
         </Stack>
         <Stack spacing={1.5}>
           {dicForm.lstTexts.map((dicText, intIndex) => (
-            <Box key={dicText.strRowID} sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "220px 1fr 1.1fr auto" }, alignItems: "start", border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.5, background: "#f8fafc" }}>
-              <TextField select label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled fullWidth data-controlid="salary-components.editor.multilingual.language.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.language.select"), "data-row-key": dicText.strRowID }}>
+            <Box key={dicText.strRowID} sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", lg: "280px 1fr 1.1fr auto" }, alignItems: "center", border: "1px solid rgba(203,213,225,0.8)", borderRadius: "18px", p: 1.25, background: "#f8fafc" }}>
+              <TextField select size="small" label={t("language", "Language")} value={dicText.intLanguageID} onChange={(objEvent) => updateTextRow(dicText.strRowID, "intLanguageID", Number(objEvent.target.value))} disabled fullWidth data-controlid="salary-components.editor.multilingual.language.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.language.select"), "data-row-key": dicText.strRowID }}>
                 {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
                   <MenuItem key={dicLanguage.intID} value={dicLanguage.intID} data-controlid={`salary-components.editor.multilingual.language.${dicLanguage.intID}.option`}>{dicLanguage.strLabel}</MenuItem>
                 ))}
               </TextField>
               <TextField
+                required
+                size="small"
                 label={t("component_name", "Component Name")}
                 value={dicText.strComponentName}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentName", objEvent.target.value)}
@@ -1991,6 +2004,7 @@ export default function SalaryComponentEditorPage({
                 fullWidth
               />
               <TextField
+                size="small"
                 label={t("description", "Description")}
                 value={dicText.strComponentDescription}
                 onChange={(objEvent) => updateTextRow(dicText.strRowID, "strComponentDescription", objEvent.target.value)}
@@ -2004,7 +2018,7 @@ export default function SalaryComponentEditorPage({
                 }}
                 fullWidth
               />
-              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled data-controlid="salary-components.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 54 }}>
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLanguageRow(dicText.strRowID)} disabled data-controlid="salary-components.editor.multilingual.remove.button" data-row-key={dicText.strRowID} sx={{ minHeight: 40, alignSelf: "center" }}>
                 {t("remove_button", "Remove")}
               </Button>
             </Box>
@@ -2014,7 +2028,7 @@ export default function SalaryComponentEditorPage({
 
       {blnShowCalculationDependencies ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "9." : "8."} {t("calculation_dependencies", "Calculation Dependencies")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("calculation_dependencies", "Calculation Dependencies")}</Typography>
         <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mb: 1.25 }}>
           {t("dependency_mapping_help", "Select salary components required for formula calculations.")}
         </Typography>
@@ -2067,7 +2081,7 @@ export default function SalaryComponentEditorPage({
       ) : null}
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{blnShowFlexiSection ? "10." : "9."} {t("usage_information", "Usage Information")}</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("usage_information", "Usage Information")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: "18px" }}>
             <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t("used_in_salary_structures", "Used In Salary Structures")}</Typography>

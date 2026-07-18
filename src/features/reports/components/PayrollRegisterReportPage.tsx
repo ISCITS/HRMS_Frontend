@@ -2,10 +2,12 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -275,8 +277,6 @@ export default function PayrollRegisterReportPage() {
   const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
@@ -287,7 +287,6 @@ export default function PayrollRegisterReportPage() {
       setLstRows(await payrollReportService.getPayrollRegisterRows(objFilters));
       setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
-      setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payroll register.");
     } finally {
@@ -309,20 +308,16 @@ export default function PayrollRegisterReportPage() {
     }),
     { decOriginalSalary: 0, decLwpReduction: 0, decGross: 0, decDeduction: 0, decTax: 0, decEmployerContribution: 0, decNet: 0 },
   ), [lstFilteredRows]);
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const lstExportRows = setSelectedRowIDs.size > 0
     ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID))
     : lstFilteredRows;
-  const blnAllVisibleSelected = lstVisibleRows.length > 0 && lstVisibleRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
-  const blnSomeVisibleSelected = lstVisibleRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnAllFilteredSelected = lstFilteredRows.length > 0 && lstFilteredRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
 
-  function toggleVisibleRows(blnChecked: boolean) {
+  function toggleFilteredRows(blnChecked: boolean) {
     setSetSelectedRowIDs((setPrevious) => {
       const setNext = new Set(setPrevious);
-      lstVisibleRows.forEach((dicRow) => {
+      lstFilteredRows.forEach((dicRow) => {
         if (blnChecked) {
           setNext.add(dicRow.intID);
         } else {
@@ -363,21 +358,93 @@ export default function PayrollRegisterReportPage() {
     loadRows(dicEmptySearch).catch(() => undefined);
   }, [blnCanView]);
 
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        intID: dicRow.intID,
+        select: (
+          <Checkbox
+            inputProps={{ "controlId": "reports.payroll-register.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>}
+            size="small"
+            checked={setSelectedRowIDs.has(dicRow.intID)}
+            onChange={(objEvent) => toggleRow(dicRow.intID, objEvent.target.checked)}
+          />
+        ),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        strRegimeUsed: dicRow.strRegimeUsed || "-",
+        strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        decCalendarDays: dicRow.decCalendarDays ?? "-",
+        decPaidDays: dicRow.decPaidDays ?? "-",
+        decLwpDays: dicRow.decLwpDays ?? "-",
+        decLopDays: dicRow.decLopDays ?? "-",
+        decOriginalSalaryAmount: formatCurrency(dicRow.decOriginalSalaryAmount ?? 0),
+        decLwpReductionAmount: formatCurrency(dicRow.decLwpReductionAmount ?? 0),
+        decGrossEarningsAmount: formatCurrency(getGrossEarnings(dicRow)),
+        decEmployeeDeductionTotal: formatCurrency(getEmployeeDeductions(dicRow)),
+        decTaxTotal: formatCurrency(getTaxAmount(dicRow)),
+        decTaxableIncome: formatCurrency(dicRow.decTaxableIncome),
+        decAnnualTaxAmount: formatCurrency(dicRow.decAnnualTaxAmount),
+        decMonthlyTds: formatCurrency(dicRow.decMonthlyTds),
+        decEmployerContributionTotal: formatCurrency(dicRow.decEmployerContributionTotal ?? 0),
+        decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        strStatus: dicRow.strStatus,
+      })),
+    [lstFilteredRows, setSelectedRowIDs]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            inputProps={{ "controlId": "reports.payroll-register.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            size="small"
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={(objEvent) => toggleFilteredRows(objEvent.target.checked)}
+            disabled={lstFilteredRows.length === 0}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
+      { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
+      { field: "strEmployeeName", headerName: dicLabels.strEmployeeName, width: 220 },
+      { field: "strRegimeUsed", headerName: dicLabels.strTaxRegime, width: 140 },
+      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140 },
+      { field: "decCalendarDays", headerName: dicLabels.strCalendarDays, width: 120, align: "right" },
+      { field: "decPaidDays", headerName: dicLabels.strPaidDays, width: 110, align: "right" },
+      { field: "decLwpDays", headerName: dicLabels.strLwpDays, width: 110, align: "right" },
+      { field: "decLopDays", headerName: dicLabels.strLopDays, width: 110, align: "right" },
+      { field: "decOriginalSalaryAmount", headerName: dicLabels.strOriginalSalary, width: 150, align: "right" },
+      { field: "decLwpReductionAmount", headerName: dicLabels.strLwpReduction, width: 150, align: "right" },
+      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right" },
+      { field: "decEmployeeDeductionTotal", headerName: dicLabels.strEmployeeDeductions, width: 170, align: "right" },
+      { field: "decTaxTotal", headerName: dicLabels.strTax, width: 140, align: "right" },
+      { field: "decTaxableIncome", headerName: dicLabels.strTaxableIncome, width: 150, align: "right" },
+      { field: "decAnnualTaxAmount", headerName: dicLabels.strAnnualTax, width: 140, align: "right" },
+      { field: "decMonthlyTds", headerName: dicLabels.strMonthlyTds, width: 140, align: "right" },
+      { field: "decEmployerContributionTotal", headerName: dicLabels.strEmployerContributions, width: 180, align: "right" },
+      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right" },
+      { field: "strStatus", headerName: dicLabels.strStatus, width: 120 },
+    ],
+    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length]
+  );
+
   if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading payroll register..." />;
   }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Reports / Payroll Register</Typography>
+      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Payroll Register</Typography>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography className={styles.title}>Payroll Register</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-              Employee-wise earnings, deductions, regime, taxable income, annual tax, monthly TDS, gross pay, and net pay from processed payroll results.
-            </Typography>
-          </Box>
+          <Box />
         </Box>
         <Box className={styles.payrollRegisterSearchPanel}>
           <Box className={styles.payrollRegisterSearchLinePrimary}>
@@ -403,110 +470,66 @@ export default function PayrollRegisterReportPage() {
         </Box>
       </Box>
 
+      <Box
+        sx={{
+          alignItems: "center",
+          backgroundColor: "#f8fbff",
+          border: "1px solid rgba(191,219,254,0.7)",
+          borderRadius: "16px",
+          color: "#1f2937",
+          display: "flex",
+          gap: 1,
+          px: 1.5,
+          py: 1.25,
+        }}
+      >
+        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+          Employee-wise earnings, deductions, regime, taxable income, annual tax, monthly TDS, gross pay, and net pay from processed payroll results.
+        </Typography>
+      </Box>
+
       <Box className={styles.tableCard}>
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Payroll register view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.listUtilityBar}>
-          <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("payroll-register.csv", lstExportRows, dicLabels)} data-controlid="reports.payroll-register.export-excel.button">Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicLabels.strReportTitle, lstExportRows, dicLabels)} data-controlid="reports.payroll-register.download-pdf.button">Download PDF</Button> : null}
-            {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
-          </Box>
-          <Box className={styles.paginationBar} sx={{ p: 0 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography>Rows per page</Typography>
-              <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }}>
-                {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}
-              </TextField>
-              <Typography className={styles.paginationRange}>{lstFilteredRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} of ${lstFilteredRows.length}`}</Typography>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="intID"
+          defaultPageSize={lstRowsPerPageOptions[0]}
+          pageSizeOptions={lstRowsPerPageOptions}
+          emptyMessage="No payroll register rows found for the current filters."
+          showPaginationSummary
+          withPaper={false}
+          testIdPrefix="reports.payroll-register"
+          toolbarLeft={(
+            <Box className={styles.listUtilityActions}>
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("payroll-register.csv", lstExportRows, dicLabels)} data-controlid="reports.payroll-register.export-excel.button">Export Excel</Button> : null}
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicLabels.strReportTitle, lstExportRows, dicLabels)} data-controlid="reports.payroll-register.download-pdf.button">Download PDF</Button> : null}
+              {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
             </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
-          </Box>
-        </Box>
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>
-                  <Checkbox
-                    size="small"
-                    checked={blnAllVisibleSelected}
-                    indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected}
-                    onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)}
-                  />
-                </th>
-                <th>{dicLabels.strEmployeeCode}</th>
-                <th>{dicLabels.strEmployeeName}</th>
-                <th>{dicLabels.strTaxRegime}</th>
-                <th>{dicLabels.strPayrollPeriod}</th>
-                <th>{dicLabels.strCalendarDays}</th>
-                <th>{dicLabels.strPaidDays}</th>
-                <th>{dicLabels.strLwpDays}</th>
-                <th>{dicLabels.strLopDays}</th>
-                <th>{dicLabels.strOriginalSalary}</th>
-                <th>{dicLabels.strLwpReduction}</th>
-                <th>{dicLabels.strGrossEarnings}</th>
-                <th>{dicLabels.strEmployeeDeductions}</th>
-                <th>{dicLabels.strTax}</th>
-                <th>{dicLabels.strTaxableIncome}</th>
-                <th>{dicLabels.strAnnualTax}</th>
-                <th>{dicLabels.strMonthlyTds}</th>
-                <th>{dicLabels.strEmployerContributions}</th>
-                <th>{dicLabels.strNetPay}</th>
-                <th>{dicLabels.strStatus}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstVisibleRows.length === 0 ? <tr><td colSpan={20} className={styles.emptyState}>No payroll register rows found for the current filters.</td></tr> : null}
-              {lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td>
-                    <Checkbox
-                      size="small"
-                      checked={setSelectedRowIDs.has(dicRow.intID)}
-                      onChange={(objEvent) => toggleRow(dicRow.intID, objEvent.target.checked)}
-                    />
-                  </td>
-                  <td>{dicRow.strEmployeeCode}</td>
-                  <td>{dicRow.strEmployeeName}</td>
-                  <td>{dicRow.strRegimeUsed || "-"}</td>
-                  <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
-                  <td>{dicRow.decCalendarDays ?? "-"}</td>
-                  <td>{dicRow.decPaidDays ?? "-"}</td>
-                  <td>{dicRow.decLwpDays ?? "-"}</td>
-                  <td>{dicRow.decLopDays ?? "-"}</td>
-                  <td>{formatCurrency(dicRow.decOriginalSalaryAmount ?? 0)}</td>
-                  <td>{formatCurrency(dicRow.decLwpReductionAmount ?? 0)}</td>
-                  <td>{formatCurrency(getGrossEarnings(dicRow))}</td>
-                  <td>{formatCurrency(getEmployeeDeductions(dicRow))}</td>
-                  <td>{formatCurrency(getTaxAmount(dicRow))}</td>
-                  <td>{formatCurrency(dicRow.decTaxableIncome)}</td>
-                  <td>{formatCurrency(dicRow.decAnnualTaxAmount)}</td>
-                  <td>{formatCurrency(dicRow.decMonthlyTds)}</td>
-                  <td>{formatCurrency(dicRow.decEmployerContributionTotal ?? 0)}</td>
-                  <td>{formatCurrency(dicRow.decNetPayAmount)}</td>
-                  <td>{dicRow.strStatus}</td>
-                </tr>
-              ))}
-              {lstFilteredRows.length > 0 ? (
-                <tr>
-                  <td colSpan={9}><strong>{dicLabels.strTotal}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decOriginalSalary)}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decLwpReduction)}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decGross)}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decDeduction)}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decTax)}</strong></td>
-                  <td />
-                  <td />
-                  <td />
-                  <td><strong>{formatCurrency(dicTotals.decEmployerContribution)}</strong></td>
-                  <td><strong>{formatCurrency(dicTotals.decNet)}</strong></td>
-                  <td />
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </Box>
+          )}
+          footerContent={lstFilteredRows.length > 0 ? (
+            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+              <Box sx={{ minWidth: 2746, display: "grid", gridTemplateColumns: "56px 150px 220px 140px 140px 120px 110px 110px 110px 150px 150px 150px 170px 140px 150px 140px 140px 180px 140px 120px", alignItems: "center" }}>
+                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 9" }}>{dicLabels.strTotal}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decOriginalSalary)}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decLwpReduction)}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decGross)}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decDeduction)}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decTax)}</Typography>
+                <Box />
+                <Box />
+                <Box />
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decEmployerContribution)}</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decNet)}</Typography>
+                <Box />
+              </Box>
+            </Box>
+          ) : null}
+          getRowSx={(dicRow) => setSelectedRowIDs.has(dicRow.intID) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
 
       <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>

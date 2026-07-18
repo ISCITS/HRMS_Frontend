@@ -816,10 +816,10 @@ export default function PayrollResultDetailPage({
                 </Avatar>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography component="h1" sx={{ color: "#0f172a", fontSize: { xs: "1.35rem", md: "1.55rem" }, fontWeight: 900, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {objResult.strEmployeeName}
+                    {blnPayslipScreen ? t("payslip_title", "Payslip") : t("payroll_results_title", "Payroll Results")}
                   </Typography>
                   <Typography sx={{ color: "#334d79", fontSize: "0.9rem", mt: 0.5, fontWeight: 600 }}>
-                    {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
+                    {objResult.strEmployeeName} {" | "} {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
                   </Typography>
                 </Box>
               </Stack>
