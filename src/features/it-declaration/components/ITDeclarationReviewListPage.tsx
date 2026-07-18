@@ -205,7 +205,7 @@ export default function ITDeclarationReviewListPage() {
           overflow: "visible",
 
           background:
-            "linear-gradient(90deg, #2E73B8 0%, #3D87C8 50%, #57A2DA 100%)",
+            "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)",
         }}
       >
         <Box

@@ -67,10 +67,6 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" ? blnCanEdit : false;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
-  const objCompactHeaderButtonSx = {
-    minHeight: 30,
-    py: 0.35,
-  };
 
   useEffect(() => {
     let blnMounted = true;
@@ -240,15 +236,15 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
                 {t("back_to_list", "Back to list")}
               </Button>
               {strMode !== "add" && intTaxRegimeID ? (
                 <>
-                  <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
+                  <Button className={styles.secondaryButton} startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/slabs`)}>
                     {t("manage_slabs", "Manage Slabs")}
                   </Button>
-                  <Button className={styles.secondaryButton} sx={objCompactHeaderButtonSx} startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>
+                  <Button className={styles.secondaryButton} startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>
                     {t("manage_tax_rules", "Manage Tax Rules")}
                   </Button>
                 </>

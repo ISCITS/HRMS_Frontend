@@ -1,6 +1,7 @@
 "use client";
 
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
@@ -68,6 +69,15 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [objSummary, setObjSummary] = useState<FlexiDeclarationSummaryRecord | null>(null);
+  const objBannerChipSx = {
+    color: "#000000",
+    backgroundColor: "#ffffff",
+    border: "1px solid rgba(15, 23, 42, 0.1)",
+    "& .MuiChip-label": {
+      color: "#000000",
+      fontWeight: 500,
+    },
+  };
 
   const getTranslatedStatus = (strStatus?: string | null) => {
     const strStatusKey = getStatusLabelKey(strStatus);
@@ -131,33 +141,29 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   }
 
   return (
-    <Stack spacing={1} className={styles.page}>
+    <Stack spacing={0} className={styles.page}>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Paper
-        sx={{
-          p: 1.2,
-          borderRadius: "12px",
-          border: "1px solid #bfdbfe",
-          background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)",
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Box>
-            <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>
-              {t("page_title", "Flexi Pay Declaration")}
-            </Typography>
-            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>
-              {t("employee_declaration_list", "Employee declaration list")}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} />
-            <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} />
-            <Chip size="small" color={getStatusColor(objListRow.strStatus)} label={getTranslatedStatus(objListRow.strStatus)} />
-          </Stack>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("page_title", "Flexi Pay Declaration")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {t("employee_declaration_list", "Employee declaration list")}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1 }}>
+          <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} sx={objBannerChipSx} />
+          <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} sx={objBannerChipSx} />
+          <Chip size="small" label={getTranslatedStatus(objListRow.strStatus)} sx={objBannerChipSx} />
         </Stack>
-      </Paper>
+      </Box>
 
       {objSummary && !objSummary.blnCanDeclare ? (
         <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
@@ -165,7 +171,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
         </Alert>
       ) : null}
 
-      <Paper className={styles.tableCard}>
+      <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
         <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>

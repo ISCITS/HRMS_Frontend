@@ -160,9 +160,9 @@ export default function TaxRegimeListPage() {
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 280 },
-      { field: "strRegimeCode", headerName: t("regime_code", "Regime Code") },
-      { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 220 },
-      { field: "strCountryCode", headerName: t("country", "Country") },
+      { field: "strRegimeCode", headerName: t("regime_code", "Regime Code"), width: 130 },
+      { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 130 },
+      { field: "strCountryCode", headerName: t("country", "Country"), width: 130 },
       { field: "strTaxYearCode", headerName: t("tax_year", "Tax Year") },
       { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right" },
       { field: "blnIsDefaultRegime", headerName: t("default_regime", "Default Regime"), sortable: false, filterable: false, width: 150 },
@@ -215,8 +215,9 @@ export default function TaxRegimeListPage() {
           <Box
             className={styles.searchActions}
             sx={{
-              gridColumn: { xs: "auto", md: "1 / span 2" },
+              gridColumn: { xs: "auto", md: "auto" },
               flexWrap: "nowrap",
+              alignItems: "center",
             }}
           >
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>

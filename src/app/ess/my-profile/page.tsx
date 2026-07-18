@@ -235,48 +235,17 @@ export default function EssMyProfilePage() {
   }
 
   return (
-    <Stack spacing={1.5} sx={{ position: "relative" }}>
-      <Box
-        sx={{
-          position: "absolute",
-          inset: "-18px 0 auto 0",
-          height: 150,
-          borderRadius: "24px",
-          background: "radial-gradient(90% 130% at 20% 10%, rgba(56,189,248,0.22) 0%, rgba(59,130,246,0.14) 45%, rgba(255,255,255,0) 100%)",
-          pointerEvents: "none"
-        }}
-      />
-
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2.1 },
-          borderRadius: "20px",
-          border: "1px solid rgba(148,163,184,0.22)",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-          position: "relative",
-          overflow: "hidden"
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            width: 160,
-            height: 160,
-            borderRadius: "50%",
-            right: -30,
-            top: -55,
-            background: "rgba(255,255,255,0.12)"
-          }}
-        />
+    <Stack spacing={0} sx={{ position: "relative" }}>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
         <Stack
           direction={{ xs: "column", md: "row" }}
           justifyContent="space-between"
           alignItems={{ xs: "flex-start", md: "center" }}
           spacing={1.2}
+          sx={{ position: "relative", zIndex: 1, width: "100%" }}
         >
-          <Stack direction="row" spacing={1.1} alignItems="center">
+          <Stack direction="row" spacing={1.1} alignItems="center" sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Box sx={{ position: "relative", width: 56, height: 56 }}>
               <Avatar
                 src={strAvatarUrl || undefined}
@@ -332,7 +301,18 @@ export default function EssMyProfilePage() {
               </Stack>
             </Box>
           </Stack>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="flex-end"
+            sx={{
+              width: { xs: "100%", md: "auto" },
+              alignSelf: { xs: "stretch", md: "center" },
+              flex: { md: "0 0 auto" },
+              ml: { md: "auto" }
+            }}
+          >
             <Button
               component="label"
               variant="outlined"
@@ -393,7 +373,7 @@ export default function EssMyProfilePage() {
             ) : null}
           </Stack>
         </Stack>
-      </Paper>
+      </Box>
 
       <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>

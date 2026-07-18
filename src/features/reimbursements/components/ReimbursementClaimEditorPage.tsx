@@ -94,6 +94,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     return intEmployeeID > 0 ? intEmployeeID : null;
   }, [objSearchParams]);
   const strSourceContext = normalizeHeaderValue(objSearchParams.get("source"));
+  const blnEmployeeReimbursementSource = strSourceContext === "employee-reimbursement";
 
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create"));
@@ -126,10 +127,11 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     : strMode === "edit"
       ? t("edit_claim_reimbursement", "Edit Claim Reimbursement")
       : t("view_claim_reimbursement", "View Claim Reimbursement");
+  const strReviewReimbursementsTitle = t("review_reimbursements", "Review Reimbursements");
   const strClaimReferenceLabel = `${t("claim_ref", "Claim Ref #")}: ${objClaim?.intID ? getClaimReferenceNumber(objClaim) || "-" : "-"}`;
   const strPageTitle = normalizeHeaderValue(
     intSelectedEmployeeID
-      ? `${strEmployeeReimbursementTitle} - ${strClaimReferenceLabel}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
+      ? `${blnEmployeeReimbursementSource ? strEmployeeReimbursementTitle : strReviewReimbursementsTitle} - ${strClaimReferenceLabel}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
       : objClaim?.intID
       ? strClaimReferenceLabel
       : t("new_reimbursement_claim", "New Reimbursement Claim")
@@ -492,7 +494,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-            {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" strTextColorOverride="#f8fcff" /> : null}
+            {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" strTextColorOverride={objClaim.strClaimStatus === "pushed_to_payroll" ? "#111827" : "#f8fcff"} /> : null}
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(buildEssClaimRoute(objClaim.intID, "edit"))} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("edit", "Edit")}</Button>
             ) : null}

@@ -155,85 +155,76 @@ export default function EssCalendarPage() {
   }
 
   return (
-    <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
-          border: "1px solid rgba(148,163,184,0.22)",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.2}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 46,
-                height: 46,
-                borderRadius: "50%",
-                backgroundColor: "rgba(255,255,255,0.2)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CalendarMonthRoundedIcon />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{t("page_title", "Calendar")}</Typography>
-              <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-                {t("subtitle", "Leaves, holidays, and important payroll dates in one place.")}
-              </Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={0.7} alignItems="center">
-            <Button
-              controlId="ess.calendar.previous-month.button"
-              aria-label={t("previous_month", "Previous month")}
-              size="small"
-              onClick={showPreviousMonth}
-              sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
-              variant="outlined"
-            >
-              <ChevronLeftRoundedIcon fontSize="small" />
-            </Button>
-            <Chip
-              label={strMonthLabel}
-              sx={{
-                fontWeight: 700,
-                color: "white",
-                borderColor: "rgba(255,255,255,0.5)",
-                backgroundColor: "rgba(255,255,255,0.12)",
-              }}
-              variant="outlined"
-            />
-            <Button
-              controlId="ess.calendar.next-month.button"
-              aria-label={t("next_month", "Next month")}
-              size="small"
-              onClick={showNextMonth}
-              sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
-              variant="outlined"
-            >
-              <ChevronRightRoundedIcon fontSize="small" />
-            </Button>
-            <Button
-              controlId="ess.calendar.today.button"
-              size="small"
-              onClick={jumpToCurrentMonth}
-              sx={{ color: "white", borderColor: "rgba(255,255,255,0.48)", textTransform: "none", fontWeight: 700 }}
-              variant="outlined"
-            >
-              {t("today", "Today")}
-            </Button>
-          </Stack>
+    <Stack spacing={0} >
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("page_title", "Calendar")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {t("subtitle", "Leaves, holidays, and important payroll dates in one place.")}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.7} alignItems="center" flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1 }}>
+          <Button
+            controlId="ess.calendar.previous-month.button"
+            aria-label={t("previous_month", "Previous month")}
+            size="small"
+            onClick={showPreviousMonth}
+            sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
+            variant="outlined"
+          >
+            <ChevronLeftRoundedIcon fontSize="small" />
+          </Button>
+          <Chip
+            label={strMonthLabel}
+            sx={{
+              fontWeight: 700,
+              color: "white",
+              borderColor: "rgba(255,255,255,0.5)",
+              backgroundColor: "rgba(255,255,255,0.12)",
+            }}
+            variant="outlined"
+          />
+          <Button
+            controlId="ess.calendar.next-month.button"
+            aria-label={t("next_month", "Next month")}
+            size="small"
+            onClick={showNextMonth}
+            sx={{ minWidth: 34, color: "white", borderColor: "rgba(255,255,255,0.48)" }}
+            variant="outlined"
+          >
+            <ChevronRightRoundedIcon fontSize="small" />
+          </Button>
+          <Button
+            controlId="ess.calendar.today.button"
+            size="small"
+            onClick={jumpToCurrentMonth}
+            sx={{ color: "white", borderColor: "rgba(255,255,255,0.48)", textTransform: "none", fontWeight: 700 }}
+            variant="outlined"
+          >
+            {t("today", "Today")}
+          </Button>
         </Stack>
-      </Paper>
+      </Box>
 
-      <Grid container spacing={1.25}>
+      <Grid container spacing={1.25} sx={{ mt: 0, mr: 0 }}>
         <Grid item xs={12} lg={8.5}>
-          <Paper sx={{ p: 1.25, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
+          <Paper
+            sx={{
+              mt: 0,
+              mr: 0,
+              p: 1.25,
+              borderRadius: "0 0 14px 14px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 10px 20px rgba(15,23,42,0.05)",
+            }}
+          >
             <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mb: 1 }}>
               <Chip size="small" label={t("legend_holiday", "Holiday")} sx={{ bgcolor: "#ccfbf1", color: "#115e59", fontWeight: 700 }} />
               <Chip size="small" label={t("legend_approved_leave", "Approved Leave")} sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 700 }} />

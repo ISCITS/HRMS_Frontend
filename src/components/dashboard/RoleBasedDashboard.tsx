@@ -1811,20 +1811,21 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const lstVisiblePendingActions = filterEssPendingActions(lstPendingActions);
 
   return (
-    <Stack spacing={2} sx={{ p: { xs: 1, md: 1.5 }, background: ESS_COLORS.bg }}>
-      <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: "28px", background: ESS_COLORS.shell, boxShadow: "0 14px 32px rgba(120, 144, 186, 0.16)" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5} sx={{ mb: 1.8 }}>
+    <Stack spacing={2} sx={{ p: { xs: 1, md: 1.5 } }}>
+      <Box className="pageBanner" sx={{ display: "block", p: { xs: 1.5, md: 2 }, borderRadius: "28px", boxShadow: "0 14px 32px rgba(120, 144, 186, 0.16)" }}>
+        <Box className="bannerDots" />
+        <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5} sx={{ mb: 1.8, position: "relative", zIndex: 1 }}>
           <Box>
-            <Typography sx={{ color: ESS_COLORS.shellText, fontWeight: 800, fontSize: { xs: "1.65rem", md: "2rem" }, letterSpacing: "-0.03em" }}>
+            <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: { xs: "1.65rem", md: "2rem" }, letterSpacing: "-0.03em" }}>
               {strDashboardTitle}
             </Typography>
-            <Typography sx={{ mt: 0.35, color: ESS_COLORS.shellMuted, fontSize: "1rem", fontWeight: 600 }}>
+            <Typography sx={{ mt: 0.35, color: "rgba(241,245,249,0.92)", fontSize: "1rem", fontWeight: 600 }}>
               {strDashboardSubtitle}
             </Typography>
           </Box>
         </Stack>
 
-        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", p: 0.7, borderRadius: "22px", backgroundColor: "rgba(255,255,255,0.42)", border: `1px solid ${ESS_COLORS.shellBorder}` }}>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", p: 0.7, borderRadius: "22px", backgroundColor: "rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.35)", position: "relative", zIndex: 1 }}>
           {lstTopNav.map((objItem) => (
             <Link key={objItem.strLabel} href={objItem.strRoutePath} style={{ textDecoration: "none" }}>
               <Stack direction="row" spacing={0.9} alignItems="center" sx={{ px: 1.45, py: 1.05, borderRadius: "16px", backgroundColor: objItem.blnActive ? "#FFFFFF" : "transparent", color: objItem.blnActive ? ESS_COLORS.blue : ESS_COLORS.shellText, minHeight: 48, boxShadow: objItem.blnActive ? "0 10px 24px rgba(132, 153, 190, 0.16)" : "none" }}>
@@ -1836,7 +1837,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         </Stack>
       </Box>
 
-      <Grid container spacing={2} alignItems="stretch">
+      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
         <Grid item xs={12} lg={7} sx={{ display: "flex" }}>
           <Paper
             sx={{
@@ -1862,7 +1863,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                     <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: { xs: "1.7rem", md: "2rem" }, letterSpacing: "-0.02em" }}>{strEmployeeName}</Typography>
                     <Chip label={strDesignation} size="small" sx={{ backgroundColor: "#DDE8FF", color: ESS_COLORS.blue, fontWeight: 700 }} />
                   </Stack>
-                  <Grid container spacing={1.3} sx={{ mt: 1.05 }}>
+                  <Grid container spacing={1.3} sx={{ mt: 1.05, mx: 0, width: "100%" }}>
                     <Grid item xs={12} sm={4}>
                       <HeroStat strLabel={t("emp_code", "Emp Code")} strValue={strEmployeeCode} />
                     </Grid>
@@ -1925,7 +1926,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         </Grid>
 
         <Grid item xs={12} lg={5}>
-          <Grid container spacing={2}>
+          <Grid container spacing={1.5} sx={{ mx: 0, width: "100%" }}>
             <Grid item xs={12} sx={{ display: "flex" }}>
               <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
                 <Stack direction="row" justifyContent="space-between" spacing={1.2}>
@@ -1964,8 +1965,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         </Grid>
       </Grid>
 
-      <Grid container spacing={2} alignItems="stretch">
-        <Grid item xs={12} md={6} lg={4}>
+      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
+        <Grid item xs={12} md={6} lg={4} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <SectionHeader strTitle={`${t("it_declaration", "IT Declaration")}${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim() ? ` (${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim()})` : ""}`} strTone="blue" objIcon={<DescriptionRoundedIcon sx={{ fontSize: 18 }} />} />
             <Chip size="small" label={resolveStatusLabel(strItStatus, t)} sx={{ mt: 0.6, mb: 1.3, backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />
@@ -1979,7 +1980,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
             <FooterLink strHref="/salary/it-declaration" strLabel={t("view_details", "View Details")} strColor={ESS_COLORS.blue} />
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6} lg={4}>
+        <Grid item xs={12} md={6} lg={4} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <SectionHeader strTitle={t("reimbursement_summary", "Reimbursement Summary")} strTone="green" objIcon={<AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} />} />
             <TwoColMetricGrid lstItems={[
@@ -1993,7 +1994,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
             <FooterLink strHref="/ess/reimbursements" strLabel={t("view_my_claims", "View My Claims")} strColor={ESS_COLORS.green} />
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6} lg={4}>
+        <Grid item xs={12} md={6} lg={4} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
               <SectionHeader strTitle={t("pending_actions", "Pending Actions")} strTone="orange" objIcon={<NotificationsActiveRoundedIcon sx={{ fontSize: 18 }} />} blnCompact />
@@ -2018,14 +2019,14 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         </Grid>
       </Grid>
 
-      <Grid container spacing={2} alignItems="stretch">
-        <Grid item xs={12} md={6} lg={4}>
+      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
+        <Grid item xs={12} md={6} lg={4} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.2 }}>
               <SectionHeader strTitle={t("recent_payslips", "Recent Payslips")} strTone="blue" objIcon={<ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />} blnCompact />
               <InlineTextLink strHref="/ess/my-payslips" strLabel={t("view_all", "View All")} />
             </Stack>
-            <Grid container spacing={1}>
+            <Grid container spacing={1} sx={{ mx: 0, width: "100%" }}>
               {lstPayslips.length ? lstPayslips.map((objRow) => (
                 <Grid item xs={12} sm={4} key={String(objRow.result_id)}>
                   <Box sx={{ p: 1.15, borderRadius: "14px", border: `1px solid ${ESS_COLORS.border}`, backgroundColor: "#FDFEFF" }}>
@@ -2044,7 +2045,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
           </Paper>
         </Grid>
         {lstActionTiles.length ? (
-        <Grid item xs={12} md={6} lg={8}>
+        <Grid item xs={12} md={6} lg={8} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: "1.05rem", mb: 1.2 }}>{t("quick_actions", "Quick Actions")}</Typography>
             <Grid container spacing={1}>
@@ -2064,11 +2065,11 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         ) : null}
       </Grid>
 
-      <Grid container spacing={2} alignItems="stretch">
-        <Grid item xs={12}>
+      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
+        <Grid item xs={12} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 2 }}>
             <SectionHeader strTitle={t("profile_compliance_health", "Profile & Compliance Health")} strTone="green" objIcon={<ManageAccountsRoundedIcon sx={{ fontSize: 18 }} />} />
-            <Grid container spacing={1} sx={{ mt: 0.8 }}>
+            <Grid container spacing={1} sx={{ mt: 0.8, mx: 0, width: "100%" }}>
               {lstComplianceChecks.length ? lstComplianceChecks.map((objCheck) => (
                 <Grid item xs={12} sm={6} key={objCheck.strCode}>
                   <Box sx={{ p: 1.05, borderRadius: "12px", border: `1px solid ${ESS_COLORS.border}`, backgroundColor: "#FFFFFF" }}>

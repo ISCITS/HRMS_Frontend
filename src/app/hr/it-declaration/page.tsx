@@ -356,12 +356,12 @@ export default function HrItDeclarationListPage() {
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
       <Paper
-        className={styles.controlsCard}
         sx={{
           p: 1.2,
-          borderRadius: "12px",
+          borderRadius: "20px",
           border: "1px solid #2E73B8 !important",
-          background:"linear-gradient(90deg, #2E73B8 0%, #3D87C8 50%, #57A2DA 100%)",
+          background:
+            "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)",
           boxShadow: "0 8px 20px rgba(11, 47, 99, 0.22)",
         }}
       >
@@ -378,7 +378,7 @@ export default function HrItDeclarationListPage() {
               startIcon={<AddCircleOutlineRoundedIcon />}
               onClick={openAddDeclarationDialog}
               sx={{
-                minHeight: 34,
+                minHeight: 25,
                 px: 1.6,
                 borderRadius: "9px",
                 textTransform: "none",
@@ -386,7 +386,10 @@ export default function HrItDeclarationListPage() {
                 color: "#111827",
                 backgroundColor: "#f59e0b",
                 boxShadow: "none",
-                "&:hover": { backgroundColor: "#d97706", boxShadow: "none" },
+                "&:hover": {
+                  backgroundColor: "#F7FAFF",
+                  boxShadow: "none",
+                },
               }}
             >
               {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
@@ -612,8 +615,8 @@ export default function HrItDeclarationListPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnAddDialogOpen(false)}>{t("IT_DECLARATION_CANCEL", "Cancel")}</Button>
-          <Button variant="contained" disabled={!objAddEmployee?.intEmployeeID || !strAddFinancialYearCode} onClick={() => void createFromDialog()}>
+          <Button variant="outlined" onClick={() => setBlnAddDialogOpen(false)}>{t("IT_DECLARATION_CANCEL", "Cancel")}</Button>
+          <Button className={styles.primaryButton} variant="contained" disabled={!objAddEmployee?.intEmployeeID || !strAddFinancialYearCode} onClick={() => void createFromDialog()}>
             {t("IT_DECLARATION_CREATE", "Create")}
           </Button>
         </DialogActions>

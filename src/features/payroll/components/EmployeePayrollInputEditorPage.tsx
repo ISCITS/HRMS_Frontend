@@ -93,6 +93,9 @@ const objFieldSx = {
     fontWeight: 700,
     fontSize: "0.82rem",
   },
+  "& .MuiInputLabel-asterisk": {
+    color: "#d32f2f",
+  },
   "& .MuiInputLabel-shrink": {
     transform: "translate(14px, -8px) scale(0.86)",
   },
@@ -142,6 +145,8 @@ export default function EmployeePayrollInputEditorPage({
   intInputID,
   strBackRoute,
 }: EmployeePayrollInputEditorPageProps) {
+  type FieldErrorState = Partial<Record<"intEmployeeID" | "intPayrollRunID" | "strManualLwpReason", string>>;
+
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("employee-payroll-input");
   const { t: tCommon, blnLoadingLabels: blnCommonLabelsLoading, strLabelError: strCommonLabelError } = useModuleLabels("common");
@@ -155,6 +160,7 @@ export default function EmployeePayrollInputEditorPage({
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFormReady, setBlnFormReady] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
+  const [dicFieldErrors, setDicFieldErrors] = useState<FieldErrorState>({});
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const blnCanView = canViewAny() || canDoAny("list");
@@ -289,6 +295,9 @@ export default function EmployeePayrollInputEditorPage({
     objValue: EmployeePayrollInputFormValues[TKey]
   ) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+    if (strField === "intEmployeeID" || strField === "intPayrollRunID" || strField === "strManualLwpReason") {
+      setDicFieldErrors((dicPrevious) => ({ ...dicPrevious, [strField]: "" }));
+    }
   }
 
   function updateLine(
@@ -328,11 +337,17 @@ export default function EmployeePayrollInputEditorPage({
   }
 
   function validateForm() {
+    const dicNextFieldErrors: FieldErrorState = {};
+
     if (!dicForm.intEmployeeID) {
-      return t("employee_required", "Employee is required.");
+      dicNextFieldErrors.intEmployeeID = t("employee_required", "Employee is required.");
     }
     if (!dicForm.intPayrollRunID) {
-      return t("payroll_run_required", "Payroll run is required.");
+      dicNextFieldErrors.intPayrollRunID = t("payroll_run_required", "Payroll run is required.");
+    }
+    if (Object.keys(dicNextFieldErrors).length > 0) {
+      setDicFieldErrors(dicNextFieldErrors);
+      return "";
     }
     if (dicSelectedRun?.blnIsLocked) {
       return t("payroll_run_locked_error", "Locked payroll runs cannot accept payroll input changes.");
@@ -372,7 +387,10 @@ export default function EmployeePayrollInputEditorPage({
       return t("payable_days_negative", "Paid/payable days cannot be negative.");
     }
     if ((decLwpDays > 0 || decLopDays > 0) && !dicForm.strManualLwpReason.trim()) {
-      return t("manual_lwp_reason_required", "Manual LWP/LOP reason is required when LWP or LOP days are entered.");
+      setDicFieldErrors({
+        strManualLwpReason: t("manual_lwp_reason_required", "Manual LWP/LOP reason is required when LWP or LOP days are entered."),
+      });
+      return "";
     }
     if (
       dicForm.lstLines.some(
@@ -406,6 +424,7 @@ export default function EmployeePayrollInputEditorPage({
       return;
     }
 
+    setDicFieldErrors({});
     const strValidationError = validateForm();
     if (strValidationError) {
       setStrError(strValidationError);
@@ -510,13 +529,13 @@ export default function EmployeePayrollInputEditorPage({
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
-              <Typography sx={{ fontSize: { xs: "1.65rem", md: "1.9rem" }, fontWeight: 900, color: "#10275b", letterSpacing: "-0.04em" }}>
+              {/* <Typography sx={{ fontSize: { xs: "1.65rem", md: "1.9rem" }, fontWeight: 900, color: "#10275b", letterSpacing: "-0.04em" }}>
                 {strMode === "view"
                   ? t("view_title", "View Payroll Input")
                   : strMode === "edit"
                   ? t("edit_title", "Edit Payroll Input")
                   : t("add_title", "Create Payroll Input")}
-              </Typography>
+              </Typography> */}
               <Typography sx={{ color: "#31456a", mt: 0.6, fontSize: "0.95rem", maxWidth: 780 }}>
                 {t("subtitle", "Capture payroll adjustments and attendance-related inputs before payroll processing.")}
               </Typography>
@@ -575,7 +594,7 @@ export default function EmployeePayrollInputEditorPage({
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
       {dicSelectedRun?.blnIsLocked ? <Alert severity="warning">{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
 
-      <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.18fr) minmax(420px, 0.82fr)" }, alignItems: "start" }}>
+      <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
         <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
           <Stack spacing={1.1}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -586,13 +605,15 @@ export default function EmployeePayrollInputEditorPage({
                 {t("section_employee_run", "1. Employee and Run Details")}
               </Typography>
             </Box>
-            <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", xl: "repeat(3, minmax(200px, 250px))" }, justifyContent: "start" }}>
+            <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
               <TextField
                 select
                 label={`${t("employee", "Employee")} *`}
                 value={dicForm.intEmployeeID}
                 onChange={(objEvent) => updateField("intEmployeeID", parseSelectNumber(objEvent.target.value))}
                 disabled={blnFormLocked}
+                error={Boolean(dicFieldErrors.intEmployeeID)}
+                helperText={dicFieldErrors.intEmployeeID || " "}
                 fullWidth
                 sx={objFieldSx}
               >
@@ -609,6 +630,8 @@ export default function EmployeePayrollInputEditorPage({
                 value={dicForm.intPayrollRunID}
                 onChange={(objEvent) => updateField("intPayrollRunID", parseSelectNumber(objEvent.target.value))}
                 disabled={blnFormLocked}
+                error={Boolean(dicFieldErrors.intPayrollRunID)}
+                helperText={dicFieldErrors.intPayrollRunID || " "}
                 fullWidth
                 sx={objFieldSx}
               >
@@ -637,14 +660,14 @@ export default function EmployeePayrollInputEditorPage({
                 {t("section_attendance", "2. Attendance / LWP / LOP")}
               </Typography>
             </Box>
-            <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(170px, 290px))" }, justifyContent: "start" }}>
+            <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" }, alignItems: "start", width: "100%" }}>
               <TextField type="number" label={t("calendar_days", "Calendar Days")} value={dicForm.strCalendarDays} onChange={(objEvent) => updateField("strCalendarDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_calendar_days", "Enter Calendar Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("calendar_days_help", "Payroll-period calendar days.")} fullWidth sx={objFieldSx} />
               <TextField type="number" label={t("working_days", "Working Days")} value={dicForm.strWorkingDays} onChange={(objEvent) => updateField("strWorkingDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_working_days", "Enter Working Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("working_days_help", "HR-entered working days for the period.")} fullWidth sx={objFieldSx} />
               <TextField type="number" label={t("paid_days", "Paid Days")} value={dicForm.strPaidDays} onChange={(objEvent) => updateField("strPaidDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_paid_days", "Enter Paid Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("paid_days_help", "Actual paid days entered by HR.")} fullWidth sx={objFieldSx} />
               <TextField type="number" label={t("payable_days", "Payable Days")} value={dicForm.strPayableDays} onChange={(objEvent) => updateField("strPayableDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_payable_days", "Enter Payable Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("payable_days_help", "Applicable denominator used for LWP/LOP validation when entered.")} fullWidth sx={objFieldSx} />
               <TextField type="number" label={t("lwp_days", "LWP (Leave Without Pay)")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_lwp_days", "Enter LWP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lwp_days_help", "Manual Leave Without Pay days for payroll processing.")} fullWidth sx={objFieldSx} />
               <TextField type="number" label={t("lop_days", "LOP (Loss of Pay)")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_lop_days", "Enter LOP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lop_days_help", "Manual Loss of Pay days for payroll processing.")} fullWidth sx={objFieldSx} />
-              <TextField label={t("manual_lwp_reason", "Manual LWP/LOP Reason")} value={dicForm.strManualLwpReason} onChange={(objEvent) => updateField("strManualLwpReason", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_manual_lwp_reason", "Enter Manual LWP/LOP Reason")} helperText={t("manual_lwp_reason_help", "Reason is required when LWP or LOP days are entered.")} fullWidth multiline minRows={2} sx={{ ...objFieldSx, gridColumn: { xs: "auto", xl: "1 / -1" } }} />
+              <TextField label={t("manual_lwp_reason", "Manual LWP/LOP Reason")} value={dicForm.strManualLwpReason} onChange={(objEvent) => updateField("strManualLwpReason", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("enter_manual_lwp_reason", "Enter Manual LWP/LOP Reason")} error={Boolean(dicFieldErrors.strManualLwpReason)} helperText={dicFieldErrors.strManualLwpReason || t("manual_lwp_reason_help", "Reason is required when LWP or LOP days are entered.")} fullWidth multiline minRows={2} sx={{ ...objFieldSx, gridColumn: { xs: "auto", xl: "1 / -1" } }} />
               <TextField label={t("manual_lwp_source", "Manual Source")} value={dicForm.strManualLwpSource} InputProps={{ readOnly: true }} placeholder={t("manual_source_system", "System Captured")} fullWidth sx={objReadOnlyFieldSx} />
               <TextField label={t("manual_lwp_captured_on", "Captured On")} value={dicForm.dtManualLwpCapturedOn ?? ""} InputProps={{ readOnly: true }} placeholder={t("captured_on_placeholder", "Captured On")} fullWidth sx={objReadOnlyFieldSx} />
             </Box>

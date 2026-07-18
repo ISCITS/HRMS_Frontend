@@ -45,7 +45,8 @@ export default function FNFSettlementListPage() {
   const [blnEmployeeOptionsLoading, setBlnEmployeeOptionsLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [dicFilters, setDicFilters] = useState({ employee_code: "", department: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "", payable_type: "All" });
-  const blnCanView = canViewAny() || canDoAny("view");
+  const blnHasViewRight = canViewAny() || canDoAny("view");
+  const blnCanView = blnHasViewRight || canDoAny("edit");
   const blnCanCreate = canDoAny("create") || canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const objSelectedEmployee = useMemo(() => lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null, [lstEmployeeOptions, dicFilters.employee_code]);
@@ -102,7 +103,7 @@ export default function FNFSettlementListPage() {
       <CommonRowActions
         testIdPrefix="payroll.fnf-settlements.row"
         rowKey={row.intID}
-        blnCanView={blnCanView}
+        blnCanView={blnHasViewRight}
         blnCanEdit={blnCanEdit && lstEditableStatuses.includes(row.strSettlementStatus)}
         onView={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}?mode=view`)}
         onEdit={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}

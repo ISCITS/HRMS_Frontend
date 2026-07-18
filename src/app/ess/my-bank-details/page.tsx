@@ -139,51 +139,35 @@ export default function EssMyBankDetailsPage() {
   }
 
   return (
-    <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
-          border: "1px solid rgba(148,163,184,0.22)",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.2}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 46,
-                height: 46,
-                borderRadius: "50%",
-                backgroundColor: "rgba(255,255,255,0.2)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <AccountBalanceRoundedIcon />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{t("page_title", "My Bank Details")}</Typography>
-              <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-                {t("subtitle", "Keep your account information updated for salary and reimbursements.")}
-              </Typography>
-            </Box>
-          </Stack>
-          <Chip
-            label={t("primary_account", "Primary Account")}
-            sx={{
-              alignSelf: "flex-start",
-              fontWeight: 700,
-              color: "white",
-              borderColor: "rgba(255,255,255,0.5)",
-              backgroundColor: "rgba(255,255,255,0.12)",
-            }}
-            variant="outlined"
-          />
-        </Stack>
-      </Paper>
+    <Stack spacing={0}>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <AccountBalanceRoundedIcon sx={{ fontSize: 34 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("page_title", "My Bank Details")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {t("subtitle", "Keep your account information updated for salary and reimbursements.")}
+          </Typography>
+        </Box>
+        <Chip
+          label={t("primary_account", "Primary Account")}
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            alignSelf: "flex-start",
+            fontWeight: 700,
+            color: "white",
+            borderColor: "rgba(255,255,255,0.5)",
+            backgroundColor: "rgba(255,255,255,0.12)",
+          }}
+          variant="outlined"
+        />
+      </Box>
 
       <Paper
         sx={{
@@ -193,10 +177,10 @@ export default function EssMyBankDetailsPage() {
           boxShadow: "0 10px 20px rgba(15,23,42,0.05)"
         }}
       >
-        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1.5 }}>
+        {/* <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1.5 }}>
           <AccountBalanceRoundedIcon sx={{ color: "#0284c7" }} />
           <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("page_title", "My Bank Details")}</Typography>
-        </Stack>
+        </Stack> */}
 
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success" sx={{ mb: 1.5 }}>{strSuccess}</Alert> : null}

@@ -1042,19 +1042,6 @@ export default function EssDeclarationCategoryMasterPanel({
         ) : null}
       </Box>
       <Box className={styles.tableCard}>
-        {blnCanAdd ? (
-          <Box className={styles.tableHeaderActions}>
-            <Button
-              data-testid="ess-declaration-category.list.add.button"
-              className={styles.primaryButton}
-              startIcon={<AddRoundedIcon />}
-              onClick={() => openDialog("add")}
-              disabled={blnLoading || blnSubmitting || blnRightsLoading}
-            >
-              {dicLabels.addButton}
-            </Button>
-          </Box>
-        ) : null}
         {!blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", `${strEntityLabel} access is not available for your user group.`)}</Typography>
@@ -1072,7 +1059,18 @@ export default function EssDeclarationCategoryMasterPanel({
             showPaginationSummary
             emptyMessage={dicLabels.emptyMessage}
             testIdPrefix="ess-declaration-category.list"
-            hideToolbar
+            hideToolbar={!blnCanAdd && !blnCanExport}
+            toolbarLeft={blnCanAdd ? (
+              <Button
+                data-testid="ess-declaration-category.list.add.button"
+                className={styles.primaryButton}
+                startIcon={<AddRoundedIcon />}
+                onClick={() => openDialog("add")}
+                disabled={blnLoading || blnSubmitting || blnRightsLoading}
+              >
+                {dicLabels.addButton}
+              </Button>
+            ) : null}
             withPaper={false}
             getRowSx={(objRow) => objRow.blnSelected ? { backgroundColor: "rgba(219, 234, 254, 0.45)" } : {}}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}

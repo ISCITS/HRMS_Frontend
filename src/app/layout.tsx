@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
+import "./ESSBanner.css";
 import ThemeRegistry from "@/components/shared/ThemeRegistry";
 import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";

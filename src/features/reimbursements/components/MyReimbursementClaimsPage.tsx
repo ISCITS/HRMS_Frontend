@@ -75,23 +75,25 @@ export default function MyReimbursementClaimsPage() {
 
   return (
     <Stack spacing={1.4}>
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20 }} />
-            <Box>
-              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>{t("my_reimbursements", "My Reimbursements")}</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem" }}>
-                {objSummary.intClaims} {t("claims", "claims")}, {formatCurrency(objSummary.decPending)} {t("awaiting_review", "awaiting review")}, {formatCurrency(objSummary.decApproved)} {t("approved", "approved")}.
-              </Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-            <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
-            {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
-          </Stack>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <ReceiptLongOutlinedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("my_reimbursements", "My Reimbursements")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {objSummary.intClaims} {t("claims", "claims")}, {formatCurrency(objSummary.decPending)} {t("awaiting_review", "awaiting review")}, {formatCurrency(objSummary.decApproved)} {t("approved", "approved")}.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center" sx={{ position: "relative", zIndex: 1 }}>
+          <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
+          {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#ffffff", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
         </Stack>
-      </Paper>
+      </Box>
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
@@ -104,7 +106,7 @@ export default function MyReimbursementClaimsPage() {
         </Paper>
       ) : null}
 
-      {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+      {blnCanView ? <Paper sx={{ mt: "0 !important", borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 780 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>

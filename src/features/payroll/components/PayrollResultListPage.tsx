@@ -521,21 +521,7 @@ export default function PayrollResultListPage({
       <Box className={styles.controlsCard}>
         {!blnEssMode ? (
           <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-            <Box>
-              {/* <Typography className={styles.title}>
-                {blnPayslipScreen
-                  ? t("payroll_results_title", "Payroll Results")
-                  : t("payroll_results_title", "Payroll Results")}
-              </Typography> */}
-              {!blnPayslipScreen ? (
-                <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-                  {t(
-                    "payroll_results_help",
-                    "Review processed payroll calculations before generating payslips."
-                  )}
-                </Typography>
-              ) : null}
-            </Box>
+            <Box />
           </Box>
         ) : null}
 
@@ -763,6 +749,30 @@ export default function PayrollResultListPage({
           </Box>
         )}
       </Box>
+
+      {!blnPayslipScreen ? (
+        <Box
+          sx={{
+            alignItems: "center",
+            backgroundColor: "#f8fbff",
+            border: "1px solid rgba(191,219,254,0.7)",
+            borderRadius: "16px",
+            color: "#1f2937",
+            display: "flex",
+            gap: 1,
+            px: 1.5,
+            py: 1.25,
+          }}
+        >
+          <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+          <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+            {t(
+              "payroll_results_help",
+              "Review processed payroll calculations before generating payslips."
+            )}
+          </Typography>
+        </Box>
+      ) : null}
 
       {blnPayslipScreen ? (
         <Box

@@ -80,7 +80,7 @@ export default function FlexiDeclarationReviewListPage() {
     <Stack spacing={1} className={styles.page}>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Paper sx={{ p: 1.2, borderRadius: "12px", border: "1px solid #bfdbfe", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)" }}>
+      <Paper sx={{ p: 1.2, borderRadius: "12px", border: "1px solid #bfdbfe", background: "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
           <Box>
             <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>Flexi Declaration Review</Typography>
@@ -118,7 +118,7 @@ export default function FlexiDeclarationReviewListPage() {
         </Stack>
       </Paper>
 
-      <Paper className={styles.tableCard}>
+      <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
         <Box className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>

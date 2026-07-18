@@ -1,6 +1,7 @@
 "use client";
 
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
@@ -312,27 +313,21 @@ export default function SalaryEssDeclarationsPage() {
 
   return (
     <Box className={styles.page}>
-      <Paper
-        className={styles.controlsCard}
-        sx={{
-          p: 1.4,
-          borderRadius: "12px",
-          border: "1px solid #1e3a8a !important",
-          background: "linear-gradient(90deg, #184f94 0%, #0f7ea7 100%) !important",
-          boxShadow: "0 8px 20px rgba(11, 47, 99, 0.22)",
-        }}
-      >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>{t("dashboard_title", "IT Declaration")}</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-                {t("financial_year_dashboard", "Financial Year Dashboard")}
-              </Typography>
-            </Box>
-          </Stack>
-        </Stack>
-      </Paper>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("dashboard_title", "IT Declaration")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {t("financial_year_dashboard", "Financial Year Dashboard")}
+          </Typography>
+        </Box>
+      </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Paper className={styles.controlsCard} sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #dbe3ef" }}>

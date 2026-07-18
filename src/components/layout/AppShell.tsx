@@ -1,5 +1,6 @@
 "use client";
 
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
@@ -112,7 +113,8 @@ function getLocalizedHeaderTitle(
   tHeader: (strKey: string, strFallback?: string) => string,
   tCommon: (strKey: string, strFallback?: string) => string,
   strBackRoute = "",
-  strViewMode = ""
+  strViewMode = "",
+  strSource = ""
 ) {
   const strLowerPath = (strPathname || "").toLowerCase();
   const strLowerBackRoute = (strBackRoute || "").toLowerCase();
@@ -127,6 +129,9 @@ function getLocalizedHeaderTitle(
     }
     if (strLowerPath.includes("/edit")) {
       return tHeader("edit_title", "Edit Payroll Input");
+    }
+     if (strLowerPath.includes("view")) {
+      return tHeader("view_title", "View Payroll Input");
     }
     return stripMasterTitle(
       tHeader(
@@ -268,14 +273,15 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "reimbursements") {
+    const blnEmployeeReimbursementSource = strSource.trim().toLowerCase() === "employee-reimbursement";
     if (strLowerPath === "/ess/reimbursements/new") {
-      return tHeader("page_title_new", "Ess / Reimbursements / New");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_new", "Ess / Reimbursements / New") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+\/edit$/)) {
-      return tHeader("page_title_edit", "Ess / Reimbursements / Edit");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_edit", "Ess / Reimbursements / Edit") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+$/)) {
-      return tHeader("page_title_view", "Ess / Reimbursements / View");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_view", "Ess / Reimbursements / View") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     return tHeader("page_title", "Ess / Reimbursements");
   }
@@ -327,9 +333,9 @@ function getLocalizedHeaderTitle(
     return tHeader("header_title", "Ess / My Profile");
   }
 
-  if (strHeaderModuleName === "my-bank-details") {
-    return tHeader("header_title", "Ess / My Bank Details");
-  }
+  // if (strHeaderModuleName === "my-bank-details") {
+  //   return tHeader("header_title", "Ess / My Bank Details");
+  // }
 
   return stripMasterTitle(tHeader("page_title", getPageTitle(strPathname)));
 }
@@ -393,6 +399,50 @@ function extractLinkedEmployeeName(objUserContext: CurrentUserContext | null) {
     }
   }
   return "";
+}
+
+function extractEmployeeMeta(objUserContext: CurrentUserContext | null) {
+  if (!objUserContext) {
+    return { strEmployeeCode: "", strDesignation: "" };
+  }
+
+  const objUserContextUnsafe = objUserContext as unknown as Record<string, unknown>;
+  const objUserUnsafe = (objUserContextUnsafe.objUser ?? {}) as Record<string, unknown>;
+  const objEmployeeUnsafe = (objUserContextUnsafe.objEmployee ?? {}) as Record<string, unknown>;
+
+  const lstEmployeeCodeCandidates = [
+    objEmployeeUnsafe.strEmployeeCode,
+    objEmployeeUnsafe.employee_code,
+    objUserUnsafe.strEmployeeCode,
+    objUserUnsafe.employee_code,
+  ];
+  const lstDesignationCandidates = [
+    objEmployeeUnsafe.strDesignationName,
+    objEmployeeUnsafe.designation_name,
+    objEmployeeUnsafe.strDesignation,
+    objUserUnsafe.strDesignationName,
+    objUserUnsafe.designation_name,
+    objUserUnsafe.strDesignation,
+  ];
+
+  let strEmployeeCode = "";
+  let strDesignation = "";
+
+  for (const strCandidate of lstEmployeeCodeCandidates) {
+    if (typeof strCandidate === "string" && strCandidate.trim()) {
+      strEmployeeCode = strCandidate.trim();
+      break;
+    }
+  }
+
+  for (const strCandidate of lstDesignationCandidates) {
+    if (typeof strCandidate === "string" && strCandidate.trim()) {
+      strDesignation = strCandidate.trim();
+      break;
+    }
+  }
+
+  return { strEmployeeCode, strDesignation };
 }
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -751,6 +801,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
   const intLinkedEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
+  const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
@@ -767,7 +818,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ? tHeader("edit_claim_reimbursement", "Edit Claim Reimbursement")
       : tHeader("view_claim_reimbursement", "View Claim Reimbursement");
   const strPageTitle = blnEmployeeReimbursementFormContext
-    ? strEmployeeReimbursementFormTitle
+    ? (blnEmployeeReimbursementContext ? strEmployeeReimbursementFormTitle : tHeader("review_reimbursements", "Review Reimbursements"))
     : blnEmployeeReimbursementContext
       ? tHeader("employee_reimbursements", "Employee Reimbursements")
     : getLocalizedHeaderTitle(
@@ -776,7 +827,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         tHeader,
         tCommon,
         objSearchParams.get("backRoute") || "",
-        objSearchParams.get("mode") || ""
+        objSearchParams.get("mode") || "",
+        objSearchParams.get("source") || ""
       );
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
@@ -1303,44 +1355,94 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 >
                   {strPageTitle}
                 </Typography>
-                {strLinkedEmployeeName || intLinkedEmployeeID ? (
-                  <Typography
-                    sx={{
-                      ml: 1,
-                      px: 1,
-                      py: 0.35,
-                      borderRadius: "999px",
-                      backgroundColor: "rgba(255,255,255,0.72)",
-                      border: "1px solid rgba(148, 163, 184, 0.25)",
-                      color: "#334155",
-                      fontSize: { xs: "0.72rem", md: "0.76rem" },
-                      fontWeight: 700,
-                      maxWidth: { xs: "110px", sm: "180px", md: "240px" },
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={strLinkedEmployeeName || `Employee ID: ${intLinkedEmployeeID}`}
-                  >
-                    {strLinkedEmployeeName || `Employee #${intLinkedEmployeeID}`}
-                  </Typography>
-                ) : null}
               </Box>
 
-              <IconButton
-                onClick={openProfileMenu}
-                disabled={blnLoggingOut}
+              <Box
                 sx={{
-                  p: 0.4,
-                  border: "1px solid rgba(148, 163, 184, 0.18)",
-                  backgroundColor: "rgba(248,250,252,0.92)"
+                  display: "flex",
+                  alignItems: "center",
+                  gap: { xs: 1.25, md: 1.5 },
+                  minWidth: 0,
+                  maxWidth: { xs: "250px", sm: "300px", md: "360px" }
                 }}
-                {...getAutomationProps("app-shell.profile-menu.button")}
               >
-                <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
-                  {strAvatarText}
-                </Avatar>
-              </IconButton>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.9,
+                    minWidth: 0,
+                    flexShrink: 0
+                  }}
+                >
+                  <IconButton
+                    onClick={openProfileMenu}
+                    disabled={blnLoggingOut}
+                    sx={{
+                      p: 0.4,
+                      border: "1px solid rgba(148, 163, 184, 0.18)",
+                      backgroundColor: "rgba(248,250,252,0.92)",
+                      flexShrink: 0
+                    }}
+                    {...getAutomationProps("app-shell.profile-menu.button")}
+                  >
+                    <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                      {strAvatarText}
+                    </Avatar>
+                  </IconButton>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      minWidth: 0,
+                      maxWidth: { xs: "112px", sm: "152px", md: "180px" }
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: "0.80rem",
+                        fontWeight: 700,
+                        color: "#1d4f91",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        width: "100%"
+                      }}
+                      title={strProfileDisplayName}
+                    >
+                      {strProfileDisplayName}
+                    </Typography>
+                    {strDesignation ? (
+                      <Typography
+                        sx={{
+                          fontSize: { xs: "0.78rem", md: "0.84rem" },
+                          color: "#64748b",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          width: "100%"
+                        }}
+                        title={strDesignation}
+                      >
+                        {strDesignation}
+                      </Typography>
+                    ) : null}
+                  </Box>
+                  <IconButton
+                    onClick={openProfileMenu}
+                    disabled={blnLoggingOut}
+                    sx={{
+                      p: 0.2,
+                      color: "#1f3b73",
+                      flexShrink: 0
+                    }}
+                    {...getAutomationProps("app-shell.profile-menu.button")}
+                  >
+                    <KeyboardArrowDownRoundedIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Box>
+              </Box>
             </Toolbar>
           </AppBar>
 

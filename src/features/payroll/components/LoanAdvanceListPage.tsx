@@ -2,6 +2,7 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -148,20 +149,45 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   }, [blnRightsLoading, blnCanView, blnIsEssMode]);
 
   useEffect(() => {
-    if (blnRightsLoading || !blnCanView || blnIsEssMode) return;
+    if (blnRightsLoading || !blnCanView) return;
     employeeService.getEmployees().then(setLstEmployees).catch(() => setLstEmployees([]));
-  }, [blnRightsLoading, blnCanView, blnIsEssMode]);
+  }, [blnRightsLoading, blnCanView]);
+
+  const lstEmployeeOptions = useMemo(
+    () => {
+      if (lstEmployees.length > 0) {
+        return lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave);
+      }
+
+      const dicEmployeesByCode = new Map<string, EmployeeListRecord>();
+      lstRows.forEach((objRow) => {
+        const strEmployeeCode = objRow.objEmployee?.strEmployeeCode?.trim() || "";
+        if (!strEmployeeCode || dicEmployeesByCode.has(strEmployeeCode)) {
+          return;
+        }
+        dicEmployeesByCode.set(strEmployeeCode, {
+          intID: objRow.intEmployeeID || Number(objRow.intID),
+          strEmployeeCode,
+          strFullName: objRow.objEmployee?.strEmployeeName || strEmployeeCode,
+          strDepartmentName: objRow.objEmployee?.strDepartmentName || "",
+          blnIsPartialSave: false
+        } as EmployeeListRecord);
+      });
+      return Array.from(dicEmployeesByCode.values());
+    },
+    [lstEmployees, lstRows]
+  );
 
   const lstDepartmentOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          lstEmployees
+          lstEmployeeOptions
             .map((objEmployee) => objEmployee.strDepartmentName?.trim())
             .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
         )
       ).sort((strLeft, strRight) => strLeft.localeCompare(strRight)),
-    [lstEmployees]
+    [lstEmployeeOptions]
   );
 
   const lstTableRows = useMemo(
@@ -222,46 +248,96 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     void loadRows(dicReset);
   }
 
+  const objFilterGridSx = {
+    display: "grid",
+    gap: 1,
+    gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
+    mt: 1
+  } as const;
+
+  const objFilterActions = (
+    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+      <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void loadRows()}>{t("search", "Search")}</Button>
+      <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
+    </Box>
+  );
+
+  const objSelectMenuProps = {
+    disablePortal: false,
+    container: typeof window !== "undefined" ? document.body : undefined,
+    sx: {
+      zIndex: 1802
+    },
+    PaperProps: {
+      sx: {
+        zIndex: 1802
+      }
+    }
+  } as const;
+
+  const objFilters = (
+    <Box sx={objFilterGridSx}>
+      <TextField fullWidth select size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        <MenuItem value="">{t("all", "All")}</MenuItem>
+        {lstEmployeeOptions.map((objEmployee) => (
+          <MenuItem key={objEmployee.intID} value={objEmployee.strEmployeeCode}>
+            {getEmployeeLabel(objEmployee)}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField fullWidth select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        <MenuItem value="">{t("all", "All")}</MenuItem>
+        {lstDepartmentOptions.map((strDepartment) => (
+          <MenuItem key={strDepartment} value={strDepartment}>
+            {strDepartment}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
+      </TextField>
+      <TextField fullWidth select size="small" label={t("filter_category", "Category")} value={dicFilters.category_id} onChange={(e) => setDicFilters((d) => ({ ...d, category_id: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        <MenuItem value="">{t("all_categories", "All categories")}</MenuItem>
+        {lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
+      </TextField>
+      <TextField fullWidth select size="small" label={t("filter_status", "Status")} value={dicFilters.status} onChange={(e) => setDicFilters((d) => ({ ...d, status: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        {lstStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}</MenuItem>)}
+      </TextField>
+      <TextField fullWidth size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
+      <TextField fullWidth size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
+      <TextField fullWidth size="small" type="month" label={t("filter_payroll_month", "Payroll Month")} InputLabelProps={{ shrink: true }} value={dicFilters.payroll_month} onChange={(e) => setDicFilters((d) => ({ ...d, payroll_month: e.target.value }))} />
+      {objFilterActions}
+    </Box>
+  );
+
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{blnIsEssMode ? t("ess_breadcrumbs", "ESS / My Loans & Advances") : t("breadcrumbs", "Payroll / Loans & Advances")}</Typography>
-      <Box className={styles.controlsCard}>
-        <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", mt: 1 }}>
-          <TextField select size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))}>
-            <MenuItem value="">{t("all", "All")}</MenuItem>
-            {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => (
-              <MenuItem key={objEmployee.intID} value={objEmployee.strEmployeeCode}>
-                {getEmployeeLabel(objEmployee)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))}>
-            <MenuItem value="">{t("all", "All")}</MenuItem>
-            {lstDepartmentOptions.map((strDepartment) => (
-              <MenuItem key={strDepartment} value={strDepartment}>
-                {strDepartment}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))}>
-            {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
-          </TextField>
-          <TextField select size="small" label={t("filter_category", "Category")} value={dicFilters.category_id} onChange={(e) => setDicFilters((d) => ({ ...d, category_id: e.target.value }))}>
-            <MenuItem value="">{t("all_categories", "All categories")}</MenuItem>
-            {lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
-          </TextField>
-          <TextField select size="small" label={t("filter_status", "Status")} value={dicFilters.status} onChange={(e) => setDicFilters((d) => ({ ...d, status: e.target.value }))}>
-            {lstStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}</MenuItem>)}
-          </TextField>
-          <TextField size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
-          <TextField size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
-          <TextField size="small" type="month" label={t("filter_payroll_month", "Payroll Month")} InputLabelProps={{ shrink: true }} value={dicFilters.payroll_month} onChange={(e) => setDicFilters((d) => ({ ...d, payroll_month: e.target.value }))} />
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-            <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void loadRows()}>{t("search", "Search")}</Button>
-            <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
+      {blnIsEssMode ? (
+        <Box className="pageBanner" sx={{ display: "block", borderRadius: "18px", p: { xs: 2, md: 2.5 } }}>
+          <Box className="bannerDots" />
+          <Box sx={{ display: "flex", gap: 2, alignItems: { xs: "flex-start", md: "center" }, flexDirection: { xs: "column", md: "row" }, position: "relative", zIndex: 1 }}>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center", minWidth: 0 }}>
+              <Box className="bannerIcon">
+                <RequestQuoteRoundedIcon sx={{ fontSize: 34 }} />
+              </Box>
+              <Box className="bannerDivider" sx={{ display: { xs: "none", md: "block" } }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography component="h1" className="bannerTitle">
+                  {t("page_title", "Loans and Advances")}
+                </Typography>
+                <Typography component="p" className="bannerSubTitle">
+                  {t("subtitle", "Track requests, check statuses, and search your loan and advance records.")}
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         </Box>
-      </Box>
+      ) : (
+        <Box className={styles.controlsCard}>
+          {objFilters}
+        </Box>
+      )}
+      {blnIsEssMode ? <Box className={styles.controlsCard}>{objFilters}</Box> : null}
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
