@@ -285,7 +285,7 @@ function appendGeneratedPayslipMenu(lstItems: MenuItem[]): MenuItem[] {
         ...lstChildren,
         {
           strModuleCode: "PAYROLL_RESULTS",
-          strModuleName: "Payroll Results",
+          strModuleName: "Payslip",
           strRoute: "/reports/payslips",
           strIconName: "ReceiptLong",
           lstPermissionCodes: ["PAYSLIP_LIST"],
@@ -812,22 +812,7 @@ export default function DynamicMenu({
     return strTrimmedMenuName || strDefaultLabel;
   }
 
-  function resolvePayrollResultsMenuLabel(strMenuName: string) {
-    const strResolvedPayrollResultsLabel = tPayrollResults("page_title", "Payroll Results").trim();
-    if (strResolvedPayrollResultsLabel && strResolvedPayrollResultsLabel !== "Payroll Results") {
-      return strResolvedPayrollResultsLabel;
-    }
-
-    if (intLanguageID === 2) {
-      return "पेरोल परिणाम";
-    }
-
-    const strTrimmedMenuName = strMenuName.trim();
-    return strTrimmedMenuName.toLowerCase().includes("payslip")
-      ? "Payroll Results"
-      : strTrimmedMenuName || "Payroll Results";
-  }
-
+ 
   function resolveMenuLabel(objItem: MenuItem) {
     const strRoute = (resolveMenuRoute(objItem) ?? objItem.strRoute ?? "").toLowerCase();
     const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
@@ -950,13 +935,6 @@ export default function DynamicMenu({
       );
     }
 
-    if (strRoute.includes("/payroll/results") || strModuleCode.includes("payroll_result")) {
-      return resolvePayrollResultsMenuLabel(strModuleName);
-    }
-
-    if (strRoute.includes("/reports/payslips")) {
-      return resolvePayrollResultsMenuLabel(strModuleName);
-    }
 
     if (strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
       return preferResolvedLabel(
