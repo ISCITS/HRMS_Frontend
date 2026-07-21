@@ -26,6 +26,7 @@ const dicModuleConstantMap: Record<string, unknown> = {
   state: dicConstant.states,
   location: dicConstant.locations,
   employee: dicConstant.employeeMaster,
+  holiday_master: dicConstant.holidayMaster,
   dashboard: dicConstant.dashboard,
 };
 
