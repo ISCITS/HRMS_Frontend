@@ -25,8 +25,12 @@ tools/generate_workflow_doc.py
 ~$CESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 *.tsbuildinfd
-*.tsbuildinfo
 /tmp
-/tmp
+
+# Local frontend configuration and generated files
+/docker-compose.yml
+/next-env.d.ts
+/next.config.js
+/tsconfig.json
 *.tsbuildinfo
-*.tsbuildinfo
+/public/HRMS - Shortcut.lnk
