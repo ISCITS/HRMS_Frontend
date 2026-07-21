@@ -240,4 +240,15 @@ export const employeePayrollInputService = {
     });
     return objResult.Data;
   },
+
+  async unlockEmployeePayrollInput(
+    intInputID: number
+  ): Promise<EmployeePayrollInputDetailRecord> {
+    const objResult = await requestApi<EmployeePayrollInputApiRecord>({
+      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}/unlock`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
+    });
+    return ensureEmployeePayrollInputDetail(objResult.Data);
+  },
 };

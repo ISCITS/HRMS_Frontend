@@ -92,6 +92,11 @@ function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
   return Math.max(...lstLines.map((dicLine) => dicLine.intLineOrder)) + 10;
 }
 
+function normalizeLineOrder(objValue: number | string, intFallbackValue = 10) {
+  const intValue = Number(objValue);
+  return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
+}
+
 function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
   return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
     || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
@@ -1114,7 +1119,10 @@ export default function SalaryStructureEditorPage({
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
             blnIsActive: dicLine.blnIsActive ?? true,
-            intLineOrder: dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
+            intLineOrder: normalizeLineOrder(
+              dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
+              dicLine.intLineOrder || 10
+            ),
             lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
@@ -1158,6 +1166,12 @@ export default function SalaryStructureEditorPage({
           return {
             ...dicLine,
             fltFixedAmount: sanitizeDecimalInput(String(objValue))
+          };
+        }
+        if (strField === "intLineOrder") {
+          return {
+            ...dicLine,
+            intLineOrder: normalizeLineOrder(objValue, dicLine.intLineOrder || 10)
           };
         }
         return { ...dicLine, [strField]: objValue } as SalaryStructureLineFormValue;
@@ -1466,6 +1480,11 @@ export default function SalaryStructureEditorPage({
       return;
     }
     const lstSelectedComponents = dicForm.lstComponents.filter((dicLine) => dicLine.intSalaryComponentID !== "");
+    const dicInvalidLineOrder = lstSelectedComponents.find((dicLine) => !Number.isInteger(Number(dicLine.intLineOrder)) || Number(dicLine.intLineOrder) < 1);
+    if (dicInvalidLineOrder) {
+      setStrError(t("line_order_required_positive", "Line Order must be 1 or greater for every selected component line."));
+      return;
+    }
     const lstActiveFlexiBasketLines = lstSelectedComponents.filter((dicLine) => {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
       return dicLine.blnIsActive && isFlexiEntitlementHostLine(dicLine, dicComponent);
@@ -1843,7 +1862,7 @@ export default function SalaryStructureEditorPage({
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
                         disabled={blnFieldDisabled}
                         controlId="salary-structures.editor.line.line-order.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID, min: "1", step: "1" })}
                         sx={{ width: 78 }}
                       />
                     </td>
