@@ -13,7 +13,17 @@ export type ApiEnvelope<TData> = {
 };
 
 type ApiPayloadResponse<TData> = ApiEnvelope<TData> | { payload: string };
-type ApiErrorResponse<TData> = ApiEnvelope<TData> | { payload?: string; Msg?: string; message?: string; RequestId?: string };
+
+function isObjectRecord(objValue: unknown): objValue is Record<string, unknown> {
+  return typeof objValue === "object" && objValue !== null;
+}
+
+function getHttpFallbackMessage(intStatusCode?: number) {
+  if (intStatusCode === 502 || intStatusCode === 503 || intStatusCode === 504) {
+    return "The service is temporarily unavailable. Please try again shortly.";
+  }
+  return ApiDefaultMessage.RequestFailed;
+}
 
 function buildRequestIdAwareMessage(strMessage: unknown, strRequestId?: string) {
   const strNormalizedMessage = typeof strMessage === "string" ? strMessage.trim() : "";
@@ -63,20 +73,32 @@ type RunFrontendActionOptions<TResult> = {
 };
 
 async function unwrapApiPayload<TData>(objRawPayload: ApiPayloadResponse<TData>) {
-  const objPayload = "payload" in objRawPayload
+  if (!isObjectRecord(objRawPayload)) {
+    throw new ApiRequestError("The server returned an invalid response. Please try again shortly.");
+  }
+
+  const objPayload = "payload" in objRawPayload && typeof objRawPayload.payload === "string"
     ? await decryptPayload<ApiEnvelope<TData>>(objRawPayload.payload)
     : objRawPayload;
 
-  if (objPayload.ResultCode !== ApiResultCode.Success) {
+  if (!isObjectRecord(objPayload)) {
+    throw new ApiRequestError("The server returned an invalid response. Please try again shortly.");
+  }
+  if (!("ResultCode" in objPayload) || !("Msg" in objPayload) || !("Data" in objPayload)) {
+    throw new ApiRequestError("The server returned an invalid response. Please try again shortly.");
+  }
+  const dicPayload = objPayload as ApiEnvelope<TData>;
+
+  if (dicPayload.ResultCode !== ApiResultCode.Success) {
     throw new ApiRequestError(
-      objPayload.Msg ?? ApiDefaultMessage.RequestFailed,
-      objPayload.Data,
+      dicPayload.Msg ?? ApiDefaultMessage.RequestFailed,
+      dicPayload.Data,
       undefined,
-      objPayload.RequestId,
+      dicPayload.RequestId,
     );
   }
 
-  return objPayload;
+  return dicPayload;
 }
 
 export async function createApiRequestError<TData>(
@@ -84,10 +106,14 @@ export async function createApiRequestError<TData>(
   strFallbackMessage: string = ApiDefaultMessage.RequestFailed,
 ): Promise<ApiRequestError> {
   if (axios.isAxiosError(objError)) {
-    const objResponseData = objError.response?.data as ApiErrorResponse<TData> | undefined;
-    const strRequestId = objResponseData?.RequestId ?? objError.response?.headers?.["x-request-id"];
+    const objResponseData = objError.response?.data as unknown;
+    const intStatusCode = objError.response?.status;
+    const strHttpFallbackMessage = getHttpFallbackMessage(intStatusCode);
+    const strRequestId = isObjectRecord(objResponseData) && typeof objResponseData.RequestId === "string"
+      ? objResponseData.RequestId
+      : objError.response?.headers?.["x-request-id"];
 
-    if (objResponseData && "payload" in objResponseData && objResponseData.payload) {
+    if (isObjectRecord(objResponseData) && typeof objResponseData.payload === "string" && objResponseData.payload) {
       try {
         const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
         const strPayloadMessage = typeof objDecryptedPayload.Msg === "string" && objDecryptedPayload.Msg.trim() !== "[]"
@@ -96,23 +122,26 @@ export async function createApiRequestError<TData>(
         return new ApiRequestError(
           strPayloadMessage,
           objDecryptedPayload.Data,
-          objError.response?.status,
+          intStatusCode,
           objDecryptedPayload.RequestId ?? strRequestId,
         );
       } catch {
         return new ApiRequestError(
-          objResponseData?.Msg ?? objError.message ?? strFallbackMessage,
+          (typeof objResponseData.Msg === "string" ? objResponseData.Msg : undefined) ?? objError.message ?? strHttpFallbackMessage,
           undefined,
-          objError.response?.status,
+          intStatusCode,
           strRequestId,
         );
       }
     }
 
     return new ApiRequestError(
-      objResponseData?.Msg ?? (objResponseData && "message" in objResponseData ? objResponseData.message : undefined) ?? objError.message ?? strFallbackMessage,
+      (isObjectRecord(objResponseData) && typeof objResponseData.Msg === "string" ? objResponseData.Msg : undefined) ??
+        (isObjectRecord(objResponseData) && typeof objResponseData.message === "string" ? objResponseData.message : undefined) ??
+        (intStatusCode && intStatusCode >= 500 ? strHttpFallbackMessage : objError.message) ??
+        strFallbackMessage,
       undefined,
-      objError.response?.status,
+      intStatusCode,
       strRequestId,
     );
   }
