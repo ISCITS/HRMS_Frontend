@@ -530,8 +530,6 @@ function mergeSalaryComponentMetadataIntoOptions(
         strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
         strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
         strWageType: dicComponent.strWageType ?? dicOption.strWageType,
-        strLwpTreatmentCode: dicComponent.strLwpTreatmentCode ?? dicOption.strLwpTreatmentCode,
-        strLwpReducedAmountHandlingCode: dicComponent.strLwpReducedAmountHandlingCode ?? dicOption.strLwpReducedAmountHandlingCode,
         intComponentCategoryID: dicComponent.intComponentCategoryID ?? dicOption.intComponentCategoryID,
         intCtcTreatmentID: dicComponent.intCtcTreatmentID ?? dicOption.intCtcTreatmentID,
         intTaxTreatmentID: dicComponent.intTaxTreatmentID ?? dicOption.intTaxTreatmentID,
@@ -676,11 +674,12 @@ export const salaryStructureService = {
       getSalaryComponentsForMetadata()
     ]);
     const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
-    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, lstSalaryComponents);
-    return {
-      ...mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []),
+    const dicNormalizedOptions: SalaryStructureFormOptions = {
+      ...objOptionsResult.Data,
       lstValueSourceLookups: mapValueSourceLookups(objOptionsResult.Data.lstValueSourceLookups, objOptionsResult.Data.lstValueSources ?? []),
     };
+    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(dicNormalizedOptions, lstSalaryComponents);
+    return mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []);
   },
 
   async saveFlexiComponentEligibility(dicValues: SalaryStructureFormValues): Promise<void> {

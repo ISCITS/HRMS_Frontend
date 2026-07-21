@@ -662,7 +662,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         setStrBootstrapError("");
-        const intResolvedLanguageID = authHelpers.getLanguageID();
+        const intResolvedLanguageID = authHelpers.getLanguageID() ?? 1;
         const lstBootstrapResults = await Promise.allSettled([
           // Older backend images do not expose the optional bulk label endpoint.
           // Keep shell bootstrap resilient and let per-module label loading fall back.

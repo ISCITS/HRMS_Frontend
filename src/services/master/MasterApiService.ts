@@ -632,6 +632,7 @@ export type SalaryComponentApiRecord = {
   strDefaultPeriodicity: string;
   intTaxTreatmentID?: number | null;
   strTaxTreatment: string | null;
+  strWageType?: string | null;
   intCtcTreatmentID?: number | null;
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;

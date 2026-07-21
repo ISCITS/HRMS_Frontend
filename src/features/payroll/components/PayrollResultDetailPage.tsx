@@ -361,6 +361,7 @@ function KpiCard({
   objIcon,
   strIconBg,
   strIconColor,
+  strBorder = "#dbe7f3",
   blnEmphasis = false,
 }: {
   strLabel: string;
@@ -368,13 +369,14 @@ function KpiCard({
   objIcon: ReactNode;
   strIconBg: string;
   strIconColor: string;
+  strBorder?: string;
   blnEmphasis?: boolean;
 }) {
   return (
     <Paper
       sx={{
         borderRadius: "12px",
-        border: "1px solid #dbe7f3",
+        border: `1px solid ${strBorder}`,
         background: "#fff",
         boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
         minHeight: 82,

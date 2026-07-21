@@ -369,8 +369,10 @@
             "status": "Status"
         },
         "grid": {
+            "id": "ID",
             "code": "Code",
             "name": "Department Name",
+            "manager": "Manager",
             "status": "Status",
             "employees": "Employees",
             "action": "Action"
@@ -382,6 +384,8 @@
             "nameRequired": "Department Name is required.",
             "nameMin": "Department Name must be at least 3 characters.",
             "nameDuplicate": "Department Name already exists.",
+            "managerRequired": "Manager is required.",
+            "managerMin": "Manager must be at least 3 characters.",
             "statusRequired": "Status is required."
         }
     },

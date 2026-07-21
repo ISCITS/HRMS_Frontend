@@ -1,6 +1,6 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
-import { axiosInstance } from "@/lib/axiosInstance";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   PayslipGenerateAllSummary,
   PayslipPreviewRecord,
@@ -110,7 +110,7 @@ export const payslipService = {
           Accept: "text/html",
           "x-skip-payload-encryption": "true",
         },
-      }
+      } as ApiRequestConfig
     );
     const strHtml = extractHtmlPayload(objResponse.data);
     if (!strHtml.trim()) {

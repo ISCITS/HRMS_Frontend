@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { normalizeAccessScope } from "@/features/security/utils/accessScope";
@@ -259,9 +259,7 @@ function renderActionRow(
           disabled={blnReadOnly}
           onChange={(objEvent) => fnToggleAllowed(objNode.intMenuID, objAction.intActionID, objEvent.target.checked)}
           size="small"
-          inputProps={{
-            "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.action.${objAction.intActionID}.switch`,
-          }}
+          inputProps={{ "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.action.${objAction.intActionID}.switch` } as InputHTMLAttributes<HTMLInputElement>}
           sx={{ ml: 1 }}
         />
       </Box>
@@ -322,9 +320,7 @@ function renderNodeRows(
             disabled={blnReadOnly}
             onChange={(objEvent) => fnToggleNodeAllowed(objNode.intMenuID, objEvent.target.checked)}
             size="small"
-            inputProps={{
-              "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.switch`,
-            }}
+            inputProps={{ "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.switch` } as InputHTMLAttributes<HTMLInputElement>}
           />
         </Box>
       </Box>
@@ -439,11 +435,7 @@ export default function UserGroupRightsEditor({
           placeholder={dicLabels.searchPlaceholder}
           value={strSearch}
           onChange={(objEvent) => setStrSearch(objEvent.target.value)}
-          slotProps={{
-            htmlInput: {
-              "data-control-id": "security.user-group-rights-editor.search.input",
-            },
-          }}
+          inputProps={{ controlId: "security.user-group-rights-editor.search.input" }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">

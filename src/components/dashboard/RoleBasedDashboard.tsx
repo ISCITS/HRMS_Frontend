@@ -1673,16 +1673,17 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         blnMounted = false;
       };
     }
+    const intEmployeeID = intCurrentEmployeeID;
 
     async function loadEssProfileReferenceData() {
       try {
         const [dicEmployee, dicOptions, lstProfileDetails] = await Promise.all([
-          employeeService.getEmployeeById(intCurrentEmployeeID),
+          employeeService.getEmployeeById(intEmployeeID),
           employeeService.getFormOptions(),
           Promise.allSettled([
-            employeeService.getEmployeeAddress(intCurrentEmployeeID),
-            employeeService.getEmployeeStatutory(intCurrentEmployeeID),
-            employeeSalaryService.getEmployeeSalarySummary(intCurrentEmployeeID),
+            employeeService.getEmployeeAddress(intEmployeeID),
+            employeeService.getEmployeeStatutory(intEmployeeID),
+            employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
           ]),
         ]);
 

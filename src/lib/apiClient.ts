@@ -10,7 +10,7 @@ export type ApiClientResponse<TResponse> = {
 };
 
 export type ApiCallOptions = {
-  method?: ApiRequestMethod;
+  method?: ApiRequestMethod | "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   params?: Record<string, string | number | boolean | null | undefined>;
 };
 

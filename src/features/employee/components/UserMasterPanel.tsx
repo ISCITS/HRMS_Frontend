@@ -19,7 +19,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -805,13 +805,13 @@ export default function UserMasterPanel() {
                 onChange={(objEvent) => setFormField("password", objEvent.target.value)}
                 error={Boolean(dicErrors.password)}
                 helperText={dicErrors.password}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -826,13 +826,13 @@ export default function UserMasterPanel() {
                 onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
                 error={Boolean(dicErrors.confirmPassword)}
                 helperText={dicErrors.confirmPassword}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -860,7 +860,7 @@ export default function UserMasterPanel() {
               disabled={strMode === "view"}
               fullWidth
               required
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               <MenuItem value="" data-controlid="user-master.dialog.user-group.select.option">Select</MenuItem>
               {objFormOptions.lstUserGroups.map((objGroup) => (
@@ -877,7 +877,7 @@ export default function UserMasterPanel() {
               disabled
               fullWidth
               helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               {objFormOptions.lstLanguages.map((objLanguage) => (
                 <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)} data-controlid={`user-master.dialog.preferred-language.${normalizeSelectToken(objLanguage.strCode || objLanguage.strLabel)}.option`}>
@@ -931,7 +931,7 @@ export default function UserMasterPanel() {
                 disabled={strMode === "view"}
                 fullWidth
                 required
-                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } }}
+                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
               >
                 <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
                 {lstEmployeeOptions.map((objEmployee) => (

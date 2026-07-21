@@ -12,6 +12,7 @@ import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
@@ -161,7 +162,7 @@ function getScheduleOutstanding(objSchedule?: LoanAdvanceScheduleRecord | null) 
   };
 }
 
-function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRoute: string | null; lstChildren: never[] }[] }[], strRoute: string): boolean {
+function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
 

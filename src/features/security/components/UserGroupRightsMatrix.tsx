@@ -317,9 +317,9 @@ export default function UserGroupRightsMatrix({
     setBlnLoading(true);
     try {
       const lstResult = await securityApiService.getUserGroupRights(intUserGroupID);
-      setLstNodes(lstResult);
-      setLstInitialNodes(lstResult);
-      setObjExpandedMenuIDs(new Set(collectMenuIDs(lstResult)));
+      setLstNodes(lstResult.Data);
+      setLstInitialNodes(lstResult.Data);
+      setObjExpandedMenuIDs(new Set(collectMenuIDs(lstResult.Data)));
     } catch (objError) {
       setObjToast({
         open: true,

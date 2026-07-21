@@ -1171,7 +1171,7 @@ export default function SalaryStructureEditorPage({
         if (strField === "intLineOrder") {
           return {
             ...dicLine,
-            intLineOrder: normalizeLineOrder(objValue, dicLine.intLineOrder || 10)
+            intLineOrder: normalizeLineOrder(Number(objValue), dicLine.intLineOrder || 10)
           };
         }
         return { ...dicLine, [strField]: objValue } as SalaryStructureLineFormValue;

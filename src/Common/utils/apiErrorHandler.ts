@@ -59,7 +59,7 @@ type RunFrontendActionOptions<TResult> = {
   fnOnSuccess?: (objResult: TResult) => void | Promise<void>;
   fnOnError?: (objError: ApiRequestError) => void | Promise<void>;
   fnFinally?: () => void | Promise<void>;
-  strFallbackMessage?: ApiDefaultMessage;
+  strFallbackMessage?: string;
 };
 
 async function unwrapApiPayload<TData>(objRawPayload: ApiPayloadResponse<TData>) {
@@ -81,7 +81,7 @@ async function unwrapApiPayload<TData>(objRawPayload: ApiPayloadResponse<TData>)
 
 export async function createApiRequestError<TData>(
   objError: unknown,
-  strFallbackMessage = ApiDefaultMessage.RequestFailed,
+  strFallbackMessage: string = ApiDefaultMessage.RequestFailed,
 ): Promise<ApiRequestError> {
   if (axios.isAxiosError(objError)) {
     const objResponseData = objError.response?.data as ApiErrorResponse<TData> | undefined;
@@ -128,7 +128,7 @@ export async function createApiRequestError<TData>(
   return new ApiRequestError(strFallbackMessage);
 }
 
-export function resolveErrorMessage(objError: unknown, strFallbackMessage = ApiDefaultMessage.RequestFailed) {
+export function resolveErrorMessage(objError: unknown, strFallbackMessage: string = ApiDefaultMessage.RequestFailed) {
   if (objError instanceof Error && objError.message.trim()) {
     return objError.message;
   }

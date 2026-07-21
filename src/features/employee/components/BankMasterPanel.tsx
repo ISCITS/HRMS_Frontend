@@ -187,6 +187,7 @@ export default function BankMasterPanel() {
     cancel: t("cancel"),
     clear: t("clear"),
     close: t("close"),
+    delete: t("delete"),
     exportExcel: t("export_excel"),
     exportPdf: t("export_pdf"),
     save: t("save"),
