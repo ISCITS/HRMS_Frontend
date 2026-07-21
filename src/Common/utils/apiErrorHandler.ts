@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { ApiDefaultMessage, ApiRequestMethod, ApiResultCode } from "@/Common/enums/AppEnums";
 import { authHelpers } from "@/lib/auth";
-import { axiosInstance } from "@/lib/axiosInstance";
+import { axiosInstance, ApiRequestConfig } from "@/lib/axiosInstance";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 
 export type ApiEnvelope<TData> = {
@@ -163,14 +163,16 @@ export async function requestEncryptedApi<TData>(objOptions: RequestEncryptedApi
   }
 
   try {
-    const objResponse = await axiosInstance.request<ApiPayloadResponse<TData>>({
-      method: objOptions.strMethod,
-      url: objOptions.strPath,
-      data: objOptions.objBody,
-      params: objOptions.objQueryParams,
-      csrfMenuAction: objOptions.strMenuAction,
-      headers: objHeaders,
-    });
+    const objResponse = await axiosInstance.request<ApiPayloadResponse<TData>>(
+      {
+        method: objOptions.strMethod,
+        url: objOptions.strPath,
+        data: objOptions.objBody,
+        params: objOptions.objQueryParams,
+        csrfMenuAction: objOptions.strMenuAction,
+        headers: objHeaders,
+      } as ApiRequestConfig
+    );
 
     return unwrapApiPayload(objResponse.data);
   } catch (objError) {
