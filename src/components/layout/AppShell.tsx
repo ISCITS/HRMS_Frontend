@@ -38,7 +38,7 @@ import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
-import type { CurrentUserContext, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
+import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
@@ -349,6 +349,21 @@ function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined
     lstResolvedLanguageIDs.push(intLanguageID);
     return lstResolvedLanguageIDs;
   }, []);
+}
+
+function findMenuNameByRoute(lstMenuItems: AuthMenuItem[], strPathname: string): string {
+  const strNormalizedPath = (strPathname || "").replace(/\/$/, "").toLowerCase();
+  for (const objMenuItem of lstMenuItems) {
+    const strMenuRoute = (objMenuItem.strRoute || "").replace(/\/$/, "").toLowerCase();
+    if (strMenuRoute && strMenuRoute === strNormalizedPath) {
+      return objMenuItem.strModuleName.trim();
+    }
+    const strChildMenuName = findMenuNameByRoute(objMenuItem.lstChildren, strPathname);
+    if (strChildMenuName) {
+      return strChildMenuName;
+    }
+  }
+  return "";
 }
 
 function resolveLanguageDisplayLabel(
@@ -817,7 +832,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
     : strLowerPathname.match(/^\/ess\/reimbursements\/\d+\/edit$/)
       ? tHeader("edit_claim_reimbursement", "Edit Claim Reimbursement")
       : tHeader("view_claim_reimbursement", "View Claim Reimbursement");
-  const strPageTitle = blnEmployeeReimbursementFormContext
+  // Exact menu routes use the tenant-configured database label in the shell header.
+  const strDatabaseMenuName = findMenuNameByRoute(objMenu.lstMenuItems, strPathname);
+  const strPageTitle = strDatabaseMenuName || (blnEmployeeReimbursementFormContext
     ? (blnEmployeeReimbursementContext ? strEmployeeReimbursementFormTitle : tHeader("review_reimbursements", "Review Reimbursements"))
     : blnEmployeeReimbursementContext
       ? tHeader("employee_reimbursements", "Employee Reimbursements")
@@ -829,7 +846,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         objSearchParams.get("backRoute") || "",
         objSearchParams.get("mode") || "",
         objSearchParams.get("source") || ""
-      );
+      ));
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);

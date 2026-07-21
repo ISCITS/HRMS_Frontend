@@ -50,6 +50,27 @@ export type SimpleMasterFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
 };
 
+export type HolidayApiRecord = {
+  intID: number;
+  intHolidayYear: number;
+  dtHolidayDate: string;
+  strHolidayCode: string;
+  strHolidayName: string;
+  strHolidayDescription?: string | null;
+  strHolidayTypeCode: string;
+  blnIsPaid: boolean;
+  blnIsOptional: boolean;
+  blnIsWorkOnHoliday: boolean;
+  blnIsCompensatoryOffApplicable: boolean;
+  blnIsActive: boolean;
+  lstTexts?: Array<{ intLanguageID: number; strLanguageName: string; strHolidayName: string; strHolidayDescription?: string | null }>;
+};
+
+export type HolidayFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstHolidayTypes: Array<{ strCode: string; strLabel: string }>;
+};
+
 export type UserApiRecord = {
   intID: number;
   intTenantID: number;
@@ -1291,6 +1312,68 @@ async function requestApi<TData>(objOptions: {
 }
 
 export const masterApiService = {
+  getHolidays(intYear: number, objFilters?: { strSearchName?: string; strSearchCode?: string; strHolidayTypeCode?: string; strStatus?: string; dtFromDate?: string; dtToDate?: string }) {
+    return requestApi<HolidayApiRecord[]>({
+      strPath: MasterApiResource.Holidays,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { intYear, ...objFilters, language_id: authHelpers.getLanguageID() },
+      strMenuAction: MasterMenuAction.HolidayList,
+    });
+  },
+
+  getHoliday(intID: number) {
+    return requestApi<HolidayApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, intID),
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { language_id: authHelpers.getLanguageID() },
+      strMenuAction: MasterMenuAction.HolidayList,
+    });
+  },
+
+  getHolidayFormOptions() {
+    return requestApi<HolidayFormOptionsApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.FormOptions),
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.HolidayFormOptions,
+    });
+  },
+
+  createHoliday(objBody: Record<string, unknown>) {
+    return requestApi<HolidayApiRecord>({
+      strPath: MasterApiResource.Holidays,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayCreate,
+    });
+  },
+
+  updateHoliday(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<HolidayApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayUpdate,
+    });
+  },
+
+  bulkHolidayStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: MasterMenuAction.HolidayBulkStatus,
+    });
+  },
+
+  translateHolidayText(objBody: { strText: string; intSourceLanguageID: number; intTargetLanguageID: number }) {
+    return requestApi<{ strTranslatedText: string }>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.Translate),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayTranslate,
+    });
+  },
+
   // Department CRUD and bulk actions.
   getDepartments() {
     return requestApi<DepartmentApiRecord[]>({

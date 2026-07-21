@@ -108,6 +108,9 @@ export const authHelpers = {
 
     if (typeof intSecondaryLanguageID === "number" && Number.isFinite(intSecondaryLanguageID)) {
       window.localStorage.setItem(AuthStorageKey.SecondaryLanguageId, String(intSecondaryLanguageID));
+    } else {
+      // Tenant switches must not retain another tenant's optional secondary language.
+      window.localStorage.removeItem(AuthStorageKey.SecondaryLanguageId);
     }
   },
   getTenantID() {

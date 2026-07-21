@@ -7,6 +7,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/designations")) {
     return "designation";
   }
+  if (strLowerPath.startsWith("/holidays") || strLowerPath.startsWith("/leave/holidays")) {
+    return "holiday";
+  }
   if (strLowerPath.startsWith("/banks")) {
     return "bank";
   }
