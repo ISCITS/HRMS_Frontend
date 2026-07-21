@@ -59,7 +59,7 @@ type RunFrontendActionOptions<TResult> = {
   fnOnSuccess?: (objResult: TResult) => void | Promise<void>;
   fnOnError?: (objError: ApiRequestError) => void | Promise<void>;
   fnFinally?: () => void | Promise<void>;
-  strFallbackMessage?: string;
+  strFallbackMessage?: ApiDefaultMessage;
 };
 
 async function unwrapApiPayload<TData>(objRawPayload: ApiPayloadResponse<TData>) {
