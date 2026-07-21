@@ -48,6 +48,11 @@ function formatOptionalInteger(objValue: number | string | "") {
   return Number.isInteger(intValue) && intValue > 0 ? intValue : null;
 }
 
+function formatRequiredPositiveInteger(objValue: number | string | "", intFallbackValue = 10) {
+  const intValue = Number(objValue);
+  return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
+}
+
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -153,7 +158,7 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
   return {
     strRowID: createRowID(),
     intSalaryComponentID: dicLine.intSalaryComponentID,
-    intLineOrder: dicLine.intLineOrder,
+    intLineOrder: formatRequiredPositiveInteger(dicLine.intLineOrder),
     intValueSourceID: dicLine.intValueSourceID ?? "",
     strValueSource: dicLine.strValueSource,
     strComponentCode: dicLine.strComponentCode ?? "",
@@ -307,7 +312,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
       .filter((dicLine) => dicLine.intSalaryComponentID !== null)
       .map((dicLine) => ({
         intSalaryComponentID: dicLine.intSalaryComponentID,
-        intLineOrder: dicLine.intLineOrder,
+        intLineOrder: formatRequiredPositiveInteger(dicLine.intLineOrder),
         intValueSourceID: formatOptionalInteger(dicLine.intValueSourceID),
         strValueSource: dicLine.strValueSource,
         intComponentCategorySnapshotID: formatOptionalInteger(dicLine.intComponentCategorySnapshotID),
