@@ -5,7 +5,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
-import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -441,8 +441,8 @@ export default function StatutoryReportPage() {
         <BlockingLoader blnOpen={blnLoading} strLabel="Loading statutory report rows..." />
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
-          columns={blnSummaryReport ? lstSummaryTableColumns : lstDetailTableColumns}
-          rows={blnSummaryReport ? lstSummaryTableRows : lstDetailTableRows}
+          columns={(blnSummaryReport ? lstSummaryTableColumns : lstDetailTableColumns) as unknown as CommonTableColumn<Record<string, ReactNode>>[]}
+          rows={(blnSummaryReport ? lstSummaryTableRows : lstDetailTableRows) as unknown as Record<string, ReactNode>[]}
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}

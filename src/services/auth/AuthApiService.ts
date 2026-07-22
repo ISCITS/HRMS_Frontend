@@ -135,6 +135,7 @@ export const authApiService = {
         strPath: "tenant/auth-details",
         strMethod: ApiRequestMethod.Get,
         objQueryParams: {
+          strTenantUUID,
           tenantUuid: strTenantUUID,
           ...(intLanguageID ? { language_id: intLanguageID } : {})
         },
@@ -167,6 +168,7 @@ export const authApiService = {
       strPath: "tenant/login-labels",
       strMethod: ApiRequestMethod.Get,
       objQueryParams: {
+        strTenantUUID,
         tenantUuid: strTenantUUID,
         ...(intLanguageID ? { language_id: intLanguageID } : {})
       },

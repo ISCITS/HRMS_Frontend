@@ -17,9 +17,10 @@ import {
   Snackbar,
   Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -132,6 +133,27 @@ const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.sel
 const lstDefaultUsers: UserRecord[] = [];
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function isEssUserGroupOption(objGroup?: { strCode?: string; strLabel?: string } | null) {
+  if (!objGroup) {
+    return false;
+  }
+  const strCode = objGroup.strCode ?? "";
+  const strLabel = objGroup.strLabel ?? "";
+  const lstTokens = `${strCode} ${strLabel}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const strCompact = `${strCode}${strLabel}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return lstTokens.includes("ess") || strCompact.startsWith("ess") || strCompact.includes("employeeselfservice");
+}
+
+function isEssUserGroupID(
+  lstUserGroups: UserFormOptionsApiRecord["lstUserGroups"],
+  intUserGroupID: number | "" | null,
+) {
+  if (!intUserGroupID) {
+    return false;
+  }
+  return isEssUserGroupOption(lstUserGroups.find((objGroup) => objGroup.intID === Number(intUserGroupID)));
 }
 
 function getUserLoginId(dicRecord: UserApiRecord) {
@@ -263,6 +285,7 @@ export default function UserMasterPanel() {
     validationMobileInvalid: t("validation_mobile_invalid"),
     validationEmployeeRequired: t("validation_employee_required", "Employee is required."),
     validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
+    validationEssUserGroupRequired: t("validation_ess_user_group_required", "Login as Employee is available only for ESS user groups."),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
@@ -339,6 +362,12 @@ export default function UserMasterPanel() {
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
   const blnDisableOtpOnlyOption = objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false;
+  const blnSelectedUserGroupAllowsEmployeeLogin = isEssUserGroupID(
+    objFormOptions.lstUserGroups,
+    dicForm.userGroupID,
+  );
+  const blnLoginAsEmployeeDisabled =
+    strMode === "view" || !blnSelectedUserGroupAllowsEmployeeLogin;
   const lstTableRows = useMemo<UserTableRow[]>(() => lstFilteredUsers.map((dicUser) => ({
     id: dicUser.id,
     select: (
@@ -388,10 +417,12 @@ export default function UserMasterPanel() {
   ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+    let objResolvedFormOptions = objFormOptions;
     if (strNextMode === "add") {
       setBlnLoading(true);
       try {
         const objDefaultOptions = await masterApiService.getUserFormOptions();
+        objResolvedFormOptions = objDefaultOptions.Data;
         setObjFormOptions(objDefaultOptions.Data);
       } finally {
         setBlnLoading(false);
@@ -400,6 +431,7 @@ export default function UserMasterPanel() {
       setBlnLoading(true);
       try {
         const objScopedOptions = await masterApiService.getUserFormOptions(Number(dicUser.id));
+        objResolvedFormOptions = objScopedOptions.Data;
         setObjFormOptions(objScopedOptions.Data);
       } finally {
         setBlnLoading(false);
@@ -410,6 +442,10 @@ export default function UserMasterPanel() {
     setDicErrors({});
     setBlnPasswordVisible(false);
     setBlnConfirmPasswordVisible(false);
+    const blnUserGroupAllowsEmployeeLogin = isEssUserGroupID(
+      objResolvedFormOptions.lstUserGroups,
+      dicUser?.userGroupID ?? "",
+    );
     setDicForm(dicUser ? {
       loginName: dicUser.loginName,
       loginId: dicUser.loginId,
@@ -419,15 +455,15 @@ export default function UserMasterPanel() {
       confirmPassword: "",
       ssoEnabled: dicUser.ssoEnabled,
       mfaEnabled: dicUser.mfaEnabled,
-      loginAsEmployee: Boolean(dicUser.employeeID),
+      loginAsEmployee: Boolean(dicUser.employeeID) && blnUserGroupAllowsEmployeeLogin,
       ssoLoginMapping: dicUser.ssoLoginMapping,
       preferredLanguageID: intTenantLanguageID ?? dicUser.preferredLanguageID ?? "",
-      employeeID: dicUser.employeeID ?? "",
+      employeeID: blnUserGroupAllowsEmployeeLogin ? dicUser.employeeID ?? "" : "",
       userGroupID: dicUser.userGroupID ?? "",
       status: dicUser.status
     } : {
       ...dicEmptyForm,
-      mfaEnabled: objFormOptions.objMfaPolicy?.blnUserMfaDefaultEnabled ?? false,
+      mfaEnabled: objResolvedFormOptions.objMfaPolicy?.blnUserMfaDefaultEnabled ?? false,
       preferredLanguageID: intTenantLanguageID ?? "",
     });
     setBlnDialogOpen(true);
@@ -451,6 +487,13 @@ export default function UserMasterPanel() {
       if (strField === "loginAsEmployee" && !Boolean(objValue)) {
         dicNextForm.employeeID = "";
       }
+      if (
+        strField === "userGroupID" &&
+        !isEssUserGroupID(objFormOptions.lstUserGroups, objValue as number | "")
+      ) {
+        dicNextForm.loginAsEmployee = false;
+        dicNextForm.employeeID = "";
+      }
       return dicNextForm;
     });
     setDicErrors((objPrevious) => {
@@ -462,7 +505,7 @@ export default function UserMasterPanel() {
       return {
         ...objPrevious,
         [strField]: undefined,
-        ...(strField === "loginAsEmployee" ? { employeeID: undefined } : {}),
+        ...(strField === "loginAsEmployee" || strField === "userGroupID" ? { employeeID: undefined } : {}),
       };
     });
   }
@@ -539,6 +582,10 @@ export default function UserMasterPanel() {
 
     if (!dicForm.userGroupID) {
       dicNextErrors.userGroupID = dicModuleLabels.validationUserGroupRequired;
+    }
+
+    if (dicForm.loginAsEmployee && !blnSelectedUserGroupAllowsEmployeeLogin) {
+      dicNextErrors.userGroupID = dicModuleLabels.validationEssUserGroupRequired;
     }
 
     if (dicForm.loginAsEmployee && !dicForm.employeeID) {
@@ -805,13 +852,13 @@ export default function UserMasterPanel() {
                 onChange={(objEvent) => setFormField("password", objEvent.target.value)}
                 error={Boolean(dicErrors.password)}
                 helperText={dicErrors.password}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -826,13 +873,13 @@ export default function UserMasterPanel() {
                 onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
                 error={Boolean(dicErrors.confirmPassword)}
                 helperText={dicErrors.confirmPassword}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -860,7 +907,7 @@ export default function UserMasterPanel() {
               disabled={strMode === "view"}
               fullWidth
               required
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               <MenuItem value="" data-controlid="user-master.dialog.user-group.select.option">Select</MenuItem>
               {objFormOptions.lstUserGroups.map((objGroup) => (
@@ -877,7 +924,7 @@ export default function UserMasterPanel() {
               disabled
               fullWidth
               helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               {objFormOptions.lstLanguages.map((objLanguage) => (
                 <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)} data-controlid={`user-master.dialog.preferred-language.${normalizeSelectToken(objLanguage.strCode || objLanguage.strLabel)}.option`}>
@@ -913,10 +960,23 @@ export default function UserMasterPanel() {
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {dicModuleLabels.helperLoginAsEmployee}
+                  {blnSelectedUserGroupAllowsEmployeeLogin
+                    ? dicModuleLabels.helperLoginAsEmployee
+                    : dicModuleLabels.validationEssUserGroupRequired}
                 </Typography>
               </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={strMode === "view"} />
+              <Tooltip
+                title={
+                  blnLoginAsEmployeeDisabled && strMode !== "view"
+                    ? dicModuleLabels.validationEssUserGroupRequired
+                    : ""
+                }
+                arrow
+              >
+                <span>
+                  <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee && blnSelectedUserGroupAllowsEmployeeLogin} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+                </span>
+              </Tooltip>
             </Box>
 
             {dicForm.loginAsEmployee ? (
@@ -931,7 +991,7 @@ export default function UserMasterPanel() {
                 disabled={strMode === "view"}
                 fullWidth
                 required
-                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } }}
+                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
               >
                 <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
                 {lstEmployeeOptions.map((objEmployee) => (

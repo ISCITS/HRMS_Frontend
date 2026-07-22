@@ -7,6 +7,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -61,7 +62,7 @@ function toLabelKey(strValue?: string | null) {
     .replace(/^_+|_+$/g, "");
 }
 
-function hasMenuRoute(lstItems: { strRoute: string | null; lstChildren: { strRoute: string | null; lstChildren: never[] }[] }[], strRoute: string): boolean {
+function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
 

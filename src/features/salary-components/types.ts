@@ -273,6 +273,4 @@ export type SalaryComponentFormOptions = {
   lstLwpTreatmentLookups?: SalaryComponentLookupOption[];
   lstLwpReducedAmountHandlingLookups?: SalaryComponentLookupOption[];
   lstApplicableTaxRegimeLookups?: SalaryComponentLookupOption[];
-  lstLwpTreatmentLookups?: SalaryComponentLookupOption[];
-  lstLwpReducedAmountHandlingLookups?: SalaryComponentLookupOption[];
 };

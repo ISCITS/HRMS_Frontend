@@ -15,20 +15,20 @@ type TenantRequestPayload = {
   language_id?: number;
 };
 
-function buildTenantProxyHeaders(objRequestHeaders?: Headers) {
-  const strTenantID = objRequestHeaders?.get("X-Tenant-Id")?.trim() || DefaultContextValue.PrimaryId;
-  const strCompanyID = objRequestHeaders?.get("X-Company-Id")?.trim() || DefaultContextValue.PrimaryId;
+function buildTenantProxyHeaders() {
   const strFrontendOrigin = getServerAppOrigin();
 
   return {
     Origin: strFrontendOrigin,
     [apiConstants.csrfHeaderName]: generateCSRFToken(getServerCsrfSecretKey(), "TENANT_AUTH_DETAILS_READ"),
-    "X-Tenant-Id": strTenantID,
-    "X-Company-Id": strCompanyID
+    // Tenant discovery is a pre-authentication operation. Never forward stale
+    // browser tenant/company context while resolving the supplied tenant UUID.
+    "X-Tenant-Id": DefaultContextValue.PrimaryId,
+    "X-Company-Id": DefaultContextValue.PrimaryId
   };
 }
 
-async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: number, objRequestHeaders?: Headers) {
+async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: number) {
   if (!strTenantUUID) {
     return NextResponse.json(
       {
@@ -49,7 +49,7 @@ async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: num
       {
         method: "GET",
         cache: "no-store",
-        headers: buildTenantProxyHeaders(objRequestHeaders)
+        headers: buildTenantProxyHeaders()
       }
     );
     return NextResponse.json(objResult, { status: 200 });
@@ -69,9 +69,12 @@ async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: num
 export async function GET(request: NextRequest) {
   const intLanguageID = Number(request.nextUrl.searchParams.get("languageId") ?? request.nextUrl.searchParams.get("language_id") ?? "");
   return proxyTenantAuthDetails(
-    request.nextUrl.searchParams.get("tenantUuid")?.trim() ?? "",
-    Number.isFinite(intLanguageID) ? intLanguageID : undefined,
-    request.headers
+    (
+      request.nextUrl.searchParams.get("strTenantUUID") ??
+      request.nextUrl.searchParams.get("tenantUuid") ??
+      ""
+    ).trim(),
+    Number.isFinite(intLanguageID) ? intLanguageID : undefined
   );
 }
 
@@ -79,7 +82,6 @@ export async function POST(request: Request) {
   const objBody = (await request.json().catch(() => ({} as TenantRequestPayload))) as TenantRequestPayload;
   return proxyTenantAuthDetails(
     (objBody.strTenantUUID ?? objBody.tenantUuid ?? "").trim(),
-    objBody.languageId ?? objBody.language_id,
-    request.headers
+    objBody.languageId ?? objBody.language_id
   );
 }

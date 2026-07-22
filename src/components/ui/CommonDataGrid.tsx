@@ -44,7 +44,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
-  getRowSx?: (row: T) => SxProps<Theme>;
+  getRowSx?: (row: T) => SxProps<Theme> | undefined;
   rowIdField?: keyof T;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
@@ -425,7 +425,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       }
                     },
                     getRowSx?.(row) ?? {}
-                  ]}
+                  ] as SxProps<Theme>}
                 >
                   {orderedColumns.map((column) => {
                     const strField = String(column.field);

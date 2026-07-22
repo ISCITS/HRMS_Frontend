@@ -243,6 +243,43 @@
             "checkOut": "Check Out"
         }
     },
+    "holidayMaster": {
+        "pageTitle": "Holiday Master",
+        "addButton": "Add Holiday",
+        "dialogAddTitle": "Add Holiday",
+        "dialogEditTitle": "Edit Holiday",
+        "dialogViewTitle": "View Holiday",
+        "emptyMessage": "No holidays found.",
+        "fields": {
+            "year": "Year",
+            "date": "Date",
+            "code": "Code",
+            "name": "Name",
+            "type": "Holiday Type",
+            "paid": "Paid",
+            "optional": "Optional",
+            "workAllowed": "Work on Holiday Allowed",
+            "compOff": "Comp-Off Eligible",
+            "isActive": "Status"
+        },
+        "grid": {
+            "date": "Date",
+            "day": "Day",
+            "code": "Code",
+            "name": "Name",
+            "type": "Holiday Type",
+            "paid": "Paid",
+            "optional": "Optional",
+            "workAllowed": "Work Allowed",
+            "compOff": "Comp-Off",
+            "status": "Status",
+            "action": "Actions"
+        },
+        "validation": {
+            "required": "Year, date, code, name and type are required.",
+            "yearDate": "Holiday year must match the date year."
+        }
+    },
     "payroll": {
         "runForm": {
             "month": "Payroll Month",
@@ -332,8 +369,10 @@
             "status": "Status"
         },
         "grid": {
+            "id": "ID",
             "code": "Code",
             "name": "Department Name",
+            "manager": "Manager",
             "status": "Status",
             "employees": "Employees",
             "action": "Action"
@@ -345,6 +384,8 @@
             "nameRequired": "Department Name is required.",
             "nameMin": "Department Name must be at least 3 characters.",
             "nameDuplicate": "Department Name already exists.",
+            "managerRequired": "Manager is required.",
+            "managerMin": "Manager must be at least 3 characters.",
             "statusRequired": "Status is required."
         }
     },

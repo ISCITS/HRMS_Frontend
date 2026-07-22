@@ -8,9 +8,10 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { type HTMLAttributes, useEffect, useMemo, useState } from "react";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -153,6 +154,10 @@ export default function UserGroupMasterDialog({
     scopeCompanyOption: t("scope_company_option", "Current company only"),
     fieldIsActive: t("field_is_active", "Is Active"),
     fieldIsActiveHelp: t("field_is_active_help", "Inactive groups are excluded from permission resolution."),
+    ownGroupInactiveWarning: t(
+      "own_group_inactive_warning",
+      "You cannot update your own last active user group because it would remove your User Group access.",
+    ),
     summaryVisibleMenus: t("summary_visible_menus", "Visible Menus"),
     summaryAllowedActions: t("summary_allowed_actions", "Allowed Actions"),
     summaryAssignedUsers: t("summary_assigned_users", "Assigned Users"),
@@ -162,6 +167,16 @@ export default function UserGroupMasterDialog({
     saveButton: t("save_button", "Save User Group"),
     saveChangesButton: t("save_changes_button", "Save Changes"),
   };
+  const strOwnGroupInactiveWarning = useMemo(
+    () =>
+      objMetadata?.strCurrentUserSelfLockoutMessage?.trim() ||
+      dicLabels.ownGroupInactiveWarning,
+    [dicLabels.ownGroupInactiveWarning, objMetadata?.strCurrentUserSelfLockoutMessage],
+  );
+  const blnProtectCurrentUserGroup =
+    strMode === "edit" &&
+    objForm.blnIsActive &&
+    Boolean(objMetadata?.blnCurrentUserSelfLockoutRisk);
 
   return (
     <CommonMasterDialog
@@ -212,11 +227,7 @@ export default function UserGroupMasterDialog({
                 required
                 error={Boolean(dicFieldErrors.strGroupCode)}
                 helperText={dicFieldErrors.strGroupCode ?? ""}
-                slotProps={{
-                  htmlInput: {
-                    "data-control-id": "security.user-group.dialog.group-code.input",
-                  },
-                }}
+                inputProps={{ controlId: "security.user-group.dialog.group-code.input" }}
               />
               <TextField
                 label={dicLabels.fieldGroupName}
@@ -226,11 +237,7 @@ export default function UserGroupMasterDialog({
                 required
                 error={Boolean(dicFieldErrors.strGroupName)}
                 helperText={dicFieldErrors.strGroupName ?? ""}
-                slotProps={{
-                  htmlInput: {
-                    "data-control-id": "security.user-group.dialog.group-name.input",
-                  },
-                }}
+                inputProps={{ controlId: "security.user-group.dialog.group-name.input" }}
               />
             </Box>
 
@@ -241,11 +248,7 @@ export default function UserGroupMasterDialog({
               disabled={blnReadOnly}
               multiline
               minRows={3}
-              slotProps={{
-                htmlInput: {
-                  "data-control-id": "security.user-group.dialog.group-description.input",
-                },
-              }}
+              inputProps={{ controlId: "security.user-group.dialog.group-description.input" }}
             />
 
             <TextField
@@ -255,9 +258,7 @@ export default function UserGroupMasterDialog({
               onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
               disabled={blnReadOnly || intCurrentCompanyID == null}
               SelectProps={{
-                SelectDisplayProps: {
-                  "data-control-id": "security.user-group.dialog.group-scope.select",
-                },
+                SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
               }}
               helperText={
                 intCurrentCompanyID == null
@@ -286,17 +287,30 @@ export default function UserGroupMasterDialog({
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {dicLabels.fieldIsActiveHelp}
+                  {blnProtectCurrentUserGroup ? strOwnGroupInactiveWarning : dicLabels.fieldIsActiveHelp}
                 </Typography>
               </Box>
-              <ActiveStatusSwitch
-                blnIsActive={objForm.blnIsActive}
-                onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
-                disabled={blnReadOnly}
-                controlId="security.user-group.dialog.is-active.switch"
-                testId="security.user-group.dialog.is-active.switch"
-              />
+              <Tooltip
+                title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
+                arrow
+              >
+                <span>
+                  <ActiveStatusSwitch
+                    blnIsActive={objForm.blnIsActive}
+                    onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
+                    disabled={blnReadOnly || blnProtectCurrentUserGroup}
+                    controlId="security.user-group.dialog.is-active.switch"
+                    testId="security.user-group.dialog.is-active.switch"
+                  />
+                </span>
+              </Tooltip>
             </Box>
+
+            {blnProtectCurrentUserGroup ? (
+              <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+                {strOwnGroupInactiveWarning}
+              </Alert>
+            ) : null}
 
             {objMetadata ? (
               <Box

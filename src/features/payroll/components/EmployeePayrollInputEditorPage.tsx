@@ -254,8 +254,21 @@ export default function EmployeePayrollInputEditorPage({
     [dicForm.lstLines]
   );
 
+  const strSelectedRunStatus = (dicSelectedRun?.strStatus ?? "").trim().toLowerCase();
+  const blnSelectedRunProcessed = strSelectedRunStatus === "processed";
+  const blnSelectedRunBlocksInputChanges =
+    Boolean(dicSelectedRun?.blnIsLocked) && !blnSelectedRunProcessed;
+  const blnRecordLocked = dicForm.blnIsLocked || dicForm.strStatus === "Locked";
   const blnFormLocked =
-    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || dicForm.blnIsLocked || dicForm.strStatus === "Locked" || Boolean(dicSelectedRun?.blnIsLocked);
+    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || blnRecordLocked || blnSelectedRunBlocksInputChanges;
+  const blnLockControlDisabled =
+    blnSaving || blnRightsLoading || !blnCanSave || blnReadOnly || blnSelectedRunBlocksInputChanges;
+  const blnSaveDisabled =
+    blnSaving ||
+    !blnCanSave ||
+    blnReadOnly ||
+    blnSelectedRunBlocksInputChanges ||
+    (strMode === "edit" && blnRecordLocked);
 
   useEffect(() => {
     if (!dicSelectedRun?.decCalendarDays || dicForm.strCalendarDays.trim()) {
@@ -298,6 +311,38 @@ export default function EmployeePayrollInputEditorPage({
     if (strField === "intEmployeeID" || strField === "intPayrollRunID" || strField === "strManualLwpReason") {
       setDicFieldErrors((dicPrevious) => ({ ...dicPrevious, [strField]: "" }));
     }
+  }
+
+  async function updateLocked(blnChecked: boolean) {
+    if (!blnChecked && strMode === "edit" && intInputID && blnRecordLocked) {
+      setBlnSaving(true);
+      setStrError("");
+      setStrSuccess("");
+      try {
+        const dicUnlockedRecord = await employeePayrollInputService.unlockEmployeePayrollInput(intInputID);
+        setDicForm(toEmployeePayrollInputFormValues(dicUnlockedRecord));
+        setStrSuccess(t("unlock_success", "Payroll input unlocked successfully."));
+      } catch (objError) {
+        setStrError(
+          objError instanceof Error
+            ? objError.message
+            : t("unlock_error", "Unable to unlock payroll input.")
+        );
+      } finally {
+        setBlnSaving(false);
+      }
+      return;
+    }
+
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      blnIsLocked: blnChecked,
+      strStatus: blnChecked
+        ? "Locked"
+        : dicPrevious.strStatus === "Locked"
+        ? "Draft"
+        : dicPrevious.strStatus,
+    }));
   }
 
   function updateLine(
@@ -349,7 +394,7 @@ export default function EmployeePayrollInputEditorPage({
       setDicFieldErrors(dicNextFieldErrors);
       return "";
     }
-    if (dicSelectedRun?.blnIsLocked) {
+    if (blnSelectedRunBlocksInputChanges) {
       return t("payroll_run_locked_error", "Locked payroll runs cannot accept payroll input changes.");
     }
     const lstDayFields = [
@@ -570,7 +615,7 @@ export default function EmployeePayrollInputEditorPage({
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRecord}
-                disabled={blnSaving || (blnFormLocked && strMode === "edit")}
+                disabled={blnSaveDisabled}
                 sx={{ display: blnReadOnly ? "none" : undefined }}
                 style={{
                   minWidth: 112,
@@ -592,7 +637,8 @@ export default function EmployeePayrollInputEditorPage({
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
-      {dicSelectedRun?.blnIsLocked ? <Alert severity="warning">{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
+      {blnSelectedRunBlocksInputChanges ? <Alert severity="warning">{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
+      {dicSelectedRun?.blnIsLocked && blnSelectedRunProcessed ? <Alert severity="info">{t("processed_run_input_warning", "This payroll run is processed. Unlock the payroll input to edit LWP, LOP, or payroll adjustments, then reprocess payroll to refresh results.")}</Alert> : null}
 
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
         <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
@@ -793,8 +839,8 @@ export default function EmployeePayrollInputEditorPage({
             <Switch
               inputProps={{ "controlId": "employee-payroll-input.editor.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
               checked={dicForm.blnIsLocked}
-              onChange={(_, blnChecked) => updateField("blnIsLocked", blnChecked)}
-              disabled={blnFormLocked || dicForm.strStatus === "Locked"}
+              onChange={(_, blnChecked) => updateLocked(blnChecked)}
+              disabled={blnLockControlDisabled}
               sx={{
                 mr: 1.5,
                 "& .MuiSwitch-switchBase.Mui-checked": {

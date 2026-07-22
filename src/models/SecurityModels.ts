@@ -52,6 +52,7 @@ export type UserGroupRightSaveItem = {
 
 export type UserGroupAssignmentRecord = {
   intID: number;
+  intUserID: number;
   intUserGroupID: number;
   strGroupCode: string;
   strGroupName: string;
@@ -94,6 +95,8 @@ export type UserGroupAuthorizationMetadata = {
   lstAssignedUsers: UserGroupAssignmentRecord[];
   lstAssignableUsers: AssignableUserRecord[];
   objSummary: UserGroupAuthorizationSummary;
+  blnCurrentUserSelfLockoutRisk: boolean;
+  strCurrentUserSelfLockoutMessage: string | null;
 };
 
 export type UserGroupAuthorizationSavePayload = {

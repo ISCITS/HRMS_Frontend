@@ -52,7 +52,7 @@ function shouldRedirectToSessionExpired(objError: unknown) {
     ? objError.config.headers.get("Authorization")
     : undefined;
 
-  return Boolean(strAuthorizationHeader?.trim() || authHelpers.getAccessToken());
+  return Boolean((typeof strAuthorizationHeader === "string" ? strAuthorizationHeader.trim() : "") || authHelpers.getAccessToken());
 }
 
 export const axiosInstance = axios.create({

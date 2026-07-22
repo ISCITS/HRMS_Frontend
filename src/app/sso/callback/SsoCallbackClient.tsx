@@ -20,7 +20,7 @@ import { authApiService, clsApiRequestError, isGoogleMfaChallengeData, isOtpChal
 export default function SsoCallbackClient() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
-  const [strStatus, setStrStatus] = useState(enMessages.auth.ssoCallbackSubtitle);
+  const [strStatus, setStrStatus] = useState<string>(enMessages.auth.ssoCallbackSubtitle);
   const [strError, setStrError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [objChallenge, setObjChallenge] = useState<SsoMfaChallengeData | null>(null);
@@ -203,6 +203,10 @@ export default function SsoCallbackClient() {
         verifyButtonTestId="auth.sso-callback.verify.button"
       />
     );
+  }
+
+  if (!objChallenge) {
+    return null;
   }
 
   return (

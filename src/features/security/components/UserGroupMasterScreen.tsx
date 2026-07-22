@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type HTMLAttributes, type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
@@ -66,7 +66,7 @@ export default function UserGroupMasterScreen() {
     hasRightAny,
     canViewAny,
     isReadOnly,
-  } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
+  } = useModuleActionAccess(["USERGROUP", "USER_GROUP", "USER_GROUPS"]);
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -346,22 +346,14 @@ export default function UserGroupMasterScreen() {
             placeholder={dicLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))}
-            slotProps={{
-              htmlInput: {
-                "data-control-id": "security.user-group.search.name.input",
-              },
-            }}
+            inputProps={{ controlId: "security.user-group.search.name.input" }}
             fullWidth
           />
           <TextField
             placeholder={dicLabels.searchCodePlaceholder}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))}
-            slotProps={{
-              htmlInput: {
-                "data-control-id": "security.user-group.search.code.input",
-              },
-            }}
+            inputProps={{ controlId: "security.user-group.search.code.input" }}
             fullWidth
           />
           <TextField
@@ -372,9 +364,7 @@ export default function UserGroupMasterScreen() {
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as "All" | "Active" | "Inactive" }))
             }
             SelectProps={{
-              SelectDisplayProps: {
-                "data-control-id": "security.user-group.search.status.select",
-              },
+              SelectDisplayProps: { "data-control-id": "security.user-group.search.status.select" } as HTMLAttributes<HTMLDivElement>,
             }}
             fullWidth
           >
@@ -411,7 +401,7 @@ export default function UserGroupMasterScreen() {
 
       <Box className={styles.tableCard}>
         <Box sx={{ overflowX: "auto", overflowY: "auto", minHeight: 0, flex: 1 }}>
-          {!blnCanView ? (
+          {blnLoading || blnRightsLoading ? null : !blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
               <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>

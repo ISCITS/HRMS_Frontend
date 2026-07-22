@@ -2,6 +2,7 @@ export enum ApiRequestMethod {
   Get = "GET",
   Post = "POST",
   Put = "PUT",
+  Patch = "PATCH",
   Delete = "DELETE",
 }
 
@@ -61,6 +62,7 @@ export enum MasterApiResource {
   PayrollLookups = "/masters/payroll-lookups",
   Departments = "/masters/departments",
   Designations = "/masters/designations",
+  Holidays = "/masters/holidays",
   Banks = "/masters/banks",
   EssDeclarationCategories = "/masters/ess-declaration-categories",
   CostCenters = "/masters/cost-centers",
@@ -113,6 +115,12 @@ export enum MasterMenuAction {
   DesignationUpdate = "MASTER_DESIGNATION_UPDATE",
   DesignationBulkStatus = "MASTER_DESIGNATION_BULK_STATUS",
   DesignationBulkDelete = "MASTER_DESIGNATION_BULK_DELETE",
+  HolidayList = "MASTER_HOLIDAY_LIST",
+  HolidayFormOptions = "MASTER_HOLIDAY_FORM_OPTIONS",
+  HolidayTranslate = "MASTER_HOLIDAY_TRANSLATE",
+  HolidayCreate = "MASTER_HOLIDAY_CREATE",
+  HolidayUpdate = "MASTER_HOLIDAY_UPDATE",
+  HolidayBulkStatus = "MASTER_HOLIDAY_BULK_STATUS",
   BankList = "MASTER_BANK_LIST",
   BankCreate = "MASTER_BANK_CREATE",
   BankUpdate = "MASTER_BANK_UPDATE",

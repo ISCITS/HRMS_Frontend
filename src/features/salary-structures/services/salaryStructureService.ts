@@ -48,6 +48,11 @@ function formatOptionalInteger(objValue: number | string | "") {
   return Number.isInteger(intValue) && intValue > 0 ? intValue : null;
 }
 
+function formatRequiredPositiveInteger(objValue: number | string | "", intFallbackValue = 10) {
+  const intValue = Number(objValue);
+  return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
+}
+
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -171,7 +176,7 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
   return {
     strRowID: createRowID(),
     intSalaryComponentID: dicLine.intSalaryComponentID,
-    intLineOrder: dicLine.intLineOrder,
+    intLineOrder: formatRequiredPositiveInteger(dicLine.intLineOrder),
     intValueSourceID: dicLine.intValueSourceID ?? "",
     strValueSource: dicLine.strValueSource,
     strComponentCode: dicLine.strComponentCode ?? "",
@@ -327,7 +332,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
       .filter((dicLine) => dicLine.intSalaryComponentID !== null)
       .map((dicLine) => ({
         intSalaryComponentID: dicLine.intSalaryComponentID,
-        intLineOrder: dicLine.intLineOrder,
+        intLineOrder: formatRequiredPositiveInteger(dicLine.intLineOrder),
         intValueSourceID: formatOptionalInteger(dicLine.intValueSourceID),
         strValueSource: dicLine.strValueSource,
         intComponentCategorySnapshotID: formatOptionalInteger(dicLine.intComponentCategorySnapshotID),
@@ -545,8 +550,6 @@ function mergeSalaryComponentMetadataIntoOptions(
         strRoundingRule: dicComponent.strRoundingRule ?? dicOption.strRoundingRule,
         strTaxTreatment: dicComponent.strTaxTreatment ?? dicOption.strTaxTreatment,
         strWageType: dicComponent.strWageType ?? dicOption.strWageType,
-        strLwpTreatmentCode: dicComponent.strLwpTreatmentCode ?? dicOption.strLwpTreatmentCode,
-        strLwpReducedAmountHandlingCode: dicComponent.strLwpReducedAmountHandlingCode ?? dicOption.strLwpReducedAmountHandlingCode,
         intComponentCategoryID: dicComponent.intComponentCategoryID ?? dicOption.intComponentCategoryID,
         intCtcTreatmentID: dicComponent.intCtcTreatmentID ?? dicOption.intCtcTreatmentID,
         intTaxTreatmentID: dicComponent.intTaxTreatmentID ?? dicOption.intTaxTreatmentID,
@@ -699,11 +702,12 @@ export const salaryStructureService = {
       getSalaryComponentsForMetadata()
     ]);
     const objEligibilityResult = await getFlexiComponentEligibilityWithTimeout();
-    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(objOptionsResult.Data, lstSalaryComponents);
-    return {
-      ...mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []),
+    const dicNormalizedOptions: SalaryStructureFormOptions = {
+      ...objOptionsResult.Data,
       lstValueSourceLookups: mapValueSourceLookups(objOptionsResult.Data.lstValueSourceLookups, objOptionsResult.Data.lstValueSources ?? []),
     };
+    const dicMergedOptions = mergeSalaryComponentMetadataIntoOptions(dicNormalizedOptions, lstSalaryComponents);
+    return mergeFlexiEligibilityIntoOptions(dicMergedOptions, objEligibilityResult?.Data ?? []);
   },
 
   async saveFlexiComponentEligibility(dicValues: SalaryStructureFormValues): Promise<void> {

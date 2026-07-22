@@ -9,6 +9,8 @@ export const appRoutes = {
   logout: "/logout",
   dashboard: "/dashboard",
   attendance: "/attendance",
+  attendancePolicies: "/attendance/policies",
+  dailyAttendance: "/attendance/daily",
   leave: "/leave",
   payroll: "/payroll",
   payrollFNFSettlements: "/payroll/fnf-settlements",

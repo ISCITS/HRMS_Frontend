@@ -65,7 +65,11 @@ async function proxyTenantLoginLabels(strTenantUUID: string, intLanguageID?: num
 export async function GET(request: NextRequest) {
   const intLanguageID = Number(request.nextUrl.searchParams.get("languageId") ?? request.nextUrl.searchParams.get("language_id") ?? "");
   return proxyTenantLoginLabels(
-    request.nextUrl.searchParams.get("tenantUuid")?.trim() ?? "",
+    (
+      request.nextUrl.searchParams.get("strTenantUUID") ??
+      request.nextUrl.searchParams.get("tenantUuid") ??
+      ""
+    ).trim(),
     Number.isFinite(intLanguageID) ? intLanguageID : undefined,
     request.headers
   );

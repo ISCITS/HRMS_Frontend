@@ -1057,11 +1057,19 @@ function buildOverrideRows(
       blnIsFlexiPayLine && getNumberValue(dicReusableOverride?.decAmountAnnual) <= 0
         ? decDefaultAnnual
         : dicReusableOverride?.decAmountAnnual ?? decDefaultAnnual;
+    const strExplicitBasisComponentName =
+      "strBasisComponentName" in dicLine && typeof dicLine.strBasisComponentName === "string"
+        ? dicLine.strBasisComponentName
+        : "";
+    const intLineBasisComponentID =
+      "intBasisComponentID" in dicLine && typeof dicLine.intBasisComponentID === "number"
+        ? dicLine.intBasisComponentID
+        : null;
     const strResolvedBasisComponentName =
-      ("strBasisComponentName" in dicLine && dicLine.strBasisComponentName) ||
-      ("intBasisComponentID" in dicLine && dicLine.intBasisComponentID
-        ? (dicSalaryComponentByID?.get(dicLine.intBasisComponentID)?.strComponentName ??
-          dicSalaryComponentByID?.get(dicLine.intBasisComponentID)?.strComponentCode ??
+      strExplicitBasisComponentName ||
+      (intLineBasisComponentID
+        ? (dicSalaryComponentByID?.get(intLineBasisComponentID)?.strComponentName ??
+          dicSalaryComponentByID?.get(intLineBasisComponentID)?.strComponentCode ??
           "")
         : "") ||
       ("intBasisComponentID" in (dicReferenceLine ?? {}) && (dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID

@@ -31,6 +31,9 @@ type CommonMasterDialogProps = {
   rootControlId?: string;
   cancelButtonControlId?: string;
   primaryButtonControlId?: string;
+  rootTestId?: string;
+  cancelButtonTestId?: string;
+  primaryButtonTestId?: string;
 };
 
 export type { CommonMasterDialogProps };
@@ -55,10 +58,19 @@ export default function CommonMasterDialog({
   onDialogClose,
   strSecondaryButtonClassName = masterStyles.secondaryButton,
   strPrimaryButtonClassName = masterStyles.primaryButton,
+  rootControlId = "common-master-dialog",
+  cancelButtonControlId = "common-master-dialog.cancel.button",
+  primaryButtonControlId = "common-master-dialog.primary.button",
+  rootTestId,
+  cancelButtonTestId,
+  primaryButtonTestId,
 }: CommonMasterDialogProps) {
+  const strRootControlId = rootTestId ?? rootControlId;
+  const strCancelButtonControlId = cancelButtonTestId ?? cancelButtonControlId;
+  const strPrimaryButtonControlId = primaryButtonTestId ?? primaryButtonControlId;
   return (
     <Dialog
-      controlId="common-master-dialog"
+      controlId={strRootControlId}
       open={blnOpen}
       onClose={onDialogClose ?? (() => onClose())}
       onKeyDown={handleSingleDialogActionEnter}
@@ -72,11 +84,11 @@ export default function CommonMasterDialog({
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button controlId="common-master-dialog.cancel.button" className={strSecondaryButtonClassName} onClick={onClose}>
+        <Button controlId={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
         {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button controlId="common-master-dialog.primary.button" className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
+          <Button controlId={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
             {strPrimaryLabel}
           </Button>
         ) : null}

@@ -1108,7 +1108,10 @@ export default function SalaryStructureEditorPage({
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
             blnIsActive: dicLine.blnIsActive ?? true,
-            intLineOrder: dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
+            intLineOrder: normalizeLineOrder(
+              dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
+              dicLine.intLineOrder || 10
+            ),
             lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
@@ -1152,6 +1155,12 @@ export default function SalaryStructureEditorPage({
           return {
             ...dicLine,
             fltFixedAmount: sanitizeDecimalInput(String(objValue))
+          };
+        }
+        if (strField === "intLineOrder") {
+          return {
+            ...dicLine,
+            intLineOrder: normalizeLineOrder(Number(objValue), dicLine.intLineOrder || 10)
           };
         }
         return { ...dicLine, [strField]: objValue } as SalaryStructureLineFormValue;
@@ -1866,7 +1875,7 @@ export default function SalaryStructureEditorPage({
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intLineOrder", Number(objEvent.target.value))}
                         disabled={blnFieldDisabled}
                         controlId="salary-structures.editor.line.line-order.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID })}
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.line-order.input", { "data-row-key": dicLine.strRowID, min: "1", step: "1" })}
                         sx={{ width: 78 }}
                       />
                     </td>
