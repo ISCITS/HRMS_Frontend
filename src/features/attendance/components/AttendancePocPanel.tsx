@@ -6,7 +6,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, Grid, IconButton,
-  MenuItem, Paper, Snackbar, Stack, Switch, Tab, Tabs, Table, TableBody, TableCell, TableHead,
+  MenuItem, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableHead,
   TableRow, TextField, Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -53,11 +53,15 @@ function toSaveRow(objRow: DailyAttendanceRow): DailyAttendanceSaveRow {
     decWorkedHours: objRow.decWorkedHours, intLateMinutes: objRow.intLateMinutes, decOtHours: objRow.decOtHours, blnIsPaid: objRow.blnIsPaid, strRemark: objRow.strRemark };
 }
 
-export default function AttendancePocPanel() {
+type AttendancePocPanelProps = {
+  strView: "policy" | "daily";
+};
+
+export default function AttendancePocPanel({ strView }: AttendancePocPanelProps) {
   const { t } = useModuleLabels("attendance", "Unable to load attendance labels.");
-  const { blnLoading: blnRightsLoading, objRights } = useModuleActionAccess(["ATTENDANCE", "ATTENDANCE_MANAGEMENT"]);
-  const { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, loadDaily, saveDaily } = useAttendancePoc();
-  const [intTab, setIntTab] = useState(0); const [blnDialogOpen, setBlnDialogOpen] = useState(false); const [intPolicyID, setIntPolicyID] = useState<number | null>(null);
+  const { blnLoading: blnRightsLoading, objRights } = useModuleActionAccess(["ATTENDANCE_POLICY", "DAILY_ATTENDANCE", "ATTENDANCE", "ATTENDANCE_MANAGEMENT"]);
+  const { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, loadDaily, saveDaily } = useAttendancePoc(strView === "policy");
+  const [blnDialogOpen, setBlnDialogOpen] = useState(false); const [intPolicyID, setIntPolicyID] = useState<number | null>(null);
   const [strPolicySearch, setStrPolicySearch] = useState(""); const [strPolicyStatus, setStrPolicyStatus] = useState("");
   const [strDate, setStrDate] = useState(strToday); const [strEmployeeSearch, setStrEmployeeSearch] = useState("");
   const [strDepartment, setStrDepartment] = useState(""); const [strLocation, setStrLocation] = useState("");
@@ -70,6 +74,7 @@ export default function AttendancePocPanel() {
   const lstLocations = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intLocationID).map((objRow) => [objRow.intLocationID, objRow.strLocationName])).entries()), [lstDailyRows]);
 
   useEffect(() => { setLstEditableRows(lstDailyRows); setBlnDirty(false); }, [lstDailyRows]);
+  useEffect(() => { if (strView === "daily") void loadDaily({ strDate }); }, [strView]);
   useEffect(() => { const fnWarn = (objEvent: BeforeUnloadEvent) => { if (blnDirty) objEvent.preventDefault(); }; window.addEventListener("beforeunload", fnWarn); return () => window.removeEventListener("beforeunload", fnWarn); }, [blnDirty]);
 
   function showToast(strMessage: string, strSeverity: "success" | "error") { setObjToast({ blnOpen: true, strMessage, strSeverity }); }
@@ -80,7 +85,12 @@ export default function AttendancePocPanel() {
   function updateRow(intIndex: number, strField: keyof DailyAttendanceRow, objValue: string | number | boolean | null) { setLstEditableRows((lstCurrent) => lstCurrent.map((objRow, intRowIndex) => intRowIndex === intIndex ? { ...objRow, [strField]: objValue } : objRow)); setBlnDirty(true); setDicRowErrors((dicCurrent) => ({ ...dicCurrent, [intIndex]: "" })); }
   async function saveAll() { try { const objResult = await saveDaily(strDate, lstEditableRows.map(toSaveRow)); const dicErrors: Record<number, string> = {}; objResult.lstResults.filter((objResultRow) => !objResultRow.blnValid).forEach((objResultRow) => { dicErrors[objResultRow.intRowIndex] = objResultRow.strMessage ?? t("invalid_row", "Invalid row"); }); setDicRowErrors(dicErrors); if (objResult.blnSaved) { setBlnDirty(false); showToast(t("attendance_saved", `${objResult.intSavedCount} attendance rows saved.`), "success"); await searchDaily(); } else showToast(t("validation_failed", "Validation failed. No rows were saved."), "error"); } catch (objError) { showToast(objError instanceof Error ? objError.message : t("save_failed", "Save failed."), "error"); } }
 
-  const lstManagementActions = objRights.dicAllowedActions.ATTENDANCE_MANAGEMENT ?? objRights.dicAllowedActions.ATTENDANCE ?? [];
+  const lstManagementActions = Array.from(new Set([
+    ...(objRights.dicAllowedActions.ATTENDANCE_MANAGEMENT ?? []),
+    ...(objRights.dicAllowedActions.ATTENDANCE_POLICY ?? []),
+    ...(objRights.dicAllowedActions.DAILY_ATTENDANCE ?? []),
+    ...(objRights.dicAllowedActions.ATTENDANCE ?? []),
+  ]));
   const blnCanView = lstManagementActions.includes("view") || lstManagementActions.includes("attendance_view");
   const blnCanManage = lstManagementActions.includes("manage") || lstManagementActions.includes("attendance_manage");
   if (blnRightsLoading) return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
@@ -117,9 +127,8 @@ export default function AttendancePocPanel() {
   </Stack>;
 
   return <Stack spacing={1.5} sx={{ "& .MuiPaper-root": { borderRadius: "4px !important" }, "& .MuiOutlinedInput-root": { borderRadius: "4px !important" }, "& .MuiButton-root": { borderRadius: "4px !important" }, "& .MuiAlert-root": { borderRadius: "4px !important" } }}>
-    <Paper sx={{ p: 1, borderRadius: 3 }}><Tabs value={intTab} onChange={(_,intValue) => { setIntTab(intValue); if (intValue === 1 && lstDailyRows.length === 0) void loadDaily({ strDate }); }}><Tab controlId="attendance.policy.tab" label={t("attendance_policy", "Attendance Policy")} /><Tab controlId="attendance.daily.tab" label={t("daily_attendance", "Daily Attendance")} /></Tabs></Paper>
     {strError ? <Alert severity="error">{strError}</Alert> : null}
-    {intTab === 0 ? <>
+    {strView === "policy" ? <>
       <Paper sx={{ p: 1.5, borderRadius: 3 }}><Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} spacing={1}><TextField controlId="attendance.policy.search.input" value={strPolicySearch} onChange={(objEvent) => setStrPolicySearch(objEvent.target.value)} label={t("search_policy", "Search Code or Name")} fullWidth /><TextField controlId="attendance.policy.status.select" select value={strPolicyStatus} onChange={(objEvent) => setStrPolicyStatus(objEvent.target.value)} label={t("status", "Status")} sx={{ minWidth: 180 }}><MenuItem value="">{t("all", "All")}</MenuItem><MenuItem value="active">{t("active", "Active")}</MenuItem><MenuItem value="inactive">{t("inactive", "Inactive")}</MenuItem></TextField><Button controlId="attendance.policy.search.button" variant="contained" onClick={() => void searchPolicies()} sx={{ height: 50, minWidth: 96, whiteSpace: "nowrap" }}>{t("search", "Search")}</Button><Button controlId="attendance.policy.add.button" variant="contained" startIcon={<AddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openPolicy(null)} sx={{ height: 50, minWidth: 132, whiteSpace: "nowrap" }}>{t("add_policy", "Add Policy")}</Button></Stack></Paper>
       <Paper sx={{ borderRadius: 3, overflow: "hidden" }}><Box sx={{ overflowX: "auto" }}><Table><TableHead><TableRow>{["Actions","Code","Policy Name","Full Day","Half Day","Effective From","Default","Status"].map((strLabel) => <TableCell key={strLabel} sx={{ fontWeight: 800 }}>{t(`table_${strLabel.toLowerCase().replaceAll(" ","_")}`,strLabel)}</TableCell>)}</TableRow></TableHead><TableBody>{objPolicyList.lstItems.map((objPolicy) => <TableRow key={objPolicy.intID} hover><TableCell><IconButton controlId={`attendance.policy.${objPolicy.intID}.edit.button`} disabled={blnReadOnly} onClick={() => void openPolicy(objPolicy.intID)}><EditRoundedIcon /></IconButton></TableCell><TableCell>{objPolicy.strPolicyCode}</TableCell><TableCell>{objPolicy.strPolicyName}</TableCell><TableCell>{objPolicy.decFullDayThresholdHours}</TableCell><TableCell>{objPolicy.decHalfDayThresholdHours}</TableCell><TableCell>{objPolicy.dtEffectiveFrom}</TableCell><TableCell>{objPolicy.blnIsDefault ? t("yes","Yes") : t("no","No")}</TableCell><TableCell><Switch controlId={`attendance.policy.${objPolicy.intID}.status.switch`} disabled={blnReadOnly} checked={objPolicy.blnIsActive} onChange={async (_,blnChecked) => { try { await setPolicyStatus(objPolicy.intID,blnChecked); await searchPolicies(); } catch (objError) { showToast(objError instanceof Error ? objError.message : t("status_failed","Status update failed."),"error"); } }} /></TableCell></TableRow>)}{!blnLoading && objPolicyList.lstItems.length === 0 ? <TableRow><TableCell colSpan={8} align="center">{t("no_policies","No attendance policies found.")}</TableCell></TableRow> : null}</TableBody></Table></Box>{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Paper>
     </> : <>

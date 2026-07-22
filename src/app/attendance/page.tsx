@@ -1,5 +1,5 @@
-import AttendancePocPanel from "@/features/attendance/components/AttendancePocPanel";
+import { redirect } from "next/navigation";
 
 export default function AttendanceAdminPage() {
-  return <AttendancePocPanel />;
+  redirect("/attendance/policies");
 }

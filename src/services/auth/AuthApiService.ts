@@ -136,6 +136,7 @@ export const authApiService = {
         strMethod: ApiRequestMethod.Get,
         objQueryParams: {
           strTenantUUID,
+          tenantUuid: strTenantUUID,
           ...(intLanguageID ? { language_id: intLanguageID } : {})
         },
         strMenuAction: "TENANT_AUTH_DETAILS_READ"
@@ -168,6 +169,7 @@ export const authApiService = {
       strMethod: ApiRequestMethod.Get,
       objQueryParams: {
         strTenantUUID,
+        tenantUuid: strTenantUUID,
         ...(intLanguageID ? { language_id: intLanguageID } : {})
       },
       strMenuAction: "TENANT_LOGIN_LABELS_READ"

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
 
-export function useAttendancePoc() {
+export function useAttendancePoc(blnLoadPolicies = true) {
   const [objPolicyList, setObjPolicyList] = useState<AttendancePolicyList>({ lstItems: [], intTotal: 0, intPage: 1, intPageSize: 10 });
   const [lstDailyRows, setLstDailyRows] = useState<DailyAttendanceRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
@@ -18,7 +18,9 @@ export function useAttendancePoc() {
     finally { setBlnLoading(false); }
   }, []);
 
-  useEffect(() => { void loadPolicies({ intPage: 1, intPageSize: 10 }); }, [loadPolicies]);
+  useEffect(() => {
+    if (blnLoadPolicies) void loadPolicies({ intPage: 1, intPageSize: 10 });
+  }, [blnLoadPolicies, loadPolicies]);
 
   async function getPolicy(intPolicyID: number) { return attendanceService.getPolicy(intPolicyID); }
   async function savePolicy(intPolicyID: number | null, objValues: AttendancePolicyFormValues): Promise<AttendancePolicy> {
