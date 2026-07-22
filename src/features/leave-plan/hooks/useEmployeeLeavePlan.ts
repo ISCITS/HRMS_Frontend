@@ -72,6 +72,7 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
 
   return {
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError, loadData,
+    fetchPlan: (intPlanID: number) => leavePlanService.getPlan(intPlanID),
     assignPlan: (objPayload: EmployeePlanAssignRequest, blnReplace: boolean) => runMutation(() => leavePlanService.assignPlan(intEmployeeID, objPayload, blnReplace)),
     initializeBalances: () => runMutation(() => leavePlanService.initializeBalances(intEmployeeID, intLeaveYear)),
     setOpeningBalance: (intBalanceID: number, objPayload: OpeningBalanceRequest) => runMutation(() => leavePlanService.setOpeningBalance(intEmployeeID, intBalanceID, objPayload)),

@@ -65,6 +65,32 @@ function getPageTitle(strPathname: string) {
     return "Dashboard";
   }
 
+  // The Leave Types list lives at /leave; show its proper name rather than the bare segment "Leave".
+  if (strPathname === "/leave") {
+    return "Leave Types";
+  }
+  if (strPathname === "/leave/leave-types/new") {
+    return "New Leave Type";
+  }
+  if (/^\/leave\/leave-types\/\d+$/.test(strPathname)) {
+    return "Edit Leave Type";
+  }
+  if (strPathname === "/leave/plans") {
+    return "Leave Plans";
+  }
+  if (strPathname === "/leave/plans/new") {
+    return "New Leave Plan";
+  }
+  if (/^\/leave\/plans\/\d+$/.test(strPathname)) {
+    return "Edit Leave Plan";
+  }
+  if (strPathname === "/leave/plan-assignments") {
+    return "Employee Leave Plan Assignment";
+  }
+  if (/^\/leave\/plan-assignments\/\d+$/.test(strPathname)) {
+    return "Edit Employee Leave Assignment";
+  }
+
   const lstSegments = strPathname
     .split("/")
     .filter(Boolean)

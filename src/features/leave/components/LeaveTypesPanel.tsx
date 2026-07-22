@@ -8,6 +8,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -20,7 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -70,6 +71,7 @@ export default function LeaveTypesPanel() {
   const [blnSaving, setBlnSaving] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
+  const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
 
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -130,6 +132,50 @@ export default function LeaveTypesPanel() {
     setDicSearchApplied(dicNext);
   }
 
+  // ---- Multi/single row selection + bulk actions (mirrors Salary Components) ----
+  const blnAllFilteredSelected = lstFilteredTypes.length > 0 && lstFilteredTypes.every((objType) => lstSelectedIds.includes(objType.intID));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredTypes.some((objType) => lstSelectedIds.includes(objType.intID));
+
+  function toggleSelection(intID: number) {
+    setLstSelectedIds((lstPrev) => (lstPrev.includes(intID) ? lstPrev.filter((intValue) => intValue !== intID) : [...lstPrev, intID]));
+  }
+
+  function toggleSelectAll() {
+    if (blnAllFilteredSelected) {
+      setLstSelectedIds((lstPrev) => lstPrev.filter((intID) => !lstFilteredTypes.some((objType) => objType.intID === intID)));
+      return;
+    }
+    setLstSelectedIds((lstPrev) => [...new Set([...lstPrev, ...lstFilteredTypes.map((objType) => objType.intID)])]);
+  }
+
+  function bulkStatus(blnActive: boolean) {
+    setObjConfirm({
+      strTitle: blnActive ? "Activate Leave Types" : "Deactivate Leave Types",
+      strMessage: `${blnActive ? "Activate" : "Deactivate"} ${lstSelectedIds.length} leave type(s)?`,
+      strConfirmLabel: blnActive ? "Activate" : "Deactivate",
+      fnOnConfirm: async () => {
+        await Promise.all(lstSelectedIds.map((intID) => leaveService.setLeaveTypeStatus(intID, blnActive)));
+        showToast(`Leave types ${blnActive ? "activated" : "deactivated"} successfully.`, "success");
+        setLstSelectedIds([]);
+        await loadAll();
+      },
+    });
+  }
+
+  function bulkDelete() {
+    setObjConfirm({
+      strTitle: "Delete Leave Types",
+      strMessage: `Delete ${lstSelectedIds.length} leave type(s)? Any that are in use will be deactivated instead.`,
+      strConfirmLabel: "Delete",
+      fnOnConfirm: async () => {
+        await Promise.all(lstSelectedIds.map((intID) => leaveService.deleteEnterpriseLeaveType(intID)));
+        showToast("Leave types removed successfully.", "success");
+        setLstSelectedIds([]);
+        await loadAll();
+      },
+    });
+  }
+
   // ---- Leave type: full-page enterprise editor (create / edit / view) ----
   function openNewType() {
     objRouter.push("/leave/leave-types/new");
@@ -188,6 +234,13 @@ export default function LeaveTypesPanel() {
     () =>
       lstFilteredTypes.map((objType) => ({
         id: objType.intID,
+        select: (
+          <Checkbox
+            checked={lstSelectedIds.includes(objType.intID)}
+            onChange={() => toggleSelection(objType.intID)}
+            inputProps={{ "data-control-id": "leave-types.list.row.select.checkbox", "data-row-key": String(objType.intID) } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
         action: (
           <CommonRowActions
             testIdPrefix="leave-types.list.row"
@@ -213,11 +266,27 @@ export default function LeaveTypesPanel() {
         blnStatus: <StatusPill blnActive={objType.blnIsActive} />,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstFilteredTypes, objLookups],
+    [lstFilteredTypes, objLookups, lstSelectedIds],
   );
 
   const lstTypeColumns = useMemo<CommonTableColumn<(typeof lstTypeRows)[number]>[]>(
     () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={toggleSelectAll}
+            disabled={lstFilteredTypes.length === 0}
+            inputProps={{ "data-control-id": "leave-types.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
       { field: "action", headerName: "Actions", sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "strTypeCode", headerName: "Code", width: 90 },
       { field: "strName", headerName: "Name", width: 180 },
@@ -231,7 +300,8 @@ export default function LeaveTypesPanel() {
       { field: "strEncashable", headerName: "Encashable", width: 120 },
       { field: "blnStatus", headerName: "Status", sortable: false, width: 110 },
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredTypes.length],
   );
 
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
@@ -340,6 +410,14 @@ export default function LeaveTypesPanel() {
             </Button>
           </Box>
         </Box>
+        {lstSelectedIds.length > 0 ? (
+          <Box className={styles.bulkBar} data-control-id="leave-types.list.bulk-actions.bar">
+            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} rows selected`}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkStatus(true)} disabled={blnSaving} data-control-id="leave-types.list.bulk-activate.button">Activate</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkStatus(false)} disabled={blnSaving} data-control-id="leave-types.list.bulk-deactivate.button">Deactivate</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSaving} data-control-id="leave-types.list.bulk-delete.button">Delete</Button>
+          </Box>
+        ) : null}
       </Box>
 
       {blnLoading ? (
@@ -348,7 +426,6 @@ export default function LeaveTypesPanel() {
         </Box>
       ) : (
         <Box className={styles.tableCard} sx={{ flex: "0 0 auto" }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", px: 0.5, pt: 0.5 }}>Leave Types</Typography>
           <CommonTable
             columns={lstTypeColumns}
             rows={lstTypeRows}
@@ -358,7 +435,8 @@ export default function LeaveTypesPanel() {
             exportFileName="leave_types"
             showExportOptions
             showPaginationSummary
-            minTableWidth={1320}
+            minTableWidth={1376}
+            getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
             emptyMessage="No leave types found."
             toolbarLeft={
               <Stack direction="row" spacing={1}>

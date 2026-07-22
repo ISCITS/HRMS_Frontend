@@ -3,12 +3,8 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -29,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import styles from "@/components/master/MasterScreen.module.css";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type {
   LeaveApplicabilityRow,
@@ -52,6 +49,8 @@ const objGridSx = {
   alignItems: "start",
 } as const;
 const objFullCellSx = { gridColumn: "1 / -1" } as const;
+// Shared section-card styling (matches the Salary Component editor's always-open cards).
+const objSectionSx = { borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" } as const;
 
 const lstApplicabilityTypes = [
   "COMPANY", "LOCATION", "STATE", "DEPARTMENT", "DESIGNATION", "GRADE",
@@ -372,32 +371,48 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
   const objInputProps = { disabled: blnReadOnly } as const;
 
   return (
-    <Stack spacing={1.5} sx={{ pb: 4 }}>
-      {/* Header */}
-      <Paper sx={{ p: 2, borderRadius: "16px", background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)", color: "white" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <IconButton onClick={() => objRouter.push("/leave")} sx={{ color: "white" }}><ArrowBackRoundedIcon /></IconButton>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.05rem" }}>
-                {strMode === "new" ? "New Leave Type" : strMode === "view" ? "View Leave Type" : "Edit Leave Type"}
-              </Typography>
-              <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.9)" }}>Enterprise leave type &amp; policy configuration.</Typography>
-            </Box>
-          </Stack>
-          {!blnReadOnly ? (
-            <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={submit} disabled={blnSaving} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>
-              {blnSaving ? "Saving..." : "Save"}
+    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
+      {/* Header (matches the Salary Component editor chrome) */}
+      <Paper
+        sx={{
+          borderRadius: "28px",
+          px: { xs: 2, md: 3 },
+          py: { xs: 1.5, md: 2 },
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
+        }}
+      >
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
+          <Typography sx={{ color: "#64748b" }}>Enterprise leave type &amp; policy configuration.</Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => objRouter.push("/leave")}
+              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+            >
+              Back
             </Button>
-          ) : null}
+            {!blnReadOnly ? (
+              <Button
+                className={styles.primaryButton}
+                startIcon={<SaveRoundedIcon />}
+                onClick={submit}
+                disabled={blnSaving}
+                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+              >
+                {blnSaving ? "Saving..." : "Save Leave Type"}
+              </Button>
+            ) : null}
+          </Stack>
         </Stack>
       </Paper>
 
-      <fieldset disabled={blnReadOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+      <fieldset disabled={blnReadOnly} style={{ border: 0, margin: "20px 0 0 0", padding: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* A. Basic Information */}
-      <Accordion defaultExpanded disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>A. Basic Information</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>A. Basic Information</Typography>
+        <Box>
           <Box sx={objGridSx}>
             <SectionText label="Code" value={objForm.strTypeCode} onChange={(v) => setMaster("strTypeCode", v.toUpperCase())} />
             <SectionText label="Default Name" value={objForm.strTypeName} onChange={(v) => setMaster("strTypeName", v)} />
@@ -423,13 +438,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               </Stack>
             </Box>
           </Box>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* B. Application Channels & Behaviour */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>B. Application Channels &amp; Behaviour</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>B. Application Channels &amp; Behaviour</Typography>
+        <Box>
           <Stack direction="row" flexWrap="wrap" gap={0.5}>
             <SectionSwitch label="ESS apply" value={objForm.blnAllowEmployeeApply} onChange={(v) => setMaster("blnAllowEmployeeApply", v)} />
             <SectionSwitch label="Mobile apply" value={objForm.blnAllowMobileApply} onChange={(v) => setMaster("blnAllowMobileApply", v)} />
@@ -439,14 +454,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <SectionSwitch label="Proof required" value={objForm.blnRequiresProof} onChange={(v) => setMaster("blnRequiresProof", v)} />
             <SectionSwitch label="Allow negative balance" value={objForm.blnAllowNegativeBalance} onChange={(v) => setMaster("blnAllowNegativeBalance", v)} />
           </Stack>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* C. Entitlement & Accrual */}
       {blnShowAccrual ? (
-        <Accordion disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>C. Entitlement &amp; Accrual</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>C. Entitlement &amp; Accrual</Typography>
+          <Box>
             <Box sx={objGridSx}>
               <SectionNum label="Year start month" value={objPolicy.intLeaveYearStartMonth} onChange={(v) => setPolicy("intLeaveYearStartMonth", v ?? 1)} />
               <SectionNum label="Year start day" value={objPolicy.intLeaveYearStartDay} onChange={(v) => setPolicy("intLeaveYearStartDay", v ?? 1)} />
@@ -467,14 +482,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
                 </Stack>
               </Box>
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
       ) : null}
 
       {/* D. Application Limits */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>D. Application Limits</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>D. Application Limits</Typography>
+        <Box>
           <Box sx={objGridSx}>
             <SectionNum label="Min per request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} />
             <SectionNum label="Max per request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} />
@@ -496,13 +511,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               </Stack>
             </Box>
           </Box>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* E. Weekly-off / Holiday / Sandwich */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>E. Weekly-off, Holiday &amp; Sandwich</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>E. Weekly-off, Holiday &amp; Sandwich</Typography>
+        <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Weekly-off treatment" value={objPolicy.strWeeklyOffTreatmentCode} onChange={(v) => setPolicy("strWeeklyOffTreatmentCode", v)} options={lstTreatmentCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
             <SectionSelect label="Holiday treatment" value={objPolicy.strHolidayTreatmentCode} onChange={(v) => setPolicy("strHolidayTreatmentCode", v)} options={lstTreatmentCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
@@ -516,14 +531,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               </>
             ) : null}
           </Box>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* F. Carry Forward */}
       {blnShowAccrual ? (
-        <Accordion disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>F. Carry Forward &amp; Year-end</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>F. Carry Forward &amp; Year-end</Typography>
+          <Box>
             <Box sx={objGridSx}>
               <Box><SectionSwitch label="Carry forward allowed" value={objPolicy.blnCarryForwardAllowed} onChange={(v) => setPolicy("blnCarryForwardAllowed", v)} /></Box>
               {objPolicy.blnCarryForwardAllowed ? (
@@ -537,15 +552,15 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               <SectionNum label="Max balance cap" value={objPolicy.decMaxBalance} onChange={(v) => setPolicy("decMaxBalance", v)} />
               <Box><SectionSwitch label="Lapse excess balance" value={objPolicy.blnLapseExcessBalance} onChange={(v) => setPolicy("blnLapseExcessBalance", v)} /></Box>
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
       ) : null}
 
       {/* G. Encashment */}
       {blnShowEncashment ? (
-        <Accordion disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>G. Encashment</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>G. Encashment</Typography>
+          <Box>
             <Box sx={objGridSx}>
               <Box><SectionSwitch label="Encashment allowed" value={objPolicy.blnEncashmentAllowed} onChange={(v) => setPolicy("blnEncashmentAllowed", v)} /></Box>
               {objPolicy.blnEncashmentAllowed ? (
@@ -556,14 +571,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
                 </>
               ) : null}
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
       ) : null}
 
       {/* H. Proof & Documents */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>H. Proof &amp; Documents</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>H. Proof &amp; Documents</Typography>
+        <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Proof rule" value={objPolicy.strProofRuleCode} onChange={(v) => setPolicy("strProofRuleCode", v)} options={optionsFor("LEAVE_PROOF_RULE", ["NOT_REQUIRED", "ALWAYS_REQUIRED", "REQUIRED_AFTER_N_DAYS"])} />
             {objPolicy.strProofRuleCode === "REQUIRED_AFTER_N_DAYS" ? (
@@ -573,13 +588,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               </>
             ) : null}
           </Box>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* I. Approval workflow behaviour + steps */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>I. Approval Workflow</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>I. Approval Workflow</Typography>
+        <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Backup resource rule" value={objPolicy.strBackupResourceRuleCode} onChange={(v) => setPolicy("strBackupResourceRuleCode", v)} options={optionsFor("LEAVE_BACKUP_RESOURCE_RULE", ["NOT_REQUIRED", "OPTIONAL", "MANDATORY"])} />
             <SectionSelect label="No-action auto behaviour" value={objPolicy.strAutoActionCode} onChange={(v) => setPolicy("strAutoActionCode", v)} options={optionsFor("LEAVE_AUTO_ACTION", ["NONE", "AUTO_APPROVE", "ESCALATE", "SKIP_TO_NEXT_APPROVER"])} />
@@ -615,13 +630,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             ))}
             {!blnReadOnly ? <Box sx={objFullCellSx}><Button size="small" startIcon={<AddRoundedIcon />} onClick={addStep}>Add step</Button></Box> : null}
           </Box>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* J. Applicability */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>J. Applicability &amp; Eligibility</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>J. Applicability &amp; Eligibility</Typography>
+        <Box>
           <Stack spacing={1}>
             {objForm.lstApplicability.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -638,13 +653,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             {objForm.lstApplicability.length === 0 ? <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Applies to everyone (no restriction).</Typography> : null}
             {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addApplicability}>Add rule</Button></Box> : null}
           </Stack>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* J2. Advanced conditional rules (rule builder) */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>J2. Advanced Rules (conditional eligibility)</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>J2. Advanced Rules (conditional eligibility)</Typography>
+        <Box>
           <Stack spacing={1}>
             {objForm.lstRules.map((objRow, intIndex) => {
               const blnRange = objRow.strOperatorCode === "BETWEEN" || objRow.strOperatorCode === "NOT_BETWEEN";
@@ -666,13 +681,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             {objForm.lstRules.length === 0 ? <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>No advanced conditions. Use these for eligibility not covered by applicability (e.g. tenure bands, gender, child count).</Typography> : null}
             {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addRule}>Add rule</Button></Box> : null}
           </Stack>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* K. Combination rules */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>K. Combination Rules</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>K. Combination Rules</Typography>
+        <Box>
           <Stack spacing={1}>
             {objForm.lstCombinationRules.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -689,13 +704,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             {objForm.lstCombinationRules.length === 0 ? <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>No combination restrictions.</Typography> : null}
             {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addCombo} disabled={lstOtherTypes.length === 0}>Add rule</Button></Box> : null}
           </Stack>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* L. Translations */}
-      <Accordion disableGutters>
-        <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>L. Translations</Typography></AccordionSummary>
-        <AccordionDetails>
+      <Paper sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>L. Translations</Typography>
+        <Box>
           <Stack spacing={1}>
             {objForm.lstText.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -711,14 +726,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>English (default) name is mandatory. Duplicate languages are not allowed.</Typography>
             {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addText} disabled={objForm.lstText.length >= 2}>Add language</Button></Box> : null}
           </Stack>
-        </AccordionDetails>
-      </Accordion>
+        </Box>
+      </Paper>
 
       {/* M. Usage */}
       {objForm.objUsage ? (
-        <Accordion disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>M. Usage Information</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>M. Usage Information</Typography>
+          <Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip label={`Policies: ${objForm.objUsage.intPolicies}`} />
               <Chip label={`Applications: ${objForm.objUsage.intApplications}`} />
@@ -727,8 +742,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               <Chip label={`Combination refs: ${objForm.objUsage.intCombinationRules}`} />
               <Chip color={objForm.objUsage.blnInUse ? "warning" : "success"} label={objForm.objUsage.blnInUse ? "In use — delete blocked, deactivate instead" : "Not in use — deletable"} />
             </Stack>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
       ) : null}
 
       {!blnReadOnly ? (

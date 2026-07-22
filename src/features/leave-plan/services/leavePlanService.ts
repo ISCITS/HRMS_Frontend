@@ -52,6 +52,9 @@ export const leavePlanService = {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}/status`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objQueryParams: { is_active: blnIsActive }, objBody: {} });
     return objResult.Data;
   },
+  async deletePlan(intPlanID: number): Promise<void> {
+    await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Delete, strMenuAction: strLeaveManageAction });
+  },
   async getActiveLeaveTypes(): Promise<LeaveTypeOption[]> {
     const objResult = await requestApi<LeaveTypeOption[]>({ strPath: "/leave/plans/leave-types", strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
     return objResult.Data ?? [];

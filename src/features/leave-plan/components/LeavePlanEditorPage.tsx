@@ -3,11 +3,10 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Checkbox, CircularProgress,
+  Alert, Box, Button, Checkbox, CircularProgress,
   Chip, FormControlLabel, IconButton, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
@@ -17,6 +16,7 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
 import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -32,6 +32,8 @@ type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success"
 // Every field renders in a uniform fixed-width column (matches the Leave Type editor "Display Order" size).
 const objGridSx = { display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fill, minmax(210px, 232px))", alignItems: "start" } as const;
 const objFullCellSx = { gridColumn: "1 / -1" } as const;
+// Shared section-card styling (matches the Salary Component editor's always-open cards).
+const objSectionSx = { borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" } as const;
 
 function buildPlanSchema(fnT: (strKey: string, strFallback?: string) => string) {
   const strRequired = fnT("validation_required", "This field is required.");
@@ -83,10 +85,9 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const strEffectiveFrom = useWatch({ control, name: "dtEffectiveFrom" });
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
-  const blnCanManage = canDo("LEAVE", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE");
+  const blnCanManage = canDo("LEAVE_PLANS", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE") || canDo("LEAVE", "LEAVE_MANAGE");
   const blnReadOnly = strMode === "view" || !blnCanManage;
   const strBackPath = strReturnTo?.startsWith("/leave/plans") ? strReturnTo : "/leave/plans";
-  const strTitle = strMode === "new" ? t("add_title", "Add Leave Plan") : strMode === "view" ? t("view_title", "View Leave Plan") : t("edit_title", "Edit Leave Plan");
 
   useEffect(() => {
     if (blnLoading || !objLanguages.intDefaultLanguageID) return;
@@ -138,32 +139,52 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
 
   return (
-    <Stack spacing={1.5} sx={{ pb: 4 }} component="form" onSubmit={handleSubmit(submitForm)}>
-      {/* Gradient header (matches the Leave Type editor) */}
-      <Paper sx={{ p: 2, borderRadius: "16px", background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)", color: "white" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <IconButton onClick={() => objRouter.push(strBackPath)} sx={{ color: "white" }} data-control-id="leave-plan.editor.back.button"><ArrowBackRoundedIcon /></IconButton>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.05rem" }}>{strTitle}</Typography>
-              <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.9)" }}>{t("editor_subtitle", "Maintain plan rules, entitlements, and translations.")}</Typography>
-            </Box>
-          </Stack>
-          {!blnReadOnly ? (
-            <Button type="submit" startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }} data-control-id="leave-plan.editor.save.button">
-              {blnSaving ? t("saving", "Saving...") : t("save", "Save")}
+    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm)}>
+      {/* Header (matches the Salary Component editor chrome) */}
+      <Paper
+        sx={{
+          borderRadius: "28px",
+          px: { xs: 2, md: 3 },
+          py: { xs: 1.5, md: 2 },
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
+        }}
+      >
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
+          <Typography sx={{ color: "#64748b" }}>{t("editor_subtitle", "Maintain plan rules, entitlements, and translations.")}</Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => objRouter.push(strBackPath)}
+              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+              data-control-id="leave-plan.editor.back.button"
+            >
+              {t("back_button", "Back")}
             </Button>
-          ) : null}
+            {!blnReadOnly ? (
+              <Button
+                type="submit"
+                className={styles.primaryButton}
+                startIcon={<SaveRoundedIcon />}
+                disabled={blnSaving}
+                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+                data-control-id="leave-plan.editor.save.button"
+              >
+                {blnSaving ? t("saving", "Saving...") : t("save_plan", "Save Leave Plan")}
+              </Button>
+            ) : null}
+          </Stack>
         </Stack>
       </Paper>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <fieldset disabled={blnReadOnly || blnSaving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+      <fieldset disabled={blnReadOnly || blnSaving} style={{ border: 0, padding: 0, margin: "20px 0 0 0", minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* A. Basic Information */}
-        <Accordion defaultExpanded disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_basic_information", "Basic Information")}</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_basic_information", "Basic Information")}</Typography>
+          <Box>
             <Box sx={objGridSx}>
               <Controller name="strPlanCode" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth label={t("field_plan_code", "Plan Code")} disabled={strMode !== "new"} error={Boolean(errors.strPlanCode)} helperText={errors.strPlanCode?.message} inputProps={{ "data-control-id": "leave-plan.editor.plan-code.input", maxLength: 50 }} />} />
               <Controller name="strPlanName" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth label={t("field_plan_name", "Plan Name")} error={Boolean(errors.strPlanName)} helperText={errors.strPlanName?.message} inputProps={{ "data-control-id": "leave-plan.editor.plan-name.input", maxLength: 150 }} />} />
@@ -184,13 +205,13 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
                 </Stack>
               </Box>
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
 
         {/* B. Leave Plan Items */}
-        <Accordion defaultExpanded disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_plan_items", "Leave Plan Items")}</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_plan_items", "Leave Plan Items")}</Typography>
+          <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               {errors.lstItems?.message ? <Typography color="error" variant="caption">{errors.lstItems.message}</Typography> : <span />}
               {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={() => objItems.append(emptyItem((objItems.fields.length + 1) * 10))} data-control-id="leave-plan.editor.item.add.button">{t("add_item", "Add Item")}</Button> : null}
@@ -211,13 +232,13 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
                 </TableRow>;
               })}
             </TableBody></Table></TableContainer>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
 
         {/* C. Translations */}
-        <Accordion disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_translation", "Translation")}</Typography></AccordionSummary>
-          <AccordionDetails>
+        <Paper sx={objSectionSx}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_translation", "Translation")}</Typography>
+          <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               {fieldError("lstText") ? <Typography color="error" variant="caption">{fieldError("lstText")}</Typography> : <span />}
               {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={addTranslation} disabled={objTexts.fields.length >= objLanguages.lstLanguages.length} data-control-id="leave-plan.editor.translation.add.button">{t("add_language", "Add Language")}</Button> : null}
@@ -229,21 +250,21 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
               {!blnReadOnly ? <IconButton onClick={() => objTexts.remove(intIndex)} disabled={Number(objForm.getValues(`lstText.${intIndex}.intLanguageID`)) === objLanguages.intDefaultLanguageID} data-control-id={`leave-plan.editor.translation.${intIndex}.delete.button`}><DeleteOutlineRoundedIcon /></IconButton> : null}
             </Box>)}</Box>
             <Typography sx={{ color: "#64748b", fontSize: "0.78rem", mt: 1 }}>{t("translation_hint", "The default-language name is mandatory. Duplicate languages are not allowed.")}</Typography>
-          </AccordionDetails>
-        </Accordion>
+          </Box>
+        </Paper>
 
         {/* D. Usage */}
         {objPlan ? (
-          <Accordion disableGutters>
-            <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_usage_information", "Usage Information")}</Typography></AccordionSummary>
-            <AccordionDetails>
+          <Paper sx={objSectionSx}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_usage_information", "Usage Information")}</Typography>
+            <Box>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Chip label={`${t("usage_assigned_employees", "Assigned Employees")}: ${objPlan?.objUsage?.intAssignedEmployeeCount ?? objPlan?.intAssignedEmployeeCount ?? 0}`} />
                 <Chip label={`${t("usage_assignment_history", "Assignment Records")}: ${objPlan?.objUsage?.intAssignments ?? 0}`} />
                 <Chip color={objPlan?.objUsage?.blnInUse ? "warning" : "success"} label={objPlan?.objUsage?.blnInUse ? t("usage_in_use_yes", "In use — deactivate instead of delete") : t("usage_in_use_no", "Not in use")} />
               </Stack>
-            </AccordionDetails>
-          </Accordion>
+            </Box>
+          </Paper>
         ) : null}
 
         {!blnReadOnly ? (

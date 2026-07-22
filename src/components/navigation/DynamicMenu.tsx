@@ -1016,6 +1016,12 @@ export default function DynamicMenu({
       return resolveKnownMenuLabel(strModuleName, "Employee Services", "कर्मचारी सेवाएं");
     }
 
+    // Leave Plan assignment menu (module code contains "employee") must not be
+    // caught by the generic employee-master branch below; use its localized menu name.
+    if (strRoute.includes("/leave/plan-assignments") || strModuleCode === "employee_leave_assignment") {
+      return strModuleName || "Employee Leave Assignment";
+    }
+
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
       return tEmployee("page_title", strModuleName || "Employee");
     }

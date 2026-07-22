@@ -31,5 +31,10 @@ export function useLeavePlans(objFilters: LeavePlanFilters) {
     await loadPlans();
   }
 
-  return { lstPlans, blnLoading, strError, loadPlans, setPlanStatus };
+  async function deletePlan(intPlanID: number) {
+    await leavePlanService.deletePlan(intPlanID);
+    await loadPlans();
+  }
+
+  return { lstPlans, blnLoading, strError, loadPlans, setPlanStatus, deletePlan };
 }

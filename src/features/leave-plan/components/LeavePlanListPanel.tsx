@@ -4,9 +4,9 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, CircularProgress, MenuItem, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar, Stack, TextField, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -53,6 +53,7 @@ export default function LeavePlanListPanel() {
   const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
   const [blnSaving, setBlnSaving] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
 
   const objFilters = useMemo<LeavePlanFilters>(() => ({
     strSearch: dicSearchApplied.search.trim() || undefined,
@@ -60,9 +61,9 @@ export default function LeavePlanListPanel() {
     dtEffectiveOn: dicSearchApplied.effectiveOn || undefined,
   }), [dicSearchApplied]);
 
-  const { lstPlans, blnLoading, strError, setPlanStatus } = useLeavePlans(objFilters);
-  const blnCanView = canDo("LEAVE", "LEAVE_VIEW") || canDo("LEAVE_MANAGEMENT", "LEAVE_VIEW");
-  const blnCanManage = canDo("LEAVE", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE");
+  const { lstPlans, blnLoading, strError, setPlanStatus, deletePlan } = useLeavePlans(objFilters);
+  const blnCanView = canDo("LEAVE_PLANS", "LEAVE_VIEW") || canDo("LEAVE_MANAGEMENT", "LEAVE_VIEW") || canDo("LEAVE", "LEAVE_VIEW");
+  const blnCanManage = canDo("LEAVE_PLANS", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE") || canDo("LEAVE", "LEAVE_MANAGE");
 
   function showToast(strMessage: string, strSeverity: "success" | "error") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -87,6 +88,48 @@ export default function LeavePlanListPanel() {
       fnOnConfirm: async () => {
         await setPlanStatus(objPlan.intID, false);
         showToast(t("deactivated_success", "Leave plan deactivated successfully."), "success");
+      },
+    });
+  }
+
+  // ---- Multi/single row selection + bulk actions (mirrors Salary Components) ----
+  const blnAllSelected = lstPlans.length > 0 && lstPlans.every((objPlan) => lstSelectedIds.includes(objPlan.intID));
+  const blnSomeSelected = !blnAllSelected && lstPlans.some((objPlan) => lstSelectedIds.includes(objPlan.intID));
+
+  function toggleSelection(intID: number) {
+    setLstSelectedIds((lstPrev) => (lstPrev.includes(intID) ? lstPrev.filter((intValue) => intValue !== intID) : [...lstPrev, intID]));
+  }
+
+  function toggleSelectAll() {
+    if (blnAllSelected) {
+      setLstSelectedIds((lstPrev) => lstPrev.filter((intID) => !lstPlans.some((objPlan) => objPlan.intID === intID)));
+      return;
+    }
+    setLstSelectedIds((lstPrev) => [...new Set([...lstPrev, ...lstPlans.map((objPlan) => objPlan.intID)])]);
+  }
+
+  function bulkStatus(blnActive: boolean) {
+    setObjConfirm({
+      strTitle: blnActive ? t("bulk_activate_title", "Activate Leave Plans") : t("bulk_deactivate_title", "Deactivate Leave Plans"),
+      strMessage: (blnActive ? t("bulk_activate_confirm", "Activate {count} Leave Plan(s)?") : t("bulk_deactivate_confirm", "Deactivate {count} Leave Plan(s)?")).replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: blnActive ? t("activate", "Activate") : t("deactivate", "Deactivate"),
+      fnOnConfirm: async () => {
+        await Promise.all(lstSelectedIds.map((intID) => setPlanStatus(intID, blnActive)));
+        showToast(blnActive ? t("bulk_activate_success", "Leave plans activated successfully.") : t("bulk_deactivate_success", "Leave plans deactivated successfully."), "success");
+        setLstSelectedIds([]);
+      },
+    });
+  }
+
+  function bulkDelete() {
+    setObjConfirm({
+      strTitle: t("bulk_delete_title", "Delete Leave Plans"),
+      strMessage: t("bulk_delete_confirm", "Delete {count} Leave Plan(s)? Any assigned to employees cannot be deleted and must be deactivated instead.").replace("{count}", String(lstSelectedIds.length)),
+      strConfirmLabel: t("delete", "Delete"),
+      fnOnConfirm: async () => {
+        await Promise.all(lstSelectedIds.map((intID) => deletePlan(intID)));
+        showToast(t("bulk_delete_success", "Leave plans removed successfully."), "success");
+        setLstSelectedIds([]);
       },
     });
   }
@@ -119,6 +162,13 @@ export default function LeavePlanListPanel() {
     () =>
       lstPlans.map((objPlan) => ({
         id: objPlan.intID,
+        select: (
+          <Checkbox
+            checked={lstSelectedIds.includes(objPlan.intID)}
+            onChange={() => toggleSelection(objPlan.intID)}
+            inputProps={{ "data-control-id": "leave-plan.list.row.select.checkbox", "data-row-key": String(objPlan.intID) } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
         action: (
           <CommonRowActions
             testIdPrefix={`leave-plan.list.row.${objPlan.intID}`}
@@ -140,11 +190,27 @@ export default function LeavePlanListPanel() {
         blnStatus: <StatusPill blnActive={objPlan.blnIsActive} strActive={t("status_active", "Active")} strInactive={t("status_inactive", "Inactive")} />,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstPlans, blnCanManage],
+    [lstPlans, blnCanManage, lstSelectedIds],
   );
 
   const lstPlanColumns = useMemo<CommonTableColumn<(typeof lstPlanRows)[number]>[]>(
     () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            checked={blnAllSelected}
+            indeterminate={blnSomeSelected}
+            onChange={toggleSelectAll}
+            disabled={lstPlans.length === 0}
+            inputProps={{ "data-control-id": "leave-plan.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
       { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 130 },
       { field: "strPlanCode", headerName: t("table_plan_code", "Plan Code"), width: 150 },
       { field: "strPlanName", headerName: t("table_plan_name", "Plan Name"), width: 220 },
@@ -154,7 +220,8 @@ export default function LeavePlanListPanel() {
       { field: "intAssigned", headerName: t("table_assigned_employees", "Assigned Employees"), width: 160 },
       { field: "blnStatus", headerName: t("table_status", "Status"), sortable: false, width: 120 },
     ],
-    [t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, blnAllSelected, blnSomeSelected, lstPlans.length],
   );
 
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
@@ -167,7 +234,12 @@ export default function LeavePlanListPanel() {
           sx={{
             display: "grid",
             gap: 1.25,
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" },
+            // Keep filters and actions on one row on desktop while preserving responsive wrapping.
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "minmax(260px, 1.2fr) minmax(160px, 0.7fr) minmax(190px, 0.85fr) auto",
+            },
             alignItems: "center",
             mt: 1,
           }}
@@ -204,7 +276,7 @@ export default function LeavePlanListPanel() {
             inputProps={{ "data-control-id": "leave-plan.list.effective-on.input" }}
             fullWidth
           />
-          <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", lg: "span 3" }, justifyContent: { lg: "flex-end" } }}>
+          <Box sx={{ display: "flex", gap: 1, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="leave-plan.list.search.button">
               {t("search", "Search")}
             </Button>
@@ -222,6 +294,14 @@ export default function LeavePlanListPanel() {
             </Button>
           </Box>
         </Box>
+        {blnCanManage && lstSelectedIds.length > 0 ? (
+          <Box className={styles.bulkBar} data-control-id="leave-plan.list.bulk-actions.bar">
+            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${t("bulk_rows_selected", "rows selected")}`}</Typography>
+            <Button className={styles.bulkActivate} onClick={() => bulkStatus(true)} disabled={blnSaving} data-control-id="leave-plan.list.bulk-activate.button">{t("activate", "Activate")}</Button>
+            <Button className={styles.bulkDeactivate} onClick={() => bulkStatus(false)} disabled={blnSaving} data-control-id="leave-plan.list.bulk-deactivate.button">{t("deactivate", "Deactivate")}</Button>
+            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSaving} data-control-id="leave-plan.list.bulk-delete.button">{t("delete", "Delete")}</Button>
+          </Box>
+        ) : null}
       </Box>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -234,7 +314,6 @@ export default function LeavePlanListPanel() {
         <Alert severity="warning">{t("access_denied", "Leave Plan access is not available for your user group.")}</Alert>
       ) : (
         <Box className={styles.tableCard} sx={{ flex: "0 0 auto" }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", px: 0.5, pt: 0.5 }}>{t("page_title", "Leave Plans")}</Typography>
           <CommonTable
             columns={lstPlanColumns}
             rows={lstPlanRows}
@@ -243,7 +322,8 @@ export default function LeavePlanListPanel() {
             pageSizeOptions={[10, 20, 50]}
             exportFileName="leave_plans"
             showPaginationSummary
-            minTableWidth={1140}
+            minTableWidth={1196}
+            getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
             emptyMessage={t("empty_message", "No Leave Plans found.")}
             toolbarLeft={
               <Stack direction="row" spacing={1}>
