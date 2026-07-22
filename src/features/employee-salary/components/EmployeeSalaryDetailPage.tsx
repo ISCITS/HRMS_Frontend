@@ -281,6 +281,7 @@ type FlexiSourceLine = {
   decFlexiMaxMonthlyAmount?: number | null;
   strTaxTreatment?: string | null;
   blnProofRequired?: boolean;
+  blnRequiresBills?: boolean;
   blnIsFlexiBenefit?: boolean;
   IsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
@@ -363,6 +364,15 @@ function parseOptionalAmount(strValue: string) {
   const strNormalizedValue = strValue.replace(/,/g, "");
   const decValue = Number(strNormalizedValue);
   return strNormalizedValue.trim() && Number.isFinite(decValue) ? decValue : null;
+}
+
+function sanitizeDecimalInput(strValue: string) {
+  const strDigitsAndDotsOnly = strValue.replace(/[^\d.]/g, "");
+  const arrSegments = strDigitsAndDotsOnly.split(".");
+  if (arrSegments.length <= 1) {
+    return strDigitsAndDotsOnly;
+  }
+  return `${arrSegments[0]}.${arrSegments.slice(1).join("")}`;
 }
 
 function formatAmountInput(decValue: number | null | undefined) {
@@ -1165,7 +1175,8 @@ function mergeFlexiMetadata(
     strComponentCode: dicLine.strComponentCode ?? dicComponent.strComponentCode,
     strComponentName: dicLine.strComponentName ?? dicComponent.strComponentName,
     strTaxTreatment: dicLine.strTaxTreatment ?? dicComponent.strTaxTreatment,
-    blnProofRequired: dicLine.blnProofRequired ?? dicComponent.blnProofRequired,
+    blnProofRequired: dicLine.blnProofRequired ?? dicLine.blnRequiresBills ?? dicComponent.blnRequiresBills,
+    blnRequiresBills: dicLine.blnRequiresBills ?? dicComponent.blnRequiresBills,
     blnIsFlexiBenefit: dicLine.blnIsFlexiBenefit ?? dicComponent.blnIsFlexiBenefit,
     decAnnualLimitAmount: dicLine.decAnnualLimitAmount ?? dicComponent.decAnnualLimitAmount,
     decMonthlyLimitAmount: dicLine.decMonthlyLimitAmount ?? dicComponent.decMonthlyLimitAmount,
@@ -1181,7 +1192,8 @@ function buildFlexiSourceFromSalaryComponents(lstSalaryComponents: SalaryCompone
     strComponentCode: dicComponent.strComponentCode,
     strComponentName: dicComponent.strComponentName,
     strTaxTreatment: dicComponent.strTaxTreatment,
-    blnProofRequired: dicComponent.blnProofRequired,
+    blnProofRequired: dicComponent.blnRequiresBills,
+    blnRequiresBills: dicComponent.blnRequiresBills,
     blnIsFlexiBenefit: dicComponent.blnIsFlexiBenefit,
     decAnnualLimitAmount: dicComponent.decAnnualLimitAmount,
     decMonthlyLimitAmount: dicComponent.decMonthlyLimitAmount,
@@ -2674,7 +2686,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       <td>
                         <TextField
                           data-testid="employee-salary.revision.override.annual.input"
-                          inputProps={{ "data-testid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                          inputProps={{ "data-testid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID), inputMode: "decimal" }}
                         value={dicOverride.decAmountAnnual}
                         placeholder={dicOverride.strDefaultAnnual}
                         size="small"
@@ -2686,10 +2698,11 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                             if (intRowIndex !== intOverrideIndex) {
                               return dicRow;
                             }
-                            const decAnnual = parseOptionalAmount(objEvent.target.value);
+                            const strSanitizedAnnualValue = sanitizeDecimalInput(objEvent.target.value);
+                            const decAnnual = parseOptionalAmount(strSanitizedAnnualValue);
                             return {
                               ...dicRow,
-                              decAmountAnnual: objEvent.target.value,
+                              decAmountAnnual: strSanitizedAnnualValue,
                               decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                             };
                           })
