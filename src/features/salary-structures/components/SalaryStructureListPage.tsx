@@ -86,6 +86,37 @@ export default function SalaryStructureListPage() {
   const [objCloneSource, setObjCloneSource] = useState<SalaryStructureDetailRecord | null>(null);
   const [dicCloneForm, setDicCloneForm] = useState<SalaryStructureCloneValues | null>(null);
   const [blnCloneSaving, setBlnCloneSaving] = useState(false);
+  const [strCloneError, setStrCloneError] = useState("");
+
+  function closeCloneDialog() {
+    if (blnCloneSaving) {
+      return;
+    }
+    setBlnCloneOpen(false);
+    setStrCloneError("");
+  }
+
+  function updateCloneField<K extends keyof SalaryStructureCloneValues>(key: K, value: SalaryStructureCloneValues[K]) {
+    setStrCloneError("");
+    setDicCloneForm((dicPrev) => {
+      if (!dicPrev) {
+        return dicPrev;
+      }
+      const dicNext = {
+        ...dicPrev,
+        [key]: value
+      };
+      if (key === "strStructureName") {
+        return {
+          ...dicNext,
+          lstTexts: dicPrev.lstTexts.map((dicText, intIndex) => intIndex === 0
+            ? { ...dicText, strStructureName: String(value) }
+            : dicText)
+        };
+      }
+      return dicNext;
+    });
+  }
 
   async function loadStructures() {
     if (!canViewAny()) {
@@ -239,6 +270,7 @@ export default function SalaryStructureListPage() {
       const dicDetail = await salaryStructureService.getSalaryStructureById(intSalaryStructureID);
       setObjCloneSource(dicDetail);
       setDicCloneForm(createCloneForm(dicDetail));
+      setStrCloneError("");
       setBlnCloneOpen(true);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : "Unable to load salary structure for clone.", "error");
@@ -250,17 +282,19 @@ export default function SalaryStructureListPage() {
       return;
     }
     if (!dicCloneForm.strStructureCode.trim() || !dicCloneForm.strStructureName.trim() || !dicCloneForm.dtEffectiveFrom) {
-      showToast("Clone code, clone name, and effective from date are required.", "error");
+      setStrCloneError("New structure code, new structure name, and effective from date are required.");
       return;
     }
+    setStrCloneError("");
     setBlnCloneSaving(true);
     try {
       const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.intID, dicCloneForm);
       setBlnCloneOpen(false);
+      setStrCloneError("");
       showToast("Salary structure cloned successfully.");
       objRouter.push(`/salary-structures/edit/${dicRecord.intID}`);
     } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to clone salary structure.", "error");
+      setStrCloneError(objError instanceof Error ? objError.message : "Unable to clone salary structure.");
     } finally {
       setBlnCloneSaving(false);
     }
@@ -379,7 +413,7 @@ export default function SalaryStructureListPage() {
         )}
       </Box>
 
-      <Dialog open={blnCloneOpen} onClose={() => !blnCloneSaving && setBlnCloneOpen(false)} fullWidth maxWidth="md" controlId="salary-structures.list.clone.dialog">
+      <Dialog open={blnCloneOpen} onClose={closeCloneDialog} fullWidth maxWidth="md" controlId="salary-structures.list.clone.dialog">
         <DialogTitle>{t("clone_salary_structure", "Clone Salary Structure")}</DialogTitle>
         <DialogContent>
           {dicCloneForm ? (
@@ -391,18 +425,24 @@ export default function SalaryStructureListPage() {
                 <TextField
                   label={t("new_structure_code", "New Structure Code")}
                   value={dicCloneForm.strStructureCode}
-                  onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureCode: objEvent.target.value.toUpperCase() } : dicPrev)}
+                  onChange={(objEvent) => updateCloneField("strStructureCode", objEvent.target.value.toUpperCase())}
                   disabled={blnCloneSaving}
                   fullWidth
+                  required
+                  error={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim()}
+                  helperText={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim() ? strCloneError : " "}
                   controlId="salary-structures.list.clone.structure-code.input"
                   inputProps={{ "controlId": "salary-structures.list.clone.structure-code.input" }}
                 />
                 <TextField
                   label={t("new_structure_name", "New Structure Name")}
                   value={dicCloneForm.strStructureName}
-                  onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, strStructureName: objEvent.target.value } : dicPrev)}
+                  onChange={(objEvent) => updateCloneField("strStructureName", objEvent.target.value)}
                   disabled={blnCloneSaving}
                   fullWidth
+                  required
+                  error={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim()}
+                  helperText={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim() ? strCloneError : " "}
                   controlId="salary-structures.list.clone.structure-name.input"
                   inputProps={{ "controlId": "salary-structures.list.clone.structure-name.input" }}
                 />
@@ -410,10 +450,12 @@ export default function SalaryStructureListPage() {
                   label={t("effective_from", "Effective From")}
                   type="date"
                   value={dicCloneForm.dtEffectiveFrom}
-                  onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, dtEffectiveFrom: objEvent.target.value } : dicPrev)}
+                  onChange={(objEvent) => updateCloneField("dtEffectiveFrom", objEvent.target.value)}
                   InputLabelProps={{ shrink: true }}
                   disabled={blnCloneSaving}
                   fullWidth
+                  error={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom}
+                  helperText={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom ? strCloneError : " "}
                   controlId="salary-structures.list.clone.effective-from.input"
                   inputProps={{ "controlId": "salary-structures.list.clone.effective-from.input" }}
                 />
@@ -421,7 +463,7 @@ export default function SalaryStructureListPage() {
                   label={t("effective_to", "Effective To")}
                   type="date"
                   value={dicCloneForm.dtEffectiveTo}
-                  onChange={(objEvent) => setDicCloneForm((dicPrev) => dicPrev ? { ...dicPrev, dtEffectiveTo: objEvent.target.value } : dicPrev)}
+                  onChange={(objEvent) => updateCloneField("dtEffectiveTo", objEvent.target.value)}
                   InputLabelProps={{ shrink: true }}
                   disabled={blnCloneSaving}
                   fullWidth
@@ -429,6 +471,11 @@ export default function SalaryStructureListPage() {
                   inputProps={{ "controlId": "salary-structures.list.clone.effective-to.input" }}
                 />
               </Box>
+              {strCloneError && dicCloneForm.strStructureCode.trim() && dicCloneForm.strStructureName.trim() && dicCloneForm.dtEffectiveFrom ? (
+                <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem", mt: -0.5 }}>
+                  {strCloneError}
+                </Typography>
+              ) : null}
               {objCloneSource ? (
                 <Alert severity="info">
                   {t("clone_source", "Clone source")}: {objCloneSource.strStructureName}
@@ -438,8 +485,8 @@ export default function SalaryStructureListPage() {
           ) : null}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button controlId="salary-structures.list.clone.cancel.button" onClick={() => setBlnCloneOpen(false)} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
-          <Button controlId="salary-structures.list.clone.confirm.button" variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
+          <Button controlId="salary-structures.list.clone.cancel.button" className={styles.secondaryButton} onClick={closeCloneDialog} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
+          <Button controlId="salary-structures.list.clone.confirm.button" className={styles.primaryButton} variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
             {blnCloneSaving ? t("cloning", "Cloning...") : t("clone_button", "Clone")}
           </Button>
         </DialogActions>

@@ -3,6 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
@@ -12,6 +13,7 @@ import {
   Chip,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   InputAdornment,
   ListItemText,
   MenuItem,
@@ -21,6 +23,7 @@ import {
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from "react";
@@ -339,6 +342,15 @@ function isCalculationMethod(strValue: string, ...lstExpected: string[]) {
   return lstExpected.some((strExpected) => strNormalized === normalizeSelectToken(strExpected));
 }
 
+function sanitizeFormulaCode(strValue: string) {
+  return strValue.trim().replace(/[^A-Za-z0-9_]/g, "_").toUpperCase();
+}
+
+function extractFormulaTokens(strExpression: string) {
+  const objMatches = strExpression.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
+  return Array.from(new Set(objMatches.map((strToken) => strToken.toUpperCase())));
+}
+
 function getDefaultOperatorForAnswerType(strAnswerType: string | null | undefined) {
   return strAnswerType === "number" ? "greater_than_or_equal" : "equals";
 }
@@ -572,6 +584,26 @@ export default function SalaryComponentEditorPage({
   const blnShowFormulaExpression = isCalculationMethod(strCalcMethodCode, "formula");
   const blnShowPercentageCalculationFields = isCalculationMethod(strCalcMethodCode, "percentage");
   const blnShowManualCalculationHelp = isCalculationMethod(strCalcMethodCode, "manual");
+  const lstActiveFormulaCodes = useMemo(() => {
+    const setCodes = new Set<string>();
+    (objFormOptions?.lstDependencyComponents ?? [])
+      .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+      .forEach((dicOption) => {
+        const strCode = sanitizeFormulaCode(String(dicOption.strCode ?? dicOption.strLabel ?? ""));
+        if (strCode) {
+          setCodes.add(strCode);
+        }
+      });
+    return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
+  }, [intSalaryComponentID, objFormOptions]);
+  const lstAllowedFormulaTokens = useMemo(
+    () => ["DEEMED_WAGE_BASE", ...lstActiveFormulaCodes],
+    [lstActiveFormulaCodes]
+  );
+  const setAllowedFormulaTokens = useMemo(
+    () => new Set(lstAllowedFormulaTokens),
+    [lstAllowedFormulaTokens]
+  );
   const blnShowRemunerationFlag = blnIsEarningCategory;
   const blnShowStatutoryFlags = blnIsEarningCategory;
   const blnShowOnlyActiveAndOverride = blnIsDeductionCategory;
@@ -691,6 +723,26 @@ export default function SalaryComponentEditorPage({
 
   function updateRootField<TKey extends keyof SalaryComponentFormValues>(strField: TKey, objValue: SalaryComponentFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
+  }
+
+  function handleCalculationMethodSelection(intSelectedID: number | "") {
+    const dicOption = findLookupOption(lstCalcMethodOptions, intSelectedID);
+    const strSelectedMethod = dicOption?.strValueCode ?? "";
+    setDicForm((dicPrevious) => {
+      const dicNext: SalaryComponentFormValues = {
+        ...dicPrevious,
+        intCalcMethodID: intSelectedID,
+        strCalcMethod: strSelectedMethod,
+      };
+      if (!isCalculationMethod(strSelectedMethod, "formula")) {
+        dicNext.strFormulaExpression = "";
+      }
+      if (!isCalculationMethod(strSelectedMethod, "percentage")) {
+        dicNext.intDefaultBasisComponentID = "";
+        dicNext.strDefaultPercentageValue = "";
+      }
+      return dicNext;
+    });
   }
 
   function applyLookupSelection(
@@ -1168,6 +1220,19 @@ export default function SalaryComponentEditorPage({
         return;
       }
     }
+    if (blnShowFormulaExpression && dicForm.strFormulaExpression.trim()) {
+      const lstInvalidTokens = extractFormulaTokens(dicForm.strFormulaExpression)
+        .filter((strToken) => !setAllowedFormulaTokens.has(strToken));
+      if (lstInvalidTokens.length > 0) {
+        setStrError(
+          t(
+            "formula_expression_invalid_code",
+            `Formula Expression contains invalid code(s): ${lstInvalidTokens.join(", ")}. Use the info icon to view active salary component codes.`
+          )
+        );
+        return;
+      }
+    }
     if (blnApplyMonthlyLimit && (!dicForm.strMonthlyLimitAmount.trim() || Number(dicForm.strMonthlyLimitAmount) <= 0)) {
       setStrError(t("monthly_limit_required", "Policy Monthly Limit Amount is required and must be greater than 0."));
       return;
@@ -1475,7 +1540,7 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("calculation_setup", "Calculation Setup")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField required select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intCalcMethodID", "strCalcMethod", lstCalcMethodOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
+          <TextField required select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleCalculationMethodSelection(Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
             {lstCalcMethodOptions.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.calculation-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
@@ -1531,18 +1596,83 @@ export default function SalaryComponentEditorPage({
             />
           ) : null}
           {blnShowFormulaExpression ? (
-            <Box sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }}>
-              <TextField
-                label={t("formula_expression", "Formula Expression")}
-                value={dicForm.strFormulaExpression}
-                onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)}
-                disabled={blnFieldDisabled}
-                fullWidth
-                data-controlid="salary-components.editor.formula-expression.input"
-                inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")}
-              />
+            <Box sx={{ gridColumn: { xs: "1 / -1", md: "span 1" } }}>
+              {(() => {
+                const objFormulaHelpTooltip = (
+                  <Stack spacing={0.5}>
+                    <Typography sx={{ fontSize: "0.72rem", fontWeight: 800 }}>
+                      {t("formula_variables_title", "Available formula codes")}
+                    </Typography>
+                    {lstAllowedFormulaTokens.length > 0 ? (
+                      <Stack spacing={0.25}>
+                        {Array.from({ length: Math.ceil(lstAllowedFormulaTokens.length / 5) }, (_, intIndex) =>
+                          lstAllowedFormulaTokens.slice(intIndex * 5, intIndex * 5 + 5)
+                        ).map((lstCodeRow, intIndex) => (
+                          <Typography key={`formula-code-row-${intIndex}`} sx={{ fontSize: "0.7rem", lineHeight: 1.35 }}>
+                            {lstCodeRow.join(", ")}
+                          </Typography>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ fontSize: "0.7rem", lineHeight: 1.45 }}>
+                        {t("no_active_formula_codes", "No active salary component codes available.")}
+                      </Typography>
+                    )}
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700 }}>
+                      {t("formula_example_label", "Example")}: DEEMED_WAGE_BASE * 0.08
+                    </Typography>
+                  </Stack>
+                );
+                return (
+                  <TextField
+                    label={t("formula_expression", "Formula Expression")}
+                    value={dicForm.strFormulaExpression}
+                    onChange={(objEvent) => updateRootField("strFormulaExpression", objEvent.target.value)}
+                    disabled={blnFieldDisabled}
+                    fullWidth
+                    data-controlid="salary-components.editor.formula-expression.input"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Tooltip
+                            title={objFormulaHelpTooltip}
+                            arrow
+                            enterTouchDelay={0}
+                            slotProps={{
+                              tooltip: {
+                                sx: {
+                                  borderRadius: 0
+                                }
+                              },
+                              arrow: {
+                                sx: {
+                                  "&::before": {
+                                    borderRadius: 0
+                                  }
+                                }
+                              }
+                            }}
+                          >
+                            <IconButton
+                              size="small"
+                              edge="end"
+                              disabled={blnFieldDisabled}
+                              data-controlid="salary-components.editor.formula-expression.info-button"
+                              aria-label={t("show_formula_codes", "Show formula codes")}
+                              sx={{ color: "#64748b", mr: -0.5 }}
+                            >
+                              <InfoOutlinedIcon sx={{ fontSize: "0.95rem" }} />
+                            </IconButton>
+                          </Tooltip>
+                        </InputAdornment>
+                      ),
+                    }}
+                    inputProps={buildInputTestIdProps("salary-components.editor.formula-expression.input")}
+                  />
+                );
+              })()}
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mt: 0.75, lineHeight: 1.5 }}>
-                {t("formula_expression_help", "Applicable only for formula-based calculation methods. Available system variables: WAGE_TOTAL, NON_WAGE_TOTAL, DEEMED_WAGE_BASE, DEEMED_WAGE_SHORTFALL, CTC_ANNUAL, GROSS_ANNUAL. Example: DEEMED_WAGE_BASE * 0.08")}
+                {t("formula_expression_help", "Applicable only for formula-based calculation methods. Use active salary component codes and DEEMED_WAGE_BASE. Example: DEEMED_WAGE_BASE * 0.08")}
               </Typography>
             </Box>
           ) : null}

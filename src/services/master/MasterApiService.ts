@@ -940,6 +940,7 @@ export type SalaryStructureComponentApiRecord = {
   fltMaxAmount: number | null;
   blnIsMandatory: boolean;
   blnIsActive: boolean;
+  blnRequiresBills?: boolean;
   lstFlexiMappings?: Array<{
     intFlexiComponentEligibilityID?: number | null;
     intFlexiComponentID: number;
@@ -947,6 +948,7 @@ export type SalaryStructureComponentApiRecord = {
     strFlexiComponentName?: string | null;
     fltDefaultAmount?: number | null;
     fltMaxAmount?: number | null;
+    blnRequiresBills?: boolean;
     blnIsActive?: boolean;
   }>;
 };

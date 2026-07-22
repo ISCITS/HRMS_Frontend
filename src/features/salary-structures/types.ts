@@ -24,6 +24,7 @@ export type SalaryStructureOption = {
   blnIncludedInCtc?: boolean;
   blnIsActive?: boolean;
   blnProofRequired?: boolean;
+  blnRequiresBills?: boolean;
   blnIncludeInPayslip?: boolean;
   blnIsWages?: boolean;
   blnIsReimbursement?: boolean;
@@ -91,6 +92,7 @@ export type SalaryStructureFlexiMappingFormValue = {
   strFlexiComponentName: string;
   fltDefaultAmount: string;
   fltMaxAmount: string;
+  blnRequiresBills?: boolean;
   blnIsActive: boolean;
 };
 

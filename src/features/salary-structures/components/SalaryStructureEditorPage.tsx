@@ -38,6 +38,7 @@ import {
   createEmptyLineRow,
   createEmptyTextRow,
   createInitialSalaryStructureForm,
+  normalizeSalaryStructureLineOrders,
   normalizeSalaryStructureFlexiRole,
   salaryStructureService,
   toSalaryStructureFormValues
@@ -83,13 +84,6 @@ function getAutomationProps(strControlId?: string) {
 function isFlexiBucketToken(strValue: string) {
   const strToken = normalizeSelectToken(strValue);
   return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
-}
-
-function getNextLineOrder(lstLines: SalaryStructureLineFormValue[]) {
-  if (lstLines.length === 0) {
-    return 10;
-  }
-  return Math.max(...lstLines.map((dicLine) => dicLine.intLineOrder)) + 10;
 }
 
 function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
@@ -1375,17 +1369,30 @@ export default function SalaryStructureEditorPage({
   }
 
   function handleAddLineRow() {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstComponents: [...dicPrevious.lstComponents, createEmptyLineRow(getNextLineOrder(dicPrevious.lstComponents))]
-    }));
+    setDicForm((dicPrevious) => {
+      const lstNormalizedComponents = normalizeSalaryStructureLineOrders(dicPrevious.lstComponents);
+      return {
+        ...dicPrevious,
+        lstComponents: [
+          ...lstNormalizedComponents,
+          createEmptyLineRow((lstNormalizedComponents.length + 1) * 10)
+        ]
+      };
+    });
   }
 
   function handleRemoveLineRow(strRowID: string) {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstComponents: dicPrevious.lstComponents.length === 1 ? dicPrevious.lstComponents : dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
-    }));
+    setDicForm((dicPrevious) => {
+      if (dicPrevious.lstComponents.length === 1) {
+        return dicPrevious;
+      }
+      return {
+        ...dicPrevious,
+        lstComponents: normalizeSalaryStructureLineOrders(
+          dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
+        )
+      };
+    });
   }
 
   function validateFlexiMappings() {
@@ -1466,16 +1473,29 @@ export default function SalaryStructureEditorPage({
       return;
     }
     const lstSelectedComponents = dicForm.lstComponents.filter((dicLine) => dicLine.intSalaryComponentID !== "");
-    const lstActiveFlexiBasketLines = lstSelectedComponents.filter((dicLine) => {
+    const setUsedLineOrders = new Set<number>();
+    for (const dicLine of lstSelectedComponents) {
+      const intLineOrder = Number(dicLine.intLineOrder);
+      if (!Number.isInteger(intLineOrder) || intLineOrder <= 0) {
+        setStrError(t("invalid_line_order", "Line order must be a positive whole number."));
+        return;
+      }
+      if (setUsedLineOrders.has(intLineOrder)) {
+        setStrError(t("duplicate_line_order_not_allowed", "Duplicate line order is not allowed."));
+        return;
+      }
+      setUsedLineOrders.add(intLineOrder);
+    }
+    const lstFlexiBasketLines = lstSelectedComponents.filter((dicLine) => {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-      return dicLine.blnIsActive && isFlexiEntitlementHostLine(dicLine, dicComponent);
+      return isFlexiEntitlementHostLine(dicLine, dicComponent);
     });
-    const intFlexiBasketCount = lstActiveFlexiBasketLines.length;
+    const intFlexiBasketCount = lstFlexiBasketLines.length;
     if (intFlexiBasketCount > 1) {
-      setStrError(t("single_flexi_pay_only", "Only one active Flexi Bucket line is allowed in one salary structure."));
+      setStrError(t("single_flexi_pay_only", "Only one Flexi Bucket line is allowed in one salary structure."));
       return;
     }
-    for (const dicLine of lstActiveFlexiBasketLines) {
+    for (const dicLine of lstFlexiBasketLines) {
       const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
       const fltAmount = parseLineAmount(dicLine.fltFixedAmount) ?? 0;
       if (!dicLine.blnIncludedInCtc || fltAmount <= 0 || dicComponent?.blnIsWages || dicComponent?.blnIncludeInPayslip) {
@@ -1635,10 +1655,13 @@ export default function SalaryStructureEditorPage({
               label={t("structure_code", "Structure Code")}
               value={dicForm.strStructureCode}
               onChange={(objEvent) => updateRootField("strStructureCode", objEvent.target.value.toUpperCase())}
-              disabled={blnFieldDisabled}
+              disabled={blnFieldDisabled || strMode === "edit"}
               fullWidth
               controlId="salary-structures.editor.structure-code.input"
-              inputProps={buildInputTestIdProps("salary-structures.editor.structure-code.input")}
+              inputProps={{
+                ...buildInputTestIdProps("salary-structures.editor.structure-code.input"),
+                readOnly: strMode === "edit"
+              }}
               required
             />
             <TextField
@@ -2301,7 +2324,7 @@ export default function SalaryStructureEditorPage({
                                     sx={{ width: 126, "& .MuiInputBase-input": { fontSize: "0.84rem", py: 0.9 } }}
                                   />
                                 </td>
-                                <td>{dicFlexiComponent?.blnProofRequired ? t("yes", "Yes") : t("no", "No")}</td>
+                                <td>{(dicMapping.blnRequiresBills ?? dicFlexiComponent?.blnRequiresBills) ? t("yes", "Yes") : t("no", "No")}</td>
                                 <td>
                                   <Tooltip
                                     title={strEligibilitySummary === "Eligible by default"

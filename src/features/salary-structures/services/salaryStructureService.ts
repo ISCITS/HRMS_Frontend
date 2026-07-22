@@ -96,6 +96,15 @@ function isLineValueSource(strValueSource: string, strExpectedValue: "fixed" | "
   return normalizeSelectToken(strValueSource) === strExpectedValue;
 }
 
+function compareLineOrder(
+  dicLeft: Pick<SalaryStructureLineFormValue, "intLineOrder" | "intSalaryComponentID" | "strRowID">,
+  dicRight: Pick<SalaryStructureLineFormValue, "intLineOrder" | "intSalaryComponentID" | "strRowID">
+) {
+  return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
+    || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
+    || dicLeft.strRowID.localeCompare(dicRight.strRowID);
+}
+
 export function normalizeSalaryStructureFlexiRole(strValue?: string | null) {
   const strRole = (strValue ?? "").trim().toLowerCase();
   return strRole && strRole !== "none" ? strRole : "normal";
@@ -110,6 +119,15 @@ function isFlexiBasketLinePayload(dicLine: Pick<SalaryStructureLineFormValue, "b
     || isFlexiBucketToken(dicLine.strComponentCode)
     || isFlexiBucketToken(dicLine.strComponentName)
   );
+}
+
+export function normalizeSalaryStructureLineOrders<T extends SalaryStructureLineFormValue>(lstLines: T[]) {
+  return [...lstLines]
+    .sort(compareLineOrder)
+    .map((dicLine, intIndex) => ({
+      ...dicLine,
+      intLineOrder: (intIndex + 1) * 10,
+    }));
 }
 
 function mapTextToFormValue(dicText: SalaryStructureTextApiRecord): SalaryStructureTextFormValue {
@@ -276,6 +294,7 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
         strFlexiComponentName: dicMapping.strFlexiComponentName ?? null,
         fltDefaultAmount: dicMapping.fltDefaultAmount ?? null,
         fltMaxAmount: dicMapping.fltMaxAmount ?? null,
+        blnRequiresBills: Boolean(dicMapping.blnRequiresBills),
         blnIsActive: Boolean(dicMapping.blnIsActive ?? true)
       }))
     }))
@@ -283,6 +302,7 @@ function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetai
 }
 
 function toFormPayload(dicValues: SalaryStructureFormValues) {
+  const lstNormalizedComponents = normalizeSalaryStructureLineOrders(dicValues.lstComponents);
   return {
     strStructureCode: dicValues.strStructureCode.trim(),
     strStructureName: dicValues.strStructureName.trim(),
@@ -298,7 +318,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
         strStructureName: dicText.strStructureName.trim(),
         strStructureDescription: formatOptionalText(dicText.strStructureDescription)
       })),
-    lstComponents: dicValues.lstComponents
+    lstComponents: lstNormalizedComponents
       .map((dicLine) => ({
         ...dicLine,
         intSalaryComponentID: formatOptionalInteger(dicLine.intSalaryComponentID),
@@ -616,13 +636,19 @@ export function createInitialSalaryStructureForm(): SalaryStructureFormValues {
 }
 
 export function createCloneForm(dicDetail: SalaryStructureDetailRecord): SalaryStructureCloneValues {
+  const strClonedStructureName = `${dicDetail.strStructureName} Copy`;
   return {
     strStructureCode: `${dicDetail.strStructureCode}-COPY`,
-    strStructureName: `${dicDetail.strStructureName} Copy`,
+    strStructureName: strClonedStructureName,
     dtEffectiveFrom: new Date().toISOString().slice(0, 10),
     dtEffectiveTo: "",
     blnIsDefault: false,
-    lstTexts: dicDetail.lstTexts.length > 0 ? dicDetail.lstTexts.map(mapTextToFormValue) : [createEmptyTextRow()]
+    lstTexts: dicDetail.lstTexts.length > 0
+      ? dicDetail.lstTexts.map((dicText, intIndex) => ({
+        ...mapTextToFormValue(dicText),
+        strStructureName: intIndex === 0 ? strClonedStructureName : dicText.strStructureName
+      }))
+      : [createEmptyTextRow()]
   };
 }
 
@@ -636,7 +662,9 @@ export function toSalaryStructureFormValues(dicRecord: SalaryStructureDetailReco
     blnIsDefault: dicRecord.blnIsDefault,
     blnIsActive: dicRecord.blnIsActive,
     lstTexts: dicRecord.lstTexts.length > 0 ? dicRecord.lstTexts.map(mapTextToFormValue) : [createEmptyTextRow()],
-    lstComponents: dicRecord.lstComponents.length > 0 ? dicRecord.lstComponents.map(mapLineToFormValue) : [createEmptyLineRow(10)]
+    lstComponents: dicRecord.lstComponents.length > 0
+      ? normalizeSalaryStructureLineOrders(dicRecord.lstComponents.map(mapLineToFormValue))
+      : [createEmptyLineRow(10)]
   };
 }
 
