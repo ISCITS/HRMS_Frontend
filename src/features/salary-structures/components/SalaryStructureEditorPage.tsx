@@ -86,6 +86,11 @@ function isFlexiBucketToken(strValue: string) {
   return strToken.includes("flexipay") || strToken.includes("flexibucket") || strToken.includes("flexibasket");
 }
 
+function normalizeLineOrder(objValue: number | string, intFallbackValue = 10) {
+  const intValue = Number(objValue);
+  return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
+}
+
 function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
   return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
     || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
