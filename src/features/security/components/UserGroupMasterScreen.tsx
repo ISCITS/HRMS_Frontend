@@ -66,7 +66,7 @@ export default function UserGroupMasterScreen() {
     hasRightAny,
     canViewAny,
     isReadOnly,
-  } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
+  } = useModuleActionAccess(["USERGROUP", "USER_GROUP", "USER_GROUPS"]);
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -401,7 +401,7 @@ export default function UserGroupMasterScreen() {
 
       <Box className={styles.tableCard}>
         <Box sx={{ overflowX: "auto", overflowY: "auto", minHeight: 0, flex: 1 }}>
-          {!blnCanView ? (
+          {blnLoading || blnRightsLoading ? null : !blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
               <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>

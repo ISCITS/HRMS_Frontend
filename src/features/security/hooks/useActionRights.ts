@@ -25,6 +25,10 @@ function normalizeActionCode(strActionCode: string) {
   return strActionCode.trim().toLowerCase();
 }
 
+function compactModuleCode(strModuleCode: string) {
+  return normalizeModuleCode(strModuleCode).replace(/_/g, "");
+}
+
 function buildActionRightsCacheKey() {
   const strTokenTail = authHelpers.getAccessToken()?.slice(-24) ?? "";
   return [
@@ -159,8 +163,14 @@ export function useActionRights() {
 
   function hasRight(strModuleCode: string, strActionCode: string) {
     const strNormalizedModuleCode = normalizeModuleCode(strModuleCode);
+    const strCompactModuleCode = compactModuleCode(strModuleCode);
     const strNormalizedActionCode = normalizeActionCode(strActionCode);
-    const lstAllowedActions = dicNormalizedActions[strNormalizedModuleCode] ?? [];
+    const lstAllowedActions =
+      dicNormalizedActions[strNormalizedModuleCode] ??
+      Object.entries(dicNormalizedActions).find(
+        ([strKnownModuleCode]) => compactModuleCode(strKnownModuleCode) === strCompactModuleCode,
+      )?.[1] ??
+      [];
     return lstAllowedActions.includes(strNormalizedActionCode);
   }
 
@@ -170,13 +180,30 @@ export function useActionRights() {
 
   function canViewModule(strModuleCode: string) {
     const strNormalizedModuleCode = normalizeModuleCode(strModuleCode);
-    const lstAllowedActions = dicNormalizedActions[strNormalizedModuleCode] ?? [];
-    return lstAllowedActions.includes("view");
+    const strCompactModuleCode = compactModuleCode(strModuleCode);
+    const lstAllowedActions =
+      dicNormalizedActions[strNormalizedModuleCode] ??
+      Object.entries(dicNormalizedActions).find(
+        ([strKnownModuleCode]) => compactModuleCode(strKnownModuleCode) === strCompactModuleCode,
+      )?.[1] ??
+      [];
+    // Dynamic-menu visibility is based on the presence of an effective action.
+    // Treat the same condition as page visibility so legacy groups that have
+    // edit/add/export but no explicitly persisted VIEW right are not shown a
+    // menu item that opens an access-denied screen.
+    return lstAllowedActions.length > 0;
   }
 
   function isReadOnlyModule(strModuleCode: string) {
-    const lstAllowedActions = dicNormalizedActions[normalizeModuleCode(strModuleCode)] ?? [];
-    return lstAllowedActions.includes("view") && !lstAllowedActions.some((strActionCode) =>
+    const strNormalizedModuleCode = normalizeModuleCode(strModuleCode);
+    const strCompactModuleCode = compactModuleCode(strModuleCode);
+    const lstAllowedActions =
+      dicNormalizedActions[strNormalizedModuleCode] ??
+      Object.entries(dicNormalizedActions).find(
+        ([strKnownModuleCode]) => compactModuleCode(strKnownModuleCode) === strCompactModuleCode,
+      )?.[1] ??
+      [];
+    return lstAllowedActions.length > 0 && !lstAllowedActions.some((strActionCode) =>
       [
         "add",
         "create",

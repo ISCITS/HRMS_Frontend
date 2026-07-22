@@ -33,8 +33,18 @@ export function useModuleActionAccess(lstModuleHints: string[]) {
     const lstNormalizedHints = lstModuleHints.map(normalizeCode);
     const lstMatches = lstKnownCodes.filter((strModuleCode) => {
       const strNormalizedCode = normalizeCode(strModuleCode);
+      const strCompactCode = strNormalizedCode.replace(/_/g, "");
       return lstNormalizedHints.some(
-        (strHint) => strNormalizedCode === strHint || strNormalizedCode.includes(strHint) || strHint.includes(strNormalizedCode),
+        (strHint) => {
+          const strCompactHint = strHint.replace(/_/g, "");
+          return (
+            strNormalizedCode === strHint ||
+            strNormalizedCode.includes(strHint) ||
+            strHint.includes(strNormalizedCode) ||
+            strCompactCode.includes(strCompactHint) ||
+            strCompactHint.includes(strCompactCode)
+          );
+        },
       );
     });
     return lstMatches.length > 0 ? lstMatches : lstModuleHints;
