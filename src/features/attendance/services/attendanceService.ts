@@ -14,6 +14,7 @@ import type {
   ShiftDto,
   ShiftRequest,
 } from "@/features/attendance/dto";
+import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
 
 const ATTENDANCE_VIEW = "ATTENDANCE_VIEW";
 const ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
@@ -37,6 +38,48 @@ async function requestApi<TData>(objOptions: {
 }
 
 export const attendanceService = {
+  async listPolicies(objFilters: { strSearch?: string; blnIsActive?: boolean; intPage: number; intPageSize: number }): Promise<AttendancePolicyList> {
+    const objQuery = new URLSearchParams({ page: String(objFilters.intPage), page_size: String(objFilters.intPageSize) });
+    if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
+    if (objFilters.blnIsActive !== undefined) objQuery.set("is_active", String(objFilters.blnIsActive));
+    const objResult = await requestApi<AttendancePolicyList>({ strPath: `/attendance/policies?${objQuery}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
+    return objResult.Data;
+  },
+
+  async getPolicy(intPolicyID: number): Promise<AttendancePolicy> {
+    const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
+    return objResult.Data;
+  },
+
+  async savePolicy(intPolicyID: number | null, objPayload: AttendancePolicyFormValues): Promise<AttendancePolicy> {
+    const objResult = await requestApi<AttendancePolicy>({
+      strPath: intPolicyID ? `/attendance/policies/${intPolicyID}` : "/attendance/policies",
+      strMethod: intPolicyID ? ApiRequestMethod.Put : ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async setPolicyStatus(intPolicyID: number, blnIsActive: boolean): Promise<AttendancePolicy> {
+    const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}/status`, strMethod: ApiRequestMethod.Patch, objBody: { blnIsActive }, strMenuAction: ATTENDANCE_MANAGE });
+    return objResult.Data;
+  },
+
+  async loadDaily(objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }): Promise<DailyAttendanceRow[]> {
+    const objQuery = new URLSearchParams({ date: objFilters.strDate });
+    if (objFilters.intDepartmentID) objQuery.set("department_id", String(objFilters.intDepartmentID));
+    if (objFilters.intLocationID) objQuery.set("location_id", String(objFilters.intLocationID));
+    if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
+    const objResult = await requestApi<{ dtWorkDate: string; lstRows: DailyAttendanceRow[] }>({ strPath: `/attendance/daily?${objQuery}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
+    return objResult.Data.lstRows ?? [];
+  },
+
+  async bulkSaveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
+    const objResult = await requestApi<DailyAttendanceBulkResult>({ strPath: "/attendance/daily/bulk", strMethod: ApiRequestMethod.Put, objBody: { dtWorkDate: strDate, lstRows }, strMenuAction: ATTENDANCE_MANAGE });
+    return objResult.Data;
+  },
+
   // ---- ESS ----
   async punch(objPayload: PunchRequest): Promise<AttendanceDayDto> {
     const objResult = await requestApi<AttendanceDayDto>({

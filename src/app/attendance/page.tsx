@@ -1,5 +1,5 @@
-import AttendanceAdminPanel from "@/features/attendance/components/AttendanceAdminPanel";
+import AttendancePocPanel from "@/features/attendance/components/AttendancePocPanel";
 
 export default function AttendanceAdminPage() {
-  return <AttendanceAdminPanel />;
+  return <AttendancePocPanel />;
 }
