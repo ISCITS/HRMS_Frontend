@@ -1,15 +1,19 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   LeaveApplicationDto,
   LeaveApplyRequest,
+  LeaveApplicationAttachmentDto,
   LeaveBalanceDto,
   LeaveDecisionRequest,
+  LeaveDraftRequest,
   LeaveLookups,
   LeavePolicyDto,
   LeavePolicyRequest,
+  LeavePreviewDto,
   LeaveTypeAggregate,
   LeaveTypeDto,
   LeaveTypeEnrichedDto,
@@ -227,7 +231,7 @@ export const leaveService = {
       strPath: "/ess/leave/apply",
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
-      strMenuAction: LEAVE_VIEW,
+      strMenuAction: LEAVE_MANAGE,
     });
     return objResult.Data;
   },
@@ -247,9 +251,93 @@ export const leaveService = {
       strPath: `/ess/leave/applications/${intApplicationID}/cancel`,
       strMethod: ApiRequestMethod.Post,
       objBody: {},
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async previewMyLeave(objPayload: LeaveApplyRequest, intApplicationID?: number | null): Promise<LeavePreviewDto> {
+    const strQuery = intApplicationID ? `?application_id=${encodeURIComponent(String(intApplicationID))}` : "";
+    const objResult = await requestApi<LeavePreviewDto>({
+      strPath: `/ess/leave/preview${strQuery}`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async createMyLeaveDraft(objPayload: LeaveDraftRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: "/ess/leave/applications/draft",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async updateMyLeaveDraft(intApplicationID: number, objPayload: LeaveDraftRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/draft`,
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async submitMyLeaveDraft(intApplicationID: number, intVersionNo?: number): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/submit`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intVersionNo },
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async getMyLeaveApplication(intApplicationID: number): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}`,
+      strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
     return objResult.Data;
+  },
+
+  async withdrawMyLeaveApplication(intApplicationID: number, strReason: string): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/withdraw`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strReason },
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async uploadMyLeaveAttachment(intApplicationID: number, objFile: File): Promise<LeaveApplicationAttachmentDto> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    try {
+      const objResponse = await axiosInstance.request<LeaveApplicationAttachmentDto | { Data: LeaveApplicationAttachmentDto }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/ess/leave/applications/${intApplicationID}/attachments`,
+        data: objFormData,
+        csrfMenuAction: LEAVE_MANAGE,
+      } as ApiRequestConfig);
+      return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
+    } catch (objError) {
+      throw await createApiRequestError<LeaveApplicationAttachmentDto>(objError);
+    }
+  },
+
+  async deleteMyLeaveAttachment(intApplicationID: number, intAttachmentID: number): Promise<void> {
+    await requestApi<null>({
+      strPath: `/ess/leave/applications/${intApplicationID}/attachments/${intAttachmentID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: LEAVE_MANAGE,
+    });
   },
 
   // ---- HR / Manager: approval queue ----

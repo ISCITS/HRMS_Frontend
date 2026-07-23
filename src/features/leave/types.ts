@@ -14,6 +14,9 @@ export type LeaveTypeDto = {
   blnIsEncashable: boolean;
   intDisplayOrder: number;
   blnIsActive: boolean;
+  strDescription?: string | null;
+  strEmployeeHelpText?: string | null;
+  blnRequiresReason?: boolean;
 };
 
 // Enterprise leave-type row (GET /leave/leave-types) — master + current-policy summary + localized name.
@@ -300,6 +303,44 @@ export type LeaveApplicationActionDto = {
   dtActionOn: string | null;
 };
 
+export type LeaveApplicationAttachmentDto = {
+  intID: number;
+  strFileName: string;
+  strContentType: string;
+  intFileSizeBytes: number;
+  dtAddedOn: string | null;
+};
+
+export type LeaveValidationMessage = {
+  strCode: string;
+  strMessage: string;
+  strField: string | null;
+};
+
+export type LeaveDateBreakdownDto = {
+  dtDate: string;
+  blnHoliday: boolean;
+  strHolidayName: string | null;
+  blnWeeklyOff: boolean;
+  blnCounted: boolean;
+  strCalculationReason: string;
+  decDays: number;
+};
+
+export type LeavePreviewDto = {
+  blnValid: boolean;
+  lstErrors: LeaveValidationMessage[];
+  lstWarnings: LeaveValidationMessage[];
+  lstDateBreakdown: LeaveDateBreakdownDto[];
+  decCalculatedDays: number;
+  blnProofRequired: boolean;
+  intLeavePolicyID: number | null;
+  intLeavePlanAssignmentID: number | null;
+  intBalanceID: number | null;
+  decAvailableBefore: number | null;
+  decAvailableAfter: number | null;
+};
+
 export type LeaveApplicationDto = {
   intID: number;
   intEmployeeID: number;
@@ -317,9 +358,14 @@ export type LeaveApplicationDto = {
   dtAppliedOn: string | null;
   dtDecidedOn: string | null;
   intDecidedBy: number | null;
+  intLeavePolicyID?: number | null;
+  intLeavePlanAssignmentID?: number | null;
+  intVersionNo?: number;
+  objCalculation?: LeavePreviewDto | null;
   strEmployeeCode?: string | null;
   strEmployeeName?: string | null;
   lstActions?: LeaveApplicationActionDto[];
+  lstAttachments?: LeaveApplicationAttachmentDto[];
 };
 
 export type LeaveApplyRequest = {
@@ -329,6 +375,12 @@ export type LeaveApplyRequest = {
   blnFromHalf: boolean;
   blnToHalf: boolean;
   strReason?: string | null;
+  strContactDuringLeave?: string | null;
+  strBackupEmployee?: string | null;
+};
+
+export type LeaveDraftRequest = LeaveApplyRequest & {
+  intVersionNo?: number | null;
 };
 
 export type LeaveDecisionRequest = {

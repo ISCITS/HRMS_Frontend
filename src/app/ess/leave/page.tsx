@@ -1,5 +1,5 @@
-import EssLeaveApplyPanel from "@/features/leave/components/EssLeaveApplyPanel";
+import EssLeaveApplicationPanel from "@/features/leave/components/EssLeaveApplicationPanel";
 
 export default function EssLeavePage() {
-  return <EssLeaveApplyPanel />;
+  return <EssLeaveApplicationPanel />;
 }

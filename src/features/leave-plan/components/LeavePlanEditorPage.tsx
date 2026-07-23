@@ -75,7 +75,6 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const { t } = useModuleLabels("leave_plan");
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   const { objPlan, lstLeaveTypes, objLanguages, dicPolicies, blnLoading, blnSaving, strError, loadPolicies, savePlan } = useLeavePlanEditor(intPlanID);
-  const [strSaveError, setStrSaveError] = useState("");
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "error" });
   const objSchema = useMemo(() => buildPlanSchema(t), [t]);
   const objForm = useForm<PlanForm>({ resolver: yupResolver(objSchema), defaultValues: emptyForm(), mode: "onBlur" });
@@ -116,7 +115,6 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
       setError("lstText", { message: t("validation_default_translation", "The default-language Plan Name is required.") });
       return;
     }
-    setStrSaveError("");
     const objPayload: LeavePlanSaveRequest = {
       strPlanCode: objValues.strPlanCode.trim().toUpperCase(), strPlanName: objValues.strPlanName.trim(), strDescription: objValues.strDescription.trim() || null,
       strCountryCode: objValues.strCountryCode.trim().toUpperCase(), dtEffectiveFrom: objValues.dtEffectiveFrom, dtEffectiveTo: objValues.dtEffectiveTo || null,
@@ -129,7 +127,6 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
       objRouter.push(strBackPath);
     } catch (objError) {
       const strMessage = (await createApiRequestError(objError)).message;
-      setStrSaveError(strMessage);
       setObjToast({ blnOpen: true, strMessage, strSeverity: "error" });
     }
   }
@@ -193,10 +190,10 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
               <Controller name="dtEffectiveFrom" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth type="date" label={t("field_effective_from", "Effective From")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtEffectiveFrom)} helperText={errors.dtEffectiveFrom?.message} inputProps={{ "data-control-id": "leave-plan.editor.effective-from.input" }} />} />
               <Controller name="dtEffectiveTo" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth type="date" label={t("field_effective_to", "Effective To")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtEffectiveTo)} helperText={errors.dtEffectiveTo?.message} inputProps={{ "data-control-id": "leave-plan.editor.effective-to.input" }} />} />
               <Box sx={{ gridColumn: "span 2" }}>
-                <Controller name="strDescription" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth multiline minRows={2} label={t("field_description", "Description")} error={Boolean(errors.strDescription)} helperText={errors.strDescription?.message} inputProps={{ "data-control-id": "leave-plan.editor.description.input", maxLength: 500 }} />} />
+                <Controller name="strDescription" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth multiline minRows={1} label={t("field_description", "Description")} error={Boolean(errors.strDescription)} helperText={errors.strDescription?.message} inputProps={{ "data-control-id": "leave-plan.editor.description.input", maxLength: 500 }} />} />
               </Box>
               <Box sx={{ gridColumn: "span 2" }}>
-                <Controller name="strRemarks" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth multiline minRows={2} label={t("field_remarks", "Remarks")} error={Boolean(errors.strRemarks)} helperText={errors.strRemarks?.message} inputProps={{ "data-control-id": "leave-plan.editor.remarks.input", maxLength: 500 }} />} />
+                <Controller name="strRemarks" control={control} render={({ field }) => <TextField {...field} size="small" fullWidth multiline minRows={1} label={t("field_remarks", "Remarks")} error={Boolean(errors.strRemarks)} helperText={errors.strRemarks?.message} inputProps={{ "data-control-id": "leave-plan.editor.remarks.input", maxLength: 500 }} />} />
               </Box>
               <Box sx={objFullCellSx}>
                 <Stack direction="row" flexWrap="wrap" gap={0.5}>
@@ -210,13 +207,13 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
 
         {/* B. Leave Plan Items */}
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_plan_items", "Leave Plan Items")}</Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("section_plan_items", "Leave Plan Items")}</Typography>
+            {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={() => objItems.append(emptyItem((objItems.fields.length + 1) * 10))} data-control-id="leave-plan.editor.item.add.button">{t("add_item", "Add Item")}</Button> : null}
+          </Stack>
+          {errors.lstItems?.message ? <Typography color="error" variant="caption" sx={{ display: "block", mb: 1 }}>{errors.lstItems.message}</Typography> : null}
           <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              {errors.lstItems?.message ? <Typography color="error" variant="caption">{errors.lstItems.message}</Typography> : <span />}
-              {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={() => objItems.append(emptyItem((objItems.fields.length + 1) * 10))} data-control-id="leave-plan.editor.item.add.button">{t("add_item", "Add Item")}</Button> : null}
-            </Stack>
-            <TableContainer><Table size="small" sx={{ minWidth: 1250 }}><TableHead><TableRow>{["leave_type", "leave_policy", "annual_entitlement", "opening_balance_allowed", "negative_balance_limit", "display_order", "mandatory", "active", "actions"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`item_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
+            <TableContainer><Table size="small" sx={{ minWidth: 1250 }}><TableHead><TableRow>{["leave_type", "leave_policy", "annual_entitlement", "opening_balance_allowed", "negative_balance_limit", "display_order", "mandatory", "active", "actions"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800, textTransform: "capitalize" }}>{t(`item_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
               {objItems.fields.map((objField, intIndex) => {
                 const intTypeID = Number(lstWatchedItems?.[intIndex]?.intLeaveTypeID ?? 0);
                 const lstPolicies = dicPolicies[intTypeID] ?? [];
@@ -237,12 +234,12 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
 
         {/* C. Translations */}
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_translation", "Translation")}</Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("section_translation", "Translation")}</Typography>
+            {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={addTranslation} disabled={objTexts.fields.length >= objLanguages.lstLanguages.length} data-control-id="leave-plan.editor.translation.add.button">{t("add_language", "Add Language")}</Button> : null}
+          </Stack>
+          {fieldError("lstText") ? <Typography color="error" variant="caption" sx={{ display: "block", mb: 1 }}>{fieldError("lstText")}</Typography> : null}
           <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              {fieldError("lstText") ? <Typography color="error" variant="caption">{fieldError("lstText")}</Typography> : <span />}
-              {!blnReadOnly ? <Button size="small" startIcon={<AddRoundedIcon />} onClick={addTranslation} disabled={objTexts.fields.length >= objLanguages.lstLanguages.length} data-control-id="leave-plan.editor.translation.add.button">{t("add_language", "Add Language")}</Button> : null}
-            </Stack>
             <Box sx={{ display: "grid", gap: 1.5 }}>{objTexts.fields.map((objField, intIndex) => <Box key={objField.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "220px 1fr 2fr auto" }, gap: 1 }}>
               <Controller name={`lstText.${intIndex}.intLanguageID`} control={control} render={({ field }) => <TextField {...field} select size="small" label={t("language", "Language")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.language.select` }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))}>{objLanguages.lstLanguages.map((objLanguage) => <MenuItem key={objLanguage.intID} value={objLanguage.intID} data-control-id={`leave-plan.editor.translation.${intIndex}.language.${objLanguage.intID}.option`}>{objLanguage.strLabel}</MenuItem>)}</TextField>} />
               <Controller name={`lstText.${intIndex}.strPlanName`} control={control} render={({ field }) => <TextField {...field} size="small" label={t("translation_plan_name", "Translated Plan Name")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.name.input`, maxLength: 150 }} />} />
