@@ -279,6 +279,8 @@ export type EmployeeSalaryOverrideFormValue = {
   intSalaryComponentID: number;
   strComponentName: string;
   blnAllowManualOverride: boolean;
+  strValueSource?: string;
+  strFormulaExpression?: string;
   strBasisComponentName?: string;
   strPayslipSectionSnapshotCode?: string | null;
   strLwpTreatmentSnapshotCode?: string | null;

@@ -392,6 +392,10 @@ function sanitizeFormulaVariable(strCode: string) {
   return strCode.trim().replace(/[^A-Za-z0-9_]/g, "_");
 }
 
+function normalizeFormulaExpressionInput(strValue: string) {
+  return strValue.toUpperCase();
+}
+
 export default function SalaryStructureEditorPage({
   strMode,
   intSalaryStructureID
@@ -776,7 +780,7 @@ export default function SalaryStructureEditorPage({
   }
 
   function evaluateFormulaExpression(strExpression: string, dicVariables: Record<string, number>) {
-    const lstTokens = strExpression.match(/[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?|[()+\-*/,]/g) ?? [];
+    const lstTokens = strExpression.match(/[A-Za-z_][A-Za-z0-9_]*|(?:\d+(?:\.\d+)?|\.\d+)|[()+\-*/,]/g) ?? [];
     let intIndex = 0;
 
     function peekToken() {
@@ -853,7 +857,7 @@ export default function SalaryStructureEditorPage({
         consumeToken(")");
         return fltValue;
       }
-      if (/^\d/.test(strToken)) {
+      if (/^(?:\d|\.\d)/.test(strToken)) {
         consumeToken();
         return Number(strToken);
       }
@@ -1160,6 +1164,12 @@ export default function SalaryStructureEditorPage({
           return {
             ...dicLine,
             fltFixedAmount: sanitizeDecimalInput(String(objValue))
+          };
+        }
+        if (strField === "strFormulaExpression") {
+          return {
+            ...dicLine,
+            strFormulaExpression: normalizeFormulaExpressionInput(String(objValue))
           };
         }
         if (strField === "intLineOrder") {

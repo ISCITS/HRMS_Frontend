@@ -46,6 +46,9 @@ function areOptionalDecimalsEqual(decLeft: number | null, decRight: number | nul
 }
 
 function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
+  const strValueSource = String(dicOverride.strValueSource ?? "").trim().toLowerCase();
+  const blnUsesCalculatedAmounts =
+    strValueSource === "percentage" || strValueSource === "formula";
   const decAmountMonthly = parseOptionalDecimal(dicOverride.decAmountMonthly);
   const decAmountAnnual = parseOptionalDecimal(dicOverride.decAmountAnnual);
   const decPercentageValue = parseOptionalDecimal(dicOverride.decPercentageValue);
@@ -60,10 +63,26 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
     decPercentageValue,
     strRemarks,
     blnShouldPersist:
-      !areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
-      !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual) ||
+      (!blnUsesCalculatedAmounts &&
+        (!areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
+          !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual))) ||
       !areOptionalDecimalsEqual(decPercentageValue, decDefaultPercentage) ||
       Boolean(strRemarks)
+  };
+}
+
+function mapOverridePayload(dicOverride: EmployeeSalaryOverrideFormValue) {
+  const dicNormalizedOverride = shouldPersistOverride(dicOverride);
+  const strValueSource = String(dicOverride.strValueSource ?? "").trim().toLowerCase();
+  return {
+    intSalaryComponentID: dicOverride.intSalaryComponentID,
+    decAmountMonthly:
+      strValueSource === "fixed" ? dicNormalizedOverride.decAmountMonthly : null,
+    decAmountAnnual:
+      strValueSource === "fixed" ? dicNormalizedOverride.decAmountAnnual : null,
+    decPercentageValue: dicNormalizedOverride.decPercentageValue,
+    strRemarks: dicNormalizedOverride.strRemarks || null,
+    blnShouldPersist: dicNormalizedOverride.blnShouldPersist
   };
 }
 
@@ -138,17 +157,7 @@ export const employeeSalaryService = {
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
-        .map((dicOverride) => {
-          const dicNormalizedOverride = shouldPersistOverride(dicOverride);
-          return {
-            intSalaryComponentID: dicOverride.intSalaryComponentID,
-            decAmountMonthly: dicNormalizedOverride.decAmountMonthly,
-            decAmountAnnual: dicNormalizedOverride.decAmountAnnual,
-            decPercentageValue: dicNormalizedOverride.decPercentageValue,
-            strRemarks: dicNormalizedOverride.strRemarks || null,
-            blnShouldPersist: dicNormalizedOverride.blnShouldPersist
-          };
-        })
+        .map(mapOverridePayload)
         .filter((dicOverride) => dicOverride.blnShouldPersist)
         .map(({ blnShouldPersist: _blnShouldPersist, ...dicOverride }) => dicOverride),
       lstFlexiAllocations: dicValues.lstFlexiAllocations
@@ -174,17 +183,7 @@ export const employeeSalaryService = {
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
-        .map((dicOverride) => {
-          const dicNormalizedOverride = shouldPersistOverride(dicOverride);
-          return {
-            intSalaryComponentID: dicOverride.intSalaryComponentID,
-            decAmountMonthly: dicNormalizedOverride.decAmountMonthly,
-            decAmountAnnual: dicNormalizedOverride.decAmountAnnual,
-            decPercentageValue: dicNormalizedOverride.decPercentageValue,
-            strRemarks: dicNormalizedOverride.strRemarks || null,
-            blnShouldPersist: dicNormalizedOverride.blnShouldPersist
-          };
-        })
+        .map(mapOverridePayload)
         .filter((dicOverride) => dicOverride.blnShouldPersist)
         .map(({ blnShouldPersist: _blnShouldPersist, ...dicOverride }) => dicOverride),
       lstFlexiAllocations: dicValues.lstFlexiAllocations

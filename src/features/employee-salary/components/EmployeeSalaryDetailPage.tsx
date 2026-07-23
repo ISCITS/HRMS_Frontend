@@ -976,6 +976,11 @@ function getOverrideAnnualAmount(dicOverride: EmployeeSalaryOverrideFormValue | 
   return decDefaultMonthly !== null ? decDefaultMonthly * 12 : 0;
 }
 
+function usesAutoCalculatedOverrideValue(strValueSource: string | null | undefined) {
+  const strNormalizedValueSource = String(strValueSource ?? "").trim().toLowerCase();
+  return strNormalizedValueSource === "percentage" || strNormalizedValueSource === "formula";
+}
+
 function getFlexiAllocationSummary(
   objDetail: EmployeeSalaryDetailRecord | null
 ): EmployeeSalaryFlexiAllocationSummary {
@@ -1084,6 +1089,11 @@ function buildOverrideRows(
         dicLine.strComponentCode ??
         `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
       blnAllowManualOverride: dicLine.blnAllowManualOverride,
+      strValueSource: dicLine.strValueSource ?? "",
+      strFormulaExpression:
+        "strFormulaExpression" in dicLine && typeof dicLine.strFormulaExpression === "string"
+          ? dicLine.strFormulaExpression
+          : "",
       strBasisComponentName: strResolvedBasisComponentName,
       strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode,
       strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode,
@@ -2669,6 +2679,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <thead>
                   <tr>
                     <th>{t("employee_salary_component", "Component")}</th>
+                    <th>{t("employee_salary_value_source", "Value Source")}</th>
+                    <th>{t("employee_salary_formula", "Formula")}</th>
                     <th>{t("employee_salary_default_annual", "Default Annual")}</th>
                     <th>{t("employee_salary_revised_annual", "Revised Annual")}</th>
                     <th>{t("employee_salary_default_monthly", "Default Monthly")}</th>
@@ -2681,12 +2693,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <tbody>
                 {lstRevisionOverrideRows.length === 0 ? (
                   <tr>
-                    <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
+                    <td className={styles.emptyState} colSpan={10}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
                   </tr>
                 ) : lstRevisionOverrideRows.map(({ dicOverride, intOverrideIndex }) => (
                     <tr key={dicOverride.intSalaryComponentID}>
                       <td>
                         <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strComponentName}</Typography>
+                      </td>
+                      <td>
+                        <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strValueSource || "-"}</Typography>
+                      </td>
+                      <td>
+                        <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strFormulaExpression || "-"}</Typography>
                       </td>
                       <td>
                         <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
@@ -2699,7 +2717,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                         placeholder={dicOverride.strDefaultAnnual}
                         size="small"
                         sx={objOverrideValueFieldSx}
-                        disabled={!dicOverride.blnAllowManualOverride}
+                        disabled={!dicOverride.blnAllowManualOverride || usesAutoCalculatedOverrideValue(dicOverride.strValueSource)}
                         onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                           ...dicPrev,
                           lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => {
