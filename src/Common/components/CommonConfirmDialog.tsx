@@ -66,7 +66,7 @@ export default function CommonConfirmDialog({
   const strConfirmButtonControlId = confirmButtonTestId ?? confirmButtonControlId;
   return (
     <Dialog
-      data-controlid={strRootControlId}
+      data-control-id={strRootControlId}
       open={blnOpen}
       onClose={onClose}
       onKeyDown={handleSingleDialogActionEnter}
@@ -74,13 +74,13 @@ export default function CommonConfirmDialog({
     >
       <DialogTitle className={strDialogTitleClassName}>{strTitle}</DialogTitle>
       <DialogContent className={strDialogContentClassName}>
-        {nodeMessage ?? <Typography data-controlid={messageControlId} className={strDialogMessageClassName}>{strMessage}</Typography>}
+        {nodeMessage ?? <Typography data-control-id={messageControlId} className={strDialogMessageClassName}>{strMessage}</Typography>}
       </DialogContent>
       <DialogActions className={strDialogActionsClassName}>
-        <Button data-controlid={strCancelButtonControlId} className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
+        <Button data-control-id={strCancelButtonControlId} className={strCancelButtonClassName} onClick={onClose} disabled={blnCancelDisabled}>
           {strCancelLabel}
         </Button>
-        <Button data-controlid={strConfirmButtonControlId} className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
+        <Button data-control-id={strConfirmButtonControlId} className={strConfirmButtonClassName} onClick={onConfirm} disabled={blnConfirmDisabled}>
           {strConfirmLabel}
         </Button>
       </DialogActions>

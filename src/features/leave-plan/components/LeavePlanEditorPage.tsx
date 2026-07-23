@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -77,7 +77,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const { objPlan, lstLeaveTypes, objLanguages, dicPolicies, blnLoading, blnSaving, strError, loadPolicies, savePlan } = useLeavePlanEditor(intPlanID);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "error" });
   const objSchema = useMemo(() => buildPlanSchema(t), [t]);
-  const objForm = useForm<PlanForm>({ resolver: yupResolver(objSchema), defaultValues: emptyForm(), mode: "onBlur" });
+  const objForm = useForm<PlanForm>({ resolver: yupResolver(objSchema) as Resolver<PlanForm>, defaultValues: emptyForm(), mode: "onBlur" });
   const { control, handleSubmit, reset, setError, formState: { errors } } = objForm;
   const objItems = useFieldArray({ control, name: "lstItems" });
   const objTexts = useFieldArray({ control, name: "lstText" });
