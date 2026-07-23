@@ -29,12 +29,12 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function setPolicyStatus(intPolicyID: number, blnIsActive: boolean) {
     setBlnSaving(true); try { return await attendanceService.setPolicyStatus(intPolicyID, blnIsActive); } finally { setBlnSaving(false); }
   }
-  async function loadDaily(objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }) {
+  const loadDaily = useCallback(async (objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }) => {
     setBlnLoading(true); setStrError("");
     try { const lstRows = await attendanceService.loadDaily(objFilters); setLstDailyRows(lstRows); return lstRows; }
     catch (objError) { setStrError(objError instanceof Error ? objError.message : "Unable to load daily attendance."); throw objError; }
     finally { setBlnLoading(false); }
-  }
+  }, []);
   async function saveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
     setBlnSaving(true); try { return await attendanceService.bulkSaveDaily(strDate, lstRows); } finally { setBlnSaving(false); }
   }

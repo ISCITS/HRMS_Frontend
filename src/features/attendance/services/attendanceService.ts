@@ -15,6 +15,10 @@ import type {
   ShiftRequest,
 } from "@/features/attendance/dto";
 import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
+import type {
+  MyAttendanceHistory,
+  MyAttendanceOverview,
+} from "@/features/attendance/types/MyAttendanceTypes";
 
 const ATTENDANCE_VIEW = "ATTENDANCE_VIEW";
 const ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
@@ -81,11 +85,32 @@ export const attendanceService = {
   },
 
   // ---- ESS ----
-  async punch(objPayload: PunchRequest): Promise<AttendanceDayDto> {
-    const objResult = await requestApi<AttendanceDayDto>({
+  async punch(objPayload: PunchRequest): Promise<MyAttendanceOverview> {
+    const objResult = await requestApi<MyAttendanceOverview>({
       strPath: "/ess/attendance/punch",
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getMyAttendanceOverview(strDate: string): Promise<MyAttendanceOverview> {
+    const objResult = await requestApi<MyAttendanceOverview>({
+      strPath: `/ess/attendance/overview?date=${encodeURIComponent(strDate)}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getMyAttendanceHistory(
+    strFromDate: string,
+    strToDate: string,
+  ): Promise<MyAttendanceHistory> {
+    const objResult = await requestApi<MyAttendanceHistory>({
+      strPath: `/ess/attendance/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}`,
+      strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
     return objResult.Data;

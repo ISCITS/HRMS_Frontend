@@ -33,6 +33,7 @@ export default function ActiveStatusSwitch({
   const { controlId: strInputControlId, ...objInputPropsWithoutControlId } = objInputProps;
   const objResolvedInputProps = {
     ...objInputPropsWithoutControlId,
+    "data-control-id": objInputProps["data-control-id"] ?? testId ?? strInputControlId ?? controlId,
     "data-controlid": objInputProps["data-controlid"] ?? testId ?? strInputControlId ?? controlId,
     "aria-label": strStateLabel,
   } as InputHTMLAttributes<HTMLInputElement>;

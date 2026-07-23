@@ -70,7 +70,7 @@ export default function CommonMasterDialog({
   const strPrimaryButtonControlId = primaryButtonTestId ?? primaryButtonControlId;
   return (
     <Dialog
-      controlId={strRootControlId}
+      data-control-id={strRootControlId}
       open={blnOpen}
       onClose={onDialogClose ?? (() => onClose())}
       onKeyDown={handleSingleDialogActionEnter}
@@ -84,11 +84,11 @@ export default function CommonMasterDialog({
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button controlId={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
+        <Button data-control-id={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
         {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button controlId={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
+          <Button data-control-id={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
             {strPrimaryLabel}
           </Button>
         ) : null}
