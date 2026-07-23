@@ -1,5 +1,6 @@
 "use client";
 
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -207,6 +208,19 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      {blnRunScoped ? (
+        <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+          <Button
+            data-controlid="payroll-process-logs.view.back.button"
+            className={styles.secondaryButton}
+            startIcon={<ArrowBackRoundedIcon />}
+            onClick={() => objRouter.push("/payroll/process-log")}
+          >
+            {t("back_to_list", "Back to List")}
+          </Button>
+        </Box>
+      ) : null}
+
       <Box className={styles.controlsCard}>
         <Box
           sx={{
