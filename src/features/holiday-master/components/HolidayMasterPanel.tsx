@@ -9,7 +9,7 @@ import {
   Switch, TextField, Typography,
 } from "@mui/material";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -32,7 +32,7 @@ type ConfirmDialogState = { strTitle: string; strMessage: string; fnOnConfirm: (
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
 
 // Holiday Master intentionally reuses the shared master grid and dialog patterns.
-const objHolidaySchema: yup.ObjectSchema<HolidayFormValues> = yup.object({
+const objHolidaySchema = yup.object({
   intHolidayYear: yup.number().integer().min(1900).max(9999).required(),
   dtHolidayDate: yup.string().required("Holiday date is required."),
   strHolidayCode: yup.string().trim().matches(/^[A-Za-z0-9][A-Za-z0-9._-]{1,49}$/, "Use 2-50 letters, numbers, dot, underscore, or hyphen.").required("Holiday code is required."),
@@ -45,11 +45,11 @@ const objHolidaySchema: yup.ObjectSchema<HolidayFormValues> = yup.object({
   blnIsCompensatoryOffApplicable: yup.boolean().required(),
   blnIsActive: yup.boolean().required(),
   lstTexts: yup.array().of(yup.object({
-    intLanguageID: yup.number().positive().required(),
-    strLanguageName: yup.string().required(),
-    strHolidayName: yup.string().trim().max(150).required(),
-    strHolidayDescription: yup.string().max(500).required(),
-  })).required(),
+    intLanguageID: yup.number().positive().required().defined(),
+    strLanguageName: yup.string().required().defined(),
+    strHolidayName: yup.string().trim().max(150).required().defined(),
+    strHolidayDescription: yup.string().max(500).required().defined(),
+  }).required().defined()).required().defined(),
 });
 
 function createHolidayForm(intYear: number): HolidayFormValues {
@@ -91,7 +91,10 @@ export default function HolidayMasterPanel() {
   const {
     control, register, reset, handleSubmit, getValues, setValue, watch,
     formState: { errors },
-  } = useForm<HolidayFormValues>({ resolver: yupResolver(objHolidaySchema), defaultValues: createHolidayForm(intYear) });
+  } = useForm<HolidayFormValues>({
+    resolver: yupResolver(objHolidaySchema) as Resolver<HolidayFormValues>,
+    defaultValues: createHolidayForm(intYear)
+  });
   const { fields: lstTextFields } = useFieldArray({ control, name: "lstTexts" });
   const intPrimaryLanguageID = authHelpers.getLanguageID() ?? objOptions.lstLanguages[0]?.intID;
   const intPrimaryTextIndex = lstTextFields.findIndex((objText) => objText.intLanguageID === intPrimaryLanguageID);

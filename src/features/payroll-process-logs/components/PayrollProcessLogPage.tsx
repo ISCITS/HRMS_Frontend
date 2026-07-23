@@ -137,7 +137,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
         />
       ),
-      intPayrollRunID: dicRow.intPayrollRunID,
       employee: (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
           <Typography sx={{ fontSize: "0.86rem", fontWeight: 700, color: "#1f2937" }}>
@@ -170,7 +169,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "intPayrollRunID", headerName: t("payroll_run_id", "Payroll Run ID"), align: "right" },
       { field: "employee", headerName: t("employee", "Employee"), sortable: false, filterable: false, width: 220 },
       { field: "strProcessStage", headerName: t("process_stage", "Process Stage") },
       { field: "strProcessStatus", headerName: t("process_status", "Process Status"), sortable: false, filterable: false, width: 150 },
@@ -219,16 +217,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           }}
         >
           <TextField
-            data-controlid="payroll-process-logs.list.run-id.input"
-            inputProps={{ "data-controlid": "payroll-process-logs.list.run-id.input" }}
-            label={t("payroll_run_id", "Payroll Run ID")}
-            value={dicFiltersDraft.intPayrollRunID}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, intPayrollRunID: objEvent.target.value }))}
-            size="small"
-            disabled={blnRunScoped}
-            sx={{ minWidth: { xs: "100%", sm: 130 }, maxWidth: { sm: 150 } }}
-          />
-          <TextField
             select
             label={t("employee", "Employee")}
             value={dicFiltersDraft.intEmployeeID}
@@ -239,7 +227,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
               }))
             }
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 190 }, maxWidth: { sm: 220 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" }, minWidth: { md: 220 }, maxWidth: { md: 320 } }}
           >
             <MenuItem value="">{t("all_employees", "All Employees")}</MenuItem>
             {dicOptions.lstEmployees.map((dicOption) => (
@@ -254,7 +242,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStage}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: objEvent.target.value }))}
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
           >
             <MenuItem value="">{t("all_stages", "All Stages")}</MenuItem>
             {dicOptions.lstProcessStages.map((strStage) => (
@@ -269,7 +257,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStatus}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: objEvent.target.value }))}
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
           >
             <MenuItem value="">{t("all_statuses", "All Statuses")}</MenuItem>
             {dicOptions.lstProcessStatuses.map((strStatus) => (
@@ -285,7 +273,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strSearchText}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchText: objEvent.target.value }))}
             size="small"
-            sx={{ flex: { xs: "1 1 100%", md: "0 1 260px" }, minWidth: { md: 220 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 280px" }, minWidth: { md: 260 }, maxWidth: { md: 360 } }}
           />
           <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
             <Button data-controlid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>

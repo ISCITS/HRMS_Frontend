@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -84,8 +84,8 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const blnCanView = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_VIEW") || canDo("LEAVE_MANAGEMENT", "LEAVE_VIEW") || canDo("LEAVE", "LEAVE_VIEW");
   const objAssignmentSchema = useMemo(() => buildAssignmentSchema(t), [t]);
   const objMovementSchema = useMemo(() => buildMovementSchema(t), [t]);
-  const objAssignmentForm = useForm<AssignmentForm>({ resolver: yupResolver(objAssignmentSchema), defaultValues: { intLeavePlanID: 0, dtEffectiveFrom: new Date().toISOString().slice(0, 10), dtEffectiveTo: "", strAssignmentReason: "" } });
-  const objMovementForm = useForm<MovementForm>({ resolver: yupResolver(objMovementSchema), defaultValues: { decValue: 0, dtTransactionDate: new Date().toISOString().slice(0, 10), strRemarks: "" } });
+  const objAssignmentForm = useForm<AssignmentForm>({ resolver: yupResolver(objAssignmentSchema) as Resolver<AssignmentForm>, defaultValues: { intLeavePlanID: 0, dtEffectiveFrom: new Date().toISOString().slice(0, 10), dtEffectiveTo: "", strAssignmentReason: "" } });
+  const objMovementForm = useForm<MovementForm>({ resolver: yupResolver(objMovementSchema) as Resolver<MovementForm>, defaultValues: { decValue: 0, dtTransactionDate: new Date().toISOString().slice(0, 10), strRemarks: "" } });
   const dicPlanNames = useMemo(() => Object.fromEntries(lstPlans.map((objPlan) => [objPlan.intID, objPlan.strDisplayName || objPlan.strPlanName])), [lstPlans]);
   const dicTypeNames = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, `${objType.strTypeCode} - ${objType.strTypeName}`])), [lstLeaveTypes]);
   const objCurrent = objOverview?.objCurrentAssignment ?? null;
