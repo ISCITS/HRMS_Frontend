@@ -63,6 +63,7 @@ type LinkedQuestionSelectionMap = Record<number, string>;
 type ProofFileMap = Record<number, FlexiProofPayload | null>;
 const intEligibilityPreviewLimit = 6;
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
+const lstEssFlexiModuleCodes = ["ESS_FLEXI_PAY_DECLARATION"];
 const objHeaderActionButtonSx = {
   color: "#ffffff",
   borderColor: "rgba(255,255,255,0.72)",
@@ -561,12 +562,12 @@ export default function FlexiPayDeclarationPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const { t } = useFlexiPayDeclarationLabels();
-  const { canDoAny } = useModuleActionAccess(lstEmployeeSalaryModuleCodes);
   const strFinancialYearCode = getCurrentFinancialYearCode();
   const strParamDeclarationID = Array.isArray(objParams?.intDeclarationID) ? objParams.intDeclarationID[0] : objParams?.intDeclarationID;
   const intRouteDeclarationID = Number(objSearchParams.get("intDeclarationID") || strParamDeclarationID || 0);
   const blnRouteHasDeclarationID = Number.isInteger(intRouteDeclarationID) && intRouteDeclarationID > 0;
   const blnReviewEntryMode = blnRouteHasDeclarationID;
+  const { canDoAny } = useModuleActionAccess(blnReviewEntryMode ? lstEmployeeSalaryModuleCodes : lstEssFlexiModuleCodes);
   const strSource = (objSearchParams.get("source") || "").trim().toLowerCase();
   const blnEmployeeSalarySource = strSource === "employee_salary";
   const strReturnTo = (objSearchParams.get("returnTo") || "").trim();
@@ -727,6 +728,7 @@ export default function FlexiPayDeclarationPage() {
   const blnCanRejectAction = canDoAny("reject") || blnCanApproveAction;
   const blnCanLockAction = canDoAny("lock") || blnCanApproveAction;
   const blnCanReleaseAction = canDoAny("release") || canDoAny("unlock") || blnCanApproveAction;
+  const blnCanDraftAction = canDoAny("draft");
   const blnShowWorkflowActions = blnReviewEntryMode;
   const blnCanApproveCurrent = blnShowWorkflowActions && ["submitted", "locked"].includes(strNormalizedWorkflowStatus) && blnCanApproveAction;
   const blnCanRejectCurrent = blnShowWorkflowActions && ["submitted", "locked"].includes(strNormalizedWorkflowStatus) && blnCanRejectAction;
@@ -1245,6 +1247,7 @@ export default function FlexiPayDeclarationPage() {
   }
 
   async function handleSaveDraft() {
+    if (!blnCanDraftAction) return;
     if (!validateDeclarationForAction("draft")) return;
     setStrSavingLabel(t("saving_draft", "Saving draft..."));
     setBlnSaving(true);
@@ -1612,12 +1615,12 @@ export default function FlexiPayDeclarationPage() {
             >
               {t("back", "Back")}
             </Button>
-            {!blnShowWorkflowActions && blnShowEssDraftAction ? (
+            {!blnShowWorkflowActions && blnShowEssDraftAction && blnCanDraftAction ? (
               <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} disabled={!blnCanSaveDraft} onClick={() => void handleSaveDraft()}>
                 {t("draft_button", "Draft")}
               </Button>
             ) : null}
-            {!blnShowWorkflowActions && blnShowEssSubmitAction ? (
+            {!blnShowWorkflowActions && blnShowEssSubmitAction && canDoAny("submit") ? (
               <Button
                 size="small"
                 variant="contained"
@@ -1827,15 +1830,17 @@ export default function FlexiPayDeclarationPage() {
             </DialogContent>
             <DialogActions sx={{ px: 1.5, py: 1 }}>
               <Button onClick={() => setBlnSubmitDialogOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button>
-              <Button
-                variant="contained"
-                color="warning"
-                startIcon={<SendRoundedIcon />}
-                disabled={blnSaving}
-                onClick={() => void handleConfirmSubmit()}
-              >
-                {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? t("confirm_resubmit", "Confirm Resubmit") : t("confirm_submit", "Confirm Submit")}
-              </Button>
+              {canDoAny("submit") ? (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  startIcon={<SendRoundedIcon />}
+                  disabled={blnSaving}
+                  onClick={() => void handleConfirmSubmit()}
+                >
+                  {lstEssResubmittableWorkflowStatuses.includes(strNormalizedWorkflowStatus) ? t("confirm_resubmit", "Confirm Resubmit") : t("confirm_submit", "Confirm Submit")}
+                </Button>
+              ) : null}
           </DialogActions>
           </Dialog>
 

@@ -33,6 +33,7 @@ import {
   type ItDeclarationRegime,
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstRegimeOptions: ItDeclarationRegime[] = ["Old Regime", "New Regime"];
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -85,6 +86,7 @@ export default function HrItDeclarationListPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const { t } = useModuleLabels("it-declaration", "Unable to load IT declaration labels.");
+  const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(["HR_IT_DECLARATION"]);
 
   const [lstEmployees, setLstEmployees] = useState<HrItDeclarationEmployeeOption[]>([]);
   const [blnEmployeeLoading, setBlnEmployeeLoading] = useState(false);
@@ -117,6 +119,8 @@ export default function HrItDeclarationListPage() {
   const intPageCount = Math.max(1, Math.ceil(lstRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
   const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
+  const blnCanView = canViewAny() || canDoAny("view");
+  const blnCanAdd = canDoAny("add");
   const lstVisibleRows = useMemo(
     () => lstRows.slice(intStartIndex, intStartIndex + intRowsPerPage),
     [intStartIndex, intRowsPerPage, lstRows],
@@ -281,11 +285,12 @@ export default function HrItDeclarationListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading || !blnCanView) return;
     const intTimer = window.setTimeout(() => {
       void loadEmployees();
     }, 250);
     return () => window.clearTimeout(intTimer);
-  }, [strEmployeeLookup]);
+  }, [blnCanView, blnRightsLoading, strEmployeeLookup]);
 
   useEffect(() => {
     const hydrateFromFilters = (objEmployeeOption: HrItDeclarationEmployeeOption | null, strFinancialYearCode: string, strRegime: ItDeclarationRegime, blnAutoload: boolean) => {
@@ -352,7 +357,8 @@ export default function HrItDeclarationListPage() {
 
   return (
     <Stack spacing={0.8} className={styles.page}>
-      {blnListLoading ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
+      {(blnListLoading || blnRightsLoading) ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
+      {!blnRightsLoading && !blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
       <Paper
@@ -373,27 +379,29 @@ export default function HrItDeclarationListPage() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Button
-              variant="contained"
-              startIcon={<AddCircleOutlineRoundedIcon />}
-              onClick={openAddDeclarationDialog}
-              sx={{
-                minHeight: 25,
-                px: 1.6,
-                borderRadius: "9px",
-                textTransform: "none",
-                fontWeight: 800,
-                color: "#111827",
-                backgroundColor: "#f59e0b",
-                boxShadow: "none",
-                "&:hover": {
-                  backgroundColor: "#F7FAFF",
+            {blnCanAdd ? (
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutlineRoundedIcon />}
+                onClick={openAddDeclarationDialog}
+                sx={{
+                  minHeight: 25,
+                  px: 1.6,
+                  borderRadius: "9px",
+                  textTransform: "none",
+                  fontWeight: 800,
+                  color: "#111827",
+                  backgroundColor: "#f59e0b",
                   boxShadow: "none",
-                },
-              }}
-            >
-              {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
-            </Button>
+                  "&:hover": {
+                    backgroundColor: "#F7FAFF",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
+              </Button>
+            ) : null}
             <Box sx={{ border: "1px solid rgba(255,255,255,0.45)", borderRadius: "8px", px: 1, py: 0.55, minWidth: 112, backgroundColor: "rgba(8,47,73,0.28)" }}>
               <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{t("IT_DECLARATION_RECORDS", "Records")}</Typography>
               <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{lstRows.length}</Typography>
@@ -465,14 +473,16 @@ export default function HrItDeclarationListPage() {
             ))}
           </TextField>
           <Box className={styles.searchActions}>
-            <Button
-              className={styles.primaryButton}
-              variant="contained"
-              startIcon={<SearchRoundedIcon />}
-              onClick={() => void loadDeclarations()}
-            >
-              {t("IT_DECLARATION_SEARCH", "Search")}
-            </Button>
+            {blnCanView ? (
+              <Button
+                className={styles.primaryButton}
+                variant="contained"
+                startIcon={<SearchRoundedIcon />}
+                onClick={() => void loadDeclarations()}
+              >
+                {t("IT_DECLARATION_SEARCH", "Search")}
+              </Button>
+            ) : null}
           </Box>
         </Box>
       </Paper>
@@ -544,7 +554,7 @@ export default function HrItDeclarationListPage() {
                     <td><ITDeclarationStatusBadge strStatus={objRow.strStatus || "draft"} strLabel={getStatusLabel(objRow.strStatus)} /></td>
                     <td>{formatDateLabel(objRow.strLastUpdated)}</td>
                     <td>
-                      <Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => openDeclaration(objRow)} sx={{ textTransform: "none", fontWeight: 800 }}>
+                      <Button size="small" startIcon={<VisibilityRoundedIcon />} disabled={!blnCanView} onClick={() => openDeclaration(objRow)} sx={{ textTransform: "none", fontWeight: 800 }}>
                         {t("IT_DECLARATION_VIEW", "View")}
                       </Button>
                     </td>

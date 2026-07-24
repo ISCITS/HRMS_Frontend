@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { itDeclarationService, type ItDeclarationDashboardCardDto, type ItDeclarationRegime } from "@/features/it-declaration/services/itDeclarationService";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 
@@ -53,6 +54,9 @@ function canEditDeclarationByStatus(strStatus?: string | null) {
 export default function SalaryEssDeclarationsPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("it-declaration");
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess([
+    "ESS_DECLARATIONS",
+  ]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [strCurrentFy, setStrCurrentFy] = useState("");
@@ -65,6 +69,9 @@ export default function SalaryEssDeclarationsPage() {
   const [strSearchRegime, setStrSearchRegime] = useState("");
   const [strSearchStatus, setStrSearchStatus] = useState("All");
   const [dicAppliedFilters, setDicAppliedFilters] = useState({ fy: "", regime: "", status: "All" });
+  const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const blnCanAdd = canDoAny("add") || canDoAny("start") || canDoAny("create");
+  const blnCanEdit = canDoAny("edit") || canDoAny("update");
 
   const getRegimeLabel = (strRegime: string) => {
     if (strRegime === "Old Regime") return t("old_regime", "Old Regime");
@@ -106,6 +113,11 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   async function loadDashboard() {
+    if (!blnCanView) {
+      setLstRows([]);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     setStrError("");
     try {
@@ -186,8 +198,11 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading) {
+      return;
+    }
     void loadDashboard();
-  }, []);
+  }, [blnRightsLoading, blnCanView]);
 
   const lstCurrentFyRows = useMemo(
     () => lstRows.filter((objRow) => strCurrentFy && normalizeFinancialYearCode(objRow.strFinancialYearCode) === normalizeFinancialYearCode(strCurrentFy)),
@@ -286,12 +301,12 @@ export default function SalaryEssDeclarationsPage() {
       action: (
         <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
           <Button controlId="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            {canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
+            {blnCanEdit && canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
           </Button>
         </Stack>
       ),
     }));
-  }, [lstFilteredRows, strBusyKey, t]);
+  }, [blnCanEdit, lstFilteredRows, strBusyKey, t]);
 
   const lstColumns: CommonTableColumn<(typeof lstGridRows)[number]>[] = [
     { field: "action", headerName: t("action", "Action"), width: 120, sortable: false, exportable: false, align: "center" },
@@ -303,10 +318,20 @@ export default function SalaryEssDeclarationsPage() {
     { field: "lastUpdated", headerName: t("last_updated", "Last Updated"), width: 160 },
   ];
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "40vh" }}>
         <CircularProgress size={28} />
+      </Box>
+    );
+  }
+
+  if (!blnCanView) {
+    return (
+      <Box className={styles.page}>
+        <Alert severity="warning">
+          {strRightsError || t("access_not_available", "IT declaration access is not available for your user group.")}
+        </Alert>
       </Box>
     );
   }
@@ -328,6 +353,7 @@ export default function SalaryEssDeclarationsPage() {
           </Typography>
         </Box>
       </Box>
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Paper className={styles.controlsCard} sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
@@ -401,11 +427,11 @@ export default function SalaryEssDeclarationsPage() {
           columns={lstColumns}
           rows={lstGridRows}
           rowIdField={"id"}
-          toolbarLeft={(
+          toolbarLeft={blnCanAdd ? (
             <Button controlId="salary.ess-declarations.add.button" className={styles.primaryButton} variant="contained" startIcon={<AddCircleOutlineRoundedIcon />} onClick={openAddDeclarationDialog}>
               {t("add_declaration", "Add Declaration")}
             </Button>
-          )}
+          ) : undefined}
           showExportOptions
           showPaginationSummary
           exportFileName="it-declaration-list"

@@ -74,7 +74,7 @@ function resolveLookupLabel(
 export default function EssMyProfilePage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("my-profile");
-  const { canDoAny } = useModuleActionAccess(["MY_PROFILE"]);
+  const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(["MY_PROFILE"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
@@ -170,7 +170,7 @@ export default function EssMyProfilePage() {
     };
   }, []);
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
@@ -178,6 +178,17 @@ export default function EssMyProfilePage() {
           <Typography color="text.secondary">{t("loading_profile", "Loading your employee profile...")}</Typography>
         </Stack>
       </Box>
+    );
+  }
+
+  if (!canViewAny()) {
+    return (
+      <Paper sx={{ p: 3, borderRadius: "24px" }}>
+        <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>{t("page_title", "My Profile")}</Typography>
+        <Typography color="warning.main">
+          {strRightsError || t("access_not_available", "My Profile access is not available for your user group.")}
+        </Typography>
+      </Paper>
     );
   }
 
@@ -194,7 +205,7 @@ export default function EssMyProfilePage() {
   const strInitial = strFullName[0]?.toUpperCase() || "E";
   const strTitleName = [objEmployee?.strTitle ?? "", strFullName].filter(Boolean).join(" ");
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
-  const blnCanOpenEmployeeEditor = canDoAny("edit");
+  const blnCanEditProfile = canDoAny("edit");
 
   async function refreshUserContext() {
     const objCurrentUserResult = await authApiService.getCurrentUser();
@@ -205,7 +216,7 @@ export default function EssMyProfilePage() {
   async function handleAvatarUpload(objEvent: ChangeEvent<HTMLInputElement>) {
     const objFile = objEvent.target.files?.[0];
     objEvent.target.value = "";
-    if (!objFile) {
+    if (!objFile || !blnCanEditProfile) {
       return;
     }
 
@@ -222,6 +233,9 @@ export default function EssMyProfilePage() {
   }
 
   async function handleAvatarDelete() {
+    if (!blnCanEditProfile) {
+      return;
+    }
     setBlnAvatarUpdating(true);
     setStrError("");
     try {
@@ -264,7 +278,7 @@ export default function EssMyProfilePage() {
               <IconButton
                 component="label"
                 size="small"
-                disabled={blnAvatarUpdating}
+                disabled={blnAvatarUpdating || !blnCanEditProfile}
                 sx={{
                   position: "absolute",
                   right: -4,
@@ -317,7 +331,7 @@ export default function EssMyProfilePage() {
               component="label"
               variant="outlined"
               startIcon={blnAvatarUpdating ? <CircularProgress size={16} color="inherit" /> : <PhotoCameraRoundedIcon />}
-              disabled={blnAvatarUpdating}
+              disabled={blnAvatarUpdating || !blnCanEditProfile}
               sx={{
                 borderRadius: "12px",
                 textTransform: "none",
@@ -336,7 +350,7 @@ export default function EssMyProfilePage() {
               variant="outlined"
               startIcon={<DeleteOutlineRoundedIcon />}
               onClick={handleAvatarDelete}
-              disabled={blnAvatarUpdating || !strAvatarUrl}
+              disabled={blnAvatarUpdating || !strAvatarUrl || !blnCanEditProfile}
               sx={{
                 borderRadius: "12px",
                 textTransform: "none",
@@ -350,7 +364,7 @@ export default function EssMyProfilePage() {
             >
               {t("remove", "Remove")}
             </Button>
-            {blnCanOpenEmployeeEditor ? (
+            {blnCanEditProfile ? (
               <Button
                 controlId="ess.my-profile.edit.button"
                 variant="contained"
@@ -376,6 +390,7 @@ export default function EssMyProfilePage() {
       </Box>
 
       <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
+        {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
           <PersonRoundedIcon sx={{ color: "#0284c7" }} />
           <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_personal_information", "Personal Information")}</Typography>

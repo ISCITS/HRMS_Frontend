@@ -34,7 +34,7 @@ type HeaderFormState = {
 };
 
 const objEmptyOptions: ReimbursementOptionsDto = { lstSalaryComponents: [] };
-const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
+const lstReimbursementModuleCodes = ["ESS_REIMBURSEMENT_CLAIMS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
@@ -96,11 +96,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const strSourceContext = normalizeHeaderValue(objSearchParams.get("source"));
   const blnEmployeeReimbursementSource = strSourceContext === "employee-reimbursement";
 
-  const blnCanView = canViewAny() || canDoAny("list");
-  const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create"));
-  const blnCanAdd = canDoAny("add") || canDoAny("create") || canDoAny("ess_reimbursement_create");
+  const blnCanView = canViewAny() || canDoAny("list") || canDoAny("view");
+  const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create"));
+  const blnCanAdd = canDoAny("add") || canDoAny("create");
   const blnCanEdit = canDoAny("edit") || blnCanCreateOnBehalf;
+  const blnCanDraft = canDoAny("draft");
   const blnCanSubmit = canDoAny("submit");
+  const blnCanWithdraw = canDoAny("withdraw");
   const blnExistingClaim = Boolean(objClaim?.intID);
   const blnCanDeleteClaim = Boolean(objClaim?.intID && objClaim.strClaimStatus === "draft" && blnCanEdit);
   const blnShowClaimStatusBadge = Boolean(objClaim && objClaim.strClaimStatus !== "draft");
@@ -461,7 +463,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
 
   async function withdrawClaim() {
     // Purpose: Withdraws a submitted/resubmitted claim before HR review starts.
-    if (!objClaim?.intID) return;
+    if (!objClaim?.intID || !blnCanWithdraw) return;
     setBlnSaving(true);
     setStrError("");
     try {
@@ -498,13 +500,13 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(buildEssClaimRoute(objClaim.intID, "edit"))} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("edit", "Edit")}</Button>
             ) : null}
-            {objClaim && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
+            {objClaim && blnCanWithdraw && canWithdrawReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="outlined" size="small" startIcon={<UndoRoundedIcon />} onClick={() => void withdrawClaim()} disabled={blnSaving} controlId="reimbursements.claim-editor.withdraw.button" sx={{ ...objDetailActionButtonSx, borderColor: "#f59e0b", color: "#f59e0b", fontWeight: 800, "&:hover": { borderColor: "#d97706", backgroundColor: "rgba(245,158,11,0.08)" }, "&.Mui-disabled": { borderColor: "rgba(245,158,11,0.34)", color: "rgba(245,158,11,0.48)" } }}>{t("withdraw", "Withdraw")}</Button>
             ) : null}
             {blnCanDeleteClaim ? (
               <Button variant="contained" size="small" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setBlnDeleteClaimDialogOpen(true)} disabled={blnSaving} controlId="reimbursements.claim-editor.delete-claim.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#dc2626", color: "#ffffff", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#b91c1c", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(220,38,38,0.42)", color: "rgba(255,255,255,0.62)" } }}>{t("delete", "Delete")}</Button>
             ) : null}
-            {!blnReadOnly ? (
+            {!blnReadOnly && blnCanDraft ? (
               <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} onClick={() => void saveHeader(true)} disabled={blnSaving || (Boolean(objClaim?.intID) && !blnHeaderDirty)} controlId="reimbursements.claim-editor.save-header.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(11,63,115,0.42)", color: "rgba(255,255,255,0.62)" } }}>{t("save", "Save")}</Button>
             ) : null}
             {blnShowSubmit ? (

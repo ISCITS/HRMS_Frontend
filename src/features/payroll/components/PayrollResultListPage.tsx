@@ -183,18 +183,24 @@ export default function PayrollResultListPage({
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
-    useModuleActionAccess([
-      "EMPLOYEE_PAYROLL_RESULTS",
-      "EMPLOYEE_PAYROLL_RESULT",
-      "PAYSLIPS",
-      "PAYSLIP",
-      "PAYROLL_RESULTS",
-      "PAYROLL_RESULT",
-      "PAYROLL_PAYSLIPS",
-      "PAYROLL_PAYSLIP",
-      "MY_PAYSLIPS",
-      "MY_PAYSLIP",
-    ]);
+    useModuleActionAccess(
+      blnEssMode
+        ? ["MY_PAYSLIPS"]
+        : [
+          "EMPLOYEE_PAYROLL_RESULTS",
+          "EMPLOYEE_PAYROLL_RESULT",
+          "PAYSLIPS",
+          "PAYSLIP",
+          "PAYROLL_RESULTS",
+          "PAYROLL_RESULT",
+          "PAYROLL_PAYSLIPS",
+          "PAYROLL_PAYSLIP",
+          "MY_PAYSLIPS",
+          "MY_PAYSLIP",
+          "ESS_MY_PAYSLIPS",
+          "ESS_MY_PAYSLIP",
+        ]
+    );
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
   const blnUseOpeningFilterDialog = false;
   const [blnLoading, setBlnLoading] = useState(true);

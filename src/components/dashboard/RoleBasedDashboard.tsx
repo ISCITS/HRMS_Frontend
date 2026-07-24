@@ -37,7 +37,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import { Avatar, Box, Button, Chip, Grid, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from "@mui/material";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import type { EmployeeDetailRecord, EmployeeFormOptions } from "@/features/employee/types";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
@@ -1610,8 +1610,6 @@ function ensureWidget(
 function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardProps) {
   const [objEmployeeProfile, setObjEmployeeProfile] = useState<EmployeeDetailRecord | null>(null);
   const [objEmployeeOptions, setObjEmployeeOptions] = useState<EmployeeFormOptions | null>(null);
-  const [objEmployeeAddress, setObjEmployeeAddress] = useState<EmployeeAddressRecord | null>(null);
-  const [objEmployeeStatutory, setObjEmployeeStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [objEmployeeSalarySummary, setObjEmployeeSalarySummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const ESS_COLORS = {
     bg: "#F8FAFF",
@@ -1659,7 +1657,6 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const objWelcome = (objWelcomeWidget?.objPayload || {}) as Record<string, unknown>;
   const objPay = (objPayWidget?.objPayload || {}) as Record<string, unknown>;
   const objProfile = (objProfileWidget?.objPayload || {}) as Record<string, unknown>;
-  const lstProfileChecks = ((objProfile.lstChecks as EssProfileCheck[]) || []);
   const lstPendingActions = (((objPendingWidget?.objPayload as { lstAlerts?: EssPendingAction[] } | undefined)?.lstAlerts) || []) as EssPendingAction[];
   const lstPayslips = (((objPayslipWidget?.objPayload as { lstRows?: EssPayslipRow[] } | undefined)?.lstRows) || []) as EssPayslipRow[];
   const lstQuickActions = (((objQuickActionsWidget?.objPayload as { lstActions?: DashboardQuickAction[] } | undefined)?.lstActions) || []) as DashboardQuickAction[];
@@ -1681,8 +1678,6 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
           employeeService.getEmployeeById(intEmployeeID),
           employeeService.getFormOptions(),
           Promise.allSettled([
-            employeeService.getEmployeeAddress(intEmployeeID),
-            employeeService.getEmployeeStatutory(intEmployeeID),
             employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
           ]),
         ]);
@@ -1695,13 +1690,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         setObjEmployeeOptions(dicOptions);
 
         if (lstProfileDetails[0].status === "fulfilled") {
-          setObjEmployeeAddress(lstProfileDetails[0].value);
-        }
-        if (lstProfileDetails[1].status === "fulfilled") {
-          setObjEmployeeStatutory(lstProfileDetails[1].value);
-        }
-        if (lstProfileDetails[2].status === "fulfilled") {
-          setObjEmployeeSalarySummary(lstProfileDetails[2].value);
+          setObjEmployeeSalarySummary(lstProfileDetails[0].value);
         }
       } catch {
         if (!blnMounted) {
@@ -1745,22 +1734,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strEmploymentType = objEmployeeProfile
     ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstEmploymentTypes, objEmployeeProfile.intEmploymentTypeID, "-")
     : String(objWelcome.strEmploymentType || "-");
-  const lstResolvedProfileChecks = objEmployeeProfile ? [
-    { strCode: "employee_code", strLabel: t("employee_code", "Employee Code"), blnComplete: Boolean(objEmployeeProfile.strEmployeeCode?.trim()) },
-    { strCode: "work_email", strLabel: t("work_email", "Work Email"), blnComplete: Boolean(objEmployeeProfile.strWorkEmail?.trim()) },
-    { strCode: "department", strLabel: t("department", "Department"), blnComplete: Boolean(objEmployeeProfile.intDepartmentID) },
-    { strCode: "location", strLabel: t("location", "Location"), blnComplete: Boolean(objEmployeeProfile.intLocationID) },
-    { strCode: "employment_type", strLabel: t("employment_type", "Employment Type"), blnComplete: Boolean(objEmployeeProfile.intEmploymentTypeID) },
-    { strCode: "manager", strLabel: t("reporting_manager", "Reporting Manager"), blnComplete: Boolean(objEmployeeProfile.intManagerEmployeeID) },
-    { strCode: "joining_date", strLabel: t("joined_on", "Joined On"), blnComplete: Boolean(objEmployeeProfile.dtDateOfJoining) },
-    { strCode: "address", strLabel: t("address", "Address"), blnComplete: Boolean(objEmployeeAddress?.strAddressLine1?.trim()) },
-    { strCode: "pan", strLabel: t("pan", "PAN"), blnComplete: Boolean(objEmployeeStatutory?.strPanNumber?.trim()) },
-    { strCode: "pf_uan", strLabel: t("pf_uan", "PF / UAN"), blnComplete: Boolean(objEmployeeStatutory?.strUanNumber?.trim()) || Boolean(objEmployeeStatutory?.strPfNumber?.trim()) },
-  ] : lstProfileChecks;
-  const intProfileCompletionPercent = objEmployeeProfile
-    ? Math.round((lstResolvedProfileChecks.filter((objCheck) => objCheck.blnComplete).length / Math.max(lstResolvedProfileChecks.length, 1)) * 100)
-    : Number(objProfile.intCompletionPercent || 0);
-  const lstComplianceChecks = objEmployeeProfile ? lstResolvedProfileChecks : lstComplianceChecksPayload;
+  const intProfileCompletionPercent = Number(objProfile.intCompletionPercent || 0);
+  const lstComplianceChecks = lstComplianceChecksPayload;
   const lstProfileChartPoints = ((objProfile.lstPoints as ChartPoint[]) || []);
   const lstReimbursementStats = ((((objReimbursementWidget?.objPayload as { lstStats?: SummaryStat[] } | undefined)?.lstStats) || []) as SummaryStat[]);
   const intTotalClaims = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("total claims"))?.intValue || 0);
@@ -1791,7 +1766,6 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     || "Current Month"
   ), t);
   const strCurrentMonthPayTitle = blnHasPayrollResult ? t("current_month_pay", "Current Month Pay") : t("salary_estimate", "Salary Estimate");
-  const intCompletedChecks = lstResolvedProfileChecks.filter((objCheck) => objCheck.blnComplete).length;
   const strDashboardTitle = t("ess_title_heading", "Employee Self Service Dashboard");
   const strDashboardSubtitle = t("ess_title", `Welcome back, ${strEmployeeName}`);
   const lstTopNav = [

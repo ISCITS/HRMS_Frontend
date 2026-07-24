@@ -52,7 +52,7 @@ export default function ITDeclarationReviewListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("it-declaration-review", "Unable to load IT declaration review labels.");
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny, objRights } =
-    useModuleActionAccess(["PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
+    useModuleActionAccess(["it_declaration_review", "PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
   const [lstRows, setLstRows] = useState<HrItDeclarationListRecord[]>([]);
   const [objSummary, setObjSummary] = useState<Record<string, number>>({});
   const [blnLoading, setBlnLoading] = useState(true);

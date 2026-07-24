@@ -49,6 +49,20 @@ export default function DashboardPage() {
     };
   }, [intReloadKey, strSelectedPayrollMonth, t]);
 
+  useEffect(() => {
+    function refreshOnReturn() {
+      if (document.visibilityState === "visible") {
+        setIntReloadKey((intValue) => intValue + 1);
+      }
+    }
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
+    };
+  }, []);
+
   if ((!objUserContext || !objDashboard) && blnLoading) {
     return (
       <BlockingLoader blnOpen strLabel={t("loading", dicConstant.dashboard.loading)} />

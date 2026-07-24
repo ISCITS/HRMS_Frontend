@@ -17,7 +17,7 @@ import { reimbursementService } from "@/features/reimbursements/services/reimbur
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
-const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
+const lstReimbursementModuleCodes = ["ESS_REIMBURSEMENT_CLAIMS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
@@ -34,8 +34,8 @@ export default function MyReimbursementClaimsPage() {
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
-  const blnCanView = canViewAny() || canDoAny("list");
-  const blnCanAdd = canDoAny("add");
+  const blnCanView = canViewAny() || canDoAny("list") || canDoAny("view");
+  const blnCanAdd = canDoAny("add") || canDoAny("create");
   const blnCanEdit = canDoAny("edit");
 
   async function loadClaims() {

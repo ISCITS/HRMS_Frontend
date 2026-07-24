@@ -206,6 +206,7 @@ function DeclarationDetailPanel({ strTitle, objDetails }: { strTitle: string; ob
 export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Props) {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, canDoAny, objRights } = useModuleActionAccess([
+    "it_declaration_review",
     "PAYROLL_IT_DECLARATION_REVIEW",
     "PAYROLL_IT_DECLARATION",
   ]);
@@ -249,7 +250,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
 
   const blnCanApprove = canDoAny("approve") || hasPermissionCode("PAYROLL_IT_DECLARATION_APPROVE");
   const blnCanReject = canDoAny("reject") || hasPermissionCode("PAYROLL_IT_DECLARATION_REJECT") || blnCanApprove;
-  const blnCanReview = canDoAny("edit") || hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
+  const blnCanReview = canDoAny("review") || canDoAny("edit") || hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanRelease = canDoAny("release") || hasPermissionCode("PAYROLL_IT_DECLARATION_RELEASE");
   const blnCanLock = canDoAny("lock") || hasPermissionCode("PAYROLL_IT_DECLARATION_LOCK");
   const strDeclarationStatus = String(objDetail?.strStatus || "").toLowerCase();

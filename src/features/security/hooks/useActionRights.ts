@@ -13,7 +13,9 @@ type ActionRightsCacheEntry = {
   objRights: ActionRightsResponse;
 };
 
-const intActionRightsCacheTtlMs = 5 * 60 * 1000;
+// Keep action-rights effectively uncached so user-group right changes
+// are reflected immediately across ESS and admin flows.
+const intActionRightsCacheTtlMs = 0;
 let objActionRightsCacheEntry: ActionRightsCacheEntry | null = null;
 let objActionRightsRequest: Promise<ActionRightsResponse> | null = null;
 
@@ -41,6 +43,7 @@ function buildActionRightsCacheKey() {
 async function getCachedActionRights() {
   const strCacheKey = buildActionRightsCacheKey();
   if (
+    intActionRightsCacheTtlMs > 0 &&
     objActionRightsCacheEntry &&
     objActionRightsCacheEntry.strCacheKey === strCacheKey &&
     objActionRightsCacheEntry.intExpiresAt > Date.now()
@@ -77,6 +80,7 @@ async function getCachedActionRights() {
 export function useActionRights() {
   const strInitialCacheKey = buildActionRightsCacheKey();
   const objInitialRights =
+    intActionRightsCacheTtlMs > 0 &&
     objActionRightsCacheEntry &&
     objActionRightsCacheEntry.strCacheKey === strInitialCacheKey &&
     objActionRightsCacheEntry.intExpiresAt > Date.now()
@@ -91,6 +95,7 @@ export function useActionRights() {
   });
   
   const [blnLoading, setBlnLoading] = useState(
+    intActionRightsCacheTtlMs <= 0 ||
     !objActionRightsCacheEntry ||
     objActionRightsCacheEntry.strCacheKey !== strInitialCacheKey ||
     objActionRightsCacheEntry.intExpiresAt <= Date.now()
@@ -103,6 +108,7 @@ export function useActionRights() {
     async function loadRights() {
       const strCacheKey = buildActionRightsCacheKey();
       if (
+        intActionRightsCacheTtlMs > 0 &&
         objActionRightsCacheEntry &&
         objActionRightsCacheEntry.strCacheKey === strCacheKey &&
         objActionRightsCacheEntry.intExpiresAt > Date.now()
