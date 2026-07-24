@@ -50,8 +50,10 @@ export default function EmployeeLeaveAssignmentPanel() {
   const [objBulk, setObjBulk] = useState<BulkAssignState>(objBulkDefaults);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const blnCanView = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_VIEW") || canDo("LEAVE_MANAGEMENT", "LEAVE_VIEW") || canDo("LEAVE", "LEAVE_VIEW");
-  const blnCanManage = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE") || canDo("LEAVE", "LEAVE_MANAGE");
+  // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
+  // older ESS-style setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
+  const blnCanView = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "VIEW") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_VIEW");
+  const blnCanManage = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "EDIT") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "ADD") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE");
 
   useEffect(() => {
     if (!blnCanManage) return;

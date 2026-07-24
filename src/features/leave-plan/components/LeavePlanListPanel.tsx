@@ -62,8 +62,10 @@ export default function LeavePlanListPanel() {
   }), [dicSearchApplied]);
 
   const { lstPlans, blnLoading, strError, setPlanStatus, deletePlan } = useLeavePlans(objFilters);
-  const blnCanView = canDo("LEAVE_PLANS", "LEAVE_VIEW") || canDo("LEAVE_MANAGEMENT", "LEAVE_VIEW") || canDo("LEAVE", "LEAVE_VIEW");
-  const blnCanManage = canDo("LEAVE_PLANS", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE") || canDo("LEAVE", "LEAVE_MANAGE");
+  // The Leave Plans menu grants the generic action set (view/edit/add/...); older ESS-style
+  // setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
+  const blnCanView = canDo("LEAVE_PLANS", "VIEW") || canDo("LEAVE_PLANS", "LEAVE_VIEW");
+  const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
 
   function showToast(strMessage: string, strSeverity: "success" | "error") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
