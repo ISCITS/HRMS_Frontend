@@ -353,6 +353,7 @@ export type LeaveApplicationDto = {
   blnFromHalf: boolean;
   blnToHalf: boolean;
   strReason: string | null;
+  intBackupEmployeeID?: number | null;
   strStatus: string;
   intCurrentApproverID: number | null;
   dtAppliedOn: string | null;
@@ -385,6 +386,113 @@ export type LeaveDraftRequest = LeaveApplyRequest & {
 
 export type LeaveDecisionRequest = {
   strComment?: string | null;
+  intVersionNo?: number | null;
+};
+
+export type LeaveReassignRequest = {
+  intReassignToUserID: number;
+  strComment: string;
+  intVersionNo?: number | null;
+};
+
+export type LeaveOverrideRequest = {
+  strAction: "approve" | "reject";
+  strComment: string;
+  intVersionNo?: number | null;
+};
+
+// ---- Approval-workflow DTOs (GET /leave/applications queue, timeline, route, team-calendar) ----
+export type LeaveWorkflowStepDto = {
+  intID: number;
+  intStepNo: number;
+  strApproverSourceCode: string;
+  strStepStatus: string;
+  strSkipReason?: string | null;
+  dtAssignedOn?: string | null;
+  dtActionOn?: string | null;
+};
+
+export type LeaveWorkflowDto = {
+  intID: number;
+  strWorkflowStatus: string;
+  intCurrentStepNo: number | null;
+  intVersionNo?: number;
+  dtStartedOn?: string | null;
+  dtCompletedOn?: string | null;
+  lstSteps?: LeaveWorkflowStepDto[];
+};
+
+// A row in the approver queue: the serialized application + workflow cursor + enterprise-UX tags.
+export type LeaveQueueItemDto = LeaveApplicationDto & {
+  objWorkflow?: LeaveWorkflowDto | null;
+  intCurrentStepNo?: number | null;
+  blnIsDelegated?: boolean;
+  blnIsOverdue?: boolean;
+  blnIsConfidential?: boolean;
+  blnIsMasked?: boolean;
+  dtLastActionOn?: string | null;
+};
+
+export type LeaveTimelineEntryDto = {
+  intID?: number;
+  intStepNo?: number | null;
+  strActionCode?: string | null;
+  strStepStatus?: string | null;
+  strApproverSourceCode?: string | null;
+  intActorUserID?: number | null;
+  intOnBehalfOfUserID?: number | null;
+  strComment?: string | null;
+  dtActionOn?: string | null;
+  dtAssignedOn?: string | null;
+};
+
+export type LeaveTimelineDto = {
+  intApplicationID: number;
+  lstTimeline: LeaveTimelineEntryDto[];
+};
+
+export type LeaveRouteStepDto = {
+  intStepNo: number;
+  strApproverSourceCode: string;
+  strStepStatus?: string | null;
+  blnActionRequired?: boolean;
+  intNoActionAfterDays?: number | null;
+  strApproverName?: string | null;
+};
+
+export type LeaveWorkflowExceptionDto = {
+  intID: number;
+  intApplicationID: number;
+  intWorkflowInstanceID?: number | null;
+  intWorkflowStepID?: number | null;
+  strExceptionCode?: string | null;
+  strExceptionDetail?: string | null;
+  blnIsResolved?: boolean;
+  dtAddedOn?: string | null;
+};
+
+export type TeamCalendarEventDto = {
+  intApplicationID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  strStatus: string;
+  strLabel: string | null;
+  blnIsConfidential: boolean;
+  blnIsMasked: boolean;
+};
+
+export type TeamCalendarMemberDto = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  lstLeaveEvents: TeamCalendarEventDto[];
+};
+
+export type TeamCalendarDto = {
+  intManagerEmployeeID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  lstEmployees: TeamCalendarMemberDto[];
 };
 
 export const LEAVE_UNIT_OPTIONS = ["day", "half_day", "hour"] as const;

@@ -11,14 +11,21 @@ import type {
   LeaveDecisionRequest,
   LeaveDraftRequest,
   LeaveLookups,
+  LeaveOverrideRequest,
   LeavePolicyDto,
   LeavePolicyRequest,
   LeavePreviewDto,
+  LeaveQueueItemDto,
+  LeaveReassignRequest,
+  LeaveRouteStepDto,
+  LeaveTimelineDto,
   LeaveTypeAggregate,
   LeaveTypeDto,
   LeaveTypeEnrichedDto,
   LeaveTypeRequest,
   LeaveTypeUsageDto,
+  LeaveWorkflowExceptionDto,
+  TeamCalendarDto,
 } from "@/features/leave/types";
 
 const LEAVE_VIEW = "LEAVE_VIEW";
@@ -340,11 +347,41 @@ export const leaveService = {
     });
   },
 
-  // ---- HR / Manager: approval queue ----
-  async listApplicationQueue(strStatus?: string): Promise<LeaveApplicationDto[]> {
+  // ---- HR / Manager: approval queue + workflow ----
+  async listApplicationQueue(strStatus?: string): Promise<LeaveQueueItemDto[]> {
     const strQuery = strStatus ? `?status=${encodeURIComponent(strStatus)}` : "";
-    const objResult = await requestApi<LeaveApplicationDto[]>({
+    const objResult = await requestApi<LeaveQueueItemDto[]>({
       strPath: `/leave/applications${strQuery}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // Applications the current approver has personally decided (approve/reject/send-back/…).
+  async listActionedApplications(): Promise<LeaveQueueItemDto[]> {
+    const objResult = await requestApi<LeaveQueueItemDto[]>({
+      strPath: "/leave/applications/actioned",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // HR workbench: applications created/actioned by HR on behalf of an employee.
+  async listOnBehalfApplications(): Promise<LeaveQueueItemDto[]> {
+    const objResult = await requestApi<LeaveQueueItemDto[]>({
+      strPath: "/leave/applications/on-behalf",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // HR workbench: applications auto-approved/auto-rejected by the workflow engine.
+  async listAutoDecidedApplications(): Promise<LeaveQueueItemDto[]> {
+    const objResult = await requestApi<LeaveQueueItemDto[]>({
+      strPath: "/leave/applications/auto-decisions",
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
@@ -364,6 +401,83 @@ export const leaveService = {
   async rejectApplication(intApplicationID: number, objPayload?: LeaveDecisionRequest): Promise<LeaveApplicationDto> {
     const objResult = await requestApi<LeaveApplicationDto>({
       strPath: `/leave/applications/${intApplicationID}/reject`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload ?? {},
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async sendBackApplication(intApplicationID: number, objPayload: LeaveDecisionRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/send-back`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async reassignApplication(intApplicationID: number, objPayload: LeaveReassignRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/reassign`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async overrideApplication(intApplicationID: number, objPayload: LeaveOverrideRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/override`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async getApplicationTimeline(intApplicationID: number): Promise<LeaveTimelineDto> {
+    const objResult = await requestApi<LeaveTimelineDto>({
+      strPath: `/leave/applications/${intApplicationID}/timeline`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getApplicationRouteSnapshot(intApplicationID: number): Promise<LeaveRouteStepDto[]> {
+    const objResult = await requestApi<LeaveRouteStepDto[] | { lstRoute: LeaveRouteStepDto[] }>({
+      strPath: `/leave/applications/${intApplicationID}/route-snapshot`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    const objData = objResult.Data;
+    return Array.isArray(objData) ? objData : objData?.lstRoute ?? [];
+  },
+
+  async listWorkflowExceptions(blnOpenOnly = true): Promise<LeaveWorkflowExceptionDto[]> {
+    const objResult = await requestApi<LeaveWorkflowExceptionDto[]>({
+      strPath: `/leave/workflow-exceptions?open_only=${blnOpenOnly}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async getTeamCalendar(strFromDate: string, strToDate: string): Promise<TeamCalendarDto> {
+    const objResult = await requestApi<TeamCalendarDto>({
+      strPath: `/leave/team-calendar?from_date=${encodeURIComponent(strFromDate)}&to_date=${encodeURIComponent(strToDate)}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async acknowledgeBackup(intApplicationID: number, objPayload?: LeaveDecisionRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/backup-acknowledge`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload ?? {},
       strMenuAction: LEAVE_MANAGE,

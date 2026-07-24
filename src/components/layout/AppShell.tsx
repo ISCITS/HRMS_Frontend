@@ -94,6 +94,15 @@ function getPageTitle(strPathname: string) {
   if (strPathname === "/ess/leave") {
     return "Apply Leave";
   }
+  if (strPathname === "/ess/leave/approvals") {
+    return "Leave Approvals";
+  }
+  if (strPathname === "/ess/team-calendar") {
+    return "Team Calendar";
+  }
+  if (strPathname === "/leave/approvals" || strPathname === "/hr/leave/requests-approvals") {
+    return "Leave Requests & Approvals";
+  }
 
   const lstSegments = strPathname
     .split("/")
