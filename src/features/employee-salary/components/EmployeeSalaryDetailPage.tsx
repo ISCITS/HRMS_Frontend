@@ -36,6 +36,7 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
+import { syncCalculatedOverrideRowsFromPreview, usesAutoCalculatedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
 import { calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
@@ -976,11 +977,6 @@ function getOverrideAnnualAmount(dicOverride: EmployeeSalaryOverrideFormValue | 
   return decDefaultMonthly !== null ? decDefaultMonthly * 12 : 0;
 }
 
-function usesAutoCalculatedOverrideValue(strValueSource: string | null | undefined) {
-  const strNormalizedValueSource = String(strValueSource ?? "").trim().toLowerCase();
-  return strNormalizedValueSource === "percentage" || strNormalizedValueSource === "formula";
-}
-
 function getFlexiAllocationSummary(
   objDetail: EmployeeSalaryDetailRecord | null
 ): EmployeeSalaryFlexiAllocationSummary {
@@ -1010,13 +1006,14 @@ function buildOverrideRows(
     const dicCurrentLine = dicCurrentLineByComponentID.get(dicLine.intSalaryComponentID);
     const dicExistingOverride = dicExistingOverrideByComponentID.get(dicLine.intSalaryComponentID);
     const dicReferenceLine = dicCurrentLineByComponent.get(dicLine.intSalaryComponentID) as (EmployeeSalaryComponentLine | ExistingOverrideLine | undefined);
+    const dicSalaryComponent = dicSalaryComponentByID?.get(dicLine.intSalaryComponentID);
     const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
     const blnIsFlexiPayLine = isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
     const strValueSource = String(dicLine.strValueSource ?? "").trim().toLowerCase();
     const decStoredDefaultMonthly =
-      strValueSource === "formula"
+      strValueSource.includes("formula")
         ? dicLine.decFormulaAmount
-        : strValueSource === "percentage"
+        : strValueSource.includes("percent")
           ? dicLine.decPercentageAmount
           : null;
     const decResolvedDefaultMonthly =
@@ -1070,18 +1067,21 @@ function buildOverrideRows(
       "intBasisComponentID" in dicLine && typeof dicLine.intBasisComponentID === "number"
         ? dicLine.intBasisComponentID
         : null;
+    const intResolvedBasisComponentID =
+      intLineBasisComponentID ??
+      ("intBasisComponentID" in (dicReferenceLine ?? {}) && typeof (dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID === "number"
+        ? (dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID
+        : null) ??
+      dicSalaryComponent?.intDefaultBasisComponentID ??
+      null;
     const strResolvedBasisComponentName =
       strExplicitBasisComponentName ||
-      (intLineBasisComponentID
-        ? (dicSalaryComponentByID?.get(intLineBasisComponentID)?.strComponentName ??
-          dicSalaryComponentByID?.get(intLineBasisComponentID)?.strComponentCode ??
+      (intResolvedBasisComponentID
+        ? (dicSalaryComponentByID?.get(intResolvedBasisComponentID)?.strComponentName ??
+          dicSalaryComponentByID?.get(intResolvedBasisComponentID)?.strComponentCode ??
           "")
         : "") ||
-      ("intBasisComponentID" in (dicReferenceLine ?? {}) && (dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID
-        ? (dicSalaryComponentByID?.get((dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID ?? 0)?.strComponentName ??
-          dicSalaryComponentByID?.get((dicReferenceLine as EmployeeSalaryComponentLine).intBasisComponentID ?? 0)?.strComponentCode ??
-          "")
-        : "");
+      "";
     return {
       intSalaryComponentID: dicLine.intSalaryComponentID,
       strComponentName:
@@ -1093,7 +1093,7 @@ function buildOverrideRows(
       strFormulaExpression:
         "strFormulaExpression" in dicLine && typeof dicLine.strFormulaExpression === "string"
           ? dicLine.strFormulaExpression
-          : "",
+          : dicSalaryComponent?.strFormulaExpression ?? "",
       strBasisComponentName: strResolvedBasisComponentName,
       strPayslipSectionSnapshotCode: dicLine.strPayslipSectionSnapshotCode,
       strLwpTreatmentSnapshotCode: dicLine.strLwpTreatmentSnapshotCode,
@@ -1105,7 +1105,8 @@ function buildOverrideRows(
         dicLine.decDefaultPercentageValue ??
         dicLine.decPercentageValue ??
         dicCurrentLine?.decDefaultPercentageValue ??
-        dicCurrentLine?.decPercentageValue
+        dicCurrentLine?.decPercentageValue ??
+        dicSalaryComponent?.decDefaultPercentageValue
       ),
       strDefaultMonthly,
       strDefaultAnnual,
@@ -1330,7 +1331,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
-  const refStructurePreviewRequest = useRef(0);
+  const refRevisionPreviewRequest = useRef(0);
   const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
   const [intComponentPage, setIntComponentPage] = useState(1);
@@ -1585,14 +1586,29 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     () => new Map((objRevisionPreview?.lstComponentLines ?? []).map((dicLine) => [dicLine.intSalaryComponentID, dicLine])),
     [objRevisionPreview]
   );
+  const lstResolvedRevisionOverrides = useMemo(
+    () => syncCalculatedOverrideRowsFromPreview(
+      dicRevisionForm.lstOverrides,
+      objRevisionPreview?.lstComponentLines ?? [],
+      lstSelectedRevisionStructureComponents
+    ),
+    [dicRevisionForm.lstOverrides, lstSelectedRevisionStructureComponents, objRevisionPreview]
+  );
+  const dicResolvedRevisionForm = useMemo(
+    () => ({
+      ...dicRevisionForm,
+      lstOverrides: lstResolvedRevisionOverrides,
+    }),
+    [dicRevisionForm, lstResolvedRevisionOverrides]
+  );
   const dicResolvedRevisionSalarySummaryMetrics = useMemo(
     () => calculateRevisionSalarySummaryMetrics(
       lstSelectedRevisionStructureComponents,
-      dicRevisionForm,
+      dicResolvedRevisionForm,
       dicSalaryComponentByID,
       mapRevisionPreviewComponentByID
     ),
-    [dicRevisionForm, dicSalaryComponentByID, lstSelectedRevisionStructureComponents, mapRevisionPreviewComponentByID]
+    [dicResolvedRevisionForm, dicSalaryComponentByID, lstSelectedRevisionStructureComponents, mapRevisionPreviewComponentByID]
   );
   const decRevisionFlexiBalanceAnnual = Math.max(decFlexiPayAllocationAnnual - decDialogFlexiAllocated, 0);
   const decRevisionNetPayrollImpactMonthly = decRevisionFlexiBalanceAnnual / 12;
@@ -1600,7 +1616,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     const setFlexiAllocationComponentIDs = new Set(
       dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
     );
-    const lstNonFlexiRows = dicRevisionForm.lstOverrides
+    const lstNonFlexiRows = lstResolvedRevisionOverrides
       .filter((dicOverride) =>
         !setFlexiAllocationComponentIDs.has(dicOverride.intSalaryComponentID) &&
         !isFlexiPayComponentName(dicOverride.strComponentName)
@@ -1637,15 +1653,53 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         }]
       : [];
     return [...lstNonFlexiRows, ...lstDeclaredFlexiRows, ...lstResidualRows];
-  }, [decRevisionFlexiBalanceAnnual, dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc, dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides, t]);
+  }, [decRevisionFlexiBalanceAnnual, dicResolvedRevisionSalarySummaryMetrics.decAnnualCtc, dicRevisionForm.lstFlexiAllocations, lstResolvedRevisionOverrides, t]);
   const lstRevisionOverrideRows = useMemo(() => {
     const setFlexiAllocationComponentIDs = new Set(
       dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => dicAllocation.intSalaryComponentID)
     );
-    return dicRevisionForm.lstOverrides
+    return lstResolvedRevisionOverrides
       .map((dicOverride, intOverrideIndex) => ({ dicOverride, intOverrideIndex }))
       .filter(({ dicOverride }) => !setFlexiAllocationComponentIDs.has(dicOverride.intSalaryComponentID));
-  }, [dicRevisionForm.lstFlexiAllocations, dicRevisionForm.lstOverrides]);
+  }, [dicRevisionForm.lstFlexiAllocations, lstResolvedRevisionOverrides]);
+
+  async function refreshCalculatedRevisionOverrides(dicNextForm: EmployeeSalaryRevisionFormValues) {
+    const intRequestID = refRevisionPreviewRequest.current + 1;
+    refRevisionPreviewRequest.current = intRequestID;
+    try {
+      const dicPreview = await employeeSalaryService.previewRevision(intEmployeeID, dicNextForm);
+      if (refRevisionPreviewRequest.current !== intRequestID) {
+        return;
+      }
+      setObjRevisionPreview(dicPreview);
+    } catch {
+      // Keep the user's manual edits even if preview recalculation is temporarily unavailable.
+    }
+  }
+
+  function updateRevisionOverrides(
+    fnUpdateOverrides: (lstOverrides: EmployeeSalaryRevisionFormValues["lstOverrides"]) => EmployeeSalaryRevisionFormValues["lstOverrides"],
+    blnRefreshCalculatedRows = false
+  ) {
+    const lstNextOverrides = fnUpdateOverrides(dicRevisionForm.lstOverrides);
+    const dicNextForm = {
+      ...dicRevisionForm,
+      lstOverrides: blnRefreshCalculatedRows
+        ? syncCalculatedOverrideRowsFromPreview(
+            lstNextOverrides,
+            [],
+            lstSelectedRevisionStructureComponents
+          )
+        : lstNextOverrides,
+    };
+    if (blnRefreshCalculatedRows) {
+      setObjRevisionPreview(null);
+    }
+    setDicRevisionForm(dicNextForm);
+    if (blnRefreshCalculatedRows) {
+      void refreshCalculatedRevisionOverrides(dicNextForm);
+    }
+  }
 
   const lstFlexiRows: FlexiGridRow[] = useMemo(() => {
     const mapDeclarationLinesByComponentID = new Map<number, FlexiDeclarationLineRecord>(
@@ -1780,8 +1834,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       return;
     }
 
-    const intRequestID = refStructurePreviewRequest.current + 1;
-    refStructurePreviewRequest.current = intRequestID;
+    const intRequestID = refRevisionPreviewRequest.current + 1;
+    refRevisionPreviewRequest.current = intRequestID;
 
     const dicSelectedStructure = objFormOptions?.lstSalaryStructures.find(
       (dicStructure) => dicStructure.intID === intSalaryStructureID
@@ -1820,7 +1874,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
 
     try {
       const dicPreview = await employeeSalaryService.previewRevision(intEmployeeID, dicNextForm);
-      if (refStructurePreviewRequest.current !== intRequestID) {
+      if (refRevisionPreviewRequest.current !== intRequestID) {
         return;
       }
       setObjRevisionPreview(dicPreview);
@@ -2162,10 +2216,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                         size="small"
                         sx={objOverrideValueFieldSx}
                         disabled={!dicOverride.blnAllowManualOverride}
-                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                          ...dicPrev,
-                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, decAmountAnnual: objEvent.target.value } : dicRow)
-                        }))}
+                        onChange={(objEvent) => updateRevisionOverrides(
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => (
+                            intRowIndex === intOverrideIndex
+                              ? { ...dicRow, decAmountAnnual: objEvent.target.value }
+                              : dicRow
+                          )),
+                          true
+                        )}
                       />
                     </td>
                     <td>
@@ -2180,9 +2238,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                         size="small"
                         sx={objOverrideValueFieldSx}
                         disabled={!dicOverride.blnAllowManualOverride}
-                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                          ...dicPrev,
-                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => {
+                        onChange={(objEvent) => updateRevisionOverrides(
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => {
                             if (intRowIndex !== intOverrideIndex) {
                               return dicRow;
                             }
@@ -2192,8 +2249,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                               decAmountMonthly: objEvent.target.value,
                               decAmountAnnual: decMonthly !== null ? formatAmountInput(decMonthly * 12) : ""
                             };
-                          })
-                        }))}
+                          }),
+                          true
+                        )}
                       />
                     </td>
                     <td>
@@ -2208,10 +2266,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                         size="small"
                         sx={objOverrideValueFieldSx}
                         disabled={!dicOverride.blnAllowManualOverride}
-                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                          ...dicPrev,
-                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => intRowIndex === intOverrideIndex ? { ...dicRow, decAmountAnnual: objEvent.target.value } : dicRow)
-                        }))}
+                        onChange={(objEvent) => updateRevisionOverrides(
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => (
+                            intRowIndex === intOverrideIndex
+                              ? { ...dicRow, decAmountAnnual: objEvent.target.value }
+                              : dicRow
+                          )),
+                          true
+                        )}
                       />
                     </td>
                     <td>
@@ -2718,9 +2780,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                         size="small"
                         sx={objOverrideValueFieldSx}
                         disabled={!dicOverride.blnAllowManualOverride || usesAutoCalculatedOverrideValue(dicOverride.strValueSource)}
-                        onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
-                          ...dicPrev,
-                          lstOverrides: dicPrev.lstOverrides.map((dicRow, intRowIndex) => {
+                        onChange={(objEvent) => updateRevisionOverrides(
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => {
                             if (intRowIndex !== intOverrideIndex) {
                               return dicRow;
                             }
@@ -2731,8 +2792,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                               decAmountAnnual: strSanitizedAnnualValue,
                               decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
                             };
-                          })
-                        }))}
+                          }),
+                          true
+                        )}
                       />
                     </td>
                       <td>

@@ -1,5 +1,6 @@
 import { masterApiService } from "@/services/master/MasterApiService";
 import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
+import { usesAutoCalculatedOverrideValue, usesFixedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
 import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
@@ -46,9 +47,7 @@ function areOptionalDecimalsEqual(decLeft: number | null, decRight: number | nul
 }
 
 function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
-  const strValueSource = String(dicOverride.strValueSource ?? "").trim().toLowerCase();
-  const blnUsesCalculatedAmounts =
-    strValueSource === "percentage" || strValueSource === "formula";
+  const blnUsesCalculatedAmounts = usesAutoCalculatedOverrideValue(dicOverride.strValueSource);
   const decAmountMonthly = parseOptionalDecimal(dicOverride.decAmountMonthly);
   const decAmountAnnual = parseOptionalDecimal(dicOverride.decAmountAnnual);
   const decPercentageValue = parseOptionalDecimal(dicOverride.decPercentageValue);
@@ -73,13 +72,12 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
 
 function mapOverridePayload(dicOverride: EmployeeSalaryOverrideFormValue) {
   const dicNormalizedOverride = shouldPersistOverride(dicOverride);
-  const strValueSource = String(dicOverride.strValueSource ?? "").trim().toLowerCase();
   return {
     intSalaryComponentID: dicOverride.intSalaryComponentID,
     decAmountMonthly:
-      strValueSource === "fixed" ? dicNormalizedOverride.decAmountMonthly : null,
+      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountMonthly : null,
     decAmountAnnual:
-      strValueSource === "fixed" ? dicNormalizedOverride.decAmountAnnual : null,
+      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountAnnual : null,
     decPercentageValue: dicNormalizedOverride.decPercentageValue,
     strRemarks: dicNormalizedOverride.strRemarks || null,
     blnShouldPersist: dicNormalizedOverride.blnShouldPersist
