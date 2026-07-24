@@ -38,6 +38,9 @@ export async function GET(objRequest: Request) {
     headers: objHeaders,
     cache: "no-store",
   });
+  if (objBackendResponse.status === 404) {
+    return new NextResponse(null, { status: 204 });
+  }
   if (!objBackendResponse.ok) {
     return new NextResponse("Avatar not found.", { status: objBackendResponse.status });
   }

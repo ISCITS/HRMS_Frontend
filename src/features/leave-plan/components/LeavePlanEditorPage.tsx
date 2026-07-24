@@ -84,7 +84,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const strEffectiveFrom = useWatch({ control, name: "dtEffectiveFrom" });
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
-  const blnCanManage = canDo("LEAVE_PLANS", "LEAVE_MANAGE") || canDo("LEAVE_MANAGEMENT", "LEAVE_MANAGE") || canDo("LEAVE", "LEAVE_MANAGE");
+  const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
   const blnReadOnly = strMode === "view" || !blnCanManage;
   const strBackPath = strReturnTo?.startsWith("/leave/plans") ? strReturnTo : "/leave/plans";
 
