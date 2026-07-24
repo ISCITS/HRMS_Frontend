@@ -31,7 +31,7 @@ import { useEssLeaveApplication } from "@/features/leave/hooks/useEssLeaveApplic
 import {
   formatLeaveDate, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
   type LeaveApplicationAttachmentDto, type LeaveApplicationDto,
-  type LeaveApplyRequest, type LeaveBalanceDto, type LeavePreviewDto,
+  type LeaveApplyRequest, type LeavePreviewDto,
   type LeaveTypeAggregate, type LeaveTypeDto, type LeaveValidationMessage,
 } from "@/features/leave/types";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -107,7 +107,7 @@ export default function EssLeaveApplicationPanel() {
   const { t, intLanguageID } = useModuleLabels("ess-leave", "Unable to load Leave Application labels.");
   const { blnLoading: blnRightsLoading, canDo } = useActionRights();
   const {
-    lstTypes, lstBalances, lstApplications, blnLoading, strLoadError,
+    lstTypes, lstApplications, blnLoading, strLoadError,
     fnLoadAll, fnPreview, fnGetPolicy, fnGetApplication,
     fnPersistDraft: fnPersistDraftRequest, fnSubmitDraft,
     fnWithdraw, fnDeleteAttachment: fnDeleteAttachmentRequest,
@@ -287,7 +287,6 @@ export default function EssLeaveApplicationPanel() {
     </Paper>
 
     {blnLoading ? <LoadingSkeleton /> : strLoadError ? <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #fecaca", textAlign: "center" }}><Alert severity="error" sx={{ mb: 2 }}>{strLoadError}</Alert><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button></Paper> : <>
-      <Box><Typography component="h2" sx={{ fontWeight: 800, mb: 1 }}>{t("balance_title", "My Leave Balance")}</Typography>{lstBalances.length === 0 ? <EmptyState strMessage={t("balance_empty", "No leave balances are available for the current year.")} /> : <Grid container spacing={1.25}>{lstBalances.map((objBalance) => <Grid item xs={12} sm={6} md={4} lg={3} key={objBalance.intLeaveTypeID}><BalanceCard objBalance={objBalance} blnCanApply={blnCanManage} fnOnApply={() => fnOpenNewForm(objBalance.intLeaveTypeID)} strApplyLabel={t("apply", "Apply")} /></Grid>)}</Grid>}</Box>
       <Paper id="leave-applications" sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} justifyContent="space-between" sx={{ p: 2 }}><Box><Typography component="h2" sx={{ fontWeight: 800 }}>{t("applications_title", "My Leave Applications")}</Typography><Typography sx={{ fontSize: ".78rem", color: "#64748b" }}>{intPendingCount} {t("pending", "pending")}</Typography></Box><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}><TextField data-controlid="ess.leave.search" size="small" value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} placeholder={t("search_placeholder", "Search applications")} inputProps={{ "aria-label": t("search_placeholder", "Search applications") }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} /><TextField data-controlid="ess.leave.status.filter" select size="small" label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)} sx={{ minWidth: 150 }}>{lstStatusOptions.map((strOption) => <MenuItem key={strOption} value={strOption}>{strOption === "all" ? t("all_statuses", "All statuses") : strOption.replaceAll("_", " ")}</MenuItem>)}</TextField></Stack></Stack>
         <Divider />
@@ -330,11 +329,6 @@ function RequestFields({ control, objErrors, lstTypes, objSelectedType, strPolic
 
 function LoadingSkeleton() { return <Stack spacing={2} aria-label="Loading leave information"><Grid container spacing={1.25}>{[1, 2, 3, 4].map((intItem) => <Grid item xs={12} sm={6} md={3} key={intItem}><Skeleton variant="rounded" height={118} /></Grid>)}</Grid><Skeleton variant="rounded" height={320} /></Stack>; }
 function EmptyState({ strMessage }: { strMessage: string }) { return <Box sx={{ p: 4, textAlign: "center" }}><EventAvailableRoundedIcon sx={{ color: "#94a3b8", fontSize: 36, mb: .5 }} /><Typography sx={{ color: "#64748b", fontWeight: 600 }}>{strMessage}</Typography></Box>; }
-
-function BalanceCard({ objBalance, blnCanApply, fnOnApply, strApplyLabel }: { objBalance: LeaveBalanceDto; blnCanApply: boolean; fnOnApply: () => void; strApplyLabel: string }) {
-  const objBadge = getLeaveTypeBadge(objBalance.strTypeCode, objBalance.strTypeName);
-  return <Paper sx={{ p: 1.5, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%", boxShadow: "0 6px 16px rgba(15,23,42,.05)" }}><Stack direction="row" spacing={1.5} alignItems="center"><Box sx={{ width: 56, height: 56, borderRadius: "14px", bgcolor: objBadge.bg, color: objBadge.fg, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "1.35rem" }}>{objBalance.decAvailable}</Box><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap sx={{ fontWeight: 800, fontSize: ".82rem", textTransform: "uppercase" }}>{objBalance.strTypeName}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{objBalance.decAvailed} used · {objBalance.decHeld} held</Typography>{blnCanApply ? <Button size="small" startIcon={<AddRoundedIcon sx={{ fontSize: 16 }} />} onClick={fnOnApply} sx={{ px: .5, minWidth: 0, fontWeight: 700 }}>{strApplyLabel}</Button> : null}</Box></Stack></Paper>;
-}
 
 function StatusChip({ strStatus }: { strStatus: string }) { const objColor = LEAVE_STATUS_COLORS[strStatus] ?? { bg: "#f1f5f9", fg: "#475569" }; return <Chip size="small" label={strStatus.replaceAll("_", " ")} sx={{ fontWeight: 700, textTransform: "capitalize", bgcolor: objColor.bg, color: objColor.fg }} />; }
 

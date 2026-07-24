@@ -90,6 +90,10 @@ function getPageTitle(strPathname: string) {
   if (/^\/leave\/plan-assignments\/\d+$/.test(strPathname)) {
     return "Edit Employee Leave Assignment";
   }
+  // ESS self-service leave lands on /ess/leave; show "Apply Leave" instead of the bare "Ess / Leave".
+  if (strPathname === "/ess/leave") {
+    return "Apply Leave";
+  }
 
   const lstSegments = strPathname
     .split("/")
