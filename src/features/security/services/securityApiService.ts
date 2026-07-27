@@ -69,12 +69,12 @@ export const securityApiService = {
     );
   },
 
-  async getUserGroupRights(intUserGroupID: number) {
+  async getUserGroupRights(intUserGroupID: number, strGroupType?: string) {
     return requestApi<SecurityMenuNode[]>(
       `/security/user-groups/${intUserGroupID}/rights`,
       "GET",
       null,
-      { intLanguageID: authHelpers.getLanguageID() ?? 1 }
+      { intLanguageID: authHelpers.getLanguageID() ?? 1, strGroupType: strGroupType ?? "" }
     );
   },
 

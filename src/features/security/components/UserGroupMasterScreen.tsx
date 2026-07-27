@@ -35,6 +35,7 @@ type UserGroupTableRow = {
   strGroupCode: string;
   strGroupName: string;
   strGroupDescription: string;
+  strGroupType: string;
   status: ReactNode;
 };
 
@@ -42,6 +43,7 @@ const objEmptyForm: UserGroupFormPayload = {
   strGroupCode: "",
   strGroupName: "",
   strGroupDescription: "",
+  strGroupType: "HR",
   intCompanyID: authHelpers.getCompanyID(),
   blnIsActive: true,
   intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -52,6 +54,7 @@ function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
     strGroupCode: objRecord.strGroupCode,
     strGroupName: objRecord.strGroupName,
     strGroupDescription: objRecord.strGroupDescription ?? "",
+    strGroupType: objRecord.strGroupType ?? "HR",
     intCompanyID: objRecord.intCompanyID,
     blnIsActive: objRecord.blnIsActive,
     intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -102,6 +105,7 @@ export default function UserGroupMasterScreen() {
     tableCode: t("table_code", "Code"),
     tableName: t("table_name", "Name"),
     tableDescription: t("table_description", "Description"),
+    tableGroupType: t("table_group_type", "Group Type"),
     tableIsActive: t("table_is_active", "Is Active"),
     statusActive: t("status_active", "Active"),
     statusInactive: t("status_inactive", "Inactive"),
@@ -206,6 +210,7 @@ export default function UserGroupMasterScreen() {
       strGroupCode: objRecord.strGroupCode,
       strGroupName: objRecord.strGroupName,
       strGroupDescription: objRecord.strGroupDescription || dicLabels.noDescription,
+      strGroupType: objRecord.strGroupType ?? "HR",
       status: (
         <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
           {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
@@ -237,8 +242,9 @@ export default function UserGroupMasterScreen() {
     { field: "strGroupCode", headerName: dicLabels.tableCode },
     { field: "strGroupName", headerName: dicLabels.tableName },
     { field: "strGroupDescription", headerName: dicLabels.tableDescription },
+    { field: "strGroupType", headerName: dicLabels.tableGroupType },
     { field: "status", headerName: dicLabels.tableIsActive, sortable: false, filterable: false },
-  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
+  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableGroupType, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
 
   function toggleSelection(intUserGroupID: number) {
     setLstSelectedIds((lstPrevious) =>

@@ -3,6 +3,7 @@
 import {
   Alert,
   Box,
+  CircularProgress,
   MenuItem,
   Stack,
   Tab,
@@ -56,6 +57,8 @@ export default function UserGroupMasterDialog({
   const [objMetadata, setObjMetadata] = useState<UserGroupAuthorizationMetadata | null>(null);
   const [blnMetadataLoading, setBlnMetadataLoading] = useState(false);
   const [lstRightsNodes, setLstRightsNodes] = useState<SecurityMenuNode[]>([]);
+  const [blnRightsLoading, setBlnRightsLoading] = useState(false);
+  const [intTemplateGroupID, setIntTemplateGroupID] = useState<number | null>(null);
 
   useEffect(() => {
     if (!blnOpen) {
@@ -63,58 +66,51 @@ export default function UserGroupMasterDialog({
     }
   }, [blnOpen]);
 
+  // Resolves the metadata summary tiles, and (for "add" mode, which has no
+  // real group id yet) a template group id used purely to source the active
+  // menu/action catalog for the rights tree fetch below.
   useEffect(() => {
     let blnMounted = true;
 
     async function loadMetadata() {
+      if (!blnOpen) {
+        setObjMetadata(null);
+        setIntTemplateGroupID(null);
+        return;
+      }
+
       setBlnMetadataLoading(true);
       try {
-        if (!blnOpen) {
-          setObjMetadata(null);
-          setLstRightsNodes([]);
-          return;
-        }
-
-        if (intUserGroupID) {
-          const objRightsResult = await securityApiService.getUserGroupRights(intUserGroupID);
-          let objMetadataResult: Awaited<ReturnType<typeof securityApiService.getUserGroupAuthorizationMetadata>> | null = null;
-          try {
-            objMetadataResult = await securityApiService.getUserGroupAuthorizationMetadata(intUserGroupID);
-          } catch {
-            objMetadataResult = null;
-          }
+        let intTargetGroupID = intUserGroupID;
+        if (!intTargetGroupID) {
+          const objUserGroups = await securityApiService.listUserGroups();
+          intTargetGroupID = objUserGroups.Data[0]?.intID ?? null;
           if (blnMounted) {
-            setObjMetadata(objMetadataResult?.Data ?? null);
-            setLstRightsNodes(objRightsResult.Data);
+            setIntTemplateGroupID(intTargetGroupID);
           }
-          return;
         }
 
-        const objUserGroups = await securityApiService.listUserGroups();
-        const intTemplateGroupID = objUserGroups.Data[0]?.intID ?? null;
-        if (!intTemplateGroupID) {
+        if (!intTargetGroupID) {
           if (blnMounted) {
             setObjMetadata(null);
-            setLstRightsNodes([]);
           }
           return;
         }
 
-        const objRightsResult = await securityApiService.getUserGroupRights(intTemplateGroupID);
-        let objMetadataResult: Awaited<ReturnType<typeof securityApiService.getUserGroupAuthorizationMetadata>> | null = null;
         try {
-          objMetadataResult = await securityApiService.getUserGroupAuthorizationMetadata(intTemplateGroupID);
+          const objMetadataResult = await securityApiService.getUserGroupAuthorizationMetadata(intTargetGroupID);
+          if (blnMounted) {
+            setObjMetadata(objMetadataResult.Data);
+          }
         } catch {
-          objMetadataResult = null;
-        }
-        if (blnMounted) {
-          setObjMetadata(objMetadataResult?.Data ?? null);
-          setLstRightsNodes(clearMenuTreeRights(objRightsResult.Data));
+          if (blnMounted) {
+            setObjMetadata(null);
+          }
         }
       } catch {
         if (blnMounted) {
           setObjMetadata(null);
-          setLstRightsNodes([]);
+          setIntTemplateGroupID(null);
         }
       } finally {
         if (blnMounted) {
@@ -129,6 +125,48 @@ export default function UserGroupMasterDialog({
       blnMounted = false;
     };
   }, [blnOpen, intUserGroupID]);
+
+  // Reloads the Menu & Action Rights tree whenever the selected Group Type
+  // changes, so the menu set shown always matches what's about to be saved
+  // rather than whatever type the group was last saved with.
+  useEffect(() => {
+    let blnMounted = true;
+
+    async function loadRights() {
+      if (!blnOpen) {
+        setLstRightsNodes([]);
+        return;
+      }
+
+      const intTargetGroupID = intUserGroupID ?? intTemplateGroupID;
+      if (!intTargetGroupID) {
+        setLstRightsNodes([]);
+        return;
+      }
+
+      setBlnRightsLoading(true);
+      try {
+        const objRightsResult = await securityApiService.getUserGroupRights(intTargetGroupID, objForm.strGroupType);
+        if (blnMounted) {
+          setLstRightsNodes(intUserGroupID ? objRightsResult.Data : clearMenuTreeRights(objRightsResult.Data));
+        }
+      } catch {
+        if (blnMounted) {
+          setLstRightsNodes([]);
+        }
+      } finally {
+        if (blnMounted) {
+          setBlnRightsLoading(false);
+        }
+      }
+    }
+
+    loadRights().catch(() => undefined);
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnOpen, intUserGroupID, intTemplateGroupID, objForm.strGroupType]);
 
   function updateField<TKey extends keyof UserGroupFormPayload>(strKey: TKey, value: UserGroupFormPayload[TKey]) {
     onChange({
@@ -146,6 +184,13 @@ export default function UserGroupMasterDialog({
     fieldGroupCode: t("field_group_code", "Group Code"),
     fieldGroupName: t("field_group_name", "Group Name"),
     fieldGroupDescription: t("field_group_description", "Group Description"),
+    fieldGroupType: t("field_group_type", "Group Type"),
+    fieldGroupTypeHelp: t(
+      "field_group_type_help",
+      "Controls which menus this group can be granted rights to, and which menu set loads for its users.",
+    ),
+    groupTypeHR: t("group_type_hr", "HR"),
+    groupTypeESS: t("group_type_ess", "ESS (Employee Self Service)"),
     fieldGroupScope: t("field_group_scope", "Group Scope"),
     scopeNoCompany: t("scope_no_company", "No company context is available in the current session."),
     scopeTenantWide: t("scope_tenant_wide", "This group is available tenant-wide."),
@@ -162,6 +207,7 @@ export default function UserGroupMasterDialog({
     summaryAllowedActions: t("summary_allowed_actions", "Allowed Actions"),
     summaryAssignedUsers: t("summary_assigned_users", "Assigned Users"),
     rightsMetadataEmpty: t("rights_metadata_empty", "Dynamic menu metadata is not available yet. Create at least one user group seed record or refresh the backend data."),
+    rightsLoading: t("rights_loading", "Loading menus for the selected group type..."),
     closeButton: t("close_button", "Close"),
     cancelButton: t("cancel_button", "Cancel"),
     saveButton: t("save_button", "Save User Group"),
@@ -186,7 +232,7 @@ export default function UserGroupMasterDialog({
       strSecondaryLabel={blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
       strPrimaryLabel={strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
       onPrimaryAction={() => onSave(serializeRights(lstRightsNodes))}
-      blnPrimaryDisabled={blnSaving || blnMetadataLoading}
+      blnPrimaryDisabled={blnSaving || blnMetadataLoading || blnRightsLoading}
       blnHidePrimary={blnReadOnly}
       paperClassName={styles.dialogPaperDapartment}
       maxWidth={false}
@@ -274,36 +320,61 @@ export default function UserGroupMasterDialog({
 
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.8,
-                borderRadius: 0,
-                border: "1px solid #d7e2ee",
-                backgroundColor: "#ffffff",
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 2,
+                alignItems: "stretch",
               }}
             >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {blnProtectCurrentUserGroup ? strOwnGroupInactiveWarning : dicLabels.fieldIsActiveHelp}
-                </Typography>
-              </Box>
-              <Tooltip
-                title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
-                arrow
+              <TextField
+                select
+                label={dicLabels.fieldGroupType}
+                value={objForm.strGroupType === "BOTH" ? "HR" : objForm.strGroupType}
+                onChange={(objEvent) => updateField("strGroupType", objEvent.target.value as UserGroupFormPayload["strGroupType"])}
+                disabled={blnReadOnly}
+                required
+                helperText={dicLabels.fieldGroupTypeHelp}
+                SelectProps={{
+                  SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-type.select" } as HTMLAttributes<HTMLDivElement>,
+                }}
               >
-                <span>
-                  <ActiveStatusSwitch
-                    blnIsActive={objForm.blnIsActive}
-                    onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
-                    disabled={blnReadOnly || blnProtectCurrentUserGroup}
-                    controlId="security.user-group.dialog.is-active.switch"
-                    testId="security.user-group.dialog.is-active.switch"
-                  />
-                </span>
-              </Tooltip>
+                <MenuItem value="HR" data-control-id="security.user-group.dialog.group-type.hr.option">{dicLabels.groupTypeHR}</MenuItem>
+                <MenuItem value="ESS" data-control-id="security.user-group.dialog.group-type.ess.option">{dicLabels.groupTypeESS}</MenuItem>
+              </TextField>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 2,
+                  py: 1.8,
+                  borderRadius: 0,
+                  border: "1px solid #d7e2ee",
+                  backgroundColor: "#ffffff",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    {blnProtectCurrentUserGroup ? strOwnGroupInactiveWarning : dicLabels.fieldIsActiveHelp}
+                  </Typography>
+                </Box>
+                <Tooltip
+                  title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
+                  arrow
+                >
+                  <span>
+                    <ActiveStatusSwitch
+                      blnIsActive={objForm.blnIsActive}
+                      onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
+                      disabled={blnReadOnly || blnProtectCurrentUserGroup}
+                      controlId="security.user-group.dialog.is-active.switch"
+                      testId="security.user-group.dialog.is-active.switch"
+                    />
+                  </span>
+                </Tooltip>
+              </Box>
             </Box>
 
             {blnProtectCurrentUserGroup ? (
@@ -337,7 +408,12 @@ export default function UserGroupMasterDialog({
           </Stack>
         ) : (
           <Box sx={{ flex: 1, minHeight: 0, pt: 1 }}>
-            {lstRightsNodes.length > 0 ? (
+            {blnRightsLoading ? (
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, minHeight: 240 }}>
+                <CircularProgress size={28} />
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{dicLabels.rightsLoading}</Typography>
+              </Box>
+            ) : lstRightsNodes.length > 0 ? (
               <UserGroupRightsEditor
                 lstNodes={lstRightsNodes}
                 blnReadOnly={blnReadOnly}

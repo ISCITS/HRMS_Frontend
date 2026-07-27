@@ -1,5 +1,7 @@
 import type { ApiEnvelope } from "@/models/AuthModels";
 
+export type UserGroupType = "HR" | "ESS" | "BOTH";
+
 export type UserGroupRecord = {
   intID: number;
   intTenantID: number;
@@ -7,6 +9,7 @@ export type UserGroupRecord = {
   strGroupCode: string;
   strGroupName: string;
   strGroupDescription: string | null;
+  strGroupType: UserGroupType;
   blnIsActive: boolean;
   intLanguageID: number | null;
 };
@@ -15,6 +18,7 @@ export type UserGroupFormPayload = {
   strGroupCode: string;
   strGroupName: string;
   strGroupDescription: string | null;
+  strGroupType: UserGroupType;
   intCompanyID: number | null;
   blnIsActive: boolean;
   intLanguageID?: number | null;
@@ -36,6 +40,7 @@ export type SecurityMenuNode = {
   strMenuName: string;
   strRoutePath: string | null;
   strIconName: string | null;
+  strModuleType: UserGroupType;
   intMenuLevel: number;
   blnIsAllowed: boolean;
   lstActions: SecurityActionRight[];
