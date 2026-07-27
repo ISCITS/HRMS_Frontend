@@ -136,7 +136,11 @@ export default function EssLeaveApplicationPanel() {
     resolver: yupResolver(objFormSchema) as Resolver<LeaveFormValues>, defaultValues: fnDefaultForm(), mode: "onBlur",
   });
   const objWatchedForm = useWatch({ control });
-  const blnCanManage = ["ESS_LEAVE", "ESS_MY_LEAVE_APPLICATIONS", "LEAVE", "LEAVE_MANAGEMENT"].some((strModuleCode) => canDo(strModuleCode, "LEAVE_MANAGE"));
+  // ESS leave menus grant the generic action set (edit/add/submit); older setups use the
+  // compound LEAVE_MANAGE code. Accept either so the Apply/Save/Submit actions are enabled.
+  const blnCanManage = ["ESS_LEAVE", "ESS_MY_LEAVE_APPLICATIONS", "LEAVE", "LEAVE_MANAGEMENT"].some(
+    (strModuleCode) => ["LEAVE_MANAGE", "MANAGE", "EDIT", "ADD", "SUBMIT"].some((strAction) => canDo(strModuleCode, strAction)),
+  );
   const objSelectedType = useMemo(() => lstTypes.find((objType) => objType.intID === Number(objWatchedForm.intLeaveTypeID)) ?? null, [lstTypes, objWatchedForm.intLeaveTypeID]);
   const lstFilteredApplications = useMemo(() => {
     const strNeedle = strSearch.trim().toLowerCase();

@@ -154,7 +154,9 @@ export default function LeaveApprovalPanel() {
     const { strKind, objItem } = objAction;
     setIntProcessingID(objItem.intID);
     try {
-      const intVersionNo = objItem.intVersionNo ?? null;
+      // The workflow decision (_act/_checkVersion) is versioned by the workflow instance's
+      // row_version, not the application's request_version — send objWorkflow.intVersionNo.
+      const intVersionNo = objItem.objWorkflow?.intVersionNo ?? null;
       if (strKind === "approve") {
         await leaveService.approveApplication(objItem.intID, { strComment: strRemark.trim() || null, intVersionNo });
       } else if (strKind === "reject") {
