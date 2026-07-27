@@ -16,7 +16,7 @@ import type {
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
-import { masterApiService } from "@/services/master/MasterApiService";
+import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 
 type EmployeeServiceRequestOptions = {
   strMenuAction?: string;
@@ -57,6 +57,39 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
   };
 }
 
+function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDetailRecord {
+  return {
+    intID: dicRecord.intID,
+    strEmployeeCode: dicRecord.strEmployeeCode,
+    strTitle: dicRecord.strTitle,
+    strFirstName: dicRecord.strFirstName,
+    strMiddleName: dicRecord.strMiddleName,
+    blnIsWorker: dicRecord.blnIsWorker,
+    strLastName: dicRecord.strLastName,
+    strFullName: dicRecord.strFullName,
+    dtDateOfBirth: dicRecord.dtDateOfBirth,
+    dtDateOfJoining: dicRecord.dtDateOfJoining,
+    intEmploymentTypeID: dicRecord.intEmploymentTypeID,
+    intDepartmentID: dicRecord.intDepartmentID,
+    intDesignationID: dicRecord.intDesignationID,
+    intGradeID: dicRecord.intGradeID,
+    intCostCenterID: dicRecord.intCostCenterID,
+    intLocationID: dicRecord.intLocationID,
+    intPayrollGroupID: dicRecord.intPayrollGroupID,
+    intManagerEmployeeID: dicRecord.intManagerEmployeeID,
+    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? null,
+    strWorkEmail: dicRecord.strWorkEmail,
+    strPersonalEmail: dicRecord.strPersonalEmail,
+    strMobileNumber: dicRecord.strMobileNumber,
+    strGender: dicRecord.strGender,
+    intPreferredLanguageID: dicRecord.intPreferredLanguageID,
+    strEmploymentStatus: dicRecord.strEmploymentStatus,
+    dtDateOfExit: dicRecord.dtDateOfExit,
+    blnIsEssEnabled: dicRecord.blnIsEssEnabled,
+    blnIsPartialSave: dicRecord.blnIsPartialSave
+  };
+}
+
 export const employeeService = {
   async getEmployees(): Promise<EmployeeListRecord[]> {
     const objResult = await masterApiService.getEmployees();
@@ -65,7 +98,7 @@ export const employeeService = {
 
   async getEmployeeById(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
     const objResult = await masterApiService.getEmployeeById(intEmployeeID, objOptions?.strMenuAction);
-    return objResult.Data;
+    return mapEmployeeDetailRecord(objResult.Data);
   },
 
   async getFormOptions(objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeFormOptions> {
@@ -75,12 +108,12 @@ export const employeeService = {
 
   async createEmployee(dicValues: EmployeeFormValues): Promise<EmployeeDetailRecord> {
     const objResult = await masterApiService.createEmployee(mapEmployeePayload(dicValues));
-    return objResult.Data;
+    return mapEmployeeDetailRecord(objResult.Data);
   },
 
   async updateEmployee(intEmployeeID: number, dicValues: EmployeeFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
     const objResult = await masterApiService.updateEmployee(intEmployeeID, mapEmployeePayload(dicValues), objOptions?.strMenuAction);
-    return objResult.Data;
+    return mapEmployeeDetailRecord(objResult.Data);
   },
 
   bulkUpdateStatus(lstIDs: number[], blnIsActive: boolean) {

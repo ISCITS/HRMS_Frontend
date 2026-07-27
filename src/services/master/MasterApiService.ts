@@ -490,6 +490,7 @@ export type EmployeeDetailApiRecord = {
   intLocationID: number;
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
+  intLineManagerEmployeeID?: number | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
