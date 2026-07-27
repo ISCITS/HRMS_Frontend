@@ -66,7 +66,7 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
     return "Payroll Input";
   }
   if (strRoute.includes("/payroll/results") || strMenuCode.includes("payroll_result")) {
-    return "Payroll Results";
+    return strMenuName || "Payroll Results";
   }
   if (strRoute.includes("/payroll/statutory-rules")) {
     return "Statutory Rules";

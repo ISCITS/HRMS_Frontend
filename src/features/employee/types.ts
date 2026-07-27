@@ -43,6 +43,7 @@ export type EmployeeDetailRecord = {
   intLocationID: number;
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
+  intLineManagerEmployeeID: number | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
@@ -71,6 +72,7 @@ export type EmployeeFormValues = {
   intLocationID: number | "";
   intPayrollGroupID: number | "";
   intManagerEmployeeID: number | "";
+  intLineManagerEmployeeID: number | "";
   strWorkEmail: string;
   strPersonalEmail: string;
   strMobileNumber: string;

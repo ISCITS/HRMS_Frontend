@@ -935,6 +935,13 @@ export default function DynamicMenu({
       );
     }
 
+    if (strRoute.includes("/payroll/results")) {
+      return preferResolvedLabel(
+        strModuleName,
+        strModuleName,
+        "Payroll Results"
+      );
+    }
 
     if (strRoute.includes("/payroll/payslips") || strModuleCode.includes("payslip")) {
       return preferResolvedLabel(

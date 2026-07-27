@@ -44,6 +44,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intLocationID: dicValues.intLocationID,
     intPayrollGroupID: normalizeOptionalNumber(dicValues.intPayrollGroupID),
     intManagerEmployeeID: normalizeOptionalNumber(dicValues.intManagerEmployeeID),
+    intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID),
     strWorkEmail: dicValues.strWorkEmail.trim() || null,
     strPersonalEmail: dicValues.strPersonalEmail.trim() || null,
     strMobileNumber: dicValues.strMobileNumber.trim() || null,
