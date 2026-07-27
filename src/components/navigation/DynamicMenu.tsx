@@ -4,7 +4,6 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { Box, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
 import Icon from "@mui/material/Icon";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -14,6 +13,7 @@ import type { MenuItem } from "@/models/AuthModels";
 
 type DynamicMenuProps = {
   lstMenuItems: MenuItem[];
+  blnEssOnly?: boolean;
   onNavigate?: () => void;
   blnCollapsed?: boolean;
   onCollapsedClick?: () => void;
@@ -82,15 +82,29 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
 }
 
 function resolveMenuRoute(objItem: MenuItem): string | null {
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = objItem.strRoute?.trim() ?? "";
+
+  // Work on Holiday had multiple legacy seed routes. The module identity is the
+  // stable contract, so cached menu data must always resolve to the live route.
+  if (strModuleCode === "ess_work_on_holiday" || strModuleName === "work on holiday") {
+    return "/ess/work-on-holiday";
+  }
+
+  if (
+    strModuleCode === "work_on_holiday_requests" ||
+    strModuleName === "work on holiday requests"
+  ) {
+    return "/leave/work-on-holiday/requests";
+  }
+
   if (!strRoute) {
     return null;
   }
 
   const strNormalizedRoute = strRoute.startsWith("/") ? strRoute : `/${strRoute}`;
   const strLowerRoute = strNormalizedRoute.toLowerCase();
-  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
-  const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const blnIsMyPayslipMenu =
     strModuleCode.includes("my_payslip") ||
     strModuleCode.includes("my-payslip") ||
@@ -614,24 +628,98 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
   return lstCollapsedItems;
 }
 
-function prepareMenuItems(lstItems: MenuItem[]): MenuItem[] {
-  return collapseDuplicateMenuBranches(
-    appendGeneratedReportsMenu(
-      appendGeneratedPayslipMenu(
-        appendGeneratedEssLoansAdvancesMenu(
-          appendGeneratedFNFMenu(
-            appendGeneratedLoansAdvancesMenu(
-              appendGeneratedReimbursementsMenu(
-                removeReportsFromPayrollBranches(
-                  promoteDashboardMenu(lstItems),
-                ),
-              ),
+function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
+  let objWorkOnHolidayItem: MenuItem | null = null;
+
+  function removeNestedWorkOnHoliday(lstCurrentItems: MenuItem[], intDepth = 0): MenuItem[] {
+    return lstCurrentItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
+      const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+      const strModuleName = objItem.strModuleName.trim().toLowerCase();
+      const blnIsEssWorkOnHoliday =
+        strModuleCode === "ess_work_on_holiday" ||
+        strModuleName === "work on holiday";
+
+      if (blnIsEssWorkOnHoliday && intDepth > 0) {
+        objWorkOnHolidayItem ??= { ...objItem, strRoute: "/ess/work-on-holiday" };
+        return lstUpdatedItems;
+      }
+
+      const objUpdatedItem = {
+        ...objItem,
+        lstChildren: removeNestedWorkOnHoliday(objItem.lstChildren, intDepth + 1),
+      };
+      // Employee Services was only acting as an accidental wrapper for the
+      // Work on Holiday link. Do not leave an empty, non-navigable group behind.
+      if (isEmployeeServicesContainerMenu(objUpdatedItem) && objUpdatedItem.lstChildren.length === 0) {
+        return lstUpdatedItems;
+      }
+
+      lstUpdatedItems.push(objUpdatedItem);
+      return lstUpdatedItems;
+    }, []);
+  }
+
+  const lstUpdatedItems = removeNestedWorkOnHoliday(lstItems);
+  if (!objWorkOnHolidayItem || hasRoute(lstUpdatedItems, "/ess/work-on-holiday")) {
+    return lstUpdatedItems;
+  }
+
+  const intEmployeeServicesIndex = lstUpdatedItems.findIndex(isEmployeeServicesContainerMenu);
+  const intInsertIndex = intEmployeeServicesIndex >= 0
+    ? intEmployeeServicesIndex
+    : lstUpdatedItems.length;
+  return [
+    ...lstUpdatedItems.slice(0, intInsertIndex),
+    objWorkOnHolidayItem,
+    ...lstUpdatedItems.slice(intInsertIndex),
+  ];
+}
+
+function removeHrOnlyMenusFromEss(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems.reduce<MenuItem[]>((lstVisibleItems, objItem) => {
+    const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    const blnIsHrOnlyMenu =
+      strRoute === "/leave/approvals" ||
+      strRoute.startsWith("/leave/approvals/") ||
+      strRoute === "/payroll/fnf-settlements" ||
+      strRoute.startsWith("/payroll/fnf-settlements/") ||
+      strModuleCode === "leave_approvals" ||
+      strModuleCode === "leave_approval" ||
+      strModuleCode === "payroll_fnf_settlements" ||
+      strModuleCode === "fnf_settlements";
+
+    if (blnIsHrOnlyMenu) {
+      return lstVisibleItems;
+    }
+
+    const objVisibleItem = {
+      ...objItem,
+      lstChildren: removeHrOnlyMenusFromEss(objItem.lstChildren),
+    };
+    if (!objVisibleItem.strRoute && objVisibleItem.lstChildren.length === 0) {
+      return lstVisibleItems;
+    }
+    lstVisibleItems.push(objVisibleItem);
+    return lstVisibleItems;
+  }, []);
+}
+
+function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[] {
+  const lstPreparedItems = promoteEssWorkOnHolidayMenu(
+    collapseDuplicateMenuBranches(
+      appendGeneratedReportsMenu(
+        appendGeneratedPayslipMenu(
+          appendGeneratedEssLoansAdvancesMenu(
+            removeReportsFromPayrollBranches(
+              promoteDashboardMenu(lstItems),
             ),
           ),
         ),
       ),
     ),
   );
+  return blnEssOnly ? removeHrOnlyMenusFromEss(lstPreparedItems) : lstPreparedItems;
 }
 
 function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
@@ -739,6 +827,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
 
 export default function DynamicMenu({
   lstMenuItems,
+  blnEssOnly = false,
   onNavigate,
   blnCollapsed = false,
   onCollapsedClick,
@@ -951,6 +1040,14 @@ export default function DynamicMenu({
       );
     }
 
+    if (strRoute.includes("/payroll/results") || strModuleCode.includes("payroll_result")) {
+      return preferResolvedLabel(
+        tPayrollResults("page_title", strModuleName || "Payroll Result"),
+        strModuleName,
+        "Payroll Result"
+      );
+    }
+
     if (strRoute.includes("/payroll/statutory-rules")) {
       return preferResolvedLabel(
         tStatutoryRules(
@@ -1078,8 +1175,13 @@ export default function DynamicMenu({
   }
 
   const lstRenderedMenuItems = useMemo(
-    () => prepareMenuItems(lstMenuItems),
-    [lstMenuItems],
+    // The same user may be both an employee and a manager. Route context keeps
+    // HR-only links out of the ESS workspace without removing their HR access.
+    () => prepareMenuItems(
+      lstMenuItems,
+      blnEssOnly || strPathname === "/ess" || strPathname.startsWith("/ess/"),
+    ),
+    [blnEssOnly, lstMenuItems, strPathname],
   );
   const dicDefaultExpanded = useMemo(
     () => collectExpandableDefaults(lstRenderedMenuItems),
@@ -1294,9 +1396,13 @@ export default function DynamicMenu({
         data-menu-code={objItem.strModuleCode}
         data-menu-label={resolveMenuLabel(objItem)}
         data-menu-route={strRoute ?? ""}
-        component={Link}
-        href={strRoute ?? "#"}
-        onClick={onNavigate}
+        onClick={(objEvent) => {
+          onNavigate?.();
+          if (strRoute) {
+            objEvent.preventDefault();
+            objRouter.push(strRoute);
+          }
+        }}
         sx={getButtonStyles(blnIsActive, intDepth)}
       >
         <ListItemIcon sx={{ minWidth: 38, color: blnIsActive ? objSidebarPalette.activeAccent : objSidebarPalette.menuIcon }}>

@@ -853,7 +853,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   const strUserName = objUserContext?.objUser.strLoginName || objUserContext?.objUser.strEmailAddress || "Workspace user";
-  const intLinkedEmployeeID = objUserContext?.objUser?.intEmployeeID ?? null;
+  const intLinkedEmployeeID =
+    objUserContext?.objUser?.intEmployeeID ??
+    objUserContext?.objEmployee?.intEmployeeID ??
+    null;
+  const lstNormalizedRoles = (objUserContext?.objUser.lstRoles ?? []).map((strRole) => strRole.trim().toLowerCase());
+  const blnHasPrivilegedRole = lstNormalizedRoles.some((strRole) =>
+    ["admin", "human resource", "hr", "payroll", "manager", "approver", "supervisor", "finance"]
+      .some((strKeyword) => strRole === strKeyword || strRole.includes(strKeyword)),
+  );
+  // A linked employee without an HR/manager role must receive only self-service
+  // navigation even when stale group-menu rights still exist in tenant data.
+  const blnEssOnlyNavigation = Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
@@ -1031,6 +1042,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         >
           <DynamicMenu
             lstMenuItems={objMenu.lstMenuItems}
+            blnEssOnly={blnEssOnlyNavigation}
             strForcedExpandedMenuIdentity={strPendingExpandedMenuIdentity}
             onForcedExpandedHandled={() => setStrPendingExpandedMenuIdentity(null)}
             onNavigate={() => {
@@ -1184,6 +1196,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         >
           <DynamicMenu
             lstMenuItems={objMenu.lstMenuItems}
+            blnEssOnly={blnEssOnlyNavigation}
             blnCollapsed
             onCollapsedClick={() => setBlnDesktopSidebarOpen(true)}
             onCollapsedMenuItemClick={handleDesktopCollapsedMenuItemClick}

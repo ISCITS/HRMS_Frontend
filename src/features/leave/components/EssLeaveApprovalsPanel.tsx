@@ -153,7 +153,7 @@ export default function EssLeaveApprovalsPanel() {
     if ((strKind === "send_back") && !strRemark.trim()) return;
     setIntProcessingID(objItem.intID);
     try {
-      const objPayload = { strComment: strRemark.trim() || null, intVersionNo: objItem.intVersionNo ?? null };
+      const objPayload = { strComment: strRemark.trim() || null, intVersionNo: objItem.objWorkflow?.intVersionNo ?? null };
       if (strKind === "approve") {
         await leaveService.approveApplication(objItem.intID, objPayload);
         fnShowToast(t("approved", "Leave application approved."), "success");
@@ -161,7 +161,7 @@ export default function EssLeaveApprovalsPanel() {
         await leaveService.rejectApplication(objItem.intID, objPayload);
         fnShowToast(t("rejected", "Leave application rejected."), "success");
       } else {
-        await leaveService.sendBackApplication(objItem.intID, { strComment: strRemark.trim(), intVersionNo: objItem.intVersionNo ?? null });
+        await leaveService.sendBackApplication(objItem.intID, { strComment: strRemark.trim(), intVersionNo: objItem.objWorkflow?.intVersionNo ?? null });
         fnShowToast(t("sent_back", "Leave application sent back."), "success");
       }
       setObjDecision(null);

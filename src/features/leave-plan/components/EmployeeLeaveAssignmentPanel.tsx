@@ -93,7 +93,7 @@ export default function EmployeeLeaveAssignmentPanel() {
     }
     setBlnSubmitting(true);
     let intAssigned = 0;
-    let intFailed = 0;
+    const lstFailureReasons: string[] = [];
     await Promise.all(
       lstSelectedIds.map(async (intEmployeeID) => {
         const objPayload = {
@@ -109,28 +109,39 @@ export default function EmployeeLeaveAssignmentPanel() {
         try {
           await leavePlanService.assignPlan(intEmployeeID, objPayload, false);
           intAssigned += 1;
-        } catch {
+        } catch (objAssignError) {
           if (objBulk.blnReplace) {
             try {
               await leavePlanService.assignPlan(intEmployeeID, objPayload, true);
               intAssigned += 1;
               return;
-            } catch {
-              // fall through to failure tally
+            } catch (objReplaceError) {
+              lstFailureReasons.push((await createApiRequestError(objReplaceError)).message);
+              return;
             }
           }
-          intFailed += 1;
+          lstFailureReasons.push((await createApiRequestError(objAssignError)).message);
         }
       }),
     );
     setBlnSubmitting(false);
-    setObjBulk(objBulkDefaults);
-    setLstSelectedIds([]);
+    if (lstFailureReasons.length === 0) {
+      setObjBulk(objBulkDefaults);
+      setLstSelectedIds([]);
+      showToast(t("bulk_assign_success", "Leave Plan assigned to {ok} employee(s).").replace("{ok}", String(intAssigned)), "success");
+      return;
+    }
+    // Surface the real backend reason(s) instead of a generic message, and hint at "Replace"
+    // when an employee is skipped only because they already hold an active plan. The dialog and
+    // selection are kept intact so the user can enable "Replace" (or use Edit) and retry.
+    const lstDistinctReasons = Array.from(new Set(lstFailureReasons));
+    const blnAlreadyAssigned = lstFailureReasons.some((strReason) => /already/i.test(strReason));
+    const strTip = blnAlreadyAssigned && !objBulk.blnReplace
+      ? ` ${t("bulk_assign_replace_tip", "Enable 'Replace' below (or use the Edit action) to change an existing assignment.")}`
+      : "";
     showToast(
-      intFailed
-        ? t("bulk_assign_partial", "Assigned {ok} employee(s); {fail} skipped (already assigned or invalid dates).").replace("{ok}", String(intAssigned)).replace("{fail}", String(intFailed))
-        : t("bulk_assign_success", "Leave Plan assigned to {ok} employee(s).").replace("{ok}", String(intAssigned)),
-      intFailed ? "error" : "success",
+      `${t("bulk_assign_partial", "Assigned {ok} employee(s); {fail} skipped.").replace("{ok}", String(intAssigned)).replace("{fail}", String(lstFailureReasons.length))} ${lstDistinctReasons.join(" ")}${strTip}`,
+      "error",
     );
   }
 
