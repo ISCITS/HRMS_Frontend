@@ -182,6 +182,11 @@ export default function PayrollResultListPage({
 }: PayrollResultListPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
+  const lstAccessModuleHints = blnPayslipScreen
+    ? (blnEssMode
+        ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
+        : ["REPORT_PAYROLL_RESULTS"])
+    : ["PAYROLL_RESULT", "PAYROLL_RESULTS"];
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
     useModuleActionAccess(
       blnEssMode
@@ -201,6 +206,7 @@ export default function PayrollResultListPage({
           "ESS_MY_PAYSLIP",
         ]
     );
+    useModuleActionAccess(lstAccessModuleHints);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
   const blnUseOpeningFilterDialog = false;
   const [blnLoading, setBlnLoading] = useState(true);
@@ -383,32 +389,15 @@ export default function PayrollResultListPage({
         id: dicRow.intID,
         action: (
           <Box className={styles.actionCell} sx={{ gap: 0.75 }}>
-            <CommonRowActions
-              testIdPrefix="payroll-results.list.row"
-              rowKey={dicRow.intID}
-              blnCanView
-              blnCanEdit={blnPayslipScreen}
-              onView={() =>
-                objRouter.push(
-                  blnPayslipScreen
-                    ? (blnEssMode
-                        ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                        : `/reports/payslips/${dicRow.intID}`)
-                    : `/payroll/results/${dicRow.intID}`
-                )
-              }
-              onEdit={() =>
-                objRouter.push(
-                  dicRow.intEmployeePayrollInputID
-                    ? (blnEssMode
-                        ? `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit?backRoute=${strEssBackRoute}`
-                        : `/payroll/employee-payroll-inputs/${dicRow.intEmployeePayrollInputID}/edit`)
-                    : (blnEssMode
-                        ? `/reports/payslips/${dicRow.intID}?backRoute=${strEssBackRoute}`
-                        : `/reports/payslips/${dicRow.intID}`)
-                )
-              }
-            />
+            {blnPayslipScreen ? null : (
+              <CommonRowActions
+                testIdPrefix="payroll-results.list.row"
+                rowKey={dicRow.intID}
+                blnCanView={blnCanAccessResults}
+                blnCanEdit={false}
+                onView={() => objRouter.push(`/payroll/results/${dicRow.intID}`)}
+              />
+            )}
             {blnPayslipScreen ? (
               <>
                 <Button

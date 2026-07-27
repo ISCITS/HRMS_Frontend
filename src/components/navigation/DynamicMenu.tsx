@@ -944,6 +944,14 @@ export default function DynamicMenu({
       );
     }
 
+    if (strRoute.includes("/payroll/results") || strModuleCode.includes("payroll_result")) {
+      return preferResolvedLabel(
+        tPayrollResults("page_title", strModuleName || "Payroll Result"),
+        strModuleName,
+        "Payroll Result"
+      );
+    }
+
     if (strRoute.includes("/payroll/statutory-rules")) {
       return preferResolvedLabel(
         tStatutoryRules(
