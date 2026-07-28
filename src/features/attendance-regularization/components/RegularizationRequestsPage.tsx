@@ -123,14 +123,11 @@ export default function RegularizationRequestsPage() {
 
   if (blnRightsLoading) return <CircularProgress />;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Regularization Requests access is not available.")}</Alert>;
+  const blnCanCreateOnBehalf = canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
-      <Paper className={styles.controlsCard}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Box><Typography variant="h5" fontWeight={850}>{t("page_title", "Regularization Requests")}</Typography><Typography color="text.secondary">{t("page_subtitle", "Review employee corrections and complete approvals.")}</Typography></Box>
-          {canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF") ? <Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button> : null}
-        </Stack>
-      </Paper>
+      {/* AppShell owns the title; retain only the contextual action when authorized. */}
+      {blnCanCreateOnBehalf ? <Stack direction="row" justifyContent="flex-end"><Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button></Stack> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Paper className={styles.controlsCard}>
         <Grid container spacing={1} alignItems="center">

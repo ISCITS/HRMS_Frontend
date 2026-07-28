@@ -147,7 +147,7 @@ export default function WorkHolidayRequestsPage() {
   if (!lstTabs.length) return <Alert data-control-id="work-on-holiday.workbench.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday Requests access is not available. Ask your administrator to assign manager or HR Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
-      <Box><Typography variant="h4" fontWeight={900}>{t("workbench_title", "Work on Holiday Requests")}</Typography><Typography color="text.secondary">{t("workbench_subtitle", "Review approval, attendance verification and posting work queues.")}</Typography></Box>
+      {/* AppShell already provides the screen title, so the workbench starts with its status and tabs. */}
       {strNotice ? <Alert data-control-id="work-on-holiday.workbench.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.workbench.error.alert" severity="error" onClose={() => setStrError("")}>{strError || strListError}</Alert> : null}
       <Paper><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
