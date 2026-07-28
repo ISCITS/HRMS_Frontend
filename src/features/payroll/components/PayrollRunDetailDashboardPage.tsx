@@ -47,12 +47,14 @@ import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
+import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import type {
   PayslipRunListRecord,
   PayrollProcessSummary,
   PayrollRunDetailRecord,
   PayrollRunStatus,
   PayrollValidationSummary,
+  AttendanceValidateRunResult,
 } from "@/features/payroll/types";
 import {
   buildPayslipFileName,
@@ -68,7 +70,24 @@ type PayrollRunDetailDashboardPageProps = {
 type Tone = "blue" | "green" | "amber" | "red" | "slate";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+// Mirrors tplPayrollAttendanceIntegrationModuleCodes in HRMS_Backend/app/api/v1/PayrollRoutes.py
+const lstAttendanceIntegrationModuleCodes = [
+  "PAYROLL_ATTENDANCE_INTEGRATION",
+  "PAYROLL_ATTENDANCE",
+  "ATTENDANCE_PAYROLL_INTEGRATION",
+  "PAYROLL_RUN",
+  "PAYROLL_RUNS",
+  "PAYROLL_PAYROLL_RUN",
+];
 const strRecoveryRunStatus: PayrollRunStatus = "Open";
+const lstAttendanceStageKeys = [
+  "ATTENDANCE_STAGE_VALIDATION",
+  "ATTENDANCE_STAGE_SUMMARY",
+  "ATTENDANCE_STAGE_PAYROLL_INPUT",
+  "ATTENDANCE_STAGE_SALARY_IMPACT",
+  "ATTENDANCE_STAGE_STATUTORY_TAX",
+  "ATTENDANCE_STAGE_RESULT_FINALISATION",
+] as const;
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -375,7 +394,9 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
   const { t: tCommon } = useModuleLabels("common");
+  const { t: tAttendance } = useModuleLabels("payroll-attendance-integration");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollRunModuleCodes);
+  const { canDoAny: canDoAnyAttendance } = useModuleActionAccess(lstAttendanceIntegrationModuleCodes);
   const [objRun, setObjRun] = useState<PayrollRunDetailRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -395,6 +416,8 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [intValidationPage, setIntValidationPage] = useState(1);
   const [intValidationRowsPerPage, setIntValidationRowsPerPage] = useState(5);
+  const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
+  const [blnAttendanceValidating, setBlnAttendanceValidating] = useState(false);
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanEdit = canDoAny("edit");
   const blnCanValidate = canDoAny("validate") || canDoAny("submit");
@@ -402,6 +425,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const blnCanReprocess = canDoAny("reprocess") || canDoAny("edit");
   const blnCanGeneratePayslip = canDoAny("add") || canDoAny("edit") || canDoAny("process");
   const blnCanExport = canDoAny("export");
+  const blnCanValidateAttendance = canDoAnyAttendance("manage") || canDoAnyAttendance("edit");
 
   async function loadRun(blnShowLoader = true) {
     if (!blnCanView) {
@@ -555,6 +579,27 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       setStrError(objError instanceof Error ? objError.message : "Unable to reprocess payroll run.");
     } finally {
       setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
+  async function validateRunAttendance() {
+    if (!blnCanValidateAttendance) {
+      return;
+    }
+    setBlnAttendanceValidating(true);
+    setStrActionLoaderLabel(tAttendance("ATTENDANCE_VALIDATE_BUTTON", "Validate Attendance Inputs"));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicResult = await attendancePayrollService.validateRunAttendance(intRunID);
+      setObjAttendanceValidationResult(dicResult);
+      await loadRun(false);
+      setStrSuccess(t("attendance_validation_complete", "Attendance-to-payroll validation completed."));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to validate attendance inputs.");
+    } finally {
+      setBlnAttendanceValidating(false);
       setStrActionLoaderLabel("");
     }
   }
@@ -792,6 +837,17 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 </Box>
               );
             })}
+            {blnCanValidateAttendance ? (
+              <Button
+                startIcon={<ShieldOutlinedIcon sx={{ fontSize: 18 }} />}
+                onClick={validateRunAttendance}
+                disabled={blnSaving || blnAttendanceValidating}
+                sx={getWorkflowButtonSx("available")}
+                controlId="payroll.run-detail.attendance-validate.button"
+              >
+                {tAttendance("ATTENDANCE_VALIDATE_BUTTON", "Validate Attendance Inputs")}
+              </Button>
+            ) : null}
             <IconButton
               onClick={handleOpenActions}
               sx={{ border: "1px solid #8FB8F9", borderRadius: "8px", color: "#0B5ED7", flex: "0 0 auto", height: 38, width: 38 }}
@@ -802,6 +858,28 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             </IconButton>
           </Box>
         </Box>
+
+        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1.1 }}>
+          {lstAttendanceStageKeys.map((strStageKey, intStageIndex) => (
+            <Box key={strStageKey} sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
+              {intStageIndex > 0 ? <ChevronRightRoundedIcon sx={{ color: "#9AA5B5", fontSize: 16, flex: "0 0 auto" }} /> : null}
+              <Chip
+                size="small"
+                icon={<TaskAltRoundedIcon sx={{ fontSize: "14px !important" }} />}
+                label={tAttendance(strStageKey, strStageKey)}
+                sx={{
+                  background: "#EEF5FF",
+                  border: "1px solid #8FB8F9",
+                  color: "#0B5ED7",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  height: 24,
+                }}
+              />
+            </Box>
+          ))}
+        </Box>
+
         <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
           <MenuItem onClick={() => { handleCloseActions(); objRouter.push("/payroll/results"); }}>{t("view_results", "Results")}</MenuItem>
         </Menu>
@@ -857,6 +935,23 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lwp", "Total LWP Days")} strValue={objRun.dicSummary.decTotalLwpDays} strTone="green" />
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lop", "Total LOP Days")} strValue={objRun.dicSummary.decTotalLopDays} strTone="green" />
           </Box>
+
+          {objAttendanceValidationResult ? (
+            <>
+              <Typography sx={{ alignItems: "center", display: "flex", fontSize: "0.86rem", fontWeight: 900, gap: 0.6, mb: 1, mt: 1.5 }}>
+                <ShieldOutlinedIcon sx={{ color: "#2563eb", fontSize: 17 }} />
+                {tAttendance("ATTENDANCE_STAGE_VALIDATION", "Attendance Validation")}
+              </Typography>
+              <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_TOTAL_EMPLOYEES", "Total Employees")} strValue={objAttendanceValidationResult.intTotalEmployees} strTone="blue" />
+                <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_READY", "Ready")} strValue={objAttendanceValidationResult.intReadyCount} strTone="green" />
+                <MetricTile objIcon={<ErrorOutlineRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_BLOCKED", "Blocked")} strValue={objAttendanceValidationResult.intBlockedCount} strTone="red" />
+                <MetricTile objIcon={<ReportProblemRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_WARNINGS", "Warnings")} strValue={objAttendanceValidationResult.intWarningCount} strTone="amber" />
+                <MetricTile objIcon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_SUMMARY_GENERATED", "Attendance Summary Generated")} strValue={objAttendanceValidationResult.intAppliedCount} strTone="blue" />
+                <MetricTile objIcon={<LockRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_INPUT_LOCKED", "Payroll Input Locked")} strValue={objAttendanceValidationResult.intInputLockedCount} strTone="slate" />
+              </Box>
+            </>
+          ) : null}
         </Box>
 
         <Box sx={{ ...objCardSx, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, p: 1.25 }}>

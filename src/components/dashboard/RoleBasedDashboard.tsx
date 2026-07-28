@@ -37,7 +37,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import { Avatar, Box, Button, Chip, Grid, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from "@mui/material";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeDetailRecord, EmployeeFormOptions } from "@/features/employee/types";
+import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
@@ -158,6 +158,24 @@ type EssProfileCheck = {
   strCode: string;
   strLabel: string;
   blnComplete: boolean;
+};
+
+type EssProfileCompletenessInput = {
+  objEmployeeProfile: EmployeeDetailRecord | null;
+  objAddress: EmployeeAddressRecord | null;
+  objBank: EmployeeBankRecord | null;
+  objStatutory: EmployeeStatutoryRecord | null;
+  objWelcomePayload: Record<string, unknown>;
+  objUserContext: CurrentUserContext;
+  strAvatarUrl: string;
+  objProfilePayload: Record<string, unknown>;
+  lstComplianceChecks: EssProfileCheck[];
+};
+
+type EssProfileCompletenessResult = {
+  intPercent: number;
+  intCompletedCount: number;
+  intTotalCount: number;
 };
 
 type EssPayslipRow = {
@@ -317,6 +335,127 @@ function resolveEmployeeLookupLabel(
     return strFallback;
   }
   return lstOptions?.find((dicOption) => dicOption.intID === intValue)?.strLabel || strFallback;
+}
+
+function isProfileValueComplete(value: unknown) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    const strValue = value.trim().toLowerCase();
+    return Boolean(strValue) && strValue !== "-" && strValue !== "not available" && strValue !== "not assigned";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return true;
+}
+
+function normalizePercentValue(value: unknown) {
+  const intValue = Number(value);
+  if (!Number.isFinite(intValue)) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, Math.round(intValue)));
+}
+
+function calculateEssProfileCompleteness({
+  objEmployeeProfile,
+  objAddress,
+  objBank,
+  objStatutory,
+  objWelcomePayload,
+  objUserContext,
+  strAvatarUrl,
+  objProfilePayload,
+  lstComplianceChecks,
+}: EssProfileCompletenessInput): EssProfileCompletenessResult {
+  if (!objEmployeeProfile) {
+    const lstHeroFallbackChecks = [
+      isProfileValueComplete(objWelcomePayload.strEmployeeName || objUserContext.objEmployee?.strFullName || objUserContext.objUser.strLoginName),
+      isProfileValueComplete(objWelcomePayload.strEmployeeCode || objUserContext.objEmployee?.strEmployeeCode),
+      isProfileValueComplete(objWelcomePayload.strDepartmentName),
+      isProfileValueComplete(objWelcomePayload.strDesignationName),
+      isProfileValueComplete(objWelcomePayload.strLocationName),
+      isProfileValueComplete(objWelcomePayload.strReportingManager),
+      isProfileValueComplete(objWelcomePayload.strWorkEmail || objUserContext.objUser.strEmailAddress),
+      isProfileValueComplete(objWelcomePayload.strEmploymentType),
+      isProfileValueComplete(objWelcomePayload.strJoinedOn),
+      isProfileValueComplete(strAvatarUrl),
+    ];
+    const intHeroCompletedCount = lstHeroFallbackChecks.filter(Boolean).length;
+    if (intHeroCompletedCount > 0) {
+      return {
+        intPercent: Math.round((intHeroCompletedCount / lstHeroFallbackChecks.length) * 100),
+        intCompletedCount: intHeroCompletedCount,
+        intTotalCount: lstHeroFallbackChecks.length,
+      };
+    }
+
+    const intWidgetPercent = normalizePercentValue(objProfilePayload.intCompletionPercent);
+    if (intWidgetPercent !== null && intWidgetPercent > 0) {
+      return { intPercent: intWidgetPercent, intCompletedCount: intWidgetPercent, intTotalCount: 100 };
+    }
+
+    const lstPayloadChecks = lstComplianceChecks.filter((objCheck) => objCheck && typeof objCheck.blnComplete === "boolean");
+    if (lstPayloadChecks.length) {
+      const intCompletedCount = lstPayloadChecks.filter((objCheck) => objCheck.blnComplete).length;
+      return {
+        intPercent: Math.round((intCompletedCount / lstPayloadChecks.length) * 100),
+        intCompletedCount,
+        intTotalCount: lstPayloadChecks.length,
+      };
+    }
+
+    return { intPercent: 0, intCompletedCount: 0, intTotalCount: 0 };
+  }
+
+  const lstRequiredChecks = [
+    isProfileValueComplete(objEmployeeProfile.strEmployeeCode),
+    isProfileValueComplete(objEmployeeProfile.strFirstName),
+    isProfileValueComplete(objEmployeeProfile.strLastName),
+    isProfileValueComplete(objEmployeeProfile.dtDateOfBirth),
+    isProfileValueComplete(objEmployeeProfile.strGender),
+    isProfileValueComplete(objEmployeeProfile.strMobileNumber),
+    isProfileValueComplete(objEmployeeProfile.strPersonalEmail),
+    isProfileValueComplete(objEmployeeProfile.strWorkEmail),
+    isProfileValueComplete(objEmployeeProfile.dtDateOfJoining),
+    isProfileValueComplete(objEmployeeProfile.intEmploymentTypeID),
+    isProfileValueComplete(objEmployeeProfile.intDepartmentID),
+    isProfileValueComplete(objEmployeeProfile.intDesignationID),
+    isProfileValueComplete(objEmployeeProfile.intGradeID),
+    isProfileValueComplete(objEmployeeProfile.intCostCenterID),
+    isProfileValueComplete(objEmployeeProfile.intLocationID),
+    isProfileValueComplete(objEmployeeProfile.intManagerEmployeeID),
+    isProfileValueComplete(strAvatarUrl),
+    isProfileValueComplete(objAddress?.strAddressType),
+    isProfileValueComplete(objAddress?.strAddressLine1),
+    isProfileValueComplete(objAddress?.strCityName),
+    isProfileValueComplete(objAddress?.intStateID),
+    isProfileValueComplete(objAddress?.strPostalCode),
+    isProfileValueComplete(objAddress?.intCountryID),
+    isProfileValueComplete(objBank?.intBankID),
+    isProfileValueComplete(objBank?.strAccountHolderName),
+    isProfileValueComplete(objBank?.strAccountNumber || objBank?.strAccountNumberMasked),
+    isProfileValueComplete(objBank?.strIfscCode),
+    isProfileValueComplete(objStatutory?.strPanNumber),
+    isProfileValueComplete(objStatutory?.strTaxRegimeCode),
+    objStatutory?.blnPfApplicable ? isProfileValueComplete(objStatutory?.strPfNumber || objStatutory?.strUanNumber) : true,
+    objStatutory?.blnEsiApplicable ? isProfileValueComplete(objStatutory?.strEsiNumber) : true,
+  ];
+  const intCompletedCount = lstRequiredChecks.filter(Boolean).length;
+
+  return {
+    intPercent: Math.round((intCompletedCount / lstRequiredChecks.length) * 100),
+    intCompletedCount,
+    intTotalCount: lstRequiredChecks.length,
+  };
 }
 
 function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
@@ -1610,6 +1749,9 @@ function ensureWidget(
 function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardProps) {
   const [objEmployeeProfile, setObjEmployeeProfile] = useState<EmployeeDetailRecord | null>(null);
   const [objEmployeeOptions, setObjEmployeeOptions] = useState<EmployeeFormOptions | null>(null);
+  const [objEmployeeAddress, setObjEmployeeAddress] = useState<EmployeeAddressRecord | null>(null);
+  const [objEmployeeBank, setObjEmployeeBank] = useState<EmployeeBankRecord | null>(null);
+  const [objEmployeeStatutory, setObjEmployeeStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [objEmployeeSalarySummary, setObjEmployeeSalarySummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const ESS_COLORS = {
     bg: "#F8FAFF",
@@ -1678,6 +1820,9 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
           employeeService.getEmployeeById(intEmployeeID),
           employeeService.getFormOptions(),
           Promise.allSettled([
+            employeeService.getEmployeeAddress(intEmployeeID),
+            employeeService.getEmployeeBankAccount(intEmployeeID),
+            employeeService.getEmployeeStatutory(intEmployeeID),
             employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
           ]),
         ]);
@@ -1690,7 +1835,19 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
         setObjEmployeeOptions(dicOptions);
 
         if (lstProfileDetails[0].status === "fulfilled") {
-          setObjEmployeeSalarySummary(lstProfileDetails[0].value);
+          setObjEmployeeAddress(lstProfileDetails[0].value);
+        }
+
+        if (lstProfileDetails[1].status === "fulfilled") {
+          setObjEmployeeBank(lstProfileDetails[1].value);
+        }
+
+        if (lstProfileDetails[2].status === "fulfilled") {
+          setObjEmployeeStatutory(lstProfileDetails[2].value);
+        }
+
+        if (lstProfileDetails[3].status === "fulfilled") {
+          setObjEmployeeSalarySummary(lstProfileDetails[3].value);
         }
       } catch {
         if (!blnMounted) {
@@ -1734,8 +1891,19 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strEmploymentType = objEmployeeProfile
     ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstEmploymentTypes, objEmployeeProfile.intEmploymentTypeID, "-")
     : String(objWelcome.strEmploymentType || "-");
-  const intProfileCompletionPercent = Number(objProfile.intCompletionPercent || 0);
   const lstComplianceChecks = lstComplianceChecksPayload;
+  const objProfileCompleteness = calculateEssProfileCompleteness({
+    objEmployeeProfile,
+    objAddress: objEmployeeAddress,
+    objBank: objEmployeeBank,
+    objStatutory: objEmployeeStatutory,
+    objWelcomePayload: objWelcome,
+    objUserContext,
+    strAvatarUrl,
+    objProfilePayload: objProfile,
+    lstComplianceChecks,
+  });
+  const intProfileCompletionPercent = objProfileCompleteness.intPercent;
   const lstProfileChartPoints = ((objProfile.lstPoints as ChartPoint[]) || []);
   const lstReimbursementStats = ((((objReimbursementWidget?.objPayload as { lstStats?: SummaryStat[] } | undefined)?.lstStats) || []) as SummaryStat[]);
   const intTotalClaims = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("total claims"))?.intValue || 0);
@@ -1886,8 +2054,15 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.1} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mt: 1.6 }}>
                 <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, minWidth: 150 }}>{t("profile_completeness", "Profile Completeness")}</Typography>
-                <Box sx={{ flex: 1, height: 10, borderRadius: "999px", backgroundColor: "rgba(214, 226, 248, 0.9)", overflow: "hidden" }}>
-                  <Box sx={{ width: `${Math.max(0, Math.min(100, intProfileCompletionPercent))}%`, height: "100%", background: "linear-gradient(90deg, #C9D9FF 0%, #BFEBD9 100%)" }} />
+                <Box
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={intProfileCompletionPercent}
+                  title={`${objProfileCompleteness.intCompletedCount}/${objProfileCompleteness.intTotalCount} ${t("profile_checks_complete", "profile checks complete")}`}
+                  sx={{ flex: 1, height: 10, borderRadius: "999px", backgroundColor: "rgba(214, 226, 248, 0.9)", overflow: "hidden" }}
+                >
+                  <Box sx={{ width: `${intProfileCompletionPercent}%`, height: "100%", background: "linear-gradient(90deg, #285CFF 0%, #16A34A 100%)", transition: "width 360ms ease" }} />
                 </Box>
                 <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700 }}>{`${intProfileCompletionPercent}% ${t("complete", "Complete")}`}</Typography>
                 <Link href="/ess/my-profile" style={{ textDecoration: "none" }}>

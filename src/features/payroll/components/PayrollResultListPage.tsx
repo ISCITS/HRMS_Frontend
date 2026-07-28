@@ -185,27 +185,9 @@ export default function PayrollResultListPage({
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
         ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
-        : ["REPORT_PAYROLL_RESULTS"])
+        : ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"])
     : ["PAYROLL_RESULT", "PAYROLL_RESULTS"];
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
-    useModuleActionAccess(
-      blnEssMode
-        ? ["MY_PAYSLIPS"]
-        : [
-          "EMPLOYEE_PAYROLL_RESULTS",
-          "EMPLOYEE_PAYROLL_RESULT",
-          "PAYSLIPS",
-          "PAYSLIP",
-          "PAYROLL_RESULTS",
-          "PAYROLL_RESULT",
-          "PAYROLL_PAYSLIPS",
-          "PAYROLL_PAYSLIP",
-          "MY_PAYSLIPS",
-          "MY_PAYSLIP",
-          "ESS_MY_PAYSLIPS",
-          "ESS_MY_PAYSLIP",
-        ]
-    );
     useModuleActionAccess(lstAccessModuleHints);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
   const blnUseOpeningFilterDialog = false;
@@ -222,6 +204,10 @@ export default function PayrollResultListPage({
   const [intSelfEmployeeID, setIntSelfEmployeeID] = useState<number | null>(null);
   const blnCanAccessResults =
     canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
+  const blnCanDownloadPayslips = canDoAny("download");
+  const blnCanPrintPayslips = canDoAny("print");
+  const blnCanExportPayslips = canDoAny("export");
+  const blnCanUsePayslipRowActions = blnCanDownloadPayslips || blnCanPrintPayslips;
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
 
@@ -400,22 +386,26 @@ export default function PayrollResultListPage({
             )}
             {blnPayslipScreen ? (
               <>
-                <Button
-                  className={`${styles.secondaryButton} ${styles.compactButton}`}
-                  startIcon={<ReceiptLongRoundedIcon />}
-                  onClick={() => openPayslipDocument(dicRow, false)}
-                  disabled={intPayslipActionID === dicRow.intID}
-                >
-                  {t("download_payslip", "Download")}
-                </Button>
-                <Button
-                  className={`${styles.secondaryButton} ${styles.compactButton}`}
-                  startIcon={<PrintRoundedIcon />}
-                  onClick={() => openPayslipDocument(dicRow, true)}
-                  disabled={intPayslipActionID === dicRow.intID}
-                >
-                  {t("print_payslip", "Print")}
-                </Button>
+                {blnCanDownloadPayslips ? (
+                  <Button
+                    className={`${styles.secondaryButton} ${styles.compactButton}`}
+                    startIcon={<ReceiptLongRoundedIcon />}
+                    onClick={() => openPayslipDocument(dicRow, false)}
+                    disabled={intPayslipActionID === dicRow.intID}
+                  >
+                    {t("download_payslip", "Download")}
+                  </Button>
+                ) : null}
+                {blnCanPrintPayslips ? (
+                  <Button
+                    className={`${styles.secondaryButton} ${styles.compactButton}`}
+                    startIcon={<PrintRoundedIcon />}
+                    onClick={() => openPayslipDocument(dicRow, true)}
+                    disabled={intPayslipActionID === dicRow.intID}
+                  >
+                    {t("print_payslip", "Print")}
+                  </Button>
+                ) : null}
               </>
             ) : null}
           </Box>
@@ -447,12 +437,11 @@ export default function PayrollResultListPage({
         ),
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
       })),
-    [blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, strEssBackRoute, t]
+    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
     const lstColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: blnPayslipScreen ? 260 : 110 },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220 },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
@@ -465,6 +454,17 @@ export default function PayrollResultListPage({
       { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190 },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
+
+    if (!blnPayslipScreen || blnCanUsePayslipRowActions) {
+      lstColumns.unshift({
+        field: "action",
+        headerName: t("actions", "Actions"),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: blnPayslipScreen ? 260 : 110,
+      });
+    }
 
     if (blnPayslipScreen) {
       lstColumns.splice(3, 0, {
@@ -480,7 +480,7 @@ export default function PayrollResultListPage({
     }
 
     return lstColumns;
-  }, [blnPayslipScreen, t]);
+  }, [blnCanUsePayslipRowActions, blnPayslipScreen, t]);
 
   if (
     blnRightsLoading ||

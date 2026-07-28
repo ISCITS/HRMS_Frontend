@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
@@ -23,6 +24,9 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Menu,
   MenuItem,
@@ -37,16 +41,34 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
-import type { PayrollResultDetailRecord, PayslipPreviewRecord, WageRulePreviewRecord } from "@/features/payroll/types";
+import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
+import type {
+  ArrearAdjustmentLine,
+  EmployeeAttendancePreview,
+  PayrollResultDetailRecord,
+  PayslipPreviewRecord,
+  WageRulePreviewRecord,
+} from "@/features/payroll/types";
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
+
+// Mirrors tplPayrollAttendanceIntegrationModuleCodes in HRMS_Backend/app/api/v1/PayrollRoutes.py
+const lstAttendanceIntegrationModuleCodes = [
+  "PAYROLL_ATTENDANCE_INTEGRATION",
+  "PAYROLL_ATTENDANCE",
+  "ATTENDANCE_PAYROLL_INTEGRATION",
+  "PAYROLL_RUN",
+  "PAYROLL_RUNS",
+  "PAYROLL_PAYROLL_RUN",
+];
 
 type PayrollResultDetailPageProps = {
   intResultID: number;
@@ -535,6 +557,13 @@ export default function PayrollResultDetailPage({
 }: PayrollResultDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
+  const { t: tAttendance } = useModuleLabels("payroll-attendance-integration");
+  const { blnLoading: blnRightsLoading, canDoAny } = useModuleActionAccess(
+    blnPayslipScreen
+      ? ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"]
+      : ["PAYROLL_RESULT", "PAYROLL_RESULTS"]
+  );
+  const { canDoAny: canDoAnyAttendance } = useModuleActionAccess(lstAttendanceIntegrationModuleCodes);
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
   const [objPayslip, setObjPayslip] = useState<PayslipPreviewRecord | null>(null);
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
@@ -543,6 +572,23 @@ export default function PayrollResultDetailPage({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
+
+  // Attendance-to-payroll integration (Stage 2/3): Attendance + Arrears tabs. These are
+  // additive tabs alongside the existing 5 static summary cards above - the existing cards
+  // are intentionally left untouched (see task scope notes).
+  const [strIntegrationTab, setStrIntegrationTab] = useState<"attendance" | "arrears">("attendance");
+  const [objAttendancePreview, setObjAttendancePreview] = useState<EmployeeAttendancePreview | null>(null);
+  const [blnAttendanceLoading, setBlnAttendanceLoading] = useState(false);
+  const [strAttendanceError, setStrAttendanceError] = useState("");
+  const [blnAttendanceLoaded, setBlnAttendanceLoaded] = useState(false);
+  const [lstArrears, setLstArrears] = useState<ArrearAdjustmentLine[]>([]);
+  const [blnArrearsLoading, setBlnArrearsLoading] = useState(false);
+  const [strArrearsError, setStrArrearsError] = useState("");
+  const [blnArrearsLoaded, setBlnArrearsLoaded] = useState(false);
+  const [blnTraceDialogOpen, setBlnTraceDialogOpen] = useState(false);
+  const [objTraceJson, setObjTraceJson] = useState<Record<string, unknown> | null>(null);
+  const [blnTraceLoading, setBlnTraceLoading] = useState(false);
+  const [strTraceError, setStrTraceError] = useState("");
 
   useEffect(() => {
     let blnMounted = true;
@@ -579,13 +625,105 @@ export default function PayrollResultDetailPage({
   }, [intResultID]);
 
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
+  const blnCanDownloadPayslips = canDoAny("download");
+  const blnCanPrintPayslips = canDoAny("print");
+  const blnCanUsePayslipDocumentActions = blnCanDownloadPayslips || blnCanPrintPayslips;
+  const blnCanViewAttendanceIntegration = !blnPayslipScreen && (canDoAnyAttendance("view") || canDoAnyAttendance("list"));
+  const blnCanTraceAttendance = !blnPayslipScreen && canDoAnyAttendance("trace");
+
+  useEffect(() => {
+    if (!objResult || !blnCanViewAttendanceIntegration) {
+      return;
+    }
+    let blnMounted = true;
+
+    async function loadAttendancePreview() {
+      setBlnAttendanceLoading(true);
+      setStrAttendanceError("");
+      try {
+        const dicPreview = await attendancePayrollService.previewEmployeeAttendance(
+          objResult!.intPayrollRunID,
+          objResult!.intEmployeeID
+        );
+        if (!blnMounted) {
+          return;
+        }
+        setObjAttendancePreview(dicPreview);
+      } catch (objError) {
+        if (!blnMounted) {
+          return;
+        }
+        setStrAttendanceError(objError instanceof Error ? objError.message : "Unable to load attendance preview.");
+      } finally {
+        if (blnMounted) {
+          setBlnAttendanceLoading(false);
+          setBlnAttendanceLoaded(true);
+        }
+      }
+    }
+
+    async function loadArrears() {
+      setBlnArrearsLoading(true);
+      setStrArrearsError("");
+      try {
+        const lstResult = await attendancePayrollService.getEmployeeArrears(
+          objResult!.intPayrollRunID,
+          objResult!.intEmployeeID
+        );
+        if (!blnMounted) {
+          return;
+        }
+        setLstArrears(lstResult);
+      } catch (objError) {
+        if (!blnMounted) {
+          return;
+        }
+        setStrArrearsError(objError instanceof Error ? objError.message : "Unable to load arrears/adjustments.");
+      } finally {
+        if (blnMounted) {
+          setBlnArrearsLoading(false);
+          setBlnArrearsLoaded(true);
+        }
+      }
+    }
+
+    if (strIntegrationTab === "attendance" && !blnAttendanceLoaded) {
+      loadAttendancePreview().catch(() => undefined);
+    }
+    if (strIntegrationTab === "arrears" && !blnArrearsLoaded) {
+      loadArrears().catch(() => undefined);
+    }
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [objResult, blnCanViewAttendanceIntegration, strIntegrationTab, blnAttendanceLoaded, blnArrearsLoaded]);
+
+  async function openAttendanceTraceDialog() {
+    setBlnTraceDialogOpen(true);
+    setStrTraceError("");
+    setObjTraceJson(null);
+    setBlnTraceLoading(false);
+    // Gap (documented in the delivery report): there is no existing backend surface that
+    // resolves an EmployeePayrollInput ID from a run + employee pair (the employee-payroll-
+    // inputs list route only accepts free-text search filters, not IDs), so
+    // getPayrollInputAttendanceTrace(intInputID) cannot be called from this screen without
+    // adding new backend surface, which is out of scope. The dialog explains this instead
+    // of fabricating an ID.
+    setStrTraceError(
+      tAttendance(
+        "ATTENDANCE_TRACE_UNAVAILABLE",
+        "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
+      )
+    );
+  }
 
   const lstResultLines = useMemo(
     () => (objResult?.lstLines ?? []).filter((dicLine) => hasDisplayAmount(dicLine.decAmount)),
     [objResult]
   );
 
-  if (blnLoading) {
+  if (blnLoading || blnRightsLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_result", "Loading payroll result...")} />;
   }
 
@@ -858,7 +996,7 @@ export default function PayrollResultDetailPage({
                     px: 1,
                   }}
                 />
-                {blnPayslipScreen ? (
+                {blnPayslipScreen && blnCanUsePayslipDocumentActions ? (
                   <>
                   <Button
                     onClick={handleOpenActions}
@@ -878,21 +1016,19 @@ export default function PayrollResultDetailPage({
                     }}
                     data-controlid="payroll.result-detail.actions.button"
                   >
-                    {t("download_payslip", "Download")}
+                    {blnCanDownloadPayslips ? t("download_payslip", "Download") : t("actions", "Actions")}
                   </Button>
                   <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
-                    <MenuItem onClick={() => { handleCloseActions(); void loadPayslipPreview(); }} data-controlid="payroll.result-detail.preview-payslip.button">
-                      {t("preview_payslip", "Preview Payslip")}
-                    </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void generatePayslip(); }} data-controlid="payroll.result-detail.generate-payslip.button">
-                      {t("generate_payslip", "Generate")}
-                    </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} data-controlid="payroll.result-detail.download-payslip.button">
-                      {t("download_payslip", "Download")}
-                    </MenuItem>
-                    <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} data-controlid="payroll.result-detail.print-payslip.button">
-                      {t("print_payslip", "Print")}
-                    </MenuItem>
+                    {blnCanDownloadPayslips ? (
+                      <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(false); }} data-controlid="payroll.result-detail.download-payslip.button">
+                        {t("download_payslip", "Download")}
+                      </MenuItem>
+                    ) : null}
+                    {blnCanPrintPayslips ? (
+                      <MenuItem onClick={() => { handleCloseActions(); void openGeneratedPayslip(true); }} data-controlid="payroll.result-detail.print-payslip.button">
+                        {t("print_payslip", "Print")}
+                      </MenuItem>
+                    ) : null}
                   </Menu>
                   </>
                 ) : null}
@@ -1216,6 +1352,184 @@ export default function PayrollResultDetailPage({
             </Box>
           </Paper>
 
+          {blnCanViewAttendanceIntegration ? (
+            <Paper
+              sx={{
+                borderRadius: "12px",
+                border: "1px solid #dbe7f3",
+                boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+                background: "#fff",
+                p: { xs: 1.5, md: 1.8 },
+                maxWidth: "100%",
+                overflow: "hidden",
+              }}
+            >
+              <Box sx={{ alignItems: "center", display: "flex", gap: 1, mb: 1.5 }}>
+                <Button
+                  onClick={() => setStrIntegrationTab("attendance")}
+                  sx={{
+                    borderRadius: "8px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    px: 1.5,
+                    background: strIntegrationTab === "attendance" ? "#0B5ED7" : "#fff",
+                    color: strIntegrationTab === "attendance" ? "#fff" : "#0B5ED7",
+                    border: "1px solid #8FB8F9",
+                    "&:hover": { background: strIntegrationTab === "attendance" ? "#084298" : "#EEF5FF" },
+                  }}
+                  data-controlid="payroll.result-detail.tab.attendance.button"
+                >
+                  {tAttendance("ATTENDANCE_TAB_TITLE", "Attendance")}
+                </Button>
+                <Button
+                  onClick={() => setStrIntegrationTab("arrears")}
+                  sx={{
+                    borderRadius: "8px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    px: 1.5,
+                    background: strIntegrationTab === "arrears" ? "#0B5ED7" : "#fff",
+                    color: strIntegrationTab === "arrears" ? "#fff" : "#0B5ED7",
+                    border: "1px solid #8FB8F9",
+                    "&:hover": { background: strIntegrationTab === "arrears" ? "#084298" : "#EEF5FF" },
+                  }}
+                  data-controlid="payroll.result-detail.tab.arrears.button"
+                >
+                  {tAttendance("ARREARS_TAB_TITLE", "Arrears / Adjustments")}
+                </Button>
+              </Box>
+
+              {strIntegrationTab === "attendance" ? (
+                <Box>
+                  {blnAttendanceLoading ? (
+                    <Typography sx={{ color: "#64748b", fontSize: "0.86rem" }}>{t("loading", "Loading...")}</Typography>
+                  ) : strAttendanceError ? (
+                    <Alert severity="error">{strAttendanceError}</Alert>
+                  ) : objAttendancePreview ? (
+                    <>
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gap: 1.25,
+                          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" },
+                        }}
+                      >
+                        {[
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_EFFECTIVE_START", "Effective Employment Start"), strValue: objAttendancePreview.dtEffectiveStart },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_EFFECTIVE_END", "Effective Employment End"), strValue: objAttendancePreview.dtEffectiveEnd },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_CALENDAR_DAYS", "Calendar Days"), strValue: String(objAttendancePreview.decCalendarDays) },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_WORKING_DAYS", "Working Days"), strValue: String(objAttendancePreview.decWorkingDays) },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_ATTENDANCE_DAYS", "Attendance Days"), strValue: String(objAttendancePreview.decAttendanceDays) },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_PAID_DAYS", "Paid Days"), strValue: String(objAttendancePreview.decPaidDays) },
+                          { strLabel: tAttendance("ATTENDANCE_FIELD_LWP_LOP_DAYS", "LWP / LOP Days"), strValue: String(objAttendancePreview.decLwpLopDays) },
+                          {
+                            strLabel: tAttendance("ATTENDANCE_FIELD_OVERRIDE_STATUS", "Override Status"),
+                            // The preview/trace responses do not expose a dedicated override
+                            // field - blnBlocked/lstBlockingReasons are the only signals
+                            // returned, so "System-derived" is shown whenever the run isn't
+                            // blocked. See delivery report for this documented gap.
+                            strValue: objAttendancePreview.blnBlocked
+                              ? t("attendance_status_blocked", "Blocked")
+                              : t("attendance_status_system_derived", "System-derived"),
+                          },
+                        ].map((dicField) => (
+                          <Box key={dicField.strLabel} sx={{ border: "1px solid #e6eef7", borderRadius: "8px", p: 1.2 }}>
+                            <Typography sx={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700 }}>{dicField.strLabel}</Typography>
+                            <Typography sx={{ color: "#0f172a", fontSize: "0.92rem", fontWeight: 900, mt: 0.35 }}>{dicField.strValue}</Typography>
+                          </Box>
+                        ))}
+                      </Box>
+
+                      {objAttendancePreview.lstBlockingReasons.length ? (
+                        <Alert severity="error" sx={{ mt: 1.5 }}>
+                          {objAttendancePreview.lstBlockingReasons.map((dicReason) => dicReason.strMessage).filter(Boolean).join(" | ")}
+                        </Alert>
+                      ) : null}
+                      {objAttendancePreview.lstWarnings.length ? (
+                        <Alert severity="warning" sx={{ mt: 1.5 }}>
+                          {objAttendancePreview.lstWarnings.map((dicReason) => dicReason.strMessage).filter(Boolean).join(" | ")}
+                        </Alert>
+                      ) : null}
+
+                      <Box sx={{ mt: 1.5 }}>
+                        <Tooltip
+                          title={
+                            blnCanTraceAttendance
+                              ? tAttendance(
+                                  "ATTENDANCE_TRACE_UNAVAILABLE",
+                                  "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
+                                )
+                              : t("access_denied", "Not available for your user group.")
+                          }
+                          arrow
+                        >
+                          <span>
+                            <Button
+                              className={styles.secondaryButton}
+                              onClick={openAttendanceTraceDialog}
+                              disabled={!blnCanTraceAttendance}
+                              data-controlid="payroll.result-detail.attendance.trace.button"
+                            >
+                              {tAttendance("ATTENDANCE_TRACE_BUTTON", "View Calculation Trace")}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Box>
+                    </>
+                  ) : null}
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    overflowX: "auto",
+                    border: "1px solid #dbe7f3",
+                    borderRadius: "10px",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {blnArrearsLoading ? (
+                    <Typography sx={{ color: "#64748b", fontSize: "0.86rem", p: 1.5 }}>{t("loading", "Loading...")}</Typography>
+                  ) : strArrearsError ? (
+                    <Alert severity="error" sx={{ m: 1.5 }}>{strArrearsError}</Alert>
+                  ) : (
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>{tAttendance("ARREARS_FIELD_COMPONENT", "Component")}</th>
+                          <th>{t("line_type", "Line Type")}</th>
+                          <th>{t("amount", "Amount")}</th>
+                          <th>{t("remarks", "Remarks")}</th>
+                          <th>{t("source", "Source")}</th>
+                          <th>{t("date", "Date")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lstArrears.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className={styles.emptyState}>
+                              {tAttendance("ARREARS_EMPTY_STATE", "No arrears or adjustments for this employee.")}
+                            </td>
+                          </tr>
+                        ) : (
+                          lstArrears.map((dicLine) => (
+                            <tr key={dicLine.intID}>
+                              <td>{dicLine.strComponentName || dicLine.strComponentCode || "-"}</td>
+                              <td>{dicLine.strLineType}</td>
+                              <td>{formatCurrency(dicLine.decAmount)}</td>
+                              <td>{dicLine.strRemarks || "-"}</td>
+                              <td>{dicLine.strSourceType}</td>
+                              <td>{dicLine.dtAddedOn ? formatMonth(dicLine.dtAddedOn) : "-"}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+                </Box>
+              )}
+            </Paper>
+          ) : null}
+
           {strPayslipPreviewHtml ? (
             <Paper
               sx={{
@@ -1235,6 +1549,30 @@ export default function PayrollResultDetailPage({
           ) : null}
         </Stack>
       </Paper>
+
+      <Dialog
+        open={blnTraceDialogOpen}
+        onClose={() => setBlnTraceDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        data-controlid="payroll.result-detail.attendance-trace.dialog"
+      >
+        <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
+          {tAttendance("ATTENDANCE_TRACE_DRAWER_TITLE", "Attendance Calculation Trace")}
+          <IconButton onClick={() => setBlnTraceDialogOpen(false)} data-controlid="payroll.result-detail.attendance-trace.close.button">
+            <CloseRoundedIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {blnTraceLoading ? (
+            <Typography sx={{ color: "#64748b", fontSize: "0.86rem" }}>{t("loading", "Loading...")}</Typography>
+          ) : strTraceError ? (
+            <Alert severity="info">{strTraceError}</Alert>
+          ) : objTraceJson ? (
+            <pre style={{ fontSize: "0.78rem", overflow: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(objTraceJson, null, 2)}</pre>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

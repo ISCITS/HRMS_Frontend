@@ -496,6 +496,92 @@ export type EmployeePayrollInputDetailRecord = EmployeePayrollInputRecord & {
   lstLines: EmployeePayrollInputLineRecord[];
 };
 
+// ---------------------------------------------------------------------------
+// Attendance-to-payroll integration (Stage 2/3)
+// ---------------------------------------------------------------------------
+
+export type AttendanceValidateRunResult = {
+  intTotalEmployees: number;
+  intReadyCount: number;
+  intBlockedCount: number;
+  intWarningCount: number;
+  intAppliedCount: number;
+  intPreservedManualCount: number;
+  intSkippedCount: number;
+  intInputLockedCount: number;
+};
+
+export type AttendanceReasonEntry = {
+  strCode: string | null;
+  strMessage: string | null;
+  dtDate: string | null;
+};
+
+export type AttendanceDayBreakdownEntry = {
+  strStatus: string | null;
+  decPaidFraction: number | string | null;
+  strSource: string | null;
+};
+
+// Note: the backend preview endpoint (GET
+// /payroll/runs/{intRunID}/employees/{intEmployeeID}/attendance/preview) does not return
+// denominator, denominator source, reconciliation status, or override status fields -
+// only the fields below (confirmed by reading
+// clsAttendancePayrollIntegrationService.computeEmployeeAttendanceSummary). Do not
+// fabricate those fields on the frontend.
+export type EmployeeAttendancePreview = {
+  decCalendarDays: number;
+  decWorkingDays: number;
+  decAttendanceDays: number;
+  decPaidDays: number;
+  decLwpLopDays: number;
+  decPayableDays: number;
+  dtEffectiveStart: string;
+  dtEffectiveEnd: string;
+  blnHasZeroServiceDays: boolean;
+  blnBlocked: boolean;
+  lstBlockingReasons: AttendanceReasonEntry[];
+  lstWarnings: AttendanceReasonEntry[];
+  dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
+};
+
+export type AttendanceTraceJson = {
+  dtEffectiveStart: string | null;
+  dtEffectiveEnd: string | null;
+  blnBlocked: boolean;
+  lstBlockingReasons: AttendanceReasonEntry[];
+  lstWarnings: AttendanceReasonEntry[];
+  dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
+} | null;
+
+export type AttendanceTraceRecord = {
+  intID: number;
+  intPayrollRunID: number;
+  intEmployeeID: number;
+  objAttendanceTraceJson: AttendanceTraceJson;
+};
+
+// Fields mirror clsPayrollRepository.listArrearInputLinesForEmployee's actual return
+// shape - there is no strAdjustmentType/strEarningRecovery/decDifferenceAmount/
+// strStatus/intSourceRunID field on the backend response despite caption keys
+// (ARREARS_FIELD_ADJUSTMENT_TYPE, ARREARS_FIELD_EARNING_RECOVERY,
+// ARREARS_FIELD_DIFFERENCE_AMOUNT, ARREARS_FIELD_SOURCE_RUN, ARREARS_FIELD_STATUS, etc.)
+// existing for a richer UI - only render what is actually present here.
+export type ArrearAdjustmentLine = {
+  intID: number;
+  intSalaryComponentID: number | null;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  strLineType: string;
+  decAmount: number;
+  strRemarks: string | null;
+  strSourceType: string;
+  intSourceEntityID: number | null;
+  intSourceEntityLineID: number | null;
+  strSourceVersionRef: string | null;
+  dtAddedOn: string | null;
+};
+
 export type EmployeePayrollInputFormLine = {
   intTempID: number;
   intSalaryComponentID: number | "";
