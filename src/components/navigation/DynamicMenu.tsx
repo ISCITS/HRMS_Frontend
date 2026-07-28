@@ -78,6 +78,11 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
     return false;
   }
   const strCandidatePath = strCandidateRoute.split("?")[0];
+  // My Attendance and Attendance Regularization are sibling ESS screens even
+  // though one route is a textual prefix of the other.
+  if (strCandidatePath === "/ess/attendance") {
+    return strPathname === strCandidatePath;
+  }
   return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 

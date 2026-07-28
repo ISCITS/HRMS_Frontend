@@ -13,9 +13,41 @@ import type { EmployeeCalendarDay } from "@/features/employee-calendar/types/Emp
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
-const lstModuleCodes = ["ESS_CALENDAR", "CALENDAR", "EMPLOYEE_CALENDAR"];
+const lstModuleCodes = [
+  "ESS_CALENDAR",
+  "CALENDAR",
+  "EMPLOYEE_CALENDAR",
+  "HOLIDAY_CALENDAR",
+  "ESS_EMPLOYEE_CALENDAR",
+  "ESS_HOLIDAY_CALENDAR",
+  "HOLIDAY_LEAVE_CALENDAR",
+];
 const lstWeekdays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const lstLegendStatuses = ["holiday", "optional_holiday", "approved", "pending", "present", "absent", "half_day", "on_leave", "lwp_lop", "on_duty", "weekly_off"];
+const objBannerSelectSx = {
+  minWidth: 145,
+  bgcolor: "#fff",
+  borderRadius: 1,
+  "& .MuiInputLabel-root": {
+    color: "#334155",
+    bgcolor: "#fff",
+    px: 0.5,
+    fontWeight: 600,
+  },
+  "& .MuiInputLabel-root.Mui-focused": {
+    color: "var(--app-primary-color)",
+  },
+  "& .MuiSelect-select": {
+    color: "#0f172a",
+    fontWeight: 600,
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#94a3b8",
+  },
+  "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+    borderColor: "var(--app-primary-color)",
+  },
+};
 
 function getStatusColor(strStatus: string, objTheme: Theme) {
   const dicColors: Record<string, string> = {
@@ -32,7 +64,11 @@ export default function EmployeeCalendarPage() {
   const objTheme = useTheme();
   const { t, strLanguageCode, intLanguageID } = useModuleLabels("calendar", "Unable to load calendar labels.");
   const { blnLoading: blnRightsLoading, canDo } = useActionRights();
-  const blnCanView = lstModuleCodes.some((strModule) => canDo(strModule, "ESS_EMPLOYEE_CALENDAR_VIEW"));
+  // Older tenant seeds expose the exact ESS calendar menu with a generic view
+  // action; newer tenants use the calendar-specific view action.
+  const blnCanView = lstModuleCodes.some((strModule) =>
+    canDo(strModule, "ESS_EMPLOYEE_CALENDAR_VIEW") || canDo(strModule, "view"),
+  );
   const [objMonth, setObjMonth] = useState(() => { const objNow = new Date(); return new Date(objNow.getFullYear(), objNow.getMonth(), 1); });
   const [objSelectedDay, setObjSelectedDay] = useState<EmployeeCalendarDay | null>(null);
   const { objCalendar, blnLoading, strError, reload } = useEmployeeCalendar(objMonth, blnCanView && !blnRightsLoading, intLanguageID);
@@ -50,17 +86,24 @@ export default function EmployeeCalendarPage() {
 
   return (
     <Stack spacing={1.5}>
-      <Paper sx={{ p: 2, borderRadius: 3 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }}>
-          <CalendarMonthRoundedIcon color="primary" />
-          <Box sx={{ flex: 1 }}><Typography variant="h5" fontWeight={800}>{t("holiday_calendar_title", "Holiday Calendar")}</Typography><Typography color="text.secondary">{t("holiday_calendar_subtitle", "View your holidays and calendar day details.")}</Typography></Box>
-          <Button data-control-id="employee-calendar.previous-month.button" aria-label={t("previous_month", "Previous month")} onClick={() => changeMonth(-1)}><ChevronLeftRoundedIcon /></Button>
-          <FormControl size="small" sx={{ minWidth: 145 }}><InputLabel>{t("month", "Month")}</InputLabel><Select data-control-id="employee-calendar.month.select" label={t("month", "Month")} value={objMonth.getMonth()} onChange={(objEvent) => selectMonth(Number(objEvent.target.value))}>{Array.from({ length: 12 }, (_, intMonth) => <MenuItem data-control-id={`employee-calendar.month.option.${intMonth + 1}`} key={intMonth} value={intMonth}>{new Intl.DateTimeFormat(strLocale, { month: "long" }).format(new Date(2026, intMonth, 1))}</MenuItem>)}</Select></FormControl>
-          <FormControl size="small" sx={{ minWidth: 105 }}><InputLabel>{t("year", "Year")}</InputLabel><Select data-control-id="employee-calendar.year.select" label={t("year", "Year")} value={objMonth.getFullYear()} onChange={(objEvent) => selectYear(Number(objEvent.target.value))}>{lstYears.map((intYear) => <MenuItem data-control-id={`employee-calendar.year.option.${intYear}`} key={intYear} value={intYear}>{intYear}</MenuItem>)}</Select></FormControl>
-          <Button data-control-id="employee-calendar.today.button" variant="outlined" onClick={() => { const objNow = new Date(); setObjMonth(new Date(objNow.getFullYear(), objNow.getMonth(), 1)); }}>{t("today", "Today")}</Button>
-          <Button data-control-id="employee-calendar.next-month.button" aria-label={t("next_month", "Next month")} onClick={() => changeMonth(1)}><ChevronRightRoundedIcon /></Button>
+      <Box className="pageBanner" data-control-id="employee-calendar.header.banner" sx={{ flexWrap: { xs: "wrap", lg: "nowrap" } }}>
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">{t("holiday_calendar_title", "Holiday Calendar")}</Typography>
+          <Typography component="p" className="bannerSubTitle">{t("holiday_calendar_subtitle", "View your holidays and calendar day details.")}</Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1, ml: { lg: "auto" } }}>
+          <Button data-control-id="employee-calendar.previous-month.button" variant="outlined" aria-label={t("previous_month", "Previous month")} onClick={() => changeMonth(-1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronLeftRoundedIcon /></Button>
+          <FormControl size="small" sx={objBannerSelectSx}><InputLabel>{t("month", "Month")}</InputLabel><Select data-control-id="employee-calendar.month.select" label={t("month", "Month")} value={objMonth.getMonth()} onChange={(objEvent) => selectMonth(Number(objEvent.target.value))}>{Array.from({ length: 12 }, (_, intMonth) => <MenuItem data-control-id={`employee-calendar.month.option.${intMonth + 1}`} key={intMonth} value={intMonth}>{new Intl.DateTimeFormat(strLocale, { month: "long" }).format(new Date(2026, intMonth, 1))}</MenuItem>)}</Select></FormControl>
+          <FormControl size="small" sx={{ ...objBannerSelectSx, minWidth: 105 }}><InputLabel>{t("year", "Year")}</InputLabel><Select data-control-id="employee-calendar.year.select" label={t("year", "Year")} value={objMonth.getFullYear()} onChange={(objEvent) => selectYear(Number(objEvent.target.value))}>{lstYears.map((intYear) => <MenuItem data-control-id={`employee-calendar.year.option.${intYear}`} key={intYear} value={intYear}>{intYear}</MenuItem>)}</Select></FormControl>
+          <Button data-control-id="employee-calendar.today.button" variant="outlined" onClick={() => { const objNow = new Date(); setObjMonth(new Date(objNow.getFullYear(), objNow.getMonth(), 1)); }} sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}>{t("today", "Today")}</Button>
+          <Button data-control-id="employee-calendar.next-month.button" variant="outlined" aria-label={t("next_month", "Next month")} onClick={() => changeMonth(1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronRightRoundedIcon /></Button>
         </Stack>
-      </Paper>
+      </Box>
 
       {strError ? <Alert data-control-id="employee-calendar.error.alert" severity="error" action={<Button data-control-id="employee-calendar.retry.button" onClick={reload}>{t("retry", "Retry")}</Button>}>{strError}</Alert> : null}
       <Paper sx={{ p: 1.5, borderRadius: 3, position: "relative", minHeight: 420 }}>

@@ -314,25 +314,18 @@ export default function AttendanceExceptionsPage() {
         {t("access_denied", "Attendance Exceptions access is not available.")}
       </Alert>
     );
+  // Use restrained severity accents so the summary is scannable without dominating the filters.
+  const dicSeverityTone: Record<string, { strAccent: string; strSurface: string }> = {
+    BLOCKING: { strAccent: "#c62828", strSurface: "#ffebee" },
+    ERROR: { strAccent: "#e65100", strSurface: "#fff3e0" },
+    WARNING: { strAccent: "#a16207", strSurface: "#fef9c3" },
+    INFO: { strAccent: "#1565c0", strSurface: "#e3f2fd" },
+  };
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
-      <Paper className={styles.controlsCard}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          spacing={1}
-        >
-          <Box>
-            <Typography variant="h5" fontWeight={850}>
-              {t("page_title", "Attendance Exceptions")}
-            </Typography>
-            <Typography color="text.secondary">
-              {t(
-                "page_subtitle",
-                "Prioritize and resolve attendance exceptions across the company.",
-              )}
-            </Typography>
-          </Box>
+      {/* AppShell already displays the screen title; only keep contextual actions here. */}
+      {blnCanGenerate || blnCanExport ? (
+        <Paper className={styles.controlsCard}>
           <Stack direction="row" spacing={1}>
             {blnCanGenerate ? (
               <Button
@@ -368,46 +361,92 @@ export default function AttendanceExceptionsPage() {
               </Button>
             ) : null}
           </Stack>
-        </Stack>
-      </Paper>
+        </Paper>
+      ) : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Grid container spacing={1}>
-        {["BLOCKING", "ERROR", "WARNING", "INFO"].map((strSeverity) => (
-          <Grid item xs={6} md={3} key={strSeverity}>
-            <Paper
-              component={Button}
+      <Paper
+        variant="outlined"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+          overflow: "hidden",
+          borderRadius: "8px",
+        }}
+      >
+        {["BLOCKING", "ERROR", "WARNING", "INFO"].map((strSeverity, intSeverityIndex) => {
+          const objTone = dicSeverityTone[strSeverity];
+          const blnSelected = objFilters.strSeverityCode === strSeverity;
+          return (
+            <Button
+              key={strSeverity}
               data-control-id={`attendance-exceptions.card.${strSeverity.toLowerCase()}.button`}
               onClick={() =>
                 setObjFilters((objValue) => ({
                   ...objValue,
-                  strSeverityCode: strSeverity,
+                  strSeverityCode:
+                    objValue.strSeverityCode === strSeverity ? undefined : strSeverity,
                 }))
               }
-              variant="outlined"
               sx={{
-                p: 1.5,
-                width: "100%",
-                textAlign: "left",
-                display: "block",
+                px: 2,
+                py: 1,
+                minHeight: 48,
+                borderRadius: 0,
+                borderRight: {
+                  xs: intSeverityIndex % 2 === 0 ? "1px solid" : "none",
+                  md: intSeverityIndex < 3 ? "1px solid" : "none",
+                },
+                borderBottom: {
+                  xs: intSeverityIndex < 2 ? "1px solid" : "none",
+                  md: "none",
+                },
+                borderColor: "divider",
+                justifyContent: "space-between",
+                color: "text.primary",
+                backgroundColor: blnSelected ? objTone.strSurface : "transparent",
+                "&:hover": { backgroundColor: objTone.strSurface },
               }}
             >
-              <Typography variant="caption">
-                {lookupLabel(
-                  lstSeverities,
-                  strSeverity,
-                  t("severity", "Severity"),
-                )}
-              </Typography>
-              <Typography variant="h5" fontWeight={850}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                  sx={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    backgroundColor: objTone.strAccent,
+                  }}
+                />
+                <Typography variant="body2" fontWeight={650}>
+                  {lookupLabel(
+                    lstSeverities,
+                    strSeverity,
+                    t("severity", "Severity"),
+                  )}
+                </Typography>
+              </Stack>
+              <Box
+                sx={{
+                  minWidth: 28,
+                  height: 28,
+                  px: 0.75,
+                  display: "grid",
+                  placeItems: "center",
+                  borderRadius: "7px",
+                  color: objTone.strAccent,
+                  backgroundColor: objTone.strSurface,
+                  fontWeight: 850,
+                }}
+              >
                 {objList?.objSummary.dicBySeverity[strSeverity] ?? 0}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+              </Box>
+            </Button>
+          );
+        })}
+      </Paper>
       <Paper className={styles.controlsCard}>
         <Grid container spacing={1}>
-          <Grid item xs={12} sm={6} md={2}>
+          {/* Content-sized controls and actions share one toolbar row on desktop. */}
+          <Grid item xs={12} sm={6} md={2} lg={1.45}>
             <TextField
               data-control-id="attendance-exceptions.from-date.input"
               fullWidth
@@ -423,7 +462,7 @@ export default function AttendanceExceptionsPage() {
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.45}>
             <TextField
               data-control-id="attendance-exceptions.to-date.input"
               fullWidth
@@ -439,7 +478,7 @@ export default function AttendanceExceptionsPage() {
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.3}>
             <TextField
               data-control-id="attendance-exceptions.type.select"
               fullWidth
@@ -464,7 +503,7 @@ export default function AttendanceExceptionsPage() {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.3}>
             <TextField
               data-control-id="attendance-exceptions.status.select"
               fullWidth
@@ -489,7 +528,7 @@ export default function AttendanceExceptionsPage() {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.05}>
             <TextField
               data-control-id="attendance-exceptions.ageing.input"
               fullWidth
@@ -506,7 +545,7 @@ export default function AttendanceExceptionsPage() {
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.4}>
             <TextField
               data-control-id="attendance-exceptions.sort-by.select"
               fullWidth
@@ -529,7 +568,7 @@ export default function AttendanceExceptionsPage() {
               <MenuItem value="assignee">{t("assignee", "Assignee")}</MenuItem>
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6} md={2} lg={1.55}>
             <TextField
               data-control-id="attendance-exceptions.sort-direction.select"
               fullWidth
@@ -548,8 +587,15 @@ export default function AttendanceExceptionsPage() {
               <MenuItem value="desc">{t("descending", "Descending")}</MenuItem>
             </TextField>
           </Grid>
-          <Grid item xs={12}>
-            <Stack direction="row" spacing={1} justifyContent="flex-end" className={styles.filterActions}>
+          <Grid item xs={12} lg={2.5}>
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="flex-end"
+              alignItems="stretch"
+              className={styles.filterActions}
+              sx={{ height: "100%" }}
+            >
               <Button
                 data-control-id="attendance-exceptions.search.button"
                 className={styles.primaryButton}

@@ -69,6 +69,8 @@ export default function EssAttendancePanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("my_attendance", "Unable to load My Attendance labels.");
   const { blnLoading: blnRightsLoading, canViewAny } = useModuleActionAccess([
+    // Tenants may use either the canonical ESS code or the legacy My Attendance aliases.
+    "ESS_ATTENDANCE",
     "ESS_MY_ATTENDANCE",
     "MY_ATTENDANCE",
     "ATTENDANCE",
@@ -198,63 +200,38 @@ export default function EssAttendancePanel() {
 
   return (
     <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "16px",
-          overflow: "hidden",
-          border: "1px solid",
-          borderColor: alpha(objTheme.palette.primary.main, 0.18),
-          background: `linear-gradient(110deg, ${alpha(objTheme.palette.primary.main, 0.11)} 0%, ${alpha(objTheme.palette.info.light, 0.06)} 55%, ${objTheme.palette.background.paper} 100%)`,
-          boxShadow: `0 8px 24px ${alpha(objTheme.palette.primary.main, 0.07)}`,
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} justifyContent="space-between" spacing={1.5}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box
-              sx={{
-                width: 42,
-                height: 42,
-                display: "grid",
-                placeItems: "center",
-                flexShrink: 0,
-                borderRadius: "10px",
-                color: "primary.main",
-                bgcolor: alpha(objTheme.palette.primary.main, 0.12),
-                border: "1px solid",
-                borderColor: alpha(objTheme.palette.primary.main, 0.18),
-              }}
-            >
-              <AccessTimeRoundedIcon />
-            </Box>
-            <Box>
-              <Typography variant="h5" fontWeight={800}>{t("page_title", "My Attendance")}</Typography>
-              <Typography color="text.secondary">{t("page_subtitle", "Punch in or out and review your personal attendance record.")}</Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button
-              data-control-id="ess.my-attendance.policy-info.button"
-              variant="outlined"
-              startIcon={<InfoOutlinedIcon />}
-              onClick={() => setBlnPolicyDialogOpen(true)}
-              sx={{ bgcolor: alpha(objTheme.palette.background.paper, 0.8) }}
-            >
-              {t("attendance_rules", "Attendance Rules")}
-            </Button>
-            <Button
-              data-control-id="ess.my-attendance.refresh.button"
-              variant="outlined"
-              startIcon={<RefreshRoundedIcon />}
-              onClick={() => void loadSelectedMonth()}
-              disabled={blnLoading}
-              sx={{ bgcolor: alpha(objTheme.palette.background.paper, 0.8) }}
-            >
-              {t("refresh", "Refresh")}
-            </Button>
-          </Stack>
+      <Box className="pageBanner" data-control-id="ess.my-attendance.header.banner" sx={{ flexWrap: { xs: "wrap", md: "nowrap" } }}>
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <AccessTimeRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">{t("page_title", "My Attendance")}</Typography>
+          <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Punch in or out and review your personal attendance record.")}</Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1, ml: { md: "auto" } }}>
+          <Button
+            data-control-id="ess.my-attendance.policy-info.button"
+            variant="outlined"
+            startIcon={<InfoOutlinedIcon />}
+            onClick={() => setBlnPolicyDialogOpen(true)}
+            sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}
+          >
+            {t("attendance_rules", "Attendance Rules")}
+          </Button>
+          <Button
+            data-control-id="ess.my-attendance.refresh.button"
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={() => void loadSelectedMonth()}
+            disabled={blnLoading}
+            sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}
+          >
+            {t("refresh", "Refresh")}
+          </Button>
         </Stack>
-      </Paper>
+      </Box>
 
       {strError ? (
         <Alert

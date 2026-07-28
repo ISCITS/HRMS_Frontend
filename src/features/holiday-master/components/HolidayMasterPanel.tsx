@@ -100,7 +100,8 @@ export default function HolidayMasterPanel() {
   const intPrimaryTextIndex = lstTextFields.findIndex((objText) => objText.intLanguageID === intPrimaryLanguageID);
   const blnFormActive = watch("blnIsActive");
   const blnCanView = canViewAny();
-  const blnCanAdd = canDoAny("add");
+  // Older HR groups use EDIT as the Holiday Master maintenance right for both add and update.
+  const blnCanAdd = canDoAny("add") || canDoAny("create") || canDoAny("edit");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
@@ -318,11 +319,12 @@ export default function HolidayMasterPanel() {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
-            lg: "110px minmax(220px, 1.2fr) minmax(190px, 0.9fr) minmax(170px, 0.8fr) 140px 108px 108px",
+            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 1.25fr 1.25fr",
           },
           alignItems: "stretch",
           gap: 1.25,
           mt: 0.5,
+          "& > *": { minWidth: 0 },
           "& .MuiInputBase-root": { minHeight: 48 },
           "& .MuiButton-root": { minHeight: 48, whiteSpace: "nowrap" },
         }}>
@@ -331,19 +333,25 @@ export default function HolidayMasterPanel() {
           <TextField data-control-id="holiday-master.list.search-code.input" placeholder={t("search_code", "Search Holiday Code")} value={objSearchDraft.strSearchCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearchCode: objEvent.target.value.toUpperCase() }))} />
           <TextField data-control-id="holiday-master.list.search-type.select" select label={t("type", "Holiday Type")} value={objSearchDraft.strHolidayTypeCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strHolidayTypeCode: objEvent.target.value }))}><MenuItem value="">{t("all", "All")}</MenuItem>{objOptions.lstHolidayTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}</TextField>
           <TextField data-control-id="holiday-master.list.search-status.select" select label={t("status", "Status")} value={objSearchDraft.strStatus} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strStatus: objEvent.target.value }))}><MenuItem value="">{t("all", "All")}</MenuItem><MenuItem value="Active">{t("active", "Active")}</MenuItem><MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem></TextField>
-          <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>{t("search", "Search")}</Button>
-          <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch}>{t("clear", "Clear")}</Button>
-        </Box>
-        <Box sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(220px, 280px))" },
-          gap: 1.25,
-          justifyContent: "start",
-          mt: 1.25,
-          "& .MuiInputBase-root": { minHeight: 48 },
-        }}>
+          {/* Date range completes the primary filter row. */}
           <TextField data-control-id="holiday-master.list.from-date.input" label={t("from_date", "From Date")} type="date" value={objSearchDraft.dtFromDate} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, dtFromDate: objEvent.target.value }))} InputLabelProps={{ shrink: true }} />
           <TextField data-control-id="holiday-master.list.to-date.input" label={t("to_date", "To Date")} type="date" value={objSearchDraft.dtToDate} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, dtToDate: objEvent.target.value }))} InputLabelProps={{ shrink: true }} />
+        </Box>
+        {/* Actions sit below the date range and align to the right on desktop. */}
+        <Box sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 1.25fr 1.25fr",
+          },
+          gap: 1.25,
+          mt: 1.25,
+          "& > *": { minWidth: 0 },
+          "& .MuiButton-root": { minHeight: 48, whiteSpace: "nowrap" },
+        }}>
+          <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} sx={{ gridColumn: { lg: 6 } }}>{t("search", "Search")}</Button>
+          <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch} sx={{ gridColumn: { lg: 7 } }}>{t("clear", "Clear")}</Button>
         </Box>
         {lstSelectedIDs.length > 0 && blnCanEdit ? <Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{lstSelectedIDs.length} {t("rows_selected", "rows selected")}</Typography><Button data-control-id="holiday-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => requestBulkStatus(true)}>{t("activate", "Activate")}</Button><Button data-control-id="holiday-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => requestBulkStatus(false)}>{t("deactivate", "Deactivate")}</Button></Box> : null}
       </Box>

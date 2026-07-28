@@ -2,6 +2,7 @@
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import EventRepeatRoundedIcon from "@mui/icons-material/EventRepeatRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -52,7 +53,7 @@ function formatDateTime(strValue?: string | null) {
 }
 
 function SummaryCard({ strLabel, strValue }: { strLabel: string; strValue: string | number }) {
-  return <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, height: "100%" }}><Typography color="text.secondary" variant="caption">{strLabel}</Typography><Typography fontWeight={800}>{strValue}</Typography></Paper>;
+  return <Paper variant="outlined" sx={{ p: 1.25, borderRadius: "8px !important", height: "100%" }}><Typography color="text.secondary" variant="caption">{strLabel}</Typography><Typography fontWeight={800}>{strValue}</Typography></Paper>;
 }
 
 export default function AttendanceRegularizationPage() {
@@ -206,10 +207,19 @@ export default function AttendanceRegularizationPage() {
 
   return (
     <Box className={styles.page} sx={{ overflowY: "auto", pr: 0.5, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
-      <Paper className={styles.controlsCard}>
-        <Typography variant="h5" fontWeight={850}>{t("page_title", "Attendance Regularization")}</Typography>
-        <Typography color="text.secondary">{t("page_subtitle", "Request corrections and follow their approval history.")}</Typography>
-        <Tabs value={intTab} onChange={(_, intValue) => setIntTab(intValue)} sx={{ mt: 1 }}>
+      <Box className="pageBanner" data-control-id="attendance-regularization.header.banner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <EventRepeatRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">{t("page_title", "Attendance Regularization")}</Typography>
+          <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Request corrections and follow their approval history.")}</Typography>
+        </Box>
+      </Box>
+      <Paper className={styles.controlsCard} sx={{ pt: "0 !important", pb: "0 !important" }}>
+        <Tabs value={intTab} onChange={(_, intValue) => setIntTab(intValue)}>
           <Tab data-control-id="attendance-regularization.new-request.tab" label={t("new_request_tab", "New Request")} />
           <Tab data-control-id="attendance-regularization.my-requests.tab" label={t("my_requests_tab", "My Requests")} />
         </Tabs>
@@ -218,37 +228,39 @@ export default function AttendanceRegularizationPage() {
 
       {intTab === 0 ? (
         <Grid container spacing={2}>
-          <Grid item xs={12} lg={4}>
+          <Grid item xs={12}>
             <Stack spacing={1.5}>
               <Typography fontWeight={850}>{t("original_attendance", "Original Attendance")}</Typography>
-              <Grid container spacing={1}>
-                <Grid item xs={6}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} /></Grid>
-                <Grid item xs={6}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay.decWorkedHours ?? "—"} /></Grid>
-                <Grid item xs={6}><SummaryCard strLabel={t("first_in", "First IN")} strValue={objContext?.objAttendanceDay.tmFirstIn?.slice(0, 5) ?? "—"} /></Grid>
-                <Grid item xs={6}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={objContext?.objAttendanceDay.tmLastOut?.slice(0, 5) ?? "—"} /></Grid>
-              </Grid>
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                <Typography fontWeight={800}>{t("punch_log", "Punch Log")}</Typography>
-                <Stack spacing={0.75} sx={{ mt: 1 }}>
-                  {objContext?.lstPunches.length ? objContext.lstPunches.map((objPunch) => (
-                    <Stack key={objPunch.intID} direction="row" justifyContent="space-between">
-                      <Typography>{lookupLabel(objLookups["ATTENDANCE_PUNCH_DIRECTION"] ?? [], objPunch.strDirection, t("punch", "Punch"))}</Typography>
-                      <Typography color="text.secondary">{formatDateTime(objPunch.dtPunchAt)}</Typography>
+              <Grid container spacing={1} alignItems="stretch">
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay.decWorkedHours ?? "—"} /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={objContext?.objAttendanceDay.tmFirstIn?.slice(0, 5) ?? "—"} /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={objContext?.objAttendanceDay.tmLastOut?.slice(0, 5) ?? "—"} /></Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: "8px !important", height: "100%" }}>
+                    <Typography fontWeight={800}>{t("punch_log", "Punch Log")}</Typography>
+                    <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                      {objContext?.lstPunches.length ? objContext.lstPunches.map((objPunch) => (
+                        <Stack key={objPunch.intID} direction="row" justifyContent="space-between">
+                          <Typography>{lookupLabel(objLookups["ATTENDANCE_PUNCH_DIRECTION"] ?? [], objPunch.strDirection, t("punch", "Punch"))}</Typography>
+                          <Typography color="text.secondary">{formatDateTime(objPunch.dtPunchAt)}</Typography>
+                        </Stack>
+                      )) : <Typography color="text.secondary">{t("no_punches", "No punches recorded.")}</Typography>}
                     </Stack>
-                  )) : <Typography color="text.secondary">{t("no_punches", "No punches recorded.")}</Typography>}
-                </Stack>
-              </Paper>
+                  </Paper>
+                </Grid>
+              </Grid>
               {objContext?.objHoliday ? <Alert severity="info">{t("holiday_context", "This date is a holiday.")}</Alert> : null}
               {objContext?.objApprovedLeave ? <Alert severity="info">{t("leave_context", "Approved leave exists for this date.")}</Alert> : null}
             </Stack>
           </Grid>
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12}>
             <Paper component="form" onSubmit={handleSubmit(saveDraft)} className={styles.controlsCard}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
-                <Grid item xs={12} sm={6}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.request-type.select" select fullWidth label={t("request_type", "Request Type")} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message}>{lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
-                <Grid item xs={12} sm={6}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth label={t("proposed_status", "Proposed Status")} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
-                <Grid item xs={12} sm={6}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth type="number" inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.request-type.select" select fullWidth size="small" label={t("request_type", "Request Type")} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message}>{lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth size="small" label={t("proposed_status", "Proposed Status")} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message} />} /></Grid>
                 {blnNeedsTimes ? <><Grid item xs={12} sm={6}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} />} /></Grid><Grid item xs={12} sm={6}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} />} /></Grid></> : null}
                 <Grid item xs={12}><Controller name="strEmployeeReason" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.reason.input" fullWidth multiline minRows={3} label={t("reason", "Reason")} error={Boolean(objErrors.strEmployeeReason)} helperText={objErrors.strEmployeeReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strProposedRemark" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.remark.input" fullWidth label={t("remark", "Remark")} />} /></Grid>
