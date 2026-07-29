@@ -129,11 +129,13 @@ export default function EssLeaveApplicationPanel() {
   const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
   const [strWithdrawReason, setStrWithdrawReason] = useState("");
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  // Validation errors and warnings stay hidden until the user actually attempts Save/Submit.
+  const [blnShowValidation, setBlnShowValidation] = useState(false);
   const objErrorSummaryRef = useRef<HTMLDivElement | null>(null);
   const blnInitialRouteHandledRef = useRef(false);
 
   const { control, handleSubmit, reset, setValue, setError, formState: { errors: objFormErrors } } = useForm<LeaveFormValues>({
-    resolver: yupResolver(objFormSchema) as Resolver<LeaveFormValues>, defaultValues: fnDefaultForm(), mode: "onBlur",
+    resolver: yupResolver(objFormSchema) as Resolver<LeaveFormValues>, defaultValues: fnDefaultForm(), mode: "onSubmit", reValidateMode: "onSubmit",
   });
   const objWatchedForm = useWatch({ control });
   // ESS leave menus grant the generic action set (edit/add/submit); older setups use the
@@ -161,7 +163,7 @@ export default function EssLeaveApplicationPanel() {
     blnInitialRouteHandledRef.current = true;
     if (new URLSearchParams(window.location.search).get("view") === "apply") {
       setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
-      reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+      setBlnShowValidation(false); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
     }
   }, [blnLoading, lstTypes, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
@@ -196,7 +198,7 @@ export default function EssLeaveApplicationPanel() {
 
   function fnOpenNewForm(intLeaveTypeID?: number, lstAvailableTypes = lstTypes) {
     setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
-    reset(fnDefaultForm(intLeaveTypeID ?? lstAvailableTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+    setBlnShowValidation(false); reset(fnDefaultForm(intLeaveTypeID ?? lstAvailableTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
   }
 
   async function fnOpenEditForm(objApplication: LeaveApplicationDto) {
@@ -204,7 +206,7 @@ export default function EssLeaveApplicationPanel() {
     try {
       const objFullApplication = await fnGetApplication(objApplication.intID);
       setObjEditing(objFullApplication); setObjPreview(objFullApplication.objCalculation ?? null);
-      setLstExistingAttachments(objFullApplication.lstAttachments ?? []); setLstQueuedFiles([]);
+      setLstExistingAttachments(objFullApplication.lstAttachments ?? []); setLstQueuedFiles([]); setBlnShowValidation(false);
       reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFirstSession: objFullApplication.blnFromHalf ? "half" : "full", strLastSession: objFullApplication.blnToHalf ? "half" : "full", strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
       setBlnFormOpen(true);
     } catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
@@ -303,12 +305,12 @@ export default function EssLeaveApplicationPanel() {
       <DialogTitle id="leave-form-title" sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>{objEditing ? t("edit_application", "Edit Leave Application") : t("apply_leave", "Apply Leave")}<IconButton aria-label={t("close", "Close")} onClick={() => setBlnFormOpen(false)} disabled={blnSaving}><CloseRoundedIcon /></IconButton></DialogTitle>
       {blnSaving ? <LinearProgress /> : null}
       <DialogContent dividers sx={{ bgcolor: "#f8fafc", p: { xs: 1.5, md: 2.5 } }}><Grid container spacing={2}><Grid item xs={12} md={7}><Stack spacing={2}>
-        {lstAllBlockers.length ? <Alert ref={objErrorSummaryRef} tabIndex={-1} severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstAllBlockers)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
-        {objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
+        {blnShowValidation && lstAllBlockers.length ? <Alert ref={objErrorSummaryRef} tabIndex={-1} severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstAllBlockers)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
+        {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
         <RequestFields control={control} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} strPolicyHelp={strPolicyHelp} fnLabel={t} />
         <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><Button component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />} disabled={blnSaving}>{t("add_files", "Add files")}<input hidden multiple type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(objEvent) => { setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...Array.from(objEvent.target.files ?? [])]); objEvent.target.value = ""; }} /></Button></Stack><Stack spacing={.75} sx={{ mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Stack></Paper>
       </Stack></Grid><Grid item xs={12} md={5}><PreviewPanel objPreview={objPreview} blnLoading={blnPreviewLoading} fnLabel={t} /></Grid></Grid></DialogContent>
-      <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => void handleSubmit(fnSaveDraft)()}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={blnSaving || blnPreviewLoading || !blnCanManage} onClick={() => void handleSubmit(() => setObjConfirm({ strKind: "submit" }))()}>{t("submit_application", "Submit Application")}</Button></DialogActions>
+      <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={blnSaving || blnPreviewLoading || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(() => setObjConfirm({ strKind: "submit" }))(); }}>{t("submit_application", "Submit Application")}</Button></DialogActions>
     </Dialog>
 
     <DetailDialog objApplication={objDetail} blnLoading={blnDetailLoading} blnCanManage={blnCanManage} fnOnClose={() => setObjDetail(null)} fnOnWithdraw={(intApplicationID) => { setStrWithdrawReason(""); setObjConfirm({ strKind: "withdraw", intApplicationID }); }} fnLabel={t} />
