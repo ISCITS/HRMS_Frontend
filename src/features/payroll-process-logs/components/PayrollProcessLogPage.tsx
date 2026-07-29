@@ -1,15 +1,13 @@
 "use client";
 
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   MenuItem,
-  Pagination,
   Snackbar,
   Stack,
   TextField,
@@ -18,8 +16,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { usePayrollProcessLogLabels } from "@/features/payroll-process-logs/hooks/usePayrollProcessLogLabels";
 import {
   createInitialPayrollProcessLogFilters,
@@ -43,7 +43,6 @@ type PayrollProcessLogPageProps = {
 };
 
 const lstModuleCodes = ["PAYROLL_PROCESS_LOG", "PAYROLL_PROCESS_LOGS", "MASTER_PAYROLL_PROCESS_LOG"];
-const lstRowsPerPageOptions = [10, 20, 50];
 
 const dicEmptyOptions: PayrollProcessLogFormOptions = {
   lstEmployees: [],
@@ -70,88 +69,6 @@ function formatDateTime(strValue: string | null | undefined) {
   });
 }
 
-function downloadCsv(strFileName: string, lstRows: PayrollProcessLogListRecord[]) {
-  const lstHeaders = ["Payroll Run ID", "Employee", "Stage", "Status", "Entity", "Message", "Logged On"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.intPayrollRunID,
-        dicRow.strEmployeeName ? `${dicRow.strEmployeeName}${dicRow.strEmployeeCode ? ` (${dicRow.strEmployeeCode})` : ""}` : "-",
-        dicRow.strProcessStage,
-        dicRow.strProcessStatus,
-        dicRow.strEntityName ?? "-",
-        dicRow.strMessageText,
-        formatDateTime(dicRow.dtAddedOn)
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: PayrollProcessLogListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1280,height=860");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.intPayrollRunID}</td>
-      <td>${dicRow.strEmployeeName ? `${dicRow.strEmployeeName}${dicRow.strEmployeeCode ? ` (${dicRow.strEmployeeCode})` : ""}` : "-"}</td>
-      <td>${dicRow.strProcessStage}</td>
-      <td>${dicRow.strProcessStatus}</td>
-      <td>${dicRow.strEntityName ?? "-"}</td>
-      <td>${dicRow.strMessageText}</td>
-      <td>${formatDateTime(dicRow.dtAddedOn)}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; vertical-align: top; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Payroll Run ID</th>
-              <th>Employee</th>
-              <th>Stage</th>
-              <th>Status</th>
-              <th>Entity</th>
-              <th>Message</th>
-              <th>Logged On</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
-
 export default function PayrollProcessLogPage({ intInitialPayrollRunID }: PayrollProcessLogPageProps) {
   const objRouter = useRouter();
   const { t } = usePayrollProcessLogLabels();
@@ -165,8 +82,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   const [dicFiltersDraft, setDicFiltersDraft] = useState<PayrollProcessLogFilters>(dicInitialFilters);
   const [dicOptions, setDicOptions] = useState<PayrollProcessLogFormOptions>(dicEmptyOptions);
   const [blnLoading, setBlnLoading] = useState(true);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const blnCanView = canViewAny();
@@ -189,7 +104,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   async function loadLogs(dicFilters: PayrollProcessLogFilters) {
     if (!blnCanView) {
       setLstLogs([]);
-      setIntPage(1);
       setBlnLoading(false);
       return;
     }
@@ -197,7 +111,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
     setBlnLoading(true);
     try {
       setLstLogs(await payrollProcessLogService.getPayrollProcessLogs(dicFilters));
-      setIntPage(1);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : t("load_logs_failed", "Unable to load payroll process logs."), "error");
     } finally {
@@ -214,12 +127,57 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
     loadLogs(dicInitialFilters).catch(() => undefined);
   }, [blnRightsLoading, dicInitialFilters]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstLogs.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = useMemo(
-    () => lstLogs.slice(intStartIndex, intStartIndex + intRowsPerPage),
-    [intStartIndex, intRowsPerPage, lstLogs]
+  const lstTableRows = useMemo(
+    () => lstLogs.map((dicRow) => ({
+      id: dicRow.intID,
+      action: (
+        <CommonRowActions
+          testIdPrefix="payroll-process-logs.list.row"
+          rowKey={dicRow.intID}
+          blnCanView
+          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
+        />
+      ),
+      employee: (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+          <Typography sx={{ fontSize: "0.86rem", fontWeight: 700, color: "#1f2937" }}>
+            {dicRow.strEmployeeName ?? "-"}
+          </Typography>
+          {dicRow.strEmployeeCode ? (
+            <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>
+              {dicRow.strEmployeeCode}
+            </Typography>
+          ) : null}
+        </Box>
+      ),
+      strProcessStage: dicRow.strProcessStage,
+      strProcessStatus: (
+        <span className={`${styles.statusPill} ${dicRow.strProcessStatus.toLowerCase().includes("success") ? styles.statusActive : styles.statusInactive}`}>
+          {dicRow.strProcessStatus}
+        </span>
+      ),
+      entity: dicRow.strEntityName ? `${dicRow.strEntityName}${dicRow.intEntityID ? ` #${dicRow.intEntityID}` : ""}` : "-",
+      message: (
+        <Box sx={{ whiteSpace: "normal", minWidth: 320, maxWidth: 540, lineHeight: 1.45 }}>
+          {dicRow.strMessageText}
+        </Box>
+      ),
+      dtAddedOn: formatDateTime(dicRow.dtAddedOn)
+    })),
+    [lstLogs, objRouter]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "employee", headerName: t("employee", "Employee"), sortable: false, filterable: false, width: 220 },
+      { field: "strProcessStage", headerName: t("process_stage", "Process Stage") },
+      { field: "strProcessStatus", headerName: t("process_status", "Process Status"), sortable: false, filterable: false, width: 150 },
+      { field: "entity", headerName: t("entity", "Entity"), sortable: false, filterable: false, width: 220 },
+      { field: "message", headerName: t("message_text", "Message"), sortable: false, filterable: false, width: 420 },
+      { field: "dtAddedOn", headerName: t("logged_on", "Logged On") }
+    ],
+    [lstTableRows, t]
   );
 
   function applySearch() {
@@ -230,19 +188,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
     const dicReset = dicInitialFilters;
     setDicFiltersDraft(dicReset);
     loadLogs(dicReset).catch(() => undefined);
-  }
-
-  if (blnLoading || blnRightsLoading) {
-    return (
-      <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
-        <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>
-            {t("loading_payroll_process_logs", "Loading payroll process logs...")}
-          </Typography>
-        </Stack>
-      </Box>
-    );
   }
 
   if (!blnCanView) {
@@ -263,6 +208,19 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      {blnRunScoped ? (
+        <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+          <Button
+            data-controlid="payroll-process-logs.view.back.button"
+            className={styles.secondaryButton}
+            startIcon={<ArrowBackRoundedIcon />}
+            onClick={() => objRouter.push("/payroll/process-log")}
+          >
+            {t("back_to_list", "Back to List")}
+          </Button>
+        </Box>
+      ) : null}
+
       <Box className={styles.controlsCard}>
         <Box
           sx={{
@@ -272,15 +230,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             gap: 1,
           }}
         >
-          <TextField
-            data-testid="payroll-process-logs.list.run-id.input"
-            label={t("payroll_run_id", "Payroll Run ID")}
-            value={dicFiltersDraft.intPayrollRunID}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, intPayrollRunID: objEvent.target.value }))}
-            size="small"
-            disabled={blnRunScoped}
-            sx={{ minWidth: { xs: "100%", sm: 130 }, maxWidth: { sm: 150 } }}
-          />
           <TextField
             select
             label={t("employee", "Employee")}
@@ -292,7 +241,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
               }))
             }
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 190 }, maxWidth: { sm: 220 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" }, minWidth: { md: 220 }, maxWidth: { md: 320 } }}
           >
             <MenuItem value="">{t("all_employees", "All Employees")}</MenuItem>
             {dicOptions.lstEmployees.map((dicOption) => (
@@ -307,7 +256,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStage}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: objEvent.target.value }))}
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
           >
             <MenuItem value="">{t("all_stages", "All Stages")}</MenuItem>
             {dicOptions.lstProcessStages.map((strStage) => (
@@ -322,7 +271,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             value={dicFiltersDraft.strProcessStatus}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: objEvent.target.value }))}
             size="small"
-            sx={{ minWidth: { xs: "100%", sm: 150 }, maxWidth: { sm: 180 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
           >
             <MenuItem value="">{t("all_statuses", "All Statuses")}</MenuItem>
             {dicOptions.lstProcessStatuses.map((strStatus) => (
@@ -332,15 +281,16 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             ))}
           </TextField>
           <TextField
-            data-testid="payroll-process-logs.list.search-text.input"
+            data-controlid="payroll-process-logs.list.search-text.input"
+            inputProps={{ "data-controlid": "payroll-process-logs.list.search-text.input" }}
             label={t("search_text", "Search Text")}
             value={dicFiltersDraft.strSearchText}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchText: objEvent.target.value }))}
             size="small"
-            sx={{ flex: { xs: "1 1 100%", md: "0 1 260px" }, minWidth: { md: 220 } }}
+            sx={{ flex: { xs: "1 1 100%", md: "1 1 280px" }, minWidth: { md: 260 }, maxWidth: { md: 360 } }}
           />
           <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button data-testid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
+            <Button data-controlid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
               {t("search", "Search")}
             </Button>
           </Box>
@@ -364,128 +314,24 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
       ) : null}
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanExport ? (
-              <Button
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() => downloadCsv("payroll_process_logs.csv", lstLogs)}
-              >
-                {t("export_excel", "Export Excel")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button
-                className={styles.secondaryButton}
-                startIcon={<DownloadRoundedIcon />}
-                onClick={() => exportPdf(t("page_title", "Payroll Process Logs"), lstLogs)}
-              >
-                {t("export_pdf", "Export PDF")}
-              </Button>
-            ) : null}
-          </Box>
-          {lstLogs.length > 0 ? (
-            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-                <TextField
-                  select
-                  size="small"
-                  value={String(intRowsPerPage)}
-                  onChange={(objEvent) => {
-                    setIntRowsPerPage(Number(objEvent.target.value));
-                    setIntPage(1);
-                  }}
-                  className={styles.rowsPerPageSelect}
-                >
-                  {lstRowsPerPageOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>
-                      {intOption}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Typography className={styles.paginationRange}>
-                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstLogs.length)} {t("pagination_separator", "of")} {lstLogs.length}
-                </Typography>
-              </Box>
-              <Pagination
-                count={intPageCount}
-                page={intCurrentPage}
-                onChange={(_objEvent, intValue) => setIntPage(intValue)}
-                size="small"
-                color="primary"
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-          ) : null}
-        </Box>
-
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t("actions", "Actions")}</th>
-                <th>{t("payroll_run_id", "Payroll Run ID")}</th>
-                <th>{t("employee", "Employee")}</th>
-                <th>{t("process_stage", "Process Stage")}</th>
-                <th>{t("process_status", "Process Status")}</th>
-                <th>{t("entity", "Entity")}</th>
-                <th>{t("message_text", "Message")}</th>
-                <th>{t("logged_on", "Logged On")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstLogs.length === 0 ? (
-                <tr>
-                  <td className={styles.emptyState} colSpan={8}>
-                    {t("empty_message", "No payroll process logs found for the selected filters.")}
-                  </td>
-                </tr>
-              ) : lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td>
-                    <CommonRowActions
-                      testIdPrefix="payroll-process-logs.list.row"
-                      rowKey={dicRow.intID}
-                      blnCanView
-                      onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
-                    />
-                  </td>
-                  <td>{dicRow.intPayrollRunID}</td>
-                  <td>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-                      <Typography sx={{ fontSize: "0.86rem", fontWeight: 700, color: "#1f2937" }}>
-                        {dicRow.strEmployeeName ?? "-"}
-                      </Typography>
-                      {dicRow.strEmployeeCode ? (
-                        <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>
-                          {dicRow.strEmployeeCode}
-                        </Typography>
-                      ) : null}
-                    </Box>
-                  </td>
-                  <td>{dicRow.strProcessStage}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${dicRow.strProcessStatus.toLowerCase().includes("success") ? styles.statusActive : styles.statusInactive}`}>
-                      {dicRow.strProcessStatus}
-                    </span>
-                  </td>
-                  <td>{dicRow.strEntityName ? `${dicRow.strEntityName}${dicRow.intEntityID ? ` #${dicRow.intEntityID}` : ""}` : "-"}</td>
-                  <td>
-                    <Box sx={{ whiteSpace: "normal", minWidth: 320, maxWidth: 540, lineHeight: 1.45 }}>
-                      {dicRow.strMessageText}
-                    </Box>
-                  </td>
-                  <td>{formatDateTime(dicRow.dtAddedOn)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          defaultPageSize={10}
+          pageSizeOptions={[10, 20, 50]}
+          exportFileName="payroll_process_logs"
+          showExportOptions={blnCanExport}
+          showPaginationSummary
+          emptyMessage={t("empty_message", "No payroll process logs found for the selected filters.")}
+          testIdPrefix="payroll-process-logs.list"
+          hideToolbar
+          withPaper={false}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
 
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_payroll_process_logs", "Loading payroll process logs...")} />
       <Snackbar
         open={objToast.blnOpen}
         autoHideDuration={3500}

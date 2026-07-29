@@ -32,6 +32,8 @@ import {
   type HrItDeclarationEmployeeOption,
   type ItDeclarationRegime,
 } from "@/features/it-declaration/services/itDeclarationService";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstRegimeOptions: ItDeclarationRegime[] = ["Old Regime", "New Regime"];
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -83,6 +85,8 @@ function matchesRegime(objRow: HrEmployeeItDeclarationListRecord, strRegime: str
 export default function HrItDeclarationListPage() {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
+  const { t } = useModuleLabels("it-declaration", "Unable to load IT declaration labels.");
+  const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(["HR_IT_DECLARATION"]);
 
   const [lstEmployees, setLstEmployees] = useState<HrItDeclarationEmployeeOption[]>([]);
   const [blnEmployeeLoading, setBlnEmployeeLoading] = useState(false);
@@ -115,6 +119,8 @@ export default function HrItDeclarationListPage() {
   const intPageCount = Math.max(1, Math.ceil(lstRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
   const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
+  const blnCanView = canViewAny() || canDoAny("view");
+  const blnCanAdd = canDoAny("add");
   const lstVisibleRows = useMemo(
     () => lstRows.slice(intStartIndex, intStartIndex + intRowsPerPage),
     [intStartIndex, intRowsPerPage, lstRows],
@@ -134,13 +140,37 @@ export default function HrItDeclarationListPage() {
     return setCodes;
   }, [lstRows]);
 
+  function getRegimeLabel(strRegime: ItDeclarationRegime) {
+    return strRegime === "New Regime"
+      ? t("IT_DECLARATION_NEW_REGIME", "New Regime")
+      : t("IT_DECLARATION_OLD_REGIME", "Old Regime");
+  }
+
+  function getStatusLabel(strStatus?: string | null) {
+    const strNormalized = String(strStatus || "draft").trim().toLowerCase().replace(/\s+/g, "_");
+    const dicStatusKeys: Record<string, [string, string]> = {
+      submitted: ["IT_DECLARATION_SUBMITTED", "Submitted"],
+      under_review: ["IT_DECLARATION_UNDER_REVIEW", "Under Review"],
+      proof_pending: ["IT_DECLARATION_PROOF_PENDING", "Proof Pending"],
+      approved: ["IT_DECLARATION_APPROVED", "Approved"],
+      partially_approved: ["IT_DECLARATION_PARTIALLY_APPROVED", "Partially Approved"],
+      released: ["IT_DECLARATION_RELEASED", "Released"],
+      resubmitted: ["IT_DECLARATION_RESUBMITTED", "Resubmitted"],
+      locked: ["IT_DECLARATION_LOCKED", "Locked"],
+      rejected: ["IT_DECLARATION_REJECTED", "Rejected"],
+      draft: ["IT_DECLARATION_DRAFT", "Draft"],
+    };
+    const [strKey, strFallback] = dicStatusKeys[strNormalized] ?? ["IT_DECLARATION_DRAFT", "Draft"];
+    return t(strKey, strFallback);
+  }
+
   async function loadEmployees() {
     setBlnEmployeeLoading(true);
     try {
       const lstData = await hrItDeclarationService.listEmployees({ strSearch: strEmployeeLookup });
       setLstEmployees(lstData);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load employees.");
+      setStrError(objError instanceof Error ? objError.message : t("IT_DECLARATION_UNABLE_LOAD_EMPLOYEES", "Unable to load employees."));
     } finally {
       setBlnEmployeeLoading(false);
     }
@@ -154,17 +184,12 @@ export default function HrItDeclarationListPage() {
     const objEmployee = objFilters?.objEmployee ?? objSearchEmployee;
     const strFinancialYearCode = objFilters?.strFinancialYearCode ?? strSearchFinancialYearCode;
     const strRegime = objFilters?.strRegime ?? strSearchRegime;
-    if (!objEmployee?.intEmployeeID) {
-      setBlnHasSearched(true);
-      setLstRows([]);
-      return;
-    }
     setBlnListLoading(true);
     setBlnHasSearched(true);
     setStrError("");
     try {
       const objData = await hrItDeclarationService.getEmployeeDeclarations(
-        objEmployee.intEmployeeID,
+        objEmployee?.intEmployeeID,
         strFinancialYearCode.trim() || undefined,
       );
       if (typeof window !== "undefined") {
@@ -177,7 +202,7 @@ export default function HrItDeclarationListPage() {
       setLstRows((objData.lstRows ?? []).filter((objRow) => matchesRegime(objRow, strRegime)));
       setIntPage(1);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to load IT declarations.");
+      setStrError(objError instanceof Error ? objError.message : t("IT_DECLARATION_UNABLE_LOAD_IT_DECLARATIONS", "Unable to load IT declarations."));
       setLstRows([]);
     } finally {
       setBlnListLoading(false);
@@ -204,13 +229,23 @@ export default function HrItDeclarationListPage() {
   }
 
   function openDeclaration(objRow: HrEmployeeItDeclarationListRecord) {
-    if (!objSearchEmployee?.intEmployeeID) return;
+    const intEmployeeID = Number(objRow.intEmployeeID || objSearchEmployee?.intEmployeeID || 0);
+    if (!intEmployeeID) return;
     const strParams = new URLSearchParams({
-      employeeId: String(objSearchEmployee.intEmployeeID),
+      employeeId: String(intEmployeeID),
       declarationId: String(objRow.intDeclarationID),
       fy: normalizeFinancialYearCode(objRow.strFinancialYearCode || strSearchFinancialYearCode),
       regime: strSearchRegime,
-      returnTo: buildReturnTo(objSearchEmployee, strSearchFinancialYearCode || objRow.strFinancialYearCode, strSearchRegime),
+      returnTo: buildReturnTo(
+        {
+          intEmployeeID,
+          strEmployeeCode: String(objRow.strEmployeeCode || objSearchEmployee?.strEmployeeCode || ""),
+          strFullName: String(objRow.strFullName || objSearchEmployee?.strFullName || ""),
+          boolHasDeclaration: true,
+        },
+        strSearchFinancialYearCode || objRow.strFinancialYearCode,
+        strSearchRegime,
+      ),
     });
     objRouter.push(`/hr/it-declaration/declaration?${strParams.toString()}`);
   }
@@ -250,11 +285,12 @@ export default function HrItDeclarationListPage() {
   }
 
   useEffect(() => {
+    if (blnRightsLoading || !blnCanView) return;
     const intTimer = window.setTimeout(() => {
       void loadEmployees();
     }, 250);
     return () => window.clearTimeout(intTimer);
-  }, [strEmployeeLookup]);
+  }, [blnCanView, blnRightsLoading, strEmployeeLookup]);
 
   useEffect(() => {
     const hydrateFromFilters = (objEmployeeOption: HrItDeclarationEmployeeOption | null, strFinancialYearCode: string, strRegime: ItDeclarationRegime, blnAutoload: boolean) => {
@@ -265,7 +301,7 @@ export default function HrItDeclarationListPage() {
       setStrSearchRegime(strRegime);
       setStrAddRegime(strRegime);
       setBlnFiltersHydrated(true);
-      if (blnAutoload && objEmployeeOption?.intEmployeeID) {
+      if (blnAutoload) {
         void loadDeclarations({
           objEmployee: objEmployeeOption,
           strFinancialYearCode,
@@ -280,6 +316,7 @@ export default function HrItDeclarationListPage() {
         intEmployeeID,
         strEmployeeCode: strQueryEmployeeCode,
         strFullName: strQueryEmployeeName,
+        boolHasDeclaration: false,
       };
       const strNormalizedFy = normalizeFinancialYearCode(strQueryFinancialYearCode);
       const strNormalizedRegime: ItDeclarationRegime = strQueryRegime === "New Regime" ? "New Regime" : "Old Regime";
@@ -311,7 +348,7 @@ export default function HrItDeclarationListPage() {
       const objEmployeeOption = objStoredFilters.objEmployee ?? null;
       const strNormalizedFy = normalizeFinancialYearCode(objStoredFilters.strFinancialYearCode);
       const strNormalizedRegime: ItDeclarationRegime = objStoredFilters.strRegime === "New Regime" ? "New Regime" : "Old Regime";
-      hydrateFromFilters(objEmployeeOption, strNormalizedFy, strNormalizedRegime, Boolean(objEmployeeOption?.intEmployeeID));
+      hydrateFromFilters(objEmployeeOption, strNormalizedFy, strNormalizedRegime, true);
     } catch {
       window.sessionStorage.removeItem(strHrListFilterStorageKey);
       setBlnFiltersHydrated(true);
@@ -320,47 +357,53 @@ export default function HrItDeclarationListPage() {
 
   return (
     <Stack spacing={0.8} className={styles.page}>
-      {blnListLoading ? <BlockingLoader blnOpen strLabel="Loading IT declarations..." /> : null}
+      {(blnListLoading || blnRightsLoading) ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
+      {!blnRightsLoading && !blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
       <Paper
-        className={styles.controlsCard}
         sx={{
           p: 1.2,
-          borderRadius: "12px",
-          border: "1px solid #1e3a8a !important",
-          background: "linear-gradient(90deg, #184f94 0%, #0f7ea7 100%) !important",
+          borderRadius: "20px",
+          border: "1px solid #2E73B8 !important",
+          background:
+            "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)",
           boxShadow: "0 8px 20px rgba(11, 47, 99, 0.22)",
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
           <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>IT Declaration</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>{t("IT_DECLARATION_DASHBOARD_TITLE", "IT Declaration")}</Typography>
             <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              HR employee declaration workspace
+              {t("IT_DECLARATION_HR_WORKSPACE_SUBTITLE", "HR employee declaration workspace")}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Button
-              variant="contained"
-              startIcon={<AddCircleOutlineRoundedIcon />}
-              onClick={openAddDeclarationDialog}
-              sx={{
-                minHeight: 34,
-                px: 1.6,
-                borderRadius: "9px",
-                textTransform: "none",
-                fontWeight: 800,
-                color: "#111827",
-                backgroundColor: "#f59e0b",
-                boxShadow: "none",
-                "&:hover": { backgroundColor: "#d97706", boxShadow: "none" },
-              }}
-            >
-              Add Declaration
-            </Button>
+            {blnCanAdd ? (
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutlineRoundedIcon />}
+                onClick={openAddDeclarationDialog}
+                sx={{
+                  minHeight: 25,
+                  px: 1.6,
+                  borderRadius: "9px",
+                  textTransform: "none",
+                  fontWeight: 800,
+                  color: "#111827",
+                  backgroundColor: "#f59e0b",
+                  boxShadow: "none",
+                  "&:hover": {
+                    backgroundColor: "#F7FAFF",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
+              </Button>
+            ) : null}
             <Box sx={{ border: "1px solid rgba(255,255,255,0.45)", borderRadius: "8px", px: 1, py: 0.55, minWidth: 112, backgroundColor: "rgba(8,47,73,0.28)" }}>
-              <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>Records</Typography>
+              <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{t("IT_DECLARATION_RECORDS", "Records")}</Typography>
               <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{lstRows.length}</Typography>
             </Box>
           </Stack>
@@ -380,11 +423,15 @@ export default function HrItDeclarationListPage() {
             renderInput={(objParams) => (
               <TextField
                 {...objParams}
-                data-testid="salary.hr-it-declarations.search.employee.select"
+                data-controlid="salary.hr-it-declarations.search.employee.select"
                 size="small"
                 required
-                label="Employee"
+                label={t("IT_DECLARATION_EMPLOYEE", "Employee")}
                 fullWidth
+                inputProps={{
+                  ...objParams.inputProps,
+                  "data-controlid": "salary.hr-it-declarations.search.employee.select",
+                }}
                 InputProps={{
                   ...objParams.InputProps,
                   endAdornment: (
@@ -398,41 +445,44 @@ export default function HrItDeclarationListPage() {
             )}
           />
           <TextField
-            data-testid="salary.hr-it-declarations.search.financial-year.select"
+            data-controlid="salary.hr-it-declarations.search.financial-year.select"
             select
             size="small"
-            label="Financial Year"
+            label={t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year")}
             value={strSearchFinancialYearCode}
             onChange={(objEvent) => setStrSearchFinancialYearCode(objEvent.target.value)}
             fullWidth
+            inputProps={{ "data-controlid": "salary.hr-it-declarations.search.financial-year.select" }}
           >
             {lstFyOptions.map((strFy) => (
               <MenuItem key={strFy} value={strFy}>{strFy}</MenuItem>
             ))}
           </TextField>
           <TextField
-            data-testid="salary.hr-it-declarations.search.regime.select"
+            data-controlid="salary.hr-it-declarations.search.regime.select"
             select
             size="small"
-            label="Tax Regime"
+            label={t("IT_DECLARATION_TAX_REGIME", "Tax Regime")}
             value={strSearchRegime}
             onChange={(objEvent) => setStrSearchRegime(objEvent.target.value as ItDeclarationRegime)}
             fullWidth
+            inputProps={{ "data-controlid": "salary.hr-it-declarations.search.regime.select" }}
           >
             {lstRegimeOptions.map((strRegime) => (
-              <MenuItem key={strRegime} value={strRegime}>{strRegime}</MenuItem>
+              <MenuItem key={strRegime} value={strRegime}>{getRegimeLabel(strRegime)}</MenuItem>
             ))}
           </TextField>
           <Box className={styles.searchActions}>
-            <Button
-              className={styles.primaryButton}
-              variant="contained"
-              startIcon={<SearchRoundedIcon />}
-              disabled={!objSearchEmployee?.intEmployeeID}
-              onClick={() => void loadDeclarations()}
-            >
-              Search
-            </Button>
+            {blnCanView ? (
+              <Button
+                className={styles.primaryButton}
+                variant="contained"
+                startIcon={<SearchRoundedIcon />}
+                onClick={() => void loadDeclarations()}
+              >
+                {t("IT_DECLARATION_SEARCH", "Search")}
+              </Button>
+            ) : null}
           </Box>
         </Box>
       </Paper>
@@ -441,7 +491,7 @@ export default function HrItDeclarationListPage() {
         {lstRows.length > 0 ? (
           <Box className={styles.paginationBar} sx={{ p: 0, pb: 1, justifyContent: "flex-end" }}>
             <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>Rows per page</Typography>
+              <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
               <TextField
                 select
                 size="small"
@@ -457,7 +507,7 @@ export default function HrItDeclarationListPage() {
                 ))}
               </TextField>
               <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstRows.length)} of {lstRows.length}
+                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstRows.length)} {t("IT_DECLARATION_OF", "of")} {lstRows.length}
               </Typography>
             </Box>
             <Pagination count={intPageCount} page={intCurrentPage} onChange={(_objEvent, intValue) => setIntPage(intValue)} size="small" color="primary" showFirstButton showLastButton />
@@ -468,23 +518,26 @@ export default function HrItDeclarationListPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Declaration</th>
-                <th>Financial Year</th>
-                <th>Tax Regime</th>
-                <th>Declared</th>
-                <th>Approved</th>
-                <th>Proof Pending</th>
-                <th>Status</th>
-                <th>Last Updated</th>
-                <th>Action</th>
+                <th>{t("IT_DECLARATION_DECLARATION", "Declaration")}</th>
+                <th>{t("IT_DECLARATION_EMPLOYEE", "Employee")}</th>
+                <th>{t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year")}</th>
+                <th>{t("IT_DECLARATION_TAX_REGIME", "Tax Regime")}</th>
+                <th>{t("IT_DECLARATION_DECLARED", "Declared")}</th>
+                <th>{t("IT_DECLARATION_APPROVED", "Approved")}</th>
+                <th>{t("IT_DECLARATION_PROOF_PENDING", "Proof Pending")}</th>
+                <th>{t("IT_DECLARATION_STATUS", "Status")}</th>
+                <th>{t("IT_DECLARATION_LAST_UPDATED", "Last Updated")}</th>
+                <th>{t("IT_DECLARATION_ACTION", "Action")}</th>
               </tr>
             </thead>
             <tbody>
               {lstRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <Typography sx={{ py: 3, textAlign: "center", color: "#64748b", fontSize: "0.86rem" }}>
-                      {blnHasSearched || (blnFiltersHydrated && objSearchEmployee?.intEmployeeID) ? "No IT declarations found for the selected filters." : "Select employee, financial year, tax regime and click Search."}
+                      {blnHasSearched || blnFiltersHydrated
+                        ? t("IT_DECLARATION_NO_RECORDS_SELECTED_FILTERS", "No IT declarations found for the selected filters.")
+                        : t("IT_DECLARATION_SELECT_FILTERS_AND_SEARCH", "Select filters and click Search.")}
                     </Typography>
                   </td>
                 </tr>
@@ -492,16 +545,17 @@ export default function HrItDeclarationListPage() {
                 lstVisibleRows.map((objRow) => (
                   <tr key={objRow.intDeclarationID}>
                     <td>{objRow.strDeclarationCode}</td>
+                    <td>{[objRow.strEmployeeCode, objRow.strFullName].filter(Boolean).join(" - ") || "-"}</td>
                     <td>{objRow.strFinancialYearCode}</td>
-                    <td>{objRow.strTaxRegime || "-"}</td>
+                    <td>{objRow.strTaxRegime === "New Regime" ? getRegimeLabel("New Regime") : objRow.strTaxRegime === "Old Regime" ? getRegimeLabel("Old Regime") : "-"}</td>
                     <td>{formatCurrency(objRow.decDeclaredTotalAmount)}</td>
                     <td>{formatCurrency(objRow.decApprovedTotalAmount)}</td>
                     <td>{objRow.intProofPendingCount}</td>
-                    <td><ITDeclarationStatusBadge strStatus={objRow.strStatus || "draft"} /></td>
+                    <td><ITDeclarationStatusBadge strStatus={objRow.strStatus || "draft"} strLabel={getStatusLabel(objRow.strStatus)} /></td>
                     <td>{formatDateLabel(objRow.strLastUpdated)}</td>
                     <td>
-                      <Button size="small" startIcon={<VisibilityRoundedIcon />} onClick={() => openDeclaration(objRow)} sx={{ textTransform: "none", fontWeight: 800 }}>
-                        View
+                      <Button size="small" startIcon={<VisibilityRoundedIcon />} disabled={!blnCanView} onClick={() => openDeclaration(objRow)} sx={{ textTransform: "none", fontWeight: 800 }}>
+                        {t("IT_DECLARATION_VIEW", "View")}
                       </Button>
                     </td>
                   </tr>
@@ -513,7 +567,7 @@ export default function HrItDeclarationListPage() {
       </Box>
 
       <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Add Declaration</DialogTitle>
+        <DialogTitle>{t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
             <Autocomplete
@@ -529,7 +583,7 @@ export default function HrItDeclarationListPage() {
                   {...objParams}
                   size="small"
                   required
-                  label="Employee"
+                  label={t("IT_DECLARATION_EMPLOYEE", "Employee")}
                   InputProps={{
                     ...objParams.InputProps,
                     endAdornment: (
@@ -544,7 +598,7 @@ export default function HrItDeclarationListPage() {
             />
             <TextField
               select
-              label="Financial Year"
+              label={t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year")}
               value={strAddFinancialYearCode}
               onChange={(objEvent) => setStrAddFinancialYearCode(objEvent.target.value)}
               size="small"
@@ -552,28 +606,28 @@ export default function HrItDeclarationListPage() {
             >
               {lstFyOptions.map((strFy) => (
                 <MenuItem key={strFy} value={strFy} disabled={setDeclaredFyForSelectedEmployee.has(strFy)}>
-                  {strFy} {setDeclaredFyForSelectedEmployee.has(strFy) ? "(Already exists)" : ""}
+                  {strFy} {setDeclaredFyForSelectedEmployee.has(strFy) ? t("IT_DECLARATION_ALREADY_EXISTS", "(Already exists)") : ""}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               select
-              label="Tax Regime"
+              label={t("IT_DECLARATION_TAX_REGIME", "Tax Regime")}
               value={strAddRegime}
               onChange={(objEvent) => setStrAddRegime(objEvent.target.value as ItDeclarationRegime)}
               size="small"
               fullWidth
             >
               {lstRegimeOptions.map((strRegime) => (
-                <MenuItem key={strRegime} value={strRegime}>{strRegime}</MenuItem>
+                <MenuItem key={strRegime} value={strRegime}>{getRegimeLabel(strRegime)}</MenuItem>
               ))}
             </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBlnAddDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" disabled={!objAddEmployee?.intEmployeeID || !strAddFinancialYearCode} onClick={() => void createFromDialog()}>
-            Create
+          <Button variant="outlined" onClick={() => setBlnAddDialogOpen(false)}>{t("IT_DECLARATION_CANCEL", "Cancel")}</Button>
+          <Button className={styles.primaryButton} variant="contained" disabled={!objAddEmployee?.intEmployeeID || !strAddFinancialYearCode} onClick={() => void createFromDialog()}>
+            {t("IT_DECLARATION_CREATE", "Create")}
           </Button>
         </DialogActions>
       </Dialog>

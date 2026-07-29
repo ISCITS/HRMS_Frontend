@@ -15,7 +15,6 @@ import { formatDateLabel } from "@/features/reimbursements/formatters";
 import { isHrReimbursementTerminal } from "@/features/reimbursements/hrRules";
 import { payrollReimbursementService, type ReimbursementAuditRecord } from "@/features/reimbursements/services/payrollReimbursementService";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
-import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import type { PayrollRunOption } from "@/features/payroll/types";
 import type { ReimbursementClaimDto, ReimbursementClaimItemDto, ReimbursementOptionsDto } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -33,6 +32,7 @@ type DialogAction =
 
 const objEmptyOptions: ReimbursementOptionsDto = { lstSalaryComponents: [] };
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
+const setReimbursementPayrollPushRunStatuses = new Set(["draft", "open", "submitted"]);
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement review action.";
@@ -44,6 +44,10 @@ function getClaimReferenceNumber(objClaim?: ReimbursementClaimDto | null) {
 
 function getClaimDisplayName(objClaim?: ReimbursementClaimDto | null) {
   return objClaim?.reimbursement_claim_name || objClaim?.strClaimTitle || null;
+}
+
+function isReimbursementPayrollPushRunEditable(objRun: PayrollRunOption) {
+  return setReimbursementPayrollPushRunStatuses.has((objRun.strStatus || "").trim().toLowerCase()) && !objRun.blnIsLocked;
 }
 
 export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaimID: number }) {
@@ -69,7 +73,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
 
 
   const lstEditablePayrollRuns = useMemo(
-    () => lstPayrollRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked),
+    () => lstPayrollRuns.filter(isReimbursementPayrollPushRunEditable),
     [lstPayrollRuns]
   );
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
@@ -149,18 +153,14 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrDialogError("");
     try {
       if (!objClaim) return;
-      const objFormOptions = await employeePayrollInputService.getFormOptions({ intEmployeeID: objClaim.intEmployeeID ?? null });
-      const lstEligibleRuns = objFormOptions.lstPayrollRuns.filter((objRun) => {
-        const strScopeType = objRun.strScopeType ?? "All";
-        return strScopeType !== "SelectedEmployee" || objRun.intScopedEmployeeID === objClaim.intEmployeeID;
-      });
-      const lstEditableRuns = lstEligibleRuns.filter((objRun) => ["Open", "Submitted"].includes(objRun.strStatus) && !objRun.blnIsLocked);
+      const lstEligibleRuns = await payrollReimbursementService.listEligiblePayrollRuns(objClaim.intID);
+      const lstEditableRuns = lstEligibleRuns.filter(isReimbursementPayrollPushRunEditable);
       setLstPayrollRuns(lstEligibleRuns);
       const objClaimRun = lstEditableRuns.find((objRun) => objRun.intID === objClaim?.intPayrollRunID);
       const objDefaultRun = objClaimRun ?? lstEditableRuns[0] ?? null;
       setStrPayrollRunID(objDefaultRun ? String(objDefaultRun.intID) : "");
       if (!objDefaultRun) {
-        setStrDialogError("No Open or Submitted unlocked payroll run is available for this claim employee.");
+        setStrDialogError("No Draft, Open, or Submitted unlocked payroll run is available for this claim employee.");
       }
     } catch (objError) {
       setStrDialogError(getErrorMessage(objError));
@@ -247,7 +247,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       return;
     }
     if (strDialogAction === "push_payroll" && !strPayrollRunID) {
-      setStrDialogError("Select an Open or Submitted unlocked payroll run before continuing.");
+      setStrDialogError("Select a Draft, Open, or Submitted unlocked payroll run before continuing.");
       return;
     }
     if (strDialogAction === "approve_claim") await runAction(() => payrollReimbursementService.approveClaim(objClaim.intID, { strRemarks: strCleanRemarks || null }), "Claim approved.");
@@ -341,7 +341,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
         </Paper>
       </Stack>
 
-      <Dialog open={Boolean(strDialogAction)} onClose={closeDialog} maxWidth="sm" fullWidth data-testid="reimbursements.review-detail.action.dialog">
+      <Dialog open={Boolean(strDialogAction)} onClose={closeDialog} maxWidth="sm" fullWidth controlId="reimbursements.review-detail.action.dialog">
         <DialogTitle>{strDialogTitle}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Stack spacing={1.2}>
@@ -355,8 +355,8 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                   value={strPayrollRunID}
                   onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value)}
                   disabled={blnPayrollRunsLoading || lstEditablePayrollRuns.length === 0}
-                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Open or Submitted unlocked runs for this claim employee are listed."}
-                  data-testid="reimbursements.review-detail.target-payroll-run.select"
+                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Draft, Open, or Submitted unlocked runs for this claim employee are listed."}
+                  controlId="reimbursements.review-detail.target-payroll-run.select"
                 >
                   <MenuItem value="" disabled>Select payroll run</MenuItem>
                   {lstEditablePayrollRuns.map((objRun) => (
@@ -365,7 +365,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                     </MenuItem>
                   ))}
                 </TextField>
-                <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} inputProps={{ "data-testid": "reimbursements.review-detail.confirm-payroll.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="I confirm this reimbursement should be pushed to payroll input." />
+                <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} inputProps={{ "controlId": "reimbursements.review-detail.confirm-payroll.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="I confirm this reimbursement should be pushed to payroll input." />
               </>
             ) : null}
             {strDialogAction === "finance_settle" ? (
@@ -374,15 +374,15 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
                 label="Finance payment reference"
                 value={strPaymentReference}
                 onChange={(objEvent) => setStrPaymentReference(objEvent.target.value)}
-                data-testid="reimbursements.review-detail.finance-reference.input"
+                controlId="reimbursements.review-detail.finance-reference.input"
               />
             ) : null}
-            <TextField fullWidth multiline minRows={3} label={["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction || "") ? "Reason" : "Remarks"} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} data-testid="reimbursements.review-detail.remarks.input" />
+            <TextField fullWidth multiline minRows={3} label={["reject_claim", "release_claim", "reject_item", "reject_proof"].includes(strDialogAction || "") ? "Reason" : "Remarks"} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} controlId="reimbursements.review-detail.remarks.input" />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDialog} data-testid="reimbursements.review-detail.action.cancel.button">Cancel</Button>
-          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy || blnPayrollRunsLoading} data-testid="reimbursements.review-detail.action.continue.button">Continue</Button>
+          <Button onClick={closeDialog} controlId="reimbursements.review-detail.action.cancel.button">Cancel</Button>
+          <Button variant="contained" onClick={() => void submitDialogAction()} disabled={blnBusy || blnPayrollRunsLoading} controlId="reimbursements.review-detail.action.continue.button">Continue</Button>
         </DialogActions>
       </Dialog>
     </Stack>

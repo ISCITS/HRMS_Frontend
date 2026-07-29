@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Box, Button, Stack, Typography } from "@mui/material";
 
-import RoleBasedDashboard from "@/components/dashboard/RoleBasedDashboard";
+import RoleBasedDashboard from "../../components/dashboard/RoleBasedDashboard";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useDashboardLabels } from "@/features/dashboard/hooks/useDashboardLabels";
@@ -48,6 +48,20 @@ export default function DashboardPage() {
       blnMounted = false;
     };
   }, [intReloadKey, strSelectedPayrollMonth, t]);
+
+  useEffect(() => {
+    function refreshOnReturn() {
+      if (document.visibilityState === "visible") {
+        setIntReloadKey((intValue) => intValue + 1);
+      }
+    }
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
+    };
+  }, []);
 
   if ((!objUserContext || !objDashboard) && blnLoading) {
     return (

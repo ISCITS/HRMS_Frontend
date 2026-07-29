@@ -17,28 +17,12 @@ export async function GET(req: Request) {
   const strRedirectPath = strTenantUUID
     ? `${appRoutes.login}/${decodeURIComponent(strTenantUUID)}`
     : "/session-expired";
-
-  const strForwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0].trim();
-  const strHost = strForwardedHost || (req.headers.get("host") || "").trim();
-  const strForwardedProto = (req.headers.get("x-forwarded-proto") || "").split(",")[0].trim();
-  const strProto = strForwardedProto || objRequestUrl.protocol.replace(":", "") || "http";
-
-  const objRedirectBaseUrl = new URL(objRequestUrl.toString());
-  if (strHost) {
-    objRedirectBaseUrl.host = strHost;
-    objRedirectBaseUrl.protocol = `${strProto}:`;
-  }
-
-  if (
-    objRedirectBaseUrl.hostname === "0.0.0.0" ||
-    objRedirectBaseUrl.hostname === "::" ||
-    objRedirectBaseUrl.hostname === "[::]"
-  ) {
-    objRedirectBaseUrl.hostname = "localhost";
-  }
-
-  const strLoginUrl = new URL(strRedirectPath, objRedirectBaseUrl);
-  const dicResponse = NextResponse.redirect(strLoginUrl);
+  const dicResponse = new NextResponse(null, {
+    status: 307,
+    headers: {
+      Location: strRedirectPath,
+    },
+  });
   dicResponse.cookies.set(appConfig.authCookieName, "", { path: "/", maxAge: 0 });
 
   if (strTenantUUID) {

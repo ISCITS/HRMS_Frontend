@@ -3,7 +3,7 @@
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import HighlightOffRoundedIcon from "@mui/icons-material/HighlightOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
@@ -45,18 +45,22 @@ export default function ReimbursementProofViewer({ intClaimID, lstProofs, blnAct
     <Stack spacing={0.75}>
       {lstProofs.map((objProof) => (
         <Stack key={objProof.intID} spacing={0.65} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", p: 0.8 }}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={0.8}>
-            <Stack sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", wordBreak: "break-word" }}>{objProof.strFileName || "Proof document"}</Typography>
-              <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>{objProof.strFileMimeType || "-"} {objProof.intFileSizeBytes ? `| ${Math.ceil(objProof.intFileSizeBytes / 1024)} KB` : ""}</Typography>
-            </Stack>
-            <ReimbursementStatusBadge strStatus={objProof.strVerificationStatus} />
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={0.8}>
+            <Typography sx={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", wordBreak: "break-word", pr: 1 }}>
+              {objProof.strFileName || "Proof document"}
+            </Typography>
+            <Box sx={{ flexShrink: 0 }}>
+              <ReimbursementStatusBadge strStatus={objProof.strVerificationStatus} />
+            </Box>
           </Stack>
+          <Typography sx={{ fontSize: "0.74rem", color: "#64748b" }}>
+            {objProof.strFileMimeType || "-"} {objProof.intFileSizeBytes ? `| ${Math.ceil(objProof.intFileSizeBytes / 1024)} KB` : ""}
+          </Typography>
           {objProof.strVerificationRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objProof.strVerificationRemarks}</Typography> : null}
           <Stack direction="row" spacing={0.6}>
-            <Button data-testid="reimbursements.proof-viewer.preview.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} disabled={intPreviewingProofID === objProof.intID} onClick={() => void previewProof(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>{intPreviewingProofID === objProof.intID ? "Opening..." : "Preview"}</Button>
-            <Button data-testid="reimbursements.proof-viewer.verify.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<CheckCircleOutlineRoundedIcon />} disabled={blnActionsDisabled || objProof.strVerificationStatus === "verified"} onClick={() => onVerify(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>Verify</Button>
-            <Button data-testid="reimbursements.proof-viewer.reject.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<HighlightOffRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>Reject</Button>
+            <Button controlId="reimbursements.proof-viewer.preview.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} disabled={intPreviewingProofID === objProof.intID} onClick={() => void previewProof(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>{intPreviewingProofID === objProof.intID ? "Opening..." : "Preview"}</Button>
+            <Button controlId="reimbursements.proof-viewer.verify.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<CheckCircleOutlineRoundedIcon />} disabled={blnActionsDisabled || objProof.strVerificationStatus === "verified"} onClick={() => onVerify(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>Verify</Button>
+            <Button controlId="reimbursements.proof-viewer.reject.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<HighlightOffRoundedIcon />} disabled={blnActionsDisabled} onClick={() => onReject(objProof.intID)} sx={{ minHeight: 30, px: 1.15, py: 0.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", fontSize: "0.75rem" }}>Reject</Button>
           </Stack>
         </Stack>
       ))}

@@ -1,6 +1,6 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
-import { axiosInstance } from "@/lib/axiosInstance";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   PayslipGenerateAllSummary,
   PayslipPreviewRecord,
@@ -34,6 +34,24 @@ function extractHtmlPayload(objData: unknown): string {
     typeof (objData as { raw?: unknown }).raw === "string"
   ) {
     return (objData as { raw: string }).raw;
+  }
+
+  if (
+    objData &&
+    typeof objData === "object" &&
+    "Data" in objData &&
+    typeof (objData as { Data?: unknown }).Data === "string"
+  ) {
+    return (objData as { Data: string }).Data;
+  }
+
+  if (
+    objData &&
+    typeof objData === "object" &&
+    "strHtml" in objData &&
+    typeof (objData as { strHtml?: unknown }).strHtml === "string"
+  ) {
+    return (objData as { strHtml: string }).strHtml;
   }
 
   return "";
@@ -85,8 +103,19 @@ export const payslipService = {
   async getDownloadHtml(intPayslipID: number): Promise<string> {
     const objResponse = await axiosInstance.get(
       `${ApiRoutePrefix.ApiV1}/payslips/${intPayslipID}/download`,
-      { csrfMenuAction: "PAYSLIP_EXPORT" }
+      {
+        csrfMenuAction: "PAYSLIP_EXPORT",
+        responseType: "text",
+        headers: {
+          Accept: "text/html",
+          "x-skip-payload-encryption": "true",
+        },
+      } as ApiRequestConfig
     );
-    return extractHtmlPayload(objResponse.data);
+    const strHtml = extractHtmlPayload(objResponse.data);
+    if (!strHtml.trim()) {
+      throw new Error("Payslip document is empty.");
+    }
+    return strHtml;
   },
 };

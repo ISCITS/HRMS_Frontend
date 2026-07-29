@@ -40,6 +40,7 @@ const objEmptyForm: UserGroupFormPayload = {
   strGroupCode: "",
   strGroupName: "",
   strGroupDescription: "",
+  strGroupType: "HR",
   intCompanyID: authHelpers.getCompanyID(),
   blnIsActive: true,
   intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -159,6 +160,7 @@ export default function UserGroupAdminPage() {
             strGroupCode: objRecord.strGroupCode,
             strGroupName: objRecord.strGroupName,
             strGroupDescription: objRecord.strGroupDescription ?? "",
+            strGroupType: objRecord.strGroupType ?? "HR",
             intCompanyID: objRecord.intCompanyID,
             blnIsActive: objRecord.blnIsActive,
             intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -260,7 +262,7 @@ export default function UserGroupAdminPage() {
               variant="contained"
               startIcon={<AddRoundedIcon />}
               onClick={() => openDialog("add")}
-              data-testid="security.user-group-admin.create.button"
+              controlId="security.user-group-admin.create.button"
               sx={{
                 alignSelf: "flex-start",
                 borderRadius: 2.5,
@@ -308,7 +310,7 @@ export default function UserGroupAdminPage() {
             placeholder="Search groups"
             value={strSearch}
             onChange={(objEvent) => setStrSearch(objEvent.target.value)}
-            data-testid="security.user-group-admin.search.input"
+            controlId="security.user-group-admin.search.input"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -513,19 +515,19 @@ export default function UserGroupAdminPage() {
                   </Box>
                   <Box sx={{ borderRadius: 3, border: "1px solid #dbe7f0", p: 1.5 }}>
                     <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Assigned Users</Typography>
-                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800 }}>
+                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800, fontSize: "0.95rem" }}>
                       {objAuthorizationMetadata?.objSummary.intAssignedUserCount ?? 0}
                     </Typography>
                   </Box>
                   <Box sx={{ borderRadius: 3, border: "1px solid #dbe7f0", p: 1.5 }}>
                     <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Visible Menus</Typography>
-                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800 }}>
+                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800, fontSize: "0.95rem" }}>
                       {objAuthorizationMetadata?.objSummary.intVisibleMenuCount ?? 0}
                     </Typography>
                   </Box>
                   <Box sx={{ borderRadius: 3, border: "1px solid #dbe7f0", p: 1.5 }}>
                     <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>Allowed Actions</Typography>
-                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800 }}>
+                    <Typography sx={{ mt: 0.65, color: "#0f172a", fontWeight: 800, fontSize: "0.95rem" }}>
                       {objAuthorizationMetadata?.objSummary.intAllowedActionCount ?? 0}
                     </Typography>
                   </Box>

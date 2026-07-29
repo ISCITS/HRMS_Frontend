@@ -200,6 +200,7 @@ export type MenuItem = {
   strModuleCode: string;
   strModuleName: string;
   strRoute: string | null;
+  strIconName?: string | null;
   lstPermissionCodes: string[];
   blnIsHome: boolean;
   lstChildren: MenuItem[];

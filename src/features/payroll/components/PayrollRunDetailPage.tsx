@@ -14,8 +14,10 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Stack,
   Switch,
+  TextField,
   Typography,
 } from "@mui/material";
 import { type InputHTMLAttributes, useEffect, useState } from "react";
@@ -24,15 +26,16 @@ import { useRouter } from "next/navigation";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import PayslipPreviewContent from "@/features/payroll/components/PayslipPreviewContent";
+import PayrollRunDetailDashboardPage from "@/features/payroll/components/PayrollRunDetailDashboardPage";
+import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import type {
-  PayslipPreviewRecord,
   PayslipRunListRecord,
   PayrollRunDetailRecord,
   PayrollProcessSummary,
+  PayrollRunStatus,
   PayrollValidationSummary,
 } from "@/features/payroll/types";
 import {
@@ -46,6 +49,7 @@ type PayrollRunDetailPageProps = {
 };
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -81,6 +85,7 @@ function getStatusPillSx(strStatus: string) {
     Open: { background: "#2563eb", color: "#fff" },
     Submitted: { background: "#ea580c", color: "#fff" },
     Approved: { background: "#16a34a", color: "#fff" },
+    Failed: { background: "#dc2626", color: "#fff" },
     Processed: { background: "#0f766e", color: "#fff" },
     Closed: { background: "#475569", color: "#fff" },
   };
@@ -90,7 +95,8 @@ function getStatusPillSx(strStatus: string) {
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
     Open: "Draft",
-    Approved: "Validated",
+    Approved: "Approved",
+    Failed: "Failed",
     Processed: "Processed",
     Closed: "Closed",
   };
@@ -103,6 +109,8 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
       ? "Close"
       : strRunStatus === "Processed"
         ? blnHasPayslips ? "Generate Payslips" : "Process"
+        : strRunStatus === "Failed"
+          ? "Process"
         : strRunStatus === "Approved"
           ? "Validate"
           : "Draft";
@@ -110,6 +118,20 @@ function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
     strStep,
     blnActive: strStep === strCurrentStep,
   }));
+}
+
+function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boolean) {
+  if (!blnCanProcess) {
+    return false;
+  }
+  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+    return true;
+  }
+  return (
+    objRun.strRunStatus === "Processed" &&
+    (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
+    (objRun.intFailedEmployeeCount || 0) > 0
+  );
 }
 
 function isWorkflowStepEnabled(
@@ -131,7 +153,7 @@ function isWorkflowStepEnabled(
     case "Validate":
       return blnCanValidate && objRun.strRunStatus !== "Closed";
     case "Process":
-      return blnCanProcess && objRun.strRunStatus === "Approved";
+      return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
       return (
         blnCanGeneratePayslip &&
@@ -187,7 +209,7 @@ function DetailValue({
   );
 }
 
-export default function PayrollRunDetailPage({
+function PayrollRunDetailPageLegacy({
   intRunID,
 }: PayrollRunDetailPageProps) {
   const objRouter = useRouter();
@@ -205,8 +227,7 @@ export default function PayrollRunDetailPage({
   const [objProcessSummary, setObjProcessSummary] =
     useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
-  const [objPayslipPreview, setObjPayslipPreview] =
-    useState<PayslipPreviewRecord | null>(null);
+  const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const blnCanView = canViewAny() || canDoAny("list");
@@ -296,8 +317,15 @@ export default function PayrollRunDetailPage({
     try {
       const dicSummary = await payrollRunService.validatePayrollRun(intRunID);
       setObjValidationSummary(dicSummary);
-      setStrSuccess(t("validation_complete", "Payroll validation completed."));
       await loadRun(false);
+      setStrSuccess(
+        dicSummary.strStatus === "Passed"
+          ? t(
+              "validation_complete_approved",
+              "Payroll validation completed. Run status updated to Approved."
+            )
+          : t("validation_complete", "Payroll validation completed.")
+      );
     } catch (objError) {
       setStrError(
         objError instanceof Error ? objError.message : "Unable to validate payroll run."
@@ -325,6 +353,13 @@ export default function PayrollRunDetailPage({
           t(
             "process_validation_failed",
             `Payroll processing blocked by ${intBlockingCount} validation error(s). Resolve the validation messages below and process again.`
+          )
+        );
+      } else if (dicSummary.strStatus === "Failed") {
+        setStrError(
+          t(
+            "process_failed",
+            "Payroll processing failed. Review the processing summary below and process again after fixing the issue."
           )
         );
       } else {
@@ -458,11 +493,16 @@ export default function PayrollRunDetailPage({
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      const dicPayslip = await payslipService.getPayslipPreview(
-        intRunID,
-        dicRow.intEmployeeID
-      );
-      setObjPayslipPreview(dicPayslip);
+      let intPayslipID = dicRow.intPayslipID;
+      if (!intPayslipID) {
+        const dicPayslip = await generatePayslip(dicRow);
+        intPayslipID = dicPayslip?.intPayslipID ?? null;
+      }
+      if (!intPayslipID) {
+        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
+        return;
+      }
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(
@@ -540,6 +580,10 @@ export default function PayrollRunDetailPage({
     fontWeight: 800,
     mb: 1.5,
   };
+  const lstDisplayedRunStatuses = lstEditableRunStatuses.includes(objRun.strRunStatus)
+    ? lstEditableRunStatuses
+    : [objRun.strRunStatus, ...lstEditableRunStatuses];
+  const blnRunControlsEditable = blnCanEdit && lstEditableRunStatuses.includes(objRun.strRunStatus);
 
   return (
     <Box
@@ -560,7 +604,7 @@ export default function PayrollRunDetailPage({
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => objRouter.push("/payroll/runs")}
-          data-testid="payroll.run-detail.back.button"
+          controlId="payroll.run-detail.back.button"
         >
           {t("back_to_list", "Back to List")}
         </Button>
@@ -593,7 +637,7 @@ export default function PayrollRunDetailPage({
                     className={!dicStep.blnActive ? styles.secondaryButton : undefined}
                     onClick={fnOnClick}
                     disabled={dicStep.strStep !== "Draft" && !blnEnabled}
-                    data-testid={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replace(/\s+/g, "-")}.button`}
+                    controlId={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replace(/\s+/g, "-")}.button`}
                     sx={{
                       minWidth: { xs: 96, sm: 104 },
                       height: 34,
@@ -624,7 +668,7 @@ export default function PayrollRunDetailPage({
                     {dicStep.strStep}
                   </Button>
                   {intIndex < 4 ? (
-                    <Typography sx={{ color: "#8aa3c2", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1 }}>→</Typography>
+                    <Typography sx={{ color: "#8aa3c2", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1 }}>{"\u2192"}</Typography>
                   ) : null}
                 </Box>
               );
@@ -635,7 +679,7 @@ export default function PayrollRunDetailPage({
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
             disabled={blnSaving || objRun.strRunStatus !== "Processed"}
-            data-testid="payroll.run-detail.reprocess.button"
+            controlId="payroll.run-detail.reprocess.button"
           >
             {t("reprocess", "Reprocess")}
           </Button> : null}
@@ -643,7 +687,7 @@ export default function PayrollRunDetailPage({
             className={styles.secondaryButton}
             startIcon={<ReceiptLongRoundedIcon />}
             onClick={() => objRouter.push("/payroll/results")}
-            data-testid="payroll.run-detail.results.button"
+            controlId="payroll.run-detail.results.button"
           >
             {t("view_results", "Results")}
           </Button>
@@ -689,7 +733,7 @@ export default function PayrollRunDetailPage({
           <SummaryCard strLabel={t("employees_processed", "Employees Processed")} strValue={String(objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount)} />
           <SummaryCard strLabel={t("validation_errors", "Validation Errors")} strValue={String(objRun.dicSummary.intValidationErrorCount)} />
           <SummaryCard strLabel={t("warnings", "Warnings")} strValue={String(objRun.dicSummary.intValidationWarningCount)} />
-          <SummaryCard strLabel={t("gross_total", "Gross Total")} strValue={formatCurrency(objRun.decGrossPayTotal)} />
+          <SummaryCard strLabel={t("gross_pay", "Gross Pay")} strValue={formatCurrency(objRun.decGrossPayTotal)} />
           <SummaryCard strLabel={t("deduction_total", "Deductions")} strValue={formatCurrency(objRun.decDeductionTotal)} />
           <SummaryCard strLabel={t("tax_total", "Tax")} strValue={formatCurrency(objRun.decTaxTotal)} />
           <SummaryCard strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objRun.decNetPayTotal)} />
@@ -740,6 +784,30 @@ export default function PayrollRunDetailPage({
             </Typography>
             <Stack spacing={1.5}>
               <DetailValue strLabel={t("status", "Status")} strValue={getPayrollRunStatusLabel(objRun.strRunStatus)} />
+              <TextField
+                select
+                label={t("status", "Status")}
+                value={objRun.strRunStatus}
+                onChange={(objEvent) =>
+                  setObjRun((dicPrevious) =>
+                    dicPrevious
+                      ? {
+                          ...dicPrevious,
+                          strRunStatus: objEvent.target.value as PayrollRunStatus,
+                        }
+                      : dicPrevious
+                  )
+                }
+                disabled={!blnRunControlsEditable || blnSaving}
+                controlId="payroll.run-detail.status.select"
+                fullWidth
+              >
+                {lstDisplayedRunStatuses.map((strStatus) => (
+                  <MenuItem key={strStatus} value={strStatus} disabled={!lstEditableRunStatuses.includes(strStatus)}>
+                    {getPayrollRunStatusLabel(strStatus)}
+                  </MenuItem>
+                ))}
+              </TextField>
               <DetailValue
                 strLabel={t("run_scope", "Process For")}
                 strValue={
@@ -753,16 +821,16 @@ export default function PayrollRunDetailPage({
                 <Switch
                   checked={blnIsLocked}
                   onChange={(_, blnChecked) => setBlnIsLocked(blnChecked)}
-                  disabled={!blnCanEdit || objRun.strRunStatus === "Closed"}
-                  inputProps={{ "data-testid": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                  disabled={!blnRunControlsEditable}
+                  inputProps={{ "controlId": "payroll.run-detail.locked.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 />
               </Box>
               {blnCanEdit ? <Button
                 className={styles.primaryButton}
                 onClick={saveLockState}
-                disabled={blnSaving}
+                disabled={blnSaving || !blnRunControlsEditable}
                 sx={{ alignSelf: "flex-end" }}
-                data-testid="payroll.run-detail.save-status.button"
+                controlId="payroll.run-detail.save-status.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button> : null}
@@ -842,7 +910,7 @@ export default function PayrollRunDetailPage({
                 startIcon={<ReceiptLongRoundedIcon />}
                 onClick={generateAllPayslips}
                 disabled={blnPayslipLoading}
-                data-testid="payroll.run-detail.payslips.generate-all.button"
+                controlId="payroll.run-detail.payslips.generate-all.button"
               >
                 {t("generate_all", "Generate All Payslips")}
               </Button> : null}
@@ -879,7 +947,7 @@ export default function PayrollRunDetailPage({
                               className={styles.secondaryButton}
                               onClick={() => viewPayslip(dicRow)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.view.button"
+                              controlId="payroll.run-detail.payslip.view.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("view", "View")}
@@ -888,7 +956,7 @@ export default function PayrollRunDetailPage({
                               className={styles.secondaryButton}
                               onClick={() => generatePayslip(dicRow)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.generate.button"
+                              controlId="payroll.run-detail.payslip.generate.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("generate", "Generate")}
@@ -898,7 +966,7 @@ export default function PayrollRunDetailPage({
                               startIcon={<DownloadRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, false)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.download.button"
+                              controlId="payroll.run-detail.payslip.download.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("download", "Download")}
@@ -908,7 +976,7 @@ export default function PayrollRunDetailPage({
                               startIcon={<PrintRoundedIcon />}
                               onClick={() => openPayslipDocument(dicRow, true)}
                               disabled={blnPayslipLoading}
-                              data-testid="payroll.run-detail.payslip.print.button"
+                              controlId="payroll.run-detail.payslip.print.button"
                               data-row-key={dicRow.intEmployeeID}
                             >
                               {t("print", "Print")}
@@ -935,20 +1003,20 @@ export default function PayrollRunDetailPage({
         onClose={() => setBlnPayslipDialogOpen(false)}
         maxWidth="lg"
         fullWidth
-        data-testid="payroll.run-detail.payslip-preview.dialog"
+        controlId="payroll.run-detail.payslip-preview.dialog"
       >
         <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
           {t("payslip_preview", "Payslip Preview")}
-          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} data-testid="payroll.run-detail.payslip-preview.close.icon-button">
+          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} controlId="payroll.run-detail.payslip-preview.close.icon-button">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          {objPayslipPreview ? (
-            <PayslipPreviewContent objPayslip={objPayslipPreview} />
-          ) : null}
+          {strPayslipPreviewHtml ? <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} /> : null}
         </DialogContent>
       </Dialog>
     </Box>
   );
 }
+
+export default PayrollRunDetailDashboardPage;

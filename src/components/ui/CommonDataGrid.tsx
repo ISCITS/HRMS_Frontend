@@ -32,6 +32,7 @@ export type DataGridColumn<T extends Record<string, ReactNode>> = {
   align?: CellAlign;
   width?: number;
   sortable?: boolean;
+  sortAccessor?: (row: T) => string | number;
   filterable?: boolean;
   exportable?: boolean;
 };
@@ -40,9 +41,10 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
-  getRowSx?: (row: T) => SxProps<Theme>;
+  getRowSx?: (row: T) => SxProps<Theme> | undefined;
   rowIdField?: keyof T;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
@@ -60,6 +62,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  footerContent,
   hideToolbar = false,
   minTableWidth = 980,
   getRowSx,
@@ -97,7 +100,6 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
-  const strRowsPerPageLabel = t("rows_per_page", dicConstant.common.rowsPerPage);
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
   const orderedColumns = useMemo(() => {
@@ -129,8 +131,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     }
 
     const sorted = [...rows].sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
+      const sortColumn = orderedColumns.find((column) => column.field === sortBy);
+      const aValue = sortColumn?.sortAccessor ? sortColumn.sortAccessor(a) : a[sortBy];
+      const bValue = sortColumn?.sortAccessor ? sortColumn.sortAccessor(b) : b[sortBy];
 
       if (
         (typeof aValue !== "string" && typeof aValue !== "number") ||
@@ -149,7 +152,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     });
 
     return sorted;
-  }, [rows, sortBy, sortDirection]);
+  }, [orderedColumns, rows, sortBy, sortDirection]);
 
   const handleSort = (field: keyof T, sortable: boolean | undefined) => {
     if (sortable === false) {
@@ -265,7 +268,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
 
   const table = (
     <Stack spacing={2.5} sx={{ minHeight: 0, height: "100%" }}>
-      {!hideToolbar ? (
+      {(!hideToolbar || showPaginationSummary) ? (
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={1.5}
@@ -274,13 +277,13 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           sx={{ px: 1.5, pt: 1.25 }}
         >
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
-            <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box>
-            {showExportOptions ? (
+            {!hideToolbar ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
+            {!hideToolbar && showExportOptions ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button data-testid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
+                <Button data-controlid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
                   {strExportExcelLabel}
                 </Button>
-                <Button data-testid={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
+                <Button data-controlid={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
                   {strExportPdfLabel}
                 </Button>
               </Stack>
@@ -295,11 +298,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
             >
               <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>
-                  {strRowsPerPageLabel}
-                </Typography>
                 <TextField
-                  data-testid={`${testIdPrefix}.rows-per-page.select`}
+                  data-controlid={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
                   select
                   size="small"
@@ -311,7 +311,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   sx={{ width: 86 }}
                 >
                   {pageSizeOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>
+                    <MenuItem key={intOption} value={String(intOption)} data-controlid={`${testIdPrefix}.rows-per-page.${intOption}.option`}>
                       {intOption}
                     </MenuItem>
                   ))}
@@ -323,7 +323,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Typography>
               </Box>
               <Pagination
-                data-testid={`${testIdPrefix}.pagination`}
+                data-controlid={`${testIdPrefix}.pagination`}
                 className={styles.paginationBar}
                 count={Math.max(1, Math.ceil(filteredAndSortedRows.length / rowsPerPage))}
                 page={filteredAndSortedRows.length === 0 ? 1 : page + 1}
@@ -348,7 +348,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
         }}
       >
         <Table
-          data-testid={`${testIdPrefix}.table`}
+          data-controlid={`${testIdPrefix}.table`}
           size="small"
           stickyHeader
           sx={{
@@ -358,8 +358,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             width: "100%"
           }}
         >
-          <TableHead>
-            <TableRow>
+          <TableHead data-controlid={`${testIdPrefix}.table.head`}>
+            <TableRow data-controlid={`${testIdPrefix}.table.header-row`}>
               {orderedColumns.map((column) => {
                 const strField = String(column.field);
                 const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
@@ -367,6 +367,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   <TableCell
                     key={String(column.field)}
                     align={strAlign}
+                    data-controlid={`${testIdPrefix}.header.${strField}.cell`}
                     sx={{
                       width: column.width,
                       bgcolor: "background.paper",
@@ -384,6 +385,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       </Box>
                     ) : (
                       <TableSortLabel
+                        data-controlid={`${testIdPrefix}.header.${strField}.sort.button`}
                         active={sortBy === column.field}
                         direction={sortBy === column.field ? sortDirection : "asc"}
                         onClick={() => handleSort(column.field, column.sortable)}
@@ -397,18 +399,21 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               })}
             </TableRow>
           </TableHead>
-          <TableBody>
+          <TableBody data-controlid={`${testIdPrefix}.table.body`}>
             {filteredAndSortedRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
+              <TableRow data-controlid={`${testIdPrefix}.table.empty-row`}>
+                <TableCell data-controlid={`${testIdPrefix}.table.empty-state`} colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
                   {strResolvedEmptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedRows.map((row, index) => (
+              paginatedRows.map((row, index) => {
+                const strRowKey = rowIdField ? String(row[rowIdField]) : `${page}-${index}`;
+                return (
                 <TableRow
-                  key={rowIdField ? String(row[rowIdField]) : `${page}-${index}`}
-                  data-testid={`${testIdPrefix}.row`}
+                  key={strRowKey}
+                  data-controlid={`${testIdPrefix}.row`}
+                  data-row-key={strRowKey}
                   hover
                   sx={[
                     {
@@ -420,23 +425,26 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       }
                     },
                     getRowSx?.(row) ?? {}
-                  ]}
+                  ] as SxProps<Theme>}
                 >
                   {orderedColumns.map((column) => {
                     const strField = String(column.field);
                     const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
                     return (
-                      <TableCell key={`${String(column.field)}-${index}`} align={strAlign}>
+                      <TableCell key={`${String(column.field)}-${index}`} align={strAlign} data-controlid={`${testIdPrefix}.row.${strField}.cell`} data-row-key={strRowKey}>
                         {row[column.field]}
                       </TableCell>
                     );
                   })}
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
       </Box>
+
+      {footerContent ? <Box>{footerContent}</Box> : null}
 
     </Stack>
   );

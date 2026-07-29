@@ -21,9 +21,9 @@ type CommonPayrollDialogProps = {
   paperClassName?: string;
   paperSx?: object;
   onDialogClose?: DialogProps["onClose"];
-  rootTestId?: string;
-  cancelButtonTestId?: string;
-  primaryButtonTestId?: string;
+  rootControlId?: string;
+  cancelButtonControlId?: string;
+  primaryButtonControlId?: string;
 };
 
 export default function CommonPayrollDialog({
@@ -41,9 +41,9 @@ export default function CommonPayrollDialog({
   paperClassName = styles.compactDialogPaper,
   paperSx,
   onDialogClose,
-  rootTestId,
-  cancelButtonTestId,
-  primaryButtonTestId,
+  rootControlId,
+  cancelButtonControlId,
+  primaryButtonControlId,
 }: CommonPayrollDialogProps) {
   return (
     <CommonMasterDialog
@@ -63,9 +63,9 @@ export default function CommonPayrollDialog({
       onDialogClose={onDialogClose}
       strSecondaryButtonClassName={styles.secondaryButton}
       strPrimaryButtonClassName={styles.primaryButton}
-      rootTestId={rootTestId}
-      cancelButtonTestId={cancelButtonTestId}
-      primaryButtonTestId={primaryButtonTestId}
+      rootControlId={rootControlId}
+      cancelButtonControlId={cancelButtonControlId}
+      primaryButtonControlId={primaryButtonControlId}
     />
   );
 }

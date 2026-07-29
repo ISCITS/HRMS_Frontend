@@ -1,8 +1,8 @@
-# Automation `data-testid` Standard
+# Automation `controlId` Standard
 
 ## Purpose
 
-Use `data-testid` as the single automation selector standard across the HRMS frontend.
+Use `controlId` as the single automation selector standard across the HRMS frontend.
 
 This standard exists to make automation selectors:
 
@@ -31,7 +31,7 @@ Examples:
 
 ## Naming Rules
 
-All `data-testid` values must be:
+All `controlId` values must be:
 
 - lowercase only
 - dot-separated
@@ -56,7 +56,7 @@ Allowed role suffixes include:
 
 Do not use the following as automation selectors:
 
-- MUI icon-generated `data-testid`
+- MUI icon-generated `controlId`
 - `.Mui*` class names
 - CSS module hash classes
 - visible text
@@ -82,7 +82,7 @@ Place selectors on the actionable or native element, not on decorative wrappers.
 
 ### Buttons and dialog actions
 
-Apply `data-testid` directly to:
+Apply `controlId` directly to:
 
 - `Button`
 - `IconButton`
@@ -93,23 +93,23 @@ Do not rely on the inner SVG icon selector.
 
 ### Text inputs
 
-For `TextField` and similar inputs, place `data-testid` on the native input using the local MUI-compatible passthrough pattern.
+For `TextField` and similar inputs, place `controlId` on the native input using the local MUI-compatible passthrough pattern.
 
 ### Select controls
 
-For `Select` and `TextField select`, place `data-testid` on the actual select surface or native select input, depending on the component implementation.
+For `Select` and `TextField select`, place `controlId` on the actual select surface or native select input, depending on the component implementation.
 
 ### Checkbox, radio, switch
 
-Apply `data-testid` to the native input via the component input passthrough.
+Apply `controlId` to the native input via the component input passthrough.
 
 ### Menu options
 
-Use a stable shared `data-testid` and, if needed, a safe companion attribute such as `data-option-key`.
+Use a stable shared `controlId` and, if needed, a safe companion attribute such as `data-option-key`.
 
 ## Wrapper Rules
 
-Shared wrappers must expose selector props and convert them into `data-testid` internally.
+Shared wrappers must expose selector props and convert them into `controlId` internally.
 
 Preferred prop names:
 
@@ -128,22 +128,22 @@ Avoid inconsistent names such as:
 
 ## Repeated Row Strategy
 
-For repeated rows, `data-testid` identifies the control type and a companion attribute identifies the specific row when required.
+For repeated rows, `controlId` identifies the control type and a companion attribute identifies the specific row when required.
 
 Preferred pattern:
 
-- `data-testid="employee.list.edit.button"`
+- `controlId="employee.list.edit.button"`
 - `data-row-key="<safe-stable-key>"`
 
 Rules:
 
-- never use array indexes in `data-testid`
-- never embed sensitive or internal identifiers in `data-testid`
+- never use array indexes in `controlId`
+- never embed sensitive or internal identifiers in `controlId`
 - use `data-row-key` only when the value is already safe for DOM exposure
 
 ## Privacy and Accessibility
 
-Never place sensitive values in `data-testid`, including:
+Never place sensitive values in `controlId`, including:
 
 - email addresses
 - phone numbers
@@ -163,7 +163,7 @@ Do not remove or weaken accessibility wiring while adding selectors:
 
 For every new or updated screen:
 
-- every important interactive control gets an app-authored `data-testid`
+- every important interactive control gets an app-authored `controlId`
 - wrappers pass selector props through
 - dialog actions are directly targetable
 - repeated rows use a safe companion key only when needed

@@ -22,10 +22,15 @@ import {
   createInitialPayrollRunForm,
   payrollRunService,
 } from "@/features/payroll/services/payrollRunService";
-import type { PayrollRunFormOptions, PayrollRunFormValues } from "@/features/payroll/types";
+import type {
+  PayrollRunFormOptions,
+  PayrollRunFormValues,
+  PayrollRunStatus,
+} from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatPayrollMonthLabel(strDate: string) {
   if (!strDate) {
@@ -229,7 +234,7 @@ export default function PayrollRunEditorPage() {
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/runs")}
                 disabled={blnSaving}
-                data-testid="payroll.run-editor.back.button"
+                controlId="payroll.run-editor.back.button"
               >
                 {t("back_to_list", "Back to List")}
               </Button>
@@ -238,7 +243,7 @@ export default function PayrollRunEditorPage() {
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRun}
                 disabled={blnFieldDisabled}
-                data-testid="payroll.run-editor.save.button"
+                controlId="payroll.run-editor.save.button"
               >
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button> : null}
@@ -281,7 +286,7 @@ export default function PayrollRunEditorPage() {
               select
               label={t("payroll_cycle", "Payroll Schedule")}
               value={dicForm.intPayrollCycleID}
-              data-testid="payroll.run-editor.payroll-cycle.select"
+              controlId="payroll.run-editor.payroll-cycle.select"
               onChange={(objEvent) =>
                 updateField(
                   "intPayrollCycleID",
@@ -307,14 +312,31 @@ export default function PayrollRunEditorPage() {
               value={dicForm.strRunName}
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
               disabled={blnFieldDisabled}
-              data-testid="payroll.run-editor.run-name.input"
+              controlId="payroll.run-editor.run-name.input"
               fullWidth
             />
             <TextField
               select
+              label={t("status", "Status")}
+              value={dicForm.strRunStatus}
+              onChange={(objEvent) =>
+                updateField("strRunStatus", objEvent.target.value as PayrollRunStatus)
+              }
+              disabled={blnFieldDisabled}
+              controlId="payroll.run-editor.status.select"
+              fullWidth
+            >
+              {lstEditableRunStatuses.map((strStatus) => (
+                <MenuItem key={strStatus} value={strStatus}>
+                  {strStatus}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
               label={t("run_scope", "Process For")}
               value={dicForm.strProcessFor}
-              data-testid="payroll.run-editor.process-for.select"
+              controlId="payroll.run-editor.process-for.select"
               onChange={(objEvent) =>
                 setDicForm((dicPrevious) => ({
                   ...dicPrevious,
@@ -335,7 +357,7 @@ export default function PayrollRunEditorPage() {
               select
               label={t("scope_employee", "Employee")}
               value={dicForm.intScopedEmployeeID}
-              data-testid="payroll.run-editor.employee.select"
+              controlId="payroll.run-editor.employee.select"
               onChange={(objEvent) =>
                 updateField(
                   "intScopedEmployeeID",
@@ -359,7 +381,7 @@ export default function PayrollRunEditorPage() {
               onChange={(objEvent) => updateField("dtPayrollMonth", objEvent.target.value)}
               InputLabelProps={{ shrink: true }}
               disabled={blnFieldDisabled}
-              data-testid="payroll.run-editor.payroll-month.input"
+              controlId="payroll.run-editor.payroll-month.input"
               fullWidth
             />
           </Box>

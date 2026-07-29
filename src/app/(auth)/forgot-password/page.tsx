@@ -70,8 +70,8 @@ export default function ForgotPasswordPage() {
 
             <Stack component="form" spacing={3} noValidate>
               <TextField
-                data-testid="auth.forgot-password.email.input"
-                inputProps={{ "data-testid": "auth.forgot-password.email.input" }}
+                controlId="auth.forgot-password.email.input"
+                inputProps={{ "controlId": "auth.forgot-password.email.input" }}
                 className="app-mui-text-field"
                 label="Email Address"
                 type="email"
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
                 placeholder="name@company.com"
               />
 
-              <Button data-testid="auth.forgot-password.submit.button" className="app-mui-button-primary" variant="contained" size="large" fullWidth>
+              <Button controlId="auth.forgot-password.submit.button" className="app-mui-button-primary" variant="contained" size="large" fullWidth>
                 Send Reset Link
               </Button>
 
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                 className={`${styles.footerLink} app-mui-link-muted`}
                 component={Link}
                 href="/login"
-                data-testid="auth.forgot-password.back-to-login.link"
+                controlId="auth.forgot-password.back-to-login.link"
               >
                 Back to login
               </Typography>

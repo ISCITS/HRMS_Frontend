@@ -3,7 +3,6 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -12,19 +11,19 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   IconButton,
   InputAdornment,
   MenuItem,
-  Pagination,
   Snackbar,
   Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -64,6 +63,17 @@ type UserRecord = {
   userGroupName: string;
   status: UserStatus;
   locked: boolean;
+};
+
+type UserTableRow = {
+  id: string;
+  select: ReactNode;
+  rowActions: ReactNode;
+  loginName: string;
+  email: string;
+  mobile: string;
+  userGroupName: string;
+  status: ReactNode;
 };
 
 type UserForm = {
@@ -119,12 +129,31 @@ const dicEmptyForm: UserForm = {
   status: "Active"
 };
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
-const objSelectAllCheckboxInputProps = { "data-testid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
+const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
 const lstDefaultUsers: UserRecord[] = [];
-const lstRowsPerPageOptions = [10, 20, 50];
-
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function isEssUserGroupOption(objGroup?: { strCode?: string; strLabel?: string } | null) {
+  if (!objGroup) {
+    return false;
+  }
+  const strCode = objGroup.strCode ?? "";
+  const strLabel = objGroup.strLabel ?? "";
+  const lstTokens = `${strCode} ${strLabel}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const strCompact = `${strCode}${strLabel}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return lstTokens.includes("ess") || strCompact.startsWith("ess") || strCompact.includes("employeeselfservice");
+}
+
+function isEssUserGroupID(
+  lstUserGroups: UserFormOptionsApiRecord["lstUserGroups"],
+  intUserGroupID: number | "" | null,
+) {
+  if (!intUserGroupID) {
+    return false;
+  }
+  return isEssUserGroupOption(lstUserGroups.find((objGroup) => objGroup.intID === Number(intUserGroupID)));
 }
 
 function getUserLoginId(dicRecord: UserApiRecord) {
@@ -158,75 +187,6 @@ function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
   };
 }
 
-function downloadCsv(strFileName: string, lstRows: UserRecord[]) {
-  const lstHeaders = ["Login Name", "Email Address", "Mobile Number", "User Group", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [dicRow.loginName, dicRow.email, dicRow.mobile, dicRow.userGroupName, dicRow.status]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: UserRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.loginName}</td>
-      <td>${dicRow.email}</td>
-      <td>${dicRow.mobile}</td>
-      <td>${dicRow.userGroupName}</td>
-      <td>${dicRow.status}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Login Name</th>
-              <th>Email Address</th>
-              <th>Mobile Number</th>
-              <th>User Group</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
-
 export default function UserMasterPanel() {
   const objRouter = useRouter();
   const { t, strLanguageCode } = useModuleLabels("user");
@@ -244,8 +204,6 @@ export default function UserMasterPanel() {
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [intTenantLanguageID, setIntTenantLanguageID] = useState<number | null>(authHelpers.getLanguageID());
@@ -259,13 +217,9 @@ export default function UserMasterPanel() {
     delete: t("delete"),
     activate: t("activate"),
     deactivate: t("deactivate"),
-    exportExcel: t("export_excel"),
-    exportPdf: t("export_pdf"),
     search: t("search"),
     statusActive: t("status_active"),
     statusInactive: t("status_inactive"),
-    rowsPerPage: t("rows_per_page"),
-    paginationSeparator: t("pagination_separator"),
     loading: t("loading"),
     processing: t("processing"),
   };
@@ -289,7 +243,6 @@ export default function UserMasterPanel() {
     tableUserGroup: t("table_user_group", "User Group"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
-    loadingRecords: t("loading_records"),
     emptyMessage: t("empty_message"),
     fieldLoginName: t("field_login_name"),
     fieldLoginId: t("field_login_id", "Login ID"),
@@ -332,6 +285,7 @@ export default function UserMasterPanel() {
     validationMobileInvalid: t("validation_mobile_invalid"),
     validationEmployeeRequired: t("validation_employee_required", "Employee is required."),
     validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
+    validationEssUserGroupRequired: t("validation_ess_user_group_required", "Login as Employee is available only for ESS user groups."),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
@@ -356,7 +310,6 @@ export default function UserMasterPanel() {
       setObjFormOptions({ lstLanguages: [], lstUserGroups: [] });
       setLstEmployeeOptions([]);
       setLstSelectedIds([]);
-      setIntPage(1);
       setBlnLoading(false);
       return;
     }
@@ -377,7 +330,6 @@ export default function UserMasterPanel() {
       })));
       setIntTenantLanguageID(intResolvedTenantLanguageID);
       setLstSelectedIds([]);
-      setIntPage(1);
     } finally {
       setBlnLoading(false);
     }
@@ -397,30 +349,80 @@ export default function UserMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstUsers]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredUsers.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleUsers = lstFilteredUsers.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleUsers.length > 0 && lstVisibleUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleUsers.some((dicUser) => dicUser.id === strId));
+  const blnAllVisibleSelected = lstFilteredUsers.length > 0 && lstFilteredUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
+  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstFilteredUsers.some((dicUser) => dicUser.id === strId));
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
   const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
   const blnShowOtpOnlyOption =
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
   const blnDisableOtpOnlyOption = objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false;
+  const blnSelectedUserGroupAllowsEmployeeLogin = isEssUserGroupID(
+    objFormOptions.lstUserGroups,
+    dicForm.userGroupID,
+  );
+  const blnLoginAsEmployeeDisabled =
+    strMode === "view" || !blnSelectedUserGroupAllowsEmployeeLogin;
+  const lstTableRows = useMemo<UserTableRow[]>(() => lstFilteredUsers.map((dicUser) => ({
+    id: dicUser.id,
+    select: (
+      <Checkbox
+        inputProps={{ "data-controlid": "user-master.list.row.select.checkbox", "data-row-key": String(dicUser.id) } as InputHTMLAttributes<HTMLInputElement>}
+        checked={lstSelectedIds.includes(dicUser.id)}
+        onChange={() => toggleSelection(dicUser.id)}
+      />
+    ),
+    rowActions: (
+      <CommonRowActions
+        testIdPrefix="user-master.list.row"
+        rowKey={dicUser.id}
+        blnCanView
+        blnCanEdit={blnCanEdit}
+        blnCanDelete={blnCanDelete}
+        onView={() => { void openDialog("view", dicUser); }}
+        onEdit={() => { void openDialog("edit", dicUser); }}
+        onDelete={() => deleteUser(dicUser.id)}
+      />
+    ),
+    loginName: dicUser.loginName,
+    email: dicUser.email,
+    mobile: dicUser.mobile || "-",
+    userGroupName: dicUser.userGroupName || "-",
+    status: (
+      <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+        {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+      </span>
+    ),
+  })), [blnCanDelete, blnCanEdit, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredUsers, lstSelectedIds]);
+  const lstTableColumns = useMemo<CommonTableColumn<UserTableRow>[]>(() => [
+    {
+      field: "select",
+      headerName: <Checkbox inputProps={objSelectAllCheckboxInputProps} checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} />,
+      width: 64,
+      sortable: false,
+      filterable: false,
+      exportable: false,
+    },
+    { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
+    { field: "loginName", headerName: dicModuleLabels.tableLoginName },
+    { field: "email", headerName: dicModuleLabels.tableEmail },
+    { field: "mobile", headerName: dicModuleLabels.tableMobile },
+    { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
+    { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
+    let objResolvedFormOptions = objFormOptions;
     if (strNextMode === "add") {
       setBlnLoading(true);
       try {
         const objDefaultOptions = await masterApiService.getUserFormOptions();
+        objResolvedFormOptions = objDefaultOptions.Data;
         setObjFormOptions(objDefaultOptions.Data);
       } finally {
         setBlnLoading(false);
@@ -429,6 +431,7 @@ export default function UserMasterPanel() {
       setBlnLoading(true);
       try {
         const objScopedOptions = await masterApiService.getUserFormOptions(Number(dicUser.id));
+        objResolvedFormOptions = objScopedOptions.Data;
         setObjFormOptions(objScopedOptions.Data);
       } finally {
         setBlnLoading(false);
@@ -439,6 +442,10 @@ export default function UserMasterPanel() {
     setDicErrors({});
     setBlnPasswordVisible(false);
     setBlnConfirmPasswordVisible(false);
+    const blnUserGroupAllowsEmployeeLogin = isEssUserGroupID(
+      objResolvedFormOptions.lstUserGroups,
+      dicUser?.userGroupID ?? "",
+    );
     setDicForm(dicUser ? {
       loginName: dicUser.loginName,
       loginId: dicUser.loginId,
@@ -448,15 +455,15 @@ export default function UserMasterPanel() {
       confirmPassword: "",
       ssoEnabled: dicUser.ssoEnabled,
       mfaEnabled: dicUser.mfaEnabled,
-      loginAsEmployee: Boolean(dicUser.employeeID),
+      loginAsEmployee: Boolean(dicUser.employeeID) && blnUserGroupAllowsEmployeeLogin,
       ssoLoginMapping: dicUser.ssoLoginMapping,
       preferredLanguageID: intTenantLanguageID ?? dicUser.preferredLanguageID ?? "",
-      employeeID: dicUser.employeeID ?? "",
+      employeeID: blnUserGroupAllowsEmployeeLogin ? dicUser.employeeID ?? "" : "",
       userGroupID: dicUser.userGroupID ?? "",
       status: dicUser.status
     } : {
       ...dicEmptyForm,
-      mfaEnabled: objFormOptions.objMfaPolicy?.blnUserMfaDefaultEnabled ?? false,
+      mfaEnabled: objResolvedFormOptions.objMfaPolicy?.blnUserMfaDefaultEnabled ?? false,
       preferredLanguageID: intTenantLanguageID ?? "",
     });
     setBlnDialogOpen(true);
@@ -480,6 +487,13 @@ export default function UserMasterPanel() {
       if (strField === "loginAsEmployee" && !Boolean(objValue)) {
         dicNextForm.employeeID = "";
       }
+      if (
+        strField === "userGroupID" &&
+        !isEssUserGroupID(objFormOptions.lstUserGroups, objValue as number | "")
+      ) {
+        dicNextForm.loginAsEmployee = false;
+        dicNextForm.employeeID = "";
+      }
       return dicNextForm;
     });
     setDicErrors((objPrevious) => {
@@ -491,7 +505,7 @@ export default function UserMasterPanel() {
       return {
         ...objPrevious,
         [strField]: undefined,
-        ...(strField === "loginAsEmployee" ? { employeeID: undefined } : {}),
+        ...(strField === "loginAsEmployee" || strField === "userGroupID" ? { employeeID: undefined } : {}),
       };
     });
   }
@@ -570,6 +584,10 @@ export default function UserMasterPanel() {
       dicNextErrors.userGroupID = dicModuleLabels.validationUserGroupRequired;
     }
 
+    if (dicForm.loginAsEmployee && !blnSelectedUserGroupAllowsEmployeeLogin) {
+      dicNextErrors.userGroupID = dicModuleLabels.validationEssUserGroupRequired;
+    }
+
     if (dicForm.loginAsEmployee && !dicForm.employeeID) {
       dicNextErrors.employeeID = dicModuleLabels.validationEmployeeRequired;
     }
@@ -622,10 +640,10 @@ export default function UserMasterPanel() {
 
   function toggleSelectAll() {
     if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleUsers.some((dicUser) => dicUser.id === strId)));
+      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstFilteredUsers.some((dicUser) => dicUser.id === strId)));
       return;
     }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleUsers.map((dicUser) => dicUser.id)])]);
+    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFilteredUsers.map((dicUser) => dicUser.id)])]);
   }
 
   function bulkUpdateStatus(strStatus: UserStatus) {
@@ -672,7 +690,7 @@ export default function UserMasterPanel() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="user-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
+        <Button data-controlid="user-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicModuleLabels.backButton}
         </Button>
       </Box>
@@ -682,14 +700,14 @@ export default function UserMasterPanel() {
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
         <Box className={styles.searchRow}>
           <TextField
-            inputProps={{ "data-testid": "user-master.list.search.login-id.input" }}
+            inputProps={{ "data-controlid": "user-master.list.search.login-id.input" }}
             value={dicSearchDraft.code}
             placeholder={dicModuleLabels.searchCodePlaceholder}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
           />
           <TextField
-            inputProps={{ "data-testid": "user-master.list.search.name.input" }}
+            inputProps={{ "data-controlid": "user-master.list.search.name.input" }}
             value={dicSearchDraft.name}
             placeholder={dicModuleLabels.searchNamePlaceholder}
             fullWidth
@@ -698,23 +716,23 @@ export default function UserMasterPanel() {
           <TextField
             select
             SelectProps={{ native: false }}
-            inputProps={{ "data-testid": "user-master.list.search.status.select" }}
+            inputProps={{ "data-controlid": "user-master.list.search.status.select" }}
             label={dicModuleLabels.searchStatusPlaceholder}
             value={dicSearchDraft.status}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
-            <MenuItem data-testid="user-master.list.search-status.all.option" value="All">All</MenuItem>
-            <MenuItem data-testid="user-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem data-testid="user-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+            <MenuItem data-controlid="user-master.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem data-controlid="user-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem data-controlid="user-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }}>
+            <Button data-controlid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {dicCommonLabels.search}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button data-testid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }}>
+            <Button data-controlid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }}>
               {dicCommonLabels.clear}
             </Button>
           </Box>
@@ -723,98 +741,37 @@ export default function UserMasterPanel() {
         {lstSelectedIds.length > 0 && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            {blnCanEdit ? <Button data-testid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanEdit ? <Button data-testid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-testid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete}>{dicModuleLabels.bulkDelete}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button data-controlid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button data-testid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button data-testid="user-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("user-master", lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button data-testid="user-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.pageTitle, lstFilteredUsers)} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicCommonLabels.exportPdf}</Button> : null}
-          </Box>
-
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-          <Box className={styles.paginationInfo}>
-            <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
-            <TextField
-              select
-              size="small"
-              inputProps={{ "data-testid": "user-master.list.rows-per-page.select" }}
-              className={styles.rowsPerPageSelect}
-              value={String(intRowsPerPage)}
-              onChange={(objEvent) => {
-                setIntRowsPerPage(Number(objEvent.target.value));
-                setIntPage(1);
-              }}
-            >
-              {lstRowsPerPageOptions.map((intOption) => (
-                <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-              ))}
-            </TextField>
-            <Typography className={styles.paginationRange}>
-              {lstFilteredUsers.length === 0 ? "0" : intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredUsers.length)} {dicCommonLabels.paginationSeparator} {lstFilteredUsers.length}
-            </Typography>
-          </Box>
-          <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" />
-        </Box>
-        </Box>
-
         <Box className={styles.tableWrap}>
-          {blnLoading ? (
-            <Box className={styles.emptyState}>
-              <CircularProgress size={24} />
-              <Typography sx={{ mt: 1 }}>{dicModuleLabels.loadingRecords}</Typography>
-            </Box>
-          ) : !blnCanView ? (
+          {!blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography>You do not have permission to view this screen.</Typography>
             </Box>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>
-                    <Checkbox data-testid="user-master.list.select-all.checkbox" inputProps={objSelectAllCheckboxInputProps} checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} />
-                  </th>
-                  <th>{dicModuleLabels.tableActions}</th>
-                  <th>{dicModuleLabels.tableLoginName}</th>
-                  <th>{dicModuleLabels.tableEmail}</th>
-                  <th>{dicModuleLabels.tableMobile}</th>
-                  <th>{dicModuleLabels.tableUserGroup}</th>
-                  <th>{dicModuleLabels.tableStatus}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstVisibleUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className={styles.emptyState}>{dicModuleLabels.emptyMessage}</td>
-                  </tr>
-                ) : lstVisibleUsers.map((dicUser) => (
-                  <tr key={dicUser.id} className={lstSelectedIds.includes(dicUser.id) ? styles.selectedRow : undefined}>
-                    <td>
-                      <Checkbox data-testid="user-master.list.row.select.checkbox" inputProps={{ "data-testid": "user-master.list.row.select.checkbox", "data-row-key": String(dicUser.id) } as InputHTMLAttributes<HTMLInputElement>} checked={lstSelectedIds.includes(dicUser.id)} onChange={() => toggleSelection(dicUser.id)} />
-                    </td>
-                    <td>
-                      <CommonRowActions testIdPrefix="user-master.list.row" rowKey={dicUser.id} blnCanView blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => { void openDialog("view", dicUser); }} onEdit={() => { void openDialog("edit", dicUser); }} onDelete={() => deleteUser(dicUser.id)} />
-                    </td>
-                    <td>{dicUser.loginName}</td>
-                    <td>{dicUser.email}</td>
-                    <td>{dicUser.mobile || "-"}</td>
-                    <td>{dicUser.userGroupName || "-"}</td>
-                    <td>
-                      <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
-                        {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <CommonTable
+              columns={lstTableColumns}
+              rows={lstTableRows}
+              rowIdField="id"
+              emptyMessage={dicModuleLabels.emptyMessage}
+              exportFileName="user-master"
+              showExportOptions={blnCanExport}
+              defaultPageSize={10}
+              pageSizeOptions={[10, 20, 50]}
+              showPaginationSummary
+              testIdPrefix="user-master.list"
+              withPaper={false}
+              toolbarLeft={
+                blnCanAdd ? <Button data-controlid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
+              }
+              getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            />
           )}
         </Box>
       </Box>
@@ -827,9 +784,8 @@ export default function UserMasterPanel() {
         onClose={closeDialog}
         onDialogClose={blnSubmitting ? undefined : closeDialog}
         maxWidth="md"
-        paperClassName=""
+        paperClassName={styles.dialogPaperDapartment}
         paperSx={{
-          borderRadius: 0,
           overflow: "hidden",
           maxHeight: "86vh",
           background: "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
@@ -840,6 +796,13 @@ export default function UserMasterPanel() {
         onPrimaryAction={saveUser}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
+            <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+          </Box>
+        }
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
           <Box
             sx={{
@@ -850,7 +813,7 @@ export default function UserMasterPanel() {
           >
             <TextField
               label={dicModuleLabels.fieldLoginId}
-              inputProps={{ "data-testid": "user-master.dialog.login-id.input" }}
+              inputProps={{ "data-controlid": "user-master.dialog.login-id.input" }}
               value={dicForm.loginId}
               onChange={(objEvent) => setFormField("loginId", objEvent.target.value)}
               error={Boolean(dicErrors.loginId)}
@@ -859,7 +822,7 @@ export default function UserMasterPanel() {
               fullWidth
               required
             />
-            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-testid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
           </Box>
 
           <Box
@@ -869,8 +832,8 @@ export default function UserMasterPanel() {
               gap: 2,
             }}
           >
-            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-testid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
-            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-testid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth required />
           </Box>
 
           {strMode === "add" ? (
@@ -883,19 +846,19 @@ export default function UserMasterPanel() {
             >
               <TextField
                 label={dicModuleLabels.fieldPassword}
-                inputProps={{ "data-testid": "user-master.dialog.password.input" }}
+                inputProps={{ "data-controlid": "user-master.dialog.password.input" }}
                 type={blnPasswordVisible ? "text" : "password"}
                 value={dicForm.password}
                 onChange={(objEvent) => setFormField("password", objEvent.target.value)}
                 error={Boolean(dicErrors.password)}
                 helperText={dicErrors.password}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-testid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -904,19 +867,19 @@ export default function UserMasterPanel() {
               />
               <TextField
                 label={dicModuleLabels.fieldConfirmPassword}
-                inputProps={{ "data-testid": "user-master.dialog.confirm-password.input" }}
+                inputProps={{ "data-controlid": "user-master.dialog.confirm-password.input" }}
                 type={blnConfirmPasswordVisible ? "text" : "password"}
                 value={dicForm.confirmPassword}
                 onChange={(objEvent) => setFormField("confirmPassword", objEvent.target.value)}
                 error={Boolean(dicErrors.confirmPassword)}
                 helperText={dicErrors.confirmPassword}
-                disabled={strMode === "view"}
+                disabled={false}
                 fullWidth
                 required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-testid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" disabled={strMode === "view"}>
+                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end">
                         {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                       </IconButton>
                     </InputAdornment>
@@ -936,7 +899,7 @@ export default function UserMasterPanel() {
             <TextField
               select
               label={dicModuleLabels.fieldUserGroup}
-              inputProps={{ "data-testid": "user-master.dialog.user-group.select" }}
+              inputProps={{ "data-controlid": "user-master.dialog.user-group.select" }}
               value={String(dicForm.userGroupID)}
               onChange={(objEvent) => setFormField("userGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
               error={Boolean(dicErrors.userGroupID)}
@@ -944,11 +907,11 @@ export default function UserMasterPanel() {
               disabled={strMode === "view"}
               fullWidth
               required
-              SelectProps={{ SelectDisplayProps: { "data-testid": "user-master.dialog.user-group.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } as HTMLAttributes<HTMLDivElement> }}
             >
-              <MenuItem value="" data-testid="user-master.dialog.user-group.select.option">Select</MenuItem>
+              <MenuItem value="" data-controlid="user-master.dialog.user-group.select.option">Select</MenuItem>
               {objFormOptions.lstUserGroups.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-testid={`user-master.dialog.user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
+                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
                   {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
                 </MenuItem>
               ))}
@@ -956,15 +919,15 @@ export default function UserMasterPanel() {
             <TextField
               select
               label={dicModuleLabels.fieldPreferredLanguage}
-              inputProps={{ "data-testid": "user-master.dialog.preferred-language.select" }}
+              inputProps={{ "data-controlid": "user-master.dialog.preferred-language.select" }}
               value={String(intTenantLanguageID ?? dicForm.preferredLanguageID)}
               disabled
               fullWidth
               helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
-              SelectProps={{ SelectDisplayProps: { "data-testid": "user-master.dialog.preferred-language.select" } }}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               {objFormOptions.lstLanguages.map((objLanguage) => (
-                <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)} data-testid={`user-master.dialog.preferred-language.${normalizeSelectToken(objLanguage.strCode || objLanguage.strLabel)}.option`}>
+                <MenuItem key={objLanguage.intID} value={String(objLanguage.intID)} data-controlid={`user-master.dialog.preferred-language.${normalizeSelectToken(objLanguage.strCode || objLanguage.strLabel)}.option`}>
                   {objLanguage.strLabel}
                 </MenuItem>
               ))}
@@ -972,7 +935,7 @@ export default function UserMasterPanel() {
           </Box>
 
           {dicForm.ssoEnabled ? (
-            <TextField label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-testid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+            <TextField label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-controlid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
           ) : null}
 
           <Box
@@ -997,17 +960,30 @@ export default function UserMasterPanel() {
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {dicModuleLabels.helperLoginAsEmployee}
+                  {blnSelectedUserGroupAllowsEmployeeLogin
+                    ? dicModuleLabels.helperLoginAsEmployee
+                    : dicModuleLabels.validationEssUserGroupRequired}
                 </Typography>
               </Box>
-                <Switch inputProps={{ "data-testid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={strMode === "view"} />
+              <Tooltip
+                title={
+                  blnLoginAsEmployeeDisabled && strMode !== "view"
+                    ? dicModuleLabels.validationEssUserGroupRequired
+                    : ""
+                }
+                arrow
+              >
+                <span>
+                  <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee && blnSelectedUserGroupAllowsEmployeeLogin} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+                </span>
+              </Tooltip>
             </Box>
 
             {dicForm.loginAsEmployee ? (
               <TextField
                 select
                 label={dicModuleLabels.fieldEmployee}
-                inputProps={{ "data-testid": "user-master.dialog.employee.select" }}
+                inputProps={{ "data-controlid": "user-master.dialog.employee.select" }}
                 value={String(dicForm.employeeID)}
                 onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
                 error={Boolean(dicErrors.employeeID)}
@@ -1015,11 +991,11 @@ export default function UserMasterPanel() {
                 disabled={strMode === "view"}
                 fullWidth
                 required
-                SelectProps={{ SelectDisplayProps: { "data-testid": "user-master.dialog.employee.select" } }}
+                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
               >
-                <MenuItem value="" data-testid="user-master.dialog.employee.select.option">Select</MenuItem>
+                <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
                 {lstEmployeeOptions.map((objEmployee) => (
-                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-testid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
+                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-controlid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
                     {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
                   </MenuItem>
                 ))}
@@ -1043,7 +1019,7 @@ export default function UserMasterPanel() {
                     {dicModuleLabels.helperEnableOtpOnly}
                   </Typography>
                 </Box>
-                <Switch inputProps={{ "data-testid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             ) : (
               <Box />
@@ -1070,15 +1046,10 @@ export default function UserMasterPanel() {
                     {dicModuleLabels.helperEnableOtpOnly}
                   </Typography>
                 </Box>
-                <Switch inputProps={{ "data-testid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             </Box>
           ) : null}
-
-          <Box className={styles.switchRow}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
-            <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
-          </Box>
         </Box>}
       />
 

@@ -19,12 +19,19 @@ export function formatLoanAdvanceStatus(strStatus?: string | null) {
   return (strStatus || "-").replaceAll("_", " ").replace(/\b\w/g, (strChar) => strChar.toUpperCase());
 }
 
-export default function LoanAdvanceStatusBadge({ strStatus }: { strStatus?: string | null }) {
+export default function LoanAdvanceStatusBadge({
+  strStatus,
+  t,
+}: {
+  strStatus?: string | null;
+  t?: (strKey: string, strFallback?: string) => string;
+}) {
   const objTone = dicStatusColor[(strStatus || "draft") as LoanAdvanceStatus] || dicStatusColor.draft;
+  const strLabel = strStatus ? t?.(`status_${strStatus}`, formatLoanAdvanceStatus(strStatus)) ?? formatLoanAdvanceStatus(strStatus) : "-";
   return (
     <Chip
       size="small"
-      label={formatLoanAdvanceStatus(strStatus)}
+      label={strLabel}
       sx={{ height: 24, borderRadius: "999px", fontWeight: 800, backgroundColor: objTone.strBg, color: objTone.strColor }}
     />
   );

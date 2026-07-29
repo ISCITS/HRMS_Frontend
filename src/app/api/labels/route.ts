@@ -45,22 +45,21 @@ async function proxyLabels(objRequest: NextRequest, objPayload: LabelRequestPayl
       return NextResponse.json({ message: "Unauthenticated." }, { status: 401 });
     }
 
-    const objLabels = await callBackendApi<ModuleLabelsResponse | { payload?: string }>(
+    const objResolvedLabels = await callBackendApi<ModuleLabelsResponse | { payload?: string }>(
       `/api/v1/labels?language_id=${encodeURIComponent(strLanguageID)}&module_name=${encodeURIComponent(strModuleName)}`,
       {
         method: "GET",
         cache: "no-store",
         headers: buildLabelHeaders(objRequest, strAccessToken)
       }
-    );
-
-    const objResolvedLabels =
+    ).then((objLabels) =>
       typeof objLabels === "object" &&
       objLabels !== null &&
       "payload" in objLabels &&
       typeof objLabels.payload === "string"
-        ? await decryptPayload<ModuleLabelsResponse>(objLabels.payload)
-        : objLabels;
+        ? decryptPayload<ModuleLabelsResponse>(objLabels.payload)
+        : (objLabels as ModuleLabelsResponse)
+    );
 
     return NextResponse.json(objResolvedLabels, { status: 200 });
   } catch (objError) {

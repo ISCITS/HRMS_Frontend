@@ -2,18 +2,16 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import type { InputHTMLAttributes } from "react";
+import { Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import type { InputHTMLAttributes, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlertDialog from "@/Common/components/AlertDialog";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
@@ -29,7 +27,6 @@ type SearchForm = {
 };
 
 const dicEmptySearch: SearchForm = { name: "", code: "", status: "All" };
-const lstRowsPerPageOptions = [10, 20, 50];
 
 type ConfirmDialogState = {
   strTitle: string;
@@ -38,15 +35,28 @@ type ConfirmDialogState = {
   fnOnConfirm: () => Promise<void>;
 };
 
+type EmployeeTableRow = {
+  id: string;
+  select: ReactNode;
+  action: ReactNode;
+  employeeCode: string;
+  fullName: string;
+  workEmail: string;
+  mobileNumber: string;
+  department: string;
+  designation: string;
+  joiningDate: string;
+  joiningDateSortValue: number;
+  workerType: string;
+  partialSave: ReactNode;
+  status: ReactNode;
+};
+
 function formatDisplayDate(strDate: string | null): string {
   if (!strDate) {
     return "-";
   }
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(strDate));
-}
-
-function toCsvCell(strValue: string) {
-  return `"${strValue.replace(/"/g, '""')}"`;
 }
 
 function getWorkerTypeLabel(blnIsWorker: boolean, t: (strKey: string, strFallback?: string) => string) {
@@ -69,8 +79,6 @@ export default function EmployeeMasterListPanel() {
   const [lstSelectedIDs, setLstSelectedIDs] = useState<number[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objAlertDialog, setObjAlertDialog] = useState({
     blnOpen: false,
@@ -122,7 +130,6 @@ export default function EmployeeMasterListPanel() {
       const lstEmployeeData = await employeeService.getEmployees();
       setLstEmployees(lstEmployeeData);
       setLstSelectedIDs([]);
-      setIntPage(1);
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_load_list", "Unable to load employee data."));
     } finally {
@@ -159,13 +166,8 @@ export default function EmployeeMasterListPanel() {
     const blnStatusMatch = dicSearchApplied.status === "All" || dicEmployee.strEmploymentStatus === dicSearchApplied.status;
     return blnNameMatch && blnCodeMatch && blnStatusMatch;
   }), [dicSearchApplied, lstEmployees]);
-
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredEmployees.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleEmployees = lstFilteredEmployees.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleEmployees.length > 0 && lstVisibleEmployees.every((dicEmployee) => lstSelectedIDs.includes(dicEmployee.intID));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIDs.some((intID) => lstVisibleEmployees.some((dicEmployee) => dicEmployee.intID === intID));
+  const blnAllFilteredSelected = lstFilteredEmployees.length > 0 && lstFilteredEmployees.every((dicEmployee) => lstSelectedIDs.includes(dicEmployee.intID));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredEmployees.some((dicEmployee) => lstSelectedIDs.includes(dicEmployee.intID));
 
   async function updateEmployeeStatus(lstIDs: number[], blnIsActive: boolean) {
     if (!lstIDs.length) {
@@ -213,117 +215,83 @@ export default function EmployeeMasterListPanel() {
   }
 
   function toggleSelectAll() {
-    if (blnAllVisibleSelected) {
-      setLstSelectedIDs((lstPrevious) => lstPrevious.filter((intID) => !lstVisibleEmployees.some((dicEmployee) => dicEmployee.intID === intID)));
+    if (blnAllFilteredSelected) {
+      setLstSelectedIDs((lstPrevious) => lstPrevious.filter((intID) => !lstFilteredEmployees.some((dicEmployee) => dicEmployee.intID === intID)));
       return;
     }
-    setLstSelectedIDs((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleEmployees.map((dicEmployee) => dicEmployee.intID)])]);
+    setLstSelectedIDs((lstPrevious) => [...new Set([...lstPrevious, ...lstFilteredEmployees.map((dicEmployee) => dicEmployee.intID)])]);
   }
 
-  function handleExportExcel() {
-    const lstHeaders = [
-      t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode),
-      t("grid_full_name", dicConstant.employeeMaster.grid.fullName),
-      t("grid_work_email", dicConstant.employeeMaster.grid.workEmail),
-      t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber),
-      t("grid_department", dicConstant.employeeMaster.grid.department),
-      t("grid_designation", dicConstant.employeeMaster.grid.designation),
-      t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
-      t("field_worker", "Worker"),
-      t("grid_partial_save", "Partial Save"),
-      t("grid_status", dicConstant.employeeMaster.grid.status)
-    ];
+  const lstTableRows = useMemo<EmployeeTableRow[]>(() => lstFilteredEmployees.map((dicEmployee) => {
+    const blnSelected = lstSelectedIDs.includes(dicEmployee.intID);
+    return {
+      id: String(dicEmployee.intID),
+      select: (
+        <Checkbox
+          checked={blnSelected}
+          onChange={() => toggleSelection(dicEmployee.intID)}
+          inputProps={{ "controlId": "employee.master-list.row.select.checkbox", "data-row-key": dicEmployee.intID } as InputHTMLAttributes<HTMLInputElement>}
+        />
+      ),
+      action: (
+        <CommonRowActions
+          testIdPrefix="employee.master-list.row"
+          rowKey={String(dicEmployee.intID)}
+          blnCanView={blnCanView}
+          blnCanEdit={blnCanEdit}
+          blnCanDelete={blnCanDelete}
+          onView={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}
+          onEdit={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}
+          onDelete={() => deleteEmployees([dicEmployee.intID], true)}
+        />
+      ),
+      employeeCode: dicEmployee.strEmployeeCode,
+      fullName: dicEmployee.strFullName,
+      workEmail: dicEmployee.strWorkEmail || "-",
+      mobileNumber: dicEmployee.strMobileNumber || "-",
+      department: dicEmployee.strDepartmentName || "-",
+      designation: dicEmployee.strDesignationName || "-",
+      joiningDate: formatDisplayDate(dicEmployee.dtDateOfJoining),
+      joiningDateSortValue: dicEmployee.dtDateOfJoining ? new Date(dicEmployee.dtDateOfJoining).getTime() : 0,
+      workerType: getWorkerTypeLabel(dicEmployee.blnIsWorker, t),
+      partialSave: <span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span>,
+      status: <span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span>
+    };
+  }), [blnCanDelete, blnCanEdit, blnCanView, lstFilteredEmployees, lstSelectedIDs, objRouter, t]);
 
-    const strCsvContent = [
-      lstHeaders.map(toCsvCell).join(","),
-      ...lstFilteredEmployees.map((dicEmployee) =>
-        [
-          dicEmployee.strEmployeeCode,
-          dicEmployee.strFullName,
-          dicEmployee.strWorkEmail || "-",
-          dicEmployee.strMobileNumber || "-",
-          dicEmployee.strDepartmentName || "-",
-          dicEmployee.strDesignationName || "-",
-          formatDisplayDate(dicEmployee.dtDateOfJoining),
-          getWorkerTypeLabel(dicEmployee.blnIsWorker, t),
-          getPartialSaveLabel(dicEmployee.blnIsPartialSave, t),
-          dicEmployee.strEmploymentStatus
-        ].map((strValue) => toCsvCell(String(strValue))).join(",")
-      )
-    ].join("\n");
-
-    const objBlob = new Blob([`\uFEFF${strCsvContent}`], { type: "text/csv;charset=utf-8;" });
-    const strUrl = URL.createObjectURL(objBlob);
-    const objLink = document.createElement("a");
-    objLink.href = strUrl;
-    objLink.download = "employee-master.csv";
-    objLink.click();
-    URL.revokeObjectURL(strUrl);
-  }
-
-  function handleExportPdf() {
-    const dicPrintWindow = window.open("", "_blank", "width=1100,height=720");
-    if (!dicPrintWindow) {
-      return;
-    }
-
-    const strTableRows = lstFilteredEmployees
-      .map(
-        (dicEmployee) => `
-          <tr>
-            <td>${dicEmployee.strEmployeeCode}</td>
-            <td>${dicEmployee.strFullName}</td>
-            <td>${dicEmployee.strWorkEmail || "-"}</td>
-            <td>${dicEmployee.strMobileNumber || "-"}</td>
-            <td>${dicEmployee.strDepartmentName || "-"}</td>
-            <td>${dicEmployee.strDesignationName || "-"}</td>
-            <td>${formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-            <td>${getWorkerTypeLabel(dicEmployee.blnIsWorker, t)}</td>
-            <td>${getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</td>
-            <td>${dicEmployee.strEmploymentStatus}</td>
-          </tr>
-        `
-      )
-      .join("");
-
-    dicPrintWindow.document.write(`
-      <html>
-        <head>
-          <title>Employee Master</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            h2 { margin: 0 0 16px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #dbe4ee; padding: 8px 10px; text-align: left; font-size: 12px; }
-            th { background: #f8fafc; }
-          </style>
-        </head>
-        <body>
-          <h2>${t("page_title", dicConstant.employeeMaster.pageTitle)}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>${t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)}</th>
-                <th>${t("grid_full_name", dicConstant.employeeMaster.grid.fullName)}</th>
-                <th>${t("grid_work_email", dicConstant.employeeMaster.grid.workEmail)}</th>
-                <th>${t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber)}</th>
-                <th>${t("grid_department", dicConstant.employeeMaster.grid.department)}</th>
-                <th>${t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
-                <th>${t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
-                <th>${t("field_worker", "Worker")}</th>
-                <th>${t("grid_partial_save", "Partial Save")}</th>
-                <th>${t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
-              </tr>
-            </thead>
-            <tbody>${strTableRows}</tbody>
-          </table>
-        </body>
-      </html>
-    `);
-    dicPrintWindow.document.close();
-    dicPrintWindow.focus();
-    dicPrintWindow.print();
-  }
+  const lstTableColumns = useMemo<CommonTableColumn<EmployeeTableRow>[]>(() => [
+    {
+      field: "select",
+      headerName: (
+        <Checkbox
+          checked={blnAllFilteredSelected}
+          indeterminate={blnSomeFilteredSelected}
+          onChange={toggleSelectAll}
+          disabled={lstFilteredEmployees.length === 0}
+          inputProps={{ "controlId": "employee.master-list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+        />
+      ),
+      sortable: false,
+      filterable: false,
+      exportable: false,
+      width: 56
+    },
+    { field: "action", headerName: t("grid_actions", dicConstant.employeeMaster.grid.actions), sortable: false, filterable: false, exportable: false, width: 110 },
+    { field: "employeeCode", headerName: t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode) },
+    { field: "fullName", headerName: t("grid_full_name", dicConstant.employeeMaster.grid.fullName) },
+    { field: "workEmail", headerName: t("grid_work_email", dicConstant.employeeMaster.grid.workEmail) },
+    { field: "mobileNumber", headerName: t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber) },
+    { field: "department", headerName: t("grid_department", dicConstant.employeeMaster.grid.department) },
+    { field: "designation", headerName: t("grid_designation", dicConstant.employeeMaster.grid.designation) },
+    {
+      field: "joiningDate",
+      headerName: t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
+      sortAccessor: (dicRow) => dicRow.joiningDateSortValue
+    },
+    { field: "workerType", headerName: t("field_worker", "Worker") },
+    { field: "partialSave", headerName: t("grid_partial_save", "Partial Save"), sortable: false, filterable: false, width: 140 },
+    { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortable: false, filterable: false, width: 130 }
+  ], [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredEmployees.length, t]);
 
   return (
     <Box className={styles.page}>
@@ -340,20 +308,20 @@ export default function EmployeeMasterListPanel() {
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="employee.master-list.search.name.input" inputProps={{ "data-testid": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
-          <TextField data-testid="employee.master-list.search.code.input" inputProps={{ "data-testid": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
-            <TextField data-testid="employee.master-list.search.status.select" inputProps={{ "data-testid": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+          <TextField data-controlid="employee.master-list.search.code.input" inputProps={{ "data-controlid": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
+          <TextField data-controlid="employee.master-list.search.name.input" inputProps={{ "data-controlid": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
+          <TextField data-controlid="employee.master-list.search.status.select" inputProps={{ "data-controlid": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
               <MenuItem value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
-            </TextField>
+          </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>
               {t("search_button", dicConstant.common.search)}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button data-testid="employee.master-list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master-list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>
               {t("clear_button", dicConstant.common.clear)}
             </Button>
           </Box>
@@ -368,69 +336,20 @@ export default function EmployeeMasterListPanel() {
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIDs.length} {t("bulk_rows_selected", "row(s) selected")}</Typography>
             {blnCanChangeStatus ? (
-              <Button data-testid="employee.master-list.bulk-activate.button" className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
+              <Button controlId="employee.master-list.bulk-activate.button" className={styles.bulkActivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, true)}>{t("bulk_activate", "Bulk Activate")}</Button>
             ) : null}
             {blnCanChangeStatus ? (
-              <Button data-testid="employee.master-list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+              <Button controlId="employee.master-list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => updateEmployeeStatus(lstSelectedIDs, false)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
             ) : null}
             {blnCanDelete ? (
-              <Button data-testid="employee.master-list.bulk-delete.button" className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
+              <Button controlId="employee.master-list.bulk-delete.button" className={styles.bulkDelete} onClick={() => deleteEmployees(lstSelectedIDs)}>{t("bulk_deactivate", "Bulk Deactivate")}</Button>
             ) : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: { xs: "stretch", md: "center" },
-            gap: 1.25,
-            flexWrap: "wrap",
-            pb: 1
-          }}
-        >
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? (
-              <Button data-testid="employee.master-list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("emp_add_button", dicConstant.employeeMaster.addButton)}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button data-testid="employee.master-list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_excel", dicConstant.common.exportExcel)}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button data-testid="employee.master-list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-                {t("export_pdf", dicConstant.common.exportPdf)}
-              </Button>
-            ) : null}
-          </Box>
-
-          {!blnLoading && lstFilteredEmployees.length > 0 ? (
-            <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <Box className={styles.paginationInfo}>
-                <Typography className={styles.paginationLabel}>{dicConstant.common.rowsPerPage}</Typography>
-                <TextField data-testid="employee.master-list.rows-per-page.select" inputProps={{ "data-testid": "employee.master-list.rows-per-page.select" }} select size="small" value={String(intRowsPerPage)} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect}>
-                  {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>)}
-                </TextField>
-                <Typography className={styles.paginationRange}>
-                  {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredEmployees.length)} {dicConstant.common.paginationSeparator} {lstFilteredEmployees.length}
-                </Typography>
-              </Box>
-              <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-            </Box>
-          ) : null}
-        </Box>
-
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{t("loading", dicConstant.employeeMaster.loading)}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Employee access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>
@@ -438,61 +357,29 @@ export default function EmployeeMasterListPanel() {
             </Typography>
           </Box>
         ) : (
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th><Checkbox checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "data-testid": "employee.master-list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
-                  <th>{t("grid_actions", dicConstant.employeeMaster.grid.actions)}</th>
-                  <th>{t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)}</th>
-                  <th>{t("grid_full_name", dicConstant.employeeMaster.grid.fullName)}</th>
-                  <th>{t("grid_work_email", dicConstant.employeeMaster.grid.workEmail)}</th>
-                  <th>{t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber)}</th>
-                  <th>{t("grid_department", dicConstant.employeeMaster.grid.department)}</th>
-                  <th>{t("grid_designation", dicConstant.employeeMaster.grid.designation)}</th>
-                  <th>{t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate)}</th>
-                  <th>{t("field_worker", "Worker")}</th>
-                  <th>{t("grid_partial_save", "Partial Save")}</th>
-                  <th>{t("grid_status", dicConstant.employeeMaster.grid.status)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstFilteredEmployees.length === 0 ? (
-                  <tr><td className={styles.emptyState} colSpan={12}>{t("empty_message", dicConstant.employeeMaster.emptyMessage)}</td></tr>
-                ) : lstVisibleEmployees.map((dicEmployee) => {
-                  const blnSelected = lstSelectedIDs.includes(dicEmployee.intID);
-                  return (
-                    <tr key={dicEmployee.intID} className={blnSelected ? styles.selectedRow : undefined}>
-                      <td><Checkbox checked={blnSelected} onChange={() => toggleSelection(dicEmployee.intID)} inputProps={{ "data-testid": "employee.master-list.row.select.checkbox", "data-row-key": dicEmployee.intID } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                      <td>
-                        <Box className={styles.actionCell}>
-                          {blnCanView ? (
-                            <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)} data-testid="employee.master-list.row.view.button" data-row-key={dicEmployee.intID}><VisibilityRoundedIcon fontSize="small" /></button>
-                          ) : null}
-                          {blnCanEdit ? (
-                            <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)} data-testid="employee.master-list.row.edit.button" data-row-key={dicEmployee.intID}><EditRoundedIcon fontSize="small" /></button>
-                          ) : null}
-                          {blnCanDelete ? (
-                            <button className={`${styles.iconButton} ${styles.deleteIcon}`} type="button" onClick={() => deleteEmployees([dicEmployee.intID], true)} data-testid="employee.master-list.row.delete.button" data-row-key={dicEmployee.intID}><DeleteRoundedIcon fontSize="small" /></button>
-                          ) : null}
-                        </Box>
-                      </td>
-                      <td>{dicEmployee.strEmployeeCode}</td>
-                      <td>{dicEmployee.strFullName}</td>
-                      <td>{dicEmployee.strWorkEmail || "-"}</td>
-                      <td>{dicEmployee.strMobileNumber || "-"}</td>
-                      <td>{dicEmployee.strDepartmentName || "-"}</td>
-                      <td>{dicEmployee.strDesignationName || "-"}</td>
-                      <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td>{getWorkerTypeLabel(dicEmployee.blnIsWorker, t)}</td>
-                      <td><span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span></td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Box>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName="employee-master"
+            showExportOptions={blnCanExport}
+            testIdPrefix="employee.master-list"
+            showPaginationSummary
+            emptyMessage={t("empty_message", dicConstant.employeeMaster.emptyMessage)}
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanAdd ? (
+                  <Button controlId="employee.master-list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/employees/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                    {t("emp_add_button", dicConstant.employeeMaster.addButton)}
+                  </Button>
+                ) : null}
+              </Box>
+            )}
+            getRowSx={(dicRow) => lstSelectedIDs.includes(Number(dicRow.id)) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
 
@@ -504,16 +391,16 @@ export default function EmployeeMasterListPanel() {
         rootTestId="employee.master-list.alert.dialog"
         closeButtonTestId="employee.master-list.alert.close.button"
       />
-      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper, "data-testid": "employee.master-list.confirm.dialog" }}>
+      <Dialog open={Boolean(objConfirmDialog)} onClose={closeConfirmDialog} onKeyDown={handleSingleDialogActionEnter} PaperProps={{ className: styles.confirmDialogPaper, "controlId": "employee.master-list.confirm.dialog" }}>
         <DialogTitle className={styles.confirmDialogTitle}>{objConfirmDialog?.strTitle}</DialogTitle>
         <DialogContent className={styles.confirmDialogContent}>
           <Typography className={styles.confirmDialogMessage}>{objConfirmDialog?.strMessage}</Typography>
         </DialogContent>
         <DialogActions className={styles.confirmDialogActions}>
-          <Button data-testid="employee.master-list.confirm.cancel.button" className={styles.textAction} onClick={closeConfirmDialog}>
+          <Button controlId="employee.master-list.confirm.cancel.button" className={styles.textAction} onClick={closeConfirmDialog}>
             {dicConstant.common.cancel}
           </Button>
-          <Button data-testid="employee.master-list.confirm.confirm.button" className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
+          <Button controlId="employee.master-list.confirm.confirm.button" className={styles.primaryButton} onClick={executeConfirmedAction} disabled={blnSubmitting}>
             {objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
           </Button>
         </DialogActions>

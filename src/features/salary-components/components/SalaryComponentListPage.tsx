@@ -15,8 +15,8 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type KeyboardEvent } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -49,6 +49,37 @@ type ToastState = {
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
 
+function parseStatus(strValue: string | null): SearchForm["status"] {
+  return strValue === "Active" || strValue === "Inactive" ? strValue : "All";
+}
+
+function buildSearchFromParams(objSearchParams: URLSearchParams): SearchForm {
+  return {
+    code: objSearchParams.get("code") ?? "",
+    name: objSearchParams.get("name") ?? "",
+    status: parseStatus(objSearchParams.get("status")),
+  };
+}
+
+function buildSalaryComponentListUrl(dicSearch: SearchForm) {
+  const objParams = new URLSearchParams();
+  const strName = dicSearch.name.trim();
+  const strCode = dicSearch.code.trim();
+
+  if (strName) {
+    objParams.set("name", strName);
+  }
+  if (strCode) {
+    objParams.set("code", strCode);
+  }
+  if (dicSearch.status !== "All") {
+    objParams.set("status", dicSearch.status);
+  }
+
+  const strQuery = objParams.toString();
+  return strQuery ? `/salary-components?${strQuery}` : "/salary-components";
+}
+
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -63,6 +94,8 @@ function getCategoryLabel(strValue: string) {
     case "employercontribution":
     case "contribution":
       return "Employer Contribution";
+    case "flexibasket":
+      return "Flexi Basket";
     case "reimbursement":
       return "Reimbursement";
     default:
@@ -108,6 +141,8 @@ function getPfEsicLabel(blnIncludeInPF: boolean, blnIncludeInESIC: boolean) {
 
 export default function SalaryComponentListPage() {
   const objRouter = useRouter();
+  const strPathname = usePathname();
+  const objSearchParams = useSearchParams();
   const { t } = useSalaryComponentLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstSalaryComponentModuleCodes);
   const [lstComponents, setLstComponents] = useState<SalaryComponentListRecord[]>([]);
@@ -118,6 +153,10 @@ export default function SalaryComponentListPage() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const strCurrentListRoute = useMemo(() => {
+    const strQuery = objSearchParams.toString();
+    return strQuery ? `${strPathname}?${strQuery}` : strPathname;
+  }, [strPathname, objSearchParams]);
 
   async function loadComponents() {
     if (!canViewAny()) {
@@ -143,6 +182,12 @@ export default function SalaryComponentListPage() {
     }
     loadComponents().catch(() => undefined);
   }, [blnRightsLoading]);
+
+  useEffect(() => {
+    const dicUrlSearch = buildSearchFromParams(objSearchParams);
+    setDicSearchDraft(dicUrlSearch);
+    setDicSearchApplied(dicUrlSearch);
+  }, [objSearchParams]);
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -178,6 +223,24 @@ export default function SalaryComponentListPage() {
 
   function closeConfirmDialog() {
     setObjConfirmDialog(null);
+  }
+
+  function applySearch(dicSearch: SearchForm) {
+    const dicNextSearch = {
+      ...dicSearch,
+      code: dicSearch.code.trim(),
+      name: dicSearch.name.trim(),
+    };
+    setDicSearchDraft(dicNextSearch);
+    setDicSearchApplied(dicNextSearch);
+    objRouter.replace(buildSalaryComponentListUrl(dicNextSearch));
+  }
+
+  function handleSearchTextKeyDown(objEvent: KeyboardEvent<HTMLInputElement>) {
+    if (objEvent.key === "Enter") {
+      objEvent.preventDefault();
+      applySearch(dicSearchDraft);
+    }
   }
 
   async function executeConfirmedAction() {
@@ -260,14 +323,16 @@ export default function SalaryComponentListPage() {
         const blnSelected = lstSelectedIds.includes(dicRow.intID);
         return {
           id: dicRow.intID,
-          select: <Checkbox inputProps={{ "data-testid": "salary-components.list.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicRow.intID)} />,
+          select: <Checkbox data-controlid="salary-components.list.row.select.checkbox" data-row-key={String(dicRow.intID)} inputProps={{ "data-controlid": "salary-components.list.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicRow.intID)} />,
           action: (
             <CommonRowActions
               testIdPrefix="salary-components.list.row"
               rowKey={dicRow.intID}
+              blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
-              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}`)}
+              onView={() => objRouter.push(`/salary-components/view/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
               onDelete={() => deleteSalaryComponent(dicRow.intID)}
             />
           ),
@@ -279,13 +344,13 @@ export default function SalaryComponentListPage() {
           strPfEsic: getPfEsicLabel(dicRow.blnIncludeInPF, dicRow.blnIncludeInESIC),
           blnDeclarationRequired: dicRow.blnDeclarationRequired ? t("yes", "Yes") : t("no", "No"),
           blnIsActive: (
-            <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+            <span data-controlid="salary-components.list.row.status.pill" data-row-key={String(dicRow.intID)} className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
               {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
             </span>
           ),
         };
       }),
-    [blnCanDelete, blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, t]
+    [blnCanDelete, blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, strCurrentListRoute, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -294,12 +359,12 @@ export default function SalaryComponentListPage() {
         field: "select",
         headerName: (
           <Checkbox
-            data-testid="salary-components.list.select-all.checkbox"
+            data-controlid="salary-components.list.select-all.checkbox"
             checked={blnAllFilteredSelected}
             indeterminate={blnSomeFilteredSelected}
             onChange={toggleSelectAll}
             disabled={lstFilteredRows.length === 0}
-            inputProps={{ "data-testid": "salary-components.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            inputProps={{ "data-controlid": "salary-components.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
           />
         ),
         sortable: false,
@@ -321,66 +386,67 @@ export default function SalaryComponentListPage() {
   );
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} data-controlid="salary-components.list.page">
       <Box className={styles.topBar}>
-        <Button data-testid="salary-components.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button data-controlid="salary-components.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button", "Back")}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         {strRightsError ? (
-          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          <Typography data-controlid="salary-components.list.rights-error.message" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography data-controlid="salary-components.list.read-only.message" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Salary Component.")}
           </Typography>
         ) : null}
 
         <Box className={styles.searchRow}>
           <TextField
-            data-testid="salary-components.list.search-name.input"
-            inputProps={{ "data-testid": "salary-components.list.search-name.input" }}
+            data-controlid="salary-components.list.search-name.input"
+            inputProps={{ "data-controlid": "salary-components.list.search-name.input" }}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
+            onKeyDown={handleSearchTextKeyDown}
             placeholder={t("search_component_name", "Search component name")}
             fullWidth
           />
           <TextField
-            data-testid="salary-components.list.search-code.input"
-            inputProps={{ "data-testid": "salary-components.list.search-code.input" }}
+            data-controlid="salary-components.list.search-code.input"
+            inputProps={{ "data-controlid": "salary-components.list.search-code.input" }}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value.toUpperCase() }))}
+            onKeyDown={handleSearchTextKeyDown}
             placeholder={t("search_component_code", "Search component code")}
             fullWidth
           />
           <TextField
-            data-testid="salary-components.list.search-status.select"
-            inputProps={{ "data-testid": "salary-components.list.search-status.select" }}
+            data-controlid="salary-components.list.search-status.select"
+            inputProps={{ "data-controlid": "salary-components.list.search-status.select" }}
             select
             label={t("search_status_label", "Status")}
             value={dicSearchDraft.status}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, status: objEvent.target.value as SearchForm["status"] }))}
             fullWidth
           >
-            <MenuItem data-testid="salary-components.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
-            <MenuItem data-testid="salary-components.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
-            <MenuItem data-testid="salary-components.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>
+            <Button data-controlid="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
               {t("search_button", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              data-testid="salary-components.list.clear.button"
+              data-controlid="salary-components.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
-                setDicSearchDraft(dicEmptySearch);
-                setDicSearchApplied(dicEmptySearch);
+                applySearch(dicEmptySearch);
               }}
               disabled={blnLoading || blnSubmitting}
             >
@@ -390,28 +456,23 @@ export default function SalaryComponentListPage() {
         </Box>
 
         {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
+          <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-processing.state">
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
-          <Box className={styles.bulkBar}>
+          <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-actions.bar">
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${t("bulk_rows_selected", "rows selected")}`}</Typography>
-            {blnCanEdit ? <Button data-testid="salary-components.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
-            {blnCanEdit ? <Button data-testid="salary-components.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
-            {blnCanDelete ? <Button data-testid="salary-components.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Delete")}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="salary-components.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{t("bulk_activate", "Activate")}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="salary-components.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{t("bulk_deactivate", "Deactivate")}</Button> : null}
+            {blnCanDelete ? <Button data-controlid="salary-components.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{t("bulk_delete", "Delete")}</Button> : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnLoading || blnRightsLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{t("loading_salary_components", "Loading salary components...")}</Typography>
-          </Box>
-        ) : !blnCanView ? (
-          <Box className={styles.emptyState}>
+        {!blnCanView ? (
+          <Box className={styles.emptyState} data-controlid="salary-components.list.access-denied.state">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary component access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary component visibility.")}</Typography>
           </Box>
@@ -428,7 +489,7 @@ export default function SalaryComponentListPage() {
             emptyMessage={t("no_salary_components_found", "No salary components found.")}
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                {blnCanAdd ? <Button data-testid="salary-components.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-components/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
+                {blnCanAdd ? <Button data-controlid="salary-components.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(`/salary-components/add?backRoute=${encodeURIComponent(strCurrentListRoute)}`)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
               </Box>
             )}
             testIdPrefix="salary-components.list"
@@ -449,10 +510,10 @@ export default function SalaryComponentListPage() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading", "Loading...") : t("processing", "Processing...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading_salary_components", "Loading salary components...") : t("processing", "Processing...")} intZIndex={1400} />
 
-      <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+      <Snackbar data-controlid="salary-components.list.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert data-controlid="salary-components.list.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
           {objToast.strMessage}
         </Alert>
       </Snackbar>

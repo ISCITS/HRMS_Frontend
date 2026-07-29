@@ -2,9 +2,10 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -155,16 +156,15 @@ export default function BankFileReportPage() {
   const [lstRows, setLstRows] = useState<PayrollResultListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(true);
+  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
-  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [intPage, setIntPage] = useState(1);
   const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
-  async function loadRows(objFilters: SearchForm = dicSearchApplied) {
+  async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
@@ -178,38 +178,7 @@ export default function BankFileReportPage() {
       setBlnLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (!blnRightsLoading) {
-      setBlnFilterDialogOpen(true);
-    }
-  }, [blnRightsLoading]);
-
-  const lstFilteredRows = useMemo(() => {
-    const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
-    const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
-    const [strPayrollYear, strPayrollMonth] = dicSearchApplied.strPayrollMonth.split("-");
-    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
-    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
-    return lstRows.filter((dicRow) => {
-      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
-      const blnEmployeeMatch =
-        !strEmployeeSearch ||
-        dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
-        dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
-      const blnRunMatch =
-        !strRunSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
-        dicRow.strRunName.toLowerCase().includes(strRunSearch);
-      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
-      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
-      const blnStatusMatch =
-        dicSearchApplied.strStatus === "All" ||
-        dicSearchApplied.strStatus === "Approved" ||
-        dicRow.strStatus === dicSearchApplied.strStatus;
-      return blnEmployeeMatch && blnRunMatch && blnMonthMatch && blnYearMatch && blnStatusMatch && dicRow.decNetPayAmount > 0;
-    });
-  }, [dicSearchApplied, lstRows]);
+  const lstFilteredRows = useMemo(() => lstRows.filter((dicRow) => dicRow.decNetPayAmount > 0), [lstRows]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -249,16 +218,22 @@ export default function BankFileReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
-    setDicSearchApplied(dicFilters);
+    setStrError("");
     setBlnFilterDialogOpen(false);
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
-    setDicSearchApplied(dicEmptySearch);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
+
+  useEffect(() => {
+    if (!blnCanView) {
+      return;
+    }
+    loadRows(dicEmptySearch).catch(() => undefined);
+  }, [blnCanView]);
 
   if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading bank file..." />;
@@ -266,34 +241,52 @@ export default function BankFileReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Reports / Bank File</Typography>
+      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Bank File</Typography>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography className={styles.title}>Bank File</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.4 }}>
-              Payment-required net salary data for approved, published, or paid payroll results.
-            </Typography>
+          <Box />
+        </Box>
+        <Box className={styles.bankFileSearchPanel}>
+          <Box className={styles.bankFileSearchLinePrimary}>
+            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth controlId="reports.bank-file.employee-search.input" />
+            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth controlId="reports.bank-file.run-search.input" />
+            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} controlId="reports.bank-file.payroll-month.input" />
+            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth controlId="reports.bank-file.department.input" />
+            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth controlId="reports.bank-file.location.input" />
+          </Box>
+          <Box className={styles.bankFileSearchLineSecondary}>
+            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth controlId="reports.bank-file.status.select">
+              <MenuItem value="All">All</MenuItem>
+              <MenuItem value="Calculated">Calculated</MenuItem>
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Published">Published</MenuItem>
+              <MenuItem value="Paid">Paid</MenuItem>
+            </TextField>
+            <Box className={styles.searchActions}>
+              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.bank-file.search.button">Search</Button>
+              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.bank-file.clear.button">Clear</Button>
+            </Box>
           </Box>
         </Box>
-        <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth data-testid="reports.bank-file.employee-search.input" />
-          <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-testid="reports.bank-file.run-search.input" />
-          <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-testid="reports.bank-file.payroll-month.input" />
-          <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-testid="reports.bank-file.department.input" />
-          <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-testid="reports.bank-file.location.input" />
-          <TextField select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-testid="reports.bank-file.status.select">
-            <MenuItem value="All">Eligible statuses</MenuItem>
-            <MenuItem value="Calculated">Calculated</MenuItem>
-            <MenuItem value="Approved">Approved</MenuItem>
-            <MenuItem value="Published">Published</MenuItem>
-            <MenuItem value="Paid">Paid</MenuItem>
-          </TextField>
-          <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-testid="reports.bank-file.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-testid="reports.bank-file.clear.button">Clear</Button>
-          </Box>
-        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          alignItems: "center",
+          backgroundColor: "#f8fbff",
+          border: "1px solid rgba(191,219,254,0.7)",
+          borderRadius: "16px",
+          color: "#1f2937",
+          display: "flex",
+          gap: 1,
+          px: 1.5,
+          py: 1.25,
+        }}
+      >
+        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
+          Payment-required net salary data for approved, published, or paid payroll results.
+        </Typography>
       </Box>
 
       <Box className={styles.tableCard}>
@@ -301,8 +294,8 @@ export default function BankFileReportPage() {
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <Box className={styles.listUtilityBar}>
           <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("bank-file.csv", lstExportRows)} data-testid="reports.bank-file.generate.button">Generate Bank File</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Bank File", lstExportRows)} data-testid="reports.bank-file.download-pdf.button">Download PDF</Button> : null}
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("bank-file.csv", lstExportRows)} controlId="reports.bank-file.generate.button">Generate Bank File</Button> : null}
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Bank File", lstExportRows)} controlId="reports.bank-file.download-pdf.button">Download PDF</Button> : null}
             {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
           </Box>
           <Box className={styles.paginationBar} sx={{ p: 0 }}>

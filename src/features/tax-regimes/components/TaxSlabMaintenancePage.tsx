@@ -12,9 +12,8 @@ import {
   MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,11 +22,7 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
-import {
-  createEmptyTaxSlabLine,
-  taxRegimeService,
-  toTaxSlabFormValues
-} from "@/features/tax-regimes/services/taxRegimeService";
+import { createEmptyTaxSlabLine, taxRegimeService, toTaxSlabFormValues } from "@/features/tax-regimes/services/taxRegimeService";
 import type { TaxRegimeDetailRecord, TaxSlabLineFormValue } from "@/features/tax-regimes/types";
 
 type TaxSlabMaintenancePageProps = {
@@ -35,10 +30,8 @@ type TaxSlabMaintenancePageProps = {
 };
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
-
-function getDefaultFinancialYear(lstFinancialYears: string[], lstRows: TaxSlabLineFormValue[]) {
-  return lstRows.at(-1)?.strFinancialYearCode || lstFinancialYears[0] || "";
-}
+const lstProfileCodes = ["GENERAL", "SENIOR", "SUPER_SENIOR"];
+const lstResidentialStatuses = ["RESIDENT", "NON_RESIDENT", "RNOR"];
 
 export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMaintenancePageProps) {
   const objRouter = useRouter();
@@ -61,7 +54,6 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
 
   useEffect(() => {
     let blnMounted = true;
-
     async function loadData() {
       if (blnRightsLoading) {
         return;
@@ -92,7 +84,6 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
         }
       }
     }
-
     loadData().catch(() => undefined);
     return () => {
       blnMounted = false;
@@ -100,22 +91,15 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
   }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID]);
 
   function updateLine(strRowID: string, strField: keyof TaxSlabLineFormValue, objValue: string | boolean) {
-    setLstSlabs((lstPrevious) => lstPrevious.map((dicLine) => (
-      dicLine.strRowID === strRowID ? { ...dicLine, [strField]: objValue } : dicLine
-    )));
+    setLstSlabs((lstPrevious) => lstPrevious.map((dicLine) => dicLine.strRowID === strRowID ? { ...dicLine, [strField]: objValue } : dicLine));
   }
 
   function handleAddLine() {
-    setLstSlabs((lstPrevious) => [
-      ...lstPrevious,
-      createEmptyTaxSlabLine(getDefaultFinancialYear(lstFinancialYears, lstPrevious))
-    ]);
+    setLstSlabs((lstPrevious) => [...lstPrevious, createEmptyTaxSlabLine(objRegime?.strTaxYearCode || lstFinancialYears[0] || "")]);
   }
 
   function handleRemoveLine(strRowID: string) {
-    setLstSlabs((lstPrevious) => (
-      lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicLine) => dicLine.strRowID !== strRowID)
-    ));
+    setLstSlabs((lstPrevious) => lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicLine) => dicLine.strRowID !== strRowID));
   }
 
   async function handleSave() {
@@ -126,13 +110,8 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
       setStrError(t("validation_slab_row_required", "At least one slab row is required."));
       return;
     }
-    const blnHasInvalidRow = lstSlabs.some((dicLine) => (
-      !dicLine.strFinancialYearCode.trim() ||
-      !dicLine.fltSlabFromAmount.trim() ||
-      !dicLine.fltTaxRatePercent.trim()
-    ));
-    if (blnHasInvalidRow) {
-      setStrError(t("validation_slab_required_fields", "Financial year, slab from amount, and tax rate are required for every row."));
+    if (lstSlabs.some((dicLine) => !dicLine.strTaxYearCode.trim() || !dicLine.strSlabProfileCode.trim() || !dicLine.fltSlabFromAmount.trim() || !dicLine.fltTaxRatePercent.trim())) {
+      setStrError(t("validation_slab_required_fields", "Tax year, profile, slab from amount, and tax rate are required for every row."));
       return;
     }
     setBlnSaving(true);
@@ -178,14 +157,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
 
   return (
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fcff 0%, #f7f8ff 45%, #fff9f0 100%)"
-        }}
-      >
+      <Paper sx={{ borderRadius: "28px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f8fcff 0%, #f7f8ff 45%, #fff9f0 100%)" }}>
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
@@ -193,81 +165,19 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
                 {t("slab_title", "Tax Slab Maintenance")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("slab_subtitle", "Maintain regime-wise slab lines by financial year, rate, rebate eligibility, and activation state without exposing system metadata.")}
+                {t("slab_subtitle", "Maintain tax-year and profile-specific slab bands using continuous boundaries. Rebate eligibility is handled separately at regime level.")}
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button
-                data-testid="tax-regimes.slabs.back.button"
-                className={styles.secondaryButton}
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}`)}
-                sx={{
-                  height: 38,
-                  minHeight: 38,
-                  py: 0,
-                  px: 1.5,
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1rem"
-                    }
-                  }
-                }}
-              >
+              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}`)}>
                 {t("back_to_regime", "Back to regime")}
               </Button>
               {blnCanSave ? (
-                <Button
-                  data-testid="tax-regimes.slabs.save.button"
-                  className={styles.primaryButton}
-                  startIcon={<SaveRoundedIcon />}
-                  onClick={handleSave}
-                  disabled={blnSaving}
-                  sx={{
-                    height: 38,
-                    minHeight: 38,
-                    py: 0,
-                    px: 1.75,
-                    fontSize: "0.9rem",
-                    whiteSpace: "nowrap",
-                    "& .MuiButton-startIcon": {
-                      mr: 0.75,
-                      "& svg": {
-                        fontSize: "1rem"
-                      }
-                    }
-                  }}
-                >
+                <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
                   {blnSaving ? t("saving", "Saving...") : t("save_slabs", "Save Slabs")}
                 </Button>
               ) : null}
             </Stack>
-          </Stack>
-
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("regime_code", "Regime Code")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strRegimeCode}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("regime_name", "Regime Name")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strRegimeName}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("country", "Country")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strCountryCode}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("effective_from_year", "Effective From Year")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.strEffectiveFromYear ? `FY ${objRegime.strEffectiveFromYear}` : "-"}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("default_regime", "Default Regime")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>{objRegime.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}</Typography>
-            </Paper>
           </Stack>
         </Stack>
       </Paper>
@@ -279,34 +189,12 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
       <Box>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.25 }}>
           <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              {t("slab_lines", "Slab Lines")}
-            </Typography>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("slab_lines", "Slab Lines")}</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
-              {t("slab_lines_help", "Keep financial year specific slabs in ascending order. Use an empty Slab To Amount to mark the open-ended last slab for that year.")}
+              {t("slab_lines_help", "Use lower-inclusive and upper-exclusive boundaries. Only the final slab in one profile should remain open-ended.")}
             </Typography>
           </Box>
-          <Button
-            data-testid="tax-regimes.slabs.add-line.button"
-            className={styles.primaryButton}
-            startIcon={<AddRoundedIcon />}
-            onClick={handleAddLine}
-            disabled={blnFieldDisabled}
-            sx={{
-              height: 38,
-              minHeight: 38,
-              py: 0,
-              px: 1.75,
-              fontSize: "0.9rem",
-              whiteSpace: "nowrap",
-              "& .MuiButton-startIcon": {
-                mr: 0.75,
-                "& svg": {
-                  fontSize: "1rem"
-                }
-              }
-            }}
-          >
+          <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLine} disabled={blnFieldDisabled}>
             {t("add_slab_line", "Add Slab Line")}
           </Button>
         </Stack>
@@ -316,11 +204,16 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>{t("financial_year", "Financial Year")}</th>
+                  <th>{t("tax_year", "Tax Year")}</th>
+                  <th>{t("slab_profile", "Slab Profile")}</th>
+                  <th>{t("residential_status", "Residential Status")}</th>
+                  <th>{t("age_from", "Age From")}</th>
+                  <th>{t("age_to", "Age To")}</th>
                   <th>{t("slab_from_amount", "Slab From Amount")}</th>
                   <th>{t("slab_to_amount", "Slab To Amount")}</th>
                   <th>{t("tax_rate_percent", "Tax Rate %")}</th>
-                  <th>{t("rebate_eligible", "Rebate Eligible")}</th>
+                  <th>{t("fixed_tax_amount", "Fixed Tax Amount")}</th>
+                  <th>{t("display_order", "Display Order")}</th>
                   <th>{t("active", "Active")}</th>
                   <th>{t("action", "Action")}</th>
                 </tr>
@@ -329,61 +222,34 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
                 {lstSlabs.map((dicLine) => (
                   <tr key={dicLine.strRowID}>
                     <td>
-                      <TextField
-                        select
-                        size="small"
-                        value={dicLine.strFinancialYearCode}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "strFinancialYearCode", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        sx={{ minWidth: 160 }}
-                      >
+                      <TextField select size="small" value={dicLine.strTaxYearCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strTaxYearCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }}>
                         {lstFinancialYears.map((strFinancialYearCode) => (
                           <MenuItem key={strFinancialYearCode} value={strFinancialYearCode}>{strFinancialYearCode}</MenuItem>
                         ))}
                       </TextField>
                     </td>
                     <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltSlabFromAmount}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabFromAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        sx={{ minWidth: 150 }}
-                      />
+                      <TextField select size="small" value={dicLine.strSlabProfileCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strSlabProfileCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }}>
+                        {lstProfileCodes.map((strProfileCode) => (
+                          <MenuItem key={strProfileCode} value={strProfileCode}>{strProfileCode}</MenuItem>
+                        ))}
+                      </TextField>
                     </td>
                     <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltSlabToAmount}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabToAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        placeholder={t("open_ended", "Open ended")}
-                        sx={{ minWidth: 150 }}
-                      />
+                      <TextField select size="small" value={dicLine.strResidentialStatusCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strResidentialStatusCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 150 }}>
+                        {lstResidentialStatuses.map((strStatusCode) => (
+                          <MenuItem key={strStatusCode} value={strStatusCode}>{strStatusCode}</MenuItem>
+                        ))}
+                      </TextField>
                     </td>
-                    <td>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltTaxRatePercent}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "fltTaxRatePercent", objEvent.target.value)}
-                        disabled={blnFieldDisabled}
-                        sx={{ minWidth: 140 }}
-                      />
-                    </td>
-                    <td>
-                      <Switch
-                        checked={dicLine.blnRebateEligible}
-                        onChange={(objEvent) => updateLine(dicLine.strRowID, "blnRebateEligible", objEvent.target.checked)}
-                        disabled={blnFieldDisabled}
-                      />
-                    </td>
-                    <td>
-                      <ActiveStatusSwitch
-                        blnIsActive={dicLine.blnIsActive}
-                        onChange={(blnChecked) => updateLine(dicLine.strRowID, "blnIsActive", blnChecked)}
-                        disabled={blnFieldDisabled}
-                      />
-                    </td>
+                    <td><TextField size="small" value={dicLine.intAgeFromYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeFromYears", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 90 }} /></td>
+                    <td><TextField size="small" value={dicLine.intAgeToYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeToYears", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 90 }} /></td>
+                    <td><TextField size="small" value={dicLine.fltSlabFromAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabFromAmount", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }} /></td>
+                    <td><TextField size="small" value={dicLine.fltSlabToAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabToAmount", objEvent.target.value)} disabled={blnFieldDisabled} placeholder={t("open_ended", "Open ended")} sx={{ minWidth: 140 }} /></td>
+                    <td><TextField size="small" value={dicLine.fltTaxRatePercent} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltTaxRatePercent", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 110 }} /></td>
+                    <td><TextField size="small" value={dicLine.decFixedTaxAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "decFixedTaxAmount", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 120 }} /></td>
+                    <td><TextField size="small" value={dicLine.intDisplayOrder} onChange={(objEvent) => updateLine(dicLine.strRowID, "intDisplayOrder", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 110 }} /></td>
+                    <td><ActiveStatusSwitch blnIsActive={dicLine.blnIsActive} onChange={(blnChecked) => updateLine(dicLine.strRowID, "blnIsActive", blnChecked)} disabled={blnFieldDisabled} /></td>
                     <td>
                       <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLine(dicLine.strRowID)} disabled={blnFieldDisabled}>
                         {t("remove_button", "Remove")}

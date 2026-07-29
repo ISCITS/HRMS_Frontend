@@ -5,16 +5,17 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } from "@/features/employee/types";
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
-import { formatCurrency, formatDateLabel } from "@/features/reimbursements/formatters";
+import { formatCurrency, formatDateLabel, formatStatusLabel } from "@/features/reimbursements/formatters";
 import { claimHasProofPending } from "@/features/reimbursements/hrRules";
 import { canEditReimbursementClaim } from "@/features/reimbursements/rules";
 import { createInitialPayrollReimbursementFilters, payrollReimbursementService, type PayrollReimbursementFilters } from "@/features/reimbursements/services/payrollReimbursementService";
@@ -25,36 +26,6 @@ const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved"
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS", "REIMBURSEMENT", "REIMBURSEMENTS"];
 const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
-const objHeaderActionButtonBaseSx = {
-  minHeight: 30,
-  maxHeight: 30,
-  px: 1.2,
-  py: 0.25,
-  borderRadius: "8px !important",
-  fontWeight: 800,
-  boxShadow: "none",
-  textTransform: "none",
-};
-const objHeaderPrimaryButtonSx = {
-  ...objHeaderActionButtonBaseSx,
-  backgroundColor: "var(--app-primary-color)",
-  color: "#ffffff",
-  "&:hover": {
-    backgroundColor: "var(--app-primary-color)",
-    boxShadow: "none",
-  },
-};
-const objHeaderSecondaryButtonSx = {
-  ...objHeaderActionButtonBaseSx,
-  border: "1px solid var(--app-secondary-border)",
-  backgroundColor: "rgba(255, 255, 255, 0.86)",
-  color: "var(--app-primary-color)",
-  "&:hover": {
-    border: "1px solid var(--app-secondary-border)",
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-  },
-};
-
 type FilterOption = {
   strValue: string;
   strLabel: string;
@@ -167,7 +138,6 @@ export default function ReimbursementReviewListPage() {
 
   const blnCanViewEssReimbursement = canViewEssAny() || canDoEssAny("list") || canDoEssAny("view") || canDoEssAny("ess_reimbursement_view") || hasEssPermissionCode("ESS_REIMBURSEMENT_VIEW");
   const blnCanEditEssReimbursement = canDoEssAny("edit") || canDoEssAny("ess_reimbursement_edit") || hasEssPermissionCode("ESS_REIMBURSEMENT_EDIT");
-  const strPageLabel = blnEmployeeReimbursementContext ? "Employee Reimbursements" : "Reimbursement Review";
 
   async function loadClaims(dicNextFilters = dicFilters) {
     if (!blnCanView) {
@@ -256,6 +226,93 @@ export default function ReimbursementReviewListPage() {
     });
   }, [dicFilters, lstClaims, mapEmployees]);
 
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredClaims.map((objClaim) => ({
+        id: objClaim.intID,
+        action: blnEmployeeReimbursementContext ? (
+          <Stack direction="row" spacing={0.6} justifyContent="center" flexWrap="wrap" useFlexGap>
+            {blnCanViewEssReimbursement ? (
+              <IconButton
+                size="small"
+                onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))}
+                aria-label="Open reimbursement claim"
+                controlId="reimbursements.review-list.row.view-ess.button"
+                data-row-key={objClaim.intID}
+              >
+                <OpenInNewRoundedIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+            {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
+              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
+            ) : null}
+          </Stack>
+        ) : (
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <IconButton
+              size="small"
+              onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)}
+              aria-label="Open reimbursement claim"
+              controlId="reimbursements.review-list.row.open.button"
+              data-row-key={objClaim.intID}
+            >
+              <OpenInNewRoundedIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        ),
+        strClaimReference: (
+          <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "0.88rem" }}>
+            {getClaimReferenceNumber(objClaim) || "-"}
+          </Typography>
+        ),
+        strClaimReferenceSort: getClaimReferenceNumber(objClaim) || "",
+        strClaimTitle: objClaim.strClaimTitle || "",
+        strEmployee: getEmployeeLabel(objClaim, mapEmployees) || "-",
+        dtClaimDate: formatDateLabel(objClaim.dtClaimDate),
+        strStatus: <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} />,
+        strStatusSort: formatStatusLabel(objClaim.strClaimStatus),
+        decClaimedAmount: formatCurrency(objClaim.decClaimedAmount),
+        decApprovedAmount: formatCurrency(objClaim.decApprovedAmount),
+        strPaymentStatus: getPaymentStatusLabel(objClaim),
+      })),
+    [blnCanEditEssReimbursement, blnCanViewEssReimbursement, blnEmployeeReimbursementContext, lstFilteredClaims, mapEmployees, objRouter]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: "Action", align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strClaimReference", headerName: "Claim Ref #", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
+      { field: "strClaimTitle", headerName: "Claim Purpose", width: 220 },
+      { field: "strEmployee", headerName: "Employee", width: 230 },
+      { field: "dtClaimDate", headerName: "Claim Date", width: 140 },
+      { field: "strStatus", headerName: "Status", align: "left", filterable: false, width: 160, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+      {
+        field: "decClaimedAmount",
+        headerName: (
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "inherit" }}>Claimed Amount</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+          </Box>
+        ),
+        align: "right",
+        width: 170,
+      },
+      {
+        field: "decApprovedAmount",
+        headerName: (
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "inherit" }}>Approved Amount</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+          </Box>
+        ),
+        align: "right",
+        width: 180,
+      },
+      { field: "strPaymentStatus", headerName: "Payment Status", width: 160 },
+    ],
+    []
+  );
+
   function clearFilters() {
     const dicReset = createInitialPayrollReimbursementFilters();
     setDicFilters(dicReset);
@@ -296,55 +353,45 @@ export default function ReimbursementReviewListPage() {
 
   return (
     <Stack spacing={1.4}>
-      <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1}>
-          <Box>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{strPageLabel}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstFilteredClaims.length} claims in the current review view.</Typography>
-          </Box>
-          <Stack direction="row" alignItems="center" spacing={0.7}>
-            {blnCanCreateEssReimbursement ? (
-              <Button size="small" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} sx={objHeaderPrimaryButtonSx}>Add Reimbursement</Button>
-            ) : null}
-            <Button size="small" variant="contained" startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} sx={objHeaderPrimaryButtonSx}>Search</Button>
-            <Button size="small" variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objHeaderSecondaryButtonSx}>Clear</Button>
-          </Stack>
-        </Stack>
-      </Paper>
-
       <Paper sx={{ p: 1.1, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.status.select">
-            <MenuItem value="">All statuses</MenuItem>
-            {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
-          </TextField>
-          <TextField select size="small" label="Employee" value={dicFilters.intEmployeeID} onChange={(objEvent) => setDicFilters({ ...dicFilters, intEmployeeID: objEvent.target.value })} sx={{ minWidth: 210 }}>
-            <MenuItem value="">All employees</MenuItem>
-            {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
-          <TextField select size="small" label="Claim search" value={dicFilters.strSearchText} onChange={(objEvent) => setDicFilters({ ...dicFilters, strSearchText: objEvent.target.value })} sx={{ minWidth: 240 }}>
-            <MenuItem value="">All claims</MenuItem>
-            {lstClaimOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
-            <MenuItem value="">Any</MenuItem>
-            <MenuItem value="yes">Yes</MenuItem>
-            <MenuItem value="no">No</MenuItem>
-          </TextField>
-          <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} data-testid="reimbursements.review-list.payroll-status.select">
-            <MenuItem value="">Any</MenuItem>
-            <MenuItem value="in_payroll">In payroll</MenuItem>
-            <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
-          </TextField>
-          <TextField select size="small" label="Department" value={dicFilters.strDepartment} onChange={(objEvent) => setDicFilters({ ...dicFilters, strDepartment: objEvent.target.value })} sx={{ minWidth: 170 }}>
-            <MenuItem value="">All departments</MenuItem>
-            {lstDepartmentOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select size="small" label="Location" value={dicFilters.strLocation} onChange={(objEvent) => setDicFilters({ ...dicFilters, strLocation: objEvent.target.value })} sx={{ minWidth: 170 }}>
-            <MenuItem value="">All locations</MenuItem>
-            {lstLocationOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-          </TextField>
+        <Stack spacing={1.1}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap>
+            <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
+              <MenuItem value="">All statuses</MenuItem>
+              {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
+            </TextField>
+            <TextField select size="small" label="Employee" value={dicFilters.intEmployeeID} onChange={(objEvent) => setDicFilters({ ...dicFilters, intEmployeeID: objEvent.target.value })} sx={{ minWidth: 210 }}>
+              <MenuItem value="">All employees</MenuItem>
+              {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
+            </TextField>
+            <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
+            <TextField select size="small" label="Claim search" value={dicFilters.strSearchText} onChange={(objEvent) => setDicFilters({ ...dicFilters, strSearchText: objEvent.target.value })} sx={{ minWidth: 240 }}>
+              <MenuItem value="">All claims</MenuItem>
+              {lstClaimOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
+            </TextField>
+            <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
+              <MenuItem value="">Any</MenuItem>
+              <MenuItem value="yes">Yes</MenuItem>
+              <MenuItem value="no">No</MenuItem>
+            </TextField>
+            <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.payroll-status.select">
+              <MenuItem value="">Any</MenuItem>
+              <MenuItem value="in_payroll">In payroll</MenuItem>
+              <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
+            </TextField>
+            <TextField select size="small" label="Department" value={dicFilters.strDepartment} onChange={(objEvent) => setDicFilters({ ...dicFilters, strDepartment: objEvent.target.value })} sx={{ minWidth: 170 }}>
+              <MenuItem value="">All departments</MenuItem>
+              {lstDepartmentOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
+            </TextField>
+            <TextField select size="small" label="Location" value={dicFilters.strLocation} onChange={(objEvent) => setDicFilters({ ...dicFilters, strLocation: objEvent.target.value })} sx={{ minWidth: 170 }}>
+              <MenuItem value="">All locations</MenuItem>
+              {lstLocationOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
+            </TextField>
+            <Box className={styles.searchActions}>
+              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.review-list.search.button">Search</Button>
+              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reimbursements.review-list.clear.button">Clear</Button>
+            </Box>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -359,78 +406,42 @@ export default function ReimbursementReviewListPage() {
         </Paper>
       ) : null}
 
-      {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
-        <TableContainer>
-          <Table size="small" sx={{ minWidth: blnEmployeeReimbursementContext ? 1180 : 980 }}>
-            <TableHead sx={{ backgroundColor: "#f8fafc" }}>
-              <TableRow>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Action</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Ref #</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Purpose</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Employee</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                {/* <TableCell sx={{ fontWeight: 800 }}>Proof</TableCell> */}
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed Amount 
-                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
-                  </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved Amount
-                   <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Payment Status</TableCell>
-
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {lstFilteredClaims.length === 0 && !blnLoading ? (
-                <TableRow><TableCell colSpan={10}><Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>No reimbursement claims found.</Typography></TableCell></TableRow>
-              ) : null}
-              {lstFilteredClaims.map((objClaim) => (
-                <TableRow key={objClaim.intID} hover>
-                  <TableCell align="right">
-                    {blnEmployeeReimbursementContext ? (
-                      <Stack direction="row" spacing={0.6} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-                        {blnCanViewEssReimbursement ? (
-                          <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))} aria-label="View reimbursement claim" data-testid="reimbursements.review-list.row.view-ess.button" data-row-key={objClaim.intID}><VisibilityRoundedIcon fontSize="small" /></IconButton>
-                          ) : null} 
-                        {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-                          <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" data-testid="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
-                         ) : null} 
-                      </Stack>
-                    ) : (
-                      <IconButton size="small" onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)} aria-label="Open reimbursement claim" data-testid="reimbursements.review-list.row.open.icon-button" data-row-key={objClaim.intID}><OpenInNewRoundedIcon fontSize="small" /></IconButton>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim) || "-"}</Typography>
-                    {/* <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objClaim.strClaimTitle || "-"}</Typography> */}
-                  </TableCell>
-                  <TableCell>{objClaim.strClaimTitle || ""}</TableCell>
-                  <TableCell>{getEmployeeLabel(objClaim, mapEmployees) || "-"}</TableCell>
-                  <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
-                  <TableCell><ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
-                  {/* <TableCell>{claimHasProofPending(objClaim) ? "Pending" : "Clear"}</TableCell> */}
-                  <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
-                  <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
-                  <TableCell>{getPaymentStatusLabel(objClaim)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper> : null}
+      {blnCanView ? (
+        <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            showPaginationSummary
+            toolbarLeft={(
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", sm: "center" }}>
+                {blnCanCreateEssReimbursement ? (
+                  <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { setStrCreateEmployeeID(""); setStrCreateError(""); setBlnCreateDialogOpen(true); }} controlId="reimbursements.review-list.add.button">Add Reimbursement</Button>
+                ) : null}
+              </Stack>
+            )}
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            minTableWidth={blnEmployeeReimbursementContext ? 1180 : 980}
+            emptyMessage="No reimbursement claims found."
+            testIdPrefix="reimbursements.review-list"
+            withPaper={false}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        </Paper>
+      ) : null}
       <Dialog open={blnCreateDialogOpen} onClose={() => setBlnCreateDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Add Reimbursement</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 1.4 }}>Select an employee to create the reimbursement for.</DialogContentText>
-          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} data-testid="reimbursements.review-list.create.employee.select">
+          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select">
             <MenuItem value="">Select employee</MenuItem>
             {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
           </TextField>
         </DialogContent>
-        <DialogActions>
-          <Button size="small" onClick={() => setBlnCreateDialogOpen(false)} variant="outlined" sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px" }}>Cancel</Button>
-          <Button size="small" onClick={proceedToCreateForEmployee} variant="contained" sx={{ textTransform: "none", fontWeight: 800, borderRadius: "8px" }}>Proceed</Button>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button size="small" className={styles.secondaryButton} onClick={() => setBlnCreateDialogOpen(false)} controlId="reimbursements.review-list.create.cancel.button">Cancel</Button>
+          <Button size="small" className={styles.primaryButton} onClick={proceedToCreateForEmployee} controlId="reimbursements.review-list.create.proceed.button">Proceed</Button>
         </DialogActions>
       </Dialog>
     </Stack>

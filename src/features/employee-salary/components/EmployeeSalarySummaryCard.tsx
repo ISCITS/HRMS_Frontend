@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
+import type { EmployeeSalaryDetailRecord, EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
+import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 
 function formatCurrency(decValue: number | null) {
   if (decValue === null) {
@@ -31,7 +32,9 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   const objRouter = useRouter();
   const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
+  const [objSalaryDetail, setObjSalaryDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
+  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objSalaryDetail);
 
   function openSalaryPage() {
     if (!intEmployeeID) {
@@ -45,18 +48,24 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
     let blnMounted = true;
     if (!intEmployeeID) {
       setObjSummary(null);
+      setObjSalaryDetail(null);
       return;
     }
     setBlnLoading(true);
-    employeeSalaryService.getEmployeeSalarySummary(intEmployeeID)
-      .then((objResult) => {
+    Promise.all([
+      employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
+      employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID)
+    ])
+      .then(([objSummaryResult, objDetailResult]) => {
         if (blnMounted) {
-          setObjSummary(objResult);
+          setObjSummary(objSummaryResult);
+          setObjSalaryDetail(objDetailResult);
         }
       })
       .catch(() => {
         if (blnMounted) {
           setObjSummary(null);
+          setObjSalaryDetail(null);
         }
       })
       .finally(() => {
@@ -103,7 +112,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
           {!blnHideOpenPageButton ? (
             <Button
-              data-testid="employee-salary.summary.open-page.button"
+              controlId="employee-salary.summary.open-page.button"
               className={styles.primaryButton}
               variant="contained"
               endIcon={<ArrowForwardRoundedIcon />}
@@ -142,13 +151,13 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             <Box>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_gross_monthly", "Gross Monthly")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(objSummary?.objCurrentSalarySnapshot?.decGrossMonthly ?? null)}
+                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decGrossMonthly : null)}
               </Typography>
             </Box>
             <Box>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</Typography>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(objSummary?.objCurrentSalarySnapshot?.decCtcAnnual ?? null)}
+                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decAnnualCtc : null)}
               </Typography>
             </Box>
             <Box>

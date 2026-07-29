@@ -203,41 +203,18 @@ export default function PayrollCycleEditorPage({
                 {t("schedule_subtitle")}
               </Typography>
             </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button
-                data-testid="payroll-cycles.editor.back.button"
-                className={styles.secondaryButton}
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/payroll/schedules")}
-                sx={{
-                  height: 38,
-                  minHeight: 38,
-                  py: 0,
-                  px: 1.5,
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1rem"
-                    }
-                  }
-                }}
-              >
-                {t("schedule_back_to_list")}
-              </Button>
-              {blnCanSave ? (
+            <Stack spacing={1.25} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
                 <Button
-                  data-testid="payroll-cycles.editor.save.button"
-                  className={styles.primaryButton}
-                  startIcon={<SaveRoundedIcon />}
-                  onClick={handleSave}
-                  disabled={blnSaving}
+                  controlId="payroll-cycles.editor.back.button"
+                  className={styles.secondaryButton}
+                  startIcon={<ArrowBackRoundedIcon />}
+                  onClick={() => objRouter.push("/payroll/schedules")}
                   sx={{
                     height: 38,
                     minHeight: 38,
                     py: 0,
-                    px: 1.75,
+                    px: 1.5,
                     fontSize: "0.9rem",
                     whiteSpace: "nowrap",
                     "& .MuiButton-startIcon": {
@@ -248,9 +225,34 @@ export default function PayrollCycleEditorPage({
                     }
                   }}
                 >
-                  {blnSaving ? t("schedule_saving") : t("schedule_save")}
+                  {t("schedule_back_to_list")}
                 </Button>
-              ) : null}
+                {blnCanSave ? (
+                  <Button
+                    controlId="payroll-cycles.editor.save.button"
+                    className={styles.primaryButton}
+                    startIcon={<SaveRoundedIcon />}
+                    onClick={handleSave}
+                    disabled={blnSaving}
+                    sx={{
+                      height: 38,
+                      minHeight: 38,
+                      py: 0,
+                      px: 1.75,
+                      fontSize: "0.9rem",
+                      whiteSpace: "nowrap",
+                      "& .MuiButton-startIcon": {
+                        mr: 0.75,
+                        "& svg": {
+                          fontSize: "1rem"
+                        }
+                      }
+                    }}
+                  >
+                    {blnSaving ? t("schedule_saving") : t("schedule_save")}
+                  </Button>
+                ) : null}
+              </Stack>
             </Stack>
           </Stack>
 
@@ -290,12 +292,33 @@ export default function PayrollCycleEditorPage({
         }}
       >
         <Stack spacing={2.5}>
-          <Box>
-            <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information")}</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.5 }}>
-              {t("schedule_basic_information_help")}
-            </Typography>
-          </Box>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "flex-start" }} spacing={1.5}>
+            <Box>
+              <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information")}</Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.5 }}>
+                {t("schedule_basic_information_help")}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: { xs: "flex-start", md: "flex-end" } }}>
+              <FormControlLabel
+                control={<ActiveStatusSwitch testId="payroll-cycles.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+                label={dicForm.blnIsActive ? t("active") : t("inactive")}
+                labelPlacement="start"
+                sx={{
+                  m: 0,
+                  gap: 1,
+                  color: "#0f172a",
+                  "& .MuiFormControlLabel-label": {
+                    fontWeight: 700
+                  }
+                }}
+              />
+              <Typography sx={{ color: "#64748b", fontSize: "0.78rem", mt: 0.25, textAlign: { xs: "left", md: "right" } }}>
+                {t("active_help")}
+              </Typography>
+            </Box>
+          </Stack>
 
           <Box
             sx={{
@@ -306,7 +329,8 @@ export default function PayrollCycleEditorPage({
           >
             <TextField
               label={t("payroll_group")}
-              inputProps={{ "data-testid": "payroll-cycles.editor.payroll-group.select" }}
+              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              required
               select
               value={dicForm.intPayrollGroupID}
               onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
@@ -323,7 +347,8 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("period_type")}
-              inputProps={{ "data-testid": "payroll-cycles.editor.period-type.select" }}
+              inputProps={{ "controlId": "payroll-cycles.editor.period-type.select" }}
+              required
               select
               value={dicForm.strPeriodType}
               onChange={(objEvent) => updateField("strPeriodType", objEvent.target.value)}
@@ -338,7 +363,8 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cycle_code")}
-              inputProps={{ "data-testid": "payroll-cycles.editor.cycle-code.input" }}
+              inputProps={{ "controlId": "payroll-cycles.editor.cycle-code.input" }}
+              required
               value={dicForm.strCycleCode}
               onChange={(objEvent) => updateField("strCycleCode", objEvent.target.value.toUpperCase())}
               disabled={blnFieldDisabled}
@@ -347,7 +373,8 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cycle_name")}
-              inputProps={{ "data-testid": "payroll-cycles.editor.cycle-name.input" }}
+              inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
+              required
               value={dicForm.strCycleName}
               onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
               disabled={blnFieldDisabled}
@@ -357,23 +384,13 @@ export default function PayrollCycleEditorPage({
 
             <TextField
               label={t("cutoff_day")}
-              inputProps={{ "data-testid": "payroll-cycles.editor.cutoff-day.input" }}
+              inputProps={{ "controlId": "payroll-cycles.editor.cutoff-day.input" }}
               value={dicForm.intCutoffDay}
               onChange={(objEvent) => updateField("intCutoffDay", objEvent.target.value.replace(/[^\d]/g, ""))}
               disabled={blnFieldDisabled}
               helperText={t("cutoff_day_help")}
               fullWidth
             />
-
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center" }}>
-              <FormControlLabel
-                control={<ActiveStatusSwitch testId="payroll-cycles.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-                label={dicForm.blnIsActive ? t("active") : t("inactive")}
-              />
-              <Typography sx={{ color: "#64748b", fontSize: "0.78rem", mt: 0.25 }}>
-                {t("active_help")}
-              </Typography>
-            </Box>
           </Box>
         </Stack>
       </Paper>

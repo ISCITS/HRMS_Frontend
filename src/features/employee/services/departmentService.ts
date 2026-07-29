@@ -21,8 +21,11 @@ export type DepartmentFormValues = {
   lstTexts: DepartmentTextFormValue[];
 };
 
+let intRowIDCounter = 0;
+
 function createRowID() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  intRowIDCounter += 1;
+  return `department-row-${Date.now()}-${intRowIDCounter}`;
 }
 
 function formatOptionalText(strValue: string) {

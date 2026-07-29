@@ -3,35 +3,44 @@
 import type { InputHTMLAttributes } from "react";
 import Switch, { type SwitchProps } from "@mui/material/Switch";
 
+type ActiveStatusSwitchInputProps = InputHTMLAttributes<HTMLInputElement> & {
+  controlId?: string;
+  "data-control-id"?: string;
+  "data-controlid"?: string;
+};
+
 type ActiveStatusSwitchProps = Omit<SwitchProps, "checked" | "onChange" | "color"> & {
   blnIsActive: boolean;
   onChange?: (blnIsActive: boolean) => void;
+  controlId?: string;
   testId?: string;
 };
 
 export default function ActiveStatusSwitch({
   blnIsActive,
+  controlId = "active-status-switch.input",
   disabled,
   onChange,
   inputProps,
-  testId,
   title,
   size,
   sx,
+  testId,
   ...objProps
 }: ActiveStatusSwitchProps) {
   const strStateLabel = blnIsActive ? "Active ON" : "Inactive OFF";
-  const strResolvedTestId = testId ?? "shared.active-status.switch";
+  const objInputProps = (inputProps ?? {}) as ActiveStatusSwitchInputProps;
+  const { controlId: strInputControlId, ...objInputPropsWithoutControlId } = objInputProps;
   const objResolvedInputProps = {
-    "data-testid": strResolvedTestId,
+    ...objInputPropsWithoutControlId,
+    "data-control-id": objInputProps["data-control-id"] ?? testId ?? strInputControlId ?? controlId,
+    "data-controlid": objInputProps["data-controlid"] ?? testId ?? strInputControlId ?? controlId,
     "aria-label": strStateLabel,
-    ...inputProps,
   } as InputHTMLAttributes<HTMLInputElement>;
 
   return (
     <Switch
       {...objProps}
-      data-testid={strResolvedTestId}
       checked={blnIsActive}
       disabled={disabled}
       color="primary"

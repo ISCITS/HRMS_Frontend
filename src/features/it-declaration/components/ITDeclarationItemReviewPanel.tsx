@@ -2,15 +2,13 @@
 
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import ThumbDownAltOutlinedIcon from "@mui/icons-material/ThumbDownAltOutlined";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
 import { Alert, Box, Button, Grid, Paper, Stack, TextField, Typography } from "@mui/material";
-import { Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Tooltip } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
 
+import styles from "@/components/master/MasterScreen.module.css";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import type { HrItDeclarationItemRecord, HrItDeclarationProofRecord } from "@/features/it-declaration/services/itDeclarationService";
 
@@ -55,25 +53,21 @@ function parseMaxLimit(objValue: unknown) {
 type Props = {
   objItem: HrItDeclarationItemRecord;
   blnLocked: boolean;
-  blnCanReview: boolean;
   blnCanApprove: boolean;
   blnCanReject: boolean;
-  blnCanProofVerify: boolean;
   lstProofs?: HrItDeclarationProofRecord[];
   decSectionMaxLimit?: number | null;
   decOtherApprovedAmount?: number;
   fnPreviewProof?: (intProofID: number) => void;
   fnDownloadProof?: (intProofID: number) => void;
-  fnAction: (strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) => Promise<void>;
+  fnAction: (strAction: "approve" | "reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) => Promise<void>;
 };
 
 export default function ITDeclarationItemReviewPanel({
   objItem,
   blnLocked,
-  blnCanReview,
   blnCanApprove,
   blnCanReject,
-  blnCanProofVerify,
   lstProofs = [],
   decSectionMaxLimit = null,
   decOtherApprovedAmount = 0,
@@ -84,22 +78,11 @@ export default function ITDeclarationItemReviewPanel({
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount ?? objItem.decDeclaredAmount ?? 0));
   const [strError, setStrError] = useState("");
-  const [blnUploadsDialogOpen, setBlnUploadsDialogOpen] = useState(false);
   const strItemStatus = String(objItem.strItemStatus || "").toLowerCase();
   const blnItemFinalized = ["approved", "rejected", "released", "locked"].includes(strItemStatus);
-  const blnHasProof = lstProofs.length > 0;
   const blnDisableApprovalActions = blnLocked || blnItemFinalized || !blnCanApprove;
-  const blnDisableProofPendingAction = blnLocked || blnItemFinalized || !blnCanReview;
   const blnDisableRejectActions = blnLocked || blnItemFinalized || !blnCanReject;
-  const blnDisableProofActions = blnLocked || blnItemFinalized || !blnCanProofVerify;
-  const strProofSummaryStatus =
-    lstProofs.length === 0
-      ? "N/A"
-      : (lstProofs.some((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "verified")
-        ? "verified"
-        : (lstProofs.some((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "pending")
-          ? "pending"
-          : String(lstProofs[0]?.strVerificationStatus || "uploaded")));
+  const objPrimaryProof = lstProofs[0];
   const decDeclaredAmount = Number(objItem.decDeclaredAmount || 0);
   const decApprovedInput = Number(strApprovedAmount || 0);
   const decConfiguredMaxLimit = decSectionMaxLimit ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount ?? parseMaxLimit(objItem.strMaxLimit);
@@ -120,23 +103,20 @@ export default function ITDeclarationItemReviewPanel({
         ? `Section approval cannot exceed ${objInrFormatter.format(decConfiguredMaxLimit || 0)}. Available for this row: ${objInrFormatter.format(decApprovalAvailableForItem)}.`
         : " ";
   const strDeductionName = getInvestmentDisplayName(objItem);
-  const strDescription = String(objItem.strDescription || "").trim();
   const intVerifiedProofCount = lstProofs.filter((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "verified").length;
   const intRejectedProofCount = lstProofs.filter((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "rejected").length;
   const strProofTone = intVerifiedProofCount > 0 ? "#15803d" : lstProofs.length > 0 ? "#b45309" : "#b45309";
   const strProofBackground = intVerifiedProofCount > 0 ? "#f0fdf4" : "#fff7ed";
   const strProofBorder = intVerifiedProofCount > 0 ? "#bbf7d0" : "#fed7aa";
 
-  async function runWithValidation(strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject") {
-    if ((strAction === "approve" || strAction === "partial_approve") && blnApprovedAmountInvalid) {
+  async function runWithValidation(strAction: "approve" | "reject") {
+    if (strAction === "approve" && blnApprovedAmountInvalid) {
       setStrError(decApprovalAvailableForItem != null && decApprovedInput > decApprovalAvailableForItem ? "Approved amount exceeds the section maximum limit." : "Approved amount cannot be greater than declared amount.");
       return;
     }
-    if (strAction === "reject" || strAction === "partial_approve" || strAction === "proof_reject") {
-      if (!strRemarks.trim()) {
-        setStrError("Remarks are required for this action.");
-        return;
-      }
+    if (strAction === "reject" && !strRemarks.trim()) {
+      setStrError("Remarks are required for this action.");
+      return;
     }
     setStrError("");
     await fnAction(strAction, {
@@ -155,8 +135,6 @@ export default function ITDeclarationItemReviewPanel({
                 <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{strDeductionName}</Typography>
                 <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
               </Stack>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", fontWeight: 700 }}>{objItem.strSection}</Typography>
-              {strDescription && strDescription !== strDeductionName ? <Typography sx={{ color: "#334155", fontSize: "0.82rem" }}>{strDescription}</Typography> : null}
               {objItem.strEmployeeRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
               {objItem.strReviewerRemarks ? <Typography sx={{ color: "#b45309", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
             </Stack>
@@ -168,19 +146,34 @@ export default function ITDeclarationItemReviewPanel({
                     {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded | ${intVerifiedProofCount} verified${intRejectedProofCount ? ` | ${intRejectedProofCount} rejected` : ""}`}
                   </Typography>
                 </Box>
-                <Tooltip title="View Uploads">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={() => setBlnUploadsDialogOpen(true)}
-                      disabled={lstProofs.length === 0}
-                      data-testid="it-declaration.review.uploads.icon-button"
-                      sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
-                    >
-                      <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                <Stack direction="row" spacing={0.5}>
+                  <Tooltip title="View Document">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => objPrimaryProof && fnPreviewProof?.(objPrimaryProof.intProofID)}
+                        disabled={!objPrimaryProof || !fnPreviewProof}
+                        controlId="it-declaration.review.proof.view.icon-button"
+                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
+                      >
+                        <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Download Document">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => objPrimaryProof && fnDownloadProof?.(objPrimaryProof.intProofID)}
+                        disabled={!objPrimaryProof || !fnDownloadProof}
+                        controlId="it-declaration.review.proof.download.icon-button"
+                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
+                      >
+                        <DownloadRoundedIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
               </Stack>
             </Box>
           </Stack>
@@ -206,7 +199,7 @@ export default function ITDeclarationItemReviewPanel({
               <TextField
                 size="small"
                 label="Approved amount"
-                data-testid="it-declaration.review.approved-amount.input"
+                controlId="it-declaration.review.approved-amount.input"
                 type="number"
                 value={strApprovedAmount}
                 onChange={(e) => setStrApprovedAmount(e.target.value)}
@@ -216,9 +209,9 @@ export default function ITDeclarationItemReviewPanel({
                 inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
                 sx={{ width: "100%" }}
               />
-              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} data-testid="it-declaration.review.remarks.input" />
+              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} controlId="it-declaration.review.remarks.input" />
             </Box>
-            {strError ? <Alert severity="error" sx={{ width: "100%" }}>{strError}</Alert> : null}
+            {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ width: "100%" }}>{strError}</Alert> : null}
           </Stack>
         </Grid>
         <Grid item xs={12}>
@@ -239,108 +232,11 @@ export default function ITDeclarationItemReviewPanel({
               },
             }}
           >
-            {blnHasProof ? (
-              <Button size="small" variant="outlined" startIcon={<PendingActionsRoundedIcon />} disabled={blnDisableProofPendingAction} onClick={() => void runWithValidation("proof_pending")} data-testid="it-declaration.review.proof-pending.button">Proof Pending</Button>
-            ) : null}
-            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} data-testid="it-declaration.review.reject.button">Reject Item</Button>
-            <Button size="small" variant="outlined" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("partial_approve")} data-testid="it-declaration.review.partial-approve.button">Partial Approve</Button>
-            <Button size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} data-testid="it-declaration.review.approve.button">Approve Item</Button>
+            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} controlId="it-declaration.review.reject.button">Reject Item</Button>
+            <Button className={styles.primaryButton} size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} controlId="it-declaration.review.approve.button">Approve Item</Button>
           </Stack>
         </Grid>
       </Grid>
-      <Dialog open={blnUploadsDialogOpen} onClose={() => setBlnUploadsDialogOpen(false)} maxWidth="md" fullWidth data-testid="it-declaration.review.uploads.dialog">
-        <DialogTitle>Uploaded Documents</DialogTitle>
-        <DialogContent>
-          {lstProofs.length === 0 ? (
-            <Typography sx={{ color: "#94a3b8", fontSize: "0.82rem" }}>No uploads available for this declaration row.</Typography>
-          ) : (
-            <Stack sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
-              <Stack direction="row" sx={{ backgroundColor: "#f8fafc", px: 1, py: 0.8, "& > div": { fontSize: "0.76rem", fontWeight: 800, color: "#334155" } }}>
-                <BoxCell strLabel="File Name" />
-                <BoxCell strLabel="Status" strWidth={120} />
-                <BoxCell strLabel="Size (bytes)" strWidth={120} />
-                <BoxCell strLabel="Action" strWidth={210} />
-              </Stack>
-              {lstProofs.map((objProof) => (
-                <Stack key={objProof.intProofID} direction="row" sx={{ px: 1, py: 0.7, borderTop: "1px solid #eef2f7", "& > div": { fontSize: "0.78rem", color: "#1f2937" } }}>
-                  <BoxCell strLabel={objProof.strFileName || `Proof #${objProof.intProofID}`} />
-                  <BoxCell strLabel={objProof.strVerificationStatus} strWidth={120} />
-                  <BoxCell strLabel={String(objProof.intFileSizeBytes)} strWidth={120} />
-                  <div style={{ flex: "0 0 210px", minWidth: "210px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Tooltip title="View">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => fnPreviewProof?.(objProof.intProofID)}
-                          disabled={!fnPreviewProof}
-                          data-testid="it-declaration.review.proof.view.icon-button"
-                          data-row-key={objProof.intProofID}
-                          sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
-                        >
-                          <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Download">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => fnDownloadProof?.(objProof.intProofID)}
-                          disabled={!fnDownloadProof}
-                          data-testid="it-declaration.review.proof.download.icon-button"
-                          data-row-key={objProof.intProofID}
-                          sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
-                        >
-                          <DownloadRoundedIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Verify">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={blnDisableProofActions}
-                          onClick={() => void runWithValidation("proof_verify")}
-                          data-testid="it-declaration.review.proof.verify.icon-button"
-                          data-row-key={objProof.intProofID}
-                          sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
-                        >
-                          <CheckRoundedIcon sx={{ fontSize: 16, color: "#15803d" }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Reject">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={blnDisableProofActions}
-                          onClick={() => void runWithValidation("proof_reject")}
-                          data-testid="it-declaration.review.proof.reject.icon-button"
-                          data-row-key={objProof.intProofID}
-                          sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45 }}
-                        >
-                          <CloseRoundedIcon sx={{ fontSize: 16, color: "#b91c1c" }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </div>
-                </Stack>
-              ))}
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBlnUploadsDialogOpen(false)} data-testid="it-declaration.review.uploads.close.button">Close</Button>
-        </DialogActions>
-      </Dialog>
     </Paper>
-  );
-}
-
-function BoxCell({ strLabel, strWidth }: { strLabel: string; strWidth?: number }) {
-  return (
-    <div style={{ flex: strWidth ? `0 0 ${strWidth}px` : "1 1 auto", minWidth: strWidth ? `${strWidth}px` : 0 }}>
-      {strLabel}
-    </div>
   );
 }

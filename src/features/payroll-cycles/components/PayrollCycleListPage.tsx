@@ -185,22 +185,22 @@ export default function PayrollCycleListPage() {
   return (
     <Box className={styles.page}>
       <Box className={styles.topBar}>
-        <Button data-testid="payroll-cycles.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button controlId="payroll-cycles.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button")}
         </Button>
       </Box>
 
       <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
-          <TextField data-testid="payroll-cycles.list.cycle-code.input" inputProps={{ "data-testid": "payroll-cycles.list.cycle-code.input" }} label={t("cycle_code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField inputProps={{ "data-testid": "payroll-cycles.list.cycle-name.input" }} label={t("cycle_name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField data-testid="payroll-cycles.list.search-status.select" inputProps={{ "data-testid": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
-            <MenuItem data-testid="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
-            <MenuItem data-testid="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
-            <MenuItem data-testid="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
+          <TextField controlId="payroll-cycles.list.cycle-code.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-code.input" }} label={t("cycle_code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
+          <TextField inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("cycle_name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
+          <TextField controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+            <MenuItem controlId="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
+            <MenuItem controlId="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
+            <MenuItem controlId="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-testid="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
+            <Button controlId="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {t("search")}
             </Button>
           </Box>
@@ -235,7 +235,7 @@ export default function PayrollCycleListPage() {
           showPaginationSummary
           emptyMessage={t("schedule_no_records")}
           toolbarLeft={blnCanAdd ? (
-            <Button data-testid="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/schedules/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+            <Button controlId="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/schedules/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
               {t("schedule_add_button")}
             </Button>
           ) : undefined}

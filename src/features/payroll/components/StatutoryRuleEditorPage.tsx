@@ -214,7 +214,7 @@ export default function StatutoryRuleEditorPage({
               }}
             >
               <Button
-                data-testid="statutory-rules.editor.back.button"
+                controlId="statutory-rules.editor.back.button"
                 className={styles.secondaryButton}
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/statutory-rules")}
@@ -223,7 +223,7 @@ export default function StatutoryRuleEditorPage({
                 {t("back_to_list", "Back to List")}
               </Button>
               {blnCanSave ? <Button
-                data-testid="statutory-rules.editor.save.button"
+                controlId="statutory-rules.editor.save.button"
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
                 onClick={saveRule}

@@ -3,7 +3,7 @@
 import axios from "axios";
 
 import { authHelpers } from "@/lib/auth";
-import { axiosInstance } from "@/lib/axiosInstance";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import { decryptPayload } from "@/lib/security/decryptPayload";
 import type {
   TenantCodeAvailabilityResponse,
@@ -45,7 +45,7 @@ async function requestApi<TData>(objOptions: {
       params: objOptions.objQueryParams,
       csrfMenuAction: objOptions.strMenuAction,
       headers: objHeaders,
-    });
+    } as ApiRequestConfig);
 
     const objRawPayload = objResponse.data as ApiEnvelope<TData> | { payload: string };
     const objPayload = "payload" in objRawPayload
@@ -60,7 +60,7 @@ async function requestApi<TData>(objOptions: {
   } catch (objError) {
     if (axios.isAxiosError(objError)) {
       const objResponseData = objError.response?.data as ApiEnvelope<TData> | { payload?: string; Msg?: string } | undefined;
-      if (objResponseData?.payload) {
+      if (objResponseData && "payload" in objResponseData && objResponseData.payload) {
         const objDecryptedPayload = await decryptPayload<ApiEnvelope<TData>>(objResponseData.payload);
         throw new Error(objDecryptedPayload.Msg ?? "Request failed.");
       }

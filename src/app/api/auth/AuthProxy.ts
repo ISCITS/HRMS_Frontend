@@ -83,7 +83,7 @@ function buildPublicProxyHeaders(strMenuAction: string) {
 }
 
 export async function proxyTenantLookup(strTenantUUID: string) {
-  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/auth/tenant", {
+  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/tenant", {
     method: "POST",
     cache: "no-store",
     objJsonBody: { strTenantUUID },
@@ -92,7 +92,7 @@ export async function proxyTenantLookup(strTenantUUID: string) {
 }
 
 export async function proxyTenantLookupPayload(objBody: unknown) {
-  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/auth/tenant", {
+  return callBackendApi<ApiEnvelope<TenantLookupData>>("/api/v1/tenant", {
     method: "POST",
     cache: "no-store",
     objJsonBody: objBody,

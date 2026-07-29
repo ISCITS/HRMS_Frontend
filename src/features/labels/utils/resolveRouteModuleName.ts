@@ -7,6 +7,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/designations")) {
     return "designation";
   }
+  if (strLowerPath.startsWith("/holidays") || strLowerPath.startsWith("/leave/holidays")) {
+    return "holiday";
+  }
   if (strLowerPath.startsWith("/banks")) {
     return "bank";
   }
@@ -37,6 +40,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/employees")) {
     return "employee";
   }
+  if (strLowerPath.startsWith("/employee-salary")) {
+    return "employee-salary";
+  }
   if (strLowerPath.startsWith("/payroll/runs")) {
     return "payroll-runs";
   }
@@ -54,11 +60,26 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "employee-payroll-input";
   }
-  if (strLowerPath.startsWith("/reports/payslips") || strLowerPath.startsWith("/payroll/payslips")) {
-    return "payslips";
+  if (
+    strLowerPath.startsWith("/ess/my-profile") ||
+    strLowerPath.startsWith("/profile")
+  ) {
+    return "my-profile";
+  }
+  if (strLowerPath.startsWith("/ess/my-bank-details")) {
+    return "my-bank-details";
   }
   if (strLowerPath.startsWith("/payroll/results")) {
     return "payroll-results";
+  }
+  if (
+    strLowerPath.startsWith("/reports/payslips") ||
+    strLowerPath.startsWith("/payroll/payslips") ||
+    strLowerPath.startsWith("/payroll/payslip") ||
+    strLowerPath.startsWith("/ess/my-payslips") ||
+    strLowerPath.startsWith("/ess/my-payslip")
+  ) {
+    return "payslips";
   }
   if (
     strLowerPath.startsWith("/payroll/process-log") ||
@@ -75,12 +96,46 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/tax-regimes") || strLowerPath.startsWith("/tax-regimes")) {
     return "tax-regimes";
   }
+  if (strLowerPath.startsWith("/salary-components")) {
+    return "salary-components";
+  }
+  if (strLowerPath.startsWith("/salary-structures")) {
+    return "salary-structures";
+  }
+  if (strLowerPath.startsWith("/payroll/it-declaration-review")) {
+    return "it-declaration-review";
+  }
   if (
     strLowerPath.startsWith("/hr/it-declaration") ||
     strLowerPath.startsWith("/salary/it-declaration") ||
     strLowerPath.startsWith("/salary/ess-declarations")
   ) {
     return "it-declaration";
+  }
+  if (
+    strLowerPath.startsWith("/salary/flexi-pay-declaration") ||
+    strLowerPath.startsWith("/salary/flexi-pay-declarations")
+  ) {
+    return "flexi-pay-declaration";
+  }
+  if (
+    strLowerPath.startsWith("/ess/reimbursements") ||
+    strLowerPath.startsWith("/payroll/reimbursements") ||
+    strLowerPath.startsWith("/payroll/employee-reimbursement")
+  ) {
+    return "reimbursements";
+  }
+  if (
+    strLowerPath.startsWith("/ess/loans-advances") ||
+    strLowerPath.startsWith("/payroll/loans-advances")
+  ) {
+    return "loans-advances";
+  }
+  if (strLowerPath.startsWith("/payroll/fnf-settlements")) {
+    return "fnf-settlements";
+  }
+  if (strLowerPath.startsWith("/ess/calendar")) {
+    return "calendar";
   }
 
   return "";

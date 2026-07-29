@@ -170,7 +170,6 @@ export default function DepartmentMasterPanel() {
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
-    loadingDepartments: t("loading_departments"),
     emptyMessage: t("empty_message"),
     tableName: t("table_name"),
     tableCode: t("table_code"),
@@ -676,7 +675,7 @@ export default function DepartmentMasterPanel() {
         const blnSelected = lstSelectedIds.includes(dicDepartment.id);
         return {
           id: dicDepartment.id,
-          select: <Checkbox inputProps={{ "data-testid": "department-master.list.row.select.checkbox", "data-row-key": String(dicDepartment.id) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} />,
+          select: <Checkbox inputProps={{ "controlId": "department-master.list.row.select.checkbox", "data-row-key": String(dicDepartment.id) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} />,
           action: (
             <CommonRowActions
               testIdPrefix="department-master.list.row"
@@ -708,7 +707,7 @@ export default function DepartmentMasterPanel() {
         field: "select",
         headerName: (
           <Checkbox
-            inputProps={{ "data-testid": "department-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            inputProps={{ "controlId": "department-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
             checked={blnAllFilteredSelected}
             indeterminate={blnSomeFilteredSelected}
             onChange={toggleSelectAll}
@@ -739,9 +738,9 @@ export default function DepartmentMasterPanel() {
   );
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
       <Box className={styles.topBar}>
-        <Button data-testid="department-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
+        <Button data-control-id="department-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDepartmentLabels.backButton}</Button>
       </Box>
 
       <Box className={styles.controlsCard}>
@@ -754,15 +753,15 @@ export default function DepartmentMasterPanel() {
           </Typography>
         ) : null}
         <Box className={styles.searchRow}>
-          <TextField data-testid="department-master.list.search-name.input" inputProps={{ "data-testid": "department-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} fullWidth />
-          <TextField data-testid="department-master.list.search-code.input" inputProps={{ "data-testid": "department-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} fullWidth />
-          <TextField data-testid="department-master.list.search-status.select" inputProps={{ "data-testid": "department-master.list.search-status.select" }} select label={dicDepartmentLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
-            <MenuItem data-testid="department-master.list.search-status.all.option" value="All">All</MenuItem>
-            <MenuItem data-testid="department-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
-            <MenuItem data-testid="department-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          <TextField controlId="department-master.list.search-name.input" inputProps={{ "controlId": "department-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} fullWidth />
+          <TextField controlId="department-master.list.search-code.input" inputProps={{ "controlId": "department-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} fullWidth />
+          <TextField controlId="department-master.list.search-status.select" inputProps={{ "controlId": "department-master.list.search-status.select" }} select label={dicDepartmentLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+            <MenuItem controlId="department-master.list.search-status.all.option" value="All">All</MenuItem>
+            <MenuItem controlId="department-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem controlId="department-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-testid="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {blnSubmitting ? (
@@ -774,25 +773,20 @@ export default function DepartmentMasterPanel() {
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDepartmentLabels.bulkRowsSelected}`}</Typography>
             {blnCanChangeStatus ? (
-              <Button data-testid="department-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
+              <Button data-control-id="department-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkActivate}</Button>
             ) : null}
             {blnCanChangeStatus ? (
-              <Button data-testid="department-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
+              <Button data-control-id="department-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDeactivate}</Button>
             ) : null}
             {blnCanDelete ? (
-              <Button data-testid="department-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
+              <Button data-control-id="department-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDepartmentLabels.bulkDelete}</Button>
             ) : null}
           </Box>
         ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        {blnRightsLoading || blnLoading ? (
-          <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
-            <Typography sx={{ mt: 1 }}>{dicDepartmentLabels.loadingDepartments}</Typography>
-          </Box>
-        ) : !blnCanView ? (
+        {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Department access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>
@@ -814,7 +808,7 @@ export default function DepartmentMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
-                  <Button data-testid="department-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                  <Button data-control-id="department-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                     {dicDepartmentLabels.addButton}
                   </Button>
                 ) : null}
@@ -838,9 +832,23 @@ export default function DepartmentMasterPanel() {
         onPrimaryAction={saveDepartment}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.dialogPaper}
-        maxWidth="xl"
-        paperSx={{ width: "min(1220px, calc(100vw - 44px))", overflow: "hidden" }}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <Typography className={styles.switchLabel} sx={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
+              {dicDepartmentLabels.fieldIsActive}
+            </Typography>
+            <ActiveStatusSwitch
+              testId="department-master.dialog.active.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+          </Box>
+        }
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        paperClassName={styles.dialogPaperDapartment}
+        maxWidth={false}
+        fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
@@ -848,15 +856,16 @@ export default function DepartmentMasterPanel() {
               sx={{
                 display: "grid",
                 gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
               <TextField
-                data-testid="department-master.dialog.name.input"
-                label={`${dicDepartmentLabels.fieldName} *`}
+                controlId="department-master.dialog.name.input"
+                label={dicDepartmentLabels.fieldName}
+                required
                 value={dicForm.name}
-                inputProps={{ "data-testid": "department-master.dialog.name.input" }}
+                inputProps={{ "controlId": "department-master.dialog.name.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value;
@@ -866,13 +875,15 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
+                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
-                data-testid="department-master.dialog.code.input"
-                label={`${dicDepartmentLabels.fieldCode} *`}
+                controlId="department-master.dialog.code.input"
+                label={dicDepartmentLabels.fieldCode}
+                required
                 value={dicForm.code}
-                inputProps={{ "data-testid": "department-master.dialog.code.input" }}
+                inputProps={{ "controlId": "department-master.dialog.code.input" }}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
                   const strValue = objEvent.target.value.toUpperCase();
@@ -882,14 +893,16 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
+                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
-                data-testid="department-master.dialog.employee-count.input"
+                controlId="department-master.dialog.employee-count.input"
                 label={dicDepartmentLabels.fieldEmployees}
                 value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0}
-                inputProps={{ "data-testid": "department-master.dialog.employee-count.input" }}
+                inputProps={{ "controlId": "department-master.dialog.employee-count.input" }}
                 disabled
+                sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}
                 fullWidth
               />
             </Box>
@@ -903,24 +916,24 @@ export default function DepartmentMasterPanel() {
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
                 <Button
-                  data-testid="department-master.dialog.add-language.button"
-                  variant="outlined"
+                  controlId="department-master.dialog.add-language.button"
+                  className={styles.secondaryButton}
                   startIcon={<AddRoundedIcon />}
                   disabled
+                  sx={{ minHeight: 34 }}
                 >
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
-                  data-testid="department-master.dialog.translate.button"
-                  variant="contained"
+                  controlId="department-master.dialog.translate.button"
+                  className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
                   disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
                   sx={{
                     minWidth: 108,
-                    borderRadius: "12px",
-                    background: "#2563eb",
+                    minHeight: 34,
                     boxShadow: "none",
-                    "&:hover": { background: "#1d4ed8", boxShadow: "none" },
+                    "&:hover": { boxShadow: "none" },
                   }}
                 >
                   {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
@@ -941,7 +954,7 @@ export default function DepartmentMasterPanel() {
                      gap: 1.2,
                      gridTemplateColumns: {
                        xs: "1fr",
-                       md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
+                       lg: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
                      },
                      alignItems: "start",
                      border: "1px solid rgba(203,213,225,0.8)",
@@ -951,23 +964,23 @@ export default function DepartmentMasterPanel() {
                   }}
                 >
                   <TextField
-                    data-testid="department-master.dialog.language.select"
+                    controlId="department-master.dialog.language.select"
                     select
                     label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
                     value={dicText.intLanguageID}
-                    inputProps={{ "data-testid": "department-master.dialog.language.select", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "department-master.dialog.language.select", "data-row-key": dicText.strRowID }}
                     disabled
                     fullWidth
                   >
                     {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem data-testid="department-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                      <MenuItem controlId="department-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
                     ))}
                   </TextField>
                   <TextField
-                    data-testid="department-master.dialog.translated-name.input"
+                    controlId="department-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicDepartmentLabels.fieldName)}
                     value={dicText.strDepartmentName}
-                    inputProps={{ "data-testid": "department-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "department-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strDepartmentName", strValue);
@@ -989,20 +1002,15 @@ export default function DepartmentMasterPanel() {
                     fullWidth
                   />
                   <TextField
-                    data-testid="department-master.dialog.translated-code.input"
+                    controlId="department-master.dialog.translated-code.input"
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicDepartmentLabels.fieldCode)}
                     value={dicText.strDepartmentCode}
-                    inputProps={{ "data-testid": "department-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
+                    inputProps={{ "controlId": "department-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
                     disabled
                     fullWidth
                   />
                 </Box>
               ))}
-            </Box>
-
-            <Box className={styles.switchRow}>
-              <Typography className={styles.switchLabel}>{dicDepartmentLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="department-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
             </Box>
           </Box>
         }
@@ -1019,7 +1027,12 @@ export default function DepartmentMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader
+        blnOpen={blnLoading || blnRightsLoading || blnSubmitting}
+        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+        intZIndex={1400}
+        blnLocal
+      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

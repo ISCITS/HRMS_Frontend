@@ -1,4 +1,4 @@
-import PayrollRunDetailPage from "@/features/payroll/components/PayrollRunDetailPage";
+import PayrollRunDetailDashboardPage from "@/features/payroll/components/PayrollRunDetailDashboardPage";
 
 type PayrollRunDetailRouteProps = {
   params: Promise<{ intRunID: string }>;
@@ -8,5 +8,5 @@ export default async function PayrollRunDetailRoute({
   params,
 }: PayrollRunDetailRouteProps) {
   const { intRunID } = await params;
-  return <PayrollRunDetailPage intRunID={Number(intRunID)} />;
+  return <PayrollRunDetailDashboardPage intRunID={Number(intRunID)} />;
 }

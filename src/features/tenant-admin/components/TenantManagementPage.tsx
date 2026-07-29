@@ -116,13 +116,13 @@ function TenantManagementPageContent() {
           }}
         >
           <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
-            <TextField label="Search tenant" inputProps={{ "data-testid": "tenant-management.list.search.input" }} value={strSearch} onChange={(e) => setStrSearch(e.target.value)} fullWidth />
-            <TextField select label="Status" inputProps={{ "data-testid": "tenant-management.list.status.select" }} value={strStatus} onChange={(e) => setStrStatus(e.target.value)} sx={{ minWidth: 180 }}>
+            <TextField label="Search tenant" inputProps={{ "controlId": "tenant-management.list.search.input" }} value={strSearch} onChange={(e) => setStrSearch(e.target.value)} fullWidth />
+            <TextField select label="Status" inputProps={{ "controlId": "tenant-management.list.status.select" }} value={strStatus} onChange={(e) => setStrStatus(e.target.value)} sx={{ minWidth: 180 }}>
               <MenuItem value="">All</MenuItem>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
             </TextField>
-            <TextField select label="Sort" inputProps={{ "data-testid": "tenant-management.list.sort.select" }} value={strSort} onChange={(e) => setStrSort(e.target.value)} sx={{ minWidth: 220 }}>
+            <TextField select label="Sort" inputProps={{ "controlId": "tenant-management.list.sort.select" }} value={strSort} onChange={(e) => setStrSort(e.target.value)} sx={{ minWidth: 220 }}>
               {lstSortOptions.map((dicOption) => (
                 <MenuItem key={dicOption.strValue} value={dicOption.strValue}>{dicOption.strLabel}</MenuItem>
               ))}
@@ -175,7 +175,7 @@ function TenantManagementPageContent() {
                   ) : lstTenants.map((objTenant) => (
                     <TableRow
                       key={objTenant.intTenantID}
-                      data-testid="tenant-management.list.row"
+                      controlId="tenant-management.list.row"
                       data-row-key={String(objTenant.intTenantID)}
                       hover
                       onDoubleClick={() => router.push(`/HRMS/Administrator/tenants/${objTenant.intTenantID}`)}

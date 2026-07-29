@@ -20,3 +20,23 @@ export function formatStatusLabel(strStatus?: string | null) {
     .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
     .join(" ");
 }
+
+export function normalizeReimbursementLabelKey(strValue?: string | null) {
+  return (strValue || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export function translateKnownReimbursementText(
+  strValue: string | null | undefined,
+  t: (strKey: string, strFallback?: string) => string
+) {
+  const strLabel = (strValue || "").trim();
+  if (!strLabel) {
+    return "-";
+  }
+  const strKey = normalizeReimbursementLabelKey(strLabel);
+  return strKey ? t(strKey, strLabel) : strLabel;
+}

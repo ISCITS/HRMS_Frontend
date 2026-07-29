@@ -47,6 +47,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   strScopeType?: PayrollRunScopeType;
   intScopedEmployeeID?: number | null;
   dtPayrollMonth: string;
+  decCalendarDays?: number | null;
   strStatus: string;
   blnIsLocked: boolean;
 };
@@ -57,6 +58,7 @@ export type PayrollRunStatus =
   | "Open"
   | "Submitted"
   | "Approved"
+  | "Failed"
   | "Processed"
   | "Closed";
 
@@ -373,6 +375,8 @@ export type LoanAdvanceScheduleRecord = {
   decBenchmarkInterestAmount?: number;
   decTaxablePerquisiteAmount?: number;
   decTotalDueAmount: number;
+  decRecoveredPrincipalAmount?: number;
+  decRecoveredInterestAmount?: number;
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;
@@ -465,17 +469,117 @@ export type EmployeePayrollInputRecord = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  decCalendarDays: number | null;
+  decWorkingDays: number | null;
+  decPaidDays: number | null;
+  decPayableDays: number | null;
   decLwpDays: number | null;
   decLopDays: number | null;
+  strManualLwpSource: string | null;
+  dtManualLwpCapturedOn: string | null;
+  intManualLwpCapturedBy: number | null;
+  strManualLwpReason: string | null;
   strRemarks: string | null;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
+  lstValidationMessages?: Array<{
+    strLevel: string;
+    strCode: string;
+    strMessage: string;
+    blnBlocking: boolean;
+  }>;
 };
 
 export type EmployeePayrollInputListRecord = EmployeePayrollInputRecord;
 
 export type EmployeePayrollInputDetailRecord = EmployeePayrollInputRecord & {
   lstLines: EmployeePayrollInputLineRecord[];
+};
+
+// ---------------------------------------------------------------------------
+// Attendance-to-payroll integration (Stage 2/3)
+// ---------------------------------------------------------------------------
+
+export type AttendanceValidateRunResult = {
+  intTotalEmployees: number;
+  intReadyCount: number;
+  intBlockedCount: number;
+  intWarningCount: number;
+  intAppliedCount: number;
+  intPreservedManualCount: number;
+  intSkippedCount: number;
+  intInputLockedCount: number;
+};
+
+export type AttendanceReasonEntry = {
+  strCode: string | null;
+  strMessage: string | null;
+  dtDate: string | null;
+};
+
+export type AttendanceDayBreakdownEntry = {
+  strStatus: string | null;
+  decPaidFraction: number | string | null;
+  strSource: string | null;
+};
+
+// Note: the backend preview endpoint (GET
+// /payroll/runs/{intRunID}/employees/{intEmployeeID}/attendance/preview) does not return
+// denominator, denominator source, reconciliation status, or override status fields -
+// only the fields below (confirmed by reading
+// clsAttendancePayrollIntegrationService.computeEmployeeAttendanceSummary). Do not
+// fabricate those fields on the frontend.
+export type EmployeeAttendancePreview = {
+  decCalendarDays: number;
+  decWorkingDays: number;
+  decAttendanceDays: number;
+  decPaidDays: number;
+  decLwpLopDays: number;
+  decPayableDays: number;
+  dtEffectiveStart: string;
+  dtEffectiveEnd: string;
+  blnHasZeroServiceDays: boolean;
+  blnBlocked: boolean;
+  lstBlockingReasons: AttendanceReasonEntry[];
+  lstWarnings: AttendanceReasonEntry[];
+  dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
+};
+
+export type AttendanceTraceJson = {
+  dtEffectiveStart: string | null;
+  dtEffectiveEnd: string | null;
+  blnBlocked: boolean;
+  lstBlockingReasons: AttendanceReasonEntry[];
+  lstWarnings: AttendanceReasonEntry[];
+  dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
+} | null;
+
+export type AttendanceTraceRecord = {
+  intID: number;
+  intPayrollRunID: number;
+  intEmployeeID: number;
+  objAttendanceTraceJson: AttendanceTraceJson;
+};
+
+// Fields mirror clsPayrollRepository.listArrearInputLinesForEmployee's actual return
+// shape - there is no strAdjustmentType/strEarningRecovery/decDifferenceAmount/
+// strStatus/intSourceRunID field on the backend response despite caption keys
+// (ARREARS_FIELD_ADJUSTMENT_TYPE, ARREARS_FIELD_EARNING_RECOVERY,
+// ARREARS_FIELD_DIFFERENCE_AMOUNT, ARREARS_FIELD_SOURCE_RUN, ARREARS_FIELD_STATUS, etc.)
+// existing for a richer UI - only render what is actually present here.
+export type ArrearAdjustmentLine = {
+  intID: number;
+  intSalaryComponentID: number | null;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  strLineType: string;
+  decAmount: number;
+  strRemarks: string | null;
+  strSourceType: string;
+  intSourceEntityID: number | null;
+  intSourceEntityLineID: number | null;
+  strSourceVersionRef: string | null;
+  dtAddedOn: string | null;
 };
 
 export type EmployeePayrollInputFormLine = {
@@ -489,8 +593,16 @@ export type EmployeePayrollInputFormLine = {
 export type EmployeePayrollInputFormValues = {
   intPayrollRunID: number | "";
   intEmployeeID: number | "";
+  strCalendarDays: string;
+  strWorkingDays: string;
+  strPaidDays: string;
+  strPayableDays: string;
   strLwpDays: string;
   strLopDays: string;
+  strManualLwpReason: string;
+  strManualLwpSource: string;
+  dtManualLwpCapturedOn: string | null;
+  intManualLwpCapturedBy: number | null;
   strRemarks: string;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
@@ -513,9 +625,34 @@ export type PayrollResultLineRecord = {
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;
+  decCalculatedAmount?: number | null;
+  decOriginalAmount?: number | null;
+  decProratedAmount?: number | null;
+  decQuantity?: number | null;
+  decRate?: number | null;
   strSourceType?: string | null;
+  intSourceEntityID?: number | null;
+  intSourceEntityLineID?: number | null;
+  strSourceLabel?: string | null;
+  intFlexiAllocationID?: number | null;
+  blnIsFlexiComponent?: boolean;
+  blnIsFlexiResidual?: boolean;
+  blnIsEmployerContribution?: boolean;
+  blnIsEmployeeDeduction?: boolean;
+  blnIsTaxLine?: boolean;
+  blnIsDeclaredFlexi?: boolean;
+  blnIsResidualTaxable?: boolean;
+  blnIncludeInGross?: boolean;
+  blnIncludeInNetPay?: boolean;
+  blnIncludeInPayslip?: boolean;
+  strCalculationSource?: string | null;
+  objCalculationTrace?: Record<string, unknown> | null;
+  dicLwpTrace?: Record<string, unknown> | null;
   blnIsWages?: boolean | null;
   blnIncludeInRemuneration?: boolean | null;
+  strPayslipSection?: string | null;
+  strBasisSnapshot?: string | null;
+  strFormulaSnapshot?: string | null;
   strRemarks: string | null;
 };
 
@@ -538,6 +675,21 @@ export type PayrollStatutoryResultRecord = {
   strRemarks: string | null;
 };
 
+export type WageRulePreviewRecord = {
+  wage_total?: number | null;
+  non_wage_total?: number | null;
+  wage_percent_of_ctc?: number | null;
+  minimum_required_wage?: number | null;
+  deemed_wage_shortfall?: number | null;
+  deemed_wage_base?: number | null;
+  calculation_basis?: string | null;
+  threshold_percent?: number | null;
+  total_remuneration_base?: number | null;
+  total_remuneration_base_annual?: number | null;
+  ctc_annual?: number | null;
+  gross_annual?: number | null;
+};
+
 export type PayrollResultRecord = {
   intID: number;
   intPayrollRunID: number;
@@ -558,6 +710,17 @@ export type PayrollResultRecord = {
   decDeductionAmount: number;
   decTaxAmount: number;
   decNetPayAmount: number;
+  decOriginalSalaryAmount?: number;
+  decLwpReductionAmount?: number;
+  decGrossEarningsAmount: number;
+  decEarningsSectionTotal?: number;
+  decReimbursementSectionTotal?: number;
+  decEmployeeDeductionTotal: number;
+  decTaxTotal: number;
+  decTotalEmployerCost: number;
+  decFlexiBucketAmount: number;
+  decDeclaredFlexiAmount: number;
+  decResidualFlexiAmount: number;
   strRegimeUsed: string | null;
   decTaxableIncome: number;
   decAnnualTaxAmount: number;
@@ -565,10 +728,26 @@ export type PayrollResultRecord = {
   dicTaxSummary?: {
     strRegimeUsed: string | null;
     decTaxableIncome: number;
-    decAnnualTaxAmount: number;
-    decMonthlyTds: number;
     decProjectedTaxableIncome: number;
+    decExemptionAmount: number;
+    decDeclaredDeductionAmount: number;
+    decStandardDeductionAmount: number;
+    decTotalDeductionAmount: number;
+    decAnnualTaxAmount: number;
+    decTaxBeforeRebate: number;
+    decRebateAmount: number;
+    decMarginalRebateReliefAmount: number;
+    decTaxAfterRebate: number;
+    decSurchargeAmount: number;
+    decMarginalSurchargeReliefAmount: number;
+    decTaxAfterSurcharge: number;
+    decCessAmount: number;
+    decTotalTaxLiability: number;
+    decMonthlyTds: number;
     intRemainingMonths: number | null;
+    strRegimeTypeCode?: string | null;
+    strSlabProfileCode?: string | null;
+    strTaxRuleVersion?: string | null;
   };
   decRemunerationAmount: number;
   decActualWagesAmount: number;
@@ -579,7 +758,11 @@ export type PayrollResultRecord = {
   decComplianceWageBaseAmount: number;
   decEmployerContributionTotal: number;
   decTaxableIncomeMonthly: number;
+  dtPeriodStartDate?: string | null;
+  dtPeriodEndDate?: string | null;
+  decCalendarDays?: number | null;
   decPaidDays: number | null;
+  decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
   strPayslipNumber: string | null;
@@ -587,6 +770,9 @@ export type PayrollResultRecord = {
   blnPayslipGenerated: boolean;
   dtPayslipGeneratedOn: string | null;
   strRemarks: string | null;
+  objCalculationSnapshot?: Record<string, unknown> | unknown[] | null;
+  objCalculationTrace?: Record<string, unknown> | null;
+  dicWageRulePreview?: WageRulePreviewRecord | null;
 };
 
 export type PayrollResultListRecord = PayrollResultRecord;
@@ -685,22 +871,63 @@ export type PayslipPreviewRecord = {
   };
   lstEarnings: PayslipLineRecord[];
   lstDeductions: PayslipLineRecord[];
+  lstReimbursements?: PayslipLineRecord[];
+  lstStatutoryInformation?: PayslipLineRecord[];
   lstInformation: PayslipLineRecord[];
   lstEmployerContributions: PayslipLineRecord[];
   dicTax?: {
     strRegimeUsed: string | null;
     decTaxableIncome: number;
+    decProjectedTaxableIncome?: number;
+    decExemptionAmount?: number;
+    decDeclaredDeductionAmount?: number;
+    decStandardDeductionAmount?: number;
+    decTotalDeductionAmount?: number;
+    decTaxBeforeRebate?: number;
+    decRebateAmount?: number;
+    decMarginalRebateReliefAmount?: number;
+    decTaxAfterRebate?: number;
+    decSurchargeAmount?: number;
+    decMarginalSurchargeReliefAmount?: number;
+    decTaxAfterSurcharge?: number;
+    decCessAmount?: number;
     decAnnualTaxAmount: number;
     decCurrentMonthTds: number;
     decTotalTaxLiability: number;
     intRemainingMonths: number | null;
+    strRegimeTypeCode?: string | null;
+    strSlabProfileCode?: string | null;
+    strTaxRuleVersion?: string | null;
   };
   dicTotals: {
     decGrossEarnings: number;
+    decEmployeeDeductions: number;
+    decTaxTotal: number;
     decTotalDeductions: number;
     decNetPay: number;
     decEmployerContributionTotal: number;
+    decTotalEmployerCost: number;
     strNetPayInWords: string;
+  };
+  dicSummary?: {
+    decFlexiBucketAmount: number;
+    decDeclaredFlexiAmount: number;
+    decResidualFlexiAmount: number;
+    decGrossEarningsAmount: number;
+    decEmployeeDeductionTotal: number;
+    decTaxTotal: number;
+    decEmployerContributionTotal: number;
+    decTotalEmployerCost: number;
+  };
+  dicFooter?: {
+    strPayrollRunCode: string;
+    strPayrollRunName: string;
+    intPayrollResultID: number;
+    intPayrollResultVersion: number;
+    strPayslipNumber: string | null;
+    strPayslipStatus: string;
+    dtGeneratedOn: string | null;
+    strSystemNote: string;
   };
   objTemplateSettings: Record<string, unknown>;
   strRemarks: string | null;

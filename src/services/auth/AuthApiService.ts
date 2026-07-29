@@ -135,6 +135,7 @@ export const authApiService = {
         strPath: "tenant/auth-details",
         strMethod: ApiRequestMethod.Get,
         objQueryParams: {
+          strTenantUUID,
           tenantUuid: strTenantUUID,
           ...(intLanguageID ? { language_id: intLanguageID } : {})
         },
@@ -167,6 +168,7 @@ export const authApiService = {
       strPath: "tenant/login-labels",
       strMethod: ApiRequestMethod.Get,
       objQueryParams: {
+        strTenantUUID,
         tenantUuid: strTenantUUID,
         ...(intLanguageID ? { language_id: intLanguageID } : {})
       },
@@ -321,10 +323,14 @@ export const authApiService = {
   },
 
   async getDashboard(strPayrollMonth?: string | null) {
+    const intLanguageID = authHelpers.getLanguageID();
     return requestApi<DashboardResponse>({
       strPath: "dashboard",
       strMethod: ApiRequestMethod.Get,
-      objQueryParams: strPayrollMonth ? { payroll_month: strPayrollMonth } : undefined,
+      objQueryParams: {
+        ...(strPayrollMonth ? { payroll_month: strPayrollMonth } : {}),
+        ...(intLanguageID ? { language_id: intLanguageID } : {}),
+      },
       strMenuAction: "DASHBOARD_VIEW",
       blnUseAuthHeader: true
     });

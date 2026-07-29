@@ -1,10 +1,10 @@
-# `data-testid` Inventory
+# `controlId` Inventory
 
 Last updated: 2026-06-01
 
 ## Summary
 
-- Canonical automation attribute: `data-testid`
+- Canonical automation attribute: `controlId`
 - Interactive React files scanned: `107`
 - Files with app-authored selector coverage: `105`
 - Remaining scan mismatches: `2`
@@ -303,5 +303,5 @@ These components define reusable selector patterns used across the application.
 
 - Many row-level selectors are intentionally pattern-based through `CommonRowActions` and `CommonDataGrid`.
 - For repeated controls, use `data-row-key` as the companion row identifier where already implemented.
-- Do not use MUI icon SVG `data-testid` values such as `AlternateEmailRoundedIcon` for automation.
+- Do not use MUI icon SVG `controlId` values such as `AlternateEmailRoundedIcon` for automation.
 - Do not use `.Mui*` classes for automation selectors.

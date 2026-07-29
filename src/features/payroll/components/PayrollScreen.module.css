@@ -64,6 +64,20 @@
   justify-content: flex-end;
 }
 
+.detailHeader {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detailHeaderActions {
+  align-items: center;
+  margin-left: auto;
+}
+
+.detailHeaderActions :global(.MuiChip-root) {
+  align-self: center;
+}
+
 .listUtilityBar {
   align-items: center;
   display: flex;
@@ -192,6 +206,96 @@
   margin-top: 6px;
 }
 
+.bankFileSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.payslipSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.payslipSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(180px, 220px)
+    minmax(180px, 220px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(180px, 220px)
+    auto;
+}
+
+.payslipSearchLineSecondary {
+  display: none;
+}
+
+.bankFileSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.bankFileSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.payrollRegisterSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.payrollRegisterSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.payrollRegisterSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.statutorySearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.statutorySearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(220px, 1.15fr) minmax(180px, 1fr) minmax(170px, 0.85fr) minmax(170px, 0.9fr);
+}
+
+.statutorySearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(170px, 0.9fr) auto;
+}
+
 .quickFilterRow {
   display: grid;
   gap: 10px;
@@ -214,13 +318,25 @@
   grid-template-columns: minmax(220px, 1.15fr) minmax(200px, 1fr) minmax(150px, 0.65fr) auto;
 }
 
+.payrollRunSearchRow {
+  grid-template-columns: minmax(170px, 0.9fr) minmax(150px, 0.75fr) minmax(130px, 0.55fr) auto auto;
+}
+
+.payrollRunSearchRow .searchActions {
+  display: contents;
+}
+
 .quickFilterRow :global(.MuiInputBase-root),
-.searchRow :global(.MuiInputBase-root) {
+.searchRow :global(.MuiInputBase-root),
+.bankFileSearchPanel :global(.MuiInputBase-root),
+.payrollRegisterSearchPanel :global(.MuiInputBase-root) {
   min-height: 40px;
 }
 
 .quickFilterRow :global(.MuiOutlinedInput-input),
-.searchRow :global(.MuiOutlinedInput-input) {
+.searchRow :global(.MuiOutlinedInput-input),
+.bankFileSearchPanel :global(.MuiOutlinedInput-input),
+.payrollRegisterSearchPanel :global(.MuiOutlinedInput-input) {
   padding-bottom: 10px;
   padding-top: 10px;
 }
@@ -342,6 +458,34 @@
   padding: 6px 10px;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.resultLinesTable {
+  min-width: 1280px;
+}
+
+.resultLinesTable thead th {
+  background: #f8fbff;
+  color: #0f2444;
+  font-size: 0.74rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody td {
+  color: #20385f;
+  font-size: 0.78rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody tr:hover {
+  background: #f8fbff;
+}
+
+.resultLinesTable th:nth-child(5),
+.resultLinesTable th:nth-child(6),
+.resultLinesTable td:nth-child(5),
+.resultLinesTable td:nth-child(6) {
+  text-align: right;
 }
 
 .fnfDenseTable {
@@ -535,7 +679,7 @@
 }
 
 .editIcon {
-  color: #707070;
+  color: var(--app-primary-color);
 }
 
 .deleteIcon {
@@ -594,10 +738,24 @@
 }
 
 .paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
   font-size: 0.78rem;
   height: 26px;
   margin: 0;
   min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected:hover) {
+  background-color: var(--app-primary-hover);
 }
 
 .dialogPaper {
@@ -701,9 +859,30 @@
   min-height: 68px;
 }
 
+@media (max-width: 1200px) {
+  .payrollRunSearchRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .payrollRunSearchRow .searchActions {
+    display: flex;
+  }
+}
+
 @media (max-width: 900px) {
   .quickFilterRow,
   .searchRow {
+    grid-template-columns: 1fr;
+  }
+
+  .payslipSearchLinePrimary,
+  .payslipSearchLineSecondary,
+  .bankFileSearchLinePrimary,
+  .bankFileSearchLineSecondary,
+  .payrollRegisterSearchLinePrimary,
+  .payrollRegisterSearchLineSecondary,
+  .statutorySearchLinePrimary,
+  .statutorySearchLineSecondary {
     grid-template-columns: 1fr;
   }
 

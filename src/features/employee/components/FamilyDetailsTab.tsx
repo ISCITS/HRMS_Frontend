@@ -31,6 +31,7 @@ type FamilyDetailsTabProps = {
   lstInitialRows: EmployeeFamilyDetailRecord[];
   blnViewOnly: boolean;
   blnCanDelete?: boolean;
+  strMenuActionOverride?: string;
   fnEnsureEmployeeRecordForTabSave: () => Promise<number>;
   fnShowAlert: (strSeverity: "success" | "error", strMessage: string) => void;
   fnOnRowsChange: (lstRows: EmployeeFamilyDetailRecord[]) => void;
@@ -77,12 +78,14 @@ export default function FamilyDetailsTab({
   lstInitialRows,
   blnViewOnly,
   blnCanDelete = false,
+  strMenuActionOverride,
   fnEnsureEmployeeRecordForTabSave,
   fnShowAlert,
   fnOnRowsChange,
   fnTranslate
 }: FamilyDetailsTabProps) {
   const t = fnTranslate;
+  const objEmployeeRequestOptions = strMenuActionOverride ? { strMenuAction: strMenuActionOverride } : undefined;
   const [lstRows, setLstRows] = useState<EmployeeFamilyDetailRecord[]>([]);
   const [blnSaving, setBlnSaving] = useState(false);
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
@@ -161,8 +164,8 @@ export default function FamilyDetailsTab({
     try {
       const intEmployeeIDToSave = await fnEnsureEmployeeRecordForTabSave();
       const dicSavedRecord = strMode === "edit" && intEditingFamilyID
-        ? await employeeService.updateEmployeeFamilyDetail(intEditingFamilyID, dicForm)
-        : await employeeService.createEmployeeFamilyDetail(intEmployeeIDToSave, dicForm);
+        ? await employeeService.updateEmployeeFamilyDetail(intEditingFamilyID, dicForm, objEmployeeRequestOptions)
+        : await employeeService.createEmployeeFamilyDetail(intEmployeeIDToSave, dicForm, objEmployeeRequestOptions);
       const lstNextRows = ((lstPrevious: EmployeeFamilyDetailRecord[]) => {
         const lstWithoutCurrent = lstPrevious.filter((objItem) => objItem.intID !== dicSavedRecord.intID);
         return [dicSavedRecord, ...lstWithoutCurrent];
@@ -222,7 +225,7 @@ export default function FamilyDetailsTab({
         </Box>
         {!blnViewOnly ? (
           <Button
-            data-testid="employee.family.add.button"
+            data-controlid="employee.family.add.button"
             className={styles.primaryButton}
             size="small"
             variant="contained"
@@ -262,7 +265,7 @@ export default function FamilyDetailsTab({
         onKeyDown={handleSingleDialogActionEnter}
         fullWidth
         maxWidth="xs"
-        data-testid="employee.family.delete.dialog"
+        data-controlid="employee.family.delete.dialog"
       >
         <DialogTitle>{t("family_delete_title", "Delete Family Member")}</DialogTitle>
         <DialogContent>
@@ -274,8 +277,8 @@ export default function FamilyDetailsTab({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDeleteDialog} data-testid="employee.family.delete.cancel.button">{t("cancel", "Cancel")}</Button>
-          <Button onClick={handleDeleteConfirm} variant="contained" color="error" data-testid="employee.family.delete.confirm.button">
+          <Button onClick={closeDeleteDialog} data-controlid="employee.family.delete.cancel.button">{t("cancel", "Cancel")}</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error" data-controlid="employee.family.delete.confirm.button">
             {t("delete", "Delete")}
           </Button>
         </DialogActions>

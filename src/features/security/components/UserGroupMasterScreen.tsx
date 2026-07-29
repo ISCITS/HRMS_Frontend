@@ -2,25 +2,22 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
-  LinearProgress,
   MenuItem,
   Snackbar,
-  Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type HTMLAttributes, type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -38,6 +35,7 @@ type UserGroupTableRow = {
   strGroupCode: string;
   strGroupName: string;
   strGroupDescription: string;
+  strGroupType: string;
   status: ReactNode;
 };
 
@@ -45,6 +43,7 @@ const objEmptyForm: UserGroupFormPayload = {
   strGroupCode: "",
   strGroupName: "",
   strGroupDescription: "",
+  strGroupType: "HR",
   intCompanyID: authHelpers.getCompanyID(),
   blnIsActive: true,
   intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -55,6 +54,7 @@ function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
     strGroupCode: objRecord.strGroupCode,
     strGroupName: objRecord.strGroupName,
     strGroupDescription: objRecord.strGroupDescription ?? "",
+    strGroupType: objRecord.strGroupType ?? "HR",
     intCompanyID: objRecord.intCompanyID,
     blnIsActive: objRecord.blnIsActive,
     intLanguageID: authHelpers.getLanguageID() ?? 1,
@@ -69,7 +69,7 @@ export default function UserGroupMasterScreen() {
     hasRightAny,
     canViewAny,
     isReadOnly,
-  } = useModuleActionAccess(["USER_GROUP", "USER_GROUPS"]);
+  } = useModuleActionAccess(["USERGROUP", "USER_GROUP", "USER_GROUPS"]);
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -80,6 +80,8 @@ export default function UserGroupMasterScreen() {
   const [strMode, setStrMode] = useState<FormMode>("add");
   const [intEditingID, setIntEditingID] = useState<number | null>(null);
   const [objForm, setObjForm] = useState<UserGroupFormPayload>(objEmptyForm);
+  const [dicFieldErrors, setDicFieldErrors] = useState<Partial<Record<"strGroupCode" | "strGroupName", string>>>({});
+  const [strDialogError, setStrDialogError] = useState("");
   const [objToast, setObjToast] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -103,6 +105,7 @@ export default function UserGroupMasterScreen() {
     tableCode: t("table_code", "Code"),
     tableName: t("table_name", "Name"),
     tableDescription: t("table_description", "Description"),
+    tableGroupType: t("table_group_type", "Group Type"),
     tableIsActive: t("table_is_active", "Is Active"),
     statusActive: t("status_active", "Active"),
     statusInactive: t("status_inactive", "Inactive"),
@@ -110,7 +113,8 @@ export default function UserGroupMasterScreen() {
     loading: t("loading", "Loading user groups..."),
     processing: t("processing", "Processing..."),
     errorLoad: t("error_load", "Unable to load user groups."),
-    validationRequired: t("validation_group_code_name_required", "Group code and group name are required."),
+    validationGroupCodeRequired: t("validation_group_code_required", "Group code is required."),
+    validationGroupNameRequired: t("validation_group_name_required", "Group name is required."),
     saveSuccess: t("save_success", "User group and rights saved successfully."),
     updateSuccess: t("update_success", "User group updated successfully."),
     errorSave: t("error_save", "Unable to save user group."),
@@ -179,18 +183,34 @@ export default function UserGroupMasterScreen() {
   const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((intID) => lstFilteredRecords.some((objRecord) => objRecord.intID === intID));
   const lstTableRows = useMemo<UserGroupTableRow[]>(() => lstFilteredRecords.map((objRecord) => {
     const blnSelected = lstSelectedIds.includes(objRecord.intID);
+    const strRowControlPrefix = `security.user-group.list.row.${objRecord.intID}`;
     return {
       intID: objRecord.intID,
-      select: <Checkbox checked={blnSelected} onChange={() => toggleSelection(objRecord.intID)} inputProps={{ "data-testid": "security.user-group.list.row.select.checkbox", "data-row-key": objRecord.intID } as InputHTMLAttributes<HTMLInputElement>} />,
+      select: (
+        <Checkbox
+          checked={blnSelected}
+          onChange={() => toggleSelection(objRecord.intID)}
+          inputProps={{
+            controlId: `${strRowControlPrefix}.select.checkbox`,
+            "data-control-id": `${strRowControlPrefix}.select.checkbox`,
+            "data-row-key": objRecord.intID,
+          } as InputHTMLAttributes<HTMLInputElement>}
+        />
+      ),
       rowActions: (
-        <Box className={styles.actionCell}>
-          {blnCanView ? <button className={`${styles.iconButton} ${styles.viewIcon}`} type="button" onClick={() => openDialog("view", objRecord)} data-testid="security.user-group.list.row.view.button" data-row-key={objRecord.intID}><VisibilityOutlinedIcon fontSize="small" /></button> : null}
-          {blnCanEdit ? <button className={`${styles.iconButton} ${styles.editIcon}`} type="button" onClick={() => openDialog("edit", objRecord)} data-testid="security.user-group.list.row.edit.button" data-row-key={objRecord.intID}><EditOutlinedIcon fontSize="small" /></button> : null}
-        </Box>
+        <CommonRowActions
+          testIdPrefix={strRowControlPrefix}
+          rowKey={objRecord.intID}
+          blnCanView={blnCanView}
+          blnCanEdit={blnCanEdit}
+          onView={() => openDialog("view", objRecord)}
+          onEdit={blnCanEdit ? () => openDialog("edit", objRecord) : undefined}
+        />
       ),
       strGroupCode: objRecord.strGroupCode,
       strGroupName: objRecord.strGroupName,
       strGroupDescription: objRecord.strGroupDescription || dicLabels.noDescription,
+      strGroupType: objRecord.strGroupType ?? "HR",
       status: (
         <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
           {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
@@ -203,12 +223,14 @@ export default function UserGroupMasterScreen() {
       field: "select",
       headerName: (
         <Checkbox
-          data-testid="security.user-group.list.select-all.checkbox"
           checked={blnAllFilteredSelected}
           indeterminate={blnSomeFilteredSelected}
           onChange={toggleSelectAll}
           disabled={lstFilteredRecords.length === 0}
-          inputProps={{ "data-testid": "security.user-group.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+          inputProps={{
+            controlId: "security.user-group.list.select-all.checkbox",
+            "data-control-id": "security.user-group.list.select-all.checkbox",
+          } as InputHTMLAttributes<HTMLInputElement>}
         />
       ),
       width: 64,
@@ -220,8 +242,9 @@ export default function UserGroupMasterScreen() {
     { field: "strGroupCode", headerName: dicLabels.tableCode },
     { field: "strGroupName", headerName: dicLabels.tableName },
     { field: "strGroupDescription", headerName: dicLabels.tableDescription },
+    { field: "strGroupType", headerName: dicLabels.tableGroupType },
     { field: "status", headerName: dicLabels.tableIsActive, sortable: false, filterable: false },
-  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
+  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableGroupType, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
 
   function toggleSelection(intUserGroupID: number) {
     setLstSelectedIds((lstPrevious) =>
@@ -243,19 +266,27 @@ export default function UserGroupMasterScreen() {
     setStrMode(strNextMode);
     setIntEditingID(objRecord?.intID ?? null);
     setObjForm(objRecord ? mapRecordToForm(objRecord) : { ...objEmptyForm });
+    setDicFieldErrors({});
+    setStrDialogError("");
     setBlnDialogOpen(true);
   }
 
   async function saveRecord(lstRights: UserGroupRightSaveItem[]) {
     const strGroupCode = objForm.strGroupCode.trim();
     const strGroupName = objForm.strGroupName.trim();
+    const dicNextFieldErrors: Partial<Record<"strGroupCode" | "strGroupName", string>> = {};
 
-    if (!strGroupCode || !strGroupName) {
-      setObjToast({
-        open: true,
-        message: dicLabels.validationRequired,
-        severity: "error",
-      });
+    if (!strGroupCode) {
+      dicNextFieldErrors.strGroupCode = dicLabels.validationGroupCodeRequired;
+    }
+    if (!strGroupName) {
+      dicNextFieldErrors.strGroupName = dicLabels.validationGroupNameRequired;
+    }
+
+    setDicFieldErrors(dicNextFieldErrors);
+    setStrDialogError("");
+
+    if (Object.keys(dicNextFieldErrors).length > 0) {
       return;
     }
 
@@ -291,17 +322,15 @@ export default function UserGroupMasterScreen() {
         setBlnDialogOpen(false);
         setIntEditingID(null);
         setObjForm({ ...objEmptyForm });
+        setDicFieldErrors({});
+        setStrDialogError("");
         setObjToast({
           open: true,
           message: strSavedMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess,
           severity: "success",
         });
       },
-      fnOnError: (objError) => setObjToast({
-        open: true,
-        message: objError.message,
-        severity: "error",
-      }),
+      fnOnError: (objError) => setStrDialogError(objError.message || dicLabels.errorSave),
       fnFinally: () => setBlnSaving(false),
       strFallbackMessage: dicLabels.errorSave,
     });
@@ -323,14 +352,14 @@ export default function UserGroupMasterScreen() {
             placeholder={dicLabels.searchNamePlaceholder}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))}
-            data-testid="security.user-group.search.name.input"
+            inputProps={{ controlId: "security.user-group.search.name.input" }}
             fullWidth
           />
           <TextField
             placeholder={dicLabels.searchCodePlaceholder}
             value={dicSearchDraft.code}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))}
-            data-testid="security.user-group.search.code.input"
+            inputProps={{ controlId: "security.user-group.search.code.input" }}
             fullWidth
           />
           <TextField
@@ -340,19 +369,21 @@ export default function UserGroupMasterScreen() {
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as "All" | "Active" | "Inactive" }))
             }
-            data-testid="security.user-group.search.status.select"
+            SelectProps={{
+              SelectDisplayProps: { "data-control-id": "security.user-group.search.status.select" } as HTMLAttributes<HTMLDivElement>,
+            }}
             fullWidth
           >
-            <MenuItem value="All">{dicLabels.searchStatusAll}</MenuItem>
-            <MenuItem value="Active">{dicLabels.searchStatusActive}</MenuItem>
-            <MenuItem value="Inactive">{dicLabels.searchStatusInactive}</MenuItem>
+            <MenuItem value="All" data-control-id="security.user-group.search.status.all.option">{dicLabels.searchStatusAll}</MenuItem>
+            <MenuItem value="Active" data-control-id="security.user-group.search.status.active.option">{dicLabels.searchStatusActive}</MenuItem>
+            <MenuItem value="Inactive" data-control-id="security.user-group.search.status.inactive.option">{dicLabels.searchStatusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
-              data-testid="security.user-group.search.button"
+              data-control-id="security.user-group.search.button"
             >
               {dicLabels.searchButton}
             </Button>
@@ -366,7 +397,7 @@ export default function UserGroupMasterScreen() {
                 setDicSearchDraft(dicEmpty);
                 setDicSearchApplied(dicEmpty);
               }}
-              data-testid="security.user-group.clear.button"
+              data-control-id="security.user-group.clear.button"
             >
               {dicLabels.clearButton}
             </Button>
@@ -375,31 +406,16 @@ export default function UserGroupMasterScreen() {
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box
-          sx={{
-            overflowX: "auto",
-            overflowY: "auto",
-            minHeight: 0,
-            flex: 1,
-          }}
-        >
-          {blnLoading || blnRightsLoading ? (
-            <Box sx={{ minHeight: 240 }}>
-              <LinearProgress />
-            </Box>
-          ) : !blnCanView ? (
-            <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
-              <Stack spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
-                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
-              </Stack>
+        <Box sx={{ overflowX: "auto", overflowY: "auto", minHeight: 0, flex: 1 }}>
+          {blnLoading || blnRightsLoading ? null : !blnCanView ? (
+            <Box className={styles.emptyState}>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
+              <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
             </Box>
           ) : lstFilteredRecords.length === 0 ? (
-            <Box sx={{ display: "grid", placeItems: "center", minHeight: 240, px: 3 }}>
-              <Stack spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
-                <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.emptyMessage}</Typography>
-              </Stack>
+            <Box className={styles.emptyState}>
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.emptyTitle}</Typography>
+              <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.emptyMessage}</Typography>
             </Box>
           ) : (
             <CommonTable
@@ -409,11 +425,15 @@ export default function UserGroupMasterScreen() {
               emptyMessage={dicLabels.emptyMessage}
               exportFileName={dicLabels.exportFileName}
               showExportOptions={blnCanExport}
+              defaultPageSize={10}
+              pageSizeOptions={[10, 20, 50]}
+              showPaginationSummary
               testIdPrefix="security.user-group.list"
+              sx={{ p: 0, boxShadow: "none", background: "transparent" }}
               toolbarLeft={
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   {blnCanAdd ? (
-                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-testid="security.user-group.add.button">
+                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
                       {dicLabels.addButton}
                     </Button>
                   ) : null}
@@ -435,12 +455,23 @@ export default function UserGroupMasterScreen() {
           setBlnDialogOpen(false);
           setIntEditingID(null);
           setObjForm({ ...objEmptyForm });
+          setDicFieldErrors({});
+          setStrDialogError("");
         }}
-        onChange={setObjForm}
+        onChange={(objNextForm) => {
+          setObjForm(objNextForm);
+          setStrDialogError("");
+          setDicFieldErrors((dicPrevious) => ({
+            strGroupCode: dicPrevious.strGroupCode && objNextForm.strGroupCode.trim() ? undefined : dicPrevious.strGroupCode,
+            strGroupName: dicPrevious.strGroupName && objNextForm.strGroupName.trim() ? undefined : dicPrevious.strGroupName,
+          }));
+        }}
+        strSaveError={strDialogError}
+        dicFieldErrors={dicFieldErrors}
         onSave={saveRecord}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? dicLabels.loading : dicLabels.processing} />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSaving} strLabel={blnSaving ? dicLabels.processing : dicLabels.loading} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}

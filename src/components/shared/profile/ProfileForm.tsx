@@ -18,6 +18,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import ProfileSection from "@/components/shared/profile/ProfileSection";
 import dicConstant from "@/constants/Constant.json";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -45,6 +46,7 @@ const dicInputSx = {
 };
 
 export default function ProfileForm() {
+  const { t } = useModuleLabels("my-profile");
   const [intIsSaving, setIntIsSaving] = useState(0);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
@@ -86,7 +88,7 @@ export default function ProfileForm() {
       await authApiService.uploadCurrentAvatar(objFile);
       await refreshCurrentUser();
     } catch (objError: unknown) {
-      setStrAvatarError(objError instanceof Error ? objError.message : "Unable to upload profile photo.");
+      setStrAvatarError(objError instanceof Error ? objError.message : t("error_upload_photo", "Unable to upload profile photo."));
     } finally {
       setBlnAvatarUpdating(false);
     }
@@ -99,16 +101,16 @@ export default function ProfileForm() {
       await authApiService.deleteCurrentAvatar();
       await refreshCurrentUser();
     } catch (objError: unknown) {
-      setStrAvatarError(objError instanceof Error ? objError.message : "Unable to remove profile photo.");
+      setStrAvatarError(objError instanceof Error ? objError.message : t("error_remove_photo", "Unable to remove profile photo."));
     } finally {
       setBlnAvatarUpdating(false);
     }
   }
 
-  const strProfileDisplayName = objUserContext?.objEmployee?.strFullName || objUserContext?.objUser?.strLoginName || "Workspace User";
+  const strProfileDisplayName = objUserContext?.objEmployee?.strFullName || objUserContext?.objUser?.strLoginName || t("workspace_user", "Workspace User");
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
-  const strEmailAddress = objUserContext?.objUser?.strEmailAddress || "Not available";
+  const strEmailAddress = objUserContext?.objUser?.strEmailAddress || t("not_available", "Not available");
 
   return (
     <Stack component="form" spacing={4} onSubmit={handleSubmit}>
@@ -181,12 +183,12 @@ export default function ProfileForm() {
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
               </IconButton>
           </Box>
-          <Typography sx={{ fontSize: 12, color: "#64748b" }}>Profile photo</Typography>
+          <Typography sx={{ fontSize: 12, color: "#64748b" }}>{t("profile_photo", "Profile photo")}</Typography>
           <Button component="label" size="small" variant="outlined" disabled={blnAvatarUpdating} startIcon={blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <CameraAltOutlinedIcon />}>
-            Upload
+            {t("upload", "Upload")}
             <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
           </Button>
-          <Button size="small" variant="text" disabled={blnAvatarUpdating || !strAvatarUrl} startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete}>Remove</Button>
+          <Button size="small" variant="text" disabled={blnAvatarUpdating || !strAvatarUrl} startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete}>{t("remove", "Remove")}</Button>
           {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", maxWidth: 180, textAlign: "center" }}>{strAvatarError}</Typography> : null}
         </Stack>
 
@@ -196,32 +198,32 @@ export default function ProfileForm() {
         </Stack>
       </Stack>
 
-      <ProfileSection strTitle={dicConstant.profile.sectionPersonal}>
+      <ProfileSection strTitle={t("section_personal_information", dicConstant.profile.sectionPersonal)}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.fullName} defaultValue={strProfileDisplayName} fullWidth sx={dicInputSx} data-testid="profile.form.full-name.input" inputProps={{ "data-testid": "profile.form.full-name.input" }} />
+            <TextField label={t("field_full_name", dicConstant.profile.fullName)} defaultValue={strProfileDisplayName} fullWidth sx={dicInputSx} controlId="profile.form.full-name.input" inputProps={{ "controlId": "profile.form.full-name.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.email} defaultValue={strEmailAddress} fullWidth sx={dicInputSx} data-testid="profile.form.email.input" inputProps={{ "data-testid": "profile.form.email.input" }} />
+            <TextField label={t("field_email", dicConstant.profile.email)} defaultValue={strEmailAddress} fullWidth sx={dicInputSx} controlId="profile.form.email.input" inputProps={{ "controlId": "profile.form.email.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.phone} defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.phone.input" inputProps={{ "data-testid": "profile.form.phone.input" }} />
+            <TextField label={t("field_phone", dicConstant.profile.phone)} defaultValue="" fullWidth sx={dicInputSx} controlId="profile.form.phone.input" inputProps={{ "controlId": "profile.form.phone.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
 
-      <ProfileSection strTitle={dicConstant.profile.sectionWork}>
+      <ProfileSection strTitle={t("section_employment_information", dicConstant.profile.sectionWork)}>
         <Grid container rowSpacing={3} columnSpacing={{ xs: 0, md: 3 }} sx={{ mx: 0, width: "100%" }}>
           <Grid item xs={12} md={6}>
-            <TextField label={dicConstant.profile.designation} defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.designation.input" inputProps={{ "data-testid": "profile.form.designation.input" }} />
+            <TextField label={t("field_designation", dicConstant.profile.designation)} defaultValue="" fullWidth sx={dicInputSx} controlId="profile.form.designation.input" inputProps={{ "controlId": "profile.form.designation.input" }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField label="Department" defaultValue="" fullWidth sx={dicInputSx} data-testid="profile.form.department.input" inputProps={{ "data-testid": "profile.form.department.input" }} />
+            <TextField label={t("field_department", "Department")} defaultValue="" fullWidth sx={dicInputSx} controlId="profile.form.department.input" inputProps={{ "controlId": "profile.form.department.input" }} />
           </Grid>
         </Grid>
       </ProfileSection>
 
-      <ProfileSection strTitle={dicConstant.profile.sectionSecurity}>
+      <ProfileSection strTitle={t("section_security", dicConstant.profile.sectionSecurity)}>
         <Stack
           spacing={2}
           sx={{
@@ -233,12 +235,12 @@ export default function ProfileForm() {
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <SecurityOutlinedIcon sx={{ color: "#2563eb", fontSize: 18 }} />
-            <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{dicConstant.profile.twoFactor}</Typography>
+            <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{t("two_factor_authentication", dicConstant.profile.twoFactor)}</Typography>
           </Stack>
-          <Typography sx={{ fontSize: 14, color: "#64748b" }}>{dicConstant.profile.twoFactorStatus}</Typography>
-          <Typography sx={{ fontSize: 13, color: "#64748b" }}>{dicConstant.profile.lastLogin}</Typography>
-          <Button variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }} data-testid="profile.form.change-password.button">
-            Change Password
+          <Typography sx={{ fontSize: 14, color: "#64748b" }}>{t("two_factor_status", dicConstant.profile.twoFactorStatus)}</Typography>
+          <Typography sx={{ fontSize: 13, color: "#64748b" }}>{t("last_login", dicConstant.profile.lastLogin)}</Typography>
+          <Button variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }} controlId="profile.form.change-password.button">
+            {t("change_password", "Change Password")}
           </Button>
         </Stack>
       </ProfileSection>
@@ -246,7 +248,7 @@ export default function ProfileForm() {
       <Button
         type="submit"
         variant="contained"
-        data-testid="profile.form.update.button"
+        controlId="profile.form.update.button"
         sx={{
           alignSelf: "flex-end",
           minHeight: 52,
@@ -265,7 +267,7 @@ export default function ProfileForm() {
           }
         }}
       >
-        {intIsSaving === 1 ? <CircularProgress size={20} color="inherit" /> : dicConstant.profile.updateButton}
+        {intIsSaving === 1 ? <CircularProgress size={20} color="inherit" /> : t("update_button", dicConstant.profile.updateButton)}
       </Button>
     </Stack>
   );

@@ -99,6 +99,27 @@
   gap: 10px;
 }
 
+.filterActions {
+  align-items: stretch;
+  min-width: 250px;
+}
+
+.filterActions > button {
+  min-width: 112px;
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .filterActions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filterActions > button {
+    flex: 1 1 0;
+  }
+}
+
 .bulkBar {
   align-items: center;
   display: flex;
@@ -148,6 +169,15 @@
   min-height: 0;
 }
 
+.tableHeaderActions {
+  align-items: flex-start;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-start;
+  padding-bottom: 10px;
+}
+
 .tableWrap {
   flex: 0 1 auto;
   height: auto;
@@ -156,6 +186,26 @@
   overflow-y: auto;
   scrollbar-gutter: stable;
   min-height: 0;
+}
+
+.revisionContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.revisionCard {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.revisionTableWrap {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .table {
@@ -267,7 +317,7 @@
 }
 
 .editIcon {
-  color: #707070;
+  color: var(--app-primary-color);
 }
 
 .deleteIcon {
@@ -334,10 +384,24 @@
 }
 
 .paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
   font-size: 0.78rem;
   height: 26px;
   margin: 0;
   min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected:hover) {
+  background-color: var(--app-primary-hover);
 }
 
 .dialogPaper {
@@ -346,6 +410,14 @@
   border-radius: 30px !important;
   max-width: 1215px;
   width: min(90vw, 1215px);
+}
+
+.dialogPaperDapartment {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 30px !important;
+  max-width: 900px;
+  width: min(90vw, 900px);
 }
 
 .confirmDialogPaper {

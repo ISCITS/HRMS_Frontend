@@ -1,20 +1,20 @@
-# `data-testid` Rollout Summary
+# `controlId` Rollout Summary
 
 Last updated: 2026-06-01
 
 ## Purpose
 
-This document records what was implemented during the application-wide `data-testid` rollout, the rollout approach that was used, how future development should continue following the same standard, and whether any known files still remain uncovered.
+This document records what was implemented during the application-wide `controlId` rollout, the rollout approach that was used, how future development should continue following the same standard, and whether any known files still remain uncovered.
 
 ## What We Standardized
 
 We standardized the frontend automation attribute strategy on:
 
-- `data-testid` as the single automation selector contract
+- `controlId` as the single automation selector contract
 
 We explicitly did **not** standardize on:
 
-- MUI-generated icon `data-testid`
+- MUI-generated icon `controlId`
 - `.Mui*` CSS classes
 - visible text selectors
 - generated/random ids
@@ -58,7 +58,7 @@ We first scanned the React/MUI application to determine:
 
 This established that:
 
-- app-authored `data-testid` usage was effectively absent
+- app-authored `controlId` usage was effectively absent
 - `data-textid` was absent
 - only a small number of `id` attributes existed
 - most of the application lacked stable automation attributes
@@ -122,7 +122,7 @@ That final sweep reduced the remaining gap to two scan artifacts rather than unc
 
 The rollout added:
 
-- stable `data-testid` on actual buttons, inputs, icon buttons, dialogs, tabs, filters, selects, toggles, and repeated row actions
+- stable `controlId` on actual buttons, inputs, icon buttons, dialogs, tabs, filters, selects, toggles, and repeated row actions
 - wrapper passthrough support so callers can assign selectors without modifying internal component structure repeatedly
 - row-level selector support using shared prefixes
 - `data-row-key` support where repeated rows need stable identity alongside a shared control selector
@@ -139,7 +139,7 @@ All new frontend work should follow this process:
 
 ### For new screens
 
-Every new interactive control that matters for automation should receive an app-authored `data-testid`.
+Every new interactive control that matters for automation should receive an app-authored `controlId`.
 
 This includes:
 
@@ -159,7 +159,7 @@ This includes:
 
 Use:
 
-- a stable shared `data-testid` for the control type
+- a stable shared `controlId` for the control type
 - `data-row-key` for row identity when needed
 
 Do not use:
@@ -189,15 +189,15 @@ Reviewers should verify:
 - selector is app-authored
 - selector follows the canonical naming convention
 - selector is attached to the actionable or native element
-- no selector relies on MUI icon `data-testid`
+- no selector relies on MUI icon `controlId`
 - no selector relies on `.Mui*` classes
-- no selector exposes sensitive identifiers in `data-testid`
+- no selector exposes sensitive identifiers in `controlId`
 
 ## Recommended Ongoing Process
 
 When adding or changing UI in future:
 
-1. Add the `data-testid` while implementing the control, not later.
+1. Add the `controlId` while implementing the control, not later.
 2. Reuse existing module/screen prefixes where possible.
 3. If a shared wrapper lacks passthrough, update the wrapper first.
 4. For lists/tables, prefer the shared row-action and grid patterns already in the repo.
@@ -222,14 +222,14 @@ Reason:
 
 Conclusion:
 
-- no separate `data-testid` rollout work is required here
+- no separate `controlId` rollout work is required here
 
 ### 2. `src/components/master/ActiveStatusSwitch.tsx`
 
 Reason:
 
 - this component already forwards a native-input selector through `inputProps`
-- the final grep-based scan does not count that pattern as a direct literal file match in the same way as `data-testid="..."`
+- the final grep-based scan does not count that pattern as a direct literal file match in the same way as `controlId="..."`
 
 Conclusion:
 
@@ -267,7 +267,7 @@ Known baseline problem areas still unrelated to this rollout include:
 
 ## Final Outcome
 
-The application now has an enterprise-wide `data-testid` strategy in place, documented and applied across the frontend.
+The application now has an enterprise-wide `controlId` strategy in place, documented and applied across the frontend.
 
 The rollout delivered:
 

@@ -115,13 +115,13 @@ export default function UserManagementPage() {
           </Stack>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
-            <Button data-testid="user-management.dashboard.button" component={Link} href="/dashboard" variant="contained" sx={{ borderRadius: "16px", px: 2.5 }}>
+            <Button controlId="user-management.dashboard.button" component={Link} href="/dashboard" variant="contained" sx={{ borderRadius: "16px", px: 2.5 }}>
               Open dashboard
             </Button>
             {lstMasterMenuItems.map((objItem) => (
               <Button
                 key={objItem.strModuleCode}
-                data-testid="user-management.module.button"
+                controlId="user-management.module.button"
                 data-module-code={objItem.strModuleCode}
                 component={Link}
                 href={objItem.strRoute ?? "#"}

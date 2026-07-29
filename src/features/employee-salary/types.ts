@@ -26,16 +26,49 @@ export type EmployeeSalaryOption = {
 
 export type EmployeeSalaryStructureComponentOption = {
   intSalaryComponentID: number;
+  intBasisComponentID?: number | null;
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  intLwpTreatmentSnapshotID?: number | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingSnapshotID?: number | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpProrationFormulaSnapshot?: string | null;
+  strLwpProrationFormula?: string | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  strBasisComponentName?: string | null;
+  blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
   blnProofRequired?: boolean;
+  strCtcTreatment?: string | null;
   strTaxTreatment?: string | null;
+  intValueSourceID?: number | null;
+  strValueSourceCode?: string | null;
   strValueSource: string;
   decFixedAmount?: number | null;
+  decAmountMonthly?: number | null;
+  decAmountAnnual?: number | null;
+  decDefaultAmountMonthly?: number | null;
+  decDefaultAmountAnnual?: number | null;
+  decAnnualLimit?: number | null;
+  decMonthlyLimit?: number | null;
+  decAnnualLimitAmount?: number | null;
+  decMonthlyLimitAmount?: number | null;
+  decReimbursementMaxClaimMonthlyLimit?: number | null;
+  decReimbursementMaxClaimYearlyLimit?: number | null;
   decPercentageValue?: number | null;
   strFormulaExpression?: string | null;
   strFlexiComponentRole?: string | null;
@@ -57,10 +90,29 @@ export type EmployeeSalaryComponentLine = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  intLwpTreatmentSnapshotID?: number | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingSnapshotID?: number | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpProrationFormulaSnapshot?: string | null;
+  strLwpProrationFormula?: string | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  blnIsWages?: boolean;
   blnIsFlexiBenefit?: boolean;
   blnIsFlexiBasket?: boolean;
   blnIncludedInCtc?: boolean;
   blnProofRequired?: boolean;
+  strCtcTreatment?: string | null;
   strTaxTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
@@ -100,9 +152,20 @@ export type EmployeeSalaryFlexiAllocationLine = {
   decMonthlyLimit: number | null;
   decAllocationAnnual: number;
   decAllocationMonthly: number;
+  decDeclaredAnnualAmount?: number | null;
+  decDeclaredMonthlyAmount?: number | null;
+  decApprovedAnnualAmount?: number | null;
+  decApprovedMonthlyAmount?: number | null;
+  decDeclarationApprovedAnnualAmount?: number | null;
+  decDeclarationApprovedMonthlyAmount?: number | null;
+  decUtilizedAnnualAmount?: number | null;
   blnProofRequired: boolean;
   strTaxTreatment: string | null;
   decBalanceAnnual: number | null;
+  strSource?: string | null;
+  strStatus?: string | null;
+  strRemarks?: string | null;
+  strDeclarationItemStatus?: string | null;
 };
 
 export type EmployeeSalaryFlexiAllocationSummary = {
@@ -120,6 +183,45 @@ export type EmployeeSalaryFlexiAllocationSummary = {
   decResidualTaxableAllowanceAnnual?: number | null;
   decResidualTaxableAllowanceMonthly?: number | null;
   lstAllocationLines: EmployeeSalaryFlexiAllocationLine[];
+  lstAvailableComponents?: EmployeeSalaryFlexiAllocationLine[];
+};
+
+export type EmployeeFlexiDeclarationItemRecord = {
+  intDeclarationItemID: number;
+  intSalaryComponentID: number;
+  decDeclaredAnnual: number;
+  decDeclaredMonthly: number;
+  decApprovedAnnual: number | null;
+  decApprovedMonthly: number | null;
+  decAnnualCap: number | null;
+  decMonthlyCap: number | null;
+  blnProofRequired: boolean;
+  strTaxTreatment: string | null;
+  strLineStatus: string;
+  intDisplayOrder: number;
+};
+
+export type EmployeeFlexiDeclarationAnswerRecord = {
+  intAnswerID: number;
+  strAnswerCode: string;
+  strAnswerValue: string | null;
+};
+
+export type EmployeeFlexiDeclarationRecord = {
+  intDeclarationID: number | null;
+  strFinancialYearCode: string;
+  strStatus: string;
+  blnWindowOpen: boolean;
+  blnCanEdit: boolean;
+  strReadOnlyReason: string | null;
+  dtDueDate: string | null;
+  dtSubmittedOn: string | null;
+  dtApprovedOn: string | null;
+  dtLockedOn: string | null;
+  strEmployeeRemarks: string | null;
+  strReviewerRemarks: string | null;
+  lstItems: EmployeeFlexiDeclarationItemRecord[];
+  lstAnswers: EmployeeFlexiDeclarationAnswerRecord[];
 };
 
 export type EmployeeSalaryDetailRecord = {
@@ -147,7 +249,20 @@ export type EmployeeSalaryDetailRecord = {
     strCurrencyCode: string;
     dtEffectiveFrom: string;
   } | null;
+  objSalarySummary?: {
+    decAnnualCtc: number | null;
+    decMonthlyCtc: number | null;
+    decGrossMonthly: number | null;
+    decNetFixedMonthly: number | null;
+    decEmployerContributionMonthly: number | null;
+    decEmployeeDeductionsMonthly: number | null;
+    decFlexiBucketAnnual: number | null;
+    decApprovedFlexiAnnual: number | null;
+    decResidualTaxableAnnual: number | null;
+  } | null;
   objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
+  objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
+  lstWarnings?: string[];
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];
 };
@@ -156,6 +271,7 @@ export type EmployeeSalarySummaryRecord = {
   objEmployeeSummary: EmployeeSalaryDetailRecord["objEmployeeSummary"];
   objCurrentSalarySnapshot: EmployeeSalaryDetailRecord["objCurrentSalarySnapshot"];
   objAssignedStructure: EmployeeSalaryDetailRecord["objAssignedStructure"];
+  objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
   intRevisionCount: number;
 };
 
@@ -163,6 +279,12 @@ export type EmployeeSalaryOverrideFormValue = {
   intSalaryComponentID: number;
   strComponentName: string;
   blnAllowManualOverride: boolean;
+  strValueSource?: string;
+  strFormulaExpression?: string;
+  strBasisComponentName?: string;
+  strPayslipSectionSnapshotCode?: string | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
   decAmountMonthly: string;
   decAmountAnnual: string;
   decPercentageValue: string;
@@ -182,6 +304,8 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
   decMonthlyLimit: number | null;
   decAllocationMonthly: string;
   decAllocationAnnual: string;
+  strStatus?: string;
+  strReasonAction?: string;
 };
 
 export type EmployeeSalaryRevisionFormValues = {

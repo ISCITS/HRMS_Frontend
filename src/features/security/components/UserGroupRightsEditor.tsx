@@ -15,9 +15,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { normalizeAccessScope } from "@/features/security/utils/accessScope";
 import { authHelpers } from "@/lib/auth";
 import type { SecurityActionRight, SecurityMenuNode, UserGroupRightSaveItem } from "@/models/SecurityModels";
 
@@ -65,7 +66,7 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
     return "Payroll Input";
   }
   if (strRoute.includes("/payroll/results") || strMenuCode.includes("payroll_result")) {
-    return "Payroll Results";
+    return strMenuName || "Payroll Results";
   }
   if (strRoute.includes("/payroll/statutory-rules")) {
     return "Statutory Rules";
@@ -96,7 +97,7 @@ function flattenRights(lstMenuNodes: SecurityMenuNode[]): UserGroupRightSaveItem
       intMenuID: objNode.intMenuID,
       intActionID: objAction.intActionID,
       blnIsAllowed: objAction.blnIsAllowed,
-      strAccessScope: objAction.strAccessScope,
+      strAccessScope: normalizeAccessScope(objAction.strAccessScope),
       objPolicyJson: objAction.objPolicyJson,
     })),
     ...flattenRights(objNode.lstChildren),
@@ -165,10 +166,10 @@ function mutateNodeTree(objNode: SecurityMenuNode, blnIsAllowed: boolean): Secur
       ...objAction,
       blnIsAllowed,
       strAccessScope:
-        blnIsAllowed && objAction.strAccessScope === "none"
+        blnIsAllowed && normalizeAccessScope(objAction.strAccessScope) === "none"
           ? "self"
           : blnIsAllowed
-            ? objAction.strAccessScope
+            ? normalizeAccessScope(objAction.strAccessScope)
             : "none",
     })),
     lstChildren: objNode.lstChildren.map((objChild) => mutateNodeTree(objChild, blnIsAllowed)),
@@ -187,12 +188,12 @@ function mapNodeDeep(
   );
 }
 
-function isNodeFullyAllowed(objNode: SecurityMenuNode): boolean {
-  if (objNode.lstChildren.length > 0) {
-    return objNode.lstChildren.every((objChild) => isNodeFullyAllowed(objChild));
-  }
-
-  return objNode.blnIsAllowed;
+function isNodeAllowed(objNode: SecurityMenuNode): boolean {
+  return (
+    objNode.blnIsAllowed ||
+    objNode.lstActions.some((objAction) => objAction.blnIsAllowed) ||
+    objNode.lstChildren.some((objChild) => isNodeAllowed(objChild))
+  );
 }
 
 function updateActionState(
@@ -258,6 +259,7 @@ function renderActionRow(
           disabled={blnReadOnly}
           onChange={(objEvent) => fnToggleAllowed(objNode.intMenuID, objAction.intActionID, objEvent.target.checked)}
           size="small"
+          inputProps={{ "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.action.${objAction.intActionID}.switch` } as InputHTMLAttributes<HTMLInputElement>}
           sx={{ ml: 1 }}
         />
       </Box>
@@ -276,7 +278,7 @@ function renderNodeRows(
   intDepth = 0,
 ) {
   const blnExpanded = objExpandedMenuIDs.has(objNode.intMenuID);
-  const blnNodeChecked = isNodeFullyAllowed(objNode);
+  const blnNodeChecked = isNodeAllowed(objNode);
   const strNormalizedMenuName = normalizeRightsMenuName(objNode);
 
   return (
@@ -297,6 +299,7 @@ function renderNodeRows(
             variant="text"
             onClick={() => fnToggleExpand(objNode.intMenuID)}
             startIcon={blnExpanded ? <ExpandMoreRoundedIcon /> : <ChevronRightRoundedIcon />}
+            data-control-id={`security.user-group.dialog.rights.menu.${objNode.intMenuID}.expand.button`}
             sx={{
               minWidth: 0,
               px: 0.25,
@@ -317,6 +320,7 @@ function renderNodeRows(
             disabled={blnReadOnly}
             onChange={(objEvent) => fnToggleNodeAllowed(objNode.intMenuID, objEvent.target.checked)}
             size="small"
+            inputProps={{ "data-control-id": `security.user-group.dialog.rights.menu.${objNode.intMenuID}.switch` } as InputHTMLAttributes<HTMLInputElement>}
           />
         </Box>
       </Box>
@@ -388,10 +392,10 @@ export default function UserGroupRightsEditor({
         ...objAction,
         blnIsAllowed,
         strAccessScope:
-          blnIsAllowed && objAction.strAccessScope === "none"
+          blnIsAllowed && normalizeAccessScope(objAction.strAccessScope) === "none"
             ? "self"
             : blnIsAllowed
-              ? objAction.strAccessScope
+              ? normalizeAccessScope(objAction.strAccessScope)
               : "none",
       })),
     );
@@ -428,10 +432,10 @@ export default function UserGroupRightsEditor({
         }}
       >
         <TextField
-          data-testid="security.user-group-rights-editor.search.input"
           placeholder={dicLabels.searchPlaceholder}
           value={strSearch}
           onChange={(objEvent) => setStrSearch(objEvent.target.value)}
+          inputProps={{ controlId: "security.user-group-rights-editor.search.input" }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -441,7 +445,7 @@ export default function UserGroupRightsEditor({
           }}
         />
         <Button
-          data-testid="security.user-group-rights-editor.expand-all.button"
+          data-control-id="security.user-group-rights-editor.expand-all.button"
           variant="outlined"
           startIcon={<ExpandMoreRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set(collectMenuIDs(lstNodes)))}
@@ -450,7 +454,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.expandAll}
         </Button>
         <Button
-          data-testid="security.user-group-rights-editor.collapse-all.button"
+          data-control-id="security.user-group-rights-editor.collapse-all.button"
           variant="outlined"
           startIcon={<ExpandLessRoundedIcon />}
           onClick={() => setObjExpandedMenuIDs(new Set())}
@@ -459,7 +463,7 @@ export default function UserGroupRightsEditor({
           {dicLabels.collapseAll}
         </Button>
         <Button
-          data-testid="security.user-group-rights-editor.reset.button"
+          data-control-id="security.user-group-rights-editor.reset.button"
           variant="outlined"
           startIcon={<RestartAltRoundedIcon />}
           disabled={blnReadOnly}

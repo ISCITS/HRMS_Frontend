@@ -10,13 +10,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
-import { formatCurrency, formatDateLabel } from "@/features/reimbursements/formatters";
+import { formatCurrency, formatDateLabel, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
+import { useReimbursementLabels } from "@/features/reimbursements/hooks/useReimbursementLabels";
 import { canEditReimbursementClaim, isPayrollVisibleStatus } from "@/features/reimbursements/rules";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
 import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
-const lstReimbursementModuleCodes = ["REIMBURSEMENT", "REIMBURSEMENTS", "ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS"];
+const lstReimbursementModuleCodes = ["ESS_REIMBURSEMENT_CLAIMS"];
 
 function getErrorMessage(objError: unknown) {
   return objError instanceof Error ? objError.message : "Unable to process reimbursement request.";
@@ -28,12 +29,13 @@ function getClaimReferenceNumber(objClaim: ReimbursementClaimDto) {
 
 export default function MyReimbursementClaimsPage() {
   const objRouter = useRouter();
+  const { t } = useReimbursementLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementModuleCodes);
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
-  const blnCanView = canViewAny() || canDoAny("list");
-  const blnCanAdd = canDoAny("add");
+  const blnCanView = canViewAny() || canDoAny("list") || canDoAny("view");
+  const blnCanAdd = canDoAny("add") || canDoAny("create");
   const blnCanEdit = canDoAny("edit");
 
   async function loadClaims() {
@@ -73,59 +75,61 @@ export default function MyReimbursementClaimsPage() {
 
   return (
     <Stack spacing={1.4}>
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20 }} />
-            <Box>
-              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>My Reimbursements</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem" }}>
-                {objSummary.intClaims} claims, {formatCurrency(objSummary.decPending)} awaiting review, {formatCurrency(objSummary.decApproved)} approved.
-              </Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-            <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} data-testid="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>Refresh</Button>
-            {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} data-testid="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" } }}>New Claim</Button> : null}
-          </Stack>
+      <Box className="pageBanner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <ReceiptLongOutlinedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">
+            {t("my_reimbursements", "My Reimbursements")}
+          </Typography>
+          <Typography component="p" className="bannerSubTitle">
+            {objSummary.intClaims} {t("claims", "claims")}, {formatCurrency(objSummary.decPending)} {t("awaiting_review", "awaiting review")}, {formatCurrency(objSummary.decApproved)} {t("approved", "approved")}.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center" sx={{ position: "relative", zIndex: 1 }}>
+          <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
+          {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#ffffff", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
         </Stack>
-      </Paper>
+      </Box>
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement claims..." />
+      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claims", "Loading reimbursement claims...")} />
 
       {!blnCanView ? (
         <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Reimbursement access is not available for your user group.</Typography>
-          <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need reimbursement visibility.</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_not_available", "Reimbursement access is not available for your user group.")}</Typography>
+          <Typography sx={{ mt: 1, color: "#64748b" }}>{t("contact_admin_visibility", "Contact your administrator if you need reimbursement visibility.")}</Typography>
         </Paper>
       ) : null}
 
-      {blnCanView ? <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+      {blnCanView ? <Paper sx={{ mt: "0 !important", borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 780 }}>
             <TableHead sx={{ backgroundColor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800 }}>Action</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Ref #</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Purpose</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Claim Date</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Claimed Amount
-                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                <TableCell sx={{ fontWeight: 800 }}>{t("action", "Action")}</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>{t("claim_ref_number", "Claim Ref #")}</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>{t("claim_purpose", "Claim Purpose")}</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>{t("claim_date", "Claim Date")}</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>{t("status", "Status")}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("claimed_amount", "Claimed Amount")}
+                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
                 </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>Approved Amount
-                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>(All amount in ₹)</Typography>
+                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("approved_amount", "Approved Amount")}
+                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
                 </TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Payment Status</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>{t("payment_status", "Payment Status")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {lstClaims.length === 0 && !blnLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
-                    <Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>No reimbursement claims yet.</Typography>
+                  <TableCell colSpan={8}>
+                    <Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>{t("no_claims_yet", "No reimbursement claims yet.")}</Typography>
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -135,8 +139,8 @@ export default function MyReimbursementClaimsPage() {
                     <IconButton
                       size="small"
                       onClick={() => objRouter.push(blnCanEdit && canEditReimbursementClaim(objClaim.strClaimStatus) ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
-                      aria-label="Open claim"
-                      data-testid="reimbursements.my-claims.row.open.icon-button"
+                      aria-label={t("open_claim", "Open claim")}
+                      controlId="reimbursements.my-claims.row.open.icon-button"
                       data-row-key={objClaim.intID}
                     >
                       <OpenInNewRoundedIcon fontSize="small" />
@@ -145,12 +149,12 @@ export default function MyReimbursementClaimsPage() {
                   <TableCell>
                     <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim)}</Typography>
                   </TableCell>
-                  <TableCell> {objClaim.strClaimTitle || "-"} </TableCell>
+                  <TableCell> {translateKnownReimbursementText(objClaim.strClaimTitle, t)} </TableCell>
                   <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
                   <TableCell><ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
                   <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
-                  <TableCell>{isPayrollVisibleStatus(objClaim.strClaimStatus) ? "In payroll" : "-"}</TableCell>
+                  <TableCell>{isPayrollVisibleStatus(objClaim.strClaimStatus) ? t("in_payroll", "In payroll") : "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -2,7 +2,6 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { Alert, Autocomplete, Box, Button, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -186,8 +185,7 @@ export default function FNFSettlementCreatePage() {
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
         <Box className={styles.controlsHeader}>
-          <Box className={styles.fnfCreateTitleBlock}><Typography className={styles.breadcrumbs}>Payroll / Full and Final</Typography><Typography className={styles.title}>New FNF Settlement</Typography></Box>
-          <Button className={styles.secondaryButton} variant="outlined" startIcon={<CloseRoundedIcon />} onClick={handleCancel} data-testid="payroll.fnf-settlement-create.cancel-top.button">Cancel</Button>
+          <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
         </Box>
       </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -209,26 +207,26 @@ export default function FNFSettlementCreatePage() {
                   getOptionLabel={(objOption) => objOption?.strLabel || ""}
                   isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
                   onChange={(_, objValue) => handleEmployeeChange(objValue).catch(() => undefined)}
-                  renderInput={(params) => <TextField {...params} label="Employee" required error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth data-testid="payroll.fnf-settlement-create.employee-code.input" />}
+                  renderInput={(params) => <TextField {...params} label="Employee" required error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth controlId="payroll.fnf-settlement-create.employee-code.input" />}
                 />
               </Box>
             ) : null}
 
             {intActiveStep === 1 ? (
               <Box className={styles.fnfWizardGrid}>
-                <TextField label="Exit type" required value={dicForm.strExitType} onChange={(e) => updateField("strExitType", e.target.value)} error={Boolean(dicErrors.strExitType)} helperText={dicErrors.strExitType} fullWidth data-testid="payroll.fnf-settlement-create.exit-type.input" />
-                <TextField label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} helperText={dicErrors.dtResignationDate} fullWidth data-testid="payroll.fnf-settlement-create.resignation-date.input" />
-                <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} helperText={dicErrors.dtLastWorkingDate} fullWidth data-testid="payroll.fnf-settlement-create.last-working-date.input" />
-                <TextField label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} helperText={dicErrors.dtSettlementDate} fullWidth data-testid="payroll.fnf-settlement-create.settlement-date.input" />
+                <TextField label="Exit type" required value={dicForm.strExitType} onChange={(e) => updateField("strExitType", e.target.value)} error={Boolean(dicErrors.strExitType)} helperText={dicErrors.strExitType} fullWidth controlId="payroll.fnf-settlement-create.exit-type.input" />
+                <TextField label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} helperText={dicErrors.dtResignationDate} fullWidth controlId="payroll.fnf-settlement-create.resignation-date.input" />
+                <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} helperText={dicErrors.dtLastWorkingDate} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
+                <TextField label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} helperText={dicErrors.dtSettlementDate} fullWidth controlId="payroll.fnf-settlement-create.settlement-date.input" />
               </Box>
             ) : null}
 
             {intActiveStep === 2 ? (
               <Box className={styles.fnfWizardGrid}>
-                <TextField label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} helperText={dicErrors.decNoticePeriodDays} fullWidth data-testid="payroll.fnf-settlement-create.notice-period-days.input" />
-                <TextField label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} helperText={dicErrors.decNoticeServedDays} fullWidth data-testid="payroll.fnf-settlement-create.notice-served-days.input" />
-                <TextField label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} helperText={dicErrors.decNoticeShortfallDays} fullWidth data-testid="payroll.fnf-settlement-create.notice-shortfall-days.input" />
-                <TextField select label="Payroll run code" required value={dicForm.strPayrollCycleCode || ""} onChange={(e) => updateField("strPayrollCycleCode", e.target.value)} error={Boolean(dicErrors.strPayrollCycleCode)} helperText={dicErrors.strPayrollCycleCode || (blnPayrollRunLoading ? "Resolving employee payroll run..." : strPayrollRunHelper)} fullWidth data-testid="payroll.fnf-settlement-create.payroll-cycle-code.select">
+                <TextField label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} helperText={dicErrors.decNoticePeriodDays} fullWidth controlId="payroll.fnf-settlement-create.notice-period-days.input" />
+                <TextField label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} helperText={dicErrors.decNoticeServedDays} fullWidth controlId="payroll.fnf-settlement-create.notice-served-days.input" />
+                <TextField label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} helperText={dicErrors.decNoticeShortfallDays} fullWidth controlId="payroll.fnf-settlement-create.notice-shortfall-days.input" />
+                <TextField select label="Payroll run code" required value={dicForm.strPayrollCycleCode || ""} onChange={(e) => updateField("strPayrollCycleCode", e.target.value)} error={Boolean(dicErrors.strPayrollCycleCode)} helperText={dicErrors.strPayrollCycleCode || (blnPayrollRunLoading ? "Resolving employee payroll run..." : strPayrollRunHelper)} fullWidth controlId="payroll.fnf-settlement-create.payroll-cycle-code.select">
                   <MenuItem value="">Select payroll run code</MenuItem>
                   {lstPayrollCycles.map((dicCycle) => <MenuItem key={dicCycle.intID} value={dicCycle.strCycleCode}>{dicCycle.strCycleCode} - {dicCycle.strCycleName}</MenuItem>)}
                 </TextField>
@@ -237,8 +235,8 @@ export default function FNFSettlementCreatePage() {
 
             {intActiveStep === 3 ? (
               <Box className={styles.fnfWizardGrid}>
-                <TextField label="Work Days" type="number" value={dicForm.decWorkDays || "0"} onChange={(e) => updateField("decWorkDays", e.target.value)} error={Boolean(dicErrors.decWorkDays)} helperText={dicErrors.decWorkDays} fullWidth data-testid="payroll.fnf-settlement-create.work-days.input" />
-                <TextField label="No. of Days worked" type="number" value={dicForm.decDaysWorked || "0"} onChange={(e) => updateField("decDaysWorked", e.target.value)} error={Boolean(dicErrors.decDaysWorked)} helperText={dicErrors.decDaysWorked} fullWidth data-testid="payroll.fnf-settlement-create.days-worked.input" />
+                <TextField label="Work Days" type="number" value={dicForm.decWorkDays || "0"} onChange={(e) => updateField("decWorkDays", e.target.value)} error={Boolean(dicErrors.decWorkDays)} helperText={dicErrors.decWorkDays} fullWidth controlId="payroll.fnf-settlement-create.work-days.input" />
+                <TextField label="No. of Days worked" type="number" value={dicForm.decDaysWorked || "0"} onChange={(e) => updateField("decDaysWorked", e.target.value)} error={Boolean(dicErrors.decDaysWorked)} helperText={dicErrors.decDaysWorked} fullWidth controlId="payroll.fnf-settlement-create.days-worked.input" />
               </Box>
             ) : null}
 
@@ -248,25 +246,25 @@ export default function FNFSettlementCreatePage() {
                   const dicLeaveValue = (dicForm.lstLeaveEncashments || []).find((dicCurrent) => dicCurrent.strLeaveTypeCode === dicLeave.strCode);
                   return (
                     <Tooltip key={dicLeave.strCode} title={dicLeave.strTooltip} placement="top">
-                      <TextField label={dicLeave.strName} type="number" value={dicLeaveValue?.decEncashableDays || "0"} onChange={(e) => updateLeaveValue(dicLeave.strCode, e.target.value)} fullWidth data-testid={`payroll.fnf-settlement-create.leave-${dicLeave.strCode.toLowerCase()}.input`} />
+                      <TextField label={dicLeave.strName} type="number" value={dicLeaveValue?.decEncashableDays || "0"} onChange={(e) => updateLeaveValue(dicLeave.strCode, e.target.value)} fullWidth controlId={`payroll.fnf-settlement-create.leave-${dicLeave.strCode.toLowerCase()}.input`} />
                     </Tooltip>
                   );
                 })}
-                <TextField label="Total" type="number" value={decLeaveTotal} disabled fullWidth data-testid="payroll.fnf-settlement-create.leave-total.input" />
+                <TextField label="Total" type="number" value={decLeaveTotal} disabled fullWidth controlId="payroll.fnf-settlement-create.leave-total.input" />
               </Box>
             ) : null}
 
             {intActiveStep === 5 ? (
-              <TextField label="Remarks" value={dicForm.strRemarks} onChange={(e) => updateField("strRemarks", e.target.value)} fullWidth multiline minRows={5} data-testid="payroll.fnf-settlement-create.remarks.input" />
+              <TextField label="Remarks" value={dicForm.strRemarks} onChange={(e) => updateField("strRemarks", e.target.value)} fullWidth multiline minRows={5} controlId="payroll.fnf-settlement-create.remarks.input" />
             ) : null}
           </Stack>
         </Box>
         <Box className={styles.fnfWizardActions}>
-          {intActiveStep > 0 ? <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handlePrevious} data-testid="payroll.fnf-settlement-create.previous.button">Previous</Button> : null}
+          {intActiveStep > 0 ? <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handlePrevious} controlId="payroll.fnf-settlement-create.previous.button">Previous</Button> : null}
           <Box sx={{ flex: 1 }} />
-          <Button className={styles.secondaryButton} startIcon={<CloseRoundedIcon />} onClick={handleCancel} data-testid="payroll.fnf-settlement-create.cancel.button">Cancel</Button>
-          {intActiveStep < lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} endIcon={<ArrowForwardRoundedIcon />} onClick={handleNext} data-testid="payroll.fnf-settlement-create.next.button">Next</Button> : null}
-          {intActiveStep === lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={handleSubmit} disabled={blnSaving} data-testid="payroll.fnf-settlement-create.submit.button">Submit</Button> : null}
+          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back.button">Back</Button>
+          {intActiveStep < lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} endIcon={<ArrowForwardRoundedIcon />} onClick={handleNext} controlId="payroll.fnf-settlement-create.next.button">Next</Button> : null}
+          {intActiveStep === lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={handleSubmit} disabled={blnSaving} controlId="payroll.fnf-settlement-create.submit.button">Submit</Button> : null}
         </Box>
       </Box>
       <BlockingLoader blnOpen={blnSaving} strLabel="Saving settlement..." />

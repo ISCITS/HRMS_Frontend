@@ -4,16 +4,18 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
+import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import { Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from "@mui/material";
+import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
- 
-import AlertDialog from "@/components/common/AlertDialog";
-import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
+
 import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { LoginUiMessage } from "@/Common/enums/AppEnums";
+import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
@@ -483,26 +485,105 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
  
   if (objGoogleMfaChallenge) {
+    const strResolvedMfaTitle = objGoogleMfaChallenge.blnMfaSetupRequired ? "Set up Google Authenticator" : "Verify Google Authenticator";
+    const strResolvedVerifyButtonLabel = objGoogleMfaChallenge.blnMfaSetupRequired && !blnUseBackupCode ? "Complete setup" : "Verify and continue";
+    const strQrCodeSrc = objGoogleMfaChallenge.strQrCodeBase64 ? `data:image/png;base64,${objGoogleMfaChallenge.strQrCodeBase64}` : "";
+    const blnCanVerify = blnUseBackupCode ? Boolean(strBackupCode.trim()) : strGoogleCode.trim().length === 6;
+
     return (
-      <GoogleMfaChallengeView
-        objChallenge={objGoogleMfaChallenge}
-        strError={strError}
-        blnSubmitting={blnSubmitting}
-        blnUseBackupCode={blnUseBackupCode}
-        strCode={strGoogleCode}
-        strBackupCode={strBackupCode}
-        lstBackupCodes={lstBackupCodes}
-        onToggleBackupCode={() => setBlnUseBackupCode((blnCurrent) => !blnCurrent)}
-        onCodeChange={setStrGoogleCode}
-        onBackupCodeChange={setStrBackupCode}
-        onVerify={() => {
-          void handleGoogleMfaVerification();
-        }}
-        codeInputTestId="auth.mfa.code.input"
-        backupCodeInputTestId="auth.mfa.backup-code.input"
-        verifyButtonTestId="auth.mfa.verify.button"
-        toggleBackupCodeButtonTestId="auth.mfa.toggle-backup-code.button"
-      />
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 3, background: "#f8fafc" }}>
+        <Paper sx={{ maxWidth: 620, width: "100%", p: 4, borderRadius: "28px" }}>
+          <Stack spacing={3}>
+            <Stack spacing={1} alignItems="center" textAlign="center">
+              <Box
+                sx={{
+                  width: 72,
+                  height: 72,
+                  display: "grid",
+                  placeItems: "center",
+                  borderRadius: "22px",
+                  backgroundColor: "rgba(14,116,144,0.1)"
+                }}
+              >
+                {objGoogleMfaChallenge.blnMfaSetupRequired ? <QrCode2RoundedIcon color="primary" sx={{ fontSize: 34 }} /> : <SecurityRoundedIcon color="primary" sx={{ fontSize: 34 }} />}
+              </Box>
+              <Typography variant="h4">{strResolvedMfaTitle}</Typography>
+              <Typography sx={{ color: "#64748b" }}>{objGoogleMfaChallenge.strMessage}</Typography>
+            </Stack>
+
+            {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+            {lstBackupCodes.length > 0 ? (
+              <Alert severity="success">
+                <Typography sx={{ fontWeight: 700, mb: 1 }}>Backup codes</Typography>
+                <Stack spacing={0.5}>
+                  {lstBackupCodes.map((strItem) => (
+                    <Typography key={strItem} sx={{ fontFamily: "monospace" }}>{strItem}</Typography>
+                  ))}
+                </Stack>
+              </Alert>
+            ) : null}
+
+            {objGoogleMfaChallenge.blnMfaSetupRequired ? (
+              <Stack spacing={2}>
+                {strQrCodeSrc ? (
+                  <Box sx={{ display: "grid", placeItems: "center", p: 2, background: "#fff", borderRadius: 3, border: "1px solid #e2e8f0" }}>
+                    <Box component="img" src={strQrCodeSrc} alt="Google Authenticator QR code" sx={{ width: 240, height: 240 }} />
+                  </Box>
+                ) : null}
+
+                <Box sx={{ p: 2, borderRadius: 3, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <Typography sx={{ fontWeight: 700, mb: 1 }}>Manual setup key</Typography>
+                  <Typography sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                    {objGoogleMfaChallenge.strManualSecret || "Not available"}
+                  </Typography>
+                </Box>
+              </Stack>
+            ) : null}
+
+            <Divider />
+
+            <Stack spacing={2}>
+              <Button data-controlid="auth.mfa.toggle-backup-code.button" variant="text" onClick={() => setBlnUseBackupCode((blnCurrent) => !blnCurrent)} startIcon={<VpnKeyRoundedIcon />}>
+                {blnUseBackupCode ? "Use authenticator code instead" : "Use backup code instead"}
+              </Button>
+
+              {blnUseBackupCode ? (
+                <TextField
+                  label="Backup code"
+                  inputProps={{ "data-controlid": "auth.mfa.backup-code.input" }}
+                  value={strBackupCode}
+                  onChange={(objEvent) => setStrBackupCode(objEvent.target.value.toUpperCase())}
+                  placeholder="Enter one backup code"
+                  fullWidth
+                />
+              ) : (
+                <TextField
+                  label="Authenticator code"
+                  inputProps={{ "data-controlid": "auth.mfa.code.input" }}
+                  value={strGoogleCode}
+                  onChange={(objEvent) => setStrGoogleCode(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="Enter the 6-digit code"
+                  fullWidth
+                />
+              )}
+
+              <Button
+                data-controlid="auth.mfa.verify.button"
+                variant="contained"
+                disabled={blnSubmitting || !blnCanVerify}
+                onClick={() => {
+                  void handleGoogleMfaVerification();
+                }}
+                startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+                sx={{ minHeight: 52, borderRadius: "10px" }}
+              >
+                {strResolvedVerifyButtonLabel}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      </Box>
     );
   }
  
@@ -552,7 +633,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     <button
                       key={dicLanguageOption.intLanguageID}
                       type="button"
-                      data-testid="auth.login.language.button"
+                      data-controlid="auth.login.language.button"
                       data-option-key={dicLanguageOption.intLanguageID}
                       className={`${styles.languageButton} ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? styles.languageButtonActive : ""}`}
                       onClick={() => {
@@ -587,7 +668,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   {getLoginLabel("loginIdLabel")}
                 </Typography>
                 <TextField
-                  inputProps={{ "data-testid": "auth.login.login-id.input" }}
+                  inputProps={{ "data-controlid": "auth.login.login-id.input" }}
                   placeholder={getLoginLabel("loginIdPlaceholder")}
                   value={strLoginID}
                   onChange={(objEvent) => {
@@ -613,7 +694,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Box>
                 <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
-                  inputProps={{ "data-testid": "auth.login.password.input" }}
+                  inputProps={{ "data-controlid": "auth.login.password.input" }}
                   placeholder={getLoginLabel("passwordPlaceholder")}
                   type={blnPasswordVisible ? "text" : "password"}
                   value={strPassword}
@@ -628,7 +709,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton data-testid="auth.login.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
+                        <IconButton data-controlid="auth.login.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnCurrent) => !blnCurrent)}>
                           {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
                         </IconButton>
                       </InputAdornment>
@@ -641,7 +722,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 <Box>
                   <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
                   <TextField
-                    inputProps={{ "data-testid": "auth.login.otp.input" }}
+                    inputProps={{ "data-controlid": "auth.login.otp.input" }}
                     placeholder={getLoginLabel("otpPlaceholder")}
                     value={strOtp}
                     onChange={(objEvent) => setStrOtp(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -662,7 +743,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : null}
  
               <Button
-                data-testid="auth.login.submit.button"
+                data-controlid="auth.login.submit.button"
                 type="submit"
                 variant="contained"
                 size="large"
@@ -680,7 +761,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
               {blnOtpStep ? (
                 <Button
-                  data-testid="auth.login.resend-otp.button"
+                  data-controlid="auth.login.resend-otp.button"
                   variant="text"
                   onClick={resendOtp}
                   disabled={blnResendingOtp || intResendRemainingSeconds > 0}
@@ -702,14 +783,19 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           </Box>
         </Box>
       </Box>
-      <AlertDialog
-        blnOpen={blnErrorDialogOpen}
-        strMessage={strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
-        strSeverity="error"
-        fnOnClose={clearErrorState}
-        rootTestId="auth.login.error.dialog"
-        closeButtonTestId="auth.login.error.close.button"
-      />
+      <Dialog data-controlid="auth.login.error.dialog" open={blnErrorDialogOpen} onClose={clearErrorState} onKeyDown={handleSingleDialogActionEnter} fullWidth maxWidth="xs">
+        <DialogTitle>Error</DialogTitle>
+        <DialogContent>
+          <Alert severity="error">
+            {strLockCountdown ? `Account locked. Try again in ${strLockCountdown}` : strError}
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button data-controlid="auth.login.error.close.button" onClick={clearErrorState} variant="contained">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
  

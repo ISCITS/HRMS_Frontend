@@ -4,14 +4,14 @@ function normalizePublicApiBaseUrl(strValue: string | undefined) {
     strBaseUrl = strBaseUrl.slice(0, -"/api".length);
   }
 
-  // In browser sessions on local/dev, host.docker.internal can intermittently fail DNS resolution.
-  // Normalize it to localhost to avoid client-side "Network Error" for direct API calls.
+  // In browser sessions on local/dev, host.docker.internal can fail DNS resolution.
+  // Use explicit IPv4 localhost because Windows Docker localhost may prefer a slow/broken IPv6 path.
   if (typeof window !== "undefined" && strBaseUrl.includes("host.docker.internal")) {
     try {
       const objUrl = new URL(strBaseUrl);
       const strLocalHost = window.location.hostname || "localhost";
       if (strLocalHost === "localhost" || strLocalHost === "127.0.0.1") {
-        objUrl.hostname = "localhost";
+        objUrl.hostname = "127.0.0.1";
         strBaseUrl = objUrl.toString().replace(/\/+$/g, "");
       }
     } catch {

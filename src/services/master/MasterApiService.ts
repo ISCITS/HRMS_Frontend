@@ -50,6 +50,27 @@ export type SimpleMasterFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
 };
 
+export type HolidayApiRecord = {
+  intID: number;
+  intHolidayYear: number;
+  dtHolidayDate: string;
+  strHolidayCode: string;
+  strHolidayName: string;
+  strHolidayDescription?: string | null;
+  strHolidayTypeCode: string;
+  blnIsPaid: boolean;
+  blnIsOptional: boolean;
+  blnIsWorkOnHoliday: boolean;
+  blnIsCompensatoryOffApplicable: boolean;
+  blnIsActive: boolean;
+  lstTexts?: Array<{ intLanguageID: number; strLanguageName: string; strHolidayName: string; strHolidayDescription?: string | null }>;
+};
+
+export type HolidayFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstHolidayTypes: Array<{ strCode: string; strLabel: string }>;
+};
+
 export type UserApiRecord = {
   intID: number;
   intTenantID: number;
@@ -160,6 +181,7 @@ export type EssDeclarationCategoryApiRecord = {
   strCategoryName: string;
   strCategoryDescription?: string | null;
   strDeclarationKind: string;
+  strApplicableRegime?: "old" | "new" | "both" | string | null;
   intLinkedSalaryComponentID: number | null;
   strLinkedSalaryComponentName?: string | null;
   decMaxLimitAmount: number | null;
@@ -246,6 +268,35 @@ export type TaxRegimeApiRecord = {
   strEffectiveFromYear: string;
   blnIsActive: boolean;
   intSlabCount: number;
+  intSlabProfileCount?: number;
+  intCountryID?: number | null;
+  strCurrencyCode?: string | null;
+  strTaxYearCode?: string | null;
+  dtEffectiveFrom?: string | null;
+  dtEffectiveTo?: string | null;
+  intRegimeTypeID?: number | null;
+  strRegimeTypeCode?: string | null;
+  strRegimeTypeDisplay?: string | null;
+  strTaxpayerTypeCode?: string | null;
+  strRoundingRuleCode?: string | null;
+  blnStandardDeductionEnabled?: boolean;
+  decStandardDeductionAmount?: number | null;
+  blnRebateEnabled?: boolean;
+  blnMarginalRebateEnabled?: boolean;
+  blnSurchargeEnabled?: boolean;
+  blnMarginalSurchargeReliefEnabled?: boolean;
+  blnCessEnabled?: boolean;
+  decCessRatePercent?: number | null;
+  intCalculationPriority?: number | null;
+  strLegalReference?: string | null;
+  strConfigurationNotes?: string | null;
+  strDescription?: string | null;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strRegimeName: string;
+    strDescription?: string | null;
+  }>;
 };
 
 export type TaxSlabApiRecord = {
@@ -256,18 +307,119 @@ export type TaxSlabApiRecord = {
   fltTaxRatePercent: number;
   blnRebateEligible: boolean;
   blnIsActive: boolean;
+  strTaxYearCode?: string | null;
+  strSlabProfileCode?: string | null;
+  strTaxpayerTypeCode?: string | null;
+  strResidentialStatusCode?: string | null;
+  intAgeFromYears?: number | null;
+  intAgeToYears?: number | null;
+  intDisplayOrder?: number;
+  decFixedTaxAmount?: number | null;
+  dtEffectiveFrom?: string | null;
+  dtEffectiveTo?: string | null;
+  strLegalReference?: string | null;
 };
 
 export type TaxRegimeFormOptionsApiRecord = {
   lstCountries: EmployeeLookupOptionApiRecord[];
   lstFinancialYears: string[];
   strDefaultEffectiveFromYear: string;
+  lstRegimeTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+  }>;
+  lstLanguages?: EmployeeLookupOptionApiRecord[];
 };
 
 export type TaxSlabSetApiRecord = {
   objRegime: TaxRegimeApiRecord;
   lstSlabs: TaxSlabApiRecord[];
   lstFinancialYears: string[];
+};
+
+export type TaxStandardDeductionRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strIncomeSourceCode: string;
+  strTaxpayerTypeCode: string;
+  strResidentialStatusCode: string;
+  strDeductionModeCode: string;
+  decDeductionAmount: number;
+  decDeductionPercent?: number | null;
+  decMaximumDeductionAmount?: number | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxRebateRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strRebateCode: string;
+  strTaxpayerTypeCode: string;
+  strResidentialStatusCode: string;
+  decMinimumTotalIncome: number;
+  decMaximumTotalIncome: number;
+  strRebateModeCode: string;
+  decMaximumRebateAmount: number;
+  decRebatePercent?: number | null;
+  blnMarginalReliefEnabled: boolean;
+  blnExcludesSpecialRateIncome: boolean;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxSurchargeSlabApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strSurchargeProfileCode: string;
+  decIncomeFromAmount: number;
+  decIncomeToAmount?: number | null;
+  decSurchargeRatePercent: number;
+  blnMarginalReliefEnabled: boolean;
+  decMaximumRateCapPercent?: number | null;
+  intDisplayOrder: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxCessRuleApiRecord = {
+  intID: number;
+  intTaxRegimeID: number;
+  intCompanyID?: number | null;
+  strTaxYearCode: string;
+  strCessCode: string;
+  strCessName: string;
+  decCessRatePercent: number;
+  strCalculationBaseCode: string;
+  intDisplayOrder: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  strLegalReference?: string | null;
+  strRemarks?: string | null;
+};
+
+export type TaxRuleSetApiRecord<TRecord> = {
+  objRegime: TaxRegimeApiRecord;
+  lstRules?: TRecord[];
+  lstSlabs?: TRecord[];
 };
 
 export type PayrollProcessLogApiRecord = {
@@ -338,6 +490,7 @@ export type EmployeeDetailApiRecord = {
   intLocationID: number;
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
+  intLineManagerEmployeeID?: number | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
@@ -353,6 +506,15 @@ export type EmployeeLookupOptionApiRecord = {
   intID: number;
   strLabel: string;
   strCode?: string;
+};
+
+export type PayrollLookupOptionApiRecord = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+  strDescription?: string | null;
+  intDisplayOrder?: number | null;
+  blnIsActive?: boolean;
 };
 
 export type EmployeeFormOptionsApiRecord = {
@@ -456,13 +618,23 @@ export type SalaryComponentApiRecord = {
   strComponentName: string;
   strComponentDescription?: string | null;
   blnIsWages: boolean;
+  intComponentCategoryID?: number | null;
   strComponentCategory: string;
+  intComponentGroupID?: number | null;
   strComponentGroup: string | null;
+  intCalcMethodID?: number | null;
   strCalcMethod: string;
   strFormulaExpression: string | null;
+  decDefaultPercentageValue?: number | null;
+  intDefaultBasisComponentID?: number | null;
+  intRoundingRuleID?: number | null;
   strRoundingRule: string | null;
+  intDefaultPeriodicityID?: number | null;
   strDefaultPeriodicity: string;
+  intTaxTreatmentID?: number | null;
   strTaxTreatment: string | null;
+  strWageType?: string | null;
+  intCtcTreatmentID?: number | null;
   blnIncludeInPF: boolean;
   blnIncludeInESIC: boolean;
   blnIncludeInGratuity: boolean;
@@ -470,16 +642,35 @@ export type SalaryComponentApiRecord = {
   blnIncludeInTaxableIncome: boolean;
   blnIncludedInCtc?: boolean;
   blnIncludeInPayslip: boolean;
+  intPayslipSectionID?: number | null;
   strPayslipSection: string | null;
   intDisplayOrder: number;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  strLwpTreatment?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpReducedAmountHandling?: string | null;
+  strLwpProrationFormula?: string | null;
   blnIsReimbursement?: boolean;
   blnIsFlexiBenefit?: boolean;
+  blnIsFlexiBasket?: boolean;
+  intFlexiComponentTypeID?: number | null;
+  strFlexiComponentType?: string | null;
+  intReimbursementTypeID?: number | null;
   strReimbursementType?: string | null;
+  intSettlementMethodID?: number | null;
   strSettlementMethod?: string | null;
   blnRequiresBills?: boolean;
+  blnExpenseDateRequired?: boolean;
+  blnAllowPartialApproval?: boolean;
+  intApplicableForWhichTaxRegime?: number | null;
+  intApplicableTaxRegimeID?: number | null;
   decAnnualLimitAmount?: number | null;
   decMonthlyLimitAmount?: number | null;
+  intClaimLimitTypeID?: number | null;
   strClaimLimitType?: string | null;
+  intFlexiBalanceHandlingID?: number | null;
   blnAllowExcessClaim?: boolean;
   blnExcessClaimTaxable?: boolean;
   intResidualComponentID?: number | null;
@@ -497,6 +688,40 @@ export type SalaryComponentApiRecord = {
   intAssignedEmployees?: number;
   intFormulaReferences?: number;
   lstDependencyComponentIDs: number[];
+  lstFlexiEligibilityIDs?: number[];
+  lstFlexiEligibilityRules?: Array<{
+    intID?: number;
+    intEligibilityQuestionID: number;
+    strOperator: string;
+    strExpectedValue?: string | null;
+    fltMinValue?: number | null;
+    fltMaxValue?: number | null;
+    strMultiplierMode: string;
+    fltMultiplierCap?: number | null;
+    strIneligibleBehavior: string;
+    strFailureMessage?: string | null;
+    blnIsRequired: boolean;
+    blnIsActive: boolean;
+    intDisplayOrder: number;
+    objQuestion?: {
+      intID: number;
+      strQuestionCode: string;
+      strAnswerType: string;
+      strDefaultLabel: string;
+      strDefaultHelpText?: string | null;
+      strValueUnit?: string | null;
+      objOptionJSON?: unknown;
+      lstTexts?: Array<{
+        intLanguageID: number;
+        strQuestionLabel: string;
+        strHelpText?: string | null;
+      }>;
+    } | null;
+    lstTexts?: Array<{
+      intLanguageID: number;
+      strFailureMessage: string;
+    }>;
+  }>;
   lstTexts?: Array<{
     intLanguageID: number;
     strLanguageName: string;
@@ -513,16 +738,181 @@ export type SalaryComponentApiRecord = {
 export type SalaryComponentFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
   lstDependencyComponents: EmployeeLookupOptionApiRecord[];
+  lstFlexiComponentEligibilityOptions?: EmployeeLookupOptionApiRecord[];
+  lstFlexiEligibilityQuestions?: Array<{
+    intID: number;
+    strQuestionCode: string;
+    strAnswerType: string;
+    strSourceType: string;
+    blnIsEmployeeEditable: boolean;
+    strDefaultLabel: string;
+    strDefaultHelpText?: string | null;
+    strValueUnit?: string | null;
+    decMinValue?: number | null;
+    decMaxValue?: number | null;
+    objOptionJSON?: unknown;
+    intDisplayOrder: number;
+    blnIsActive: boolean;
+    lstTexts?: Array<{
+      intLanguageID: number;
+      strQuestionLabel: string;
+      strHelpText?: string | null;
+    }>;
+  }>;
   lstResidualComponents?: EmployeeLookupOptionApiRecord[];
+  lstComponentCategoryLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstComponentCategories: string[];
+  lstComponentGroupLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstComponentGroups: string[];
+  lstCalcMethodLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstCalcMethods: string[];
+  lstRoundingRuleLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstRoundingRules: string[];
+  lstDefaultPeriodicityLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstDefaultPeriodicities: string[];
+  lstTaxTreatmentLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstTaxTreatments: string[];
+  lstCtcTreatmentLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstReimbursementTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstReimbursementTypes?: string[];
+  lstSettlementMethodLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstSettlementMethods?: string[];
+  lstClaimLimitTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstClaimLimitTypes?: string[];
+  lstFlexiComponentTypeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstFlexiBalanceHandlingLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstPayslipSectionLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstLwpTreatmentLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstLwpReducedAmountHandlingLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
+  lstApplicableTaxRegimeLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
 };
 
 export type SalaryStructureComponentApiRecord = {
@@ -530,13 +920,41 @@ export type SalaryStructureComponentApiRecord = {
   intSalaryComponentID: number;
   strComponentCode?: string | null;
   strComponentName: string;
+  strCalcMethod?: string | null;
+  strTaxTreatment?: string | null;
+  strWageType?: string | null;
+  strRoundingRule?: string | null;
+  strPayslipSection?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  strLwpTreatment?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpReducedAmountHandling?: string | null;
+  strLwpProrationFormula?: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  intLwpTreatmentSnapshotID?: number | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  intLwpReducedAmountHandlingSnapshotID?: number | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  strLwpProrationFormulaSnapshot?: string | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
   blnIsFlexiBasketLine?: boolean;
   strFlexiComponentRole?: string | null;
   blnIncludedInCtc?: boolean;
   strComponentCategory?: string | null;
+  intValueSourceID?: number | null;
   intLineOrder: number;
   strValueSource: string;
   fltFixedAmount: number | null;
+  fltFormulaAmount?: number | null;
+  fltPercentageAmount?: number | null;
   fltPercentageValue: number | null;
   intBasisComponentID: number | null;
   strBasisComponentName?: string | null;
@@ -545,6 +963,17 @@ export type SalaryStructureComponentApiRecord = {
   fltMaxAmount: number | null;
   blnIsMandatory: boolean;
   blnIsActive: boolean;
+  blnRequiresBills?: boolean;
+  lstFlexiMappings?: Array<{
+    intFlexiComponentEligibilityID?: number | null;
+    intFlexiComponentID: number;
+    strFlexiComponentCode?: string | null;
+    strFlexiComponentName?: string | null;
+    fltDefaultAmount?: number | null;
+    fltMaxAmount?: number | null;
+    blnRequiresBills?: boolean;
+    blnIsActive?: boolean;
+  }>;
 };
 
 export type SalaryStructureTextApiRecord = {
@@ -552,6 +981,19 @@ export type SalaryStructureTextApiRecord = {
   strLanguageName?: string;
   strStructureName: string;
   strStructureDescription: string | null;
+};
+
+export type FlexiComponentEligibilityApiRecord = {
+  intID?: number;
+  intFlexiComponentEligibilityID?: number;
+  intFlexiComponentID?: number;
+  intSalaryComponentID?: number;
+  strFlexiComponentCode?: string | null;
+  strFlexiComponentName?: string | null;
+  strComponentCode?: string | null;
+  strComponentName?: string | null;
+  blnIsEligible?: boolean;
+  blnIsActive?: boolean;
 };
 
 export type SalaryStructureApiRecord = {
@@ -567,6 +1009,8 @@ export type SalaryStructureApiRecord = {
   intComponentCount?: number;
   dicStructureSummary?: {
     fltTotalCtc?: number;
+    fltGrossAnnual?: number;
+    fltGrossMonthly?: number;
     fltFixedPay?: number;
     fltVariablePay?: number;
     fltFlexiBasket?: number;
@@ -581,13 +1025,74 @@ export type SalaryStructureFormOptionsApiRecord = {
   lstSalaryComponents: Array<EmployeeLookupOptionApiRecord & {
     blnIsFlexiBasket?: boolean;
     blnIsFlexiBenefit?: boolean;
+    blnIsActive?: boolean;
     blnIncludedInCtc?: boolean;
+    blnIncludeInPayslip?: boolean;
+    blnIsWages?: boolean;
+    blnIsReimbursement?: boolean;
+    blnIsResidualComponent?: boolean;
+    blnIsTaxable?: boolean;
+    blnIsExempt?: boolean;
+    blnIsPartiallyExempt?: boolean;
+    strReimbursementType?: string | null;
+    strReimbursementSettlementMode?: string | null;
+    strSettlementMethod?: string | null;
     strFlexiComponentType?: string;
     strComponentGroup?: string | null;
     strComponentCategory?: string | null;
+    strWageType?: string | null;
+    strTaxTreatment?: string | null;
+    strPayslipSection?: string | null;
+    strDefaultPeriodicity?: string | null;
+    strRoundingRule?: string | null;
+    strContributionType?: string | null;
+    strEligibilitySummary?: string | null;
+    strValueSource?: string | null;
+    intValueSourceID?: number | null;
+    strFormulaExpression?: string | null;
+    intComponentCategoryID?: number | null;
+    intCtcTreatmentID?: number | null;
+    intTaxTreatmentID?: number | null;
+    intWageTypeID?: number | null;
+    intPayslipSectionID?: number | null;
+    intLwpTreatmentID?: number | null;
+    strLwpTreatmentCode?: string | null;
+    strLwpTreatment?: string | null;
+    intLwpReducedAmountHandlingID?: number | null;
+    strLwpReducedAmountHandlingCode?: string | null;
+    strLwpReducedAmountHandling?: string | null;
+    strLwpProrationFormula?: string | null;
+    intReimbursementTypeID?: number | null;
+    intSettlementModeID?: number | null;
+    intBasisComponentID?: number | null;
+    fltPercentageValue?: number | null;
+    fltMinAmount?: number | null;
+    fltMaxAmount?: number | null;
+    intDefaultLineOrder?: number | null;
+    intDisplayOrder?: number | null;
+    blnIsMandatory?: boolean;
     blnIsEmployerContribution?: boolean;
+    blnIsEmployeeDeduction?: boolean;
+    intResidualComponentID?: number | null;
+    decAnnualLimit?: number | null;
+    decMonthlyLimit?: number | null;
+    decAnnualLimitAmount?: number | null;
+    decMonthlyLimitAmount?: number | null;
+    decFlexiMaxYearlyAmount?: number | null;
+    decFlexiMaxMonthlyAmount?: number | null;
+    decReimbursementMaxClaimMonthlyLimit?: number | null;
+    decReimbursementMaxClaimYearlyLimit?: number | null;
   }>;
   lstLanguages: EmployeeLookupOptionApiRecord[];
+  lstValueSourceLookups?: Array<{
+    intID: number;
+    strValueCode: string;
+    strDisplayName: string;
+    strDescription?: string | null;
+    intDisplayOrder?: number | null;
+    blnIsActive?: boolean;
+    strLegacyValue?: string | null;
+  }>;
   lstValueSources: string[];
   lstCurrencies: string[];
 };
@@ -621,7 +1126,31 @@ export type EmployeeSalaryStructureComponentOptionApiRecord = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  intLwpTreatmentSnapshotID?: number | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingSnapshotID?: number | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpProrationFormulaSnapshot?: string | null;
+  strLwpProrationFormula?: string | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  intValueSourceID?: number | null;
+  strValueSourceCode?: string | null;
+  strCtcTreatment?: string | null;
   strValueSource: string;
+  decFormulaAmount?: number | null;
+  decPercentageValue?: number | null;
+  decPercentageAmount?: number | null;
   blnAllowManualOverride: boolean;
   intLineOrder: number;
 };
@@ -637,6 +1166,25 @@ export type EmployeeSalaryComponentLineApiRecord = {
   strComponentCode: string | null;
   strComponentName: string | null;
   strComponentCategory: string | null;
+  intComponentCategorySnapshotID?: number | null;
+  intCtcTreatmentSnapshotID?: number | null;
+  intTaxTreatmentSnapshotID?: number | null;
+  intWageTypeSnapshotID?: number | null;
+  intPayslipSectionSnapshotID?: number | null;
+  strPayslipSectionSnapshotCode?: string | null;
+  intLwpTreatmentSnapshotID?: number | null;
+  strLwpTreatmentSnapshotCode?: string | null;
+  intLwpTreatmentID?: number | null;
+  strLwpTreatmentCode?: string | null;
+  intLwpReducedAmountHandlingSnapshotID?: number | null;
+  strLwpReducedAmountHandlingSnapshotCode?: string | null;
+  intLwpReducedAmountHandlingID?: number | null;
+  strLwpReducedAmountHandlingCode?: string | null;
+  strLwpProrationFormulaSnapshot?: string | null;
+  strLwpProrationFormula?: string | null;
+  intReimbursementTypeSnapshotID?: number | null;
+  intSettlementModeSnapshotID?: number | null;
+  strCtcTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
   decAmountMonthly: number | null;
@@ -692,6 +1240,54 @@ export type EmployeeSalarySummaryApiRecord = {
   intRevisionCount: number;
 };
 
+export type EmployeeSalaryRevisionPreviewApiRecord = {
+  intEmployeeID: number;
+  intSalaryStructureID: number;
+  strStructureCode: string | null;
+  strStructureName: string | null;
+  fltNonWageCapPercent?: number | null;
+  lstComponentLines: Array<{
+    intSalaryComponentID: number;
+    strComponentCode: string | null;
+    strComponentName: string | null;
+    strComponentCategory: string | null;
+    decAmountMonthly: number | null;
+    decAmountAnnual: number | null;
+    decPercentageValue: number | null;
+    strFormulaExpression: string | null;
+    blnIsOverride: boolean;
+    strRemarks: string | null;
+  }>;
+  objFlexiAllocation: {
+    blnHasFlexiBasket: boolean;
+    intFlexiBasketComponentID?: number | null;
+    intResidualComponentID?: number | null;
+    strResidualComponentCode?: string | null;
+    strResidualComponentName?: string | null;
+    decFlexiBasketAvailableAnnual?: number | null;
+    decFlexiBasketAvailableMonthly?: number | null;
+    decAllocatedFlexiAnnual?: number | null;
+    decAllocatedFlexiMonthly?: number | null;
+    decBalanceFlexiAnnual?: number | null;
+    decBalanceFlexiMonthly?: number | null;
+    decResidualTaxableAllowanceAnnual?: number | null;
+    decResidualTaxableAllowanceMonthly?: number | null;
+    lstAllocationLines: Array<{
+      intSalaryComponentID: number;
+      strComponentCode: string | null;
+      strComponentName: string | null;
+      decAnnualLimit: number | null;
+      decMonthlyLimit: number | null;
+      decAllocationAnnual: number;
+      decAllocationMonthly: number;
+      blnProofRequired: boolean;
+      strTaxTreatment: string | null;
+      decBalanceAnnual: number | null;
+      strSource?: string | null;
+    }>;
+  };
+};
+
 function buildApiPath(objResource: MasterApiResource, ...lstSegments: Array<string | number>) {
   return [objResource, ...lstSegments.map(String)].join("/");
 }
@@ -720,6 +1316,68 @@ async function requestApi<TData>(objOptions: {
 }
 
 export const masterApiService = {
+  getHolidays(intYear: number, objFilters?: { strSearchName?: string; strSearchCode?: string; strHolidayTypeCode?: string; strStatus?: string; dtFromDate?: string; dtToDate?: string }) {
+    return requestApi<HolidayApiRecord[]>({
+      strPath: MasterApiResource.Holidays,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { intYear, ...objFilters, language_id: authHelpers.getLanguageID() },
+      strMenuAction: MasterMenuAction.HolidayList,
+    });
+  },
+
+  getHoliday(intID: number) {
+    return requestApi<HolidayApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, intID),
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { language_id: authHelpers.getLanguageID() },
+      strMenuAction: MasterMenuAction.HolidayList,
+    });
+  },
+
+  getHolidayFormOptions() {
+    return requestApi<HolidayFormOptionsApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.FormOptions),
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.HolidayFormOptions,
+    });
+  },
+
+  createHoliday(objBody: Record<string, unknown>) {
+    return requestApi<HolidayApiRecord>({
+      strPath: MasterApiResource.Holidays,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayCreate,
+    });
+  },
+
+  updateHoliday(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<HolidayApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Holidays, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayUpdate,
+    });
+  },
+
+  bulkHolidayStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: MasterMenuAction.HolidayBulkStatus,
+    });
+  },
+
+  translateHolidayText(objBody: { strText: string; intSourceLanguageID: number; intTargetLanguageID: number }) {
+    return requestApi<{ strTranslatedText: string }>({
+      strPath: buildApiPath(MasterApiResource.Holidays, MasterApiRouteSegment.Translate),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.HolidayTranslate,
+    });
+  },
+
   // Department CRUD and bulk actions.
   getDepartments() {
     return requestApi<DepartmentApiRecord[]>({
@@ -780,6 +1438,23 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.DepartmentList
+    });
+  },
+
+  getPayrollLookupOptions(
+    strDomainCode: string,
+    intLanguageID?: number | null,
+    strLanguageCode?: string | null,
+  ) {
+    return requestApi<PayrollLookupOptionApiRecord[]>({
+      strPath: MasterApiResource.PayrollLookups,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: {
+        domain_code: strDomainCode,
+        ...(intLanguageID ? { language_id: intLanguageID } : {}),
+        ...(strLanguageCode ? { language_code: strLanguageCode } : {}),
+      },
+      strMenuAction: MasterMenuAction.PayrollLookupList,
     });
   },
 
@@ -1066,6 +1741,7 @@ export const masterApiService = {
     strCategoryName: string;
     strCategoryDescription: string | null;
     strDeclarationKind: string;
+    strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
     strMaxLimitAppliedAt?: string;
@@ -1085,6 +1761,7 @@ export const masterApiService = {
     strCategoryName: string;
     strCategoryDescription: string | null;
     strDeclarationKind: string;
+    strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;
     decMaxLimitAmount: number | null;
     strMaxLimitAppliedAt?: string;
@@ -1681,22 +2358,22 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeFormOptions(intLanguageID?: number | null) {
+  getEmployeeFormOptions(intLanguageID?: number | null, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFormOptions) {
     const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<EmployeeFormOptionsApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
-      strMenuAction: MasterMenuAction.EmployeeFormOptions
+      strMenuAction
     });
   },
 
-  getEmployeeById(intID: number) {
+  getEmployeeById(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeView) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeView
+      strMenuAction
     });
   },
 
@@ -1709,12 +2386,12 @@ export const masterApiService = {
     });
   },
 
-  updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>) {
+  updateEmployee(intID: number, objBody: EmployeeDetailApiRecord | Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeUpdate) {
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeUpdate
+      strMenuAction
     });
   },
 
@@ -1736,7 +2413,7 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeAddress(intID: number) {
+  getEmployeeAddress(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeAddressView) {
     return requestApi<EmployeeAddressApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1745,20 +2422,20 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeAddressView
+      strMenuAction
     });
   },
 
-  saveEmployeeAddress(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeAddress(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeAddressSave) {
     return requestApi<EmployeeAddressApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Address),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeAddressSave
+      strMenuAction
     });
   },
 
-  getEmployeeBankAccount(intID: number) {
+  getEmployeeBankAccount(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeBankView) {
     return requestApi<EmployeeBankApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1767,20 +2444,20 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeBankView
+      strMenuAction
     });
   },
 
-  saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeBankAccount(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeBankSave) {
     return requestApi<EmployeeBankApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Bank),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeBankSave
+      strMenuAction
     });
   },
 
-  getEmployeeStatutory(intID: number) {
+  getEmployeeStatutory(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeStatutoryView) {
     return requestApi<EmployeeStatutoryApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1789,37 +2466,37 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Post,
       objBody: { intID },
-      strMenuAction: MasterMenuAction.EmployeeStatutoryView
+      strMenuAction
     });
   },
 
-  saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>) {
+  saveEmployeeStatutory(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeStatutorySave) {
     return requestApi<EmployeeStatutoryApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Statutory),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeStatutorySave
+      strMenuAction
     });
   },
 
-  getEmployeeExperiences(intID: number) {
+  getEmployeeExperiences(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceList) {
     return requestApi<EmployeeExperienceApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeExperienceList
+      strMenuAction
     });
   },
 
-  createEmployeeExperience(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeExperience(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Experiences),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeExperienceSave
+      strMenuAction
     });
   },
 
-  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>) {
+  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1829,7 +2506,7 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeExperienceSave
+      strMenuAction
     });
   },
 
@@ -1846,24 +2523,24 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeQualifications(intID: number) {
+  getEmployeeQualifications(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationList) {
     return requestApi<EmployeeQualificationApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeQualificationList
+      strMenuAction
     });
   },
 
-  createEmployeeQualification(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeQualification(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Qualifications),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeQualificationSave
+      strMenuAction
     });
   },
 
-  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>) {
+  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -1873,7 +2550,7 @@ export const masterApiService = {
       ),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeQualificationSave
+      strMenuAction
     });
   },
 
@@ -1890,29 +2567,29 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeFamilyDetails(intID: number) {
+  getEmployeeFamilyDetails(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilyList) {
     return requestApi<EmployeeFamilyDetailApiRecord[]>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Get,
-      strMenuAction: MasterMenuAction.EmployeeFamilyList
+      strMenuAction
     });
   },
 
-  createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>) {
+  createEmployeeFamilyDetail(intID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilySave) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intID, MasterApiRouteSegment.Family),
       strMethod: ApiRequestMethod.Post,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeFamilySave
+      strMenuAction
     });
   },
 
-  updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>) {
+  updateEmployeeFamilyDetail(intFamilyID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeFamilySave) {
     return requestApi<EmployeeFamilyDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Family, intFamilyID),
       strMethod: ApiRequestMethod.Put,
       objBody,
-      strMenuAction: MasterMenuAction.EmployeeFamilySave
+      strMenuAction
     });
   },
 
@@ -1940,10 +2617,12 @@ export const masterApiService = {
     });
   },
 
-  getSalaryComponentFormOptions() {
+  getSalaryComponentFormOptions(intLanguageID?: number | null) {
+    const intResolvedLanguageID = intLanguageID ?? authHelpers.getLanguageID();
     return requestApi<SalaryComponentFormOptionsApiRecord>({
       strPath: MasterApiResource.SalaryComponentFormOptions,
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intResolvedLanguageID ? { language_id: intResolvedLanguageID } : undefined,
       strMenuAction: MasterMenuAction.SalaryComponentFormOptions
     });
   },
@@ -2161,27 +2840,29 @@ export const masterApiService = {
     });
   },
 
-  getTaxRegimes() {
+  getTaxRegimes(intLanguageID?: number | null) {
     return requestApi<TaxRegimeApiRecord[]>({
       strPath: MasterApiResource.TaxRegimes,
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.TaxRegimeList
     });
   },
 
-  getTaxRegime(intID: number) {
+  getTaxRegime(intID: number, intLanguageID?: number | null) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody: { intID, intLanguageID: intLanguageID ?? undefined },
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  getTaxRegimeFormOptions() {
+  getTaxRegimeFormOptions(intLanguageID?: number | null) {
     return requestApi<TaxRegimeFormOptionsApiRecord>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.FormOptions),
       strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.TaxRegimeFormOptions
     });
   },
@@ -2235,6 +2916,78 @@ export const masterApiService = {
     });
   },
 
+  getTaxStandardDeductionRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "standard-deductions", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxStandardDeductionRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "standard-deductions"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxRebateRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "rebates", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxRebateRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "rebates"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxSurchargeSlabs(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "surcharges", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxSurchargeSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "surcharges"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
+  getTaxCessRules(intTaxRegimeID: number) {
+    return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, "cess", MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID: intTaxRegimeID },
+      strMenuAction: MasterMenuAction.TaxRegimeGet
+    });
+  },
+
+  saveTaxCessRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+    return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "cess"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.TaxRegimeUpdate
+    });
+  },
+
   getSalaryStructures() {
     return requestApi<SalaryStructureApiRecord[]>({
       strPath: MasterApiResource.SalaryStructures,
@@ -2258,6 +3011,23 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Get,
       objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
       strMenuAction: MasterMenuAction.SalaryStructureFormOptions
+    });
+  },
+
+  getFlexiComponentEligibility() {
+    return requestApi<FlexiComponentEligibilityApiRecord[]>({
+      strPath: MasterApiResource.FlexiComponentEligibility,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.FlexiComponentEligibilityList
+    });
+  },
+
+  saveFlexiComponentEligibility(objBody: Record<string, unknown>) {
+    return requestApi<FlexiComponentEligibilityApiRecord[]>({
+      strPath: MasterApiResource.FlexiComponentEligibility,
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.FlexiComponentEligibilitySave
     });
   },
 
@@ -2340,6 +3110,15 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { intID: intEmployeeID },
       strMenuAction: MasterMenuAction.EmployeeSalarySummary
+    });
+  },
+
+  previewEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+    return requestApi<EmployeeSalaryRevisionPreviewApiRecord>({
+      strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Revisions, "preview"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.EmployeeSalaryView
     });
   },
 

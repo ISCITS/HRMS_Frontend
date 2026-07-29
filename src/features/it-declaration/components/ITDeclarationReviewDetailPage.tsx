@@ -16,7 +16,6 @@ import ITDeclarationItemReviewPanel from "@/features/it-declaration/components/I
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import {
   hrItDeclarationReviewService,
-  type HrItDeclarationAuditRecord,
   type HrItDeclarationDetailRecord,
   type HrItDeclarationItemRecord,
   type HrItDeclarationProofRecord,
@@ -60,6 +59,15 @@ function normalizeDeclarationSection(strSection?: string | null) {
     .toUpperCase()
     .replace(/^SEC[_\s-]*/, "")
     .replace(/[^A-Z0-9]/g, "");
+}
+
+function base64ToObjectUrl(strBase64: string, strMimeType: string): string {
+  const strBinary = atob(strBase64);
+  const bytArray = new Uint8Array(strBinary.length);
+  for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
+    bytArray[intIndex] = strBinary.charCodeAt(intIndex);
+  }
+  return URL.createObjectURL(new Blob([bytArray], { type: strMimeType || "application/octet-stream" }));
 }
 
 function parseMaxLimit(objValue: unknown) {
@@ -198,11 +206,11 @@ function DeclarationDetailPanel({ strTitle, objDetails }: { strTitle: string; ob
 export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Props) {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, canDoAny, objRights } = useModuleActionAccess([
+    "it_declaration_review",
     "PAYROLL_IT_DECLARATION_REVIEW",
     "PAYROLL_IT_DECLARATION",
   ]);
   const [objDetail, setObjDetail] = useState<HrItDeclarationDetailRecord | null>(null);
-  const [lstAudit, setLstAudit] = useState<HrItDeclarationAuditRecord[]>([]);
   const [lstCategoryRules, setLstCategoryRules] = useState<CategoryRule[] | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
@@ -210,7 +218,27 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   const [strReason, setStrReason] = useState("");
   const [strDialogError, setStrDialogError] = useState("");
   const [strConfirm, setStrConfirm] = useState<ConfirmAction>(null);
-  const [blnAuditDialogOpen, setBlnAuditDialogOpen] = useState(false);
+  const [blnDismissNotFound, setBlnDismissNotFound] = useState(false);
+  const [blnDismissNoItems, setBlnDismissNoItems] = useState(false);
+  const objHeaderControlSx = {
+    height: 34,
+    minHeight: 34,
+    px: 1.5,
+    py: 0.5,
+    borderRadius: "8px",
+    textTransform: "none",
+    fontWeight: 700,
+    fontSize: "0.76rem",
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
+    alignSelf: "stretch",
+    "& .MuiButton-startIcon": {
+      marginRight: "6px",
+    },
+    "& .MuiSvgIcon-root": {
+      fontSize: "1.1rem",
+    },
+  } as const;
 
   function hasPermissionCode(strCode: string) {
     const strNormalized = strCode.trim().toUpperCase();
@@ -222,36 +250,29 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
 
   const blnCanApprove = canDoAny("approve") || hasPermissionCode("PAYROLL_IT_DECLARATION_APPROVE");
   const blnCanReject = canDoAny("reject") || hasPermissionCode("PAYROLL_IT_DECLARATION_REJECT") || blnCanApprove;
-  const blnCanReview = canDoAny("edit") || hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
+  const blnCanReview = canDoAny("review") || canDoAny("edit") || hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanRelease = canDoAny("release") || hasPermissionCode("PAYROLL_IT_DECLARATION_RELEASE");
   const blnCanLock = canDoAny("lock") || hasPermissionCode("PAYROLL_IT_DECLARATION_LOCK");
-  const blnCanProofVerify =
-    canDoAny("proof_verify") ||
-    hasPermissionCode("PAYROLL_IT_DECLARATION_PROOF_VERIFY") ||
-    blnCanReview;
-  const blnCanReviewWorkflow = blnCanReview || blnCanApprove || blnCanReject || blnCanProofVerify;
   const strDeclarationStatus = String(objDetail?.strStatus || "").toLowerCase();
   const blnLocked = Boolean(objDetail?.blnLocked || objDetail?.strStatus?.toLowerCase() === "locked");
   const blnReviewEditable = ["under_review"].includes(strDeclarationStatus);
   const blnSubmittedPendingReview = strDeclarationStatus === "submitted";
-  const blnItemActionsAllowedStatus = blnReviewEditable || blnSubmittedPendingReview;
-  const blnCanStartReview = !blnLocked && blnCanReviewWorkflow && strDeclarationStatus === "submitted";
-  const blnCanApproveHeader = !blnLocked && blnCanApprove && strDeclarationStatus === "under_review";
-  const blnCanRejectHeader = !blnLocked && blnCanReject && strDeclarationStatus === "under_review";
-  const blnCanReleaseHeader = !blnLocked && (blnCanRelease || blnCanReview) && ["submitted", "under_review", "approved", "partially_approved", "rejected"].includes(strDeclarationStatus);
+  const blnDraftPendingReview = strDeclarationStatus === "draft";
+  const blnItemActionsAllowedStatus = blnReviewEditable || blnSubmittedPendingReview || blnDraftPendingReview;
+  const blnCanApproveHeader = !blnLocked && blnCanApprove;
+  const blnCanRejectHeader = !blnLocked && blnCanReject;
+  const blnCanReleaseHeader = !blnLocked && (blnCanRelease || blnCanReview);
   const blnCanLockHeader = !blnLocked && (blnCanLock || blnCanReview) && ["approved", "partially_approved"].includes(strDeclarationStatus);
 
   async function loadData() {
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objFetched, lstAuditEvents, lstRules] = await Promise.all([
+      const [objFetched, lstRules] = await Promise.all([
         hrItDeclarationReviewService.getDetail(intDeclarationID),
-        hrItDeclarationReviewService.getAudit(intDeclarationID),
         loadCategoryRules(),
       ]);
       setObjDetail(objFetched);
-      setLstAudit(lstAuditEvents);
       setLstCategoryRules(lstRules);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load declaration detail.");
@@ -296,17 +317,17 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     void loadData();
   }, [blnRightsLoading, intDeclarationID]);
 
-  async function handleItemAction(intItemID: number, strAction: "approve" | "reject" | "partial_approve" | "proof_pending" | "proof_verify" | "proof_reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) {
+  async function handleItemAction(intItemID: number, strAction: "approve" | "reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) {
     if (!intItemID) return;
     if (blnLocked) {
       setStrError("Locked declaration cannot be modified.");
       return;
     }
     if (!blnItemActionsAllowedStatus) {
-      setStrError("Item actions are allowed only after Start Review.");
+      setStrError("Item actions are not allowed in the current declaration status.");
       return;
     }
-    if (blnSubmittedPendingReview) {
+    if (blnSubmittedPendingReview || blnDraftPendingReview) {
       try {
         await hrItDeclarationReviewService.startReview(intDeclarationID);
         await loadData();
@@ -315,20 +336,12 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
         return;
       }
     }
-    if ((strAction === "reject" || strAction === "partial_approve" || strAction === "proof_reject") && !objPayload?.strRemarks) {
+    if (strAction === "reject" && !objPayload?.strRemarks) {
       setStrError("Remarks are required.");
       return;
     }
     try {
-      if (strAction === "proof_verify" || strAction === "proof_reject") {
-        await hrItDeclarationReviewService.reviewProof(intDeclarationID, intItemID, strAction === "proof_verify" ? "verify" : "reject", objPayload);
-      } else if (strAction === "partial_approve") {
-        await hrItDeclarationReviewService.reviewItem(intDeclarationID, intItemID, "partial-approve", objPayload);
-      } else if (strAction === "proof_pending") {
-        await hrItDeclarationReviewService.reviewItem(intDeclarationID, intItemID, "proof-pending", objPayload);
-      } else {
-        await hrItDeclarationReviewService.reviewItem(intDeclarationID, intItemID, strAction, objPayload);
-      }
+      await hrItDeclarationReviewService.reviewItem(intDeclarationID, intItemID, strAction, objPayload);
       setStrToast("Action completed successfully.");
       await loadData();
     } catch (objError) {
@@ -338,21 +351,31 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
 
   async function previewProof(intProofID: number) {
     if (!objDetail) return;
-    const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
-    const strUrl = `data:${objPreview.strMimeType};base64,${objPreview.strBase64Content}`;
-    window.open(strUrl, "_blank", "noopener,noreferrer");
+    try {
+      const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
+      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
+      window.open(strUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to view uploaded proof.");
+    }
   }
 
   async function downloadProof(intProofID: number) {
     if (!objDetail) return;
-    const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
-    const strUrl = `data:${objPreview.strMimeType};base64,${objPreview.strBase64Content}`;
-    const objAnchor = document.createElement("a");
-    objAnchor.href = strUrl;
-    objAnchor.download = objPreview.strFileName || `proof-${intProofID}`;
-    document.body.appendChild(objAnchor);
-    objAnchor.click();
-    document.body.removeChild(objAnchor);
+    try {
+      const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
+      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strUrl;
+      objAnchor.download = objPreview.strFileName || `proof-${intProofID}`;
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strUrl);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to download uploaded proof.");
+    }
   }
 
   async function confirmAction() {
@@ -362,6 +385,9 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       return;
     }
     try {
+      if (["approve_all", "reject"].includes(strConfirm) && ["draft", "submitted"].includes(strDeclarationStatus)) {
+        await hrItDeclarationReviewService.startReview(objDetail.intDeclarationID);
+      }
       if (strConfirm === "approve_all") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "approve");
       if (strConfirm === "reject") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "reject", { strRemarks: strReason.trim() });
       if (strConfirm === "release") await hrItDeclarationReviewService.release(objDetail.intDeclarationID, { strRemarks: strReason.trim() });
@@ -423,7 +449,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   }, [lstItems, lstProofs, dicCategoryRuleBySection]);
 
   if (blnLoading || blnRightsLoading) return <BlockingLoader blnOpen strLabel="Loading IT declaration detail..." />;
-  if (!objDetail) return <Alert severity="error">{strError || "Declaration not found."}</Alert>;
+  if (!objDetail) return blnDismissNotFound ? null : <Alert severity="error" onClose={() => setBlnDismissNotFound(true)}>{strError || "Declaration not found."}</Alert>;
 
   return (
     <Stack spacing={1.4}>
@@ -438,35 +464,8 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
           <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
             <Stack direction="row" spacing={1} alignItems="center">
               <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => setBlnAuditDialogOpen(true)}
-                data-testid="it-declaration.review-detail.view-log.button"
-                sx={{ textTransform: "none", color: "#14532d", minWidth: "auto", px: 0.6, fontWeight: 800 }}
-              >
-                View Log
-              </Button>
             </Stack>
-            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-              {blnCanStartReview ? <Button
-                variant="outlined"
-                onClick={() => void hrItDeclarationReviewService.startReview(objDetail.intDeclarationID).then(loadData)}
-                data-testid="it-declaration.review-detail.start-review.button"
-                sx={{
-                  minHeight: 30,
-                  borderRadius: "8px",
-                  px: 1.8,
-                  textTransform: "none",
-                  fontWeight: 700,
-                  fontSize: "0.76rem",
-                  borderColor: "#cbd5e1",
-                  color: "#0f172a",
-                  "&:hover": { borderColor: "#94a3b8", backgroundColor: "#f8fafc" },
-                }}
-              >
-                Start Review
-              </Button> : null}
+            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="stretch">
               <ITDeclarationActionBar
                 blnLocked={blnLocked}
                 blnCanRelease={blnCanReleaseHeader}
@@ -479,11 +478,11 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                 fnLock={() => setStrConfirm("lock")}
               />
             </Stack>
-            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} data-testid="it-declaration.review-detail.back.button" sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
+            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
           </Stack>
         </Stack>
       </Paper>
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.1 }}>
         <SummaryMetric strLabel="Total Declared Amount" strValue={objInrFormatter.format(Number(objDetail.decDeclaredTotalAmount || 0))} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
@@ -524,7 +523,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
                 gap: 1.3,
                 p: 1,
                 alignItems: "stretch",
@@ -544,10 +543,8 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                     key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
                     objItem={objItemWithSectionRule}
                     blnLocked={blnLocked || !blnItemActionsAllowedStatus}
-                    blnCanReview={blnCanReview}
                     blnCanApprove={blnCanApprove}
                     blnCanReject={blnCanReject}
-                    blnCanProofVerify={blnCanProofVerify}
                     lstProofs={lstItemProofs}
                     decSectionMaxLimit={objGroup.decMaxLimitAmount}
                     decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
@@ -561,54 +558,25 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
           </Paper>
           );
         })}
-        {lstItems.length === 0 ? <Alert severity="info">No declaration items found.</Alert> : null}
+        {lstItems.length === 0 && !blnDismissNoItems ? <Alert severity="info" onClose={() => setBlnDismissNoItems(true)}>No declaration items found.</Alert> : null}
       </Stack>
 
       {objDetail.objHraDetails ? <DeclarationDetailPanel strTitle="HRA Details" objDetails={objDetail.objHraDetails} /> : null}
       {objDetail.objHomeLoanDetails ? <DeclarationDetailPanel strTitle="Home Loan Details" objDetails={objDetail.objHomeLoanDetails} /> : null}
       {objDetail.objPreviousEmployerDetails ? <DeclarationDetailPanel strTitle="Previous Employer Details" objDetails={objDetail.objPreviousEmployerDetails} /> : null}
 
-      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth data-testid="it-declaration.review-detail.confirm.dialog">
+      <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth controlId="it-declaration.review-detail.confirm.dialog">
         <DialogTitle>Confirm Action</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 1 }}>Please confirm this action.</Typography>
           {(strConfirm === "reject" || strConfirm === "release") ? (
-            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} data-testid="it-declaration.review-detail.confirm.remarks.input" />
+            <TextField fullWidth size="small" label="Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} multiline minRows={3} controlId="it-declaration.review-detail.confirm.remarks.input" />
           ) : null}
-          {strDialogError ? <Alert severity="error" sx={{ mt: 1 }}>{strDialogError}</Alert> : null}
+          {strDialogError ? <Alert severity="error" onClose={() => setStrDialogError("")} sx={{ mt: 1 }}>{strDialogError}</Alert> : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStrConfirm(null)} data-testid="it-declaration.review-detail.confirm.cancel.button">Cancel</Button>
-          <Button variant="contained" onClick={() => void confirmAction()} data-testid="it-declaration.review-detail.confirm.submit.button">Confirm</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={blnAuditDialogOpen} onClose={() => setBlnAuditDialogOpen(false)} maxWidth="md" fullWidth data-testid="it-declaration.review-detail.audit.dialog">
-        <DialogTitle>Audit Logs</DialogTitle>
-        <DialogContent>
-          {lstAudit.length === 0 ? (
-            <Typography sx={{ color: "#94a3b8", fontSize: "0.82rem" }}>No audit events found.</Typography>
-          ) : (
-            <Stack sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
-              <Stack direction="row" sx={{ backgroundColor: "#f8fafc", px: 1, py: 0.8, "& > div": { fontSize: "0.76rem", fontWeight: 800, color: "#334155" } }}>
-                <div style={{ flex: "0 0 180px", minWidth: "180px" }}>Action</div>
-                <div style={{ flex: "0 0 190px", minWidth: "190px" }}>Action By</div>
-                <div style={{ flex: "0 0 260px", minWidth: "260px" }}>Action On</div>
-                <div style={{ flex: "1 1 auto", minWidth: 0 }}>Remarks</div>
-              </Stack>
-              {lstAudit.map((objLog, intIndex) => (
-                <Stack key={`${objLog.strAction}-${objLog.strActionOn}-${intIndex}`} direction="row" sx={{ px: 1, py: 0.7, borderTop: "1px solid #eef2f7", "& > div": { fontSize: "0.78rem", color: "#1f2937" } }}>
-                  <div style={{ flex: "0 0 180px", minWidth: "180px" }}>{objLog.strAction}</div>
-                  <div style={{ flex: "0 0 190px", minWidth: "190px" }}>{objLog.strActionBy || "-"}</div>
-                  <div style={{ flex: "0 0 260px", minWidth: "260px" }}>{objLog.strActionOn || "-"}</div>
-                  <div style={{ flex: "1 1 auto", minWidth: 0 }}>{objLog.strRemarks || "-"}</div>
-                </Stack>
-              ))}
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBlnAuditDialogOpen(false)} data-testid="it-declaration.review-detail.audit.close.button">Close</Button>
+          <Button onClick={() => setStrConfirm(null)} controlId="it-declaration.review-detail.confirm.cancel.button">Cancel</Button>
+          <Button variant="contained" onClick={() => void confirmAction()} controlId="it-declaration.review-detail.confirm.submit.button">Confirm</Button>
         </DialogActions>
       </Dialog>
 

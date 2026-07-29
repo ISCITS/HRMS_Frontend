@@ -1,6 +1,7 @@
 "use client";
 
 import { callAPI } from "@/lib/apiClient";
+import type { ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
 import type {
   ActionRightsData,
@@ -20,7 +21,7 @@ async function requestApi<TData>(
   objBody?: unknown,
   objParams?: Record<string, string | number | boolean | null | undefined>,
 ) {
-  const objResult = await callAPI<TData>(
+  const objResult = await callAPI<ApiEnvelope<TData>>(
     objBody ?? null,
     `/api/v1${strPath}`,
     `SECURITY_${strMethod}_${strPath}`,
@@ -68,12 +69,12 @@ export const securityApiService = {
     );
   },
 
-  async getUserGroupRights(intUserGroupID: number) {
+  async getUserGroupRights(intUserGroupID: number, strGroupType?: string) {
     return requestApi<SecurityMenuNode[]>(
       `/security/user-groups/${intUserGroupID}/rights`,
       "GET",
       null,
-      { intLanguageID: authHelpers.getLanguageID() ?? 1 }
+      { intLanguageID: authHelpers.getLanguageID() ?? 1, strGroupType: strGroupType ?? "" }
     );
   },
 
