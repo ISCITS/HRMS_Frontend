@@ -34,6 +34,22 @@ function toEditableAssignment(objRecord: UserGroupAssignmentRecord): UserGroupAs
   };
 }
 
+function deduplicateAssignments(lstAssignments: UserGroupAssignmentSaveItem[]): UserGroupAssignmentSaveItem[] {
+  const objAssignmentByGroupID = new Map<number, UserGroupAssignmentSaveItem>();
+
+  lstAssignments.forEach((objAssignment) => {
+    if (objAssignment.intUserGroupID <= 0) {
+      return;
+    }
+    const objExisting = objAssignmentByGroupID.get(objAssignment.intUserGroupID);
+    if (!objExisting || objAssignment.blnIsActive) {
+      objAssignmentByGroupID.set(objAssignment.intUserGroupID, objAssignment);
+    }
+  });
+
+  return [...objAssignmentByGroupID.values()];
+}
+
 export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignmentsPageProps) {
   const [lstAssignments, setLstAssignments] = useState<UserGroupAssignmentSaveItem[]>([]);
   const [lstUserGroups, setLstUserGroups] = useState<UserGroupRecord[]>([]);
@@ -70,10 +86,23 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
   }, [intUserID]);
 
   function addAssignment() {
+    const intNextGroupID = lstUserGroups.find(
+      (objGroup) => !lstAssignments.some((objAssignment) => objAssignment.intUserGroupID === objGroup.intID),
+    )?.intID ?? 0;
+
+    if (!intNextGroupID) {
+      setObjToast({
+        open: true,
+        message: "All active user groups are already added.",
+        severity: "error",
+      });
+      return;
+    }
+
     setLstAssignments((lstPrevious) => [
       ...lstPrevious,
       {
-        intUserGroupID: lstUserGroups[0]?.intID ?? 0,
+        intUserGroupID: intNextGroupID,
         dtEffectiveFrom: new Date().toISOString().slice(0, 10),
         dtEffectiveTo: null,
         blnIsActive: true,
@@ -84,7 +113,7 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
   async function saveAssignments() {
     setBlnSaving(true);
     try {
-      await securityApiService.saveUserAssignments(intUserID, lstAssignments.filter((objItem) => objItem.intUserGroupID > 0));
+      await securityApiService.saveUserAssignments(intUserID, deduplicateAssignments(lstAssignments));
       setObjToast({ open: true, message: "User group assignments saved successfully.", severity: "success" });
       await loadData();
     } catch (objError) {
@@ -147,7 +176,14 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   }
                 >
                   {lstUserGroups.map((objGroup) => (
-                    <MenuItem key={objGroup.intID} value={objGroup.intID}>
+                    <MenuItem
+                      key={objGroup.intID}
+                      value={objGroup.intID}
+                      disabled={lstAssignments.some(
+                        (objItem, intItemIndex) =>
+                          intItemIndex !== intIndex && objItem.intUserGroupID === objGroup.intID,
+                      )}
+                    >
                       {objGroup.strGroupCode} - {objGroup.strGroupName}
                     </MenuItem>
                   ))}
