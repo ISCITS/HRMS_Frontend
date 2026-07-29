@@ -118,5 +118,11 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run TypeScript typecheck (report-only — pre-existing errors tracked separately, not build-blocking yet)
+        run: npm run typecheck || true
+
       - name: Run build
         run: npm run build
+
+      - name: Audit dependencies (non-blocking)
+        run: npm audit --audit-level=high || true
