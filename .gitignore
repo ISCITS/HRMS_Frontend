@@ -27,10 +27,5 @@ ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 *.tsbuildinfd
 /tmp
 
-# Local frontend configuration and generated files
-/docker-compose.yml
-/next-env.d.ts
-/next.config.js
-/tsconfig.json
 *.tsbuildinfo
 /public/HRMS - Shortcut.lnk
