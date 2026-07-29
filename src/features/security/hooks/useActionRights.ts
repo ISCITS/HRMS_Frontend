@@ -78,28 +78,35 @@ async function getCachedActionRights() {
 }
 
 export function useActionRights() {
-  const strInitialCacheKey = buildActionRightsCacheKey();
-  const objInitialRights =
-    intActionRightsCacheTtlMs > 0 &&
-    objActionRightsCacheEntry &&
-    objActionRightsCacheEntry.strCacheKey === strInitialCacheKey &&
-    objActionRightsCacheEntry.intExpiresAt > Date.now()
-      ? objActionRightsCacheEntry.objRights
-      : {
-          dicAllowedActions: {},
-          dicAccessScopeByAction: {},
-        };
-  const [objRights, setObjRights] = useState<ActionRightsResponse>({
-    dicAllowedActions: objInitialRights.dicAllowedActions,
-    dicAccessScopeByAction: objInitialRights.dicAccessScopeByAction,
+  // Lazy initializers run once at mount, so reading Date.now() here stays
+  // outside the render body the react-hooks/purity rule guards against.
+  const [objRights, setObjRights] = useState<ActionRightsResponse>(() => {
+    const strInitialCacheKey = buildActionRightsCacheKey();
+    const objInitialRights =
+      intActionRightsCacheTtlMs > 0 &&
+      objActionRightsCacheEntry &&
+      objActionRightsCacheEntry.strCacheKey === strInitialCacheKey &&
+      objActionRightsCacheEntry.intExpiresAt > Date.now()
+        ? objActionRightsCacheEntry.objRights
+        : {
+            dicAllowedActions: {},
+            dicAccessScopeByAction: {},
+          };
+    return {
+      dicAllowedActions: objInitialRights.dicAllowedActions,
+      dicAccessScopeByAction: objInitialRights.dicAccessScopeByAction,
+    };
   });
-  
-  const [blnLoading, setBlnLoading] = useState(
-    intActionRightsCacheTtlMs <= 0 ||
-    !objActionRightsCacheEntry ||
-    objActionRightsCacheEntry.strCacheKey !== strInitialCacheKey ||
-    objActionRightsCacheEntry.intExpiresAt <= Date.now()
-  );
+
+  const [blnLoading, setBlnLoading] = useState(() => {
+    const strInitialCacheKey = buildActionRightsCacheKey();
+    return (
+      intActionRightsCacheTtlMs <= 0 ||
+      !objActionRightsCacheEntry ||
+      objActionRightsCacheEntry.strCacheKey !== strInitialCacheKey ||
+      objActionRightsCacheEntry.intExpiresAt <= Date.now()
+    );
+  });
   const [strError, setStrError] = useState<string | null>(null);
 
   useEffect(() => {
