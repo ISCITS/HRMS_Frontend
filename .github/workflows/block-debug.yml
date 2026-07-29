@@ -20,6 +20,17 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          # Keyed on lockfile + source hash so a source change gets a fresh cache
+          # entry; restore-keys falls back to the closest prior entry (same deps,
+          # different source) so builds are still faster than a fully cold cache.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.[jt]s', 'src/**/*.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+
       - name: Set up Python for secret scan
         uses: actions/setup-python@v5
         with:
