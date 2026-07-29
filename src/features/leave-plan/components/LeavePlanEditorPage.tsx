@@ -70,6 +70,19 @@ function automationInputProps(strControlID: string): InputHTMLAttributes<HTMLInp
   return { "data-control-id": strControlID } as InputHTMLAttributes<HTMLInputElement>;
 }
 
+// Walk the react-hook-form error tree (incl. nested items/text arrays) and return the first
+// human-readable message, so a validation failure surfaces instead of the Save button "doing nothing".
+function collectFirstErrorMessage(objErrors: unknown): string | undefined {
+  if (!objErrors || typeof objErrors !== "object") return undefined;
+  const objRecord = objErrors as Record<string, unknown>;
+  if (typeof objRecord.message === "string" && objRecord.message.trim()) return objRecord.message;
+  for (const objValue of Object.values(objRecord)) {
+    const strFound = collectFirstErrorMessage(objValue);
+    if (strFound) return strFound;
+  }
+  return undefined;
+}
+
 export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }: { strMode: "new" | "edit" | "view"; intPlanID?: number; strReturnTo?: string }) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("leave_plan");
@@ -91,12 +104,20 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   useEffect(() => {
     if (blnLoading || !objLanguages.intDefaultLanguageID) return;
     if (objPlan) {
+      // A plan can exist with no translation rows; the save requires a default-language name,
+      // so seed one from the plan name when it is missing (otherwise Save silently does nothing).
+      const lstLoadedText = (objPlan.lstText ?? []).map((objText) => ({ ...objText, strDescription: objText.strDescription ?? "" }));
+      const blnHasDefaultText = lstLoadedText.some((objText) => Number(objText.intLanguageID) === objLanguages.intDefaultLanguageID);
+      const lstText = blnHasDefaultText ? lstLoadedText : [
+        { intLanguageID: objLanguages.intDefaultLanguageID, strPlanName: objPlan.strPlanName, strDescription: objPlan.strDescription ?? "" },
+        ...lstLoadedText,
+      ];
       reset({
         strPlanCode: objPlan.strPlanCode, strPlanName: objPlan.strPlanName, strDescription: objPlan.strDescription ?? "",
         strCountryCode: objPlan.strCountryCode, dtEffectiveFrom: objPlan.dtEffectiveFrom, dtEffectiveTo: objPlan.dtEffectiveTo ?? "",
         blnIsDefault: objPlan.blnIsDefault, blnIsActive: objPlan.blnIsActive, intVersionNo: objPlan.intVersionNo,
         strRemarks: objPlan.strRemarks ?? "", lstItems: objPlan.lstItems ?? [emptyItem(10)],
-        lstText: (objPlan.lstText ?? []).map((objText) => ({ ...objText, strDescription: objText.strDescription ?? "" })),
+        lstText,
       });
     } else {
       reset({ ...emptyForm(), lstText: [{ intLanguageID: objLanguages.intDefaultLanguageID, strPlanName: "", strDescription: "" }] });
@@ -119,8 +140,10 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
       strPlanCode: objValues.strPlanCode.trim().toUpperCase(), strPlanName: objValues.strPlanName.trim(), strDescription: objValues.strDescription.trim() || null,
       strCountryCode: objValues.strCountryCode.trim().toUpperCase(), dtEffectiveFrom: objValues.dtEffectiveFrom, dtEffectiveTo: objValues.dtEffectiveTo || null,
       blnIsDefault: objValues.blnIsDefault, blnIsActive: objValues.blnIsActive, intVersionNo: objValues.intVersionNo, strRemarks: objValues.strRemarks.trim() || null,
-      lstItems: objValues.lstItems.map((objItem) => ({ ...objItem, intLeavePolicyID: objItem.intLeavePolicyID || null })),
-      lstText: objValues.lstText.map((objText) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
+      // Strip the DB-row intID from items/text — the backend item/text schemas forbid extra
+      // inputs, so sending the loaded intID triggers "Extra inputs are not permitted".
+      lstItems: objValues.lstItems.map(({ intID: _intItemID, ...objItem }) => ({ ...objItem, intLeavePolicyID: objItem.intLeavePolicyID || null })),
+      lstText: objValues.lstText.map(({ intID: _intTextID, ...objText }) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
     };
     try {
       await savePlan(objPayload);
@@ -131,12 +154,17 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
     }
   }
 
+  function onInvalidForm(objErrors: unknown) {
+    const strMessage = collectFirstErrorMessage(objErrors) ?? t("validation_fix_fields", "Please fix the highlighted fields before saving.");
+    setObjToast({ blnOpen: true, strMessage, strSeverity: "error" });
+  }
+
   function fieldError(strPath: keyof PlanForm): string | undefined { return errors[strPath]?.message as string | undefined; }
 
   if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm)}>
+    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm, onInvalidForm)}>
       {/* Header (matches the Salary Component editor chrome) */}
       <Paper
         sx={{
