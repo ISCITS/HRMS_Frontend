@@ -100,6 +100,7 @@ export type PayrollValidationSummary = {
   strRuleSetCode: string | null;
   decNonWageCapPercent: number | null;
   lstIssues: PayrollValidationResultRecord[];
+  dicAttendanceSync?: AttendanceValidateRunResult | null;
 };
 
 export type PayrollProcessSummary = {
@@ -114,6 +115,7 @@ export type PayrollProcessSummary = {
   decNetPayTotal?: number;
   decEmployerContributionTotal?: number;
   intReprocessAuditID?: number;
+  dicAttendanceSync?: AttendanceValidateRunResult | null;
   lstExceptions: {
     intEmployeeID: number;
     strEmployeeCode: string;

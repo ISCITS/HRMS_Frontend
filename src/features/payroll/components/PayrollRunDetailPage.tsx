@@ -222,6 +222,7 @@ function PayrollRunDetailPageLegacy({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [blnIsLocked, setBlnIsLocked] = useState(false);
+  const [strSavedRunStatus, setStrSavedRunStatus] = useState<PayrollRunStatus>("Open");
   const [objValidationSummary, setObjValidationSummary] =
     useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] =
@@ -253,6 +254,7 @@ function PayrollRunDetailPageLegacy({
       const dicRun = await payrollRunService.getPayrollRunById(intRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
+      setStrSavedRunStatus(dicRun.strRunStatus);
       if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
         setLstPayslips(await payslipService.getRunPayslips(intRunID));
       } else {
@@ -285,14 +287,22 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
+      const strRunStatusForSave: PayrollRunStatus =
+        objRun.strRunStatus === strSavedRunStatus &&
+        !blnIsLocked &&
+        ["Failed", "Processed"].includes(objRun.strRunStatus)
+          ? "Open"
+          : objRun.strRunStatus;
       const dicRun = await payrollRunService.updatePayrollRunStatus(
         intRunID,
-        objRun.strRunStatus,
+        strRunStatusForSave,
         blnIsLocked,
         objRun.strScopeType,
         objRun.intScopedEmployeeID ?? ""
       );
       setObjRun(dicRun);
+      setBlnIsLocked(dicRun.blnIsLocked);
+      setStrSavedRunStatus(dicRun.strRunStatus);
       setStrSuccess(t("status_update_success", "Payroll run updated successfully."));
     } catch (objError) {
       setStrError(
