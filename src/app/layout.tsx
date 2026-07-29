@@ -1,10 +1,11 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./ESSBanner.css";
 import ThemeRegistry from "@/components/shared/ThemeRegistry";
 import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "HRMS",
@@ -21,9 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Emotion cache + MUI theme providers for all routes */}
         <ThemeRegistry>
           <ThemeModeProvider>
-            <Suspense fallback={null}>
-              <AppLayoutBoundary>{children}</AppLayoutBoundary>
-            </Suspense>
+            <AppLayoutBoundary>{children}</AppLayoutBoundary>
           </ThemeModeProvider>
         </ThemeRegistry>
       </body>
