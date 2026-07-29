@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
@@ -78,6 +78,7 @@ export default function AttendanceRegularizationPage() {
   const [strError, setStrError] = useState("");
   const [objConfirm, setObjConfirm] = useState<{ strAction: "submit" | "withdraw"; objRequest: RegularizationRequest } | null>(null);
   const [objToast, setObjToast] = useState({ blnOpen: false, strMessage: "", strSeverity: "success" as "success" | "error" });
+  const objActionRowRef = useRef<HTMLDivElement | null>(null);
 
   const objSchema = useMemo(() => yup.object({
     dtWorkDate: yup.string().required(t("validation_date", "Work date is required.")),
@@ -145,6 +146,15 @@ export default function AttendanceRegularizationPage() {
     return () => window.clearTimeout(intTimer);
   }, [loadContext, strWorkDate]);
 
+  useEffect(() => {
+    if (intTab !== 0 || (!strError && (objPreview?.blnValid ?? true))) return;
+    // Error and validation banners add height, so restore access to the actions they can push below the viewport.
+    const intFrame = window.requestAnimationFrame(() => {
+      objActionRowRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(intFrame);
+  }, [intTab, objPreview?.blnValid, strError]);
+
   async function previewForm(objValues: RegularizationFormValues) {
     const { dtWorkDate, ...objPayload } = objValues;
     const objResult = await attendanceRegularizationService.preview(dtWorkDate, objPayload);
@@ -155,8 +165,8 @@ export default function AttendanceRegularizationPage() {
   async function saveDraft(objValues: RegularizationFormValues) {
     setBlnSaving(true); setStrError("");
     try {
-      const objValidation = await previewForm(objValues);
-      if (!objValidation.blnValid && objValidation.lstErrors.length > 0) return;
+      // A draft remains editable, so preview warnings are shown without blocking draft persistence.
+      await previewForm(objValues);
       const objSaved = objEditing
         ? await attendanceRegularizationService.updateDraft(objEditing.intID, objEditing.intRowVersion, objValues)
         : await attendanceRegularizationService.createDraft(objValues);
@@ -206,7 +216,7 @@ export default function AttendanceRegularizationPage() {
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Attendance Regularization access is not available.")}</Alert>;
 
   return (
-    <Box className={styles.page} sx={{ overflowY: "auto", pr: 0.5, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+    <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "auto", pb: 2, pr: 0.5, scrollbarGutter: "stable", "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <Box className="pageBanner" data-control-id="attendance-regularization.header.banner">
         <Box className="bannerDots" />
         <Box className="bannerIcon">
@@ -266,13 +276,13 @@ export default function AttendanceRegularizationPage() {
                 <Grid item xs={12}><Controller name="strProposedRemark" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.remark.input" fullWidth label={t("remark", "Remark")} />} /></Grid>
                 <Grid item xs={12}><Button data-control-id="attendance-regularization.attachments.button" component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />}>{t("add_attachments", "Add Attachments")}<input hidden multiple type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(objEvent) => setLstFiles(Array.from(objEvent.target.files ?? []))} /></Button><Typography variant="caption" sx={{ ml: 1 }}>{lstFiles.map((objFile) => objFile.name).join(", ")}</Typography></Grid>
               </Grid>
-              {objPreview && !objPreview.blnValid ? <Alert severity="warning" sx={{ mt: 2 }}>{objPreview.lstErrors.map((objItem) => t(`validation_${objItem.strCode.toLowerCase()}`, objItem.strCode)).join(" · ")}{objPreview.objPayrollConflict ? ` · ${t("payroll_conflict", "Payroll is locked or processed.")}` : ""}</Alert> : null}
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
+              <Stack ref={objActionRowRef} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ mt: 2, scrollMarginBottom: 16 }}>
                 <Button data-control-id="attendance-regularization.clear.button" className={styles.secondaryButton} disabled={blnSaving} startIcon={<ClearRoundedIcon />} onClick={clearRequestForm}>{t("clear", "Clear")}</Button>
                 <Button data-control-id="attendance-regularization.preview.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => void previewForm(objValues))}>{t("preview", "Preview")}</Button>
                 <Button data-control-id="attendance-regularization.save-draft.button" type="submit" variant="contained" disabled={blnSaving} startIcon={blnSaving ? <CircularProgress size={18} /> : <SaveRoundedIcon />}>{t("save_draft", "Save Draft")}</Button>
                 {objEditing ? <Button data-control-id="attendance-regularization.submit.button" variant="contained" color="success" disabled={blnSaving} startIcon={<SendRoundedIcon />} onClick={() => setObjConfirm({ strAction: "submit", objRequest: objEditing })}>{t("submit", "Submit")}</Button> : null}
               </Stack>
+              {objPreview && !objPreview.blnValid ? <Alert severity="warning" sx={{ mt: 2 }}>{objPreview.lstErrors.map((objItem) => t(`validation_${objItem.strCode.toLowerCase()}`, objItem.strCode)).join(" · ")}{objPreview.objPayrollConflict ? ` · ${t("payroll_conflict", "Payroll is locked or processed.")}` : ""}</Alert> : null}
             </Paper>
           </Grid>
         </Grid>

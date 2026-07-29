@@ -117,6 +117,11 @@ export default function WorkHolidayDetailDrawer({
               ].map(([strKey, strValue]) => <Grid item xs={6} key={strKey}><Typography variant="caption" color="text.secondary">{t(strKey, strKey.replaceAll("_", " "))}</Typography><Typography fontWeight={750}>{strValue}</Typography></Grid>)}
             </Grid>
             <Box><Typography fontWeight={850}>{t("request_summary", "Request Summary")}</Typography><Typography>{objDetail.strWorkReason}</Typography><Typography color="text.secondary">{objDetail.strWorkDescription || t("not_available", "Not available")}</Typography></Box>
+            <Alert severity="success">
+              {objDetail.objEligibilitySnapshot.strEligibilitySource === "HOLIDAY_MASTER"
+                ? t("eligible_holiday_master", "Eligible date confirmed by Holiday Master.")
+                : t("eligible_weekly_off", "Eligible date confirmed as a weekly off.")}
+            </Alert>
             <Box><Typography fontWeight={850}>{t("holiday_information", "Holiday Information")}</Typography><Typography>{objDetail.objEligibilitySnapshot.strHolidayName ?? t(`day_type_${objDetail.strDayTypeCode.toLowerCase()}`, objDetail.strDayTypeCode)}</Typography></Box>
             <Box>
               <Typography fontWeight={850}>{t("attendance_evidence", "Attendance Evidence")}</Typography>

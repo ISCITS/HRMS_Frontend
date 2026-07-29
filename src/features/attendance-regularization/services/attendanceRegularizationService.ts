@@ -70,6 +70,22 @@ export const attendanceRegularizationService = {
     if (intLanguageID) objQuery.set("language_id", String(intLanguageID));
     return requestApi<RegularizationLookups>(`/attendance/regularization/lookups?${objQuery}`, ApiRequestMethod.Get, objAction.view);
   },
+  getManagerLookups(intLanguageID?: number) {
+    return this.getEssLookups(intLanguageID);
+  },
+  listManagerRequests(objFilters: { intPage: number; intPageSize: number; strStatus?: string; strFromDate?: string; strToDate?: string }) {
+    const objQuery = new URLSearchParams({ page: String(objFilters.intPage), page_size: String(objFilters.intPageSize) });
+    if (objFilters.strStatus) objQuery.set("status", objFilters.strStatus);
+    if (objFilters.strFromDate) objQuery.set("from_date", objFilters.strFromDate);
+    if (objFilters.strToDate) objQuery.set("to_date", objFilters.strToDate);
+    return requestApi<RequestList>(`/ess/attendance/regularization/approvals?${objQuery}`, ApiRequestMethod.Get, objAction.ess);
+  },
+  getManagerDetail(intRequestID: number) {
+    return requestApi<RegularizationDetail>(`/ess/attendance/regularization/approvals/${intRequestID}`, ApiRequestMethod.Get, objAction.ess);
+  },
+  actionManagerRequest(intRequestID: number, strAction: "approve" | "reject" | "send-back", intRowVersion: number, strReason?: string) {
+    return requestApi<RegularizationRequest>(`/ess/attendance/regularization/approvals/${intRequestID}/${strAction}`, ApiRequestMethod.Post, objAction.ess, { intRowVersion, strReason });
+  },
   listMyRequests(intPage = 1, intPageSize = 20) {
     return requestApi<RequestList>(`/ess/attendance/regularization/requests?page=${intPage}&page_size=${intPageSize}`, ApiRequestMethod.Get, objAction.ess);
   },
