@@ -36,16 +36,34 @@ import {
 } from "@/features/leave/types";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
+type LeaveDuration = "full" | "half";
+type LeaveHalfSession = "first" | "second" | "";
+
 type LeaveFormValues = {
   intLeaveTypeID: number;
   dtFromDate: string;
   dtToDate: string;
-  strFirstSession: "full" | "half";
-  strLastSession: "full" | "half";
+  // For a single-day leave only strFromDuration/strFromSession are used (the "Leave Duration").
+  // For a multi-day leave both boundary durations/sessions apply; middle days are always full.
+  strFromDuration: LeaveDuration;
+  strFromSession: LeaveHalfSession;
+  strToDuration: LeaveDuration;
+  strToSession: LeaveHalfSession;
   strReason: string;
   strContactDuringLeave: string;
   strBackupEmployee: string;
 };
+
+function fnIsSingleDay(strFromDate: string, strToDate: string): boolean {
+  return Boolean(strFromDate) && strFromDate === strToDate;
+}
+
+function fnHalfSuffix(blnHalf: boolean, strSession?: "first" | "second" | null): string {
+  if (!blnHalf) return "";
+  if (strSession === "first") return " (½ First Half)";
+  if (strSession === "second") return " (½ Second Half)";
+  return " (½)";
+}
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
 type ConfirmState = { strKind: "submit" } | { strKind: "withdraw"; intApplicationID: number } | null;
@@ -60,8 +78,23 @@ const objFormSchema: yup.ObjectSchema<LeaveFormValues> = yup.object({
       return !strValue || !this.parent.dtFromDate || strValue >= this.parent.dtFromDate;
     },
   ),
-  strFirstSession: yup.mixed<"full" | "half">().oneOf(["full", "half"]).required(),
-  strLastSession: yup.mixed<"full" | "half">().oneOf(["full", "half"]).required(),
+  strFromDuration: yup.mixed<LeaveDuration>().oneOf(["full", "half"]).required(),
+  // The From-side session drives both the single-day "Leave Duration" and the multi-day "From Date".
+  strFromSession: yup.mixed<LeaveHalfSession>().oneOf(["first", "second", ""]).defined().test(
+    "from-session-required", "Select the half-day session.",
+    function fnValidateFromSession(strValue) {
+      return this.parent.strFromDuration !== "half" || strValue === "first" || strValue === "second";
+    },
+  ),
+  strToDuration: yup.mixed<LeaveDuration>().oneOf(["full", "half"]).required(),
+  // The To-side session is only relevant on a multi-day leave.
+  strToSession: yup.mixed<LeaveHalfSession>().oneOf(["first", "second", ""]).defined().test(
+    "to-session-required", "Select the To Date half-day session.",
+    function fnValidateToSession(strValue) {
+      const blnSingleDay = fnIsSingleDay(this.parent.dtFromDate, this.parent.dtToDate);
+      return blnSingleDay || this.parent.strToDuration !== "half" || strValue === "first" || strValue === "second";
+    },
+  ),
   strReason: yup.string().trim().max(1000, "Reason cannot exceed 1000 characters.").default(""),
   strContactDuringLeave: yup.string().trim().max(250, "Contact details cannot exceed 250 characters.").default(""),
   strBackupEmployee: yup.string().trim().max(250, "Backup employee cannot exceed 250 characters.").default(""),
@@ -74,18 +107,25 @@ function fnTodayISO() { return new Date().toISOString().slice(0, 10); }
 function fnDefaultForm(intLeaveTypeID = 0): LeaveFormValues {
   return {
     intLeaveTypeID, dtFromDate: fnTodayISO(), dtToDate: fnTodayISO(),
-    strFirstSession: "full", strLastSession: "full", strReason: "",
-    strContactDuringLeave: "", strBackupEmployee: "",
+    strFromDuration: "full", strFromSession: "", strToDuration: "full", strToSession: "",
+    strReason: "", strContactDuringLeave: "", strBackupEmployee: "",
   };
 }
 
 function fnBuildPayload(objValues: LeaveFormValues): LeaveApplyRequest {
+  const blnSingleDay = fnIsSingleDay(objValues.dtFromDate, objValues.dtToDate);
+  // Single-day leave carries its half-day on the "from" end only (the backend rejects a
+  // single day marked half on both ends); multi-day maps each boundary independently.
+  const blnFromHalf = objValues.strFromDuration === "half";
+  const blnToHalf = !blnSingleDay && objValues.strToDuration === "half";
   return {
     intLeaveTypeID: objValues.intLeaveTypeID,
     dtFromDate: objValues.dtFromDate,
     dtToDate: objValues.dtToDate,
-    blnFromHalf: objValues.strFirstSession === "half",
-    blnToHalf: objValues.strLastSession === "half",
+    blnFromHalf,
+    blnToHalf,
+    strFromHalfSession: blnFromHalf && objValues.strFromSession ? objValues.strFromSession : null,
+    strToHalfSession: blnToHalf && objValues.strToSession ? objValues.strToSession : null,
     strReason: objValues.strReason.trim() || null,
     strContactDuringLeave: objValues.strContactDuringLeave.trim() || null,
     strBackupEmployee: objValues.strBackupEmployee.trim() || null,
@@ -144,6 +184,7 @@ export default function EssLeaveApplicationPanel() {
     (strModuleCode) => ["LEAVE_MANAGE", "MANAGE", "EDIT", "ADD", "SUBMIT"].some((strAction) => canDo(strModuleCode, strAction)),
   );
   const objSelectedType = useMemo(() => lstTypes.find((objType) => objType.intID === Number(objWatchedForm.intLeaveTypeID)) ?? null, [lstTypes, objWatchedForm.intLeaveTypeID]);
+  const blnSingleDay = fnIsSingleDay(objWatchedForm.dtFromDate ?? "", objWatchedForm.dtToDate ?? "");
   const lstFilteredApplications = useMemo(() => {
     const strNeedle = strSearch.trim().toLowerCase();
     return lstApplications.filter((objApplication) => {
@@ -167,9 +208,28 @@ export default function EssLeaveApplicationPanel() {
     }
   }, [blnLoading, lstTypes, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
+  // Half-day not allowed for the type → force everything to full day and drop any session.
   useEffect(() => {
-    if (!objSelectedType?.blnAllowHalfDay) { setValue("strFirstSession", "full"); setValue("strLastSession", "full"); }
+    if (!objSelectedType?.blnAllowHalfDay) {
+      setValue("strFromDuration", "full"); setValue("strFromSession", "");
+      setValue("strToDuration", "full"); setValue("strToSession", "");
+    }
   }, [objSelectedType, setValue]);
+  // A single-day leave uses only the "From" (Leave Duration) controls — reset the To side so
+  // stale multi-day values are never retained or submitted.
+  useEffect(() => {
+    if (blnSingleDay) {
+      if (objWatchedForm.strToDuration !== "full") setValue("strToDuration", "full");
+      if (objWatchedForm.strToSession !== "") setValue("strToSession", "");
+    }
+  }, [blnSingleDay, objWatchedForm.strToDuration, objWatchedForm.strToSession, setValue]);
+  // Whenever a boundary is Full Day, its session must not linger.
+  useEffect(() => {
+    if (objWatchedForm.strFromDuration !== "half" && objWatchedForm.strFromSession !== "") setValue("strFromSession", "");
+  }, [objWatchedForm.strFromDuration, objWatchedForm.strFromSession, setValue]);
+  useEffect(() => {
+    if (objWatchedForm.strToDuration !== "half" && objWatchedForm.strToSession !== "") setValue("strToSession", "");
+  }, [objWatchedForm.strToDuration, objWatchedForm.strToSession, setValue]);
 
   useEffect(() => {
     let blnActive = true;
@@ -207,7 +267,8 @@ export default function EssLeaveApplicationPanel() {
       const objFullApplication = await fnGetApplication(objApplication.intID);
       setObjEditing(objFullApplication); setObjPreview(objFullApplication.objCalculation ?? null);
       setLstExistingAttachments(objFullApplication.lstAttachments ?? []); setLstQueuedFiles([]); setBlnShowValidation(false);
-      reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFirstSession: objFullApplication.blnFromHalf ? "half" : "full", strLastSession: objFullApplication.blnToHalf ? "half" : "full", strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
+      // Restore the persisted half-day session; legacy rows without one default to First Half.
+      reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFromDuration: objFullApplication.blnFromHalf ? "half" : "full", strFromSession: objFullApplication.blnFromHalf ? (objFullApplication.strFromHalfSession ?? "first") : "", strToDuration: objFullApplication.blnToHalf ? "half" : "full", strToSession: objFullApplication.blnToHalf ? (objFullApplication.strToHalfSession ?? "first") : "", strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
       setBlnFormOpen(true);
     } catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
     finally { setBlnDetailLoading(false); }
@@ -307,7 +368,7 @@ export default function EssLeaveApplicationPanel() {
       <DialogContent dividers sx={{ bgcolor: "#f8fafc", p: { xs: 1.5, md: 2.5 } }}><Grid container spacing={2}><Grid item xs={12} md={7}><Stack spacing={2}>
         {blnShowValidation && lstAllBlockers.length ? <Alert ref={objErrorSummaryRef} tabIndex={-1} severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstAllBlockers)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
         {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
-        <RequestFields control={control} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} strPolicyHelp={strPolicyHelp} fnLabel={t} />
+        <RequestFields control={control} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} blnSingleDay={blnSingleDay} strPolicyHelp={strPolicyHelp} fnLabel={t} />
         <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><Button component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />} disabled={blnSaving}>{t("add_files", "Add files")}<input hidden multiple type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(objEvent) => { setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...Array.from(objEvent.target.files ?? [])]); objEvent.target.value = ""; }} /></Button></Stack><Stack spacing={.75} sx={{ mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Stack></Paper>
       </Stack></Grid><Grid item xs={12} md={5}><PreviewPanel objPreview={objPreview} blnLoading={blnPreviewLoading} fnLabel={t} /></Grid></Grid></DialogContent>
       <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={blnSaving || blnPreviewLoading || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(() => setObjConfirm({ strKind: "submit" }))(); }}>{t("submit_application", "Submit Application")}</Button></DialogActions>
@@ -320,13 +381,33 @@ export default function EssLeaveApplicationPanel() {
   </Stack>;
 }
 
-function RequestFields({ control, objErrors, lstTypes, objSelectedType, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; objSelectedType: LeaveTypeDto | null; strPolicyHelp: string; fnLabel: LabelFunction }) {
+function DurationField({ control, strName, strLabel }: { control: Control<LeaveFormValues>; strName: "strFromDuration" | "strToDuration"; strLabel: string }) {
+  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={strLabel}><MenuItem value="full">Full Day</MenuItem><MenuItem value="half">Half Day</MenuItem></TextField>} />;
+}
+
+function SessionField({ control, strName, strLabel, objError }: { control: Control<LeaveFormValues>; strName: "strFromSession" | "strToSession"; strLabel: string; objError?: string }) {
+  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={strLabel} error={Boolean(objError)} helperText={objError}><MenuItem value="first">First Half</MenuItem><MenuItem value="second">Second Half</MenuItem></TextField>} />;
+}
+
+function RequestFields({ control, objErrors, lstTypes, objSelectedType, blnSingleDay, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; objSelectedType: LeaveTypeDto | null; blnSingleDay: boolean; strPolicyHelp: string; fnLabel: LabelFunction }) {
+  const strFromDuration = useWatch({ control, name: "strFromDuration" });
+  const strToDuration = useWatch({ control, name: "strToDuration" });
+  const blnAllowHalfDay = Boolean(objSelectedType?.blnAllowHalfDay);
   return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Typography component="h3" sx={{ fontWeight: 800, mb: 1.5 }}>{fnLabel("request_details", "Request Details")}</Typography><Grid container spacing={1.5}>
     <Grid item xs={12}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
     {strPolicyHelp ? <Grid item xs={12}><Alert severity="info">{strPolicyHelp}</Alert></Grid> : null}
     <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
     <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
-    {objSelectedType?.blnAllowHalfDay ? <><Grid item xs={12} sm={6}><Controller name="strFirstSession" control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={fnLabel("first_day_session", "First-day Session")}><MenuItem value="full">{fnLabel("full_day", "Full day")}</MenuItem><MenuItem value="half">{fnLabel("half_day", "Half day")}</MenuItem></TextField>} /></Grid><Grid item xs={12} sm={6}><Controller name="strLastSession" control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={fnLabel("last_day_session", "Last-day Session")}><MenuItem value="full">{fnLabel("full_day", "Full day")}</MenuItem><MenuItem value="half">{fnLabel("half_day", "Half day")}</MenuItem></TextField>} /></Grid></> : null}
+    {blnAllowHalfDay && blnSingleDay ? <>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} /></Grid>
+      {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("half_day_session", "Half-Day Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
+    </> : null}
+    {blnAllowHalfDay && !blnSingleDay ? <>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("from_date_duration", "From Date Duration")} /></Grid>
+      {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("from_date_session", "From Date Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strToDuration" strLabel={fnLabel("to_date_duration", "To Date Duration")} /></Grid>
+      {strToDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strToSession" strLabel={fnLabel("to_date_session", "To Date Session")} objError={objErrors.strToSession?.message} /></Grid> : null}
+    </> : null}
     <Grid item xs={12}><Controller name="strReason" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" multiline minRows={3} label={`${fnLabel("reason", "Reason")}${objSelectedType?.blnRequiresReason ? " *" : ""}`} error={Boolean(objErrors.strReason)} helperText={objErrors.strReason?.message} />} /></Grid>
     <Grid item xs={12} sm={6}><Controller name="strContactDuringLeave" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" label={fnLabel("contact_during_leave", "Contact During Leave")} error={Boolean(objErrors.strContactDuringLeave)} helperText={objErrors.strContactDuringLeave?.message} />} /></Grid>
     <Grid item xs={12} sm={6}><Controller name="strBackupEmployee" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" label={fnLabel("backup_employee", "Backup Employee")} error={Boolean(objErrors.strBackupEmployee)} helperText={objErrors.strBackupEmployee?.message} />} /></Grid>
@@ -347,7 +428,7 @@ function ApplicationCard({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnO
 }
 
 function ApplicationTable({ lstApplications, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw, fnLabel }: { lstApplications: LeaveApplicationDto[]; blnCanManage: boolean; fnOnView: (intApplicationID: number) => void; fnOnEdit: (objApplication: LeaveApplicationDto) => void; fnOnWithdraw: (intApplicationID: number) => void; fnLabel: LabelFunction }) {
-  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}><TableCell>{fnLabel("actions", "Actions")}</TableCell><TableCell>{fnLabel("applied_on", "Applied On")}</TableCell><TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell><TableCell>{fnLabel("from_date", "From Date")}</TableCell><TableCell>{fnLabel("to_date", "To Date")}</TableCell><TableCell>{fnLabel("quantity", "Quantity")}</TableCell><TableCell>{fnLabel("status", "Status")}</TableCell></TableRow></TableHead><TableBody>{lstApplications.map((objApplication) => <TableRow key={objApplication.intID} hover><TableCell><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={() => fnOnView(objApplication.intID)} fnOnEdit={() => fnOnEdit(objApplication)} fnOnWithdraw={() => fnOnWithdraw(objApplication.intID)} /></TableCell><TableCell>{formatLeaveDate(objApplication.dtAppliedOn)}</TableCell><TableCell><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApplication.strTypeName}</Typography></Stack></TableCell><TableCell>{formatLeaveDate(objApplication.dtFromDate)}{objApplication.blnFromHalf ? " (½)" : ""}</TableCell><TableCell>{formatLeaveDate(objApplication.dtToDate)}{objApplication.blnToHalf ? " (½)" : ""}</TableCell><TableCell>{objApplication.decDays}</TableCell><TableCell><StatusChip strStatus={objApplication.strStatus} /></TableCell></TableRow>)}</TableBody></Table></Box>;
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}><TableCell>{fnLabel("actions", "Actions")}</TableCell><TableCell>{fnLabel("applied_on", "Applied On")}</TableCell><TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell><TableCell>{fnLabel("from_date", "From Date")}</TableCell><TableCell>{fnLabel("to_date", "To Date")}</TableCell><TableCell>{fnLabel("quantity", "Quantity")}</TableCell><TableCell>{fnLabel("status", "Status")}</TableCell></TableRow></TableHead><TableBody>{lstApplications.map((objApplication) => <TableRow key={objApplication.intID} hover><TableCell><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={() => fnOnView(objApplication.intID)} fnOnEdit={() => fnOnEdit(objApplication)} fnOnWithdraw={() => fnOnWithdraw(objApplication.intID)} /></TableCell><TableCell>{formatLeaveDate(objApplication.dtAppliedOn)}</TableCell><TableCell><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApplication.strTypeName}</Typography></Stack></TableCell><TableCell>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)}</TableCell><TableCell>{formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)}</TableCell><TableCell>{objApplication.decDays}</TableCell><TableCell><StatusChip strStatus={objApplication.strStatus} /></TableCell></TableRow>)}</TableBody></Table></Box>;
 }
 
 function AttachmentRow({ strName, intBytes, fnOnDelete }: { strName: string; intBytes: number; fnOnDelete?: () => void }) { return <Stack direction="row" spacing={1} alignItems="center" sx={{ p: .75, borderRadius: "10px", bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}><AttachFileRoundedIcon fontSize="small" color="action" /><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap sx={{ fontWeight: 700, fontSize: ".8rem" }}>{strName}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b" }}>{Math.max(1, Math.round(intBytes / 1024))} KB</Typography></Box>{fnOnDelete ? <IconButton size="small" aria-label={`Remove ${strName}`} onClick={fnOnDelete}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}</Stack>; }
@@ -357,5 +438,5 @@ function PreviewPanel({ objPreview, blnLoading, fnLabel }: { objPreview: LeavePr
 }
 
 function DetailDialog({ objApplication, blnLoading, blnCanManage, fnOnClose, fnOnWithdraw, fnLabel }: { objApplication: LeaveApplicationDto | null; blnLoading: boolean; blnCanManage: boolean; fnOnClose: () => void; fnOnWithdraw: (intApplicationID: number) => void; fnLabel: LabelFunction }) {
-  return <Dialog open={Boolean(objApplication) || blnLoading} onClose={fnOnClose} fullWidth maxWidth="md"><DialogTitle sx={{ fontWeight: 800, display: "flex", justifyContent: "space-between", alignItems: "center" }}>{fnLabel("application_details", "Leave Application Details")}<IconButton aria-label={fnLabel("close", "Close")} onClick={fnOnClose}><CloseRoundedIcon /></IconButton></DialogTitle><DialogContent dividers>{blnLoading ? <LoadingSkeleton /> : objApplication ? <Grid container spacing={2}><Grid item xs={12} sm={8}><Stack direction="row" spacing={1.25} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} intSize={42} /><Box><Typography sx={{ fontWeight: 800 }}>{objApplication.strTypeName}</Typography><Typography sx={{ color: "#64748b", fontSize: ".78rem" }}>{formatLeaveDate(objApplication.dtFromDate)} – {formatLeaveDate(objApplication.dtToDate)} · {objApplication.decDays} day(s)</Typography></Box></Stack></Grid><Grid item xs={12} sm={4}><StatusChip strStatus={objApplication.strStatus} /></Grid><Grid item xs={12}><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{fnLabel("reason", "Reason")}</Typography><Typography sx={{ fontWeight: 600 }}>{objApplication.strReason || "—"}</Typography></Grid><Grid item xs={12} md={5}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("attachments", "Attachments")}</Typography><Stack spacing={.75}>{objApplication.lstAttachments?.length ? objApplication.lstAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} />) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("attachments_empty", "No attachments added.")}</Typography>}</Stack></Grid><Grid item xs={12} md={7}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("timeline", "Action Timeline")}</Typography><Stack spacing={1}>{objApplication.lstActions?.length ? objApplication.lstActions.map((objAction, intIndex) => <Stack key={objAction.intID} direction="row" spacing={1.25}><Box sx={{ width: 10, height: 10, mt: .75, borderRadius: "50%", bgcolor: intIndex === 0 ? "#0a66a3" : "#94a3b8", flexShrink: 0 }} /><Box><Typography sx={{ fontWeight: 800, fontSize: ".8rem", textTransform: "capitalize" }}>{objAction.strAction}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{formatLeaveDate(objAction.dtActionOn)}{objAction.strComment ? ` — ${objAction.strComment}` : ""}</Typography></Box></Stack>) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("timeline_empty", "No actions recorded.")}</Typography>}</Stack></Grid></Grid> : null}</DialogContent><DialogActions>{objApplication?.strStatus === "pending" && blnCanManage ? <Button color="error" onClick={() => fnOnWithdraw(objApplication.intID)}>{fnLabel("withdraw", "Withdraw")}</Button> : null}<Button onClick={fnOnClose}>{fnLabel("close", "Close")}</Button></DialogActions></Dialog>;
+  return <Dialog open={Boolean(objApplication) || blnLoading} onClose={fnOnClose} fullWidth maxWidth="md"><DialogTitle sx={{ fontWeight: 800, display: "flex", justifyContent: "space-between", alignItems: "center" }}>{fnLabel("application_details", "Leave Application Details")}<IconButton aria-label={fnLabel("close", "Close")} onClick={fnOnClose}><CloseRoundedIcon /></IconButton></DialogTitle><DialogContent dividers>{blnLoading ? <LoadingSkeleton /> : objApplication ? <Grid container spacing={2}><Grid item xs={12} sm={8}><Stack direction="row" spacing={1.25} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} intSize={42} /><Box><Typography sx={{ fontWeight: 800 }}>{objApplication.strTypeName}</Typography><Typography sx={{ color: "#64748b", fontSize: ".78rem" }}>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)} – {formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)} · {objApplication.decDays} day(s)</Typography></Box></Stack></Grid><Grid item xs={12} sm={4}><StatusChip strStatus={objApplication.strStatus} /></Grid><Grid item xs={12}><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{fnLabel("reason", "Reason")}</Typography><Typography sx={{ fontWeight: 600 }}>{objApplication.strReason || "—"}</Typography></Grid><Grid item xs={12} md={5}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("attachments", "Attachments")}</Typography><Stack spacing={.75}>{objApplication.lstAttachments?.length ? objApplication.lstAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} />) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("attachments_empty", "No attachments added.")}</Typography>}</Stack></Grid><Grid item xs={12} md={7}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("timeline", "Action Timeline")}</Typography><Stack spacing={1}>{objApplication.lstActions?.length ? objApplication.lstActions.map((objAction, intIndex) => <Stack key={objAction.intID} direction="row" spacing={1.25}><Box sx={{ width: 10, height: 10, mt: .75, borderRadius: "50%", bgcolor: intIndex === 0 ? "#0a66a3" : "#94a3b8", flexShrink: 0 }} /><Box><Typography sx={{ fontWeight: 800, fontSize: ".8rem", textTransform: "capitalize" }}>{objAction.strAction}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{formatLeaveDate(objAction.dtActionOn)}{objAction.strComment ? ` — ${objAction.strComment}` : ""}</Typography></Box></Stack>) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("timeline_empty", "No actions recorded.")}</Typography>}</Stack></Grid></Grid> : null}</DialogContent><DialogActions>{objApplication?.strStatus === "pending" && blnCanManage ? <Button color="error" onClick={() => fnOnWithdraw(objApplication.intID)}>{fnLabel("withdraw", "Withdraw")}</Button> : null}<Button onClick={fnOnClose}>{fnLabel("close", "Close")}</Button></DialogActions></Dialog>;
 }

@@ -352,6 +352,8 @@ export type LeaveApplicationDto = {
   decDays: number;
   blnFromHalf: boolean;
   blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
   strReason: string | null;
   intBackupEmployeeID?: number | null;
   strStatus: string;
@@ -375,6 +377,8 @@ export type LeaveApplyRequest = {
   dtToDate: string;
   blnFromHalf: boolean;
   blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
   strReason?: string | null;
   strContactDuringLeave?: string | null;
   strBackupEmployee?: string | null;
