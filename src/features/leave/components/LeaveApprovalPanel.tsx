@@ -93,7 +93,7 @@ export default function LeaveApprovalPanel() {
           : intTargetTab === 1 ? await fnLoadMergedStatuses(ALL_STATUSES)
           : intTargetTab === 2 ? await leaveService.listOnBehalfApplications()
           : intTargetTab === 3 ? await leaveService.listAutoDecidedApplications()
-          : (await fnLoadMergedStatuses(HISTORY_STATUSES));
+          : (await leaveService.listActionedApplications());
         setDicTabRows((objPrev) => ({ ...objPrev, [intTargetTab]: lstRows }));
       }
       setDicTabLoaded((objPrev) => ({ ...objPrev, [intTargetTab]: true }));
@@ -188,7 +188,7 @@ export default function LeaveApprovalPanel() {
     { strLabel: t("tab_on_behalf", "HR On Behalf"), blnShow: true },
     { strLabel: t("tab_auto", "Auto Decisions"), blnShow: true },
     { strLabel: t("tab_exceptions", "Workflow Exceptions"), blnShow: blnCanViewExceptions },
-    { strLabel: t("tab_history", "Completed / History"), blnShow: true },
+    { strLabel: t("tab_actioned", "Actioned by Me"), blnShow: true },
   ];
 
   return <Stack spacing={2}>
