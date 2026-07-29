@@ -1,0 +1,182 @@
+:root {
+  --app-font-family: 'Inter var', Roboto, Helvetica Neue, Arial, sans-serif;
+  --app-header-color: #1c2536;
+  --app-text-color: #334155;
+  --app-muted-color: #64748b;
+  --app-surface-color: #ffffff;
+  --app-surface-muted: #f8fbfd;
+  --app-bg-color: #f5f8fa;
+  --app-border-color: #d9e6ef;
+  --app-divider-color: #d9e6ef;
+  --app-primary-color: #1d5d96;
+  --app-primary-hover: #174c7b;
+  --app-primary-soft: rgba(29, 93, 150, 0.12);
+  --app-primary-border: rgba(29, 93, 150, 0.22);
+  --app-secondary-border: #9db9d7;
+  --app-accent-orange: #f97316;
+  --app-success-color: #2f7e3d;
+  --app-warning-color: #ef6b00;
+  --app-danger-color: #e73a3a;
+  --app-shadow-soft: 0 16px 38px rgba(31, 93, 150, 0.1);
+  --app-card-radius: 24px;
+  --app-btn-radius: 10px;
+  --app-input-radius: 14px;
+}
+
+.app-header {
+  margin: 0;
+  font-family: var(--app-font-family);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--app-header-color);
+  letter-spacing: 0.2px;
+}
+
+.app-header-lg {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+}
+
+.app-header-md {
+  font-size: clamp(1.25rem, 1.05rem + 0.5vw, 1.5rem);
+}
+
+.app-text {
+  margin: 0;
+  font-family: var(--app-font-family);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--app-text-color);
+}
+
+.app-text-muted {
+  color: var(--app-muted-color);
+}
+
+.app-btn {
+  border: none;
+  border-radius: var(--app-btn-radius);
+  padding: 0.65rem 1.1rem;
+  font-family: var(--app-font-family);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.app-btn:hover {
+  transform: translateY(-1px);
+}
+
+.app-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.app-btn-primary {
+  background: var(--app-primary-color);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(29, 93, 150, 0.24);
+}
+
+.app-btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.app-btn-outline {
+  background: transparent;
+  color: var(--app-primary-color);
+  border: 1px solid var(--app-primary-color);
+}
+
+.app-mui-text-field .MuiFormLabel-asterisk {
+  color: #ef4444;
+}
+
+.app-mui-text-field .MuiInputLabel-root {
+  transform: translate(14px, 15px) scale(1);
+}
+
+.app-mui-text-field .MuiInputLabel-root.MuiInputLabel-shrink {
+  transform: translate(14px, -9px) scale(0.75);
+}
+
+.app-mui-text-field .MuiOutlinedInput-root {
+  min-height: 52px;
+  border-radius: var(--app-input-radius);
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.app-mui-text-field .MuiOutlinedInput-input {
+  padding: 14px;
+}
+
+.app-mui-text-field .MuiOutlinedInput-notchedOutline {
+  border: 1px solid var(--app-border-color);
+}
+
+.app-mui-text-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #cbd5e1;
+}
+
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused {
+  background-color: #f8fafc;
+}
+
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--app-primary-color);
+}
+
+.app-mui-icon-button.MuiIconButton-root {
+  transition: all 0.2s ease;
+}
+
+.app-mui-icon-button.MuiIconButton-root:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.app-mui-checkbox.MuiCheckbox-root {
+  transition: all 0.2s ease;
+}
+
+.app-mui-link-muted {
+  font-size: 13px;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.app-mui-link-muted:hover {
+  text-decoration: underline;
+  color: #1d4ed8;
+}
+
+.app-mui-link-muted:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.app-mui-button-primary.MuiButton-root {
+  min-height: 52px;
+  border-radius: var(--app-input-radius);
+  background-color: var(--app-primary-color);
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(29, 93, 150, 0.35);
+  transition: all 0.15s ease;
+}
+
+.app-mui-button-primary.MuiButton-root:hover {
+  transform: translateY(-1px);
+  background-color: var(--app-primary-hover);
+}
+
+.app-mui-button-primary.MuiButton-root:active {
+  transform: translateY(0);
+}
+
+.app-mui-button-primary.MuiButton-root:focus-visible {
+  outline: 2px solid var(--app-primary-color);
+  outline-offset: 2px;
+}
