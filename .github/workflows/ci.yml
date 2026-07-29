@@ -1,0 +1,87 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - testing
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    env:
+      # CI-only placeholders so build-time env reads don't hit undefined — never reuse real secrets here.
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_CSRF_SECRET_KEY: "bw0fW+HNYhP8KdUjriuXBXPLDWtNEB+dDxlCS43RWkY="
+      NEXT_PUBLIC_PASSWORD_SECRET_KEY: "ci-test-pw-key16"
+      NEXT_PUBLIC_PASSWORD_SECRET_IV: "ci-test-pw-iv16!"
+      NEXT_PUBLIC_PAYLOAD_ENCRYPTION_KEY: "ci-test-payload-key-placeholder-"
+      NEXT_PUBLIC_PAYLOAD_ENCRYPTION_IV: "ci-test-iv-placeh"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript typecheck (report-only — 73 pre-existing errors as of 2026-07-29, tracked separately; not build-blocking yet)
+        run: npm run typecheck || true
+
+      - name: Run production build
+        run: npm run build
+
+      - name: Audit dependencies (non-blocking)
+        run: npm audit --audit-level=high || true
+
+  secret-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Run secret scan
+        run: |
+          detect-secrets scan --all-files --force-use-all-plugins > .secrets.baseline
+
+          python - <<'PY'
+          import json
+          import sys
+
+          with open(".secrets.baseline", "r") as f:
+              data = json.load(f)
+
+          results = data.get("results", {})
+          found = False
+
+          for filename, secrets in results.items():
+              for secret in secrets:
+                  found = True
+                  line_number = secret.get("line_number", 1)
+                  secret_type = secret.get("type", "Unknown secret")
+                  print(f"::error file={filename},line={line_number}::{secret_type} detected")
+
+          if found:
+              sys.exit(1)
+
+          print("No secrets detected.")
+          PY
