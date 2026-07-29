@@ -76,9 +76,10 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const [objMovement, setObjMovement] = useState<MovementDialog>(null);
   const [objPendingAssignment, setObjPendingAssignment] = useState<EmployeePlanAssignRequest | null>(null);
   const [strActionError, setStrActionError] = useState("");
+  const [objEditAssignment, setObjEditAssignment] = useState<{ blnOpen: boolean; dtEffectiveFrom: string; dtEffectiveTo: string; strReason: string }>({ blnOpen: false, dtEffectiveFrom: "", dtEffectiveTo: "", strReason: "" });
   const {
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError,
-    fetchPlan, assignPlan, initializeBalances, setOpeningBalance, adjustBalance,
+    fetchPlan, assignPlan, updateAssignment, initializeBalances, setOpeningBalance, adjustBalance,
   } = useEmployeeLeavePlan(intEmployeeID, intLeaveYear);
   // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
   // older ESS-style setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
@@ -144,6 +145,32 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     objAssignmentForm.reset({ intLeavePlanID: 0, dtEffectiveFrom: new Date().toISOString().slice(0, 10), dtEffectiveTo: "", strAssignmentReason: "" });
   }
 
+  function openEditAssignment() {
+    if (!objCurrent) return;
+    setObjEditAssignment({
+      blnOpen: true,
+      dtEffectiveFrom: String(objCurrent.dtEffectiveFrom).slice(0, 10),
+      dtEffectiveTo: objCurrent.dtEffectiveTo ? String(objCurrent.dtEffectiveTo).slice(0, 10) : "",
+      strReason: objCurrent.strAssignmentReason ?? "",
+    });
+  }
+
+  async function saveEditAssignment() {
+    if (objEditAssignment.dtEffectiveTo && objEditAssignment.dtEffectiveTo < objEditAssignment.dtEffectiveFrom) {
+      setStrActionError(t("validation_effective_dates", "Effective To cannot be before Effective From."));
+      return;
+    }
+    await executeAction(async () => {
+      await updateAssignment({
+        intEmployeeID,
+        dtEffectiveFrom: objEditAssignment.dtEffectiveFrom,
+        dtEffectiveTo: objEditAssignment.dtEffectiveTo || null,
+        strAssignmentReason: objEditAssignment.strReason.trim() || null,
+      });
+      setObjEditAssignment((objPrev) => ({ ...objPrev, blnOpen: false }));
+    });
+  }
+
   function openMovement(strType: "opening" | "credit" | "debit", objBalance: EmployeeLeaveBalance) {
     setObjMovement({ strType, objBalance });
     objMovementForm.reset({ decValue: strType === "opening" ? objBalance.decOpeningBalance : 0, dtTransactionDate: new Date().toISOString().slice(0, 10), strRemarks: "" });
@@ -171,7 +198,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
         <Typography sx={{ color: "#64748b", mt: 0.75 }}>{t("detail_subtitle", "Assignment, yearly balances, and append-only ledger history.")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
           <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
-          {blnCanManage ? <Button type="submit" form="employee-leave-plan-assignment-form" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
+          {blnCanManage && !objEditAssignment.blnOpen ? <Button type="submit" form="employee-leave-plan-assignment-form" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
         </Stack>
       </Stack>
     </Paper>
@@ -182,12 +209,26 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     </Paper>
 
     <Paper sx={objSectionSx}>
-      <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 2 }}>{t("section_current_plan", "Current Leave Plan")}</Typography>
-      {objCurrent ? <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}><Typography><strong>{t("plan", "Plan")}:</strong> {dicPlanNames[objCurrent.intLeavePlanID] ?? `#${objCurrent.intLeavePlanID}`}</Typography><Typography><strong>{t("effective_from", "Effective From")}:</strong> {formatDate(objCurrent.dtEffectiveFrom)}</Typography><Typography><strong>{t("effective_to", "Effective To")}:</strong> {formatDate(objCurrent.dtEffectiveTo)}</Typography><Typography><strong>{t("status", "Status")}:</strong> {objCurrent.strAssignmentStatus}</Typography></Box> : <Typography color="text.secondary">{t("no_current_plan", "No current Leave Plan is assigned.")}</Typography>}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 1 }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("section_current_plan", "Current Leave Plan")}</Typography>
+        {objCurrent && blnCanManage && !objEditAssignment.blnOpen ? <Button size="small" onClick={openEditAssignment} data-control-id="employee-leave-plan.current.edit.button">{t("edit", "Edit")}</Button> : null}
+      </Box>
+      {objCurrent ? (objEditAssignment.blnOpen ? (
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 2fr auto" }, gap: 1, alignItems: "center" }}>
+          <TextField type="date" size="small" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} value={objEditAssignment.dtEffectiveFrom} onChange={(objEvent) => setObjEditAssignment((objPrev) => ({ ...objPrev, dtEffectiveFrom: objEvent.target.value }))} inputProps={{ "data-control-id": "employee-leave-plan.current.effective-from.input" }} />
+          <TextField type="date" size="small" label={t("effective_to", "Effective To")} InputLabelProps={{ shrink: true }} value={objEditAssignment.dtEffectiveTo} onChange={(objEvent) => setObjEditAssignment((objPrev) => ({ ...objPrev, dtEffectiveTo: objEvent.target.value }))} inputProps={{ "data-control-id": "employee-leave-plan.current.effective-to.input" }} />
+          <TextField size="small" label={t("assignment_reason", "Assignment Reason")} value={objEditAssignment.strReason} onChange={(objEvent) => setObjEditAssignment((objPrev) => ({ ...objPrev, strReason: objEvent.target.value }))} inputProps={{ maxLength: 500, "data-control-id": "employee-leave-plan.current.reason.input" }} />
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button variant="contained" size="small" startIcon={<SaveRoundedIcon />} disabled={blnSaving || !objEditAssignment.dtEffectiveFrom} onClick={() => void saveEditAssignment()} data-control-id="employee-leave-plan.current.save.button">{blnSaving ? t("saving", "Saving...") : t("save", "Save")}</Button>
+            <Button size="small" onClick={() => setObjEditAssignment((objPrev) => ({ ...objPrev, blnOpen: false }))} data-control-id="employee-leave-plan.current.cancel.button">{t("cancel", "Cancel")}</Button>
+          </Box>
+        </Box>
+      ) : <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}><Typography><strong>{t("plan", "Plan")}:</strong> {dicPlanNames[objCurrent.intLeavePlanID] ?? `#${objCurrent.intLeavePlanID}`}</Typography><Typography><strong>{t("effective_from", "Effective From")}:</strong> {formatDate(objCurrent.dtEffectiveFrom)}</Typography><Typography><strong>{t("effective_to", "Effective To")}:</strong> {formatDate(objCurrent.dtEffectiveTo)}</Typography><Typography><strong>{t("status", "Status")}:</strong> {objCurrent.strAssignmentStatus}</Typography></Box>) : <Typography color="text.secondary">{t("no_current_plan", "No current Leave Plan is assigned.")}</Typography>}
     </Paper>
 
-    {blnCanManage ? <Paper sx={objSectionSx}>
+    {blnCanManage && !objEditAssignment.blnOpen ? <Paper sx={objSectionSx}>
       <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 2 }}>{objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")}</Typography>
+      {objCurrent ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>{t("replace_hint", "Replace starts a NEW assignment from a later date. To correct the current assignment's dates (e.g. backdate to joining), use Edit above.")}</Typography> : null}
       <Box id="employee-leave-plan-assignment-form" component="form" onSubmit={objAssignmentForm.handleSubmit(submitAssignment)}><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr 2fr" }, gap: 1 }}>
       <Controller name="intLeavePlanID" control={objAssignmentForm.control} render={({ field }) => <TextField select {...field} value={field.value || ""} label={t("select_plan", "Leave Plan")} error={Boolean(objAssignmentForm.formState.errors.intLeavePlanID)} helperText={objAssignmentForm.formState.errors.intLeavePlanID?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.plan.select" }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))}><MenuItem value="" data-control-id="employee-leave-plan.assignment.plan.empty.option">{t("select_plan_placeholder", "Select Plan")}</MenuItem>{lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => <MenuItem key={objPlan.intID} value={objPlan.intID} data-control-id={`employee-leave-plan.assignment.plan.${objPlan.intID}.option`}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>)}</TextField>} />
       <Controller name="dtEffectiveFrom" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} error={Boolean(objAssignmentForm.formState.errors.dtEffectiveFrom)} helperText={objAssignmentForm.formState.errors.dtEffectiveFrom?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.effective-from.input" }} />} />

@@ -8,7 +8,7 @@ import type { EmployeeDetailRecord, EmployeeListRecord } from "@/features/employ
 import { leavePlanService } from "@/features/leave-plan/services/leavePlanService";
 import type {
   BalanceMovementRequest, EmployeeLeaveLedger, EmployeeLeavePlanOverview, EmployeePlanAssignRequest,
-  LeavePlan, LeaveTypeOption, OpeningBalanceRequest,
+  EmployeePlanAssignmentUpdateRequest, LeavePlan, LeaveTypeOption, OpeningBalanceRequest,
 } from "@/features/leave-plan/types/LeavePlanTypes";
 
 export function useEmployeeOptions() {
@@ -74,6 +74,7 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError, loadData,
     fetchPlan: (intPlanID: number) => leavePlanService.getPlan(intPlanID),
     assignPlan: (objPayload: EmployeePlanAssignRequest, blnReplace: boolean) => runMutation(() => leavePlanService.assignPlan(intEmployeeID, objPayload, blnReplace)),
+    updateAssignment: (objPayload: EmployeePlanAssignmentUpdateRequest) => runMutation(() => leavePlanService.updateAssignment(intEmployeeID, objPayload)),
     initializeBalances: () => runMutation(() => leavePlanService.initializeBalances(intEmployeeID, intLeaveYear)),
     setOpeningBalance: (intBalanceID: number, objPayload: OpeningBalanceRequest) => runMutation(() => leavePlanService.setOpeningBalance(intEmployeeID, intBalanceID, objPayload)),
     adjustBalance: (intBalanceID: number, strDirection: "credit" | "debit", objPayload: BalanceMovementRequest) => runMutation(() => leavePlanService.adjustBalance(intEmployeeID, intBalanceID, strDirection, objPayload)),

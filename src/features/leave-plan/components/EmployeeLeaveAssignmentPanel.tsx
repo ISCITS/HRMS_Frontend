@@ -288,7 +288,7 @@ export default function EmployeeLeaveAssignmentPanel() {
           {lstSelectedIds.length === 0 ? (
             <Alert severity="info" data-control-id="employee-leave-plan.bulk-assign.no-selection">{t("bulk_assign_no_selection", "Select one or more employees from the list first, then choose a plan to assign.")}</Alert>
           ) : null}
-          <TextField select size="small" label={t("select_plan", "Leave Plan")} value={objBulk.intLeavePlanID || ""} onChange={(objEvent) => setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: Number(objEvent.target.value) }))} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.plan.select" }}>
+          <TextField select size="small" label={t("select_plan", "Leave Plan")} value={objBulk.intLeavePlanID || ""} onChange={(objEvent) => { const intPlanID = Number(objEvent.target.value); const objSelectedPlan = lstPlans.find((objPlan) => objPlan.intID === intPlanID); setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: intPlanID, dtEffectiveFrom: objSelectedPlan?.dtEffectiveFrom ? String(objSelectedPlan.dtEffectiveFrom).slice(0, 10) : objPrev.dtEffectiveFrom, intLeaveYear: objSelectedPlan?.dtEffectiveFrom ? new Date(objSelectedPlan.dtEffectiveFrom).getFullYear() : objPrev.intLeaveYear })); }} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.plan.select" }}>
             <MenuItem value="">{t("select_plan_placeholder", "Select Plan")}</MenuItem>
             {lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => (
               <MenuItem key={objPlan.intID} value={objPlan.intID}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>

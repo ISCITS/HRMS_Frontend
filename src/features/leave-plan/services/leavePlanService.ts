@@ -4,7 +4,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
   BalanceMovementRequest, BalanceMutationResult, EmployeeLeaveBalance, EmployeeLeaveLedger,
-  EmployeeLeavePlanOverview, EmployeePlanAssignRequest, LeavePlan, LeavePlanFilters, LeavePlanLanguages,
+  EmployeeLeavePlanOverview, EmployeePlanAssignRequest, EmployeePlanAssignmentUpdateRequest, LeavePlan, LeavePlanFilters, LeavePlanLanguages,
   LeavePlanSaveRequest, LeavePolicyOption, LeaveTypeOption, OpeningBalanceRequest,
 } from "@/features/leave-plan/types/LeavePlanTypes";
 
@@ -73,6 +73,10 @@ export const leavePlanService = {
   },
   async assignPlan(intEmployeeID: number, objPayload: EmployeePlanAssignRequest, blnReplace: boolean): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}/${blnReplace ? "replace" : "assign"}`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
+    return objResult.Data;
+  },
+  async updateAssignment(intEmployeeID: number, objPayload: EmployeePlanAssignmentUpdateRequest): Promise<EmployeeLeavePlanOverview> {
+    const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}/update`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
   async initializeBalances(intEmployeeID: number, intLeaveYear: number): Promise<EmployeeLeaveBalance[]> {

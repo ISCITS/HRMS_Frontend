@@ -132,5 +132,11 @@ export type EmployeePlanAssignRequest = {
   strAssignmentReason: string;
   lstOpeningBalances: Array<{ intLeaveTypeID: number; decOpeningBalance: number }>;
 };
+export type EmployeePlanAssignmentUpdateRequest = {
+  intEmployeeID: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  strAssignmentReason?: string | null;
+};
 export type BalanceMovementRequest = { decDays: number; dtTransactionDate?: string | null; strRemarks: string };
 export type OpeningBalanceRequest = { decOpeningBalance: number; dtTransactionDate?: string | null; strRemarks: string };
