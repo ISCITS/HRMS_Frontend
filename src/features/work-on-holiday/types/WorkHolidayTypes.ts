@@ -19,10 +19,12 @@ export type WorkHolidayAttendanceSnapshot = {
 
 export type WorkHolidayEligibilitySnapshot = {
   strDayTypeCode?: string;
+  strEligibilitySource?: "HOLIDAY_MASTER" | "WEEKLY_OFF_CALENDAR";
   intHolidayID?: number | null;
   strHolidayName?: string | null;
   blnWeeklyOff?: boolean;
-  intPolicyID?: number;
+  blnUsingDefaultPolicy?: boolean;
+  intPolicyID?: number | null;
   strExistingAttendanceStatus?: string | null;
   objTeamAvailability?: {
     intTeamSize: number;

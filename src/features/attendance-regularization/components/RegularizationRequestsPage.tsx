@@ -34,10 +34,12 @@ function emptyOnBehalfForm(): RegularizationFormValues & { intEmployeeID: number
   };
 }
 
-export default function RegularizationRequestsPage() {
+export default function RegularizationRequestsPage({ blnEssManagerMode = false }: { blnEssManagerMode?: boolean }) {
   const objSearchParams = useSearchParams();
   const { t, intLanguageID } = useModuleLabels("attendance_regularization_requests");
-  const { blnLoading: blnRightsLoading, canViewAny, canDoAny } = useModuleActionAccess(["ATTENDANCE_REGULARIZATION_REQUESTS"]);
+  const { blnLoading: blnRightsLoading, canViewAny, canDoAny } = useModuleActionAccess([
+    blnEssManagerMode ? "ESS_ATTENDANCE_REGULARIZATION_APPROVALS" : "ATTENDANCE_REGULARIZATION_REQUESTS",
+  ]);
   const [objLookups, setObjLookups] = useState<RegularizationLookups>({});
   const [lstRequests, setLstRequests] = useState<RegularizationRequest[]>([]);
   const [objDetail, setObjDetail] = useState<RegularizationDetail | null>(null);
@@ -56,13 +58,17 @@ export default function RegularizationRequestsPage() {
     setBlnLoading(true); setStrError("");
     try {
       const [objLookupResult, objListResult] = await Promise.all([
-        attendanceRegularizationService.getHrLookups(intLanguageID || authHelpers.getLanguageID() || undefined),
-        attendanceRegularizationService.listHrRequests({ intPage: 1, intPageSize: 100, strStatus: strStatus || undefined, strFromDate: strFromDate || undefined, strToDate: strToDate || undefined }),
+        blnEssManagerMode
+          ? attendanceRegularizationService.getManagerLookups(intLanguageID || authHelpers.getLanguageID() || undefined)
+          : attendanceRegularizationService.getHrLookups(intLanguageID || authHelpers.getLanguageID() || undefined),
+        blnEssManagerMode
+          ? attendanceRegularizationService.listManagerRequests({ intPage: 1, intPageSize: 100, strStatus: strStatus || undefined, strFromDate: strFromDate || undefined, strToDate: strToDate || undefined })
+          : attendanceRegularizationService.listHrRequests({ intPage: 1, intPageSize: 100, strStatus: strStatus || undefined, strFromDate: strFromDate || undefined, strToDate: strToDate || undefined }),
       ]);
       setObjLookups(objLookupResult); setLstRequests(objListResult.lstItems);
     } catch (objError) { setStrError(objError instanceof Error ? objError.message : t("load_failed", "Unable to load requests.")); }
     finally { setBlnLoading(false); }
-  }, [intLanguageID, strFromDate, strStatus, strToDate, t]);
+  }, [blnEssManagerMode, intLanguageID, strFromDate, strStatus, strToDate, t]);
 
   useEffect(() => { void loadData(); }, [loadData]);
   useEffect(() => {
@@ -83,13 +89,19 @@ export default function RegularizationRequestsPage() {
   const lstTypes = objLookups[strTypeDomain] ?? [];
   const lstActions = objLookups[strActionDomain] ?? [];
   const lstAttendanceStatuses = objLookups[strAttendanceStatusDomain] ?? objLookups["ATTENDANCE_DAY_STATUS"] ?? [];
-  const blnCanApprove = canDoAny("ATT_REG_REQUEST_APPROVE");
-  const blnCanReject = canDoAny("ATT_REG_REQUEST_REJECT");
-  const blnCanSendBack = canDoAny("ATT_REG_REQUEST_SEND_BACK");
+  const blnCanApprove = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_APPROVE");
+  const blnCanReject = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_REJECT");
+  const blnCanSendBack = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_SEND_BACK");
 
   async function openDetail(intRequestID: number) {
     setBlnWorking(true);
-    try { setObjDetail(await attendanceRegularizationService.getHrDetail(intRequestID)); }
+    try {
+      setObjDetail(
+        blnEssManagerMode
+          ? await attendanceRegularizationService.getManagerDetail(intRequestID)
+          : await attendanceRegularizationService.getHrDetail(intRequestID)
+      );
+    }
     catch (objError) { setStrError(objError instanceof Error ? objError.message : t("detail_failed", "Unable to load request.")); }
     finally { setBlnWorking(false); }
   }
@@ -99,7 +111,11 @@ export default function RegularizationRequestsPage() {
     if (objAction.strAction !== "approve" && !strRemarks.trim()) return;
     setBlnWorking(true);
     try {
-      await attendanceRegularizationService.actionRequest(objAction.objRequest.intID, objAction.strAction, objAction.objRequest.intRowVersion, strRemarks.trim() || undefined);
+      if (blnEssManagerMode) {
+        await attendanceRegularizationService.actionManagerRequest(objAction.objRequest.intID, objAction.strAction, objAction.objRequest.intRowVersion, strRemarks.trim() || undefined);
+      } else {
+        await attendanceRegularizationService.actionRequest(objAction.objRequest.intID, objAction.strAction, objAction.objRequest.intRowVersion, strRemarks.trim() || undefined);
+      }
       setObjAction(null); setObjDetail(null); setStrRemarks(""); await loadData();
     } catch (objError) { setStrError(objError instanceof Error ? objError.message : t("action_failed", "Unable to complete approval action.")); }
     finally { setBlnWorking(false); }
@@ -123,7 +139,7 @@ export default function RegularizationRequestsPage() {
 
   if (blnRightsLoading) return <CircularProgress />;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Regularization Requests access is not available.")}</Alert>;
-  const blnCanCreateOnBehalf = canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
+  const blnCanCreateOnBehalf = !blnEssManagerMode && canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
       {/* AppShell owns the title; retain only the contextual action when authorized. */}

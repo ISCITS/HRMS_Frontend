@@ -83,6 +83,12 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
   if (strCandidatePath === "/ess/attendance") {
     return strPathname === strCandidatePath;
   }
+  if (
+    strCandidatePath === "/ess/attendance/regularization" &&
+    strPathname.startsWith("/ess/attendance/regularization/approvals")
+  ) {
+    return false;
+  }
   return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 

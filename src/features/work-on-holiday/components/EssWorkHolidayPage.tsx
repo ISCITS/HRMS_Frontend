@@ -188,7 +188,7 @@ export default function EssWorkHolidayPage() {
       <Paper><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
       {intTab === 0 ? (
         <Paper sx={{ p: { xs: 2, md: 3 } }}>
-          <Alert data-control-id="work-on-holiday.ess.policy-guidance.alert" severity="info" sx={{ mb: 2 }}>{t("policy_guidance", "Select a configured holiday or weekly off. Eligibility and policy limits are validated by the server.")}</Alert>
+          <Alert data-control-id="work-on-holiday.ess.policy-guidance.alert" severity="info" sx={{ mb: 2 }}>{t("policy_guidance", "Select a Saturday, Sunday, or an active Holiday Master date. Eligibility is validated for approval.")}</Alert>
           <Box component="form" onSubmit={handleSubmit((objValues) => saveAndSubmit(objValues, true))}>
             <Box sx={{ width: "100%" }}>
               <Grid container spacing={2}>
