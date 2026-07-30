@@ -29,7 +29,7 @@ import { leaveService } from "@/features/leave/services/leaveService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   formatLeaveDate, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
-  type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
+  type LeaveApplicationDto, type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
   type TeamCalendarDto,
 } from "@/features/leave/types";
 
@@ -58,7 +58,7 @@ export default function EssLeaveApprovalsPanel() {
     blnCanViewConfidential, blnCanViewTeamCalendar, blnLoading: blnRightsLoading,
   } = objPermissions;
 
-  const { lstQueue, lstActioned, objTeamCalendar, blnLoading, strError, fnLoadAll } =
+  const { lstQueue, lstActioned, lstMyApplications, objTeamCalendar, blnLoading, strError, fnLoadAll } =
     useLeaveApprovals(blnCanView && !blnRightsLoading);
 
   const [intTab, setIntTab] = useState(0);
@@ -193,6 +193,7 @@ export default function EssLeaveApprovalsPanel() {
     t("tab_delegated", "Delegated to Me"),
     t("tab_actioned", "Actioned by Me"),
     t("tab_upcoming", "Upcoming Team Leave"),
+    t("tab_my_applications", "My Leave Applications"),
   ];
 
   return <Stack spacing={2}>
@@ -219,6 +220,8 @@ export default function EssLeaveApprovalsPanel() {
 
       {intTab === 3 ? (
         <TeamLeaveList objTeamCalendar={objTeamCalendar} lstUpcoming={lstUpcoming} blnLoading={blnLoading} fnLabel={t} fnOnOpenCalendar={() => objRouter.push("/ess/team-calendar")} blnCanViewCalendar={blnCanViewTeamCalendar} />
+      ) : intTab === 4 ? (
+        <MyApplicationsList lstApplications={lstMyApplications} blnLoading={blnLoading} fnLabel={t} />
       ) : <>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2 }} justifyContent="space-between" alignItems={{ sm: "center" }}>
           <Typography sx={{ fontSize: ".8rem", color: "#64748b" }}>{lstFiltered.length} {t("requests", "request(s)")}</Typography>
@@ -309,6 +312,31 @@ function ApprovalTable({ lstItems, intTab, objSort, fnToggleSort, blnCanViewConf
 
 function ApprovalCard({ objItem, blnCanViewConfidential, fnOnOpen, fnLabel }: { objItem: LeaveQueueItemDto; blnCanViewConfidential: boolean; fnOnOpen: () => void; fnLabel: LabelFn }) {
   return <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }} onClick={fnOnOpen}><Stack direction="row" justifyContent="space-between" alignItems="flex-start"><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{fnEmployeeName(objItem)}</Typography><Box sx={{ mt: .5 }}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></Box><Typography sx={{ fontSize: ".74rem", color: "#64748b", mt: .5 }}>{formatLeaveDate(objItem.dtFromDate)} – {formatLeaveDate(objItem.dtToDate)} · {objItem.decDays} {fnLabel("days_short", "day(s)")}</Typography></Box><Stack spacing={.5} alignItems="flex-end"><StatusChip strStatus={objItem.strStatus} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Stack></Paper>;
+}
+
+function MyApplicationsList({ lstApplications, blnLoading, fnLabel }: { lstApplications: LeaveApplicationDto[]; blnLoading: boolean; fnLabel: LabelFn }) {
+  if (blnLoading) return <Box sx={{ p: 2 }}><Skeleton variant="rounded" height={280} /></Box>;
+  if (!lstApplications.length) return <EmptyState strMessage={fnLabel("my_applications_empty", "You have not applied for any leave yet.")} />;
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}>
+    <TableCell>{fnLabel("applied_on", "Applied On")}</TableCell>
+    <TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell>
+    <TableCell>{fnLabel("from_date", "From")}</TableCell>
+    <TableCell>{fnLabel("to_date", "To")}</TableCell>
+    <TableCell>{fnLabel("quantity", "Quantity")}</TableCell>
+    <TableCell>{fnLabel("status", "Status")}</TableCell>
+  </TableRow></TableHead><TableBody>
+    {lstApplications.map((objApp) => {
+      const objBadge = getLeaveTypeBadge(objApp.strTypeCode, objApp.strTypeName);
+      return <TableRow key={objApp.intID} hover>
+        <TableCell>{formatLeaveDate(objApp.dtAppliedOn)}</TableCell>
+        <TableCell><Stack direction="row" spacing={1} alignItems="center"><Box aria-hidden sx={{ width: 30, height: 30, borderRadius: "50%", bgcolor: objBadge.bg, color: objBadge.fg, display: "grid", placeItems: "center", fontWeight: 800, fontSize: ".68rem" }}>{objBadge.strLabel}</Box><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApp.strTypeName ?? `#${objApp.intLeaveTypeID}`}</Typography></Stack></TableCell>
+        <TableCell>{formatLeaveDate(objApp.dtFromDate)}{objApp.blnFromHalf ? " (½)" : ""}</TableCell>
+        <TableCell>{formatLeaveDate(objApp.dtToDate)}{objApp.blnToHalf ? " (½)" : ""}</TableCell>
+        <TableCell>{objApp.decDays}</TableCell>
+        <TableCell><StatusChip strStatus={objApp.strStatus} /></TableCell>
+      </TableRow>;
+    })}
+  </TableBody></Table></Box>;
 }
 
 function TeamLeaveList({ objTeamCalendar, lstUpcoming, blnLoading, fnLabel, fnOnOpenCalendar, blnCanViewCalendar }: {
