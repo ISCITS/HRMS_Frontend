@@ -75,6 +75,12 @@
   padding: 0 10px !important;
 }
 
+.primaryButton:disabled {
+  background: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: none !important;
+  color: rgba(0, 0, 0, 0.26) !important;
+}
+
 .secondaryButton {
   background: rgba(255, 255, 255, 0.86) !important;
   border: 1px solid var(--app-secondary-border) !important;

@@ -323,16 +323,18 @@ export default function AttendanceExceptionsPage() {
   };
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
-      {/* AppShell already displays the screen title; only keep contextual actions here. */}
-      {blnCanGenerate || blnCanExport ? (
-        <Paper className={styles.controlsCard}>
-          <Stack direction="row" spacing={1}>
+      {/* Keep actions and severity summaries in one row so the queue begins below a single toolbar. */}
+      <Paper className={styles.controlsCard}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="stretch">
+          {blnCanGenerate || blnCanExport ? (
+            <>
             {blnCanGenerate ? (
               <Button
                 data-control-id="attendance-exceptions.generate.button"
                 variant="outlined"
                 startIcon={<RefreshRoundedIcon />}
                 disabled={blnWorking}
+                sx={{ minWidth: 144, minHeight: 48, flex: "0 0 auto" }}
                 onClick={() =>
                   void attendanceRegularizationService
                     .generateExceptions(
@@ -351,6 +353,7 @@ export default function AttendanceExceptionsPage() {
                 variant="outlined"
                 startIcon={<DownloadRoundedIcon />}
                 disabled={blnWorking}
+                sx={{ minWidth: 124, minHeight: 48, flex: "0 0 auto" }}
                 onClick={() =>
                   void attendanceRegularizationService.exportExceptions(
                     objFilters,
@@ -360,20 +363,9 @@ export default function AttendanceExceptionsPage() {
                 {t("export", "Export")}
               </Button>
             ) : null}
-          </Stack>
-        </Paper>
-      ) : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Paper
-        variant="outlined"
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
-          overflow: "hidden",
-          borderRadius: "8px",
-        }}
-      >
-        {["BLOCKING", "ERROR", "WARNING", "INFO"].map((strSeverity, intSeverityIndex) => {
+            </>
+          ) : null}
+          {["BLOCKING", "ERROR", "WARNING", "INFO"].map((strSeverity) => {
           const objTone = dicSeverityTone[strSeverity];
           const blnSelected = objFilters.strSeverityCode === strSeverity;
           return (
@@ -388,19 +380,13 @@ export default function AttendanceExceptionsPage() {
                 }))
               }
               sx={{
-                px: 2,
-                py: 1,
+                px: 1.5,
+                minWidth: 150,
                 minHeight: 48,
-                borderRadius: 0,
-                borderRight: {
-                  xs: intSeverityIndex % 2 === 0 ? "1px solid" : "none",
-                  md: intSeverityIndex < 3 ? "1px solid" : "none",
-                },
-                borderBottom: {
-                  xs: intSeverityIndex < 2 ? "1px solid" : "none",
-                  md: "none",
-                },
-                borderColor: "divider",
+                flex: "1 1 150px",
+                borderRadius: "9px",
+                border: "1px solid",
+                borderColor: blnSelected ? objTone.strAccent : "divider",
                 justifyContent: "space-between",
                 color: "text.primary",
                 backgroundColor: blnSelected ? objTone.strSurface : "transparent",
@@ -442,7 +428,9 @@ export default function AttendanceExceptionsPage() {
             </Button>
           );
         })}
+        </Stack>
       </Paper>
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Paper className={styles.controlsCard}>
         <Grid container spacing={1}>
           {/* Content-sized controls and actions share one toolbar row on desktop. */}

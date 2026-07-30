@@ -29,6 +29,9 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function setPolicyStatus(intPolicyID: number, blnIsActive: boolean) {
     setBlnSaving(true); try { return await attendanceService.setPolicyStatus(intPolicyID, blnIsActive); } finally { setBlnSaving(false); }
   }
+  async function deletePolicy(intPolicyID: number) {
+    setBlnSaving(true); try { return await attendanceService.deletePolicy(intPolicyID); } finally { setBlnSaving(false); }
+  }
   const loadDaily = useCallback(async (objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }) => {
     setBlnLoading(true); setStrError("");
     try { const lstRows = await attendanceService.loadDaily(objFilters); setLstDailyRows(lstRows); return lstRows; }
@@ -38,5 +41,5 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function saveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
     setBlnSaving(true); try { return await attendanceService.bulkSaveDaily(strDate, lstRows); } finally { setBlnSaving(false); }
   }
-  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, loadDaily, saveDaily };
+  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily };
 }

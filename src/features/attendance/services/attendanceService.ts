@@ -70,6 +70,15 @@ export const attendanceService = {
     return objResult.Data;
   },
 
+  async deletePolicy(intPolicyID: number): Promise<AttendancePolicy> {
+    const objResult = await requestApi<AttendancePolicy>({
+      strPath: `/attendance/policies/${intPolicyID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async loadDaily(objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }): Promise<DailyAttendanceRow[]> {
     const objQuery = new URLSearchParams({ date: objFilters.strDate });
     if (objFilters.intDepartmentID) objQuery.set("department_id", String(objFilters.intDepartmentID));
