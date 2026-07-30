@@ -642,7 +642,13 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
 function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
   let objWorkOnHolidayItem: MenuItem | null = null;
 
-  function removeNestedWorkOnHoliday(lstCurrentItems: MenuItem[], intDepth = 0): MenuItem[] {
+  // Only a Work on Holiday item nested directly under an Employee Services
+  // wrapper is promoted -- that was an accidental grouping. Work on Holiday
+  // intentionally nested elsewhere (e.g. under an Attendance group) is left in place.
+  function removeAccidentallyNestedWorkOnHoliday(
+    lstCurrentItems: MenuItem[],
+    blnParentIsEmployeeServices: boolean,
+  ): MenuItem[] {
     return lstCurrentItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
       const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
       const strModuleName = objItem.strModuleName.trim().toLowerCase();
@@ -650,14 +656,17 @@ function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
         strModuleCode === "ess_work_on_holiday" ||
         strModuleName === "work on holiday";
 
-      if (blnIsEssWorkOnHoliday && intDepth > 0) {
+      if (blnIsEssWorkOnHoliday && blnParentIsEmployeeServices) {
         objWorkOnHolidayItem ??= { ...objItem, strRoute: "/ess/work-on-holiday" };
         return lstUpdatedItems;
       }
 
       const objUpdatedItem = {
         ...objItem,
-        lstChildren: removeNestedWorkOnHoliday(objItem.lstChildren, intDepth + 1),
+        lstChildren: removeAccidentallyNestedWorkOnHoliday(
+          objItem.lstChildren,
+          isEmployeeServicesContainerMenu(objItem),
+        ),
       };
       // Employee Services was only acting as an accidental wrapper for the
       // Work on Holiday link. Do not leave an empty, non-navigable group behind.
@@ -670,7 +679,7 @@ function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
     }, []);
   }
 
-  const lstUpdatedItems = removeNestedWorkOnHoliday(lstItems);
+  const lstUpdatedItems = removeAccidentallyNestedWorkOnHoliday(lstItems, false);
   if (!objWorkOnHolidayItem || hasRoute(lstUpdatedItems, "/ess/work-on-holiday")) {
     return lstUpdatedItems;
   }
