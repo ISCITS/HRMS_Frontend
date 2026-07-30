@@ -41,33 +41,77 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
+function toAttendancePolicyFormValues(objPolicy: AttendancePolicyFormValues): AttendancePolicyFormValues {
+  // The read API also returns audit metadata (added/modified fields). Keep the
+  // frontend model restricted to fields accepted by the create/update schema,
+  // otherwise React Hook Form retains those unregistered keys and sends them
+  // back during Edit.
+  return {
+    intCompanyID: objPolicy.intCompanyID,
+    strPolicyCode: objPolicy.strPolicyCode,
+    strPolicyName: objPolicy.strPolicyName,
+    strDescription: objPolicy.strDescription,
+    intLocationID: objPolicy.intLocationID,
+    intGradeID: objPolicy.intGradeID,
+    intEmploymentTypeID: objPolicy.intEmploymentTypeID,
+    intLateGraceMinutes: objPolicy.intLateGraceMinutes,
+    intEarlyDepartureGraceMinutes: objPolicy.intEarlyDepartureGraceMinutes,
+    decFullDayThresholdHours: objPolicy.decFullDayThresholdHours,
+    decHalfDayThresholdHours: objPolicy.decHalfDayThresholdHours,
+    decAbsentThresholdHours: objPolicy.decAbsentThresholdHours,
+    blnInPunchRequired: objPolicy.blnInPunchRequired,
+    blnOutPunchRequired: objPolicy.blnOutPunchRequired,
+    strMissingPunchTreatmentCode: objPolicy.strMissingPunchTreatmentCode,
+    intWorkHoursRoundingMinutes: objPolicy.intWorkHoursRoundingMinutes,
+    blnOtEnabled: objPolicy.blnOtEnabled,
+    decOtMinHours: objPolicy.decOtMinHours,
+    strLateDeductionRule: objPolicy.strLateDeductionRule,
+    strWeeklyOffPattern: objPolicy.strWeeklyOffPattern,
+    blnIsDefault: objPolicy.blnIsDefault,
+    dtEffectiveFrom: objPolicy.dtEffectiveFrom,
+    dtEffectiveTo: objPolicy.dtEffectiveTo,
+    blnIsActive: objPolicy.blnIsActive,
+    strRemarks: objPolicy.strRemarks,
+  };
+}
+
+function toAttendancePolicy(objPolicy: AttendancePolicy): AttendancePolicy {
+  return {
+    intID: objPolicy.intID,
+    ...toAttendancePolicyFormValues(objPolicy),
+  };
+}
+
 export const attendanceService = {
   async listPolicies(objFilters: { strSearch?: string; blnIsActive?: boolean; intPage: number; intPageSize: number }): Promise<AttendancePolicyList> {
     const objQuery = new URLSearchParams({ page: String(objFilters.intPage), page_size: String(objFilters.intPageSize) });
     if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
     if (objFilters.blnIsActive !== undefined) objQuery.set("is_active", String(objFilters.blnIsActive));
     const objResult = await requestApi<AttendancePolicyList>({ strPath: `/attendance/policies?${objQuery}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
-    return objResult.Data;
+    return {
+      ...objResult.Data,
+      lstItems: objResult.Data.lstItems.map(toAttendancePolicy),
+    };
   },
 
   async getPolicy(intPolicyID: number): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async savePolicy(intPolicyID: number | null, objPayload: AttendancePolicyFormValues): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({
       strPath: intPolicyID ? `/attendance/policies/${intPolicyID}` : "/attendance/policies",
       strMethod: intPolicyID ? ApiRequestMethod.Put : ApiRequestMethod.Post,
-      objBody: objPayload,
+      objBody: toAttendancePolicyFormValues(objPayload),
       strMenuAction: ATTENDANCE_MANAGE,
     });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async setPolicyStatus(intPolicyID: number, blnIsActive: boolean): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}/status`, strMethod: ApiRequestMethod.Patch, objBody: { blnIsActive }, strMenuAction: ATTENDANCE_MANAGE });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async deletePolicy(intPolicyID: number): Promise<AttendancePolicy> {
@@ -76,7 +120,7 @@ export const attendanceService = {
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: ATTENDANCE_MANAGE,
     });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async loadDaily(objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }): Promise<DailyAttendanceRow[]> {
