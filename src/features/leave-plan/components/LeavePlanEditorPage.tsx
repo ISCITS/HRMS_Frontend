@@ -18,7 +18,7 @@ import * as yup from "yup";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
-import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText } from "@/features/leave-plan/types/LeavePlanTypes";
+import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
@@ -39,9 +39,16 @@ function buildPlanSchema(fnT: (strKey: string, strFallback?: string) => string) 
   const strRequired = fnT("validation_required", "This field is required.");
   const strNonNegative = fnT("validation_non_negative", "Value cannot be negative.");
   const strMaxLength = fnT("validation_max_length", "Value exceeds the allowed length.");
+  const strPolicyRequired = fnT("validation_item_policy_required", "Select a Leave Policy for each active Leave Type so employees can apply leave for it.");
   const objItemSchema = yup.object({
     intLeaveTypeID: yup.number().integer().positive(strRequired).required(strRequired),
-    intLeavePolicyID: yup.number().integer().positive().nullable().defined(),
+    // An active plan item must carry a Leave Policy — otherwise employees assigned this plan cannot
+    // apply leave for that Leave Type. Inactive items may be policy-less.
+    intLeavePolicyID: yup.number().integer().positive().nullable().when("blnIsActive", {
+      is: true,
+      then: (objSchema) => objSchema.typeError(strPolicyRequired).required(strPolicyRequired),
+      otherwise: (objSchema) => objSchema.defined(),
+    }),
     decAnnualEntitlement: yup.number().min(0, strNonNegative).required(strRequired),
     blnOpeningBalanceAllowed: yup.boolean().required(), decNegativeBalanceLimit: yup.number().min(0, strNonNegative).required(strRequired),
     intDisplayOrder: yup.number().integer().min(0, strNonNegative).required(strRequired), blnIsMandatory: yup.boolean().required(), blnIsActive: yup.boolean().required(),
@@ -70,6 +77,21 @@ function automationInputProps(strControlID: string): InputHTMLAttributes<HTMLInp
   return { "data-control-id": strControlID } as InputHTMLAttributes<HTMLInputElement>;
 }
 
+// A leave policy is type-scoped and carries no stored name/code, so build a readable label from
+// the leave type it belongs to plus its effective window and entitlement (falls back to any code/
+// name that does exist). This replaces the raw "#<id>" that showed when code/name are empty.
+function fnPolicyLabel(objPolicy: LeavePolicyOption, strTypeLabel: string): string {
+  if (objPolicy.strPolicyCode || objPolicy.strPolicyName) return (objPolicy.strPolicyCode || objPolicy.strPolicyName) as string;
+  const fnFmt = (strValue: string | null) => {
+    if (!strValue) return "";
+    const objDate = new Date(`${strValue.slice(0, 10)}T00:00:00`);
+    return Number.isNaN(objDate.getTime()) ? strValue : new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short", year: "numeric" }).format(objDate);
+  };
+  const strRange = objPolicy.dtEffectiveTo ? `${fnFmt(objPolicy.dtEffectiveFrom)} – ${fnFmt(objPolicy.dtEffectiveTo)}` : `w.e.f. ${fnFmt(objPolicy.dtEffectiveFrom)}`;
+  const strQty = objPolicy.decEntitlementQty != null ? ` · ${objPolicy.decEntitlementQty} days` : "";
+  return `${strTypeLabel || "Policy"} — ${strRange}${strQty}`;
+}
+
 // Walk the react-hook-form error tree (incl. nested items/text arrays) and return the first
 // human-readable message, so a validation failure surfaces instead of the Save button "doing nothing".
 function collectFirstErrorMessage(objErrors: unknown): string | undefined {
@@ -95,6 +117,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const objItems = useFieldArray({ control, name: "lstItems" });
   const objTexts = useFieldArray({ control, name: "lstText" });
   const strEffectiveFrom = useWatch({ control, name: "dtEffectiveFrom" });
+  const dicTypeLabel = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, `${objType.strTypeCode} - ${objType.strTypeName}`])), [lstLeaveTypes]);
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
@@ -246,8 +269,8 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
                 const intTypeID = Number(lstWatchedItems?.[intIndex]?.intLeaveTypeID ?? 0);
                 const lstPolicies = dicPolicies[intTypeID] ?? [];
                 return <TableRow key={objField.id}>
-                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <TextField select size="small" value={field.value || ""} onChange={async (objEvent) => { const intValue = Number(objEvent.target.value); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); await loadPolicies(intValue, strEffectiveFrom); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.leave-type.select` }} sx={{ minWidth: 180 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.empty.option`}>{t("select_leave_type", "Select Leave Type")}</MenuItem>{lstLeaveTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID} data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.${objType.intID}.option`}>{objType.strTypeCode} - {objType.strTypeName}</MenuItem>)}</TextField>} /></TableCell>
-                  <TableCell><Controller name={`lstItems.${intIndex}.intLeavePolicyID`} control={control} render={({ field }) => <TextField select size="small" value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value ? Number(objEvent.target.value) : null)} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.policy.select` }} sx={{ minWidth: 180 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.policy.empty.option`}>{t("policy_not_selected", "No Policy")}</MenuItem>{lstPolicies.map((objPolicy) => <MenuItem key={objPolicy.intID} value={objPolicy.intID} data-control-id={`leave-plan.editor.item.${intIndex}.policy.${objPolicy.intID}.option`}>{objPolicy.strPolicyCode || objPolicy.strPolicyName || `#${objPolicy.intID}`}</MenuItem>)}</TextField>} /></TableCell>
+                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <TextField select size="small" value={field.value || ""} onChange={async (objEvent) => { const intValue = Number(objEvent.target.value); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); const lstLoaded = await loadPolicies(intValue, strEffectiveFrom); if (lstLoaded.length === 1) objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, lstLoaded[0].intID, { shouldValidate: true }); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.leave-type.select` }} sx={{ minWidth: 180 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.empty.option`}>{t("select_leave_type", "Select Leave Type")}</MenuItem>{lstLeaveTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID} data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.${objType.intID}.option`}>{objType.strTypeCode} - {objType.strTypeName}</MenuItem>)}</TextField>} /></TableCell>
+                  <TableCell><Controller name={`lstItems.${intIndex}.intLeavePolicyID`} control={control} render={({ field }) => <TextField select size="small" value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value ? Number(objEvent.target.value) : null)} error={Boolean(errors.lstItems?.[intIndex]?.intLeavePolicyID)} helperText={errors.lstItems?.[intIndex]?.intLeavePolicyID?.message} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.policy.select` }} sx={{ minWidth: 180 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.policy.empty.option`}>{t("policy_not_selected", "No Policy")}</MenuItem>{lstPolicies.map((objPolicy) => <MenuItem key={objPolicy.intID} value={objPolicy.intID} data-control-id={`leave-plan.editor.item.${intIndex}.policy.${objPolicy.intID}.option`}>{fnPolicyLabel(objPolicy, dicTypeLabel[objPolicy.intLeaveTypeID] ?? "")}</MenuItem>)}</TextField>} /></TableCell>
                   <TableCell><Controller name={`lstItems.${intIndex}.decAnnualEntitlement`} control={control} render={({ field }) => <TextField {...field} type="number" size="small" inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.annual-entitlement.input`, min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} sx={{ width: 120 }} />} /></TableCell>
                   <TableCell><Controller name={`lstItems.${intIndex}.blnOpeningBalanceAllowed`} control={control} render={({ field }) => <Checkbox checked={field.value} onChange={(_, blnValue) => field.onChange(blnValue)} inputProps={automationInputProps(`leave-plan.editor.item.${intIndex}.opening-allowed.checkbox`)} />} /></TableCell>
                   <TableCell><Controller name={`lstItems.${intIndex}.decNegativeBalanceLimit`} control={control} render={({ field }) => <TextField {...field} type="number" size="small" inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.negative-limit.input`, min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} sx={{ width: 120 }} />} /></TableCell>
