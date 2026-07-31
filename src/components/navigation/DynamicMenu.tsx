@@ -812,6 +812,166 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
   ].filter((objItem): objItem is MenuItem => Boolean(objItem));
 }
 
+function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
+  const lstEmployeeServiceRoutes = [
+    "/hr/it-declaration",
+    "/payroll/it-declaration-review",
+    "/payroll/employee-reimbursement",
+    "/payroll/reimbursements",
+    "/payroll/loans-advances",
+    "/payroll/fnf-settlements",
+  ];
+  const setEmployeeServiceRoutes = new Set(lstEmployeeServiceRoutes);
+  const setEmployeeServiceModuleCodes = new Set([
+    "employee_it_declaration",
+    "hr_it_declaration",
+    "it_declaration_review",
+    "payroll_it_declaration_review",
+    "employee_reimbursement",
+    "payroll_reimbursement_claims",
+    "payroll_reimbursements",
+    "employee_reimbursements",
+    "reimbursement_review",
+    "reimbursements_review",
+    "payroll_reimbursement",
+    "payroll_loans_advances",
+    "payroll_fnf_settlements",
+    "fnf_settlements",
+    "payroll_fnf",
+  ]);
+  const dicRouteOrder = new Map(
+    lstEmployeeServiceRoutes.map((strRoute, intIndex) => [strRoute, intIndex]),
+  );
+  const dicModuleCodeOrder = new Map<string, number>([
+    ["employee_it_declaration", 0],
+    ["hr_it_declaration", 0],
+    ["it_declaration_review", 1],
+    ["payroll_it_declaration_review", 1],
+    ["employee_reimbursement", 2],
+    ["payroll_reimbursement_claims", 2],
+    ["payroll_reimbursements", 3],
+    ["employee_reimbursements", 3],
+    ["reimbursement_review", 3],
+    ["reimbursements_review", 3],
+    ["payroll_reimbursement", 3],
+    ["payroll_loans_advances", 4],
+    ["payroll_fnf_settlements", 5],
+    ["fnf_settlements", 5],
+    ["payroll_fnf", 5],
+  ]);
+
+  function isHrEmployeeServiceItem(objItem: MenuItem): boolean {
+    const strResolvedRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    return setEmployeeServiceRoutes.has(strResolvedRoute) || setEmployeeServiceModuleCodes.has(strModuleCode);
+  }
+
+  function isObsoleteEssFnfItem(objItem: MenuItem): boolean {
+    const strResolvedRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    return strResolvedRoute === "/ess/fnf-settlements" || strModuleCode === "ess_fnf_settlements";
+  }
+
+  let objEmployeeServicesContainer: MenuItem | null = null;
+  const lstDeferredChildren: MenuItem[] = [];
+
+  function stripEmployeeServiceItems(lstCurrentItems: MenuItem[]): MenuItem[] {
+    return lstCurrentItems.reduce<MenuItem[]>((lstNextItems, objItem) => {
+      const lstStrippedChildren = stripEmployeeServiceItems(objItem.lstChildren);
+
+      if (isObsoleteEssFnfItem(objItem)) {
+        return lstNextItems;
+      }
+
+      if (isEmployeeServicesContainerMenu(objItem)) {
+        objEmployeeServicesContainer = {
+          ...objItem,
+          strModuleName: objItem.strModuleName || "Employee Services",
+          lstChildren: mergeUniqueMenuChildren(objItem.lstChildren, lstStrippedChildren),
+        };
+        return lstNextItems;
+      }
+
+      if (isHrEmployeeServiceItem(objItem)) {
+        lstDeferredChildren.push({
+          ...objItem,
+          lstChildren: lstStrippedChildren,
+        });
+        return lstNextItems;
+      }
+
+      lstNextItems.push(
+        lstStrippedChildren === objItem.lstChildren
+          ? objItem
+          : {
+              ...objItem,
+              lstChildren: lstStrippedChildren,
+            },
+      );
+      return lstNextItems;
+    }, []);
+  }
+
+  const lstRemainingItems = stripEmployeeServiceItems(lstItems);
+
+  if (!objEmployeeServicesContainer && lstDeferredChildren.length === 0) {
+    return lstItems;
+  }
+
+  const objResolvedContainer: MenuItem = objEmployeeServicesContainer ?? {
+    strModuleCode: "EMPLOYEE_SERVICES",
+    strModuleName: "Employee Services",
+    strRoute: "/employee-services",
+    strIconName: "SupportAgent",
+    lstPermissionCodes: [],
+    blnIsHome: false,
+    lstChildren: [],
+  };
+
+  const lstMergedChildren = mergeUniqueMenuChildren(
+    objResolvedContainer.lstChildren,
+    lstDeferredChildren,
+  ).filter((objChild, intIndex, lstAllChildren) => {
+    const strResolvedRoute = resolveMenuRoute(objChild)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objChild.strModuleCode.trim().toLowerCase();
+    return strResolvedRoute
+      ? lstAllChildren.findIndex((objCandidate) => (resolveMenuRoute(objCandidate)?.trim().toLowerCase() ?? "") === strResolvedRoute) === intIndex
+      : lstAllChildren.findIndex((objCandidate) => objCandidate.strModuleCode.trim().toLowerCase() === strModuleCode) === intIndex;
+  }).sort((objLeft, objRight) => {
+    const strLeftRoute = resolveMenuRoute(objLeft)?.trim().toLowerCase() ?? "";
+    const strRightRoute = resolveMenuRoute(objRight)?.trim().toLowerCase() ?? "";
+    const strLeftModuleCode = objLeft.strModuleCode.trim().toLowerCase();
+    const strRightModuleCode = objRight.strModuleCode.trim().toLowerCase();
+    const intLeftOrder = dicRouteOrder.get(strLeftRoute) ?? Number.MAX_SAFE_INTEGER;
+    const intRightOrder = dicRouteOrder.get(strRightRoute) ?? Number.MAX_SAFE_INTEGER;
+    if (intLeftOrder !== intRightOrder) {
+      return intLeftOrder - intRightOrder;
+    }
+
+    const intLeftCodeOrder = dicModuleCodeOrder.get(strLeftModuleCode) ?? Number.MAX_SAFE_INTEGER;
+    const intRightCodeOrder = dicModuleCodeOrder.get(strRightModuleCode) ?? Number.MAX_SAFE_INTEGER;
+    if (intLeftCodeOrder !== intRightCodeOrder) {
+      return intLeftCodeOrder - intRightCodeOrder;
+    }
+
+    return objLeft.strModuleName.localeCompare(objRight.strModuleName);
+  });
+
+  const objGroupedContainer: MenuItem = {
+    ...objResolvedContainer,
+    lstChildren: lstMergedChildren,
+  };
+
+  const intPayrollIndex = lstRemainingItems.findIndex(isPayrollContainerMenu);
+  const intInsertIndex = intPayrollIndex >= 0 ? intPayrollIndex : lstRemainingItems.length;
+
+  return [
+    ...lstRemainingItems.slice(0, intInsertIndex),
+    objGroupedContainer,
+    ...lstRemainingItems.slice(intInsertIndex),
+  ];
+}
+
 function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
     collapseDuplicateMenuBranches(
@@ -826,7 +986,7 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[]
       ),
     ),
   );
-  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : lstPreparedItems;
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(lstPreparedItems);
 }
 
 function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
