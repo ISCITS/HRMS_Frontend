@@ -86,6 +86,10 @@ type EmployeeEditorScreenProps = {
   strPageTitleOverride?: string;
 };
 
+function sanitizeMobileNumberInput(strValue: string): string {
+  return strValue.replace(/[^0-9+\- ]/g, "");
+}
+
 const lstEmployeeModuleCodes = ["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"];
 
 type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory" | "experience" | "qualification" | "family";
@@ -1345,7 +1349,21 @@ export default function EmployeeEditorScreen({
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.work-email.input" inputProps={{ "data-controlid": "employee.editor.work-email.input" }} label={t("field_work_email", dicConstant.employeeMaster.fields.workEmail)} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.personal-email.input" inputProps={{ "data-controlid": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
-                  <TextField data-controlid="employee.editor.mobile-number.input" inputProps={{ "data-controlid": "employee.editor.mobile-number.input" }} label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)} value={dicBasicForm.strMobileNumber} onChange={(objEvent) => updateBasicField("strMobileNumber", objEvent.target.value)} error={Boolean(dicBasicErrors.strMobileNumber)} helperText={dicBasicErrors.strMobileNumber} disabled={blnViewOnly} fullWidth />
+                  <TextField
+                    data-controlid="employee.editor.mobile-number.input"
+                    inputProps={{
+                      "data-controlid": "employee.editor.mobile-number.input",
+                      inputMode: "tel",
+                      pattern: "[0-9+\\- ]*"
+                    }}
+                    label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)}
+                    value={dicBasicForm.strMobileNumber}
+                    onChange={(objEvent) => updateBasicField("strMobileNumber", sanitizeMobileNumberInput(objEvent.target.value))}
+                    error={Boolean(dicBasicErrors.strMobileNumber)}
+                    helperText={dicBasicErrors.strMobileNumber}
+                    disabled={blnViewOnly}
+                    fullWidth
+                  />
                   {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
                   {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 56, border: "1px solid #dbe4ee", borderRadius: "14px", px: 1.75, py: 1.25 }}>
