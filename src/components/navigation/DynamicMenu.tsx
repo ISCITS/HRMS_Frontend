@@ -273,6 +273,15 @@ function isPayrollContainerMenu(objItem: MenuItem): boolean {
   );
 }
 
+function isAttendanceManagementMenu(objItem: MenuItem): boolean {
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    strModuleCode === "attendance_management" ||
+    strModuleName === "attendance management"
+  );
+}
+
 function isEmployeeServicesContainerMenu(objItem: MenuItem): boolean {
   const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
@@ -962,8 +971,17 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     lstChildren: lstMergedChildren,
   };
 
+  // Employee Services sits directly after Attendance Management (and therefore
+  // before Reports, which always follows it) regardless of each tenant's raw
+  // display_order -- this anchor is what actually controls its rendered
+  // position in the HR/admin sidebar, so display_order alone cannot move it.
+  const intAttendanceManagementIndex = lstRemainingItems.findIndex(isAttendanceManagementMenu);
   const intPayrollIndex = lstRemainingItems.findIndex(isPayrollContainerMenu);
-  const intInsertIndex = intPayrollIndex >= 0 ? intPayrollIndex : lstRemainingItems.length;
+  const intInsertIndex = intAttendanceManagementIndex >= 0
+    ? intAttendanceManagementIndex + 1
+    : intPayrollIndex >= 0
+      ? intPayrollIndex
+      : lstRemainingItems.length;
 
   return [
     ...lstRemainingItems.slice(0, intInsertIndex),
