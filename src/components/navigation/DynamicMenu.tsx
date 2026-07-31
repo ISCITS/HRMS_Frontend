@@ -725,6 +725,93 @@ function removeHrOnlyMenusFromEss(lstItems: MenuItem[]): MenuItem[] {
   }, []);
 }
 
+function flattenMenuItems(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems.flatMap((objItem) => [objItem, ...flattenMenuItems(objItem.lstChildren)]);
+}
+
+function buildSyntheticMenuLeaf(strLabel: string, strFallbackCode: string, strFallbackRoute: string, objItem?: MenuItem | null): MenuItem {
+  return {
+    strModuleCode: objItem?.strModuleCode ?? strFallbackCode,
+    strModuleName: strLabel,
+    strRoute: objItem?.strRoute ?? strFallbackRoute,
+    strIconName: objItem?.strIconName ?? null,
+    lstPermissionCodes: objItem?.lstPermissionCodes ?? [],
+    blnIsHome: objItem?.blnIsHome ?? false,
+    lstChildren: [],
+  };
+}
+
+function buildSyntheticMenuGroup(strCode: string, strLabel: string, lstChildren: Array<MenuItem | null>): MenuItem | null {
+  const lstVisibleChildren = lstChildren.filter((objChild): objChild is MenuItem => Boolean(objChild));
+  if (lstVisibleChildren.length === 0) {
+    return null;
+  }
+
+  return {
+    strModuleCode: strCode,
+    strModuleName: strLabel,
+    strRoute: null,
+    strIconName: null,
+    lstPermissionCodes: [],
+    blnIsHome: false,
+    lstChildren: lstVisibleChildren,
+  };
+}
+
+function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
+  const lstFlatItems = flattenMenuItems(lstItems);
+  const dicRouteToItem = new Map<string, MenuItem>();
+
+  lstFlatItems.forEach((objItem) => {
+    const strResolvedRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    if (strResolvedRoute && !dicRouteToItem.has(strResolvedRoute)) {
+      dicRouteToItem.set(strResolvedRoute, objItem);
+    }
+  });
+
+  const findItem = (...lstRoutes: string[]) =>
+    lstRoutes
+      .map((strRoute) => dicRouteToItem.get(strRoute.trim().toLowerCase()) ?? null)
+      .find(Boolean) ?? null;
+
+  const objDashboard = buildSyntheticMenuLeaf("Dashboard", "DASHBOARD", "/dashboard", findItem("/dashboard"));
+  const objProfileGroup = buildSyntheticMenuGroup("ESS_PROFILE", "My Profile", [
+    buildSyntheticMenuLeaf("My Profile", "ESS_MY_PROFILE", "/ess/my-profile", findItem("/ess/my-profile")),
+    buildSyntheticMenuLeaf("Bank Details", "ESS_MY_BANK_DETAILS", "/ess/my-bank-details", findItem("/ess/my-bank-details")),
+  ]);
+  const objAttendanceGroup = buildSyntheticMenuGroup("ESS_ATTENDANCE", "Attendance", [
+    buildSyntheticMenuLeaf("My Attendance", "ESS_ATTENDANCE", "/ess/attendance", findItem("/ess/attendance")),
+    buildSyntheticMenuLeaf("Attendance Regularization", "ESS_ATTENDANCE_REGULARIZATION", "/ess/attendance/regularization", findItem("/ess/attendance/regularization")),
+    findItem("/ess/attendance/regularization/approvals", "/attendance/regularization-requests")
+      ? buildSyntheticMenuLeaf("Regularization Requests", "ESS_ATTENDANCE_REGULARIZATION_APPROVALS", "/ess/attendance/regularization/approvals", findItem("/ess/attendance/regularization/approvals", "/attendance/regularization-requests"))
+      : null,
+    buildSyntheticMenuLeaf("Work on Holiday", "ESS_WORK_ON_HOLIDAY", "/ess/work-on-holiday", findItem("/ess/work-on-holiday", "/leave/work-on-holiday/requests")),
+  ]);
+  const objLeaveGroup = buildSyntheticMenuGroup("ESS_LEAVE", "Leave", [
+    buildSyntheticMenuLeaf("Apply Leave", "ESS_LEAVE", "/ess/leave", findItem("/ess/leave")),
+    findItem("/ess/leave-balance") ? buildSyntheticMenuLeaf("My Leave Balance", "ESS_LEAVE_BALANCE", "/ess/leave-balance", findItem("/ess/leave-balance")) : null,
+    buildSyntheticMenuLeaf("Holiday Calendar", "ESS_CALENDAR", "/ess/calendar", findItem("/ess/calendar")),
+    findItem("/ess/leave/approvals", "/leave/approvals")
+      ? buildSyntheticMenuLeaf("Leave Approvals", "ESS_LEAVE_APPROVALS", "/ess/leave/approvals", findItem("/ess/leave/approvals", "/leave/approvals"))
+      : null,
+  ]);
+  const objPayrollGroup = buildSyntheticMenuGroup("ESS_PAYROLL_BENEFITS", "Payroll & Benefits", [
+    buildSyntheticMenuLeaf("Payslips", "ESS_MY_PAYSLIPS", "/ess/my-payslips", findItem("/ess/my-payslips", "/reports/payslips")),
+    buildSyntheticMenuLeaf("IT Declaration", "ESS_IT_DECLARATION", "/ess/it-declaration", findItem("/ess/it-declaration", "/salary/ess-declarations", "/salary/it-declaration")),
+    buildSyntheticMenuLeaf("Flexi Pay Declaration", "ESS_FLEXI_PAY_DECLARATION", "/salary/flexi-pay-declaration", findItem("/salary/flexi-pay-declaration", "/salary/flexi-pay-declarations")),
+    buildSyntheticMenuLeaf("Reimbursements & Claims", "ESS_REIMBURSEMENTS", "/ess/reimbursements", findItem("/ess/reimbursements", "/payroll/reimbursements")),
+    buildSyntheticMenuLeaf("My Loans & Advances", "ESS_LOANS_ADVANCES", "/ess/loans-advances", findItem("/ess/loans-advances", "/payroll/loans-advances")),
+  ]);
+
+  return [
+    objDashboard,
+    objProfileGroup,
+    objAttendanceGroup,
+    objLeaveGroup,
+    objPayrollGroup,
+  ].filter((objItem): objItem is MenuItem => Boolean(objItem));
+}
+
 function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
     collapseDuplicateMenuBranches(
@@ -739,7 +826,7 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[]
       ),
     ),
   );
-  return blnEssOnly ? removeHrOnlyMenusFromEss(lstPreparedItems) : lstPreparedItems;
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : lstPreparedItems;
 }
 
 function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
