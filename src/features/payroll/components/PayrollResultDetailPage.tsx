@@ -1423,6 +1423,18 @@ export default function PayrollResultDetailPage({
                           { strLabel: tAttendance("ATTENDANCE_FIELD_PAID_DAYS", "Paid Days"), strValue: String(objAttendancePreview.decPaidDays) },
                           { strLabel: tAttendance("ATTENDANCE_FIELD_LWP_LOP_DAYS", "LWP / LOP Days"), strValue: String(objAttendancePreview.decLwpLopDays) },
                           {
+                            strLabel: tAttendance("ATTENDANCE_FIELD_DENOMINATOR", "Denominator"),
+                            strValue: objAttendancePreview.decDenominator != null ? String(objAttendancePreview.decDenominator) : "-",
+                          },
+                          {
+                            strLabel: tAttendance("ATTENDANCE_FIELD_DENOMINATOR_SOURCE", "Denominator Source"),
+                            strValue: objAttendancePreview.strDenominatorSource ?? "-",
+                          },
+                          {
+                            strLabel: tAttendance("ATTENDANCE_FIELD_RECONCILIATION_STATUS", "Reconciliation Status"),
+                            strValue: objAttendancePreview.strReconciliationStatus ?? "-",
+                          },
+                          {
                             strLabel: tAttendance("ATTENDANCE_FIELD_OVERRIDE_STATUS", "Override Status"),
                             // The preview/trace responses do not expose a dedicated override
                             // field - blnBlocked/lstBlockingReasons are the only signals

@@ -45,6 +45,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import type {
@@ -270,10 +271,25 @@ function KpiTile({ objIcon, strLabel, strValue, strTone }: { objIcon: ReactNode;
   );
 }
 
-function MetricTile({ objIcon, strLabel, strValue, strTone }: { objIcon: ReactNode; strLabel: string; strValue: string | number; strTone: Tone }) {
+function MetricTile({ objIcon, strLabel, strValue, strTone, onClick, controlId }: { objIcon: ReactNode; strLabel: string; strValue: string | number; strTone: Tone; onClick?: () => void; controlId?: string }) {
   const objTone = getToneStyles(strTone);
   return (
-    <Box sx={{ alignItems: "center", border: "1px solid #e5e7eb", borderRadius: "8px", display: "flex", gap: 1, minHeight: 62, p: 1 }}>
+    <Box
+      onClick={onClick}
+      data-controlid={onClick ? controlId : undefined}
+      sx={{
+        alignItems: "center",
+        border: "1px solid #e5e7eb",
+        borderRadius: "8px",
+        cursor: onClick ? "pointer" : "default",
+        display: "flex",
+        gap: 1,
+        minHeight: 62,
+        p: 1,
+        transition: "border-color 120ms ease",
+        ...(onClick ? { "&:hover": { borderColor: "#94a3b8" } } : {}),
+      }}
+    >
       <Box
         sx={{
           alignItems: "center",
@@ -414,6 +430,8 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [intValidationPage, setIntValidationPage] = useState(1);
   const [intValidationRowsPerPage, setIntValidationRowsPerPage] = useState(5);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
+  const [blnAttendanceCheckLoading, setBlnAttendanceCheckLoading] = useState(false);
+  const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanEdit = canDoAny("edit");
   const blnCanValidate = canDoAny("validate") || canDoAny("submit");
@@ -521,6 +539,49 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       setBlnSaving(false);
       setStrActionLoaderLabel("");
     }
+  }
+
+  async function checkAttendanceOnly() {
+    if (!blnCanValidate || blnAttendanceCheckLoading) {
+      return;
+    }
+    setBlnAttendanceCheckLoading(true);
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicResult = await attendancePayrollService.validateRunAttendance(intRunID);
+      setObjAttendanceValidationResult(dicResult);
+      setBlnAttendanceBlockedFilterActive(false);
+      // The backend persists blocking/warning rows (e.g. PAY_ATT_MISSING_DAY) for this run
+      // as part of the check - reload the run so the Validation Summary table (which reads
+      // from objRun.lstValidationResults when no full Validate has run yet) reflects them
+      // immediately, instead of showing whatever was on screen before this click.
+      await loadRun(false);
+      setStrSuccess(
+        dicResult.intBlockedCount > 0
+          ? tAttendance(
+              "ATTENDANCE_CHECK_RESULT_BLOCKED",
+              `Leave/attendance check complete: ${dicResult.intBlockedCount} of ${dicResult.intTotalEmployees} employee(s) are blocked. Resolve the issues below before running Validate.`,
+            )
+          : tAttendance(
+              "ATTENDANCE_CHECK_RESULT_READY",
+              `Leave/attendance check complete: all ${dicResult.intTotalEmployees} employee(s) are ready for payroll.`,
+            ),
+      );
+      document.getElementById("payroll-run-attendance-validation")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to check leave/attendance readiness.");
+    } finally {
+      setBlnAttendanceCheckLoading(false);
+    }
+  }
+
+  function viewBlockedAttendanceEmployees() {
+    if (!objAttendanceValidationResult || objAttendanceValidationResult.intBlockedCount <= 0) {
+      return;
+    }
+    setBlnAttendanceBlockedFilterActive(true);
+    document.getElementById("payroll-run-validation-summary")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function processRun() {
@@ -724,7 +785,13 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     );
   }
 
-  const lstValidationRows = objValidationSummary?.lstIssues ?? objRun.lstValidationResults;
+  const lstAllValidationRows = objValidationSummary?.lstIssues ?? objRun.lstValidationResults;
+  const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_BLOCKING_EXCEPTION"]);
+  const lstValidationRows = blnAttendanceBlockedFilterActive
+    ? lstAllValidationRows.filter(
+        (dicIssue) => dicIssue.blnIsBlocking && setAttendanceBlockingCodes.has(dicIssue.strValidationCode),
+      )
+    : lstAllValidationRows;
   const intBlockingCount = lstValidationRows.filter((dicIssue) => dicIssue.blnIsBlocking).length;
   const intWarningCount = lstValidationRows.filter((dicIssue) => !dicIssue.blnIsBlocking).length;
   const intValidationPageCount = Math.max(1, Math.ceil(lstValidationRows.length / intValidationRowsPerPage));
@@ -901,22 +968,47 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lop", "Total LOP Days")} strValue={objRun.dicSummary.decTotalLopDays} strTone="green" />
           </Box>
 
+          <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 0.75, justifyContent: "space-between", mb: 1, mt: 1.5 }}>
+            <Typography id="payroll-run-attendance-validation" sx={{ alignItems: "center", display: "flex", scrollMarginTop: 88, fontSize: "0.86rem", fontWeight: 900, gap: 0.6 }}>
+              <ShieldOutlinedIcon sx={{ color: "#2563eb", fontSize: 17 }} />
+              {tAttendance("ATTENDANCE_STAGE_VALIDATION", "Attendance Validation")}
+            </Typography>
+            {blnCanValidate ? (
+              <Button
+                className={styles.secondaryButton}
+                disabled={blnAttendanceCheckLoading || blnSaving}
+                onClick={checkAttendanceOnly}
+                startIcon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />}
+                sx={{ height: 30, minHeight: 30 }}
+                controlId="payroll.run-detail.check-attendance.button"
+              >
+                {blnAttendanceCheckLoading
+                  ? tAttendance("ATTENDANCE_CHECK_IN_PROGRESS", "Checking...")
+                  : tAttendance("ATTENDANCE_CHECK_BUTTON", "Check Leave & Attendance")}
+              </Button>
+            ) : null}
+          </Box>
           {objAttendanceValidationResult ? (
-            <>
-              <Typography id="payroll-run-attendance-validation" sx={{ alignItems: "center", display: "flex", scrollMarginTop: 88, fontSize: "0.86rem", fontWeight: 900, gap: 0.6, mb: 1, mt: 1.5 }}>
-                <ShieldOutlinedIcon sx={{ color: "#2563eb", fontSize: 17 }} />
-                {tAttendance("ATTENDANCE_STAGE_VALIDATION", "Attendance Validation")}
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_TOTAL_EMPLOYEES", "Total Employees")} strValue={objAttendanceValidationResult.intTotalEmployees} strTone="blue" />
-                <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_READY", "Ready")} strValue={objAttendanceValidationResult.intReadyCount} strTone="green" />
-                <MetricTile objIcon={<ErrorOutlineRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_BLOCKED", "Blocked")} strValue={objAttendanceValidationResult.intBlockedCount} strTone="red" />
-                <MetricTile objIcon={<ReportProblemRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_WARNINGS", "Warnings")} strValue={objAttendanceValidationResult.intWarningCount} strTone="amber" />
-                <MetricTile objIcon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_SUMMARY_GENERATED", "Attendance Summary Generated")} strValue={objAttendanceValidationResult.intAppliedCount} strTone="blue" />
-                <MetricTile objIcon={<LockRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_INPUT_LOCKED", "Payroll Input Locked")} strValue={objAttendanceValidationResult.intInputLockedCount} strTone="slate" />
-              </Box>
-            </>
-          ) : null}
+            <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+              <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_TOTAL_EMPLOYEES", "Total Employees")} strValue={objAttendanceValidationResult.intTotalEmployees} strTone="blue" />
+              <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_READY", "Ready")} strValue={objAttendanceValidationResult.intReadyCount} strTone="green" />
+              <MetricTile
+                objIcon={<ErrorOutlineRoundedIcon sx={{ fontSize: 18 }} />}
+                strLabel={tAttendance("ATTENDANCE_COUNTER_BLOCKED", "Blocked")}
+                strValue={objAttendanceValidationResult.intBlockedCount}
+                strTone="red"
+                onClick={objAttendanceValidationResult.intBlockedCount > 0 ? viewBlockedAttendanceEmployees : undefined}
+                controlId="payroll.run-detail.blocked-tile.button"
+              />
+              <MetricTile objIcon={<ReportProblemRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_WARNINGS", "Warnings")} strValue={objAttendanceValidationResult.intWarningCount} strTone="amber" />
+              <MetricTile objIcon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_SUMMARY_GENERATED", "Attendance Summary Generated")} strValue={objAttendanceValidationResult.intAppliedCount} strTone="blue" />
+              <MetricTile objIcon={<LockRoundedIcon sx={{ fontSize: 18 }} />} strLabel={tAttendance("ATTENDANCE_COUNTER_INPUT_LOCKED", "Payroll Input Locked")} strValue={objAttendanceValidationResult.intInputLockedCount} strTone="slate" />
+            </Box>
+          ) : (
+            <Typography sx={{ color: "#94a3b8", fontSize: "0.8rem", fontWeight: 600 }}>
+              {tAttendance("ATTENDANCE_CHECK_EMPTY_STATE", "Run \"Check Leave & Attendance\" or Validate to see attendance readiness for this run.")}
+            </Typography>
+          )}
         </Box>
 
         <Box id="payroll-run-validation-summary" sx={{ ...objCardSx, display: "flex", flexDirection: "column", scrollMarginTop: 88, minHeight: 0, minWidth: 0, p: 1.25 }}>
@@ -926,6 +1018,15 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               {t("validation_summary", "Validation Summary")}
             </Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, justifyContent: "flex-end" }}>
+              {blnAttendanceBlockedFilterActive ? (
+                <Chip
+                  label={tAttendance("ATTENDANCE_BLOCKED_FILTER_CLEAR", "Showing blocked employees only ✕")}
+                  size="small"
+                  onClick={() => setBlnAttendanceBlockedFilterActive(false)}
+                  sx={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", cursor: "pointer", fontWeight: 800 }}
+                  controlId="payroll.run-detail.clear-blocked-filter.chip"
+                />
+              ) : null}
               <Chip label={`${intBlockingCount} ${t("blocking", "Blocking")}`} size="small" sx={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontWeight: 800 }} />
               <Chip label={`${intWarningCount} ${t("warning", "Warning")}`} size="small" sx={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#ea580c", fontWeight: 800 }} />
             </Box>

@@ -525,12 +525,6 @@ export type AttendanceDayBreakdownEntry = {
   strSource: string | null;
 };
 
-// Note: the backend preview endpoint (GET
-// /payroll/runs/{intRunID}/employees/{intEmployeeID}/attendance/preview) does not return
-// denominator, denominator source, reconciliation status, or override status fields -
-// only the fields below (confirmed by reading
-// clsAttendancePayrollIntegrationService.computeEmployeeAttendanceSummary). Do not
-// fabricate those fields on the frontend.
 export type EmployeeAttendancePreview = {
   decCalendarDays: number;
   decWorkingDays: number;
@@ -538,6 +532,9 @@ export type EmployeeAttendancePreview = {
   decPaidDays: number;
   decLwpLopDays: number;
   decPayableDays: number;
+  decDenominator?: number;
+  strDenominatorSource?: string | null;
+  strReconciliationStatus?: string | null;
   dtEffectiveStart: string;
   dtEffectiveEnd: string;
   blnHasZeroServiceDays: boolean;
@@ -553,6 +550,9 @@ export type AttendanceTraceJson = {
   blnBlocked: boolean;
   lstBlockingReasons: AttendanceReasonEntry[];
   lstWarnings: AttendanceReasonEntry[];
+  decDenominator?: string | null;
+  strDenominatorSource?: string | null;
+  strReconciliationStatus?: string | null;
   dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
 } | null;
 
