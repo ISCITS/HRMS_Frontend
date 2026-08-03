@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useReportFilterOptions } from "../hooks/useReportFilterOptions";
 
 import { leaveAttendanceReportService, type MonthlyAttendanceRow } from "../services/leaveAttendanceReportService";
 import ReportGridPage, { type ReportDisplayRow, type ReportFilterField } from "./ReportGridPage";
@@ -15,6 +16,7 @@ function currentMonth(): string {
 
 export default function MonthlyAttendanceReportPage() {
   const { t } = useModuleLabels("reports");
+  const { lstEmployees, lstDepartments, lstLocations } = useReportFilterOptions();
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
     { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
@@ -36,9 +38,9 @@ export default function MonthlyAttendanceReportPage() {
 
   const lstFilters: ReportFilterField[] = [
     { strKey: "month", strLabel: t("month", "Month"), strType: "month" },
-    { strKey: "employee_id", strLabel: t("employee_id", "Employee ID"), strType: "text" },
-    { strKey: "department_id", strLabel: t("department_id", "Department ID"), strType: "text" },
-    { strKey: "location_id", strLabel: t("location_id", "Location ID"), strType: "text" },
+    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees },
+    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments },
+    { strKey: "location_id", strLabel: t("location", "Location"), strType: "select", lstOptions: lstLocations },
   ];
 
   function mapRow(dicRow: MonthlyAttendanceRow): ReportDisplayRow {

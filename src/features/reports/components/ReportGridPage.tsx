@@ -15,6 +15,7 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 export type ReportDisplayRow = Record<string, ReactNode>;
 
 export type ReportSelectOption = { strValue: string; strLabel: string };
+export type ReportFilterOption = ReportSelectOption;
 
 export type ReportFilterField = {
   strKey: string;
@@ -299,7 +300,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                   InputLabelProps={{ shrink: true }}
                   data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.select`}
                 >
-                  <MenuItem value="">{objFilter.strLabel}</MenuItem>
+                  <MenuItem value="">All {objFilter.strLabel}</MenuItem>
                   {(objFilter.lstOptions ?? []).map((objOption) => (
                     <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
                   ))}

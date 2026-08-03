@@ -4,12 +4,14 @@ import { useMemo } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useReportFilterOptions } from "../hooks/useReportFilterOptions";
 
 import { leaveAttendanceReportService, type LeaveRegisterRow } from "../services/leaveAttendanceReportService";
 import ReportGridPage, { type ReportDisplayRow, type ReportFilterField } from "./ReportGridPage";
 
 export default function LeaveRegisterReportPage() {
   const { t } = useModuleLabels("reports");
+  const { lstEmployees, lstDepartments, lstLeaveTypes } = useReportFilterOptions();
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
     { field: "strReference", headerName: t("reference", "Reference"), width: 130 },
@@ -40,9 +42,9 @@ export default function LeaveRegisterReportPage() {
         { strValue: "draft", strLabel: t("status_draft", "Draft") },
       ],
     },
-    { strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type ID"), strType: "text" },
-    { strKey: "employee_id", strLabel: t("employee_id", "Employee ID"), strType: "text" },
-    { strKey: "department_id", strLabel: t("department_id", "Department ID"), strType: "text" },
+    { strKey: "leave_type_id", strLabel: t("leave_type", "Leave Type"), strType: "select", lstOptions: lstLeaveTypes },
+    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees },
+    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments },
   ];
 
   function mapRow(dicRow: LeaveRegisterRow): ReportDisplayRow {
