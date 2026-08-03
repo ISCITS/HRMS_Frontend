@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
+import { employeeService } from "@/features/employee/services/employeeService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { leavePlanService } from "@/features/leave-plan/services/leavePlanService";
 
 import { leaveAttendanceReportService, type LeaveBalanceRow } from "../services/leaveAttendanceReportService";
-import ReportGridPage, { type ReportDisplayRow, type ReportFilterField } from "./ReportGridPage";
+import ReportGridPage, { type ReportDisplayRow, type ReportFilterField, type ReportSelectOption } from "./ReportGridPage";
 
 function num(objValue: number | null | undefined) {
   return objValue === null || objValue === undefined ? "" : Number(objValue).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -34,17 +36,43 @@ export default function LeaveBalanceReportPage() {
     { field: "dtLastTransactionOn", headerName: t("last_transaction", "Last Txn"), width: 120 },
   ], [t]);
 
-  const lstFilters: ReportFilterField[] = [
-    { strKey: "leave_year", strLabel: t("leave_year", "Leave Year"), strType: "text" },
-    { strKey: "employee_id", strLabel: t("employee_id", "Employee ID"), strType: "text" },
-    { strKey: "department_id", strLabel: t("department_id", "Department ID"), strType: "text" },
-    { strKey: "location_id", strLabel: t("location_id", "Location ID"), strType: "text" },
-    { strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type ID"), strType: "text" },
-  ];
+  // Lookup loaders (memoized): submit IDs, display friendly labels. No hardcoded values.
+  const lstFilters = useMemo<ReportFilterField[]>(() => {
+    const intThisYear = new Date().getFullYear();
+    const lstYearOptions: ReportSelectOption[] = Array.from({ length: 7 }, (_v, intIdx) => intThisYear + 1 - intIdx)
+      .map((intYear) => ({ strValue: String(intYear), strLabel: String(intYear) }));
+    return [
+      { strKey: "leave_year", strLabel: t("leave_year", "Leave Year"), strType: "multiselect", lstOptions: lstYearOptions },
+      {
+        strKey: "employee_id", strLabel: t("employee_id", "Employee"), strType: "multiselect",
+        fnLoadOptions: async () => (await employeeService.getEmployees()).map((objEmp) => ({
+          strValue: String(objEmp.intID), strLabel: `${objEmp.strEmployeeCode} - ${objEmp.strFullName}`,
+        })),
+      },
+      {
+        strKey: "department_id", strLabel: t("department_id", "Department"), strType: "multiselect",
+        fnLoadOptions: async () => (await employeeService.getFormOptions()).lstDepartments.map((objDept) => ({
+          strValue: String(objDept.intID), strLabel: objDept.strLabel,
+        })),
+      },
+      {
+        strKey: "location_id", strLabel: t("location_id", "Location"), strType: "multiselect",
+        fnLoadOptions: async () => (await employeeService.getFormOptions()).lstLocations.map((objLoc) => ({
+          strValue: String(objLoc.intID), strLabel: objLoc.strLabel,
+        })),
+      },
+      {
+        strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type"), strType: "multiselect",
+        fnLoadOptions: async () => (await leavePlanService.getActiveLeaveTypes()).map((objType) => ({
+          strValue: String(objType.intID), strLabel: `${objType.strTypeCode} - ${objType.strTypeName}`,
+        })),
+      },
+    ];
+  }, [t]);
 
   function mapRow(dicRow: LeaveBalanceRow): ReportDisplayRow {
     return {
-      __rowid: `${dicRow.intEmployeeID}-${dicRow.strLeaveType}-${dicRow.intLeaveYear}`,
+      __rowid: `${dicRow.intEmployeeID}-${dicRow.intLeaveTypeID}-${dicRow.intLeaveYear}`,
       strEmployeeCode: dicRow.strEmployeeCode,
       strEmployeeName: dicRow.strEmployeeName,
       strDepartment: dicRow.strDepartment ?? "-",
@@ -72,8 +100,9 @@ export default function LeaveBalanceReportPage() {
       strInfo={t("leave_balance_info", "Current leave balances by type — opening, entitlement, accrued, carry forward, adjustments, utilised, hold, lapsed, encashed and available.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
+      blnSelectable
       strRowIdField="__rowid"
-      strCsvFileName="leave-balance"
+      strCsvFileName="Leave_Balance_Report"
       lstRightsHints={["REPORTS_LEAVE_BALANCE", "REPORTS"]}
       strEmptyMessage={t("leave_balance_empty", "No leave balances found for the current filters.")}
       fnLoad={async (dicFilters) => {

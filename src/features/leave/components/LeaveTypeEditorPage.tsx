@@ -3,6 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
@@ -10,6 +11,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   FormControlLabel,
   IconButton,
@@ -27,6 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { leaveService } from "@/features/leave/services/leaveService";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 import type {
   LeaveApplicabilityRow,
   LeaveApprovalStepRow,
@@ -107,7 +110,10 @@ function emptyPolicy(): LeavePolicyAggregate {
     dtEffectiveFrom: new Date().toISOString().slice(0, 10),
     dtEffectiveTo: null,
     blnIsActive: true,
-    intLeaveYearStartMonth: 1,
+    // India POC controlled fallback: leave year starts 1 April. No central company/tenant leave-year
+    // config exists to inherit from yet; existing saved records keep their own month/day (preserved
+    // on edit because the fields are not rendered but remain in the form payload).
+    intLeaveYearStartMonth: 4,
     intLeaveYearStartDay: 1,
     decEntitlementQty: 0,
     strAccrualFrequency: "none",
@@ -208,12 +214,20 @@ function emptyAggregate(): LeaveTypeAggregate {
 
 export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMode: "new" | "edit" | "view"; intLeaveTypeID?: number }) {
   const objRouter = useRouter();
-  const blnReadOnly = strMode === "view";
+  const { canDo } = useActionRights();
+  // Read-only in explicit view mode OR when the user lacks the granular right for this mode, so a
+  // direct URL to /edit or /new cannot bypass the Leave Types menu rights (the backend also enforces).
+  const blnReadOnly =
+    strMode === "view" ||
+    (strMode === "edit" && !canDo("leave_types", "EDIT")) ||
+    (strMode === "new" && !canDo("leave_types", "ADD"));
   const [objForm, setObjForm] = useState<LeaveTypeAggregate>(emptyAggregate());
   const [objLookups, setObjLookups] = useState<LeaveLookups>({});
   const [lstOtherTypes, setLstOtherTypes] = useState<LeaveTypeEnrichedDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
+  // Advanced Configuration (Applicability / Advanced Rules / Combination) is collapsed by default for the POC.
+  const [blnAdvancedOpen, setBlnAdvancedOpen] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const objPolicy = objForm.objPolicy ?? emptyPolicy();
@@ -411,7 +425,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       <fieldset disabled={blnReadOnly} style={{ border: 0, margin: "20px 0 0 0", padding: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* A. Basic Information */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>A. Basic Information</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Basic Information</Typography>
         <Box>
           <Box sx={objGridSx}>
             <SectionText label="Code" value={objForm.strTypeCode} onChange={(v) => setMaster("strTypeCode", v.toUpperCase())} />
@@ -423,7 +437,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <SectionSelect label="Approval Route" value={objForm.strApprovalRouteCode} onChange={(v) => setMaster("strApprovalRouteCode", v)} options={optionsFor("LEAVE_APPROVAL_ROUTE", ["LINE_MANAGER", "REPORTING_MANAGER", "HR", "CONFIGURED_WORKFLOW"])} />
             <SectionNum label="Display Order" value={objForm.intDisplayOrder} onChange={(v) => setMaster("intDisplayOrder", v ?? 0)} />
             <SectionText label="Effective From" type="date" value={objForm.dtEffectiveFrom} onChange={(v) => setMaster("dtEffectiveFrom", v)} />
-            <SectionText label="Effective To" type="date" value={objForm.dtEffectiveTo} onChange={(v) => setMaster("dtEffectiveTo", v || null)} />
+            {/* POC: Effective To hidden — value preserved in the form payload. */}
             <Box sx={{ gridColumn: "span 2" }}>
               <SectionText label="Description" value={objForm.strDescription} onChange={(v) => setMaster("strDescription", v)} />
             </Box>
@@ -432,7 +446,6 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
                 <SectionSwitch label="Paid" value={objForm.blnIsPaid} onChange={(v) => { setMaster("blnIsPaid", v); if (!v) setMaster("strPayrollTreatmentCode", "UNPAID"); }} />
                 <SectionSwitch label="Balance tracked" value={objForm.blnBalanceTrackingRequired} onChange={(v) => setMaster("blnBalanceTrackingRequired", v)} />
                 <SectionSwitch label="Statutory" value={objForm.blnIsStatutory} onChange={(v) => setMaster("blnIsStatutory", v)} />
-                <SectionSwitch label="Special leave" value={objForm.blnIsSpecialLeave} onChange={(v) => setMaster("blnIsSpecialLeave", v)} />
                 <SectionSwitch label="Encashable" value={objForm.blnIsEncashable} onChange={(v) => setMaster("blnIsEncashable", v)} />
                 <SectionSwitch label="Active" value={objForm.blnIsActive} onChange={(v) => setMaster("blnIsActive", v)} />
               </Stack>
@@ -443,11 +456,10 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
       {/* B. Application Channels & Behaviour */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>B. Application Channels &amp; Behaviour</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Application Channels &amp; Behaviour</Typography>
         <Box>
           <Stack direction="row" flexWrap="wrap" gap={0.5}>
             <SectionSwitch label="ESS apply" value={objForm.blnAllowEmployeeApply} onChange={(v) => setMaster("blnAllowEmployeeApply", v)} />
-            <SectionSwitch label="Mobile apply" value={objForm.blnAllowMobileApply} onChange={(v) => setMaster("blnAllowMobileApply", v)} />
             <SectionSwitch label="HR on behalf" value={objForm.blnAllowHrApplyOnBehalf} onChange={(v) => setMaster("blnAllowHrApplyOnBehalf", v)} />
             <SectionSwitch label="Allow half-day" value={objForm.blnAllowHalfDay} onChange={(v) => setMaster("blnAllowHalfDay", v)} />
             <SectionSwitch label="Reason required" value={objForm.blnRequiresReason} onChange={(v) => setMaster("blnRequiresReason", v)} />
@@ -460,25 +472,21 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       {/* C. Entitlement & Accrual */}
       {blnShowAccrual ? (
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>C. Entitlement &amp; Accrual</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Entitlement &amp; Accrual</Typography>
           <Box>
             <Box sx={objGridSx}>
-              <SectionNum label="Year start month" value={objPolicy.intLeaveYearStartMonth} onChange={(v) => setPolicy("intLeaveYearStartMonth", v ?? 1)} />
-              <SectionNum label="Year start day" value={objPolicy.intLeaveYearStartDay} onChange={(v) => setPolicy("intLeaveYearStartDay", v ?? 1)} />
+              {/* POC: Year start month/day hidden — leave year is a company-level setting; values preserved. */}
               <SectionNum label="Annual entitlement" value={objPolicy.decEntitlementQty} onChange={(v) => setPolicy("decEntitlementQty", v ?? 0)} />
               <SectionSelect label="Accrual frequency" value={objPolicy.strAccrualFrequency} onChange={(v) => setPolicy("strAccrualFrequency", v)} options={[{ code: "none", label: "None" }, { code: "monthly", label: "Monthly" }, { code: "yearly", label: "Yearly" }]} />
               <SectionNum label="Qty / cycle" value={objPolicy.decAccrualQty} onChange={(v) => setPolicy("decAccrualQty", v ?? 0)} />
               <SectionSelect label="Accrual timing" value={objPolicy.strAccrualTimingCode} onChange={(v) => setPolicy("strAccrualTimingCode", v)} options={optionsFor("LEAVE_ACCRUAL_TIMING", ["PERIOD_START", "PERIOD_END", "JOINING_DATE", "CONFIRMATION_DATE"])} />
               <SectionSelect label="Rounding" value={objPolicy.strAccrualRoundingCode} onChange={(v) => setPolicy("strAccrualRoundingCode", v)} options={lstRoundingCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
-              <SectionNum label="Waiting days" value={objPolicy.intAccrualWaitingDays} onChange={(v) => setPolicy("intAccrualWaitingDays", v ?? 0)} />
-              <SectionNum label="Min service days" value={objPolicy.intMinServiceDays} onChange={(v) => setPolicy("intMinServiceDays", v ?? 0)} />
+              {/* POC: Waiting Gap (waiting days) and Minimum Service Days hidden — values preserved. */}
               <SectionSelect label="Join proration" value={objPolicy.strJoinProrationBasisCode} onChange={(v) => setPolicy("strJoinProrationBasisCode", v)} options={lstProrationBasis.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
               <Box sx={objFullCellSx}>
                 <Stack direction="row" flexWrap="wrap" gap={0.5}>
                   <SectionSwitch label="Credit on joining" value={objPolicy.blnCreditOnJoining} onChange={(v) => setPolicy("blnCreditOnJoining", v)} />
                   <SectionSwitch label="Credit on confirmation" value={objPolicy.blnCreditOnConfirmation} onChange={(v) => setPolicy("blnCreditOnConfirmation", v)} />
-                  <SectionSwitch label="Accrue after confirmation" value={objPolicy.blnAccrualAfterConfirmation} onChange={(v) => setPolicy("blnAccrualAfterConfirmation", v)} />
-                  <SectionSwitch label="Exit proration" value={objPolicy.blnExitProrationEnabled} onChange={(v) => setPolicy("blnExitProrationEnabled", v)} />
                 </Stack>
               </Box>
             </Box>
@@ -488,26 +496,24 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
       {/* D. Application Limits */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>D. Application Limits</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Application Limits</Typography>
         <Box>
           <Box sx={objGridSx}>
             <SectionNum label="Min per request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} />
             <SectionNum label="Max per request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} />
             <SectionNum label="Max consecutive" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} />
-            <SectionNum label="Max / month" value={objPolicy.intMaxApplicationsPerMonth} onChange={(v) => setPolicy("intMaxApplicationsPerMonth", v)} />
+            {/* POC: Maximum per Month hidden — value preserved. */}
             <SectionNum label="Max / year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} />
             <SectionNum label="Min notice days" value={objPolicy.intMinNoticeDays} onChange={(v) => setPolicy("intMinNoticeDays", v ?? 0)} />
             <SectionNum label="Max backdate days" value={objPolicy.intMaxBackdateDays} onChange={(v) => setPolicy("intMaxBackdateDays", v ?? 0)} />
             <SectionNum label="Max advance days" value={objPolicy.intMaxAdvanceDays} onChange={(v) => setPolicy("intMaxAdvanceDays", v)} />
-            <SectionNum label="Min balance after request" value={objPolicy.decMinBalanceAfterRequest} onChange={(v) => setPolicy("decMinBalanceAfterRequest", v)} />
-            {objPolicy.blnHourlyLeaveAllowed ? <SectionNum label="Minimum hours" value={objPolicy.decMinimumHourQty} onChange={(v) => setPolicy("decMinimumHourQty", v)} /> : null}
+            {/* POC: Minimum Balance after Request and Hourly Leave (+ Minimum hours) hidden — values preserved. */}
             <Box sx={objFullCellSx}>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 <SectionSwitch label="Backdated allowed" value={objPolicy.blnBackdatedApplicationAllowed} onChange={(v) => setPolicy("blnBackdatedApplicationAllowed", v)} />
                 <SectionSwitch label="Future allowed" value={objPolicy.blnFutureApplicationAllowed} onChange={(v) => setPolicy("blnFutureApplicationAllowed", v)} />
                 <SectionSwitch label="During probation" value={objPolicy.blnAllowDuringProbation} onChange={(v) => setPolicy("blnAllowDuringProbation", v)} />
                 <SectionSwitch label="During notice period" value={objPolicy.blnAllowDuringNoticePeriod} onChange={(v) => setPolicy("blnAllowDuringNoticePeriod", v)} />
-                <SectionSwitch label="Hourly leave" value={objPolicy.blnHourlyLeaveAllowed} onChange={(v) => setPolicy("blnHourlyLeaveAllowed", v)} />
               </Stack>
             </Box>
           </Box>
@@ -516,7 +522,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
       {/* E. Weekly-off / Holiday / Sandwich */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>E. Weekly-off, Holiday &amp; Sandwich</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Weekly Off, Holiday &amp; Sandwich</Typography>
         <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Weekly-off treatment" value={objPolicy.strWeeklyOffTreatmentCode} onChange={(v) => setPolicy("strWeeklyOffTreatmentCode", v)} options={lstTreatmentCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
@@ -526,7 +532,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               <>
                 <SectionSelect label="Sandwich scope" value={objPolicy.strSandwichScopeCode} onChange={(v) => setPolicy("strSandwichScopeCode", v)} options={optionsFor("LEAVE_SANDWICH_SCOPE", ["WEEKLY_OFF", "HOLIDAY", "WEEKLY_OFF_AND_HOLIDAY"])} />
                 <SectionSelect label="Sandwich boundary" value={objPolicy.strSandwichBoundaryCode} onChange={(v) => setPolicy("strSandwichBoundaryCode", v)} options={optionsFor("LEAVE_SANDWICH_BOUNDARY", ["PRECEDING", "FOLLOWING", "BOTH_SIDES"])} />
-                <Box><SectionSwitch label="Apply across different types" value={objPolicy.blnSandwichApplyOnDifferentLeaveTypes} onChange={(v) => setPolicy("blnSandwichApplyOnDifferentLeaveTypes", v)} /></Box>
+                {/* POC: Apply Across Different Types hidden — value preserved. */}
                 <Box sx={objFullCellSx}><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>Example: Fri + Mon leave with Sat/Sun off &mdash; a &quot;both sides&quot; sandwich counts the weekend as leave.</Typography></Box>
               </>
             ) : null}
@@ -537,7 +543,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       {/* F. Carry Forward */}
       {blnShowAccrual ? (
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>F. Carry Forward &amp; Year-end</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Carry Forward &amp; Year-End</Typography>
           <Box>
             <Box sx={objGridSx}>
               <Box><SectionSwitch label="Carry forward allowed" value={objPolicy.blnCarryForwardAllowed} onChange={(v) => setPolicy("blnCarryForwardAllowed", v)} /></Box>
@@ -546,7 +552,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
                   <SectionSelect label="Limit type" value={objPolicy.strCarryForwardLimitTypeCode} onChange={(v) => setPolicy("strCarryForwardLimitTypeCode", v)} options={optionsFor("LEAVE_CARRY_FORWARD_LIMIT", ["FIXED_DAYS", "PERCENTAGE", "UNLIMITED"])} />
                   {objPolicy.strCarryForwardLimitTypeCode === "FIXED_DAYS" ? <SectionNum label="Max carry-fwd days" value={objPolicy.decMaxCarryForward} onChange={(v) => setPolicy("decMaxCarryForward", v)} /> : null}
                   {objPolicy.strCarryForwardLimitTypeCode === "PERCENTAGE" ? <SectionNum label="Percent (0-100)" value={objPolicy.decCarryForwardPercent} onChange={(v) => setPolicy("decCarryForwardPercent", v)} /> : null}
-                  <SectionNum label="Expiry months" value={objPolicy.intCarryForwardExpiryMonths} onChange={(v) => setPolicy("intCarryForwardExpiryMonths", v)} />
+                  {/* POC: Carry Forward Expiry (months) hidden — value preserved. */}
                 </>
               ) : null}
               <SectionNum label="Max balance cap" value={objPolicy.decMaxBalance} onChange={(v) => setPolicy("decMaxBalance", v)} />
@@ -559,7 +565,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       {/* G. Encashment */}
       {blnShowEncashment ? (
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>G. Encashment</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Encashment</Typography>
           <Box>
             <Box sx={objGridSx}>
               <Box><SectionSwitch label="Encashment allowed" value={objPolicy.blnEncashmentAllowed} onChange={(v) => setPolicy("blnEncashmentAllowed", v)} /></Box>
@@ -577,7 +583,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
       {/* H. Proof & Documents */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>H. Proof &amp; Documents</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Proof &amp; Documents</Typography>
         <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Proof rule" value={objPolicy.strProofRuleCode} onChange={(v) => setPolicy("strProofRuleCode", v)} options={optionsFor("LEAVE_PROOF_RULE", ["NOT_REQUIRED", "ALWAYS_REQUIRED", "REQUIRED_AFTER_N_DAYS"])} />
@@ -593,7 +599,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
       {/* I. Approval workflow behaviour + steps */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>I. Approval Workflow</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Approval Workflow</Typography>
         <Box>
           <Box sx={objGridSx}>
             <SectionSelect label="Backup resource rule" value={objPolicy.strBackupResourceRuleCode} onChange={(v) => setPolicy("strBackupResourceRuleCode", v)} options={optionsFor("LEAVE_BACKUP_RESOURCE_RULE", ["NOT_REQUIRED", "OPTIONAL", "MANDATORY"])} />
@@ -601,13 +607,13 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             {objPolicy.strAutoActionCode !== "NONE" ? (
               <>
                 <SectionNum label="After days" value={objPolicy.intAutoActionAfterDays} onChange={(v) => setPolicy("intAutoActionAfterDays", v)} />
-                <SectionText label="Escalation role" value={objPolicy.strEscalationRoleCode} onChange={(v) => setPolicy("strEscalationRoleCode", v || null)} />
+                {/* POC: Escalation Role hidden — value preserved. */}
               </>
             ) : null}
             <Box sx={objFullCellSx}>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 <SectionSwitch label="Cancel before start" value={objPolicy.blnCancellationBeforeStartAllowed} onChange={(v) => setPolicy("blnCancellationBeforeStartAllowed", v)} />
-                <SectionSwitch label="Cancel after start" value={objPolicy.blnCancellationAfterStartAllowed} onChange={(v) => setPolicy("blnCancellationAfterStartAllowed", v)} />
+                {/* POC: Cancel After Start hidden — value preserved. */}
                 <SectionSwitch label="Manager cancel approved" value={objPolicy.blnManagerCancelApprovedAllowed} onChange={(v) => setPolicy("blnManagerCancelApprovedAllowed", v)} />
               </Stack>
             </Box>
@@ -633,9 +639,40 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         </Box>
       </Paper>
 
-      {/* J. Applicability */}
+      {/* Translations — placed before Advanced Configuration per POC section order. */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>J. Applicability &amp; Eligibility</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Translations</Typography>
+        <Box>
+          <Stack spacing={1}>
+            {objForm.lstText.map((objRow, intIndex) => (
+              <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <TextField label="Language" select size="small" value={objRow.intLanguageID} onChange={(e) => updateText(intIndex, { intLanguageID: Number(e.target.value) })} sx={{ width: 130 }} {...objInputProps}>
+                  <MenuItem value={1}>English</MenuItem>
+                  <MenuItem value={2}>Hindi</MenuItem>
+                </TextField>
+                <TextField label={`Name (${dicLangName[objRow.intLanguageID] ?? objRow.intLanguageID})`} size="small" value={objRow.strTypeName} onChange={(e) => updateText(intIndex, { strTypeName: e.target.value })} sx={{ width: 220 }} {...objInputProps} />
+                <TextField label="Description" size="small" value={objRow.strDescription ?? ""} onChange={(e) => updateText(intIndex, { strDescription: e.target.value })} sx={{ width: 260 }} {...objInputProps} />
+                {!blnReadOnly && objForm.lstText.length > 1 ? <IconButton size="small" color="error" onClick={() => removeText(intIndex)}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
+              </Stack>
+            ))}
+            <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>English (default) name is mandatory. Duplicate languages are not allowed.</Typography>
+            {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addText} disabled={objForm.lstText.length >= 2}>Add language</Button></Box> : null}
+          </Stack>
+        </Box>
+      </Paper>
+
+      {/* Advanced Configuration — collapsed by default (POC): groups Applicability, Advanced Rules, Combination. */}
+      <Paper sx={objSectionSx}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: blnReadOnly ? "default" : "pointer" }} role="button" aria-expanded={blnAdvancedOpen} onClick={() => setBlnAdvancedOpen((blnPrev) => !blnPrev)}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Advanced Configuration</Typography>
+          <ExpandMoreRoundedIcon sx={{ transform: blnAdvancedOpen ? "rotate(180deg)" : "none", transition: "transform .2s", color: "#64748b" }} />
+        </Stack>
+        <Collapse in={blnAdvancedOpen} unmountOnExit>
+          <Stack spacing={2.5} sx={{ mt: 2 }}>
+
+      {/* Applicability */}
+      <Paper variant="outlined" sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Applicability &amp; Eligibility</Typography>
         <Box>
           <Stack spacing={1}>
             {objForm.lstApplicability.map((objRow, intIndex) => (
@@ -656,9 +693,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         </Box>
       </Paper>
 
-      {/* J2. Advanced conditional rules (rule builder) */}
-      <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>J2. Advanced Rules (conditional eligibility)</Typography>
+      {/* Advanced conditional rules (rule builder) */}
+      <Paper variant="outlined" sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Advanced Rules (conditional eligibility)</Typography>
         <Box>
           <Stack spacing={1}>
             {objForm.lstRules.map((objRow, intIndex) => {
@@ -684,9 +721,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         </Box>
       </Paper>
 
-      {/* K. Combination rules */}
-      <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>K. Combination Rules</Typography>
+      {/* Combination rules */}
+      <Paper variant="outlined" sx={objSectionSx}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Combination Rules</Typography>
         <Box>
           <Stack spacing={1}>
             {objForm.lstCombinationRules.map((objRow, intIndex) => (
@@ -706,33 +743,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
           </Stack>
         </Box>
       </Paper>
-
-      {/* L. Translations */}
-      <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>L. Translations</Typography>
-        <Box>
-          <Stack spacing={1}>
-            {objForm.lstText.map((objRow, intIndex) => (
-              <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField label="Language" select size="small" value={objRow.intLanguageID} onChange={(e) => updateText(intIndex, { intLanguageID: Number(e.target.value) })} sx={{ width: 130 }} {...objInputProps}>
-                  <MenuItem value={1}>English</MenuItem>
-                  <MenuItem value={2}>Hindi</MenuItem>
-                </TextField>
-                <TextField label={`Name (${dicLangName[objRow.intLanguageID] ?? objRow.intLanguageID})`} size="small" value={objRow.strTypeName} onChange={(e) => updateText(intIndex, { strTypeName: e.target.value })} sx={{ width: 220 }} {...objInputProps} />
-                <TextField label="Description" size="small" value={objRow.strDescription ?? ""} onChange={(e) => updateText(intIndex, { strDescription: e.target.value })} sx={{ width: 260 }} {...objInputProps} />
-                {!blnReadOnly && objForm.lstText.length > 1 ? <IconButton size="small" color="error" onClick={() => removeText(intIndex)}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
-              </Stack>
-            ))}
-            <Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>English (default) name is mandatory. Duplicate languages are not allowed.</Typography>
-            {!blnReadOnly ? <Box><Button size="small" startIcon={<AddRoundedIcon />} onClick={addText} disabled={objForm.lstText.length >= 2}>Add language</Button></Box> : null}
           </Stack>
-        </Box>
+        </Collapse>
       </Paper>
 
       {/* M. Usage */}
       {objForm.objUsage ? (
         <Paper sx={objSectionSx}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>M. Usage Information</Typography>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Usage Information</Typography>
           <Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip label={`Policies: ${objForm.objUsage.intPolicies}`} />

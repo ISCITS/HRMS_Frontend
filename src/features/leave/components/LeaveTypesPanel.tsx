@@ -30,6 +30,7 @@ import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { type LeaveLookups, type LeaveTypeEnrichedDto } from "@/features/leave/types";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
 type SearchForm = {
@@ -65,6 +66,14 @@ function StatusPill({ blnActive }: { blnActive: boolean }) {
 
 export default function LeaveTypesPanel() {
   const objRouter = useRouter();
+  const { canDo } = useActionRights();
+  // Gate every action against the Leave Types menu's own granular rights so the UI matches what
+  // the backend now enforces (edit OFF -> no edit, etc.).
+  const blnCanView = canDo("leave_types", "VIEW");
+  const blnCanAdd = canDo("leave_types", "ADD");
+  const blnCanEdit = canDo("leave_types", "EDIT");
+  const blnCanDelete = canDo("leave_types", "DELETE");
+  const blnCanExport = canDo("leave_types", "EXPORT");
   const [lstTypes, setLstTypes] = useState<LeaveTypeEnrichedDto[]>([]);
   const [objLookups, setObjLookups] = useState<LeaveLookups>({});
   const [blnLoading, setBlnLoading] = useState(true);
@@ -245,9 +254,9 @@ export default function LeaveTypesPanel() {
           <CommonRowActions
             testIdPrefix="leave-types.list.row"
             rowKey={objType.intID}
-            blnCanView
-            blnCanEdit
-            blnCanDelete
+            blnCanView={blnCanView}
+            blnCanEdit={blnCanEdit}
+            blnCanDelete={blnCanDelete}
             onView={() => openTypeDialog(objType, true)}
             onEdit={() => openTypeDialog(objType, false)}
             onDelete={() => confirmDeleteType(objType)}
@@ -413,9 +422,9 @@ export default function LeaveTypesPanel() {
         {lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar} data-control-id="leave-types.list.bulk-actions.bar">
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} rows selected`}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkStatus(true)} disabled={blnSaving} data-control-id="leave-types.list.bulk-activate.button">Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkStatus(false)} disabled={blnSaving} data-control-id="leave-types.list.bulk-deactivate.button">Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSaving} data-control-id="leave-types.list.bulk-delete.button">Delete</Button>
+            {blnCanEdit ? <Button className={styles.bulkActivate} onClick={() => bulkStatus(true)} disabled={blnSaving} data-control-id="leave-types.list.bulk-activate.button">Activate</Button> : null}
+            {blnCanEdit ? <Button className={styles.bulkDeactivate} onClick={() => bulkStatus(false)} disabled={blnSaving} data-control-id="leave-types.list.bulk-deactivate.button">Deactivate</Button> : null}
+            {blnCanDelete ? <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSaving} data-control-id="leave-types.list.bulk-delete.button">Delete</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -433,19 +442,23 @@ export default function LeaveTypesPanel() {
             defaultPageSize={10}
             pageSizeOptions={[10, 20, 50]}
             exportFileName="leave_types"
-            showExportOptions
+            showExportOptions={blnCanExport}
             showPaginationSummary
             minTableWidth={1376}
             getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
             emptyMessage="No leave types found."
             toolbarLeft={
               <Stack direction="row" spacing={1}>
-                <Button controlId="leave.accrual.run.button" className={styles.secondaryButton} startIcon={<PlayArrowRoundedIcon />} onClick={() => setBlnAccrualDialogOpen(true)} disabled={lstTypes.length === 0}>
-                  Run Accrual
-                </Button>
-                <Button controlId="leave.type.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openNewType}>
-                  Add Leave Type
-                </Button>
+                {blnCanEdit ? (
+                  <Button controlId="leave.accrual.run.button" className={styles.secondaryButton} startIcon={<PlayArrowRoundedIcon />} onClick={() => setBlnAccrualDialogOpen(true)} disabled={lstTypes.length === 0}>
+                    Run Accrual
+                  </Button>
+                ) : null}
+                {blnCanAdd ? (
+                  <Button controlId="leave.type.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openNewType}>
+                    Add Leave Type
+                  </Button>
+                ) : null}
               </Stack>
             }
             testIdPrefix="leave-types.list"

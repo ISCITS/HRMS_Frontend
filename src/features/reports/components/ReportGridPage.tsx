@@ -4,8 +4,8 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -14,11 +14,15 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 
 export type ReportDisplayRow = Record<string, ReactNode>;
 
+export type ReportSelectOption = { strValue: string; strLabel: string };
+
 export type ReportFilterField = {
   strKey: string;
   strLabel: string;
-  strType: "text" | "select" | "month" | "date";
-  lstOptions?: { strValue: string; strLabel: string }[];
+  strType: "text" | "select" | "month" | "date" | "multiselect";
+  lstOptions?: ReportSelectOption[];
+  // Async lookup source for a multiselect filter (loaded once on mount).
+  fnLoadOptions?: () => Promise<ReportSelectOption[]>;
 };
 
 export type ReportGridPageProps = {
@@ -32,19 +36,28 @@ export type ReportGridPageProps = {
   strCsvFileName: string;
   lstRightsHints: string[];
   strEmptyMessage?: string;
+  // Opt-in: adds a checkbox column + selection-aware CSV export. Other reports are unaffected.
+  blnSelectable?: boolean;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
+const SELECT_FIELD = "__select";
 
 function toCsvValue(objValue: unknown) {
   return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
 }
 
+function csvTimestamp() {
+  const objNow = new Date();
+  const fnPad = (intValue: number) => String(intValue).padStart(2, "0");
+  return `${objNow.getFullYear()}${fnPad(objNow.getMonth() + 1)}${fnPad(objNow.getDate())}_${fnPad(objNow.getHours())}${fnPad(objNow.getMinutes())}${fnPad(objNow.getSeconds())}`;
+}
+
 function downloadCsv(strFileName: string, lstColumns: CommonTableColumn<ReportDisplayRow>[], lstRows: ReportDisplayRow[]) {
-  const lstExportColumns = lstColumns.filter((objColumn) => objColumn.field && objColumn.exportable !== false);
+  const lstExportColumns = lstColumns.filter((objColumn) => objColumn.field && objColumn.field !== SELECT_FIELD && objColumn.exportable !== false);
   const lstLines = [
     lstExportColumns.map((objColumn) => toCsvValue(objColumn.headerName)).join(","),
-    ...lstRows.map((dicRow) => lstExportColumns.map((objColumn) => toCsvValue(dicRow[objColumn.field as string])).join(",")),
+    ...lstRows.map((dicRow) => lstExportColumns.map((objColumn) => toCsvValue(csvCellText(dicRow[objColumn.field as string]))).join(",")),
   ];
   const objBlob = new Blob(["﻿" + lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const strUrl = URL.createObjectURL(objBlob);
@@ -53,6 +66,87 @@ function downloadCsv(strFileName: string, lstColumns: CommonTableColumn<ReportDi
   objLink.download = strFileName;
   objLink.click();
   URL.revokeObjectURL(strUrl);
+}
+
+// Report cells may hold a React element (e.g. a coloured span for negative balances); unwrap the
+// primitive text so the CSV holds the value, not "[object Object]".
+function csvCellText(objValue: ReactNode): string {
+  if (objValue === null || objValue === undefined || typeof objValue === "boolean") return "";
+  if (typeof objValue === "object" && "props" in objValue) {
+    return csvCellText((objValue as { props?: { children?: ReactNode } }).props?.children);
+  }
+  return String(objValue);
+}
+
+function ReportMultiSelect(objProps: {
+  strLabel: string;
+  strValue: string;
+  lstStaticOptions?: ReportSelectOption[];
+  fnLoadOptions?: () => Promise<ReportSelectOption[]>;
+  fnOnChange: (strCsv: string) => void;
+  strControlId: string;
+}) {
+  const [lstOptions, setLstOptions] = useState<ReportSelectOption[]>(objProps.lstStaticOptions ?? []);
+  const [blnLoading, setBlnLoading] = useState(false);
+  const [strError, setStrError] = useState("");
+
+  useEffect(() => {
+    if (!objProps.fnLoadOptions) return;
+    let blnActive = true;
+    setBlnLoading(true);
+    setStrError("");
+    objProps.fnLoadOptions()
+      .then((lstResult) => { if (blnActive) setLstOptions(lstResult); })
+      .catch(() => { if (blnActive) setStrError("Unable to load options."); })
+      .finally(() => { if (blnActive) setBlnLoading(false); });
+    return () => { blnActive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setSelectedValues = useMemo(() => new Set(objProps.strValue ? objProps.strValue.split(",").filter(Boolean) : []), [objProps.strValue]);
+  const lstSelected = useMemo(() => lstOptions.filter((objOption) => setSelectedValues.has(objOption.strValue)), [lstOptions, setSelectedValues]);
+
+  return (
+    <Autocomplete
+      multiple
+      size="small"
+      options={lstOptions}
+      value={lstSelected}
+      loading={blnLoading}
+      disableCloseOnSelect
+      limitTags={2}
+      getOptionLabel={(objOption) => objOption.strLabel}
+      isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+      onChange={(_objEvent, lstNext) => objProps.fnOnChange(lstNext.map((objOption) => objOption.strValue).join(","))}
+      renderTags={(lstValue, fnGetTagProps) =>
+        lstValue.map((objOption, intIndex) => {
+          const { key, ...objTagProps } = fnGetTagProps({ index: intIndex });
+          return <Chip key={key} size="small" label={objOption.strLabel} {...objTagProps} />;
+        })
+      }
+      renderInput={(objParams) => (
+        <TextField
+          {...objParams}
+          label={objProps.strLabel}
+          placeholder={objProps.strLabel}
+          error={Boolean(strError)}
+          helperText={strError || undefined}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{ ...objParams.inputProps, "aria-label": objProps.strLabel, "data-controlid": objProps.strControlId }}
+          InputProps={{
+            ...objParams.InputProps,
+            endAdornment: (
+              <>
+                {blnLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                {objParams.InputProps.endAdornment}
+              </>
+            ),
+          }}
+        />
+      )}
+      sx={{ minWidth: 200, flex: "1 1 200px" }}
+    />
+  );
 }
 
 export default function ReportGridPage(objProps: ReportGridPageProps) {
@@ -64,25 +158,33 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnHasLoaded, setBlnHasLoaded] = useState(false);
   const [strError, setStrError] = useState("");
+  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
+  const [blnExporting, setBlnExporting] = useState(false);
+  const intRequestSeqRef = useRef(0);
 
-  async function loadRows(dicAppliedFilters: Record<string, string>) {
+  const loadRows = useCallback(async (dicAppliedFilters: Record<string, string>) => {
+    const intSeq = ++intRequestSeqRef.current;
     setBlnLoading(true);
     setStrError("");
     try {
-      setLstRows(await objProps.fnLoad(dicAppliedFilters));
+      const lstResult = await objProps.fnLoad(dicAppliedFilters);
+      if (intSeq !== intRequestSeqRef.current) return; // a newer request superseded this one
+      setLstRows(lstResult);
+      setLstSelectedIds([]); // a fresh result set invalidates prior selections
       setBlnHasLoaded(true);
     } catch (objError) {
+      if (intSeq !== intRequestSeqRef.current) return;
       setStrError(objError instanceof Error ? objError.message : "Unable to load this report.");
       setLstRows([]);
+      setLstSelectedIds([]);
     } finally {
-      setBlnLoading(false);
+      if (intSeq === intRequestSeqRef.current) setBlnLoading(false);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objProps.fnLoad]);
 
   useEffect(() => {
-    if (!blnCanView) {
-      return;
-    }
+    if (!blnCanView) return;
     loadRows(objProps.dicDefaultFilters ?? {}).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blnCanView]);
@@ -94,10 +196,75 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   function clearFilters() {
     const dicReset = objProps.dicDefaultFilters ?? {};
     setDicFilters(dicReset);
+    setLstSelectedIds([]);
     loadRows(dicReset).catch(() => undefined);
   }
 
-  const lstMemoRows = useMemo(() => lstRows, [lstRows]);
+  // ---- Row selection (over the full loaded result set; persists across client-side pages) ----
+  const setSelectedIds = useMemo(() => new Set(lstSelectedIds), [lstSelectedIds]);
+  const lstAllIds = useMemo(() => lstRows.map((dicRow) => String(dicRow[objProps.strRowIdField])), [lstRows, objProps.strRowIdField]);
+  const blnAllSelected = lstAllIds.length > 0 && lstAllIds.every((strId) => setSelectedIds.has(strId));
+  const blnSomeSelected = !blnAllSelected && lstSelectedIds.length > 0;
+
+  const toggleOne = useCallback((strId: string) => {
+    setLstSelectedIds((lstPrev) => (lstPrev.includes(strId) ? lstPrev.filter((strValue) => strValue !== strId) : [...lstPrev, strId]));
+  }, []);
+
+  function toggleAll() {
+    setLstSelectedIds(blnAllSelected ? [] : lstAllIds);
+  }
+
+  const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => {
+    if (!objProps.blnSelectable) return objProps.lstColumns;
+    const objSelectColumn: CommonTableColumn<ReportDisplayRow> = {
+      field: SELECT_FIELD,
+      headerName: (
+        <Checkbox
+          size="small"
+          checked={blnAllSelected}
+          indeterminate={blnSomeSelected}
+          onChange={toggleAll}
+          inputProps={{ "aria-label": "Select all rows" } as Record<string, string>}
+        />
+      ),
+      width: 52,
+      sortable: false,
+      exportable: false,
+    };
+    return [objSelectColumn, ...objProps.lstColumns];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objProps.blnSelectable, objProps.lstColumns, blnAllSelected, blnSomeSelected, lstAllIds]);
+
+  const lstDisplayRows = useMemo(() => {
+    if (!objProps.blnSelectable) return lstRows;
+    return lstRows.map((dicRow) => {
+      const strId = String(dicRow[objProps.strRowIdField]);
+      return {
+        ...dicRow,
+        [SELECT_FIELD]: (
+          <Checkbox
+            size="small"
+            checked={setSelectedIds.has(strId)}
+            onChange={() => toggleOne(strId)}
+            inputProps={{ "aria-label": `Select row ${strId}` } as Record<string, string>}
+          />
+        ),
+      };
+    });
+  }, [lstRows, objProps.blnSelectable, objProps.strRowIdField, setSelectedIds, toggleOne]);
+
+  function exportCsv() {
+    if (blnExporting) return; // guard against duplicate export while running
+    setBlnExporting(true);
+    try {
+      const lstToExport = lstSelectedIds.length > 0
+        ? lstRows.filter((dicRow) => setSelectedIds.has(String(dicRow[objProps.strRowIdField])))
+        : lstRows;
+      downloadCsv(`${objProps.strCsvFileName}_${csvTimestamp()}.csv`, objProps.lstColumns, lstToExport);
+    } finally {
+      setBlnExporting(false);
+    }
+  }
 
   if (blnRightsLoading || (blnLoading && !blnHasLoaded)) {
     return <BlockingLoader blnOpen strLabel={`Loading ${objProps.strTitle.toLowerCase()}...`} />;
@@ -109,9 +276,19 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
 
       <Box className={styles.controlsCard}>
         <Box className={styles.payrollRegisterSearchPanel}>
-          <Box className={styles.payrollRegisterSearchLinePrimary}>
+          <Box className={styles.payrollRegisterSearchLinePrimary} sx={{ flexWrap: "wrap", gap: 1.25 }}>
             {objProps.lstFilters.map((objFilter) => (
-              objFilter.strType === "select" ? (
+              objFilter.strType === "multiselect" ? (
+                <ReportMultiSelect
+                  key={objFilter.strKey}
+                  strLabel={objFilter.strLabel}
+                  strValue={dicFilters[objFilter.strKey] ?? ""}
+                  lstStaticOptions={objFilter.lstOptions}
+                  fnLoadOptions={objFilter.fnLoadOptions}
+                  fnOnChange={(strCsv) => setFilterValue(objFilter.strKey, strCsv)}
+                  strControlId={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.multiselect`}
+                />
+              ) : objFilter.strType === "select" ? (
                 <TextField
                   key={objFilter.strKey}
                   select
@@ -158,8 +335,8 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
-          columns={objProps.lstColumns}
-          rows={lstMemoRows}
+          columns={lstColumns}
+          rows={lstDisplayRows}
           rowIdField={objProps.strRowIdField}
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
@@ -167,10 +344,17 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}
+          getRowSx={objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
           toolbarLeft={(
-            <Box className={styles.listUtilityActions}>
+            <Box className={styles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {canDoAny("export") ? (
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${objProps.strCsvFileName}.csv`, objProps.lstColumns, lstMemoRows)} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
+              ) : null}
+              {objProps.blnSelectable && lstSelectedIds.length > 0 ? (
+                <>
+                  <Typography sx={{ fontSize: ".82rem", color: "#475569", fontWeight: 700 }}>{lstSelectedIds.length} selected</Typography>
+                  <Button size="small" onClick={() => setLstSelectedIds([])} data-controlid={`reports.${objProps.strCsvFileName}.clear-selection.button`}>Clear Selection</Button>
+                </>
               ) : null}
             </Box>
           )}
