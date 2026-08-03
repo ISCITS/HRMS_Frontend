@@ -1032,11 +1032,11 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             </Box>
           </Box>
           <Box className={styles.tableWrap} sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", maxHeight: 248, minHeight: 248 }}>
-            <table className={styles.table} style={{ minWidth: 640 }}>
+            <table className={styles.table} style={{ minWidth: 720 }}>
               <colgroup>
                 <col style={{ width: 112 }} />
-                <col style={{ width: 210 }} />
-                <col style={{ width: 96 }} />
+                <col style={{ width: 190 }} />
+                <col style={{ width: 176 }} />
                 <col />
               </colgroup>
               <thead>
@@ -1064,7 +1064,20 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                       />
                     </td>
                     <td>{dicIssue.strValidationCode}</td>
-                    <td>{dicIssue.intEmployeeID ?? "-"}</td>
+                    <td>
+                      {dicIssue.strEmployeeName || dicIssue.strEmployeeCode ? (
+                        <>
+                          {dicIssue.strEmployeeName || dicIssue.strEmployeeCode}
+                          {dicIssue.strEmployeeCode ? (
+                            <Typography component="span" sx={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, ml: 0.5 }}>
+                              ({dicIssue.strEmployeeCode})
+                            </Typography>
+                          ) : null}
+                        </>
+                      ) : (
+                        dicIssue.intEmployeeID ?? "-"
+                      )}
+                    </td>
                     <td style={{ maxWidth: 320 }}>
                       <Tooltip title={dicIssue.strValidationMessage} arrow>
                         <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

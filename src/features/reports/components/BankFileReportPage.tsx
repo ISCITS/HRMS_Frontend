@@ -10,13 +10,14 @@ import { useEffect, useMemo, useState } from "react";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
+  strStatus: string;
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
@@ -179,6 +180,18 @@ export default function BankFileReportPage() {
     }
   }
   const lstFilteredRows = useMemo(() => lstRows.filter((dicRow) => dicRow.decNetPayAmount > 0), [lstRows]);
+  const dicFilterOptions = useMemo(() => ({
+    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
+      dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
+    ])),
+    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
+    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
+    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
+    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
+  }), [lstRows]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
   const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
   const intCurrentPage = Math.min(intPage, intPageCount);
@@ -248,20 +261,14 @@ export default function BankFileReportPage() {
         </Box>
         <Box className={styles.bankFileSearchPanel}>
           <Box className={styles.bankFileSearchLinePrimary}>
-            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth controlId="reports.bank-file.employee-search.input" />
-            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth controlId="reports.bank-file.run-search.input" />
-            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} controlId="reports.bank-file.payroll-month.input" />
-            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth controlId="reports.bank-file.department.input" />
-            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth controlId="reports.bank-file.location.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.bank-file.employee-search.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.bank-file.run-search.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.bank-file.payroll-month.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.bank-file.department.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.bank-file.location.input" />
           </Box>
           <Box className={styles.bankFileSearchLineSecondary}>
-            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth controlId="reports.bank-file.status.select">
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Calculated">Calculated</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Published">Published</MenuItem>
-              <MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
+            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All" controlId="reports.bank-file.status.select" />
             <Box className={styles.searchActions}>
               <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.bank-file.search.button">Search</Button>
               <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.bank-file.clear.button">Clear</Button>

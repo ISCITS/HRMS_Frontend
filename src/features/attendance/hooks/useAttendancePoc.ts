@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
-import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
+import type {
+  AttendancePolicy,
+  AttendancePolicyFormValues,
+  AttendancePolicyList,
+  DailyAttendanceBulkFillRangeRequest,
+  DailyAttendanceBulkFillRangeResult,
+  DailyAttendanceBulkResult,
+  DailyAttendanceRow,
+  DailyAttendanceSaveRow,
+} from "@/features/attendance/types";
 
 export function useAttendancePoc(blnLoadPolicies = true) {
   const [objPolicyList, setObjPolicyList] = useState<AttendancePolicyList>({ lstItems: [], intTotal: 0, intPage: 1, intPageSize: 10 });
@@ -41,5 +50,8 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function saveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
     setBlnSaving(true); try { return await attendanceService.bulkSaveDaily(strDate, lstRows); } finally { setBlnSaving(false); }
   }
-  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily };
+  async function bulkFillRange(objPayload: DailyAttendanceBulkFillRangeRequest): Promise<DailyAttendanceBulkFillRangeResult> {
+    setBlnSaving(true); try { return await attendanceService.bulkFillRange(objPayload); } finally { setBlnSaving(false); }
+  }
+  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily, bulkFillRange };
 }

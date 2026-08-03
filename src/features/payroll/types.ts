@@ -77,6 +77,8 @@ export type PayrollRunSummary = {
 export type PayrollValidationResultRecord = {
   intID?: number;
   intEmployeeID: number | null;
+  strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
   strValidationCode: string;
   strValidationLevel: string;
   strValidationMessage: string;
@@ -702,6 +704,8 @@ export type PayrollResultRecord = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
   strBankName?: string | null;
   strBankCode?: string | null;
   strBankAccountMasked?: string | null;
@@ -796,6 +800,8 @@ export type StatutoryReportRow = {
   dtPayrollMonth: string | null;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
   strStatus: string;
   strStatutoryCode: string;
   strStatutoryName: string;

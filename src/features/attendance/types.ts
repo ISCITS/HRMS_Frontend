@@ -71,3 +71,21 @@ export type DailyAttendanceSaveRow = {
 
 export type DailyAttendanceValidationResult = { intRowIndex: number; intEmployeeID: number; blnValid: boolean; strErrorCode: string | null; strMessage: string | null };
 export type DailyAttendanceBulkResult = { blnSaved: boolean; intSavedCount: number; lstResults: DailyAttendanceValidationResult[] };
+
+export type DailyAttendanceBulkFillRangeRequest = {
+  intEmployeeID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  strDefaultStatus: string;
+  blnSkipResolvedDays: boolean;
+  blnOverwriteExisting: boolean;
+};
+
+export type DailyAttendanceBulkFillSkippedDay = { dtDate: string; strReason: string; strMessage?: string | null };
+export type DailyAttendanceBulkFillRangeResult = {
+  intEmployeeID: number;
+  intCreatedCount: number;
+  intSkippedCount: number;
+  lstCreatedDates: string[];
+  lstSkipped: DailyAttendanceBulkFillSkippedDay[];
+};

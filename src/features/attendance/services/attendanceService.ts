@@ -14,7 +14,16 @@ import type {
   ShiftDto,
   ShiftRequest,
 } from "@/features/attendance/dto";
-import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
+import type {
+  AttendancePolicy,
+  AttendancePolicyFormValues,
+  AttendancePolicyList,
+  DailyAttendanceBulkFillRangeRequest,
+  DailyAttendanceBulkFillRangeResult,
+  DailyAttendanceBulkResult,
+  DailyAttendanceRow,
+  DailyAttendanceSaveRow,
+} from "@/features/attendance/types";
 import type {
   MyAttendanceHistory,
   MyAttendanceOverview,
@@ -134,6 +143,16 @@ export const attendanceService = {
 
   async bulkSaveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
     const objResult = await requestApi<DailyAttendanceBulkResult>({ strPath: "/attendance/daily/bulk", strMethod: ApiRequestMethod.Put, objBody: { dtWorkDate: strDate, lstRows }, strMenuAction: ATTENDANCE_MANAGE });
+    return objResult.Data;
+  },
+
+  async bulkFillRange(objPayload: DailyAttendanceBulkFillRangeRequest): Promise<DailyAttendanceBulkFillRangeResult> {
+    const objResult = await requestApi<DailyAttendanceBulkFillRangeResult>({
+      strPath: "/attendance/daily/bulk-fill-range",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
     return objResult.Data;
   },
 

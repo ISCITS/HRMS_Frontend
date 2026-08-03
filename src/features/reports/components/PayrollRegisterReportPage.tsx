@@ -12,13 +12,14 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
+  strStatus: string;
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
@@ -295,6 +296,18 @@ export default function PayrollRegisterReportPage() {
   }
 
   const lstFilteredRows = useMemo(() => lstRows, [lstRows]);
+  const dicFilterOptions = useMemo(() => ({
+    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
+      dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
+    ])),
+    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
+    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
+    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
+    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
+  }), [lstRows]);
 
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
@@ -448,20 +461,14 @@ export default function PayrollRegisterReportPage() {
         </Box>
         <Box className={styles.payrollRegisterSearchPanel}>
           <Box className={styles.payrollRegisterSearchLinePrimary}>
-            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code" fullWidth data-controlid="reports.payroll-register.employee-search.input" />
-            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-controlid="reports.payroll-register.run-search.input" />
-            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-controlid="reports.payroll-register.payroll-month.input" />
-            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-controlid="reports.payroll-register.department.input" />
-            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-controlid="reports.payroll-register.location.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.payroll-register.employee-search.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.payroll-register.run-search.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.payroll-register.payroll-month.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.payroll-register.department.input" />
+            <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.payroll-register.location.input" />
           </Box>
           <Box className={styles.payrollRegisterSearchLineSecondary}>
-            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-controlid="reports.payroll-register.status.select">
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Calculated">Calculated</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Published">Published</MenuItem>
-              <MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
+            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (strValue || "All") as SearchForm["strStatus"] }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All statuses" controlId="reports.payroll-register.status.select" />
             <Box className={styles.searchActions}>
               <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.payroll-register.search.button">Search</Button>
               <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.payroll-register.clear.button">Clear</Button>
