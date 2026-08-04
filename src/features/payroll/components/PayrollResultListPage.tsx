@@ -224,9 +224,9 @@ export default function PayrollResultListPage({
   const [intSelfEmployeeID, setIntSelfEmployeeID] = useState<number | null>(null);
   const blnCanAccessResults =
     canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
-  const blnCanDownloadPayslips = canDoAny("download");
-  const blnCanPrintPayslips = canDoAny("print");
   const blnCanExportPayslips = canDoAny("export");
+  const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
+  const blnCanPrintPayslips = canDoAny("print");
   const blnCanUsePayslipRowActions = blnCanDownloadPayslips || blnCanPrintPayslips;
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);

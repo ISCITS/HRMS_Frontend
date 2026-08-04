@@ -625,7 +625,7 @@ export default function PayrollResultDetailPage({
   }, [intResultID]);
 
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
-  const blnCanDownloadPayslips = canDoAny("download");
+  const blnCanDownloadPayslips = canDoAny("download") || canDoAny("export");
   const blnCanPrintPayslips = canDoAny("print");
   const blnCanUsePayslipDocumentActions = blnCanDownloadPayslips || blnCanPrintPayslips;
   const blnCanViewAttendanceIntegration = !blnPayslipScreen && (canDoAnyAttendance("view") || canDoAnyAttendance("list"));
