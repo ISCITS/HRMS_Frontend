@@ -66,14 +66,16 @@ function StatusPill({ blnActive }: { blnActive: boolean }) {
 
 export default function LeaveTypesPanel() {
   const objRouter = useRouter();
-  const { canDo } = useActionRights();
+  const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   // Gate every action against the Leave Types menu's own granular rights so the UI matches what
   // the backend now enforces (edit OFF -> no edit, etc.).
-  const blnCanView = canDo("leave_types", "VIEW");
   const blnCanAdd = canDo("leave_types", "ADD");
   const blnCanEdit = canDo("leave_types", "EDIT");
   const blnCanDelete = canDo("leave_types", "DELETE");
   const blnCanExport = canDo("leave_types", "EXPORT");
+  // A VIEW-only user gets a list-only screen: no row actions at all. Opening a row (the eye) is a
+  // manage capability, so it is offered only when the user can edit or delete.
+  const blnCanOpenDetail = blnCanEdit || blnCanDelete;
   const [lstTypes, setLstTypes] = useState<LeaveTypeEnrichedDto[]>([]);
   const [objLookups, setObjLookups] = useState<LeaveLookups>({});
   const [blnLoading, setBlnLoading] = useState(true);
@@ -254,7 +256,7 @@ export default function LeaveTypesPanel() {
           <CommonRowActions
             testIdPrefix="leave-types.list.row"
             rowKey={objType.intID}
-            blnCanView={blnCanView}
+            blnCanView={blnCanOpenDetail}
             blnCanEdit={blnCanEdit}
             blnCanDelete={blnCanDelete}
             onView={() => openTypeDialog(objType, true)}
@@ -274,28 +276,34 @@ export default function LeaveTypesPanel() {
         strEncashable: objType.blnIsEncashable ? "Yes" : "No",
         blnStatus: <StatusPill blnActive={objType.blnIsActive} />,
       })),
+    // Rights flags MUST be deps: useActionRights loads async, so without them the action cells
+    // memoize while rights are still false (icons hidden) and never recompute once rights arrive.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstFilteredTypes, objLookups, lstSelectedIds],
+    [lstFilteredTypes, objLookups, lstSelectedIds, blnCanOpenDetail, blnCanEdit, blnCanDelete],
   );
 
   const lstTypeColumns = useMemo<CommonTableColumn<(typeof lstTypeRows)[number]>[]>(
     () => [
-      {
-        field: "select",
-        headerName: (
-          <Checkbox
-            checked={blnAllFilteredSelected}
-            indeterminate={blnSomeFilteredSelected}
-            onChange={toggleSelectAll}
-            disabled={lstFilteredTypes.length === 0}
-            inputProps={{ "data-control-id": "leave-types.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
-          />
-        ),
-        sortable: false,
-        filterable: false,
-        exportable: false,
-        width: 56,
-      },
+      // Bulk-select column only for users who can act on rows (edit/delete); a VIEW-only user
+      // gets a list-only screen with no selection.
+      ...(blnCanOpenDetail
+        ? ([{
+            field: "select",
+            headerName: (
+              <Checkbox
+                checked={blnAllFilteredSelected}
+                indeterminate={blnSomeFilteredSelected}
+                onChange={toggleSelectAll}
+                disabled={lstFilteredTypes.length === 0}
+                inputProps={{ "data-control-id": "leave-types.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+              />
+            ),
+            sortable: false,
+            filterable: false,
+            exportable: false,
+            width: 56,
+          }] as CommonTableColumn<(typeof lstTypeRows)[number]>[])
+        : []),
       { field: "action", headerName: "Actions", sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "strTypeCode", headerName: "Code", width: 90 },
       { field: "strName", headerName: "Name", width: 180 },
@@ -310,7 +318,7 @@ export default function LeaveTypesPanel() {
       { field: "blnStatus", headerName: "Status", sortable: false, width: 110 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredTypes.length],
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredTypes.length, blnCanOpenDetail],
   );
 
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
@@ -429,7 +437,7 @@ export default function LeaveTypesPanel() {
         ) : null}
       </Box>
 
-      {blnLoading ? (
+      {blnLoading || blnRightsLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
           <CircularProgress />
         </Box>
