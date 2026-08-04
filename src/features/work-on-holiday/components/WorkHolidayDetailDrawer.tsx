@@ -1,12 +1,9 @@
 "use client";
 
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, Drawer, Grid, Stack, TextField, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, Grid, Stack, TextField, Typography,
 } from "@mui/material";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import type { WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
@@ -22,10 +19,22 @@ type WorkHolidayDetailDrawerProps = {
   blnCanVerify?: boolean;
   blnCanPost?: boolean;
   blnCanReverse?: boolean;
+  blnActionMode?: boolean;
   fnOnClose: () => void;
   fnOnRefresh: () => Promise<void>;
   fnOnConflict: (strMessage: string) => void;
 };
+type WorkHolidayActionOption = {
+  strCode: "approve" | "reject" | "send-back" | "verify" | "post" | "reverse";
+  strLabel: string;
+  strColor: "primary" | "error";
+};
+
+function hasApprovalDecision(objDetail: WorkHolidayRequest) {
+  return (objDetail.lstTimeline ?? []).some((objAction) =>
+    ["APPROVE", "REJECT", "SEND_BACK"].includes(objAction.strActionCode.toUpperCase()),
+  );
+}
 
 function formatDateTime(strValue?: string | null) {
   return strValue ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(strValue)) : "—";
@@ -34,14 +43,32 @@ function formatDateTime(strValue?: string | null) {
 export default function WorkHolidayDetailDrawer({
   objDetail, blnOpen, blnLoading = false, blnCanApprove = false, blnCanReject = false,
   blnCanSendBack = false, blnCanVerify = false, blnCanPost = false, blnCanReverse = false,
-  fnOnClose, fnOnRefresh, fnOnConflict,
+  blnActionMode = false, fnOnClose, fnOnRefresh, fnOnConflict,
 }: WorkHolidayDetailDrawerProps) {
-  const objRouter = useRouter();
   const { t } = useModuleLabels("work_on_holiday");
   const [strAction, setStrAction] = useState<"approve" | "reject" | "send-back" | "verify" | "post" | "reverse" | null>(null);
   const [strReason, setStrReason] = useState("");
   const [strError, setStrError] = useState("");
   const [blnSaving, setBlnSaving] = useState(false);
+  const lstAvailableActions = useMemo(() => {
+    if (!objDetail) return [];
+    const blnCanTakeApprovalDecision = objDetail.strRequestStatus === "PENDING_APPROVAL" && !hasApprovalDecision(objDetail);
+    const lstOptions: (WorkHolidayActionOption | null)[] = [
+      blnCanApprove && blnCanTakeApprovalDecision ? { strCode: "approve" as const, strLabel: t("approve", "Approve"), strColor: "primary" as const } : null,
+      blnCanReject && blnCanTakeApprovalDecision ? { strCode: "reject" as const, strLabel: t("reject", "Reject"), strColor: "error" as const } : null,
+      blnCanSendBack && blnCanTakeApprovalDecision ? { strCode: "send-back" as const, strLabel: t("send_back", "Send Back"), strColor: "primary" as const } : null,
+      blnCanVerify && ["APPROVED", "PENDING_ATTENDANCE_VERIFICATION"].includes(objDetail.strRequestStatus) ? { strCode: "verify" as const, strLabel: t("verify_attendance", "Verify Attendance"), strColor: "primary" as const } : null,
+      blnCanPost && ["READY", "FAILED", "PARTIAL"].includes(objDetail.strPostingStatus) ? { strCode: "post" as const, strLabel: t("post_credit", "Post Credit"), strColor: "primary" as const } : null,
+      blnCanReverse && objDetail.strPostingStatus === "POSTED" ? { strCode: "reverse" as const, strLabel: t("reverse_posting", "Reverse Posting"), strColor: "error" as const } : null,
+    ];
+    return lstOptions.filter((objAction): objAction is WorkHolidayActionOption => Boolean(objAction));
+  }, [blnCanApprove, blnCanPost, blnCanReject, blnCanReverse, blnCanSendBack, blnCanVerify, objDetail, t]);
+
+  useEffect(() => {
+    setStrAction(null);
+    setStrReason("");
+    setStrError("");
+  }, [blnActionMode, objDetail?.intID]);
 
   async function runAction() {
     if (!objDetail || !strAction) return;
@@ -131,10 +158,7 @@ export default function WorkHolidayDetailDrawer({
               {lstPunches.map((objPunch) => <Typography key={objPunch.intID} variant="caption" display="block">{t(`punch_${objPunch.strDirection.toLowerCase()}`, objPunch.strDirection)} · {formatDateTime(objPunch.dtPunchAt)}</Typography>)}
             </Box>
             <Box>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography fontWeight={850}>{t("team_availability", "Team Availability")}</Typography>
-                {objDetail.strTeamCalendarPath ? <Button data-control-id="work-on-holiday.detail.team-calendar.button" startIcon={<CalendarMonthRoundedIcon />} onClick={() => objRouter.push(objDetail.strTeamCalendarPath!)}>{t("team_calendar", "Team Calendar")}</Button> : null}
-              </Stack>
+              <Typography fontWeight={850}>{t("team_availability", "Team Availability")}</Typography>
               <Typography>{t("team_size", "Team Size")}: {objTeam?.intTeamSize ?? "—"} · {t("team_on_leave", "On Leave")}: {objTeam?.intApprovedLeaveCount ?? "—"}</Typography>
             </Box>
             <Box>
@@ -142,22 +166,33 @@ export default function WorkHolidayDetailDrawer({
               {(objDetail.lstTimeline ?? []).map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: 3, borderColor: "primary.main", pl: 1.5, my: 1 }}><Chip size="small" label={t(`action_${objAction.strActionCode.toLowerCase()}`, objAction.strActionCode)} /><Typography variant="caption" display="block">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}
             </Box>
             {objDetail.strPostingStatus === "POSTED" || objDetail.strPostingStatus === "REVERSED" ? <Alert data-control-id="work-on-holiday.detail.ledger-reference.alert" severity="info">{t("ledger_reference_safe", "Posting is linked to the request number shown above. Internal ledger identifiers are hidden.")}</Alert> : null}
-            <Stack direction="row" gap={1} flexWrap="wrap">
-              {blnCanApprove && objDetail.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id="work-on-holiday.detail.approve.button" variant="contained" onClick={() => setStrAction("approve")}>{t("approve", "Approve")}</Button> : null}
-              {blnCanReject && objDetail.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id="work-on-holiday.detail.reject.button" color="error" onClick={() => setStrAction("reject")}>{t("reject", "Reject")}</Button> : null}
-              {blnCanSendBack && objDetail.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id="work-on-holiday.detail.send-back.button" onClick={() => setStrAction("send-back")}>{t("send_back", "Send Back")}</Button> : null}
-              {blnCanVerify && ["APPROVED", "PENDING_ATTENDANCE_VERIFICATION"].includes(objDetail.strRequestStatus) ? <Button data-control-id="work-on-holiday.detail.verify.button" variant="contained" onClick={() => setStrAction("verify")}>{t("verify_attendance", "Verify Attendance")}</Button> : null}
-              {blnCanPost && ["READY", "FAILED", "PARTIAL"].includes(objDetail.strPostingStatus) ? <Button data-control-id="work-on-holiday.detail.post.button" variant="contained" onClick={() => setStrAction("post")}>{t("post_credit", "Post Credit")}</Button> : null}
-              {blnCanReverse && objDetail.strPostingStatus === "POSTED" ? <Button data-control-id="work-on-holiday.detail.reverse.button" color="error" onClick={() => setStrAction("reverse")}>{t("reverse_posting", "Reverse Posting")}</Button> : null}
-            </Stack>
+            {blnActionMode ? (
+              <Box data-control-id="work-on-holiday.detail.actions.panel" sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
+                <Typography fontWeight={850} sx={{ mb: 1.5 }}>{t("request_actions", "Request Actions")}</Typography>
+                {!strAction ? (
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    {lstAvailableActions.length ? lstAvailableActions.map((objAction) => (
+                      <Button key={objAction.strCode} data-control-id={`work-on-holiday.detail.action.${objAction.strCode}.select.button`} variant="contained" color={objAction.strColor} onClick={() => setStrAction(objAction.strCode)}>
+                        {objAction.strLabel}
+                      </Button>
+                    )) : <Alert severity="info">{t("no_actions_available", "No actions are available for this request.")}</Alert>}
+                  </Stack>
+                ) : (
+                  <Stack spacing={1.5}>
+                    <Typography>{t("confirm_action_message", "Review the request before confirming this action.")}</Typography>
+                    <TextField data-control-id="work-on-holiday.detail.action.reason.input" fullWidth multiline minRows={3} label={t("reason_remarks", "Reason / Remarks")} value={strReason} onChange={(objEvent) => setStrReason(objEvent.target.value)} required={["reject", "send-back", "reverse"].includes(strAction)} />
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button data-control-id="work-on-holiday.detail.action.back.button" onClick={() => setStrAction(null)} disabled={blnSaving}>{t("back", "Back")}</Button>
+                      <Button data-control-id="work-on-holiday.detail.action.confirm.button" variant="contained" color={strAction === "reverse" || strAction === "reject" ? "error" : "primary"} onClick={() => void runAction()} disabled={blnSaving}>{t("confirm", "Confirm")}</Button>
+                    </Stack>
+                  </Stack>
+                )}
+                {strError ? <Alert data-control-id="work-on-holiday.detail.action.error.alert" severity="error" sx={{ mt: 2 }}>{strError}</Alert> : null}
+              </Box>
+            ) : null}
           </Stack>
         ) : null}
       </Drawer>
-      <Dialog data-control-id="work-on-holiday.action.dialog" open={Boolean(strAction)} onClose={() => !blnSaving && setStrAction(null)} fullWidth maxWidth="sm">
-        <DialogTitle>{t(`confirm_${strAction ?? "action"}`, "Confirm Action")}</DialogTitle>
-        <DialogContent><Typography sx={{ mb: 2 }}>{t("confirm_action_message", "Review the request before confirming this action.")}</Typography><TextField data-control-id="work-on-holiday.action.reason.input" fullWidth multiline minRows={3} label={t("reason_remarks", "Reason / Remarks")} value={strReason} onChange={(objEvent) => setStrReason(objEvent.target.value)} required={Boolean(strAction && ["reject", "send-back", "reverse"].includes(strAction))} />{strError ? <Alert data-control-id="work-on-holiday.action.error.alert" severity="error" sx={{ mt: 2 }}>{strError}</Alert> : null}</DialogContent>
-        <DialogActions><Button data-control-id="work-on-holiday.action.cancel.button" onClick={() => setStrAction(null)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button data-control-id="work-on-holiday.action.confirm.button" variant="contained" color={strAction === "reverse" || strAction === "reject" ? "error" : "primary"} onClick={() => void runAction()} disabled={blnSaving}>{t("confirm", "Confirm")}</Button></DialogActions>
-      </Dialog>
     </>
   );
 }

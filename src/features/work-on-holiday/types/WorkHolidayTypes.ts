@@ -56,6 +56,7 @@ export type WorkHolidayRequest = {
   strPostingStatus: string;
   intRowVersion: number;
   intCurrentApproverUserID?: number | null;
+  blnApprovalDecisionTaken?: boolean;
   strCurrentApproverName?: string | null;
   objEligibilitySnapshot: WorkHolidayEligibilitySnapshot;
   objAttendanceSnapshot: WorkHolidayAttendanceSnapshot;

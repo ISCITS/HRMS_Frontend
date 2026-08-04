@@ -22,7 +22,7 @@ import LookupChip, { lookupLabel } from "@/features/attendance-regularization/co
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
-  DateContext, LookupOption, PreviewResult, RegularizationDetail, RegularizationFormValues,
+  AttendanceSnapshot, DateContext, LookupOption, PreviewResult, RegularizationDetail, RegularizationFormValues,
   RegularizationLookups, RegularizationRequest,
 } from "@/features/attendance-regularization/types/AttendanceRegularizationTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -72,6 +72,14 @@ function formatInputTime(strValue?: string | null) {
     return `${String(objDate.getHours()).padStart(2, "0")}:${String(objDate.getMinutes()).padStart(2, "0")}`;
   }
   return strValue.slice(0, 5);
+}
+
+function getSnapshotFirstIn(objDay?: AttendanceSnapshot | null) {
+  return objDay?.strFirstIn ?? objDay?.tmFirstIn ?? null;
+}
+
+function getSnapshotLastOut(objDay?: AttendanceSnapshot | null) {
+  return objDay?.strLastOut ?? objDay?.tmLastOut ?? null;
 }
 
 function formatDuration(decHours?: number | null) {
@@ -290,7 +298,7 @@ export default function AttendanceRegularizationPage() {
     if (strRequestTypeCode !== "MISSING_OUT") return;
     const strFirstIn =
       formatInputTime(objContext?.lstPunches.find((objPunch) => objPunch.strDirection.toLowerCase() === "in")?.dtPunchAt) ||
-      formatInputTime(objContext?.objAttendanceDay.tmFirstIn);
+      formatInputTime(getSnapshotFirstIn(objContext?.objAttendanceDay));
     setValue("tmProposedFirstIn", strFirstIn, { shouldDirty: true, shouldValidate: true });
   }, [objContext, setValue, strRequestTypeCode]);
 
@@ -399,8 +407,8 @@ export default function AttendanceRegularizationPage() {
               <Grid container spacing={1} alignItems="stretch">
                 <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} strTone={objContext?.objAttendanceDay.strStatus === "present" ? "success" : "neutral"} /></Grid>
                 <Grid item xs={6} md={2}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay ? formatDuration(objContext.objAttendanceDay.decWorkedHours) : "—"} strTone="info" /></Grid>
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={objContext?.objAttendanceDay.tmFirstIn?.slice(0, 5) ?? "—"} strTone="warning" /></Grid>
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={objContext?.objAttendanceDay.tmLastOut?.slice(0, 5) ?? "—"} strTone="neutral" /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={formatInputTime(getSnapshotFirstIn(objContext?.objAttendanceDay)) || "-"} strTone="warning" /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={formatInputTime(getSnapshotLastOut(objContext?.objAttendanceDay)) || "-"} strTone="neutral" /></Grid>
                 <Grid item xs={12} md={2}>
                   <Box sx={{ minHeight: 68, height: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", pl: { xs: 0, md: 0.5 } }}>
                     <Button data-control-id="attendance-regularization.punch-log.button" variant="contained" startIcon={<HistoryRoundedIcon />} onClick={() => setBlnPunchLogOpen(true)} sx={{ minHeight: 38, px: 2.25, borderRadius: "8px", fontWeight: 800, boxShadow: "none", whiteSpace: "nowrap" }}>

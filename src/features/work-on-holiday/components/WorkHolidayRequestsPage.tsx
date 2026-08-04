@@ -1,11 +1,12 @@
 "use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Grid, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography,
+  DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
@@ -19,7 +20,7 @@ import { useWorkHolidayDetail, useWorkHolidayList } from "@/features/work-on-hol
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import { WORK_HOLIDAY_ACTION_ALIASES as dicActionAliases } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import { WORK_HOLIDAY_MODULE_CODES as lstModuleCodes } from "@/features/work-on-holiday/types/WorkHolidayTypes";
-import type { WorkHolidayPosting } from "@/features/work-on-holiday/types/WorkHolidayTypes";
+import type { WorkHolidayPosting, WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 
 type WorkHolidayWorkbenchRow = Record<string, ReactNode> & { intID: number };
 const strTabStorageKey = "hrms:work-on-holiday:workbench-tab";
@@ -40,12 +41,16 @@ export default function WorkHolidayRequestsPage() {
     (dicActionAliases[strAction] ?? [strAction]).some((strAlias) => canDo(strModule, strAlias)),
   );
   const blnCanApprove = fnCan("WORK_ON_HOLIDAY_APPROVE");
+  const blnCanReject = fnCan("WORK_ON_HOLIDAY_REJECT");
+  const blnCanSendBack = fnCan("WORK_ON_HOLIDAY_SEND_BACK");
   const blnCanVerify = fnCan("WORK_ON_HOLIDAY_VERIFY");
   const blnCanViewAll = fnCan("WORK_ON_HOLIDAY_VIEW_ALL") || fnCan("WORK_ON_HOLIDAY_MANAGE");
+  const blnCanView = fnCan("WORK_ON_HOLIDAY_VIEW") || blnCanViewAll;
   const blnCanApprovalQueue = blnCanApprove || blnCanViewAll;
   const blnCanOnBehalf = fnCan("WORK_ON_HOLIDAY_CREATE_ON_BEHALF");
   const blnCanPost = fnCan("WORK_ON_HOLIDAY_POST");
   const blnCanReverse = fnCan("WORK_ON_HOLIDAY_REVERSE") || fnCan("WORK_ON_HOLIDAY_OVERRIDE");
+  const blnCanAct = blnCanApprove || blnCanReject || blnCanSendBack || blnCanVerify || blnCanPost || blnCanReverse;
   const lstTabs = useMemo(() => [
     { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
     { strCode: "verification", strLabel: t("tab_pending_verification", "Pending Attendance Verification"), blnVisible: blnCanVerify },
@@ -63,6 +68,7 @@ export default function WorkHolidayRequestsPage() {
   const [strError, setStrError] = useState("");
   const [strNotice, setStrNotice] = useState("");
   const [blnOnBehalfOpen, setBlnOnBehalfOpen] = useState(false);
+  const [blnActionMode, setBlnActionMode] = useState(false);
   const [objOnBehalf, setObjOnBehalf] = useState({
     intEmployeeID: "", dtWorkDate: "", strRequestedOutcomeCode: "COMPOFF",
     decRequestedCreditDays: 1, tmPlannedStartTime: "", tmPlannedEndTime: "",
@@ -104,6 +110,30 @@ export default function WorkHolidayRequestsPage() {
     sessionStorage.removeItem(strFilterStorageKey);
   }
 
+  async function openRequestDetail(intRequestID: number) {
+    setBlnActionMode(false);
+    await loadDetail(intRequestID);
+  }
+
+  async function openRequestActions(intRequestID: number) {
+    setBlnActionMode(true);
+    await loadDetail(intRequestID);
+  }
+
+  function canActOnRequest(objRequest: WorkHolidayRequest) {
+    return (
+      (objRequest.strRequestStatus === "PENDING_APPROVAL" && !objRequest.blnApprovalDecisionTaken && (blnCanApprove || blnCanReject || blnCanSendBack))
+      || (["APPROVED", "PENDING_ATTENDANCE_VERIFICATION"].includes(objRequest.strRequestStatus) && blnCanVerify)
+      || (["READY", "FAILED", "PARTIAL"].includes(objRequest.strPostingStatus) && blnCanPost)
+      || (objRequest.strPostingStatus === "POSTED" && blnCanReverse)
+    );
+  }
+
+  function closeDetailDrawer() {
+    setBlnActionMode(false);
+    setObjDetail(null);
+  }
+
   async function createOnBehalf() {
     if (
       !objOnBehalf.intEmployeeID || !objOnBehalf.dtWorkDate || !objOnBehalf.tmPlannedStartTime
@@ -141,7 +171,7 @@ export default function WorkHolidayRequestsPage() {
   }
 
   const lstColumns: DataGridColumn<WorkHolidayWorkbenchRow>[] = [
-    { field: "action", headerName: t("actions", "Actions"), width: 90, sortable: false, filterable: false, exportable: false },
+    { field: "action", headerName: t("actions", "Actions"), width: 92, sortable: false, filterable: false, exportable: false },
     { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
     { field: "strEmployeeName", headerName: t("requester", "Requester"), width: 190 },
     { field: "strOrganisationContext", headerName: t("organisation", "Organisation"), width: 180 },
@@ -153,11 +183,27 @@ export default function WorkHolidayRequestsPage() {
     { field: "strPostingStatus", headerName: t("posting_status", "Posting Status"), width: 160 },
   ];
   const lstRows: WorkHolidayWorkbenchRow[] = objList.lstItems.filter((objRequest) => {
+    if (strSelectedTab === "approval" && (objRequest.strRequestStatus !== "PENDING_APPROVAL" || objRequest.blnApprovalDecisionTaken)) {
+      return false;
+    }
     const strNeedle = strAppliedSearch.trim().toLowerCase();
     return !strNeedle || [objRequest.strRequestNumber, objRequest.strEmployeeName, objRequest.strEmployeeCode].some((strValue) => strValue?.toLowerCase().includes(strNeedle));
   }).map((objRequest) => ({
     intID: objRequest.intID,
-    action: <Button data-control-id={`work-on-holiday.workbench.${objRequest.intID}.view.button`} aria-label={t("view", "View")} onClick={() => void loadDetail(objRequest.intID)}><VisibilityRoundedIcon /></Button>,
+    action: (
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        {blnCanView ? (
+          <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.view.button`} aria-label={t("view", "View")} color="primary" size="small" onClick={() => void openRequestDetail(objRequest.intID)}>
+            <VisibilityRoundedIcon fontSize="small" />
+          </IconButton>
+        ) : null}
+        {blnCanAct && canActOnRequest(objRequest) ? (
+          <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.action.button`} aria-label={t("action", "Action")} color="primary" size="small" onClick={() => void openRequestActions(objRequest.intID)}>
+            <PendingActionsRoundedIcon fontSize="small" />
+          </IconButton>
+        ) : null}
+      </Stack>
+    ),
     strRequestNumber: objRequest.strRequestNumber ?? "—",
     strEmployeeName: objRequest.strEmployeeName ?? `${t("employee", "Employee")} ${objRequest.intEmployeeID}`,
     strOrganisationContext: [
@@ -211,7 +257,7 @@ export default function WorkHolidayRequestsPage() {
         { field: "strPostingStatus", headerName: t("posting_status", "Posting Status") },
         { field: "strErrorMessage", headerName: t("error", "Error"), width: 340 },
       ]} rows={lstExceptions.map((objPosting) => ({ intID: objPosting.intID, intWorkHolidayRequestID: objPosting.intWorkHolidayRequestID, strPostingTypeCode: t(`posting_type_${objPosting.strPostingTypeCode.toLowerCase()}`, objPosting.strPostingTypeCode), strPostingStatus: t(`posting_${objPosting.strPostingStatus.toLowerCase()}`, objPosting.strPostingStatus), strErrorMessage: objPosting.strErrorMessage ?? "—" }))} rowIdField="intID" showExportOptions exportFileName="work_on_holiday_posting_exceptions" testIdPrefix="work-on-holiday-exceptions" /> : null}
-      <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={fnCan("WORK_ON_HOLIDAY_REJECT")} blnCanSendBack={fnCan("WORK_ON_HOLIDAY_SEND_BACK")} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
+      <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject} blnCanSendBack={blnCanSendBack} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} blnActionMode={blnActionMode} fnOnClose={closeDetailDrawer} fnOnRefresh={async () => { await reload(); if (objDetail) await loadDetail(objDetail.intID); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
       <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">
         <DialogTitle sx={{ fontWeight: 800 }}>{t("create_on_behalf", "Create On Behalf")}</DialogTitle>
         <DialogContent dividers>

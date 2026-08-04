@@ -343,12 +343,12 @@ export default function HolidayMasterPanel() {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
-            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 1.25fr 1.25fr",
+            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 132px 132px",
           },
           gap: 1.25,
           mt: 1.25,
           "& > *": { minWidth: 0 },
-          "& .MuiButton-root": { minHeight: 34, minWidth: 96, whiteSpace: "nowrap" },
+          "& .MuiButton-root": { minHeight: 34, minWidth: 0, width: "100%", whiteSpace: "nowrap" },
         }}>
           <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} sx={{ gridColumn: { lg: 6 } }}>{t("search", "Search")}</Button>
           <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch} sx={{ gridColumn: { lg: 7 } }}>{t("clear", "Clear")}</Button>

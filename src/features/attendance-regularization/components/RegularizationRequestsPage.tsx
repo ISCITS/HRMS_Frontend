@@ -37,6 +37,10 @@ function formatInputTime(strValue?: string | null) {
   return strValue.slice(0, 5);
 }
 
+function getContextFirstIn(objContext?: DateContext | null) {
+  return objContext?.objAttendanceDay.strFirstIn ?? objContext?.objAttendanceDay.tmFirstIn ?? null;
+}
+
 function parseTimeToMinutes(strValue?: string | null) {
   if (!strValue) return null;
   const [strHours, strMinutes] = strValue.slice(0, 5).split(":");
@@ -148,7 +152,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     if (objOnBehalf.strRequestTypeCode !== "MISSING_OUT") return;
     const strFirstIn =
       formatInputTime(objOnBehalfContext?.lstPunches.find((objPunch) => objPunch.strDirection.toLowerCase() === "in")?.dtPunchAt) ||
-      formatInputTime(objOnBehalfContext?.objAttendanceDay.tmFirstIn);
+      formatInputTime(getContextFirstIn(objOnBehalfContext));
     if (!strFirstIn) return;
     setObjOnBehalf((objValue) => (
       objValue.tmProposedFirstIn === strFirstIn ? objValue : { ...objValue, tmProposedFirstIn: strFirstIn }
