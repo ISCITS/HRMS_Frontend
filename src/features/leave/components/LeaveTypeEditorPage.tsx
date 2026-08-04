@@ -59,13 +59,24 @@ const lstApplicabilityTypes = [
   "COMPANY", "LOCATION", "STATE", "DEPARTMENT", "DESIGNATION", "GRADE",
   "EMPLOYMENT_TYPE", "GENDER", "WORKER", "PROBATION", "TENURE",
 ];
-const lstApproverSources = ["LINE_MANAGER", "REPORTING_MANAGER", "HR", "FIXED_ROLE", "FIXED_EMPLOYEE"];
 const lstAttendanceStatuses = ["ON_LEAVE", "LWP", "ON_DUTY", "PRESENT", "HALF_DAY"];
 const lstCombinationRuleCodes = ["NOT_ALLOWED", "ALLOWED", "ALLOWED_WITH_GAP"];
-const lstRoundingCodes = ["NONE", "UP", "DOWN", "NEAREST_HALF"];
-const lstProrationBasis = ["CALENDAR_DAYS", "WORKING_DAYS", "COMPLETED_MONTHS"];
-const lstTreatmentCodes = ["EXCLUDE", "INCLUDE", "COUNT_IF_ENCLOSED"];
 const lstRuleOperators = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "BETWEEN", "NOT_BETWEEN", "IN", "NOT_IN"];
+
+// POC standard option sets (India POC simplification). Advanced/legacy codes are hidden from these
+// dropdowns but preserved on old records via `optsWithCurrent`, which re-adds a stored value that is
+// no longer in the standard list so it still displays and round-trips on save.
+const lstPocApproverSources = ["REPORTING_MANAGER", "LINE_MANAGER", "HR"];
+const lstPocNoActionRules = [
+  { code: "NONE", label: "No Automatic Action" },
+  { code: "AUTO_APPROVE", label: "Auto Approve" },
+  { code: "SKIP_TO_NEXT_APPROVER", label: "Skip to Next Approver" },
+];
+const lstPocRounding = [
+  { code: "NONE", label: "No Rounding" },
+  { code: "NEAREST_HALF", label: "Nearest Half Day" },
+  { code: "NEAREST_FULL", label: "Nearest Full Day" },
+];
 
 function toNum(strValue: string): number | null {
   return strValue === "" ? null : Number(strValue);
@@ -86,6 +97,22 @@ function normalizeDateForApi(strValue: string | null | undefined): string | null
 function emptyToNull(strValue: string | null | undefined): string | null {
   const strTrimmed = String(strValue ?? "").trim();
   return strTrimmed || null;
+}
+
+// Append the current stored code to a standard option list when it is not already present, so legacy
+// values (e.g. a proration basis or approver source hidden from the POC UI) still render and survive a save.
+function optsWithCurrent(lstOptions: { code: string; label: string }[], strCurrent: string | null | undefined): { code: string; label: string }[] {
+  if (!strCurrent || lstOptions.some((o) => o.code === strCurrent)) return lstOptions;
+  return [...lstOptions, { code: strCurrent, label: strCurrent.replace(/_/g, " ") }];
+}
+
+// Credit per Cycle is derived, not entered: yearly = full entitlement, monthly = entitlement / 12,
+// manual credit ("none") = 0. Used for both the read-only display and the persisted decAccrualQty.
+function computeCreditPerCycle(decEntitlement: number | null | undefined, strFrequency: string): number {
+  const decAnnual = Number(decEntitlement ?? 0);
+  if (strFrequency === "yearly") return decAnnual;
+  if (strFrequency === "monthly") return Math.round((decAnnual / 12) * 100) / 100;
+  return 0;
 }
 
 // Module-scope render helpers (stable identity → inputs keep focus across renders).
@@ -294,6 +321,56 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
     setObjForm((objPrev) => ({ ...objPrev, objPolicy: { ...(objPrev.objPolicy ?? emptyPolicy()), [strKey]: objValue } }));
   }
 
+  // Stage 2 (Sandwich): the simplified "Apply Sandwich On" control drives both the stored scope code and
+  // the underlying weekly/holiday treatment codes. Standard POC edits always fix boundary to BOTH_SIDES
+  // and cross-type application to false. Legacy advanced values are preserved on load — we only rewrite
+  // the derived fields when the user changes these simplified controls.
+  function applyScopeDerivation(objBase: LeavePolicyAggregate, strScope: string): LeavePolicyAggregate {
+    const blnWeekly = strScope === "WEEKLY_OFF" || strScope === "WEEKLY_OFF_AND_HOLIDAY";
+    const blnHoliday = strScope === "HOLIDAY" || strScope === "WEEKLY_OFF_AND_HOLIDAY";
+    return {
+      ...objBase,
+      strSandwichScopeCode: strScope,
+      strWeeklyOffTreatmentCode: blnWeekly ? "COUNT_IF_ENCLOSED" : "EXCLUDE",
+      strHolidayTreatmentCode: blnHoliday ? "COUNT_IF_ENCLOSED" : "EXCLUDE",
+      strSandwichBoundaryCode: "BOTH_SIDES",
+      blnSandwichApplyOnDifferentLeaveTypes: false,
+    };
+  }
+  function setSandwichEnabled(blnEnabled: boolean) {
+    setObjForm((objPrev) => {
+      const objBase = objPrev.objPolicy ?? emptyPolicy();
+      if (!blnEnabled) {
+        return { ...objPrev, objPolicy: { ...objBase, blnSandwichRuleEnabled: false, strWeeklyOffTreatmentCode: "EXCLUDE", strHolidayTreatmentCode: "EXCLUDE" } };
+      }
+      return { ...objPrev, objPolicy: { ...applyScopeDerivation(objBase, objBase.strSandwichScopeCode || "WEEKLY_OFF_AND_HOLIDAY"), blnSandwichRuleEnabled: true } };
+    });
+  }
+  function setApplySandwichOn(strScope: string) {
+    setObjForm((objPrev) => ({ ...objPrev, objPolicy: applyScopeDerivation(objPrev.objPolicy ?? emptyPolicy(), strScope) }));
+  }
+
+  // Stage 3 (Entitlement): Credit per Cycle is derived and persisted into decAccrualQty whenever the
+  // annual entitlement or frequency changes, so the read-only display and the saved value stay in sync.
+  function setEntitlementQty(decValue: number | null) {
+    setObjForm((objPrev) => {
+      const objBase = objPrev.objPolicy ?? emptyPolicy();
+      const dec = decValue ?? 0;
+      return { ...objPrev, objPolicy: { ...objBase, decEntitlementQty: dec, decAccrualQty: computeCreditPerCycle(dec, objBase.strAccrualFrequency) } };
+    });
+  }
+  function setAccrualFrequency(strValue: string) {
+    setObjForm((objPrev) => {
+      const objBase = objPrev.objPolicy ?? emptyPolicy();
+      return { ...objPrev, objPolicy: { ...objBase, strAccrualFrequency: strValue, decAccrualQty: computeCreditPerCycle(objBase.decEntitlementQty, strValue) } };
+    });
+  }
+  // Stage 3 (Eligibility): a single "Leave Eligibility" select replaces the two independent credit switches.
+  function setLeaveEligibility(strValue: string) {
+    const blnConfirmation = strValue === "CONFIRMATION";
+    setObjForm((objPrev) => ({ ...objPrev, objPolicy: { ...(objPrev.objPolicy ?? emptyPolicy()), blnCreditOnJoining: !blnConfirmation, blnCreditOnConfirmation: blnConfirmation } }));
+  }
+
   function optionsFor(strDomain: string, lstFallback: string[]): { code: string; label: string }[] {
     const lstLookup = objLookups[strDomain];
     if (lstLookup && lstLookup.length) return lstLookup.map((o) => ({ code: o.strValueCode, label: o.strDisplayName }));
@@ -411,7 +488,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
   function addStep() {
     const intNext = (objForm.lstApprovalSteps.reduce((m, s) => Math.max(m, s.intStepNo), 0) || 0) + 1;
-    setMaster("lstApprovalSteps", [...objForm.lstApprovalSteps, { intStepNo: intNext, strApproverSourceCode: "LINE_MANAGER", blnActionRequired: true, blnSkipIfUnavailable: true, intNoActionAfterDays: null, strNoActionRuleCode: "ESCALATE", intEscalationStepNo: null }]);
+    setMaster("lstApprovalSteps", [...objForm.lstApprovalSteps, { intStepNo: intNext, strApproverSourceCode: "REPORTING_MANAGER", blnActionRequired: true, blnSkipIfUnavailable: true, intNoActionAfterDays: null, strNoActionRuleCode: "NONE", intEscalationStepNo: null }]);
   }
   function updateStep(intIndex: number, objPatch: Partial<LeaveApprovalStepRow>) {
     setMaster("lstApprovalSteps", objForm.lstApprovalSteps.map((r, i) => (i === intIndex ? { ...r, ...objPatch } : r)));
@@ -504,7 +581,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <SectionSelect label="Unit" value={objForm.strUnit} onChange={(v) => setMaster("strUnit", v)} options={optionsFor("LEAVE_UNIT", ["DAY", "HALF_DAY", "HOUR"]).map((o) => ({ code: o.code.toLowerCase(), label: o.label }))} />
             <SectionSelect label="Payroll Treatment" value={objForm.strPayrollTreatmentCode} onChange={(v) => setMaster("strPayrollTreatmentCode", v)} options={optionsFor("LEAVE_PAYROLL_TREATMENT", ["PAID", "UNPAID", "NO_PAY_IMPACT"])} />
             <SectionSelect label="Attendance Status" value={objForm.strAttendanceStatusCode} onChange={(v) => setMaster("strAttendanceStatusCode", v)} options={lstAttendanceStatuses.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
-            <SectionSelect label="Approval Route" value={objForm.strApprovalRouteCode} onChange={(v) => setMaster("strApprovalRouteCode", v)} options={optionsFor("LEAVE_APPROVAL_ROUTE", ["LINE_MANAGER", "REPORTING_MANAGER", "HR", "CONFIGURED_WORKFLOW"])} />
+            {/* POC: Approval Route hidden — Approval Steps below is the single visible routing source.
+                The value is preserved in the form payload and historical workflow snapshots are unaffected. */}
             <SectionNum label="Display Order" value={objForm.intDisplayOrder} onChange={(v) => setMaster("intDisplayOrder", v ?? 0)} />
             <SectionText label="Effective From" type="date" value={objForm.dtEffectiveFrom} onChange={(v) => setMaster("dtEffectiveFrom", v)} />
             {/* POC: Effective To hidden — value preserved in the form payload. */}
@@ -546,19 +624,21 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
           <Box>
             <Box sx={objGridSx}>
               {/* POC: Year start month/day hidden — leave year is a company-level setting; values preserved. */}
-              <SectionNum label="Annual entitlement" value={objPolicy.decEntitlementQty} onChange={(v) => setPolicy("decEntitlementQty", v ?? 0)} />
-              <SectionSelect label="Accrual frequency" value={objPolicy.strAccrualFrequency} onChange={(v) => setPolicy("strAccrualFrequency", v)} options={[{ code: "none", label: "None" }, { code: "monthly", label: "Monthly" }, { code: "yearly", label: "Yearly" }]} />
-              <SectionNum label="Qty / cycle" value={objPolicy.decAccrualQty} onChange={(v) => setPolicy("decAccrualQty", v ?? 0)} />
-              <SectionSelect label="Accrual timing" value={objPolicy.strAccrualTimingCode} onChange={(v) => setPolicy("strAccrualTimingCode", v)} options={optionsFor("LEAVE_ACCRUAL_TIMING", ["PERIOD_START", "PERIOD_END", "JOINING_DATE", "CONFIRMATION_DATE"])} />
-              <SectionSelect label="Rounding" value={objPolicy.strAccrualRoundingCode} onChange={(v) => setPolicy("strAccrualRoundingCode", v)} options={lstRoundingCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
+              <SectionNum label="Annual Entitlement" value={objPolicy.decEntitlementQty} onChange={(v) => setEntitlementQty(v)} />
+              <SectionSelect label="Accrual Frequency" value={objPolicy.strAccrualFrequency} onChange={(v) => setAccrualFrequency(v)} options={[{ code: "yearly", label: "Yearly" }, { code: "monthly", label: "Monthly" }, { code: "none", label: "Manual Credit" }]} />
+              {/* Credit per Cycle is calculated (read-only) regardless of view/edit mode. */}
+              <TextField label="Credit per Cycle" value={computeCreditPerCycle(objPolicy.decEntitlementQty, objPolicy.strAccrualFrequency)} size="small" fullWidth disabled helperText="Auto-calculated from entitlement" />
+              <SectionSelect label="Credit Timing" value={objPolicy.strAccrualTimingCode} onChange={(v) => setPolicy("strAccrualTimingCode", v)} options={optsWithCurrent([{ code: "PERIOD_START", label: "Start of Cycle" }, { code: "PERIOD_END", label: "End of Cycle" }], objPolicy.strAccrualTimingCode)} />
+              <SectionSelect label="Rounding" value={objPolicy.strAccrualRoundingCode} onChange={(v) => setPolicy("strAccrualRoundingCode", v)} options={optsWithCurrent(lstPocRounding, objPolicy.strAccrualRoundingCode)} />
               {/* POC: Waiting Gap (waiting days) and Minimum Service Days hidden — values preserved. */}
-              <SectionSelect label="Join proration" value={objPolicy.strJoinProrationBasisCode} onChange={(v) => setPolicy("strJoinProrationBasisCode", v)} options={lstProrationBasis.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
-              <Box sx={objFullCellSx}>
-                <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                  <SectionSwitch label="Credit on joining" value={objPolicy.blnCreditOnJoining} onChange={(v) => setPolicy("blnCreditOnJoining", v)} />
-                  <SectionSwitch label="Credit on confirmation" value={objPolicy.blnCreditOnConfirmation} onChange={(v) => setPolicy("blnCreditOnConfirmation", v)} />
-                </Stack>
-              </Box>
+              <SectionSelect label="Joining Proration Method" value={objPolicy.strJoinProrationBasisCode} onChange={(v) => setPolicy("strJoinProrationBasisCode", v)} options={optsWithCurrent([{ code: "CALENDAR_DAYS", label: "Calendar Days" }, { code: "COMPLETED_MONTHS", label: "Completed Months" }], objPolicy.strJoinProrationBasisCode)} />
+              <SectionSelect label="Leave Eligibility" value={objPolicy.blnCreditOnConfirmation ? "CONFIRMATION" : "JOINING"} onChange={setLeaveEligibility} options={[{ code: "JOINING", label: "From Joining Date" }, { code: "CONFIRMATION", label: "From Confirmation Date" }]} />
+              {!objPolicy.blnCreditOnJoining && !objPolicy.blnCreditOnConfirmation ? (
+                <Box sx={objFullCellSx}><Alert severity="warning" sx={{ borderRadius: "12px" }}>No eligibility start is configured on this legacy policy. Pick “From Joining Date” or “From Confirmation Date”; the stored value is preserved until you change and save.</Alert></Box>
+              ) : null}
+              {blnBalanceTracked && objForm.strLeaveCategoryCode === "REGULAR" && Number(objPolicy.decEntitlementQty) === 0 ? (
+                <Box sx={objFullCellSx}><Alert severity="warning" sx={{ borderRadius: "12px" }}>This balance-tracked regular leave has an Annual Entitlement of 0 — employees will accrue no balance.</Alert></Box>
+              ) : null}
             </Box>
           </Box>
         </Paper>
@@ -569,21 +649,22 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Application Limits</Typography>
         <Box>
           <Box sx={objGridSx}>
-            <SectionNum label="Min per request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} />
-            <SectionNum label="Max per request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} />
-            <SectionNum label="Max consecutive" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} />
+            <SectionNum label="Minimum Days per Request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} />
+            <SectionNum label="Maximum Days per Request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} />
+            <SectionNum label="Maximum Consecutive Leave Days" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} />
             {/* POC: Maximum per Month hidden — value preserved. */}
-            <SectionNum label="Max / year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} />
-            <SectionNum label="Min notice days" value={objPolicy.intMinNoticeDays} onChange={(v) => setPolicy("intMinNoticeDays", v ?? 0)} />
-            <SectionNum label="Max backdate days" value={objPolicy.intMaxBackdateDays} onChange={(v) => setPolicy("intMaxBackdateDays", v ?? 0)} />
-            <SectionNum label="Max advance days" value={objPolicy.intMaxAdvanceDays} onChange={(v) => setPolicy("intMaxAdvanceDays", v)} />
+            <SectionNum label="Maximum Requests per Year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} />
+            <SectionNum label="Minimum Advance Notice (Days)" value={objPolicy.intMinNoticeDays} onChange={(v) => setPolicy("intMinNoticeDays", v ?? 0)} />
+            {/* Conditional limits — shown (and normalized to 0/null when hidden) with their toggle. */}
+            {objPolicy.blnBackdatedApplicationAllowed ? <SectionNum label="Maximum Backdated Days" value={objPolicy.intMaxBackdateDays} onChange={(v) => setPolicy("intMaxBackdateDays", v ?? 0)} /> : null}
+            {objPolicy.blnFutureApplicationAllowed ? <SectionNum label="Maximum Advance Application Days" value={objPolicy.intMaxAdvanceDays} onChange={(v) => setPolicy("intMaxAdvanceDays", v)} /> : null}
             {/* POC: Minimum Balance after Request and Hourly Leave (+ Minimum hours) hidden — values preserved. */}
             <Box sx={objFullCellSx}>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                <SectionSwitch label="Backdated allowed" value={objPolicy.blnBackdatedApplicationAllowed} onChange={(v) => setPolicy("blnBackdatedApplicationAllowed", v)} />
-                <SectionSwitch label="Future allowed" value={objPolicy.blnFutureApplicationAllowed} onChange={(v) => setPolicy("blnFutureApplicationAllowed", v)} />
-                <SectionSwitch label="During probation" value={objPolicy.blnAllowDuringProbation} onChange={(v) => setPolicy("blnAllowDuringProbation", v)} />
-                <SectionSwitch label="During notice period" value={objPolicy.blnAllowDuringNoticePeriod} onChange={(v) => setPolicy("blnAllowDuringNoticePeriod", v)} />
+                <SectionSwitch label="Allow Backdated Requests" value={objPolicy.blnBackdatedApplicationAllowed} onChange={(v) => { setPolicy("blnBackdatedApplicationAllowed", v); if (!v) setPolicy("intMaxBackdateDays", 0); }} />
+                <SectionSwitch label="Allow Future-Dated Requests" value={objPolicy.blnFutureApplicationAllowed} onChange={(v) => { setPolicy("blnFutureApplicationAllowed", v); if (!v) setPolicy("intMaxAdvanceDays", null); }} />
+                <SectionSwitch label="Available During Probation" value={objPolicy.blnAllowDuringProbation} onChange={(v) => setPolicy("blnAllowDuringProbation", v)} />
+                <SectionSwitch label="Available During Notice Period" value={objPolicy.blnAllowDuringNoticePeriod} onChange={(v) => setPolicy("blnAllowDuringNoticePeriod", v)} />
               </Stack>
             </Box>
           </Box>
@@ -595,15 +676,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Weekly Off, Holiday &amp; Sandwich</Typography>
         <Box>
           <Box sx={objGridSx}>
-            <SectionSelect label="Weekly-off treatment" value={objPolicy.strWeeklyOffTreatmentCode} onChange={(v) => setPolicy("strWeeklyOffTreatmentCode", v)} options={lstTreatmentCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
-            <SectionSelect label="Holiday treatment" value={objPolicy.strHolidayTreatmentCode} onChange={(v) => setPolicy("strHolidayTreatmentCode", v)} options={lstTreatmentCodes.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
-            <Box><SectionSwitch label="Sandwich rule enabled" value={objPolicy.blnSandwichRuleEnabled} onChange={(v) => setPolicy("blnSandwichRuleEnabled", v)} /></Box>
+            {/* Simplified POC controls. The weekly/holiday treatment codes, boundary (BOTH_SIDES) and
+                cross-type flag are derived from these two inputs — see applyScopeDerivation.
+                POC: Weekly-off/Holiday treatment, Sandwich boundary and Apply-across hidden; values preserved. */}
+            <Box><SectionSwitch label="Enable Sandwich Leave" value={objPolicy.blnSandwichRuleEnabled} onChange={setSandwichEnabled} /></Box>
             {objPolicy.blnSandwichRuleEnabled ? (
               <>
-                <SectionSelect label="Sandwich scope" value={objPolicy.strSandwichScopeCode} onChange={(v) => setPolicy("strSandwichScopeCode", v)} options={optionsFor("LEAVE_SANDWICH_SCOPE", ["WEEKLY_OFF", "HOLIDAY", "WEEKLY_OFF_AND_HOLIDAY"])} />
-                <SectionSelect label="Sandwich boundary" value={objPolicy.strSandwichBoundaryCode} onChange={(v) => setPolicy("strSandwichBoundaryCode", v)} options={optionsFor("LEAVE_SANDWICH_BOUNDARY", ["PRECEDING", "FOLLOWING", "BOTH_SIDES"])} />
-                {/* POC: Apply Across Different Types hidden — value preserved. */}
-                <Box sx={objFullCellSx}><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>Example: Fri + Mon leave with Sat/Sun off &mdash; a &quot;both sides&quot; sandwich counts the weekend as leave.</Typography></Box>
+                <SectionSelect label="Apply Sandwich On" value={objPolicy.strSandwichScopeCode} onChange={setApplySandwichOn} options={[{ code: "WEEKLY_OFF", label: "Weekly Off" }, { code: "HOLIDAY", label: "Holiday" }, { code: "WEEKLY_OFF_AND_HOLIDAY", label: "Weekly Off & Holiday" }]} />
+                <Box sx={objFullCellSx}><Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>Example: Fri + Mon leave with Sat/Sun off &mdash; the enclosed weekend is counted as leave.</Typography></Box>
               </>
             ) : null}
           </Box>
@@ -672,14 +752,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Approval Workflow</Typography>
         <Box>
           <Box sx={objGridSx}>
-            <SectionSelect label="Backup resource rule" value={objPolicy.strBackupResourceRuleCode} onChange={(v) => setPolicy("strBackupResourceRuleCode", v)} options={optionsFor("LEAVE_BACKUP_RESOURCE_RULE", ["NOT_REQUIRED", "OPTIONAL", "MANDATORY"])} />
-            <SectionSelect label="No-action auto behaviour" value={objPolicy.strAutoActionCode} onChange={(v) => setPolicy("strAutoActionCode", v)} options={optionsFor("LEAVE_AUTO_ACTION", ["NONE", "AUTO_APPROVE", "ESCALATE", "SKIP_TO_NEXT_APPROVER"])} />
-            {objPolicy.strAutoActionCode !== "NONE" ? (
-              <>
-                <SectionNum label="After days" value={objPolicy.intAutoActionAfterDays} onChange={(v) => setPolicy("intAutoActionAfterDays", v)} />
-                {/* POC: Escalation Role hidden — value preserved. */}
-              </>
-            ) : null}
+            <SectionSelect label="Backup Resource Requirement" value={objPolicy.strBackupResourceRuleCode} onChange={(v) => setPolicy("strBackupResourceRuleCode", v)} options={[{ code: "NOT_REQUIRED", label: "Not Required" }, { code: "OPTIONAL", label: "Optional" }, { code: "MANDATORY", label: "Required" }]} />
+            {/* POC: workflow-level No-action auto behaviour + After days hidden — the step-level "If No Action"
+                rule below is the single authoritative control. Values preserved in the payload. */}
             <Box sx={objFullCellSx}>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
                 <SectionSwitch label="Cancel before start" value={objPolicy.blnCancellationBeforeStartAllowed} onChange={(v) => setPolicy("blnCancellationBeforeStartAllowed", v)} />
@@ -693,18 +768,21 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <TextField label="Step" type="number" size="small" value={objStep.intStepNo} onChange={(e) => updateStep(intIndex, { intStepNo: Number(e.target.value) || 1 })} sx={{ width: 80 }} {...objInputProps} />
                   <TextField label="Approver" select size="small" value={objStep.strApproverSourceCode} onChange={(e) => updateStep(intIndex, { strApproverSourceCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
-                    {lstApproverSources.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
+                    {/* POC approvers: Reporting Manager, Line Manager, HR. Fixed Role / Specific Employee are
+                        advanced-only; a legacy stored value is re-added so it displays and round-trips. */}
+                    {optsWithCurrent(lstPocApproverSources.map((c) => ({ code: c, label: c.replace(/_/g, " ") })), objStep.strApproverSourceCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
-                  <TextField label="No-action days" type="number" size="small" value={objStep.intNoActionAfterDays ?? ""} onChange={(e) => updateStep(intIndex, { intNoActionAfterDays: toNum(e.target.value) })} sx={{ width: 130 }} {...objInputProps} />
-                  <TextField label="On no-action" select size="small" value={objStep.strNoActionRuleCode} onChange={(e) => updateStep(intIndex, { strNoActionRuleCode: e.target.value })} sx={{ width: 180 }} {...objInputProps}>
-                    {["ESCALATE", "AUTO_APPROVE", "SKIP_TO_NEXT_APPROVER"].map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
+                  <TextField label="Action Due Within (Days)" type="number" size="small" value={objStep.intNoActionAfterDays ?? ""} onChange={(e) => updateStep(intIndex, { intNoActionAfterDays: toNum(e.target.value) })} sx={{ width: 170 }} {...objInputProps} />
+                  <TextField label="If No Action" select size="small" value={objStep.strNoActionRuleCode} onChange={(e) => updateStep(intIndex, { strNoActionRuleCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
+                    {optsWithCurrent(lstPocNoActionRules, objStep.strNoActionRuleCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
-                  <FormControlLabel control={<Switch size="small" checked={objStep.blnActionRequired} disabled={blnReadOnly} onChange={(e) => updateStep(intIndex, { blnActionRequired: e.target.checked })} />} label="Action req." />
+                  {/* POC: Action Required hidden — active steps are treated as action-required by default. */}
                   {!blnReadOnly ? <IconButton size="small" color="error" onClick={() => removeStep(intIndex)}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
                 </Stack>
               </Box>
             ))}
-            {!blnReadOnly ? <Box sx={objFullCellSx}><Button size="small" startIcon={<AddRoundedIcon />} onClick={addStep}>Add step</Button></Box> : null}
+            {/* POC caps standard routing at 2 steps. */}
+            {!blnReadOnly ? <Box sx={objFullCellSx}><Button size="small" startIcon={<AddRoundedIcon />} onClick={addStep} disabled={objForm.lstApprovalSteps.length >= 2}>Add step</Button></Box> : null}
           </Box>
         </Box>
       </Paper>
