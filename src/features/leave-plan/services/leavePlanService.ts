@@ -6,6 +6,7 @@ import type {
   BalanceMovementRequest, BalanceMutationResult, EmployeeLeaveBalance, EmployeeLeaveLedger,
   EmployeeLeavePlanOverview, EmployeePlanAssignRequest, EmployeePlanAssignmentUpdateRequest, LeavePlan, LeavePlanFilters, LeavePlanLanguages,
   LeavePlanSaveRequest, LeavePolicyOption, LeaveTypeOption, OpeningBalanceRequest,
+  ReplacementImpact, ReplacementPreviewRequest,
 } from "@/features/leave-plan/types/LeavePlanTypes";
 
 const strLeaveViewAction = "LEAVE_VIEW";
@@ -73,6 +74,10 @@ export const leavePlanService = {
   },
   async assignPlan(intEmployeeID: number, objPayload: EmployeePlanAssignRequest, blnReplace: boolean): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}/${blnReplace ? "replace" : "assign"}`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
+    return objResult.Data;
+  },
+  async previewReplacement(intEmployeeID: number, objPayload: ReplacementPreviewRequest): Promise<ReplacementImpact> {
+    const objResult = await requestApi<ReplacementImpact>({ strPath: `/leave/plan-assignments/${intEmployeeID}/replace/preview`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveViewAction, objBody: objPayload });
     return objResult.Data;
   },
   async updateAssignment(intEmployeeID: number, objPayload: EmployeePlanAssignmentUpdateRequest): Promise<EmployeeLeavePlanOverview> {

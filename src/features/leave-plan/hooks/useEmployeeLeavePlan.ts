@@ -9,6 +9,7 @@ import { leavePlanService } from "@/features/leave-plan/services/leavePlanServic
 import type {
   BalanceMovementRequest, EmployeeLeaveLedger, EmployeeLeavePlanOverview, EmployeePlanAssignRequest,
   EmployeePlanAssignmentUpdateRequest, LeavePlan, LeaveTypeOption, OpeningBalanceRequest,
+  ReplacementPreviewRequest,
 } from "@/features/leave-plan/types/LeavePlanTypes";
 
 export function useEmployeeOptions() {
@@ -73,6 +74,7 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
   return {
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError, loadData,
     fetchPlan: (intPlanID: number) => leavePlanService.getPlan(intPlanID),
+    previewReplacement: (objPayload: ReplacementPreviewRequest) => leavePlanService.previewReplacement(intEmployeeID, objPayload),
     assignPlan: (objPayload: EmployeePlanAssignRequest, blnReplace: boolean) => runMutation(() => leavePlanService.assignPlan(intEmployeeID, objPayload, blnReplace)),
     updateAssignment: (objPayload: EmployeePlanAssignmentUpdateRequest) => runMutation(() => leavePlanService.updateAssignment(intEmployeeID, objPayload)),
     initializeBalances: () => runMutation(() => leavePlanService.initializeBalances(intEmployeeID, intLeaveYear)),

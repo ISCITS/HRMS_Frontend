@@ -119,11 +119,23 @@ export type EmployeeLeaveLedger = {
   dtTransactionOn: string | null;
 };
 
+export type ReplacementImpactLine = { intLeaveTypeID: number; strLeaveType: string; lstReasons?: string[]; decAvailableBalance?: number };
+export type ReplacementImpact = {
+  lstRetained: ReplacementImpactLine[];
+  lstAdded: ReplacementImpactLine[];
+  lstRemovedFrozen: ReplacementImpactLine[];
+  lstBlocking: ReplacementImpactLine[];
+  blnCanReplace: boolean;
+};
+
 export type EmployeeLeavePlanOverview = {
   objCurrentAssignment: EmployeeLeavePlanAssignment | null;
   lstAssignments: EmployeeLeavePlanAssignment[];
   lstBalances: EmployeeLeaveBalance[];
+  objReplacementImpact?: ReplacementImpact;
 };
+
+export type ReplacementPreviewRequest = { intLeavePlanID: number; intLeaveYear: number; dtEffectiveFrom: string };
 
 export type BalanceMutationResult = { objBalance: EmployeeLeaveBalance; lstLedger: EmployeeLeaveLedger[] };
 

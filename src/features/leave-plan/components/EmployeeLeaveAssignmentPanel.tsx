@@ -201,7 +201,7 @@ export default function EmployeeLeaveAssignmentPanel() {
       { field: "strDepartmentName", headerName: t("table_department", "Department"), width: 180 },
       { field: "strDesignationName", headerName: t("table_designation", "Designation"), width: 170 },
       { field: "strJoiningDate", headerName: t("table_joining_date", "Joining Date"), width: 140 },
-      { field: "blnStatus", headerName: t("table_status", "Status"), sortable: false, width: 120 },
+      { field: "blnStatus", headerName: t("table_employee_status", "Employee Status"), sortable: false, width: 140 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, blnAllSelected, blnSomeSelected, lstFiltered.length],
