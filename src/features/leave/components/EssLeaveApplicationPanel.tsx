@@ -171,7 +171,9 @@ export default function EssLeaveApplicationPanel() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   // Validation errors and warnings stay hidden until the user actually attempts Save/Submit.
   const [blnShowValidation, setBlnShowValidation] = useState(false);
-  const objErrorSummaryRef = useRef<HTMLDivElement | null>(null);
+  // Server validation messages that do not map to a specific field (e.g. balance/policy) — shown
+  // below the form fields on Submit, not in the Live Preview.
+  const [lstServerFormErrors, setLstServerFormErrors] = useState<string[]>([]);
   const blnInitialRouteHandledRef = useRef(false);
 
   const { control, handleSubmit, reset, setValue, setError, formState: { errors: objFormErrors } } = useForm<LeaveFormValues>({
@@ -194,14 +196,11 @@ export default function EssLeaveApplicationPanel() {
     });
   }, [lstApplications, strSearch, strStatus]);
   const lstPagedApplications = useMemo(() => lstFilteredApplications.slice(intPage * intRowsPerPage, intPage * intRowsPerPage + intRowsPerPage), [lstFilteredApplications, intPage, intRowsPerPage]);
-  const lstClientErrors = Object.values(objFormErrors).map((objError) => objError?.message).filter(Boolean) as string[];
-  const lstAllBlockers = [...lstClientErrors, ...(objPreview?.lstErrors.map((objError) => objError.strMessage) ?? [])];
-  // Submit stays disabled until every mandatory condition passes. The live preview (server-side
-  // evaluation) only returns blnValid when a Leave Type + valid dates are chosen AND the balance,
-  // policy and date rules all pass, so it is the authoritative gate; we add the reason-required
-  // case since a mandatory reason is a client field the preview does not enforce.
-  const blnReasonMissing = Boolean(objSelectedType?.blnRequiresReason) && !((objWatchedForm.strReason ?? "").toString().trim());
-  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Boolean(objPreview?.blnValid) && !blnReasonMissing;
+  // Submit is enabled once the basic fields are present (Leave Type + valid date range). Deeper
+  // validation (reason, overlap, balance, policy, notice, etc.) runs when the user clicks Submit and
+  // is surfaced below the relevant field, so the user can click and see what needs fixing.
+  const blnDatesPresent = Boolean(objWatchedForm.dtFromDate) && Boolean(objWatchedForm.dtToDate) && (objWatchedForm.dtToDate ?? "") >= (objWatchedForm.dtFromDate ?? "");
+  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent;
 
   function fnShowToast(strMessage: string, strSeverity: "success" | "error") { setObjToast({ blnOpen: true, strMessage, strSeverity }); }
 
@@ -210,7 +209,7 @@ export default function EssLeaveApplicationPanel() {
     blnInitialRouteHandledRef.current = true;
     if (new URLSearchParams(window.location.search).get("view") === "apply") {
       setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
-      setBlnShowValidation(false); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+      setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
     }
   }, [blnLoading, lstTypes, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
@@ -264,7 +263,7 @@ export default function EssLeaveApplicationPanel() {
 
   function fnOpenNewForm(intLeaveTypeID?: number, lstAvailableTypes = lstTypes) {
     setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
-    setBlnShowValidation(false); reset(fnDefaultForm(intLeaveTypeID ?? lstAvailableTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+    setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(intLeaveTypeID ?? lstAvailableTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
   }
 
   async function fnOpenEditForm(objApplication: LeaveApplicationDto) {
@@ -289,8 +288,21 @@ export default function EssLeaveApplicationPanel() {
 
   function fnApplyServerErrors(lstErrors: LeaveValidationMessage[]) {
     const dicFieldMap: Record<string, keyof LeaveFormValues> = { intLeaveTypeID: "intLeaveTypeID", dtFromDate: "dtFromDate", dtToDate: "dtToDate", strReason: "strReason" };
-    lstErrors.forEach((objError) => { const strField = objError.strField ? dicFieldMap[objError.strField] : undefined; if (strField) setError(strField, { type: "server", message: objError.strMessage }); });
-    window.setTimeout(() => objErrorSummaryRef.current?.focus(), 0);
+    // Errors the backend does not tag with a field are routed to the most relevant field by code so
+    // they render beneath it (e.g. an overlap sits under the date range). Anything left over shows in
+    // a small error list below the fields.
+    const dicCodeToField: Record<string, keyof LeaveFormValues> = {
+      OVERLAPPING_APPLICATION: "dtToDate",
+      BACKDATE_NOT_ALLOWED: "dtFromDate", BACKDATE_LIMIT_EXCEEDED: "dtFromDate",
+      FUTURE_REQUEST_NOT_ALLOWED: "dtFromDate", ADVANCE_LIMIT_EXCEEDED: "dtFromDate", NOTICE_PERIOD_NOT_MET: "dtFromDate",
+    };
+    const lstUnmapped: string[] = [];
+    lstErrors.forEach((objError) => {
+      const strField = (objError.strField ? dicFieldMap[objError.strField] : undefined) ?? dicCodeToField[objError.strCode];
+      if (strField) setError(strField, { type: "server", message: objError.strMessage });
+      else lstUnmapped.push(objError.strMessage);
+    });
+    setLstServerFormErrors(lstUnmapped);
   }
 
   async function fnPersistDraft(objValues: LeaveFormValues) {
@@ -305,6 +317,26 @@ export default function EssLeaveApplicationPanel() {
     try { await fnPersistDraft(objValues); fnShowToast(t("draft_saved", "Leave draft saved."), "success"); await fnLoadAll(); }
     catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
     finally { setBlnSaving(false); }
+  }
+
+  // Runs full validation (client schema + server preview) when the user clicks Submit. Field/overlap
+  // errors surface below their fields; the confirm dialog only opens when everything passes.
+  async function fnValidateAndConfirmSubmit() {
+    setBlnShowValidation(true);
+    setLstServerFormErrors([]);
+    await handleSubmit(async (objValues) => {
+      setBlnSaving(true);
+      try {
+        const objValidatedPreview = await fnPreview(fnBuildPayload(objValues), objEditing?.intID);
+        setObjPreview(objValidatedPreview);
+        if (!objValidatedPreview.blnValid) { fnApplyServerErrors(objValidatedPreview.lstErrors); return; }
+        setObjConfirm({ strKind: "submit" });
+      } catch (objError) {
+        const objHandledError = await createApiRequestError(objError);
+        if (fnIsPreviewData(objHandledError.objData)) { setObjPreview(objHandledError.objData); fnApplyServerErrors(objHandledError.objData.lstErrors); }
+        else fnShowToast(objHandledError.message, "error");
+      } finally { setBlnSaving(false); }
+    })();
   }
 
   async function fnSubmitConfirmed() {
@@ -372,12 +404,12 @@ export default function EssLeaveApplicationPanel() {
       <DialogTitle id="leave-form-title" sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>{objEditing ? t("edit_application", "Edit Leave Application") : t("apply_leave", "Apply Leave")}<IconButton aria-label={t("close", "Close")} onClick={() => setBlnFormOpen(false)} disabled={blnSaving}><CloseRoundedIcon /></IconButton></DialogTitle>
       {blnSaving ? <LinearProgress /> : null}
       <DialogContent dividers sx={{ bgcolor: "#f8fafc", p: { xs: 1.5, md: 2.5 } }}><Grid container spacing={2}><Grid item xs={12} md={7}><Stack spacing={2}>
-        {blnShowValidation && lstAllBlockers.length ? <Alert ref={objErrorSummaryRef} tabIndex={-1} severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstAllBlockers)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
-        {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
         <RequestFields control={control} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} blnSingleDay={blnSingleDay} strPolicyHelp={strPolicyHelp} fnLabel={t} />
+        {blnShowValidation && lstServerFormErrors.length ? <Alert severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstServerFormErrors)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
+        {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
         <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><Button component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />} disabled={blnSaving}>{t("add_files", "Add files")}<input hidden multiple type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(objEvent) => { setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...Array.from(objEvent.target.files ?? [])]); objEvent.target.value = ""; }} /></Button></Stack><Stack spacing={.75} sx={{ mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Stack></Paper>
       </Stack></Grid><Grid item xs={12} md={5}><PreviewPanel objPreview={objPreview} blnLoading={blnPreviewLoading} fnLabel={t} /></Grid></Grid></DialogContent>
-      <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={!blnCanSubmit} onClick={() => { setBlnShowValidation(true); void handleSubmit(() => setObjConfirm({ strKind: "submit" }))(); }}>{t("submit_application", "Submit Application")}</Button></DialogActions>
+      <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={!blnCanSubmit} onClick={() => void fnValidateAndConfirmSubmit()}>{t("submit_application", "Submit Application")}</Button></DialogActions>
     </Dialog>
 
     <DetailDialog objApplication={objDetail} blnLoading={blnDetailLoading} blnCanManage={blnCanManage} fnOnClose={() => setObjDetail(null)} fnOnWithdraw={(intApplicationID) => { setStrWithdrawReason(""); setObjConfirm({ strKind: "withdraw", intApplicationID }); }} fnLabel={t} />
@@ -398,12 +430,13 @@ function SessionField({ control, strName, strLabel, objError }: { control: Contr
 function RequestFields({ control, objErrors, lstTypes, objSelectedType, blnSingleDay, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; objSelectedType: LeaveTypeDto | null; blnSingleDay: boolean; strPolicyHelp: string; fnLabel: LabelFunction }) {
   const strFromDuration = useWatch({ control, name: "strFromDuration" });
   const strToDuration = useWatch({ control, name: "strToDuration" });
+  const strFromDate = useWatch({ control, name: "dtFromDate" });
   const blnAllowHalfDay = Boolean(objSelectedType?.blnAllowHalfDay);
   return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Typography component="h3" sx={{ fontWeight: 800, mb: 1.5 }}>{fnLabel("request_details", "Request Details")}</Typography><Grid container spacing={1.5}>
     <Grid item xs={12}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
     {strPolicyHelp ? <Grid item xs={12}><Alert severity="info">{strPolicyHelp}</Alert></Grid> : null}
     <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
-    <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
+    <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} inputProps={{ min: strFromDate || undefined }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
     {blnAllowHalfDay && blnSingleDay ? <>
       <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} /></Grid>
       {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("half_day_session", "Half-Day Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
@@ -415,8 +448,6 @@ function RequestFields({ control, objErrors, lstTypes, objSelectedType, blnSingl
       {strToDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strToSession" strLabel={fnLabel("to_date_session", "To Date Session")} objError={objErrors.strToSession?.message} /></Grid> : null}
     </> : null}
     <Grid item xs={12}><Controller name="strReason" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" multiline minRows={3} label={`${fnLabel("reason", "Reason")}${objSelectedType?.blnRequiresReason ? " *" : ""}`} error={Boolean(objErrors.strReason)} helperText={objErrors.strReason?.message} />} /></Grid>
-    <Grid item xs={12} sm={6}><Controller name="strContactDuringLeave" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" label={fnLabel("contact_during_leave", "Contact During Leave")} error={Boolean(objErrors.strContactDuringLeave)} helperText={objErrors.strContactDuringLeave?.message} />} /></Grid>
-    <Grid item xs={12} sm={6}><Controller name="strBackupEmployee" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" label={fnLabel("backup_employee", "Backup Employee")} error={Boolean(objErrors.strBackupEmployee)} helperText={objErrors.strBackupEmployee?.message} />} /></Grid>
   </Grid></Paper>;
 }
 
@@ -440,7 +471,7 @@ function ApplicationTable({ lstApplications, blnCanManage, fnOnView, fnOnEdit, f
 function AttachmentRow({ strName, intBytes, fnOnDelete }: { strName: string; intBytes: number; fnOnDelete?: () => void }) { return <Stack direction="row" spacing={1} alignItems="center" sx={{ p: .75, borderRadius: "10px", bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}><AttachFileRoundedIcon fontSize="small" color="action" /><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap sx={{ fontWeight: 700, fontSize: ".8rem" }}>{strName}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b" }}>{Math.max(1, Math.round(intBytes / 1024))} KB</Typography></Box>{fnOnDelete ? <IconButton size="small" aria-label={`Remove ${strName}`} onClick={fnOnDelete}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}</Stack>; }
 
 function PreviewPanel({ objPreview, blnLoading, fnLabel }: { objPreview: LeavePreviewDto | null; blnLoading: boolean; fnLabel: LabelFunction }) {
-  return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #cbd5e1", position: { md: "sticky" }, top: { md: 16 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Typography component="h3" sx={{ fontWeight: 800 }}>{fnLabel("live_preview", "Live Preview")}</Typography>{blnLoading ? <Chip size="small" label={fnLabel("calculating", "Calculating…")} color="info" /> : objPreview ? <Chip size="small" label={objPreview.blnValid ? fnLabel("valid", "Valid") : fnLabel("needs_attention", "Needs attention")} color={objPreview.blnValid ? "success" : "error"} /> : null}</Stack>{blnLoading ? <LinearProgress sx={{ mt: 1 }} /> : null}{!objPreview ? <Typography sx={{ color: "#64748b", fontSize: ".82rem", mt: 2 }}>{fnLabel("preview_hint", "Select a Leave Type and dates to calculate the request.")}</Typography> : <>{objPreview.lstErrors.length ? <Alert severity="error" sx={{ mt: 1.5 }} icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: objPreview.lstErrors.length > 1 ? .5 : 0 }}>{fnLabel("preview_cannot_calculate", "Leave cannot be calculated")}</Typography>{objPreview.lstErrors.map((objError) => <Typography component="div" key={objError.strCode} sx={{ fontSize: ".8rem" }}>• {objError.strMessage}</Typography>)}</Alert> : null}<Grid container spacing={1} sx={{ mt: 1 }}>{[[fnLabel("requested_quantity", "Requested"), objPreview.lstDateBreakdown.length], [fnLabel("chargeable_quantity", "Chargeable"), objPreview.decCalculatedDays], [fnLabel("balance_before", "Balance Before"), objPreview.decAvailableBefore ?? "—"], [fnLabel("balance_after", "Balance After"), objPreview.decAvailableAfter ?? "—"]].map(([objLabel, objValue]) => <Grid item xs={6} key={String(objLabel)}><Box sx={{ p: 1.25, borderRadius: "12px", bgcolor: "#f8fafc" }}><Typography sx={{ fontSize: ".68rem", color: "#64748b", fontWeight: 700 }}>{objLabel}</Typography><Typography sx={{ fontSize: "1.25rem", fontWeight: 800 }}>{objValue}</Typography></Box></Grid>)}</Grid><Divider sx={{ my: 1.5 }} /><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("date_explanation", "Date-wise Explanation")}</Typography><Stack spacing={.5} sx={{ maxHeight: 300, overflowY: "auto" }}>{objPreview.lstDateBreakdown.map((objDay) => <Stack key={objDay.dtDate} direction="row" justifyContent="space-between" spacing={1} sx={{ p: .75, borderRadius: "8px", bgcolor: objDay.blnCounted ? "#f0fdf4" : "#f8fafc" }}><Box><Typography sx={{ fontSize: ".76rem", fontWeight: 700 }}>{formatLeaveDate(objDay.dtDate)}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b", textTransform: "capitalize" }}>{objDay.strHolidayName || objDay.strCalculationReason.replaceAll("_", " ")}</Typography></Box><Chip size="small" label={objDay.decDays} color={objDay.blnCounted ? "success" : "default"} /></Stack>)}</Stack></>}</Paper>;
+  return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #cbd5e1", position: { md: "sticky" }, top: { md: 16 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Typography component="h3" sx={{ fontWeight: 800 }}>{fnLabel("live_preview", "Live Preview")}</Typography>{blnLoading ? <Chip size="small" label={fnLabel("calculating", "Calculating…")} color="info" /> : objPreview ? <Chip size="small" label={objPreview.blnValid ? fnLabel("valid", "Valid") : fnLabel("needs_attention", "Needs attention")} color={objPreview.blnValid ? "success" : "error"} /> : null}</Stack>{blnLoading ? <LinearProgress sx={{ mt: 1 }} /> : null}{!objPreview ? <Typography sx={{ color: "#64748b", fontSize: ".82rem", mt: 2 }}>{fnLabel("preview_hint", "Select a Leave Type and dates to calculate the request.")}</Typography> : <><Grid container spacing={1} sx={{ mt: 1 }}>{[[fnLabel("requested_quantity", "Requested"), objPreview.lstDateBreakdown.length], [fnLabel("chargeable_quantity", "Chargeable"), objPreview.decCalculatedDays], [fnLabel("balance_before", "Balance Before"), objPreview.decAvailableBefore ?? "—"], [fnLabel("balance_after", "Balance After"), objPreview.decAvailableAfter ?? "—"]].map(([objLabel, objValue]) => <Grid item xs={6} key={String(objLabel)}><Box sx={{ p: 1.25, borderRadius: "12px", bgcolor: "#f8fafc" }}><Typography sx={{ fontSize: ".68rem", color: "#64748b", fontWeight: 700 }}>{objLabel}</Typography><Typography sx={{ fontSize: "1.25rem", fontWeight: 800 }}>{objValue}</Typography></Box></Grid>)}</Grid><Divider sx={{ my: 1.5 }} /><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("date_explanation", "Date-wise Explanation")}</Typography><Stack spacing={.5} sx={{ maxHeight: 300, overflowY: "auto" }}>{objPreview.lstDateBreakdown.map((objDay) => <Stack key={objDay.dtDate} direction="row" justifyContent="space-between" spacing={1} sx={{ p: .75, borderRadius: "8px", bgcolor: objDay.blnCounted ? "#f0fdf4" : "#f8fafc" }}><Box><Typography sx={{ fontSize: ".76rem", fontWeight: 700 }}>{formatLeaveDate(objDay.dtDate)}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b", textTransform: "capitalize" }}>{objDay.strHolidayName || objDay.strCalculationReason.replaceAll("_", " ")}</Typography></Box><Chip size="small" label={objDay.decDays} color={objDay.blnCounted ? "success" : "default"} /></Stack>)}</Stack></>}</Paper>;
 }
 
 function DetailDialog({ objApplication, blnLoading, blnCanManage, fnOnClose, fnOnWithdraw, fnLabel }: { objApplication: LeaveApplicationDto | null; blnLoading: boolean; blnCanManage: boolean; fnOnClose: () => void; fnOnWithdraw: (intApplicationID: number) => void; fnLabel: LabelFunction }) {
