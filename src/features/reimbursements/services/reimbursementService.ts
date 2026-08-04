@@ -5,6 +5,7 @@ import axios from "axios";
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 import type {
   ReimbursementClaimDto,
@@ -120,7 +121,13 @@ export const reimbursementService = {
     return objResult.Data;
   },
 
-  async uploadProof(intClaimID: number, intItemID: number, objFile: File, intEmployeeID?: number | null): Promise<ReimbursementClaimDto> {
+  async uploadProof(
+    intClaimID: number,
+    intItemID: number,
+    objFile: File,
+    intEmployeeID?: number | null,
+    fnOnProgress?: FileUploadProgressHandler
+  ): Promise<ReimbursementClaimDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     objFormData.append("strDocumentType", "reimbursement_proof");
@@ -131,6 +138,13 @@ export const reimbursementService = {
         url: `${ApiRoutePrefix.ApiV1}/ess/reimbursements/${intClaimID}/items/${intItemID}/proofs${strEmployeeQuery}`,
         data: objFormData,
         csrfMenuAction: intEmployeeID ? "ESS_REIMBURSEMENT_CREATE" : "ESS_REIMBURSEMENT_UPLOAD_PROOF",
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
       } as ApiRequestConfig);
       return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
     } catch (objError) {

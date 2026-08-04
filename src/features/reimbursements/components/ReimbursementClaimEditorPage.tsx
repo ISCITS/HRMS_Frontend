@@ -89,6 +89,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   const [strSuccess, setStrSuccess] = useState("");
   const [objSelectedEmployee, setObjSelectedEmployee] = useState<EmployeeDetailApiRecord | null>(null);
   const [intClaimIDToLoadAfterSuccess, setIntClaimIDToLoadAfterSuccess] = useState<number | null>(null);
+  const [intProofUploadProgress, setIntProofUploadProgress] = useState(0);
   const intSelectedEmployeeID = useMemo(() => {
     const intEmployeeID = Number(objSearchParams.get("employee_id") || 0);
     return intEmployeeID > 0 ? intEmployeeID : null;
@@ -337,7 +338,8 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           ? objUpdatedClaim.lstItems?.find((objItem) => objItem.intID === intItemID)
           : objUpdatedClaim.lstItems?.find((objItem) => !setPreviousItemIDs.has(objItem.intID)) ?? objUpdatedClaim.lstItems?.at(-1);
         if (objSavedItem?.intID) {
-          objFinalClaim = await reimbursementService.uploadProof(objClaimForSave.intID, objSavedItem.intID, objProofFile, intSelectedEmployeeID);
+          setIntProofUploadProgress(0);
+          objFinalClaim = await reimbursementService.uploadProof(objClaimForSave.intID, objSavedItem.intID, objProofFile, intSelectedEmployeeID, setIntProofUploadProgress);
         }
       }
       setObjClaim(objFinalClaim);
@@ -350,6 +352,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
       setStrError(getErrorMessage(objError));
     } finally {
       setBlnSaving(false);
+      setIntProofUploadProgress(0);
     }
   }
 
@@ -600,7 +603,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
         </TableContainer>
       </Paper>
 
-      <ReimbursementClaimItemForm intClaimID={objClaim?.intID ?? null} intEmployeeID={intSelectedEmployeeID} objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} onDeleteProof={deleteProof} />
+      <ReimbursementClaimItemForm intClaimID={objClaim?.intID ?? null} intEmployeeID={intSelectedEmployeeID} objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} intUploadProgress={intProofUploadProgress} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} onDeleteProof={deleteProof} />
       <Dialog open={Boolean(!blnRightsLoading && (strRightsError || (!blnCanView && !blnCanAdd && !blnCanEdit)))} maxWidth="xs" fullWidth>
         <DialogTitle>{t("alert", "Alert")}</DialogTitle>
         <DialogContent>

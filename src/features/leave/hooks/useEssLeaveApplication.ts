@@ -62,12 +62,13 @@ export function useEssLeaveApplication() {
     objEditing: LeaveApplicationDto | null,
     objPayload: LeaveDraftRequest,
     lstFiles: File[],
+    fnOnFileProgress?: (intFileIndex: number, intPercent: number) => void,
   ) => {
     let objDraft = objEditing
       ? await leaveService.updateMyLeaveDraft(objEditing.intID, objPayload)
       : await leaveService.createMyLeaveDraft(objPayload);
-    for (const objFile of lstFiles) {
-      await leaveService.uploadMyLeaveAttachment(objDraft.intID, objFile);
+    for (const [intFileIndex, objFile] of lstFiles.entries()) {
+      await leaveService.uploadMyLeaveAttachment(objDraft.intID, objFile, (intPercent) => fnOnFileProgress?.(intFileIndex, intPercent));
     }
     if (lstFiles.length > 0) {
       objDraft = await leaveService.getMyLeaveApplication(objDraft.intID);

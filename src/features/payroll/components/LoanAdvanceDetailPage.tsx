@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -690,6 +691,20 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
               {objPolicy?.blnPerquisiteTaxApplicable ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{t("notional_tax_note", "Notional tax applies because the benchmark interest rate is higher than the company recovery rate. Taxable perquisite preview is shown in the schedule.")}</Alert> : null}
               <Typography sx={{ color: "#0f172a", fontWeight: 900 }}>{t("preview_title", "Reducing-balance Schedule Preview")}</Typography>
               {renderScheduleTable(lstSchedulePreview)}
+              {blnIsEssMode ? (
+                <FileUploadPanel
+                  module="LOAN"
+                  relatedEntityId={objRecord?.intID ?? null}
+                  relatedEntityType="LOAN_ADVANCE"
+                  readOnly={blnReadonly}
+                  controlIdPrefix="ess.loans-advances.documents"
+                  title={t("documents_title", "Supporting Documents")}
+                  description={t("documents_description", "Attach any supporting document for this loan or advance request (e.g. quotation, estimate).")}
+                  disabledMessage={t("documents_disabled_message", "Save this request as a draft before attaching documents.")}
+                  emptyMessage={t("documents_empty", "No documents uploaded yet.")}
+                  uploadLabel={t("documents_upload", "Upload Document")}
+                />
+              ) : null}
             </Box>
           ) : null}
           {intTab === 1 ? (

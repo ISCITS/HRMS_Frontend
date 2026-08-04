@@ -8,6 +8,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState, type InputHTMLAttributes } from "react";
 
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { formatCurrency, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { useReimbursementLabels } from "@/features/reimbursements/hooks/useReimbursementLabels";
@@ -36,6 +37,7 @@ type ItemFormProps = {
   objOptions: ReimbursementOptionsDto;
   blnOpen: boolean;
   blnSaving: boolean;
+  intUploadProgress?: number;
   blnReadOnly?: boolean;
   intEmployeeID?: number | null;
   onClose: () => void;
@@ -104,7 +106,7 @@ function ComponentInfoMetric({ strLabel, strValue, blnAccent = false }: { strLab
   );
 }
 
-export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, blnReadOnly = false, intEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
+export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, intUploadProgress = 0, blnReadOnly = false, intEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
   const { t } = useReimbursementLabels();
   const [objForm, setObjForm] = useState<ItemFormState>(buildStateFromItem(objItem));
   const [objProofFile, setObjProofFile] = useState<File | null>(null);
@@ -319,17 +321,24 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
         </Button>
         {!blnReadOnly ? (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ ml: { sm: "auto" } }}>
-            {objProofFile ? (
+            {objProofFile && !(blnSaving && intUploadProgress > 0) ? (
               <Stack direction="row" spacing={0.6} alignItems="center">
                 <Typography title={objProofFile.name} sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography>
                 <Button size="small" variant="text" startIcon={<VisibilityRoundedIcon />} onClick={() => openLocalFileInNewTab(objProofFile)} sx={objSmallProofButtonSx}>{t("view", "View")}</Button>
                 <Button size="small" variant="text" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setObjProofFile(null)} sx={objSmallProofButtonSx}>{t("delete", "Delete")}</Button>
               </Stack>
             ) : null}
-            <Button controlId="reimbursements.claim-item.upload-proof.button" size="small" variant="outlined" component="label" sx={objSmallProofButtonSx}>
-              {t("upload_proof", "Upload Proof")}
-              <input hidden controlId="reimbursements.claim-item.upload-proof.input" type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.txt,.docx,.xlsx" onChange={(objEvent) => setObjProofFile(objEvent.target.files?.[0] ?? null)} />
-            </Button>
+            <FileUploadButton
+              controlId="reimbursements.claim-item.upload-proof.button"
+              label={t("upload_proof", "Upload Proof")}
+              replaceLabel={t("upload_proof", "Upload Proof")}
+              hasExistingFile={false}
+              isUploading={blnSaving && Boolean(objProofFile) && intUploadProgress > 0}
+              progress={intUploadProgress}
+              onFilesSelected={(lstSelected) => { setObjProofFile(lstSelected[0] ?? null); setStrProofError(""); }}
+              onValidationError={(strMessage) => setStrProofError(strMessage)}
+              sx={objSmallProofButtonSx}
+            />
           </Stack>
         ) : null}
 

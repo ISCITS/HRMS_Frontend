@@ -4,7 +4,6 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
@@ -51,10 +50,12 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
 import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type FlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
@@ -523,6 +524,10 @@ export default function SalaryEssDeclarationsPage() {
   const [objEditRow, setObjEditRow] = useState<DeclarationRow | null>(null);
   const [lstSectionEditEntries, setLstSectionEditEntries] = useState<SectionEditEntry[]>([]);
   const [blnModalSaving, setBlnModalSaving] = useState(false);
+  // Tracks which proof row is mid-upload during saveDeclarationEdit()'s per-row loop, and its live
+  // progress percentage, so the matching FileUploadButton can render a real determinate progress bar.
+  const [strActiveProofUploadClientKey, setStrActiveProofUploadClientKey] = useState<string | null>(null);
+  const [intActiveProofUploadProgress, setIntActiveProofUploadProgress] = useState(0);
   const [lstInvestmentOptionsForRow, setLstInvestmentOptionsForRow] = useState<string[]>([]);
   const [objTaxSummary, setObjTaxSummary] = useState({
     decGrossSalary: 0,
@@ -1034,10 +1039,10 @@ export default function SalaryEssDeclarationsPage() {
       : itDeclarationService.deleteItem(intResolvedDeclarationID, intItemIDToDelete);
   }
 
-  async function uploadCurrentProof(intResolvedDeclarationID: number, intItemIDToUpload: number, objFile: File) {
+  async function uploadCurrentProof(intResolvedDeclarationID: number, intItemIDToUpload: number, objFile: File, fnOnProgress?: FileUploadProgressHandler) {
     return blnHrMode
-      ? hrItDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile)
-      : itDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile);
+      ? hrItDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile, undefined, fnOnProgress)
+      : itDeclarationService.uploadItemProof(intResolvedDeclarationID, intItemIDToUpload, objFile, undefined, fnOnProgress);
   }
 
   async function previewCurrentProof(intItemIDToPreview: number) {
@@ -1381,8 +1386,14 @@ export default function SalaryEssDeclarationsPage() {
         });
         intLastResolvedDeclarationID = objPersisted.intDeclarationID;
         if (objEntry.objProofFileInput && objPersisted.intItemID) {
-          const objData = await uploadCurrentProof(objPersisted.intDeclarationID, objPersisted.intItemID, objEntry.objProofFileInput);
-          hydrateFromApi(objData);
+          setStrActiveProofUploadClientKey(objEntry.strClientKey);
+          setIntActiveProofUploadProgress(0);
+          try {
+            const objData = await uploadCurrentProof(objPersisted.intDeclarationID, objPersisted.intItemID, objEntry.objProofFileInput, setIntActiveProofUploadProgress);
+            hydrateFromApi(objData);
+          } finally {
+            setStrActiveProofUploadClientKey(null);
+          }
         }
       }
 
@@ -1833,39 +1844,32 @@ export default function SalaryEssDeclarationsPage() {
                       </Box>
                       <Stack direction="row" spacing={0.45} alignItems="center" sx={{ width: { xs: "100%", lg: "15%" }, pt: { lg: 0.25 } }}>
                         {!blnLocked && blnCanEditDeclaration ? (
-                          <Button
-                            component="label"
-                            variant="outlined"
-                            size="small"
-                            startIcon={<UploadFileRoundedIcon />}
+                          <FileUploadButton
+                            controlId={`salary.it-declaration.proof-upload.${objEntry.strClientKey}`}
+                            label={t("upload", "Upload")}
+                            replaceLabel={t("replace", "Replace")}
+                            hasExistingFile={Boolean(objEntry.objProof || objEntry.objProofFileInput)}
+                            isUploading={strActiveProofUploadClientKey === objEntry.strClientKey}
+                            progress={strActiveProofUploadClientKey === objEntry.strClientKey ? intActiveProofUploadProgress : undefined}
+                            onFilesSelected={(lstSelected) => {
+                              const objFile = lstSelected[0] ?? null;
+                              setLstSectionEditEntries((lstCurrent) => lstCurrent.map((objCurrent) => (
+                                objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, objProofFileInput: objFile } : objCurrent
+                              )));
+                            }}
+                            onValidationError={(strMessage) => setStrError(strMessage)}
                             sx={{
                               minHeight: 26,
                               px: 0.9,
                               py: 0.25,
                               fontSize: "0.72rem",
-                              fontWeight: 700,
-                              textTransform: "none",
-                              borderRadius: "7px",
                               borderColor: "#2563eb",
                               color: "#1d4ed8",
                               backgroundColor: "#eff6ff",
                               "& .MuiSvgIcon-root": { color: "#1d4ed8", fontSize: "1rem" },
                               "&:hover": { borderColor: "#1d4ed8", backgroundColor: "#dbeafe" },
                             }}
-                          >
-                            {objEntry.objProof || objEntry.objProofFileInput ? t("replace", "Replace") : t("upload", "Upload")}
-                            <input
-                              hidden
-                              type="file"
-                              accept=".png,.jpg,.jpeg,.pdf"
-                              onChange={(objEvent) => {
-                                const objFile = objEvent.target.files?.[0] ?? null;
-                                setLstSectionEditEntries((lstCurrent) => lstCurrent.map((objCurrent) => (
-                                  objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, objProofFileInput: objFile } : objCurrent
-                                )));
-                              }}
-                            />
-                          </Button>
+                          />
                         ) : null}
                         {!blnLocked && blnCanEditDeclaration ? (
                           <Tooltip title={t("delete", "Delete")}>
@@ -1942,7 +1946,7 @@ export default function SalaryEssDeclarationsPage() {
               {t("proof", "Proof")}: {objEditRow?.blnProofRequired ? t("mandatory", "Mandatory") : t("optional", "Optional")}
             </Typography>
             <Typography sx={{ color: "#b45309", fontSize: "0.72rem", mt: -0.15, lineHeight: 1.2, fontWeight: 600 }}>
-              {t("supported_document_types", "Supported document types: PDF, JPG/JPEG, PNG. Max size: 10 MB.")}
+              {t("supported_document_types", "Supported document types: PDF, JPG/JPEG, PNG. Max size: 500 KB.")}
             </Typography>
             {strSectionEditError ? (
               <Typography sx={{ fontSize: "0.73rem", color: "#b91c1c", fontWeight: 700, mt: 0.2 }}>{strSectionEditError}</Typography>

@@ -26,6 +26,7 @@ import * as yup from "yup";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useEssLeaveApplication } from "@/features/leave/hooks/useEssLeaveApplication";
 import {
@@ -160,6 +161,7 @@ export default function EssLeaveApplicationPanel() {
   const [objDetail, setObjDetail] = useState<LeaveApplicationDto | null>(null);
   const [blnDetailLoading, setBlnDetailLoading] = useState(false);
   const [lstQueuedFiles, setLstQueuedFiles] = useState<File[]>([]);
+  const [dicFileUploadProgress, setDicFileUploadProgress] = useState<Record<number, number>>({});
   const [lstExistingAttachments, setLstExistingAttachments] = useState<LeaveApplicationAttachmentDto[]>([]);
   const [objPolicy, setObjPolicy] = useState<LeaveTypeAggregate | null>(null);
   const [strSearch, setStrSearch] = useState("");
@@ -187,6 +189,11 @@ export default function EssLeaveApplicationPanel() {
   );
   const objSelectedType = useMemo(() => lstTypes.find((objType) => objType.intID === Number(objWatchedForm.intLeaveTypeID)) ?? null, [lstTypes, objWatchedForm.intLeaveTypeID]);
   const blnSingleDay = fnIsSingleDay(objWatchedForm.dtFromDate ?? "", objWatchedForm.dtToDate ?? "");
+  const intOverallAttachmentUploadProgress = useMemo(() => {
+    const lstValues = Object.values(dicFileUploadProgress);
+    if (!lstValues.length) return 0;
+    return Math.round(lstValues.reduce((intSum, intValue) => intSum + intValue, 0) / lstValues.length);
+  }, [dicFileUploadProgress]);
   const lstFilteredApplications = useMemo(() => {
     const strNeedle = strSearch.trim().toLowerCase();
     return lstApplications.filter((objApplication) => {
@@ -307,8 +314,11 @@ export default function EssLeaveApplicationPanel() {
 
   async function fnPersistDraft(objValues: LeaveFormValues) {
     const objPayload = { ...fnBuildPayload(objValues), intVersionNo: objEditing?.intVersionNo };
-    const objDraft = await fnPersistDraftRequest(objEditing, objPayload, lstQueuedFiles);
-    setObjEditing(objDraft); setLstExistingAttachments(objDraft.lstAttachments ?? []); setLstQueuedFiles([]);
+    setDicFileUploadProgress({});
+    const objDraft = await fnPersistDraftRequest(objEditing, objPayload, lstQueuedFiles, (intFileIndex, intPercent) => {
+      setDicFileUploadProgress((dicPrevious) => ({ ...dicPrevious, [intFileIndex]: intPercent }));
+    });
+    setObjEditing(objDraft); setLstExistingAttachments(objDraft.lstAttachments ?? []); setLstQueuedFiles([]); setDicFileUploadProgress({});
     return objDraft;
   }
 
@@ -407,7 +417,7 @@ export default function EssLeaveApplicationPanel() {
         <RequestFields control={control} setValue={setValue} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} blnSingleDay={blnSingleDay} strPolicyHelp={strPolicyHelp} fnLabel={t} />
         {blnShowValidation && lstServerFormErrors.length ? <Alert severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstServerFormErrors)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
         {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
-        <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><Button component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />} disabled={blnSaving}>{t("add_files", "Add files")}<input hidden multiple type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(objEvent) => { setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...Array.from(objEvent.target.files ?? [])]); objEvent.target.value = ""; }} /></Button></Stack><Stack spacing={.75} sx={{ mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Stack></Paper>
+        <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><FileUploadButton controlId="ess.leave.attachments.upload.button" label={t("add_files", "Add files")} startIcon={<AttachFileRoundedIcon />} multiple disabled={blnSaving} isUploading={blnSaving && lstQueuedFiles.length > 0} progress={blnSaving && lstQueuedFiles.length > 0 ? intOverallAttachmentUploadProgress : undefined} onFilesSelected={(lstSelected) => setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...lstSelected])} onValidationError={(strMessage) => fnShowToast(strMessage, "error")} /></Stack><Stack spacing={.75} sx={{ mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Stack></Paper>
       </Stack></Grid><Grid item xs={12} md={5}><PreviewPanel objPreview={objPreview} blnLoading={blnPreviewLoading} fnLabel={t} /></Grid></Grid></DialogContent>
       <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={!blnCanSubmit} onClick={() => void fnValidateAndConfirmSubmit()}>{t("submit_application", "Submit Application")}</Button></DialogActions>
     </Dialog>

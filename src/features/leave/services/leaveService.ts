@@ -3,6 +3,7 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
 import type {
   LeaveApplicationDto,
   LeaveApplyRequest,
@@ -323,7 +324,7 @@ export const leaveService = {
     return objResult.Data;
   },
 
-  async uploadMyLeaveAttachment(intApplicationID: number, objFile: File): Promise<LeaveApplicationAttachmentDto> {
+  async uploadMyLeaveAttachment(intApplicationID: number, objFile: File, fnOnProgress?: FileUploadProgressHandler): Promise<LeaveApplicationAttachmentDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     try {
@@ -332,6 +333,13 @@ export const leaveService = {
         url: `${ApiRoutePrefix.ApiV1}/ess/leave/applications/${intApplicationID}/attachments`,
         data: objFormData,
         csrfMenuAction: LEAVE_MANAGE,
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
       } as ApiRequestConfig);
       return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
     } catch (objError) {

@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeBankFormValues, EmployeeFormOptions } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -36,6 +37,7 @@ export default function EssMyBankDetailsPage() {
   const { t } = useModuleLabels("my-bank-details", "Unable to load bank details labels.");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(["MY_BANK_DETAILS"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
+  const [intBankAccountID, setIntBankAccountID] = useState<number | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<EmployeeBankFormValues>(dicEmptyForm);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function EssMyBankDetailsPage() {
         }
 
         setObjFormOptions(dicOptions);
+        setIntBankAccountID(dicBank.intID ?? null);
         setDicForm({
           intBankID: dicBank.intBankID ?? "",
           strAccountHolderName: dicBank.strAccountHolderName ?? "",
@@ -122,6 +125,7 @@ export default function EssMyBankDetailsPage() {
         ...dicForm,
         strAccountNumber: dicForm.strAccountNumber.trim()
       });
+      setIntBankAccountID(dicSaved.intID ?? intBankAccountID);
       setDicForm((dicPrevious) => ({
         ...dicPrevious,
         intBankID: dicSaved.intBankID ?? dicPrevious.intBankID,
@@ -263,6 +267,21 @@ export default function EssMyBankDetailsPage() {
             />
           </Grid>
         </Grid>
+
+        <FileUploadPanel
+          embedded
+          module="BANK"
+          relatedEntityId={intBankAccountID}
+          relatedEntityType="EMPLOYEE_BANK_ACCOUNT"
+          documentType="cancelled_cheque"
+          readOnly={!blnCanModify}
+          controlIdPrefix="ess.my-bank-details.documents"
+          title={t("documents_title", "Bank Proof Documents")}
+          description={t("documents_description", "Upload a cancelled cheque or bank statement as proof of your account details.")}
+          disabledMessage={t("documents_disabled_message", "Save your bank details below before uploading a supporting document.")}
+          emptyMessage={t("documents_empty", "No bank proof documents uploaded yet.")}
+          uploadLabel={t("documents_upload", "Upload Bank Proof")}
+        />
 
         {blnCanSaveAction ? (
           <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>

@@ -1,7 +1,9 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
 
 export type ItDeclarationStatus = "draft" | "submitted" | "approved" | "rejected";
 export type ItDeclarationFlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
@@ -190,18 +192,33 @@ export const itDeclarationService = {
     intDeclarationID: number,
     intItemID: number,
     objFile: File,
-    strDocumentType = "investment_proof"
+    strDocumentType = "investment_proof",
+    fnOnProgress?: FileUploadProgressHandler
   ): Promise<ItDeclarationDto> {
+    // Called directly through axiosInstance (rather than the requestApi/requestEncryptedApi helper
+    // above) only so onUploadProgress can be wired for a real progress bar — the URL, method and
+    // FormData field names are unchanged from before. Mirrors reimbursementService.uploadProof().
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     objFormData.append("strDocumentType", strDocumentType);
-    const objResult = await requestApi<ItDeclarationDto>({
-      strPath: `/ess/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
-      strMethod: ApiRequestMethod.Post,
-      objBody: objFormData,
-      strMenuAction: "ESS_IT_DECLARATION_UPDATE",
-    });
-    return objResult.Data;
+    try {
+      const objResponse = await axiosInstance.request<ItDeclarationDto | { Data: ItDeclarationDto }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/ess/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+        data: objFormData,
+        csrfMenuAction: "ESS_IT_DECLARATION_UPDATE",
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
+      } as ApiRequestConfig);
+      return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
+    } catch (objError) {
+      throw await createApiRequestError<ItDeclarationDto>(objError);
+    }
   },
 
   async previewItemProof(
@@ -393,17 +410,35 @@ export const hrItDeclarationService = {
     return objResult.Data;
   },
 
-  async uploadItemProof(intDeclarationID: number, intItemID: number, objFile: File, strDocumentType = "investment_proof"): Promise<ItDeclarationDto> {
+  async uploadItemProof(
+    intDeclarationID: number,
+    intItemID: number,
+    objFile: File,
+    strDocumentType = "investment_proof",
+    fnOnProgress?: FileUploadProgressHandler
+  ): Promise<ItDeclarationDto> {
+    // See itDeclarationService.uploadItemProof for why this bypasses requestApi (progress wiring only).
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     objFormData.append("strDocumentType", strDocumentType);
-    const objResult = await requestApi<ItDeclarationDto>({
-      strPath: `/hr/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
-      strMethod: ApiRequestMethod.Post,
-      objBody: objFormData,
-      strMenuAction: "HR_IT_DECLARATION_EDIT",
-    });
-    return objResult.Data;
+    try {
+      const objResponse = await axiosInstance.request<ItDeclarationDto | { Data: ItDeclarationDto }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/hr/it-declaration/${intDeclarationID}/items/${intItemID}/proof`,
+        data: objFormData,
+        csrfMenuAction: "HR_IT_DECLARATION_EDIT",
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
+      } as ApiRequestConfig);
+      return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
+    } catch (objError) {
+      throw await createApiRequestError<ItDeclarationDto>(objError);
+    }
   },
 
   async previewItemProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
