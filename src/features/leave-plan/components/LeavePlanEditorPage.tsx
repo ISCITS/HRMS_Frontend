@@ -186,6 +186,26 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
 
   function fieldError(strPath: keyof PlanForm): string | undefined { return errors[strPath]?.message as string | undefined; }
 
+  // Keep each non-override item's Annual Entitlement inherited from its Leave Type's effective policy.
+  // Runs on edit-load once the preloaded policies arrive (and when the plan effective date changes), so
+  // an existing item shows the Leave Type entitlement instead of a stale stored value. Override items are
+  // left untouched (the user owns that value).
+  useEffect(() => {
+    const lstCurrentItems = objForm.getValues("lstItems") ?? [];
+    lstCurrentItems.forEach((objItem, intIndex) => {
+      if (objItem.blnIsEntitlementOverride) return;
+      const intTypeID = Number(objItem.intLeaveTypeID || 0);
+      const lstPolicies = dicPolicies[intTypeID];
+      if (!intTypeID || !lstPolicies?.length) return;
+      const decInherited = resolveInheritedEntitlement(lstPolicies, strEffectiveFrom || new Date().toISOString().slice(0, 10));
+      if (Number(objItem.decBaseEntitlementSnapshot ?? -1) !== decInherited || Number(objItem.decAnnualEntitlement ?? -1) !== decInherited) {
+        objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited);
+        objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dicPolicies, strEffectiveFrom]);
+
   if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
 
   return (
