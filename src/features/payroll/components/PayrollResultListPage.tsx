@@ -68,6 +68,36 @@ const dicEmptySearch: SearchForm = {
   strMonthScope: "Latest",
 };
 
+// Keep these aliases aligned with tplPayrollResultFallbackModuleCodes in
+// HRMS_Backend/app/api/v1/PayrollRoutes.py so the UI warning matches API access.
+const lstPayrollResultAccessModuleHints = [
+  "EMPLOYEE_PAYROLL_RESULT",
+  "EMPLOYEE_PAYROLL_RESULTS",
+  "PAYROLL_RESULT",
+  "PAYROLL_RESULTS",
+  "PAYROLL_PAYROLL_RESULT",
+  "PAYROLL_PAYSLIP",
+  "PAYROLL_PAYSLIPS",
+  "REPORT_PAYROLL_RESULT",
+  "REPORT_PAYROLL_RESULTS",
+  "PAYSLIP",
+  "PAYSLIPS",
+  "MY_PAYSLIP",
+  "MY_PAYSLIPS",
+  "PAYROLL_RUN",
+  "PAYROLL_RUNS",
+  "PAYROLL_PAYROLL_RUN",
+  "REPORTS",
+  "PAYROLL_REGISTER",
+  "REPORT_PAYROLL_REGISTER",
+  "BANK_FILE",
+  "REPORT_BANK_FILE",
+  "STATUTORY_REPORT",
+  "REPORT_STATUTORY",
+  "PAYROLL",
+  "PAYROLLS",
+];
+
 function formatMonth(strDate: string | null) {
   if (!strDate) {
     return "-";
@@ -206,7 +236,7 @@ export default function PayrollResultListPage({
     ? (blnEssMode
         ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
         : ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"])
-    : ["PAYROLL_RESULT", "PAYROLL_RESULTS"];
+    : lstPayrollResultAccessModuleHints;
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
     useModuleActionAccess(lstAccessModuleHints);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
@@ -223,7 +253,12 @@ export default function PayrollResultListPage({
   const [intPayslipActionID, setIntPayslipActionID] = useState<number | null>(null);
   const [intSelfEmployeeID, setIntSelfEmployeeID] = useState<number | null>(null);
   const blnCanAccessResults =
-    canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
+    canViewAny() ||
+    canDoAny("view") ||
+    canDoAny("list") ||
+    canDoAny("get") ||
+    canDoAny("PAYROLL_RESULT_VIEW") ||
+    canDoAny("PAYROLL_RESULT_LIST");
   const blnCanDownloadPayslips = canDoAny("download");
   const blnCanPrintPayslips = canDoAny("print");
   const blnCanExportPayslips = canDoAny("export");

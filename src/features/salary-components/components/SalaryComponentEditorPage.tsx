@@ -613,7 +613,7 @@ export default function SalaryComponentEditorPage({
   const blnShowContributionTypeGroup = blnIsEarningCategory || blnIsEmployerContributionCategory;
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
   const blnShowLwpTreatmentSection = !blnIsFlexiBucketCategory && (blnIsEarningCategory || blnIsReimbursementCategory);
-  const blnShowLwpReducedAmountHandling = blnShowLwpTreatmentSection && blnIsFlexiReimbursement && !isCategory(strLwpTreatmentCode, "none");
+  const blnShowLwpReducedAmountHandling = blnShowLwpTreatmentSection && !isCategory(strLwpTreatmentCode, "none");
   const blnShowLwpCustomFormula = strLwpTreatmentCode === "CUSTOM_FORMULA";
   const blnShowLwpCustomProrationFormula = blnShowLwpCustomFormula;
   const blnLwpReturnToResidualSelected = blnShowLwpReducedAmountHandling && (

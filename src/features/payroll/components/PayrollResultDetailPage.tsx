@@ -70,6 +70,36 @@ const lstAttendanceIntegrationModuleCodes = [
   "PAYROLL_PAYROLL_RUN",
 ];
 
+// Keep these aliases aligned with tplPayrollResultFallbackModuleCodes in
+// HRMS_Backend/app/api/v1/PayrollRoutes.py so detail-page access follows list/API access.
+const lstPayrollResultAccessModuleHints = [
+  "EMPLOYEE_PAYROLL_RESULT",
+  "EMPLOYEE_PAYROLL_RESULTS",
+  "PAYROLL_RESULT",
+  "PAYROLL_RESULTS",
+  "PAYROLL_PAYROLL_RESULT",
+  "PAYROLL_PAYSLIP",
+  "PAYROLL_PAYSLIPS",
+  "REPORT_PAYROLL_RESULT",
+  "REPORT_PAYROLL_RESULTS",
+  "PAYSLIP",
+  "PAYSLIPS",
+  "MY_PAYSLIP",
+  "MY_PAYSLIPS",
+  "PAYROLL_RUN",
+  "PAYROLL_RUNS",
+  "PAYROLL_PAYROLL_RUN",
+  "REPORTS",
+  "PAYROLL_REGISTER",
+  "REPORT_PAYROLL_REGISTER",
+  "BANK_FILE",
+  "REPORT_BANK_FILE",
+  "STATUTORY_REPORT",
+  "REPORT_STATUTORY",
+  "PAYROLL",
+  "PAYROLLS",
+];
+
 type PayrollResultDetailPageProps = {
   intResultID: number;
   blnPayslipScreen?: boolean;
@@ -561,7 +591,7 @@ export default function PayrollResultDetailPage({
   const { blnLoading: blnRightsLoading, canDoAny } = useModuleActionAccess(
     blnPayslipScreen
       ? ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"]
-      : ["PAYROLL_RESULT", "PAYROLL_RESULTS"]
+      : lstPayrollResultAccessModuleHints
   );
   const { canDoAny: canDoAnyAttendance } = useModuleActionAccess(lstAttendanceIntegrationModuleCodes);
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
