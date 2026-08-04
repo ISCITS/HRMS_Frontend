@@ -6,8 +6,8 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Snackbar, Stack, Table, TableBody,
+  Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog,
+  DialogActions, DialogContent, DialogTitle, Divider, Drawer, MenuItem, Paper, Snackbar, Stack, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ import * as yup from "yup";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLeavePlan } from "@/features/leave-plan/hooks/useEmployeeLeavePlan";
-import type { EmployeeLeaveBalance, EmployeePlanAssignRequest, LeavePlan } from "@/features/leave-plan/types/LeavePlanTypes";
+import type { EmployeeLeaveBalance, EmployeePlanAssignRequest, LeavePlan, ReplacementImpact } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
@@ -29,20 +29,55 @@ type MovementDialog = { strType: "opening" | "credit" | "debit"; objBalance: Emp
 // Reuse the permanent section-card treatment used by the Salary Component editor.
 const objSectionSx = { borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" } as const;
 
-type StaticSectionProps = PropsWithChildren<{ defaultExpanded?: boolean; disableGutters?: boolean }>;
-type StaticSectionHeaderProps = PropsWithChildren<{ expandIcon?: ReactNode }>;
-
-function Accordion(objProps: StaticSectionProps) {
-  return <Paper sx={objSectionSx}>{objProps.children}</Paper>;
+// Real collapsible section card (the previous Accordion helpers never actually collapsed). Collapsed
+// by default per the guide for Replace / Leave Plan History / Recent Transactions; `blnOpen`/`title`
+// drive the clickable header. `objAction` renders controls (e.g. year picker) in the header row.
+type CollapsibleCardProps = PropsWithChildren<{ strTitle: string; blnDefaultOpen?: boolean; objAction?: ReactNode }>;
+function CollapsibleCard({ strTitle, blnDefaultOpen = false, objAction, children }: CollapsibleCardProps) {
+  const [blnOpen, setBlnOpen] = useState(blnDefaultOpen);
+  return (
+    <Paper sx={objSectionSx}>
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}>
+        <Box role="button" aria-expanded={blnOpen} onClick={() => setBlnOpen((blnPrev) => !blnPrev)} sx={{ display: "flex", alignItems: "center", gap: 1, cursor: "pointer", flex: 1 }}>
+          <ExpandMoreRoundedIcon sx={{ transform: blnOpen ? "rotate(180deg)" : "none", transition: "transform .2s", color: "#64748b" }} />
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{strTitle}</Typography>
+        </Box>
+        {objAction ? <Box onClick={(objEvent) => objEvent.stopPropagation()}>{objAction}</Box> : null}
+      </Box>
+      <Collapse in={blnOpen} unmountOnExit>
+        <Box sx={{ mt: 2, "& .MuiTableHead-root .MuiTableCell-root": { textTransform: "capitalize" } }}>{children}</Box>
+      </Collapse>
+    </Paper>
+  );
 }
 
-function AccordionSummary(objProps: StaticSectionHeaderProps) {
-  return <Box sx={{ mb: 2, color: "#0f172a" }}>{objProps.children}</Box>;
+// Always-open section card (compact summary + primary Yearly Balances).
+function SectionCard({ strTitle, objAction, children }: PropsWithChildren<{ strTitle: string; objAction?: ReactNode }>) {
+  return (
+    <Paper sx={objSectionSx}>
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5, mb: 2 }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{strTitle}</Typography>
+        {objAction ?? null}
+      </Box>
+      <Box sx={{ "& .MuiTableHead-root .MuiTableCell-root": { textTransform: "capitalize" } }}>{children}</Box>
+    </Paper>
+  );
 }
 
-function AccordionDetails(objProps: PropsWithChildren) {
-  return <Box sx={{ "& .MuiTableHead-root .MuiTableCell-root": { textTransform: "capitalize" } }}>{objProps.children}</Box>;
-}
+// Yearly-balance column labels (guide §5). Keys map to translation keys with these English fallbacks.
+const lstBalanceColumns: Array<{ key: string; label: string }> = [
+  { key: "leave_type", label: "Leave Type" },
+  { key: "opening", label: "Opening Balance" },
+  { key: "entitlement", label: "Entitlement" },
+  { key: "accrued", label: "Accrued" },
+  { key: "credit", label: "Manual Credit" },
+  { key: "debit", label: "Manual Debit" },
+  { key: "utilized", label: "Utilized" },
+  { key: "hold", label: "On Hold" },
+  { key: "available", label: "Available" },
+  { key: "locked", label: "Status/Lock" },
+  { key: "actions", label: "Actions" },
+];
 
 function buildAssignmentSchema(fnT: (strKey: string, strFallback?: string) => string) {
   const strRequired = fnT("validation_required", "This field is required.");
@@ -82,11 +117,13 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const [intLeaveYear, setIntLeaveYear] = useState(new Date().getFullYear());
   const [objMovement, setObjMovement] = useState<MovementDialog>(null);
   const [objPendingAssignment, setObjPendingAssignment] = useState<EmployeePlanAssignRequest | null>(null);
+  const [objImpact, setObjImpact] = useState<ReplacementImpact | null>(null);
+  const [blnLedgerOpen, setBlnLedgerOpen] = useState(false);
   const [strActionError, setStrActionError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const {
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError,
-    fetchPlan, assignPlan, initializeBalances, setOpeningBalance, adjustBalance,
+    fetchPlan, previewReplacement, assignPlan, initializeBalances, setOpeningBalance, adjustBalance,
   } = useEmployeeLeavePlan(intEmployeeID, intLeaveYear);
   // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
   // older ESS-style setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
@@ -171,7 +208,16 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
       return;
     }
     const objPayload: EmployeePlanAssignRequest = { intEmployeeID, intLeavePlanID: objValues.intLeavePlanID, intLeaveYear, dtEffectiveFrom: strFrom, dtEffectiveTo: strTo || null, blnInitializeBalances: true, strAssignmentReason: objValues.strAssignmentReason.trim(), lstOpeningBalances: buildOpeningBalances() };
-    if (objCurrent) setObjPendingAssignment(objPayload);
+    if (objCurrent) {
+      setObjPendingAssignment(objPayload);
+      // Fetch the pre-save impact summary (advisory; the backend re-validates authoritatively on confirm).
+      setObjImpact(null);
+      void (async () => {
+        try {
+          setObjImpact(await previewReplacement({ intLeavePlanID: objPayload.intLeavePlanID, intLeaveYear, dtEffectiveFrom: objPayload.dtEffectiveFrom }));
+        } catch { /* preview is best-effort; confirm still calls the authoritative replace endpoint */ }
+      })();
+    }
     else void (async () => {
       const blnOk = await executeAction(() => assignPlan(objPayload, false));
       if (blnOk) { setStrSuccess(t("assign_success", "Leave plan assigned and leave entitlements allocated successfully.")); objAssignmentForm.reset({ ...objValues, intLeavePlanID: 0, dtEffectiveFrom: "", dtEffectiveTo: "", strAssignmentReason: "" }); }
@@ -184,6 +230,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     if (!blnOk) return; // keep the dialog open so the API error is actionable — no changes were saved
     setStrSuccess(t("replace_success", "Leave plan replaced and leave entitlements allocated successfully."));
     setObjPendingAssignment(null);
+    setObjImpact(null);
     objAssignmentForm.reset({ intLeavePlanID: 0, dtEffectiveFrom: "", dtEffectiveTo: "", strAssignmentReason: "" });
   }
 
@@ -220,22 +267,36 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
       </Stack>
     </Paper>
     {(strError || strActionError) ? <Alert severity="error">{strError || strActionError}</Alert> : null}
-    <Paper sx={objSectionSx}>
-      <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 2 }}>{t("section_employee_summary", "Employee Summary")}</Typography>
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, 1fr)" }, gap: 1 }}><Typography><strong>{t("employee_code", "Employee Code")}:</strong> {objEmployee?.strEmployeeCode}</Typography><Typography><strong>{t("employee_name", "Employee Name")}:</strong> {objEmployee?.strFullName}</Typography><Typography><strong>{t("joining_date", "Joining Date")}:</strong> {formatDate(objEmployee?.dtDateOfJoining ?? null)}</Typography><Typography><strong>{t("exit_date", "Exit Date")}:</strong> {formatDate(objEmployee?.dtDateOfExit ?? null)}</Typography></Box>
-    </Paper>
-
-    <Paper sx={objSectionSx}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 1 }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("section_current_plan", "Current Leave Plan")}</Typography>
+    {/* 1. Compact Employee Summary + Current Leave Plan (merged). */}
+    <SectionCard strTitle={t("section_employee_account", "Employee Leave Account")}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 1 }}>
+        <Typography><strong>{t("employee_code", "Employee Code")}:</strong> {objEmployee?.strEmployeeCode}</Typography>
+        <Typography><strong>{t("employee_name", "Employee Name")}:</strong> {objEmployee?.strFullName}</Typography>
+        <Typography><strong>{t("joining_date", "Joining Date")}:</strong> {formatDate(objEmployee?.dtDateOfJoining ?? null)}</Typography>
+        <Typography><strong>{t("exit_date", "Exit Date")}:</strong> {formatDate(objEmployee?.dtDateOfExit ?? null)}</Typography>
       </Box>
-      {/* Strictly read-only: the current assignment record is only ever changed through Replace below. */}
-      {objCurrent ? <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}><Typography><strong>{t("plan", "Plan")}:</strong> {dicPlanNames[objCurrent.intLeavePlanID] ?? `#${objCurrent.intLeavePlanID}`}</Typography><Typography><strong>{t("effective_from", "Effective From")}:</strong> {formatDate(objCurrent.dtEffectiveFrom)}</Typography><Typography><strong>{t("effective_to", "Effective To")}:</strong> {formatDate(objCurrent.dtEffectiveTo)}</Typography><Typography><strong>{t("status", "Status")}:</strong> {objCurrent.strAssignmentStatus}</Typography></Box> : <Typography color="text.secondary">{t("no_current_plan", "No current Leave Plan is assigned.")}</Typography>}
-    </Paper>
+      <Divider sx={{ my: 1.5 }} />
+      {objCurrent ? <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 1 }}>
+        <Typography><strong>{t("current_plan", "Current Leave Plan")}:</strong> {dicPlanNames[objCurrent.intLeavePlanID] ?? `#${objCurrent.intLeavePlanID}`}</Typography>
+        <Typography><strong>{t("effective_from", "Effective From")}:</strong> {formatDate(objCurrent.dtEffectiveFrom)}</Typography>
+        <Typography><strong>{t("effective_to", "Effective To")}:</strong> {formatDate(objCurrent.dtEffectiveTo)}</Typography>
+        <Typography><strong>{t("assignment_status", "Assignment Status")}:</strong> {objCurrent.strAssignmentStatus}</Typography>
+      </Box> : <Typography color="text.secondary">{t("no_current_plan", "No current Leave Plan is assigned.")}</Typography>}
+    </SectionCard>
 
-    {blnCanManage ? <Paper sx={objSectionSx}>
-      <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 2 }}>{objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")}</Typography>
-      {objCurrent ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>{t("replace_hint", "Select a plan to assign it for its validity period. Effective From / To are auto-filled from the plan. The current assignment is superseded automatically and kept in Assignment History.")}</Typography> : null}
+    {/* 2. Yearly Leave Balances — primary working section (always visible). */}
+    <SectionCard strTitle={t("section_yearly_balances", "Yearly Leave Balances")} objAction={
+      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+        <TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={intLeaveYear} onChange={(objEvent) => setIntLeaveYear(Number(objEvent.target.value))} inputProps={{ "data-control-id": "employee-leave-plan.balance.year.input", min: 2001, max: 2999 }} />
+        {blnCanManage && objCurrent ? <Button startIcon={<AddRoundedIcon />} onClick={() => void executeAction(initializeBalances)} disabled={blnSaving} data-control-id="employee-leave-plan.balance.initialize.button">{t("initialize_balances", "Initialize Balances")}</Button> : null}
+      </Box>
+    }>
+      <TableContainer><Table size="small" sx={{ minWidth: 1150 }}><TableHead><TableRow>{lstBalanceColumns.map((objCol) => <TableCell key={objCol.key} sx={{ fontWeight: 800 }}>{t(`balance_${objCol.key}`, objCol.label)}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstBalances.length) ? <TableRow><TableCell colSpan={11} align="center">{t("no_balances", "No balances found for this year.")}</TableCell></TableRow> : objOverview.lstBalances.map((objBalance) => { const blnOpeningAllowed = objCurrentPlan?.lstItems?.find((objItem) => objItem.intLeaveTypeID === objBalance.intLeaveTypeID)?.blnOpeningBalanceAllowed ?? false; return <TableRow key={objBalance.intID}><TableCell>{dicTypeNames[objBalance.intLeaveTypeID] ?? `#${objBalance.intLeaveTypeID}`}</TableCell><TableCell>{objBalance.decOpeningBalance}</TableCell><TableCell>{objBalance.decEntitledBalance}</TableCell><TableCell>{objBalance.decAccruedBalance}</TableCell><TableCell>{objBalance.decAdjustmentCredit}</TableCell><TableCell>{objBalance.decAdjustmentDebit}</TableCell><TableCell>{objBalance.decUtilizedBalance}</TableCell><TableCell>{objBalance.decHoldBalance}</TableCell><TableCell sx={{ fontWeight: 800, color: "#0f766e" }}>{objBalance.decAvailableBalance}</TableCell><TableCell>{objBalance.blnIsLocked ? <Chip size="small" color="warning" label={t("locked", "Locked")} /> : <Chip size="small" color="success" variant="outlined" label={t("open", "Open")} />}</TableCell><TableCell>{blnCanManage ? <Box sx={{ display: "flex", gap: .5 }}><Button size="small" disabled={objBalance.blnIsLocked || !blnOpeningAllowed} onClick={() => openMovement("opening", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.opening.button`}>{t("opening", "Opening")}</Button><Button size="small" disabled={objBalance.blnIsLocked} onClick={() => openMovement("credit", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.credit.button`}>{t("credit", "Credit")}</Button><Button size="small" color="warning" disabled={objBalance.blnIsLocked} onClick={() => openMovement("debit", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.debit.button`}>{t("debit", "Debit")}</Button></Box> : "—"}</TableCell></TableRow>; })}</TableBody></Table></TableContainer>
+    </SectionCard>
+
+    {/* 3. Replace Leave Plan — collapsed by default. */}
+    {blnCanManage ? <CollapsibleCard strTitle={objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")}>
+      {objCurrent ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>{t("replace_hint", "Select a plan to assign it for its validity period. Effective From / To are auto-filled from the plan. The current assignment is superseded automatically and kept in Leave Plan History.")}</Typography> : null}
       <Box id="employee-leave-plan-assignment-form" component="form" onSubmit={objAssignmentForm.handleSubmit(submitAssignment)}><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr 2fr" }, gap: 1 }}>
       <Controller name="intLeavePlanID" control={objAssignmentForm.control} render={({ field }) => <TextField select {...field} value={field.value || ""} label={t("select_plan", "Leave Plan")} error={Boolean(objAssignmentForm.formState.errors.intLeavePlanID)} helperText={objAssignmentForm.formState.errors.intLeavePlanID?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.plan.select" }} onChange={(objEvent) => { const intNewPlanID = Number(objEvent.target.value); field.onChange(intNewPlanID); applyPlanDefaults(intNewPlanID); }}><MenuItem value="" data-control-id="employee-leave-plan.assignment.plan.empty.option">{t("select_plan_placeholder", "Select Plan")}</MenuItem>{lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => <MenuItem key={objPlan.intID} value={objPlan.intID} data-control-id={`employee-leave-plan.assignment.plan.${objPlan.intID}.option`}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>)}</TextField>} />
       <Controller name="dtEffectiveFrom" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} disabled={!intSelectedPlanID} error={Boolean(objAssignmentForm.formState.errors.dtEffectiveFrom)} helperText={objAssignmentForm.formState.errors.dtEffectiveFrom?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.effective-from.input", min: strPlanEffectiveFrom || undefined, max: strPlanEffectiveTo || undefined }} />} />
@@ -256,17 +317,45 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
         </TableBody></Table></TableContainer>
         <Typography variant="caption" color="text.secondary">{t("preview_hint", "Opening balances are captured only for Leave Types that allow them and are initialized atomically with the assignment.")}</Typography>
       </Box> : null}
-    </Box></Paper> : null}
+    </Box></CollapsibleCard> : null}
 
-    <Accordion defaultExpanded disableGutters><AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_assignment_history", "Assignment History")}</Typography></AccordionSummary><AccordionDetails><TableContainer><Table size="small"><TableHead><TableRow>{["plan", "effective_from", "effective_to", "status", "source", "reason"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`history_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstAssignments.length) ? <TableRow><TableCell colSpan={6} align="center">{t("no_assignment_history", "No assignment history.")}</TableCell></TableRow> : objOverview.lstAssignments.map((objRow) => <TableRow key={objRow.intID}><TableCell>{dicPlanNames[objRow.intLeavePlanID] ?? `#${objRow.intLeavePlanID}`}</TableCell><TableCell>{formatDate(objRow.dtEffectiveFrom)}</TableCell><TableCell>{formatDate(objRow.dtEffectiveTo)}</TableCell><TableCell>{objRow.strAssignmentStatus}</TableCell><TableCell>{objRow.strSourceType}</TableCell><TableCell>{objRow.strAssignmentReason ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer></AccordionDetails></Accordion>
+    {/* 4. Leave Plan History — collapsed by default; Source hidden (POC). */}
+    <CollapsibleCard strTitle={t("section_plan_history", "Leave Plan History")}>
+      <TableContainer><Table size="small"><TableHead><TableRow>{["plan", "effective_from", "effective_to", "status", "reason"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`history_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstAssignments.length) ? <TableRow><TableCell colSpan={5} align="center">{t("no_assignment_history", "No plan history.")}</TableCell></TableRow> : objOverview.lstAssignments.map((objRow) => <TableRow key={objRow.intID}><TableCell>{dicPlanNames[objRow.intLeavePlanID] ?? `#${objRow.intLeavePlanID}`}</TableCell><TableCell>{formatDate(objRow.dtEffectiveFrom)}</TableCell><TableCell>{formatDate(objRow.dtEffectiveTo)}</TableCell><TableCell>{objRow.strAssignmentStatus}</TableCell><TableCell>{objRow.strAssignmentReason ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+    </CollapsibleCard>
 
-    <Accordion defaultExpanded disableGutters><AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}><Typography sx={{ fontWeight: 800 }}>{t("section_yearly_balances", "Yearly Balances")}</Typography><Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}><TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={intLeaveYear} onChange={(objEvent) => setIntLeaveYear(Number(objEvent.target.value))} inputProps={{ "data-control-id": "employee-leave-plan.balance.year.input", min: 2001, max: 2999 }} />{blnCanManage && objCurrent ? <Button startIcon={<AddRoundedIcon />} onClick={() => void executeAction(initializeBalances)} disabled={blnSaving} data-control-id="employee-leave-plan.balance.initialize.button">{t("initialize_balances", "Initialize Balances")}</Button> : null}</Box></Box></AccordionSummary><AccordionDetails>
-      <TableContainer><Table size="small" sx={{ minWidth: 1150 }}><TableHead><TableRow>{["leave_type", "opening", "entitlement", "accrued", "credit", "debit", "utilized", "hold", "available", "locked", "actions"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`balance_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstBalances.length) ? <TableRow><TableCell colSpan={11} align="center">{t("no_balances", "No balances found for this year.")}</TableCell></TableRow> : objOverview.lstBalances.map((objBalance) => { const blnOpeningAllowed = objCurrentPlan?.lstItems?.find((objItem) => objItem.intLeaveTypeID === objBalance.intLeaveTypeID)?.blnOpeningBalanceAllowed ?? false; return <TableRow key={objBalance.intID}><TableCell>{dicTypeNames[objBalance.intLeaveTypeID] ?? `#${objBalance.intLeaveTypeID}`}</TableCell><TableCell>{objBalance.decOpeningBalance}</TableCell><TableCell>{objBalance.decEntitledBalance}</TableCell><TableCell>{objBalance.decAccruedBalance}</TableCell><TableCell>{objBalance.decAdjustmentCredit}</TableCell><TableCell>{objBalance.decAdjustmentDebit}</TableCell><TableCell>{objBalance.decUtilizedBalance}</TableCell><TableCell>{objBalance.decHoldBalance}</TableCell><TableCell sx={{ fontWeight: 800 }}>{objBalance.decAvailableBalance}</TableCell><TableCell>{objBalance.blnIsLocked ? t("yes", "Yes") : t("no", "No")}</TableCell><TableCell>{blnCanManage ? <Box sx={{ display: "flex", gap: .5 }}><Button size="small" disabled={objBalance.blnIsLocked || !blnOpeningAllowed} onClick={() => openMovement("opening", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.opening.button`}>{t("opening", "Opening")}</Button><Button size="small" disabled={objBalance.blnIsLocked} onClick={() => openMovement("credit", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.credit.button`}>{t("credit", "Credit")}</Button><Button size="small" color="warning" disabled={objBalance.blnIsLocked} onClick={() => openMovement("debit", objBalance)} data-control-id={`employee-leave-plan.balance.${objBalance.intID}.debit.button`}>{t("debit", "Debit")}</Button></Box> : "—"}</TableCell></TableRow>; })}</TableBody></Table></TableContainer>
-    </AccordionDetails></Accordion>
+    {/* 5. Recent Leave Transactions — collapsed by default; last 10 + full ledger drawer. */}
+    <CollapsibleCard strTitle={t("section_recent_transactions", "Recent Leave Transactions")} objAction={
+      <Button size="small" variant="outlined" onClick={() => setBlnLedgerOpen(true)} disabled={!lstLedger.length} data-control-id="employee-leave-plan.ledger.view-all.button">{t("view_complete_ledger", "View Complete Ledger")}</Button>
+    }>
+      <TableContainer><Table size="small" sx={{ minWidth: 950 }}><TableHead><TableRow>{["date", "leave_type", "transaction_type", "credit", "debit", "balance_after", "remarks"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`ledger_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!lstLedger.length ? <TableRow><TableCell colSpan={7} align="center">{t("no_ledger", "No ledger movements found.")}</TableCell></TableRow> : lstLedger.slice(0, 10).map((objLedger) => <TableRow key={objLedger.intID}><TableCell>{formatDate(objLedger.dtTransactionDate)}</TableCell><TableCell>{dicTypeNames[objLedger.intLeaveTypeID] ?? `#${objLedger.intLeaveTypeID}`}</TableCell><TableCell>{objLedger.strTransactionType}</TableCell><TableCell>{objLedger.decCreditDays}</TableCell><TableCell>{objLedger.decDebitDays}</TableCell><TableCell>{objLedger.decBalanceAfter}</TableCell><TableCell>{objLedger.strTransactionRemarks ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+      {lstLedger.length > 10 ? <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>{t("recent_hint", "Showing the latest 10 transactions. Use View Complete Ledger for the full append-only history.")}</Typography> : null}
+    </CollapsibleCard>
 
-    <Accordion defaultExpanded disableGutters><AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography sx={{ fontWeight: 800 }}>{t("section_ledger_history", "Ledger History")}</Typography></AccordionSummary><AccordionDetails><TableContainer><Table size="small" sx={{ minWidth: 950 }}><TableHead><TableRow>{["date", "leave_type", "transaction_type", "credit", "debit", "balance_after", "source", "remarks"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`ledger_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!lstLedger.length ? <TableRow><TableCell colSpan={8} align="center">{t("no_ledger", "No ledger movements found.")}</TableCell></TableRow> : lstLedger.map((objLedger) => <TableRow key={objLedger.intID}><TableCell>{formatDate(objLedger.dtTransactionDate)}</TableCell><TableCell>{dicTypeNames[objLedger.intLeaveTypeID] ?? `#${objLedger.intLeaveTypeID}`}</TableCell><TableCell>{objLedger.strTransactionType}</TableCell><TableCell>{objLedger.decCreditDays}</TableCell><TableCell>{objLedger.decDebitDays}</TableCell><TableCell>{objLedger.decBalanceAfter}</TableCell><TableCell>{objLedger.strSourceType}</TableCell><TableCell>{objLedger.strTransactionRemarks ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer></AccordionDetails></Accordion>
+    <Dialog open={Boolean(objPendingAssignment)} onClose={() => !blnSaving && setObjPendingAssignment(null)} fullWidth maxWidth="sm" PaperProps={{ "data-control-id": "employee-leave-plan.replace.dialog" } as Record<string, string>}><DialogTitle>{t("replace_confirm_title", "Confirm Plan Replacement")}</DialogTitle><DialogContent><Typography sx={{ mb: 1.5 }}>{t("replace_confirm_message", "The current Plan will be end-dated and replaced from the selected effective date. Continue?")}</Typography>
+      {/* Pre-save impact summary (§7): retained / added / removed-frozen and any blocking Leave Types. */}
+      {objImpact ? <Stack spacing={1}>
+        {objImpact.lstBlocking.length ? <Alert severity="error" data-control-id="employee-leave-plan.replace.impact.blocking">
+          <Typography variant="subtitle2" fontWeight={800}>{t("impact_blocking", "Cannot replace — resolve these first:")}</Typography>
+          {objImpact.lstBlocking.map((objLine) => <Typography key={objLine.intLeaveTypeID} variant="body2">• {objLine.strLeaveType} — {(objLine.lstReasons ?? []).join(", ")}</Typography>)}
+        </Alert> : null}
+        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+          {objImpact.lstRetained.map((objLine) => <Chip key={`r${objLine.intLeaveTypeID}`} size="small" color="default" label={`${t("impact_retained", "Retained")}: ${objLine.strLeaveType}`} />)}
+          {objImpact.lstAdded.map((objLine) => <Chip key={`a${objLine.intLeaveTypeID}`} size="small" color="success" label={`${t("impact_added", "Added")}: ${objLine.strLeaveType}`} />)}
+          {objImpact.lstRemovedFrozen.map((objLine) => <Chip key={`f${objLine.intLeaveTypeID}`} size="small" color="warning" label={`${t("impact_frozen", "Frozen")}: ${objLine.strLeaveType}`} />)}
+        </Box>
+        {objImpact.lstRemovedFrozen.some((objLine) => (objLine.decAvailableBalance ?? 0) > 0) ? <Alert severity="warning">{t("impact_frozen_balance", "A removed Leave Type still has an available balance. It is preserved and frozen — not transferred or lapsed.")}</Alert> : null}
+      </Stack> : null}
+    </DialogContent><DialogActions><Button onClick={() => { setObjPendingAssignment(null); setObjImpact(null); }} data-control-id="employee-leave-plan.replace.cancel.button">{t("cancel", "Cancel")}</Button><Button variant="contained" onClick={() => void confirmReplacement()} disabled={blnSaving || Boolean(objImpact && !objImpact.blnCanReplace)} data-control-id="employee-leave-plan.replace.confirm.button">{t("replace", "Replace")}</Button></DialogActions></Dialog>
 
-    <Dialog open={Boolean(objPendingAssignment)} onClose={() => !blnSaving && setObjPendingAssignment(null)} PaperProps={{ "data-control-id": "employee-leave-plan.replace.dialog" } as Record<string, string>}><DialogTitle>{t("replace_confirm_title", "Confirm Plan Replacement")}</DialogTitle><DialogContent><Typography>{t("replace_confirm_message", "The current Plan will be end-dated and replaced from the selected effective date. Continue?")}</Typography></DialogContent><DialogActions><Button onClick={() => setObjPendingAssignment(null)} data-control-id="employee-leave-plan.replace.cancel.button">{t("cancel", "Cancel")}</Button><Button variant="contained" onClick={() => void confirmReplacement()} disabled={blnSaving} data-control-id="employee-leave-plan.replace.confirm.button">{t("replace", "Replace")}</Button></DialogActions></Dialog>
+    {/* Complete append-only ledger (drawer) — filters by leave type; year comes from the page selector. */}
+    <Drawer anchor="right" open={blnLedgerOpen} onClose={() => setBlnLedgerOpen(false)} PaperProps={{ sx: { width: { xs: "100%", sm: 720 }, p: 2.5 } }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("complete_ledger_title", "Complete Leave Ledger")} · {intLeaveYear}</Typography>
+        <Button size="small" onClick={() => setBlnLedgerOpen(false)} data-control-id="employee-leave-plan.ledger.close.button">{t("close", "Close")}</Button>
+      </Box>
+      <TableContainer sx={{ maxHeight: "80vh" }}><Table size="small" stickyHeader sx={{ minWidth: 640 }}><TableHead><TableRow>{["date", "leave_type", "transaction_type", "credit", "debit", "balance_after", "source", "remarks"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`ledger_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!lstLedger.length ? <TableRow><TableCell colSpan={8} align="center">{t("no_ledger", "No ledger movements found.")}</TableCell></TableRow> : lstLedger.map((objLedger) => <TableRow key={objLedger.intID}><TableCell>{formatDate(objLedger.dtTransactionDate)}</TableCell><TableCell>{dicTypeNames[objLedger.intLeaveTypeID] ?? `#${objLedger.intLeaveTypeID}`}</TableCell><TableCell>{objLedger.strTransactionType}</TableCell><TableCell>{objLedger.decCreditDays}</TableCell><TableCell>{objLedger.decDebitDays}</TableCell><TableCell>{objLedger.decBalanceAfter}</TableCell><TableCell>{objLedger.strSourceType}</TableCell><TableCell>{objLedger.strTransactionRemarks ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+    </Drawer>
     <Dialog open={Boolean(objMovement)} onClose={() => !blnSaving && setObjMovement(null)} PaperProps={{ "data-control-id": "employee-leave-plan.movement.dialog" } as Record<string, string>}><Box component="form" onSubmit={objMovementForm.handleSubmit(submitMovement)}><DialogTitle>{objMovement?.strType === "opening" ? t("opening_balance_title", "Set Opening Balance") : objMovement?.strType === "credit" ? t("manual_credit_title", "Manual Credit") : t("manual_debit_title", "Manual Debit")}</DialogTitle><DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important", minWidth: { sm: 440 } }}>
       <Controller name="decValue" control={objMovementForm.control} render={({ field }) => <TextField {...field} type="number" label={objMovement?.strType === "opening" ? t("opening_balance", "Opening Balance") : t("days", "Days")} error={Boolean(objMovementForm.formState.errors.decValue)} helperText={objMovementForm.formState.errors.decValue?.message} inputProps={{ "data-control-id": "employee-leave-plan.movement.days.input", min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} />} />
       <Controller name="dtTransactionDate" control={objMovementForm.control} render={({ field }) => <TextField {...field} type="date" label={t("transaction_date", "Transaction Date")} InputLabelProps={{ shrink: true }} error={Boolean(objMovementForm.formState.errors.dtTransactionDate)} helperText={objMovementForm.formState.errors.dtTransactionDate?.message} inputProps={{ "data-control-id": "employee-leave-plan.movement.date.input" }} />} />
