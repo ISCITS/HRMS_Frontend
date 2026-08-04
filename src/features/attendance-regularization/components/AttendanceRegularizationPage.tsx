@@ -8,9 +8,10 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import {
-  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, Grid, MenuItem, Paper, Snackbar, Stack, Tab, Tabs, TextField, Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +33,9 @@ const strTypeDomain = "ATTENDANCE_REGULARIZATION_REQUEST_TYPE";
 const strStatusDomain = "ATTENDANCE_REGULARIZATION_STATUS";
 const strActionDomain = "ATTENDANCE_REGULARIZATION_ACTION";
 const strAttendanceStatusDomain = "ATTENDANCE_STATUS";
+const setHiddenEssRequestTypeCodes = new Set(["MISSING_IN", "OTHER"]);
+const setAutoCalculatedRequestTypeCodes = new Set(["MISSING_OUT", "MISSING_BOTH"]);
+type PunchRecord = DateContext["lstPunches"][number];
 
 function todayIso() {
   const objDate = new Date();
@@ -52,8 +56,136 @@ function formatDateTime(strValue?: string | null) {
   return Number.isNaN(objDate.getTime()) ? strValue.slice(0, 5) : objDate.toLocaleString();
 }
 
-function SummaryCard({ strLabel, strValue }: { strLabel: string; strValue: string | number }) {
-  return <Paper variant="outlined" sx={{ p: 1.25, borderRadius: "8px !important", height: "100%" }}><Typography color="text.secondary" variant="caption">{strLabel}</Typography><Typography fontWeight={800}>{strValue}</Typography></Paper>;
+function formatTime(strValue?: string | null) {
+  if (!strValue) return "—";
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) {
+    return objDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return strValue.slice(0, 5);
+}
+
+function formatInputTime(strValue?: string | null) {
+  if (!strValue) return "";
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) {
+    return `${String(objDate.getHours()).padStart(2, "0")}:${String(objDate.getMinutes()).padStart(2, "0")}`;
+  }
+  return strValue.slice(0, 5);
+}
+
+function formatDuration(decHours?: number | null) {
+  const intMinutes = Math.max(0, Math.round(Number(decHours ?? 0) * 60));
+  return formatMinutesDuration(intMinutes);
+}
+
+function formatMinutesDuration(intMinutes?: number | null) {
+  const intSafeMinutes = Math.max(0, Math.round(Number(intMinutes ?? 0)));
+  if (intSafeMinutes < 60) return `${intSafeMinutes} m`;
+  const intHours = Math.floor(intSafeMinutes / 60);
+  const intRemainingMinutes = intSafeMinutes % 60;
+  return intRemainingMinutes > 0 ? `${intHours} hr ${intRemainingMinutes} m` : `${intHours} hr`;
+}
+
+function parseTimeToMinutes(strValue?: string | null) {
+  if (!strValue) return null;
+  const [strHours, strMinutes] = strValue.slice(0, 5).split(":");
+  const intHours = Number(strHours);
+  const intMinutes = Number(strMinutes);
+  if (!Number.isInteger(intHours) || !Number.isInteger(intMinutes) || intHours < 0 || intHours > 23 || intMinutes < 0 || intMinutes > 59) return null;
+  return intHours * 60 + intMinutes;
+}
+
+function calculateWorkedHours(strFirstIn?: string | null, strLastOut?: string | null) {
+  const intFirstInMinutes = parseTimeToMinutes(strFirstIn);
+  const intLastOutMinutes = parseTimeToMinutes(strLastOut);
+  if (intFirstInMinutes === null || intLastOutMinutes === null || intLastOutMinutes <= intFirstInMinutes) return null;
+  return Math.round(((intLastOutMinutes - intFirstInMinutes) / 60) * 100) / 100;
+}
+
+function deriveProposedStatus(decWorkedHours?: number | null) {
+  const decHours = Number(decWorkedHours ?? 0);
+  if (decHours >= 8) return "present";
+  if (decHours >= 4) return "half_day";
+  return "absent";
+}
+
+function formatDisplayDate(strValue?: string | null) {
+  if (!strValue) return "";
+  const objDate = new Date(`${strValue}T00:00:00`);
+  return Number.isNaN(objDate.getTime()) ? strValue : objDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function punchTimeToMinutes(strValue?: string | null) {
+  if (!strValue) return null;
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) return objDate.getHours() * 60 + objDate.getMinutes();
+  return parseTimeToMinutes(formatInputTime(strValue));
+}
+
+function buildPunchLogRows(lstPunches: PunchRecord[]) {
+  let intOpenInMinutes: number | null = null;
+  let intTotalMinutes = 0;
+  const lstRows = [...lstPunches]
+    .sort((objLeft, objRight) => new Date(objLeft.dtPunchAt).getTime() - new Date(objRight.dtPunchAt).getTime())
+    .map((objPunch) => {
+      const strDirection = objPunch.strDirection.toLowerCase();
+      const intPunchMinutes = punchTimeToMinutes(objPunch.dtPunchAt);
+      let intPeriodMinutes: number | null = null;
+      if (strDirection === "in") {
+        intOpenInMinutes = intPunchMinutes;
+      } else if (intOpenInMinutes !== null && intPunchMinutes !== null && intPunchMinutes >= intOpenInMinutes) {
+        intPeriodMinutes = intPunchMinutes - intOpenInMinutes;
+        intTotalMinutes += intPeriodMinutes;
+        intOpenInMinutes = null;
+      }
+      return { ...objPunch, intPeriodMinutes };
+    });
+  return { lstRows, intTotalMinutes };
+}
+
+function punchSourceLabel(strSource: string) {
+  const strNormalized = strSource.trim().toLowerCase();
+  if (["mobile", "app", "phone"].includes(strNormalized)) return "Mobile App";
+  if (strNormalized === "web") return "Web";
+  if (strNormalized === "biometric") return "Biometric";
+  return strSource;
+}
+
+function SummaryCard({ strLabel, strValue, strTone = "info" }: { strLabel: string; strValue: string | number; strTone?: "success" | "info" | "warning" | "neutral" }) {
+  const dicTone = {
+    success: { strMain: "#15803d", strBg: "#f0fdf4", strBorder: "#bbf7d0" },
+    info: { strMain: "#2563eb", strBg: "#eff6ff", strBorder: "#bfdbfe" },
+    warning: { strMain: "#b45309", strBg: "#fffbeb", strBorder: "#fde68a" },
+    neutral: { strMain: "#475569", strBg: "#f8fafc", strBorder: "#e2e8f0" },
+  }[strTone];
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.35,
+        borderRadius: "8px !important",
+        height: "100%",
+        minHeight: 68,
+        position: "relative",
+        overflow: "hidden",
+        borderColor: dicTone.strBorder,
+        background: `linear-gradient(135deg, ${dicTone.strBg}, #fff)`,
+        boxShadow: `0 10px 22px ${alpha(dicTone.strMain, 0.08)}`,
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: "10px auto 10px 0",
+          width: 4,
+          borderRadius: "0 6px 6px 0",
+          bgcolor: dicTone.strMain,
+        },
+      }}
+    >
+      <Typography color="text.secondary" variant="caption" sx={{ display: "block", lineHeight: 1.1, pl: 0.75 }}>{strLabel}</Typography>
+      <Typography fontWeight={900} sx={{ color: "#0f172a", lineHeight: 1.25, mt: 0.45, pl: 0.75 }}>{strValue}</Typography>
+    </Paper>
+  );
 }
 
 export default function AttendanceRegularizationPage() {
@@ -72,6 +204,7 @@ export default function AttendanceRegularizationPage() {
   const [strAppliedRequestStatus, setStrAppliedRequestStatus] = useState("");
   const [objEditing, setObjEditing] = useState<RegularizationRequest | null>(null);
   const [objDetail, setObjDetail] = useState<RegularizationDetail | null>(null);
+  const [blnPunchLogOpen, setBlnPunchLogOpen] = useState(false);
   const [lstFiles, setLstFiles] = useState<File[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -81,7 +214,7 @@ export default function AttendanceRegularizationPage() {
   const objActionRowRef = useRef<HTMLDivElement | null>(null);
 
   const objSchema = useMemo(() => yup.object({
-    dtWorkDate: yup.string().required(t("validation_date", "Work date is required.")),
+    dtWorkDate: yup.string().required(t("validation_date", "Work date is required.")).test("not-future", t("validation_future_date", "Future dates are not allowed."), (strValue) => !strValue || strValue <= todayIso()),
     strRequestTypeCode: yup.string().required(t("validation_type", "Request type is required.")),
     strProposedStatus: yup.string().required(t("validation_status", "Proposed status is required.")),
     tmProposedFirstIn: yup.string().default(""),
@@ -91,17 +224,24 @@ export default function AttendanceRegularizationPage() {
     strProposedRemark: yup.string().max(500).default(""),
     strEmployeeReason: yup.string().trim().required(t("validation_reason", "Reason is required.")).max(1000),
   }), [t]);
-  const { control, handleSubmit, reset, watch, formState: { errors: objErrors } } = useForm<RegularizationFormValues>({
+  const { control, handleSubmit, reset, setValue, watch, formState: { errors: objErrors } } = useForm<RegularizationFormValues>({
     resolver: yupResolver(objSchema) as Resolver<RegularizationFormValues>,
     defaultValues: initialValues(strInitialDate),
   });
   const strWorkDate = watch("dtWorkDate");
+  const strRequestTypeCode = watch("strRequestTypeCode");
   const strProposedStatus = watch("strProposedStatus");
-  const blnNeedsTimes = ["present", "half_day", "on_duty"].includes(strProposedStatus);
-  const lstTypes = useMemo(() => objLookups[strTypeDomain] ?? [], [objLookups]);
+  const strProposedFirstInTime = watch("tmProposedFirstIn");
+  const strProposedLastOutTime = watch("tmProposedLastOut");
+  const blnNeedsTimes = ["MISSING_IN", "MISSING_OUT", "MISSING_BOTH"].includes(strRequestTypeCode) || ["present", "half_day", "on_duty"].includes(strProposedStatus);
+  const blnMissingOutOnly = strRequestTypeCode === "MISSING_OUT";
+  const blnAutoCalculatedRequest = setAutoCalculatedRequestTypeCodes.has(strRequestTypeCode);
+  const lstAllTypes = useMemo(() => objLookups[strTypeDomain] ?? [], [objLookups]);
+  const lstTypes = useMemo(() => lstAllTypes.filter((objOption) => !setHiddenEssRequestTypeCodes.has(objOption.strValueCode)), [lstAllTypes]);
   const lstRequestStatuses = useMemo(() => objLookups[strStatusDomain] ?? [], [objLookups]);
   const lstActions = objLookups[strActionDomain] ?? [];
   const lstAttendanceStatuses = objLookups[strAttendanceStatusDomain] ?? objLookups["ATTENDANCE_DAY_STATUS"] ?? [];
+  const objPunchLog = useMemo(() => buildPunchLogRows(objContext?.lstPunches ?? []), [objContext?.lstPunches]);
   const lstFilteredRequests = useMemo(() => {
     const strSearch = strAppliedRequestSearch.trim().toLowerCase();
     return lstRequests.filter((objRequest) => {
@@ -113,12 +253,12 @@ export default function AttendanceRegularizationPage() {
         [
           objRequest.strRequestNumber,
           objRequest.dtWorkDate,
-          lookupLabel(lstTypes, objRequest.strRequestTypeCode, ""),
+          lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, ""),
           lookupLabel(lstRequestStatuses, objRequest.strRequestStatus, ""),
         ].some((strValue) => String(strValue ?? "").toLowerCase().includes(strSearch));
       return blnMatchesStatus && blnMatchesSearch;
     });
-  }, [lstRequests, lstRequestStatuses, lstTypes, strAppliedRequestSearch, strAppliedRequestStatus]);
+  }, [lstAllTypes, lstRequests, lstRequestStatuses, strAppliedRequestSearch, strAppliedRequestStatus]);
 
   const loadLookups = useCallback(async () => {
     setObjLookups(await attendanceRegularizationService.getEssLookups(intLanguageID || authHelpers.getLanguageID() || undefined));
@@ -145,6 +285,21 @@ export default function AttendanceRegularizationPage() {
     const intTimer = window.setTimeout(() => void loadContext(strWorkDate).catch(() => undefined), 250);
     return () => window.clearTimeout(intTimer);
   }, [loadContext, strWorkDate]);
+
+  useEffect(() => {
+    if (strRequestTypeCode !== "MISSING_OUT") return;
+    const strFirstIn =
+      formatInputTime(objContext?.lstPunches.find((objPunch) => objPunch.strDirection.toLowerCase() === "in")?.dtPunchAt) ||
+      formatInputTime(objContext?.objAttendanceDay.tmFirstIn);
+    setValue("tmProposedFirstIn", strFirstIn, { shouldDirty: true, shouldValidate: true });
+  }, [objContext, setValue, strRequestTypeCode]);
+
+  useEffect(() => {
+    if (!blnAutoCalculatedRequest) return;
+    const decWorkedHours = calculateWorkedHours(strProposedFirstInTime, strProposedLastOutTime);
+    setValue("decProposedWorkedHours", decWorkedHours, { shouldDirty: true, shouldValidate: true });
+    setValue("strProposedStatus", deriveProposedStatus(decWorkedHours), { shouldDirty: true, shouldValidate: true });
+  }, [blnAutoCalculatedRequest, setValue, strProposedFirstInTime, strProposedLastOutTime]);
 
   useEffect(() => {
     if (intTab !== 0 || (!strError && (objPreview?.blnValid ?? true))) return;
@@ -216,7 +371,7 @@ export default function AttendanceRegularizationPage() {
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Attendance Regularization access is not available.")}</Alert>;
 
   return (
-    <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "auto", pb: 2, pr: 0.5, scrollbarGutter: "stable", "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+    <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "scroll", pb: 2, pr: 0.5, scrollbarGutter: "stable", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 9 }, "&::-webkit-scrollbar-track": { backgroundColor: "#eef4f8", borderRadius: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8, border: "2px solid #eef4f8" }, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <Box className="pageBanner" data-control-id="attendance-regularization.header.banner">
         <Box className="bannerDots" />
         <Box className="bannerIcon">
@@ -242,22 +397,16 @@ export default function AttendanceRegularizationPage() {
             <Stack spacing={1.5}>
               <Typography fontWeight={850}>{t("original_attendance", "Original Attendance")}</Typography>
               <Grid container spacing={1} alignItems="stretch">
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} /></Grid>
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay.decWorkedHours ?? "—"} /></Grid>
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={objContext?.objAttendanceDay.tmFirstIn?.slice(0, 5) ?? "—"} /></Grid>
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={objContext?.objAttendanceDay.tmLastOut?.slice(0, 5) ?? "—"} /></Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: "8px !important", height: "100%" }}>
-                    <Typography fontWeight={800}>{t("punch_log", "Punch Log")}</Typography>
-                    <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                      {objContext?.lstPunches.length ? objContext.lstPunches.map((objPunch) => (
-                        <Stack key={objPunch.intID} direction="row" justifyContent="space-between">
-                          <Typography>{lookupLabel(objLookups["ATTENDANCE_PUNCH_DIRECTION"] ?? [], objPunch.strDirection, t("punch", "Punch"))}</Typography>
-                          <Typography color="text.secondary">{formatDateTime(objPunch.dtPunchAt)}</Typography>
-                        </Stack>
-                      )) : <Typography color="text.secondary">{t("no_punches", "No punches recorded.")}</Typography>}
-                    </Stack>
-                  </Paper>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} strTone={objContext?.objAttendanceDay.strStatus === "present" ? "success" : "neutral"} /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay ? formatDuration(objContext.objAttendanceDay.decWorkedHours) : "—"} strTone="info" /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={objContext?.objAttendanceDay.tmFirstIn?.slice(0, 5) ?? "—"} strTone="warning" /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={objContext?.objAttendanceDay.tmLastOut?.slice(0, 5) ?? "—"} strTone="neutral" /></Grid>
+                <Grid item xs={12} md={2}>
+                  <Box sx={{ minHeight: 68, height: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", pl: { xs: 0, md: 0.5 } }}>
+                    <Button data-control-id="attendance-regularization.punch-log.button" variant="contained" startIcon={<HistoryRoundedIcon />} onClick={() => setBlnPunchLogOpen(true)} sx={{ minHeight: 38, px: 2.25, borderRadius: "8px", fontWeight: 800, boxShadow: "none", whiteSpace: "nowrap" }}>
+                      {t("view_punch_log", "View Punch Log")}
+                    </Button>
+                  </Box>
                 </Grid>
               </Grid>
               {objContext?.objHoliday ? <Alert severity="info">{t("holiday_context", "This date is a holiday.")}</Alert> : null}
@@ -267,11 +416,11 @@ export default function AttendanceRegularizationPage() {
           <Grid item xs={12}>
             <Paper component="form" onSubmit={handleSubmit(saveDraft)} className={styles.controlsCard}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso() }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.request-type.select" select fullWidth size="small" label={t("request_type", "Request Type")} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message}>{lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
-                <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth size="small" label={t("proposed_status", "Proposed Status")} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
-                <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message} />} /></Grid>
-                {blnNeedsTimes ? <><Grid item xs={12} sm={6}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} />} /></Grid><Grid item xs={12} sm={6}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} />} /></Grid></> : null}
+                {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} />} /></Grid></> : null}
+                <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth size="small" label={t("proposed_status", "Proposed Status")} disabled={blnAutoCalculatedRequest} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message ?? (blnAutoCalculatedRequest ? t("status_auto_from_time", "Calculated from proposed timings") : undefined)}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message ?? (blnAutoCalculatedRequest ? t("worked_hours_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
                 <Grid item xs={12}><Controller name="strEmployeeReason" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.reason.input" fullWidth multiline minRows={3} label={t("reason", "Reason")} error={Boolean(objErrors.strEmployeeReason)} helperText={objErrors.strEmployeeReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strProposedRemark" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.remark.input" fullWidth label={t("remark", "Remark")} />} /></Grid>
                 <Grid item xs={12}><Button data-control-id="attendance-regularization.attachments.button" component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />}>{t("add_attachments", "Add Attachments")}<input hidden multiple type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(objEvent) => setLstFiles(Array.from(objEvent.target.files ?? []))} /></Button><Typography variant="caption" sx={{ ml: 1 }}>{lstFiles.map((objFile) => objFile.name).join(", ")}</Typography></Grid>
@@ -307,7 +456,7 @@ export default function AttendanceRegularizationPage() {
           {lstFilteredRequests.length === 0 ? <Alert severity="info">{t("no_requests", "No regularization requests found.")}</Alert> : lstFilteredRequests.map((objRequest) => (
             <Paper key={objRequest.intID} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
               <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-                <Box><Typography fontWeight={850}>{objRequest.strRequestNumber ?? objRequest.dtWorkDate}</Typography><Typography color="text.secondary">{objRequest.dtWorkDate} · {lookupLabel(lstTypes, objRequest.strRequestTypeCode, t("request", "Request"))}</Typography></Box>
+                <Box><Typography fontWeight={850}>{objRequest.strRequestNumber ?? objRequest.dtWorkDate}</Typography><Typography color="text.secondary">{objRequest.dtWorkDate} · {lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, t("request", "Request"))}</Typography></Box>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                   <LookupChip lstOptions={lstRequestStatuses} strCode={objRequest.strRequestStatus} strFallback={t("status_unavailable", "Status unavailable")} />
                   <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.view.button`} startIcon={<HistoryRoundedIcon />} onClick={() => void attendanceRegularizationService.getMyDetail(objRequest.intID).then(setObjDetail)}>{t("view", "View")}</Button>
@@ -325,6 +474,36 @@ export default function AttendanceRegularizationPage() {
         <DialogTitle>{t("request_detail", "Request Detail")}</DialogTitle>
         <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "Not recorded"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objOriginalSnapshot.tmFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objOriginalSnapshot.tmLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objProposalSnapshot.tmProposedFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objProposalSnapshot.tmProposedLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Stack spacing={0.5}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between"><Typography>{objAttachment.strFileName}</Typography><Stack direction="row"><Button data-control-id={`attendance-regularization.attachment.${objAttachment.intID}.download.button`} onClick={() => void attendanceRegularizationService.downloadAttachment(objDetail.intID, objAttachment.intID, objAttachment.strFileName)}>{t("download", "Download")}</Button>{["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? <Button data-control-id={`attendance-regularization.attachment.${objAttachment.intID}.delete.button`} color="error" onClick={() => void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail)}>{t("delete", "Delete")}</Button> : null}</Stack></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Stack><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objAction.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
         <DialogActions><Button data-control-id="attendance-regularization.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button></DialogActions>
+      </Dialog>
+      <Dialog data-control-id="attendance-regularization.punch-log.dialog" open={blnPunchLogOpen} onClose={() => setBlnPunchLogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t("punch_log", "Punch Log")} - {formatDisplayDate(strWorkDate)}</DialogTitle>
+        <DialogContent dividers sx={{ maxHeight: "55vh", overflowY: "auto", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8 } }}>
+          {objPunchLog.lstRows.length ? (
+            <Stack spacing={0.75}>
+              {objPunchLog.lstRows.map((objPunch) => (
+                <Box key={objPunch.intID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr auto", sm: "128px 1fr 92px 88px" }, alignItems: "center", gap: 1, px: 1.25, py: 0.75, border: "1px solid", borderColor: "divider", borderRadius: "6px", bgcolor: "background.paper" }}>
+                  <Chip
+                    size="small"
+                    label={objPunch.strDirection === "in" ? t("punch_in", "Punch In") : t("punch_out", "Punch Out")}
+                    color={objPunch.strDirection === "in" ? "success" : "warning"}
+                    sx={{ justifySelf: "start", fontWeight: 800 }}
+                  />
+                  <Typography fontWeight={800}>{formatTime(objPunch.dtPunchAt)}</Typography>
+                  <Typography color="text.secondary" sx={{ textAlign: { xs: "left", sm: "right" } }}>{t(`source_${objPunch.strSource}`, punchSourceLabel(objPunch.strSource))}</Typography>
+                  <Typography fontWeight={850} color={objPunch.intPeriodMinutes !== null ? "primary.main" : "text.disabled"} sx={{ textAlign: "right" }}>
+                    {objPunch.intPeriodMinutes !== null ? formatMinutesDuration(objPunch.intPeriodMinutes) : "-"}
+                  </Typography>
+                </Box>
+              ))}
+              <Divider sx={{ pt: 0.5 }} />
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 1.25, pt: 0.5 }}>
+                <Typography fontWeight={900}>{t("total_time", "Total Time")}</Typography>
+                <Typography fontWeight={900} color="primary.main">{formatMinutesDuration(objPunchLog.intTotalMinutes)}</Typography>
+              </Stack>
+            </Stack>
+          ) : <Typography color="text.secondary">{t("no_punches", "No punch log is available for this date.")}</Typography>}
+        </DialogContent>
+        <DialogActions><Button data-control-id="attendance-regularization.punch-log.close.button" onClick={() => setBlnPunchLogOpen(false)}>{t("close", "Close")}</Button></DialogActions>
       </Dialog>
       <Dialog data-control-id="attendance-regularization.confirm.dialog" open={Boolean(objConfirm)} onClose={() => setObjConfirm(null)}>
         <DialogTitle>{objConfirm?.strAction === "submit" ? t("confirm_submit_title", "Submit Request") : t("confirm_withdraw_title", "Withdraw Request")}</DialogTitle>

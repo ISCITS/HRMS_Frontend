@@ -4,9 +4,10 @@ import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Divider, Grid, MenuItem, Paper,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, MenuItem, Paper,
   Stack, Tab, Tabs, TextField, Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ import WorkHolidayDetailDrawer from "@/features/work-on-holiday/components/WorkH
 import { useWorkHolidayDetail, useWorkHolidayList } from "@/features/work-on-holiday/hooks/useWorkHoliday";
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import type {
-  WorkHolidayFormValues, WorkHolidayPosting,
+  WorkHolidayFormValues, WorkHolidayPosting, WorkHolidayRequest,
 } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import { WORK_HOLIDAY_ACTION_ALIASES as dicActionAliases } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import { WORK_HOLIDAY_MODULE_CODES as lstModuleCodes } from "@/features/work-on-holiday/types/WorkHolidayTypes";
@@ -56,10 +57,13 @@ export default function EssWorkHolidayPage() {
   );
   const blnCanView = fnCan("WORK_ON_HOLIDAY_VIEW");
   const blnCanCreate = fnCan("WORK_ON_HOLIDAY_CREATE");
+  const blnCanWithdraw = fnCan("WORK_ON_HOLIDAY_WITHDRAW");
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strNotice, setStrNotice] = useState("");
   const [strError, setStrError] = useState("");
   const [blnSaving, setBlnSaving] = useState(false);
+  const [objWithdrawRequest, setObjWithdrawRequest] = useState<WorkHolidayRequest | null>(null);
+  const [strWithdrawReason, setStrWithdrawReason] = useState("");
   const [lstEarned, setLstEarned] = useState<WorkHolidayPosting[]>([]);
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList("my", undefined, 1, 100, blnCanView);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
@@ -144,6 +148,28 @@ export default function EssWorkHolidayPage() {
     }
   }
 
+  async function withdrawRequest() {
+    if (!objWithdrawRequest || !strWithdrawReason.trim()) return;
+    setBlnSaving(true);
+    setStrError("");
+    setStrNotice("");
+    try {
+      await workHolidayService.withdraw(objWithdrawRequest.intID, {
+        intRowVersion: objWithdrawRequest.intRowVersion,
+        strIdempotencyKey: crypto.randomUUID(),
+        strRemarks: strWithdrawReason.trim(),
+      });
+      setObjWithdrawRequest(null);
+      setStrWithdrawReason("");
+      await reload();
+      setStrNotice(t("withdraw_success", "Request withdrawn successfully."));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("error_withdraw", "Unable to withdraw request."));
+    } finally {
+      setBlnSaving(false);
+    }
+  }
+
   const lstColumns: DataGridColumn<WorkHolidayGridRow>[] = [
     { field: "action", headerName: t("actions", "Actions"), width: 90, sortable: false, filterable: false, exportable: false },
     { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
@@ -157,7 +183,16 @@ export default function EssWorkHolidayPage() {
   ];
   const lstRows: WorkHolidayGridRow[] = objList.lstItems.map((objRequest) => ({
     intID: objRequest.intID,
-    action: <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.view.button`} aria-label={t("view", "View")} onClick={() => void loadDetail(objRequest.intID)}><VisibilityRoundedIcon /></Button>,
+    action: (
+      <Stack direction="row" spacing={0.25}>
+        <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.view.button`} aria-label={t("view", "View")} onClick={() => void loadDetail(objRequest.intID)}><VisibilityRoundedIcon /></Button>
+        {blnCanWithdraw && objRequest.strRequestStatus === "PENDING_APPROVAL" ? (
+          <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.withdraw.button`} color="error" aria-label={t("withdraw", "Withdraw")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }}>
+            <WarningAmberRoundedIcon />
+          </Button>
+        ) : null}
+      </Stack>
+    ),
     strRequestNumber: objRequest.strRequestNumber ?? "—",
     dtWorkDate: objRequest.dtWorkDate,
     strDayTypeCode: t(`day_type_${objRequest.strDayTypeCode.toLowerCase()}`, objRequest.strDayTypeCode),
@@ -203,7 +238,6 @@ export default function EssWorkHolidayPage() {
                     <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmActualEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.actual-end.input" fullWidth size="small" type="time" label={t("actual_end", "Actual End")} InputLabelProps={{ shrink: true }} />} /></Box>
                     <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
                   </Stack>
-                  <Box sx={{ width: { xs: "100%", sm: 300 } }}><Controller name="intBackupEmployeeID" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="work-on-holiday.ess.backup-resource.input" fullWidth size="small" type="number" label={t("backup_resource", "Backup Resource")} helperText={t("backup_resource_helper", "Enter an employee reference available within your company.")} />} /></Box>
                   <Box sx={{ width: { xs: "100%", sm: 180 } }}><Button data-control-id="work-on-holiday.ess.attachment.button" component="label" fullWidth variant="outlined" startIcon={<AttachFileRoundedIcon />} sx={{ height: 40 }}>{objAttachment?.name ?? t("attachment", "Attachment")}<input data-control-id="work-on-holiday.ess.attachment.input" hidden type="file" onChange={(objEvent) => setValue("objAttachment", objEvent.target.files?.[0] ?? null)} /></Button></Box>
                 </Stack></Grid>
                 <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
@@ -221,6 +255,27 @@ export default function EssWorkHolidayPage() {
         { field: "strPostingStatus", headerName: t("posting_status", "Posting Status") },
       ]} rows={lstEarned.map((objPosting) => ({ intID: objPosting.intID, strPostingTypeCode: t(`posting_type_${objPosting.strPostingTypeCode.toLowerCase()}`, objPosting.strPostingTypeCode), decPostedDays: objPosting.decPostedDays ?? "—", strPostingStatus: t(`posting_${objPosting.strPostingStatus.toLowerCase()}`, objPosting.strPostingStatus) }))} rowIdField="intID" showExportOptions exportFileName="earned_comp_off" testIdPrefix="work-on-holiday-earned" emptyMessage={t("empty_earned", "No earned Comp-Off entries found.")} /> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
+      <Dialog data-control-id="work-on-holiday.withdraw.dialog" open={Boolean(objWithdrawRequest)} onClose={() => !blnSaving && setObjWithdrawRequest(null)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 850 }}>{t("confirm_withdraw_title", "Withdraw Work on Holiday Request?")}</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            data-control-id="work-on-holiday.withdraw.reason.input"
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            label={t("withdraw_reason", "Withdrawal Reason")}
+            value={strWithdrawReason}
+            onChange={(objEvent) => setStrWithdrawReason(objEvent.target.value)}
+            error={!strWithdrawReason.trim()}
+            helperText={!strWithdrawReason.trim() ? t("withdraw_reason_required", "A reason is required.") : ""}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button data-control-id="work-on-holiday.withdraw.cancel.button" onClick={() => setObjWithdrawRequest(null)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button>
+          <Button data-control-id="work-on-holiday.withdraw.confirm.button" variant="contained" color="error" onClick={() => void withdrawRequest()} disabled={blnSaving || !strWithdrawReason.trim()}>{t("withdraw", "Withdraw")}</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -8,10 +8,12 @@ import type {
   MyAttendanceHistory,
   MyAttendanceOverview,
 } from "@/features/attendance/types/MyAttendanceTypes";
+import type { MyShiftDto } from "@/features/attendance/dto";
 
 export function useMyAttendance() {
   const [objOverview, setObjOverview] = useState<MyAttendanceOverview | null>(null);
   const [objHistory, setObjHistory] = useState<MyAttendanceHistory | null>(null);
+  const [objShift, setObjShift] = useState<MyShiftDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnPunching, setBlnPunching] = useState(false);
   const [strError, setStrError] = useState("");
@@ -24,12 +26,14 @@ export function useMyAttendance() {
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objOverviewResult, objHistoryResult] = await Promise.all([
+      const [objOverviewResult, objHistoryResult, objShiftResult] = await Promise.all([
         attendanceService.getMyAttendanceOverview(strDate),
         attendanceService.getMyAttendanceHistory(strFromDate, strToDate),
+        attendanceService.getMyShift(),
       ]);
       setObjOverview(objOverviewResult);
       setObjHistory(objHistoryResult);
+      setObjShift(objShiftResult);
     } catch (objError) {
       const objHandledError = await createApiRequestError(objError);
       setStrError(objHandledError.message);
@@ -60,6 +64,7 @@ export function useMyAttendance() {
   return {
     objOverview,
     objHistory,
+    objShift,
     blnLoading,
     blnPunching,
     strError,

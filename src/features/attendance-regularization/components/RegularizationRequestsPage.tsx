@@ -8,14 +8,14 @@ import {
   Divider, Grid, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow,
   TextField, Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
-  RegularizationDetail, RegularizationFormValues, RegularizationLookups, RegularizationRequest,
+  DateContext, RegularizationDetail, RegularizationFormValues, RegularizationLookups, RegularizationRequest,
 } from "@/features/attendance-regularization/types/AttendanceRegularizationTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -25,6 +25,40 @@ const strStatusDomain = "ATTENDANCE_REGULARIZATION_STATUS";
 const strTypeDomain = "ATTENDANCE_REGULARIZATION_REQUEST_TYPE";
 const strActionDomain = "ATTENDANCE_REGULARIZATION_ACTION";
 const strAttendanceStatusDomain = "ATTENDANCE_STATUS";
+const setHiddenRequestTypeCodes = new Set(["MISSING_IN", "OTHER"]);
+const setAutoCalculatedRequestTypeCodes = new Set(["MISSING_OUT", "MISSING_BOTH"]);
+
+function formatInputTime(strValue?: string | null) {
+  if (!strValue) return "";
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) {
+    return `${String(objDate.getHours()).padStart(2, "0")}:${String(objDate.getMinutes()).padStart(2, "0")}`;
+  }
+  return strValue.slice(0, 5);
+}
+
+function parseTimeToMinutes(strValue?: string | null) {
+  if (!strValue) return null;
+  const [strHours, strMinutes] = strValue.slice(0, 5).split(":");
+  const intHours = Number(strHours);
+  const intMinutes = Number(strMinutes);
+  if (!Number.isInteger(intHours) || !Number.isInteger(intMinutes) || intHours < 0 || intHours > 23 || intMinutes < 0 || intMinutes > 59) return null;
+  return intHours * 60 + intMinutes;
+}
+
+function calculateWorkedHours(strFirstIn?: string | null, strLastOut?: string | null) {
+  const intFirstInMinutes = parseTimeToMinutes(strFirstIn);
+  const intLastOutMinutes = parseTimeToMinutes(strLastOut);
+  if (intFirstInMinutes === null || intLastOutMinutes === null || intLastOutMinutes <= intFirstInMinutes) return null;
+  return Math.round(((intLastOutMinutes - intFirstInMinutes) / 60) * 100) / 100;
+}
+
+function deriveProposedStatus(decWorkedHours?: number | null) {
+  const decHours = Number(decWorkedHours ?? 0);
+  if (decHours >= 8) return "present";
+  if (decHours >= 4) return "half_day";
+  return "absent";
+}
 
 function emptyOnBehalfForm(): RegularizationFormValues & { intEmployeeID: number | null; strOnBehalfReason: string } {
   return {
@@ -53,6 +87,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
   const [strRemarks, setStrRemarks] = useState("");
   const [blnOnBehalfOpen, setBlnOnBehalfOpen] = useState(false);
   const [objOnBehalf, setObjOnBehalf] = useState<RegularizationFormValues & { intEmployeeID: number | null; strOnBehalfReason: string }>(emptyOnBehalfForm);
+  const [objOnBehalfContext, setObjOnBehalfContext] = useState<DateContext | null>(null);
 
   const loadData = useCallback(async () => {
     setBlnLoading(true); setStrError("");
@@ -86,12 +121,50 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const lstStatuses = objLookups[strStatusDomain] ?? [];
-  const lstTypes = objLookups[strTypeDomain] ?? [];
+  const lstAllTypes = useMemo(() => objLookups[strTypeDomain] ?? [], [objLookups]);
+  const lstTypes = useMemo(() => lstAllTypes.filter((objOption) => !setHiddenRequestTypeCodes.has(objOption.strValueCode)), [lstAllTypes]);
   const lstActions = objLookups[strActionDomain] ?? [];
   const lstAttendanceStatuses = objLookups[strAttendanceStatusDomain] ?? objLookups["ATTENDANCE_DAY_STATUS"] ?? [];
   const blnCanApprove = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_APPROVE");
   const blnCanReject = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_REJECT");
   const blnCanSendBack = blnEssManagerMode || canDoAny("ATT_REG_REQUEST_SEND_BACK");
+  const blnOnBehalfNeedsTimes = ["MISSING_IN", "MISSING_OUT", "MISSING_BOTH"].includes(objOnBehalf.strRequestTypeCode) || ["present", "half_day", "on_duty"].includes(objOnBehalf.strProposedStatus);
+  const blnOnBehalfMissingOutOnly = objOnBehalf.strRequestTypeCode === "MISSING_OUT";
+  const blnOnBehalfAutoCalculated = setAutoCalculatedRequestTypeCodes.has(objOnBehalf.strRequestTypeCode);
+
+  useEffect(() => {
+    if (!blnOnBehalfOpen || blnEssManagerMode || !objOnBehalf.intEmployeeID || !objOnBehalf.dtWorkDate) {
+      setObjOnBehalfContext(null);
+      return;
+    }
+    let blnMounted = true;
+    attendanceRegularizationService.getHrContext(objOnBehalf.intEmployeeID, objOnBehalf.dtWorkDate)
+      .then((objContext) => { if (blnMounted) setObjOnBehalfContext(objContext); })
+      .catch(() => { if (blnMounted) setObjOnBehalfContext(null); });
+    return () => { blnMounted = false; };
+  }, [blnEssManagerMode, blnOnBehalfOpen, objOnBehalf.dtWorkDate, objOnBehalf.intEmployeeID]);
+
+  useEffect(() => {
+    if (objOnBehalf.strRequestTypeCode !== "MISSING_OUT") return;
+    const strFirstIn =
+      formatInputTime(objOnBehalfContext?.lstPunches.find((objPunch) => objPunch.strDirection.toLowerCase() === "in")?.dtPunchAt) ||
+      formatInputTime(objOnBehalfContext?.objAttendanceDay.tmFirstIn);
+    if (!strFirstIn) return;
+    setObjOnBehalf((objValue) => (
+      objValue.tmProposedFirstIn === strFirstIn ? objValue : { ...objValue, tmProposedFirstIn: strFirstIn }
+    ));
+  }, [objOnBehalf.strRequestTypeCode, objOnBehalfContext]);
+
+  useEffect(() => {
+    if (!blnOnBehalfAutoCalculated) return;
+    const decWorkedHours = calculateWorkedHours(objOnBehalf.tmProposedFirstIn, objOnBehalf.tmProposedLastOut);
+    const strProposedStatus = deriveProposedStatus(decWorkedHours);
+    setObjOnBehalf((objValue) => (
+      objValue.decProposedWorkedHours === decWorkedHours && objValue.strProposedStatus === strProposedStatus
+        ? objValue
+        : { ...objValue, decProposedWorkedHours: decWorkedHours, strProposedStatus }
+    ));
+  }, [blnOnBehalfAutoCalculated, objOnBehalf.tmProposedFirstIn, objOnBehalf.tmProposedLastOut]);
 
   async function openDetail(intRequestID: number) {
     setBlnWorking(true);
@@ -172,7 +245,90 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
         <DialogActions><Button data-control-id="regularization-requests.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button>{objDetail?.strRequestStatus === "PENDING_APPROVAL" ? <>{blnCanSendBack ? <Button data-control-id="regularization-requests.send-back.button" onClick={() => setObjAction({ strAction: "send-back", objRequest: objDetail })}>{t("send_back", "Send Back")}</Button> : null}{blnCanReject ? <Button data-control-id="regularization-requests.reject.button" color="error" onClick={() => setObjAction({ strAction: "reject", objRequest: objDetail })}>{t("reject", "Reject")}</Button> : null}{blnCanApprove ? <Button data-control-id="regularization-requests.approve.button" variant="contained" color="success" onClick={() => setObjAction({ strAction: "approve", objRequest: objDetail })}>{t("approve", "Approve")}</Button> : null}</> : null}</DialogActions>
       </Dialog>
       <Dialog data-control-id="regularization-requests.action.dialog" open={Boolean(objAction)} onClose={() => setObjAction(null)} fullWidth maxWidth="sm"><DialogTitle>{objAction ? lookupLabel(lstActions, objAction.strAction.toUpperCase().replace("-", "_"), t("confirm_action", "Confirm Action")) : ""}</DialogTitle><DialogContent><TextField data-control-id="regularization-requests.action.remarks.input" fullWidth multiline minRows={3} required={objAction?.strAction !== "approve"} label={t("remarks", "Remarks")} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} sx={{ mt: 1 }} /></DialogContent><DialogActions><Button data-control-id="regularization-requests.action.cancel.button" onClick={() => setObjAction(null)}>{t("cancel", "Cancel")}</Button><Button data-control-id="regularization-requests.action.confirm.button" variant="contained" disabled={blnWorking || (objAction?.strAction !== "approve" && !strRemarks.trim())} onClick={() => void confirmAction()}>{t("confirm", "Confirm")}</Button></DialogActions></Dialog>
-      <Dialog data-control-id="regularization-requests.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="md"><DialogTitle>{t("create_on_behalf", "Create on Behalf")}</DialogTitle><DialogContent><Grid container spacing={2} sx={{ mt: 0 }}><Grid item xs={12} sm={6}><TextField data-control-id="regularization-requests.on-behalf.employee.input" fullWidth type="number" required label={t("employee_id", "Employee ID")} value={objOnBehalf.intEmployeeID ?? ""} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, intEmployeeID: Number(objEvent.target.value) || null }))} /></Grid><Grid item xs={12} sm={6}><TextField data-control-id="regularization-requests.on-behalf.date.input" fullWidth type="date" required label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={objOnBehalf.dtWorkDate} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))} /></Grid><Grid item xs={12} sm={6}><TextField data-control-id="regularization-requests.on-behalf.type.select" fullWidth select required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: objEvent.target.value }))}>{lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField></Grid><Grid item xs={12} sm={6}><TextField data-control-id="regularization-requests.on-behalf.status.select" fullWidth select required label={t("proposed_status", "Proposed Status")} value={objOnBehalf.strProposedStatus} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: objEvent.target.value }))}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField></Grid><Grid item xs={12}><TextField data-control-id="regularization-requests.on-behalf.employee-reason.input" fullWidth required multiline label={t("employee_reason", "Employee Reason")} value={objOnBehalf.strEmployeeReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strEmployeeReason: objEvent.target.value }))} /></Grid><Grid item xs={12}><TextField data-control-id="regularization-requests.on-behalf.reason.input" fullWidth required multiline label={t("on_behalf_reason", "On-behalf Reason")} value={objOnBehalf.strOnBehalfReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strOnBehalfReason: objEvent.target.value }))} /></Grid></Grid></DialogContent><DialogActions><Button data-control-id="regularization-requests.on-behalf.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={blnWorking} onClick={() => setObjOnBehalf(emptyOnBehalfForm())}>{t("clear", "Clear")}</Button><Button data-control-id="regularization-requests.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button><Button data-control-id="regularization-requests.on-behalf.create.button" variant="contained" disabled={blnWorking} onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button></DialogActions></Dialog>
+      <Dialog data-control-id="regularization-requests.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">
+        <DialogTitle>{t("create_on_behalf", "Create on Behalf")}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField data-control-id="regularization-requests.on-behalf.employee.input" fullWidth type="number" required label={t("employee_id", "Employee ID")} value={objOnBehalf.intEmployeeID ?? ""} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, intEmployeeID: Number(objEvent.target.value) || null }))} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField data-control-id="regularization-requests.on-behalf.date.input" fullWidth type="date" required label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={objOnBehalf.dtWorkDate} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))} />
+            </Grid>
+            <Grid item xs={12} md={blnOnBehalfNeedsTimes ? 4 : 6}>
+              <TextField data-control-id="regularization-requests.on-behalf.type.select" fullWidth select required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: objEvent.target.value }))}>
+                {lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
+              </TextField>
+            </Grid>
+            {blnOnBehalfNeedsTimes ? (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    data-control-id="regularization-requests.on-behalf.proposed-in.input"
+                    fullWidth
+                    type="time"
+                    label={t("proposed_in", "Proposed IN")}
+                    InputLabelProps={{ shrink: true }}
+                    value={objOnBehalf.tmProposedFirstIn ?? ""}
+                    disabled={blnOnBehalfMissingOutOnly}
+                    helperText={blnOnBehalfMissingOutOnly ? t("fetched_from_punch_log", "Fetched from punch log") : " "}
+                    onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmProposedFirstIn: objEvent.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    data-control-id="regularization-requests.on-behalf.proposed-out.input"
+                    fullWidth
+                    type="time"
+                    label={t("proposed_out", "Proposed OUT")}
+                    InputLabelProps={{ shrink: true }}
+                    value={objOnBehalf.tmProposedLastOut ?? ""}
+                    onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmProposedLastOut: objEvent.target.value }))}
+                  />
+                </Grid>
+              </>
+            ) : null}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                data-control-id="regularization-requests.on-behalf.status.select"
+                fullWidth
+                select
+                required
+                disabled={blnOnBehalfAutoCalculated}
+                label={t("proposed_status", "Proposed Status")}
+                value={objOnBehalf.strProposedStatus}
+                helperText={blnOnBehalfAutoCalculated ? t("calculated_from_timings", "Calculated from timings") : " "}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: objEvent.target.value }))}
+              >
+                {lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                data-control-id="regularization-requests.on-behalf.worked-hours.input"
+                fullWidth
+                type="number"
+                label={t("proposed_worked_hours", "Proposed Worked Hours")}
+                value={objOnBehalf.decProposedWorkedHours ?? ""}
+                disabled={blnOnBehalfAutoCalculated}
+                helperText={blnOnBehalfAutoCalculated ? t("calculated_from_timings", "Calculated from timings") : " "}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, decProposedWorkedHours: objEvent.target.value === "" ? null : Number(objEvent.target.value) }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField data-control-id="regularization-requests.on-behalf.employee-reason.input" fullWidth required multiline label={t("employee_reason", "Employee Reason")} value={objOnBehalf.strEmployeeReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strEmployeeReason: objEvent.target.value }))} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField data-control-id="regularization-requests.on-behalf.reason.input" fullWidth required multiline label={t("on_behalf_reason", "On-behalf Reason")} value={objOnBehalf.strOnBehalfReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strOnBehalfReason: objEvent.target.value }))} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button data-control-id="regularization-requests.on-behalf.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={blnWorking} onClick={() => setObjOnBehalf(emptyOnBehalfForm())}>{t("clear", "Clear")}</Button>
+          <Button data-control-id="regularization-requests.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button>
+          <Button data-control-id="regularization-requests.on-behalf.create.button" variant="contained" disabled={blnWorking} onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

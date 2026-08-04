@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation";
 
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
+import type { MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
@@ -65,6 +66,90 @@ function formatTime(strValue?: string | null) {
   return strValue.slice(0, 5);
 }
 
+function formatMinutesDuration(intMinutes?: number | null) {
+  const intSafeMinutes = Math.max(0, Math.round(Number(intMinutes ?? 0)));
+  if (intSafeMinutes < 60) return `${intSafeMinutes} m`;
+  const intHours = Math.floor(intSafeMinutes / 60);
+  const intRemainingMinutes = intSafeMinutes % 60;
+  return intRemainingMinutes > 0
+    ? `${intHours} hr ${intRemainingMinutes} m`
+    : `${intHours} hr`;
+}
+
+function formatDuration(decHours?: number | null) {
+  return formatMinutesDuration(Number(decHours ?? 0) * 60);
+}
+
+function formatDisplayDate(strValue?: string | null) {
+  if (!strValue) return "";
+  const objDate = new Date(`${strValue}T00:00:00`);
+  if (Number.isNaN(objDate.getTime())) return strValue;
+  return objDate.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function parseTimeToMinutes(strValue?: string | null) {
+  if (!strValue) return null;
+  const [strHours, strMinutes] = strValue.slice(0, 5).split(":");
+  const intHours = Number(strHours);
+  const intMinutes = Number(strMinutes);
+  if (
+    !Number.isInteger(intHours) ||
+    !Number.isInteger(intMinutes) ||
+    intHours < 0 ||
+    intHours > 23 ||
+    intMinutes < 0 ||
+    intMinutes > 59
+  ) {
+    return null;
+  }
+  return intHours * 60 + intMinutes;
+}
+
+function punchTimeToMinutes(strValue?: string | null) {
+  if (!strValue) return null;
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) {
+    return objDate.getHours() * 60 + objDate.getMinutes();
+  }
+  return parseTimeToMinutes(strValue);
+}
+
+function buildPunchTimelineRows(lstPunches: MyAttendancePunch[]) {
+  let intOpenInMinutes: number | null = null;
+  let intTotalMinutes = 0;
+  const lstRows = [...lstPunches]
+    .sort((objLeft, objRight) => new Date(objLeft.dtPunchAt).getTime() - new Date(objRight.dtPunchAt).getTime())
+    .map((objPunch) => {
+      const blnIsInPunch = objPunch.strDirection.toLowerCase() === "in";
+      const intPunchMinutes = punchTimeToMinutes(objPunch.dtPunchAt);
+      let intPeriodMinutes: number | null = null;
+
+      if (blnIsInPunch) {
+        intOpenInMinutes = intPunchMinutes;
+      } else if (intOpenInMinutes !== null && intPunchMinutes !== null && intPunchMinutes >= intOpenInMinutes) {
+        intPeriodMinutes = intPunchMinutes - intOpenInMinutes;
+        intTotalMinutes += intPeriodMinutes;
+        intOpenInMinutes = null;
+      }
+
+      return { ...objPunch, intPeriodMinutes };
+    });
+
+  return { lstRows, intTotalMinutes };
+}
+
+function punchSourceLabel(strSource: string) {
+  const strNormalized = strSource.trim().toLowerCase();
+  if (["mobile", "app", "phone"].includes(strNormalized)) return "Mobile App";
+  if (strNormalized === "web") return "Web";
+  if (strNormalized === "biometric") return "Biometric";
+  return strSource;
+}
+
 export default function EssAttendancePanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("my_attendance", "Unable to load My Attendance labels.");
@@ -82,6 +167,7 @@ export default function EssAttendancePanel() {
   const {
     objOverview,
     objHistory,
+    objShift,
     blnLoading,
     blnPunching,
     strError,
@@ -98,6 +184,7 @@ export default function EssAttendancePanel() {
   const [strSelectedDate, setStrSelectedDate] = useState(strToday);
   const [blnPunchDialogOpen, setBlnPunchDialogOpen] = useState(false);
   const [blnPolicyDialogOpen, setBlnPolicyDialogOpen] = useState(false);
+  const [blnTimelineDialogOpen, setBlnTimelineDialogOpen] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({
     blnOpen: false,
     strMessage: "",
@@ -105,13 +192,79 @@ export default function EssAttendancePanel() {
   });
 
   const objMonthBounds = useMemo(() => getMonthBounds(objMonth), [objMonth]);
+  const lstDisplayDays = useMemo(() => {
+    const dicRecorded = new Map(
+      (objHistory?.lstDays ?? [])
+        .filter((objDay): objDay is AttendanceDayDto & { dtWorkDate: string } => Boolean(objDay.dtWorkDate))
+        .map((objDay) => [objDay.dtWorkDate, objDay]),
+    );
+    const lstDays: AttendanceDayDto[] = [];
+    const objCursor = new Date(`${objMonthBounds.strFromDate}T00:00:00`);
+    const objEnd = new Date(`${objMonthBounds.strToDate}T00:00:00`);
+    while (objCursor <= objEnd) {
+      const strDate = toLocalISO(objCursor);
+      const objRecorded = dicRecorded.get(strDate);
+      const blnCalendarWeekend = objCursor.getDay() === 0 || objCursor.getDay() === 6;
+      const blnReplaceWeekendAbsence = blnCalendarWeekend && objRecorded?.strStatus === "absent";
+      if (objRecorded && !blnReplaceWeekendAbsence) {
+        lstDays.push(objRecorded);
+      } else {
+        // Backend roster patterns are Monday-first; JavaScript getDay() is Sunday-first.
+        const intPatternIndex = (objCursor.getDay() + 6) % 7;
+        const blnWeeklyOff = blnCalendarWeekend || objShift?.strWeeklyOffPattern?.[intPatternIndex] === "1";
+        if (blnWeeklyOff || strDate <= strToday) {
+          lstDays.push({
+            intID: 0,
+            intEmployeeID: objShift?.intEmployeeID ?? 0,
+            dtWorkDate: strDate,
+            strStatus: blnWeeklyOff ? "weekly_off" : "absent",
+            strFirstIn: null,
+            strLastOut: null,
+            decWorkedHours: 0,
+            intLateMinutes: 0,
+            decOtHours: 0,
+            blnIsPaid: blnWeeklyOff,
+            strRemark: null,
+          });
+        }
+      }
+      objCursor.setDate(objCursor.getDate() + 1);
+    }
+    return lstDays;
+  }, [objHistory, objMonthBounds.strFromDate, objMonthBounds.strToDate, objShift, strToday]);
   const dicDaysByDate = useMemo(
-    () => Object.fromEntries((objHistory?.lstDays ?? []).map((objDay) => [objDay.dtWorkDate, objDay])),
-    [objHistory],
+    () => Object.fromEntries(lstDisplayDays.map((objDay) => [objDay.dtWorkDate, objDay])),
+    [lstDisplayDays],
   );
+  const dicDisplayStatusCounts = useMemo(() => {
+    const dicCounts: Record<string, number> = {};
+    lstDisplayDays.forEach((objDay) => {
+      dicCounts[objDay.strStatus] = (dicCounts[objDay.strStatus] ?? 0) + 1;
+    });
+    return dicCounts;
+  }, [lstDisplayDays]);
   const objSelectedDay = dicDaysByDate[strSelectedDate] ?? (
     objOverview?.dtDate === strSelectedDate ? objOverview.objDay : null
   );
+  const objPunchTimeline = useMemo(
+    () => buildPunchTimelineRows(objOverview?.dtDate === strSelectedDate ? objOverview.lstPunches : []),
+    [objOverview?.dtDate, objOverview?.lstPunches, strSelectedDate],
+  );
+  const strSelectedWorkedHours = objPunchTimeline.lstRows.length > 0
+    ? formatMinutesDuration(objPunchTimeline.intTotalMinutes)
+    : formatDuration(objSelectedDay?.decWorkedHours);
+  const blnShowOtHours = Boolean(objOverview?.objPolicy?.blnOtEnabled);
+  const strMonthlyWorkedHours = useMemo(() => {
+    const intTotalMinutes = (objHistory?.lstDays ?? []).reduce((intTotal, objDay) => {
+      const blnUsePunchTimeline = objDay.dtWorkDate === strSelectedDate && objPunchTimeline.lstRows.length > 0;
+      const intDayMinutes = blnUsePunchTimeline
+        ? objPunchTimeline.intTotalMinutes
+        : Math.round(Number(objDay.decWorkedHours ?? 0) * 60);
+      return intTotal + intDayMinutes;
+    }, 0);
+
+    return formatMinutesDuration(intTotalMinutes);
+  }, [objHistory?.lstDays, objPunchTimeline.intTotalMinutes, objPunchTimeline.lstRows.length, strSelectedDate]);
 
   const loadSelectedMonth = useCallback(() => loadAttendance(
     strSelectedDate,
@@ -140,9 +293,11 @@ export default function EssAttendancePanel() {
     [lstCalendarCells],
   );
   const lstYears = useMemo(
-    () => Array.from({ length: 7 }, (_, intIndex) => objToday.getFullYear() - 3 + intIndex),
+    () => Array.from({ length: 4 }, (_, intIndex) => objToday.getFullYear() - 3 + intIndex),
     [objToday],
   );
+  const blnAtCurrentMonth = objMonth.getFullYear() === objToday.getFullYear()
+    && objMonth.getMonth() === objToday.getMonth();
 
   function moveMonth(intDelta: number) {
     const objNextMonth = new Date(objMonth.getFullYear(), objMonth.getMonth() + intDelta, 1);
@@ -185,7 +340,9 @@ export default function EssAttendancePanel() {
     return (
       <Chip
         size="small"
-        label={t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))}
+        label={objDay.strStatus === "weekly_off"
+          ? t("status_weekend", "Weekend")
+          : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))}
         sx={{ bgcolor: objColor.bg, color: objColor.fg, fontWeight: 800, textTransform: "capitalize" }}
       />
     );
@@ -254,33 +411,41 @@ export default function EssAttendancePanel() {
       <Grid container spacing={1}>
         <Grid item xs={12} lg={4}>
           <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: "100%", boxShadow: 0, overflow: "hidden" }}>
-            <Typography fontWeight={900}>{t("today", "Today")}</Typography>
+            <Typography fontWeight={900}>
+              {strSelectedDate === strToday
+                ? t("today", "Today")
+                : t("selected_date", "Selected Date")}
+            </Typography>
             <Typography variant="h5" fontWeight={900} sx={{ mt: 0.25 }}>
-              {new Date(`${strToday}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+              {new Date(`${strSelectedDate}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ my: 0.75 }}>
-              {renderStatusChip(objOverview?.objDay)}
-              <Typography color="text.secondary">
-                {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, (objOverview?.strCurrentState ?? "not_punched").replaceAll("_", " "))}
-              </Typography>
+              {renderStatusChip(objSelectedDay)}
+              {strSelectedDate === strToday ? (
+                <Typography color="text.secondary">
+                  {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, (objOverview?.strCurrentState ?? "not_punched").replaceAll("_", " "))}
+                </Typography>
+              ) : null}
             </Stack>
-            <Button
-              data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
-              fullWidth
-              size="large"
-              variant="contained"
-              startIcon={<FingerprintRoundedIcon />}
-              disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch || strSelectedDate !== strToday}
-              onClick={() => setBlnPunchDialogOpen(true)}
-              sx={{ minHeight: 42, fontWeight: 900 }}
-            >
-              {blnPunching
-                ? t("recording", "Recording...")
-                : objOverview?.strNextPunchDirection === "out"
-                  ? t("punch_out", "Punch Out")
-                  : t("punch_in", "Punch In")}
-            </Button>
-            {!objOverview?.blnCanPunch ? (
+            {strSelectedDate === strToday ? (
+              <Button
+                data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
+                fullWidth
+                size="large"
+                variant="contained"
+                startIcon={<FingerprintRoundedIcon />}
+                disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
+                onClick={() => setBlnPunchDialogOpen(true)}
+                sx={{ minHeight: 42, fontWeight: 900 }}
+              >
+                {blnPunching
+                  ? t("recording", "Recording...")
+                  : objOverview?.strNextPunchDirection === "out"
+                    ? t("punch_out", "Punch Out")
+                    : t("punch_in", "Punch In")}
+              </Button>
+            ) : null}
+            {strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
               <Alert severity="info" sx={{ mt: 1, py: 0, "& .MuiAlert-message": { py: 0.75 } }}>
                 {t(
                   `unavailable_${objOverview?.strUnavailableReasonCode ?? "unknown"}`,
@@ -300,9 +465,8 @@ export default function EssAttendancePanel() {
               {[
                 [t("first_in", "First IN"), objSelectedDay?.strFirstIn?.slice(0, 5) ?? "-"],
                 [t("last_out", "Last OUT"), objSelectedDay?.strLastOut?.slice(0, 5) ?? "-"],
-                [t("worked_hours", "Worked Hours"), `${objSelectedDay?.decWorkedHours ?? 0} h`],
-                [t("late_minutes", "Late Minutes"), `${objSelectedDay?.intLateMinutes ?? 0} min`],
-                [t("overtime_hours", "OT Hours"), `${objSelectedDay?.decOtHours ?? 0} h`],
+                [t("worked_hours", "Worked Hours"), strSelectedWorkedHours],
+                ...(blnShowOtHours ? [[t("overtime_hours", "OT Hours"), `${objSelectedDay?.decOtHours ?? 0} h`]] : []),
                 [t("paid", "Paid"), objSelectedDay ? (objSelectedDay.blnIsPaid ? t("yes", "Yes") : t("no", "No")) : "-"],
               ].map(([strLabel, strValue]) => (
                 <Grid item xs={6} sm={4} md={2} key={strLabel}>
@@ -314,31 +478,36 @@ export default function EssAttendancePanel() {
               ))}
             </Grid>
             <Divider sx={{ my: 0.75 }} />
-            {objSelectedDay && strSelectedDate <= strToday && canViewRegularization() ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ pt: 0.25 }}
+            >
+              {objSelectedDay && strSelectedDate <= strToday && canViewRegularization() ? (
+                <Button
+                  data-control-id="ess.my-attendance.regularize.button"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
+                  sx={{ minHeight: 38, px: 2, borderRadius: "8px", fontWeight: 700 }}
+                >
+                  {t("regularize", "Regularize")}
+                </Button>
+              ) : null}
               <Button
-                data-control-id="ess.my-attendance.regularize.button"
-                variant="outlined"
+                data-control-id="ess.my-attendance.punch-timeline.button"
+                variant="contained"
                 size="small"
-                onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
-                sx={{ mb: 0.75 }}
+                startIcon={<AccessTimeRoundedIcon />}
+                onClick={() => setBlnTimelineDialogOpen(true)}
+                sx={{ minHeight: 38, px: 2, borderRadius: "8px", fontWeight: 700, boxShadow: "none" }}
               >
-                {t("regularize", "Regularize")}
+                {t("view_punch_timeline", "View Punch Timeline")}
               </Button>
-            ) : null}
-            <Typography fontWeight={800}>{t("punch_timeline", "Punch Timeline")}</Typography>
-            {objOverview?.dtDate === strSelectedDate && objOverview.lstPunches.length > 0 ? (
-              <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                {objOverview.lstPunches.map((objPunch) => (
-                  <Stack key={objPunch.intID} direction="row" justifyContent="space-between" sx={{ px: 1, py: 0.5, border: "1px solid", borderColor: "divider", borderRadius: "4px" }}>
-                    <Chip size="small" label={objPunch.strDirection.toUpperCase()} color={objPunch.strDirection === "in" ? "success" : "warning"} />
-                    <Typography fontWeight={800}>{formatTime(objPunch.dtPunchAt)}</Typography>
-                    <Typography color="text.secondary">{t(`source_${objPunch.strSource}`, objPunch.strSource)}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{t("no_punches", "No punch log is available for this date.")}</Typography>
-            )}
+            </Stack>
           </Paper>
         </Grid>
       </Grid>
@@ -353,10 +522,10 @@ export default function EssAttendancePanel() {
           </Box>
           <Grid container spacing={0.5} justifyContent="space-around" sx={{ flex: 1 }}>
             {[
-              [t("present", "Present"), objHistory?.objSummary.dicStatusCounts.present ?? 0],
-              [t("absent", "Absent"), objHistory?.objSummary.dicStatusCounts.absent ?? 0],
-              [t("half_day", "Half Day"), objHistory?.objSummary.dicStatusCounts.half_day ?? 0],
-              [t("worked_hours", "Worked Hours"), objHistory?.objSummary.decWorkedHours ?? 0],
+              [t("present", "Present"), dicDisplayStatusCounts.present ?? 0],
+              [t("absent", "Absent"), dicDisplayStatusCounts.absent ?? 0],
+              [t("half_day", "Half Day"), dicDisplayStatusCounts.half_day ?? 0],
+              [t("worked_hours", "Worked Hours"), strMonthlyWorkedHours],
               [t("late_occurrences", "Late Occurrences"), objHistory?.objSummary.intLateOccurrences ?? 0],
             ].map(([strLabel, objValue]) => (
               <Grid item xs={6} sm={4} md={2} key={strLabel}>
@@ -388,7 +557,7 @@ export default function EssAttendancePanel() {
               sx={{ minWidth: 130 }}
             >
               {Array.from({ length: 12 }, (_, intMonth) => (
-                <MenuItem key={intMonth} value={intMonth}>
+                <MenuItem key={intMonth} value={intMonth} disabled={objMonth.getFullYear() === objToday.getFullYear() && intMonth > objToday.getMonth()}>
                   {new Date(2020, intMonth, 1).toLocaleString([], { month: "long" })}
                 </MenuItem>
               ))}
@@ -408,7 +577,7 @@ export default function EssAttendancePanel() {
               {lstYears.map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)}
             </TextField>
             <Button data-control-id="ess.my-attendance.today.button" variant="outlined" onClick={goToToday}>{t("today", "Today")}</Button>
-            <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")}><ChevronRightRoundedIcon /></Button>
+            <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")}><ChevronRightRoundedIcon /></Button>
           </Stack>
         </Stack>
 
@@ -418,12 +587,14 @@ export default function EssAttendancePanel() {
           <Stack spacing={0.75}>
             {lstMonthDays.map((strDate) => {
               const objDay = dicDaysByDate[strDate];
+              const blnFutureDate = strDate > strToday;
               return (
                 <ButtonBase
                   key={strDate}
                   data-control-id={`ess.my-attendance.day.${strDate}.button`}
+                  disabled={blnFutureDate}
                   onClick={() => setStrSelectedDate(strDate)}
-                  sx={{ width: "100%", justifyContent: "space-between", p: 1.25, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", textAlign: "left" }}
+                  sx={{ width: "100%", justifyContent: "space-between", p: 1.25, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", opacity: blnFutureDate ? 0.45 : 1, textAlign: "left" }}
                 >
                   <Box>
                     <Typography fontWeight={800}>{new Date(`${strDate}T00:00:00`).toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" })}</Typography>
@@ -444,17 +615,23 @@ export default function EssAttendancePanel() {
                 if (!strDate) return <Box key={`blank-${intIndex}`} />;
                 const objDay = dicDaysByDate[strDate];
                 const objColor = objDay ? ATTENDANCE_STATUS_COLORS[objDay.strStatus] : null;
+                const blnFutureDate = strDate > strToday;
                 return (
                   <ButtonBase
                     key={strDate}
                     data-control-id={`ess.my-attendance.day.${strDate}.button`}
+                    disabled={blnFutureDate}
                     onClick={() => setStrSelectedDate(strDate)}
-                    sx={{ minHeight: 68, alignItems: "stretch", justifyContent: "flex-start", p: 0.75, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "4px", bgcolor: objColor?.bg ?? "background.paper", textAlign: "left" }}
+                    sx={{ minHeight: 68, alignItems: "stretch", justifyContent: "flex-start", p: 0.75, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "4px", bgcolor: objColor?.bg ?? "background.paper", opacity: blnFutureDate ? 0.45 : 1, textAlign: "left" }}
                   >
                     <Stack justifyContent="space-between" width="100%">
                       <Typography fontWeight={900}>{Number(strDate.slice(-2))}</Typography>
                       <Typography variant="caption" fontWeight={800} color={objColor?.fg ?? "text.secondary"}>
-                        {objDay ? t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " ")) : ""}
+                        {objDay ? (
+                          objDay.strStatus === "weekly_off"
+                            ? t("status_weekend", "Weekend")
+                            : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))
+                        ) : ""}
                       </Typography>
                     </Stack>
                   </ButtonBase>
@@ -504,6 +681,78 @@ export default function EssAttendancePanel() {
         </DialogContent>
         <DialogActions>
           <Button data-control-id="ess.my-attendance.policy-info.close.button" onClick={() => setBlnPolicyDialogOpen(false)}>{t("close", "Close")}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        data-control-id="ess.my-attendance.punch-timeline.dialog"
+        open={blnTimelineDialogOpen}
+        onClose={() => setBlnTimelineDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {t("punch_timeline", "Punch Timeline")} - {formatDisplayDate(strSelectedDate)}
+        </DialogTitle>
+        <DialogContent
+          dividers
+          sx={{
+            maxHeight: "55vh",
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            "&::-webkit-scrollbar": { width: 8 },
+            "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8 },
+          }}
+        >
+          {objPunchTimeline.lstRows.length > 0 ? (
+            <Stack spacing={0.75}>
+              {objPunchTimeline.lstRows.map((objPunch) => (
+                <Box
+                  key={objPunch.intID}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr auto", sm: "128px 1fr 92px 88px" },
+                    alignItems: "center",
+                    gap: 1,
+                    px: 1.25,
+                    py: 0.75,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "6px",
+                    bgcolor: "background.paper",
+                  }}
+                >
+                  <Chip
+                    size="small"
+                    label={objPunch.strDirection === "in" ? t("punch_in", "Punch In") : t("punch_out", "Punch Out")}
+                    color={objPunch.strDirection === "in" ? "success" : "warning"}
+                    sx={{ justifySelf: "start", fontWeight: 800 }}
+                  />
+                  <Typography fontWeight={800}>{formatTime(objPunch.dtPunchAt)}</Typography>
+                  <Typography color="text.secondary" sx={{ textAlign: { xs: "left", sm: "right" } }}>
+                    {t(`source_${objPunch.strSource}`, punchSourceLabel(objPunch.strSource))}
+                  </Typography>
+                  <Typography
+                    fontWeight={850}
+                    color={objPunch.intPeriodMinutes !== null ? "primary.main" : "text.disabled"}
+                    sx={{ textAlign: "right" }}
+                  >
+                    {objPunch.intPeriodMinutes !== null ? formatMinutesDuration(objPunch.intPeriodMinutes) : "-"}
+                  </Typography>
+                </Box>
+              ))}
+              <Divider sx={{ pt: 0.5 }} />
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 1.25, pt: 0.5 }}>
+                <Typography fontWeight={900}>{t("total_time", "Total Time")}</Typography>
+                <Typography fontWeight={900} color="primary.main">{formatMinutesDuration(objPunchTimeline.intTotalMinutes)}</Typography>
+              </Stack>
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">{t("no_punches", "No punch log is available for this date.")}</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button data-control-id="ess.my-attendance.punch-timeline.close.button" onClick={() => setBlnTimelineDialogOpen(false)}>{t("close", "Close")}</Button>
         </DialogActions>
       </Dialog>
 

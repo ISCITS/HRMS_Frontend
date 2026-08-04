@@ -151,6 +151,10 @@ export const attendanceRegularizationService = {
   getHrDetail(intRequestID: number) {
     return requestApi<RegularizationDetail>(`/attendance/regularization/requests/${intRequestID}`, ApiRequestMethod.Get, objAction.view);
   },
+  getHrContext(intEmployeeID: number, strWorkDate: string) {
+    const objQuery = new URLSearchParams({ employee_id: String(intEmployeeID), work_date: strWorkDate });
+    return requestApi<DateContext>(`/attendance/regularization/context?${objQuery}`, ApiRequestMethod.Get, objAction.onBehalf);
+  },
   createOnBehalf(objPayload: RegularizationFormValues & { intEmployeeID: number; strOnBehalfReason: string }) {
     return requestApi<RegularizationRequest>("/attendance/regularization/requests/on-behalf", ApiRequestMethod.Post, objAction.onBehalf, objPayload);
   },

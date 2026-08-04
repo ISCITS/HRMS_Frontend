@@ -25,6 +25,14 @@ type WorkHolidayWorkbenchRow = Record<string, ReactNode> & { intID: number };
 const strTabStorageKey = "hrms:work-on-holiday:workbench-tab";
 const strFilterStorageKey = "hrms:work-on-holiday:workbench-filter";
 
+function calculateHours(strStart: string, strEnd: string) {
+  if (!strStart || !strEnd) return 0;
+  const [intStartHour, intStartMinute] = strStart.split(":").map(Number);
+  const [intEndHour, intEndMinute] = strEnd.split(":").map(Number);
+  const intMinutes = (intEndHour * 60 + intEndMinute) - (intStartHour * 60 + intStartMinute);
+  return Math.max(0, Number((intMinutes / 60).toFixed(2)));
+}
+
 export default function WorkHolidayRequestsPage() {
   const { t } = useModuleLabels("work_on_holiday");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDo } = useActionRights();
@@ -34,17 +42,18 @@ export default function WorkHolidayRequestsPage() {
   const blnCanApprove = fnCan("WORK_ON_HOLIDAY_APPROVE");
   const blnCanVerify = fnCan("WORK_ON_HOLIDAY_VERIFY");
   const blnCanViewAll = fnCan("WORK_ON_HOLIDAY_VIEW_ALL") || fnCan("WORK_ON_HOLIDAY_MANAGE");
+  const blnCanApprovalQueue = blnCanApprove || blnCanViewAll;
   const blnCanOnBehalf = fnCan("WORK_ON_HOLIDAY_CREATE_ON_BEHALF");
   const blnCanPost = fnCan("WORK_ON_HOLIDAY_POST");
   const blnCanReverse = fnCan("WORK_ON_HOLIDAY_REVERSE") || fnCan("WORK_ON_HOLIDAY_OVERRIDE");
   const lstTabs = useMemo(() => [
-    { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprove },
+    { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
     { strCode: "verification", strLabel: t("tab_pending_verification", "Pending Attendance Verification"), blnVisible: blnCanVerify },
     { strCode: "all", strLabel: t("tab_all_requests", "All Requests"), blnVisible: blnCanViewAll },
     { strCode: "on_behalf", strLabel: t("tab_hr_on_behalf", "HR On Behalf"), blnVisible: blnCanOnBehalf },
     { strCode: "exceptions", strLabel: t("tab_posting_exceptions", "Posting Exceptions"), blnVisible: blnCanPost },
     { strCode: "history", strLabel: t("tab_completed_history", "Completed / History"), blnVisible: blnCanViewAll },
-  ].filter((objTab) => objTab.blnVisible), [blnCanApprove, blnCanOnBehalf, blnCanPost, blnCanVerify, blnCanViewAll, t]);
+  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanOnBehalf, blnCanPost, blnCanVerify, blnCanViewAll, t]);
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strStatusFilter, setStrStatusFilter] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(strFilterStorageKey) ?? "");
   const [strSearch, setStrSearch] = useState("");
@@ -54,13 +63,18 @@ export default function WorkHolidayRequestsPage() {
   const [strError, setStrError] = useState("");
   const [strNotice, setStrNotice] = useState("");
   const [blnOnBehalfOpen, setBlnOnBehalfOpen] = useState(false);
-  const [objOnBehalf, setObjOnBehalf] = useState({ intEmployeeID: "", dtWorkDate: "", strWorkReason: "", strOnBehalfReason: "" });
+  const [objOnBehalf, setObjOnBehalf] = useState({
+    intEmployeeID: "", dtWorkDate: "", strRequestedOutcomeCode: "COMPOFF",
+    decRequestedCreditDays: 1, tmPlannedStartTime: "", tmPlannedEndTime: "",
+    tmActualStartTime: "", tmActualEndTime: "", strWorkReason: "",
+    strWorkDescription: "", strOnBehalfReason: "",
+  });
   const strSelectedTab = lstTabs[Math.min(intTab, Math.max(lstTabs.length - 1, 0))]?.strCode ?? "approval";
   const strApiStatus = strSelectedTab === "verification" ? "PENDING_ATTENDANCE_VERIFICATION"
     : strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
       : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
   const strMode = strSelectedTab === "approval" ? "queue" : "all";
-  const blnListEnabled = !["on_behalf", "exceptions"].includes(strSelectedTab) && (strMode === "queue" ? blnCanApprove : blnCanViewAll || blnCanVerify);
+  const blnListEnabled = !["on_behalf", "exceptions"].includes(strSelectedTab) && (strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll || blnCanVerify);
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList(strMode, strApiStatus, 1, 100, blnListEnabled);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
 
@@ -91,20 +105,35 @@ export default function WorkHolidayRequestsPage() {
   }
 
   async function createOnBehalf() {
-    if (!objOnBehalf.intEmployeeID || !objOnBehalf.dtWorkDate || objOnBehalf.strWorkReason.trim().length < 3 || objOnBehalf.strOnBehalfReason.trim().length < 3) {
-      setStrError(t("validation_on_behalf", "Employee, date, work reason and on-behalf reason are required."));
+    if (
+      !objOnBehalf.intEmployeeID || !objOnBehalf.dtWorkDate || !objOnBehalf.tmPlannedStartTime
+      || !objOnBehalf.tmPlannedEndTime || objOnBehalf.strWorkReason.trim().length < 3
+      || objOnBehalf.strOnBehalfReason.trim().length < 3
+    ) {
+      setStrError(t("validation_on_behalf", "Employee, date, planned timings, work reason and on-behalf reason are required."));
       return;
     }
     try {
       await workHolidayService.createOnBehalf({
         intEmployeeID: Number(objOnBehalf.intEmployeeID), dtWorkDate: objOnBehalf.dtWorkDate,
-        strRequestedOutcomeCode: "COMPOFF", tmPlannedStartTime: null,
-        tmPlannedEndTime: null, decRequestedHours: 0, decRequestedCreditDays: 1,
-        strWorkReason: objOnBehalf.strWorkReason, strWorkDescription: "",
+        strRequestedOutcomeCode: objOnBehalf.strRequestedOutcomeCode,
+        tmPlannedStartTime: objOnBehalf.tmPlannedStartTime,
+        tmPlannedEndTime: objOnBehalf.tmPlannedEndTime,
+        tmActualStartTime: objOnBehalf.tmActualStartTime || null,
+        tmActualEndTime: objOnBehalf.tmActualEndTime || null,
+        decRequestedHours: calculateHours(objOnBehalf.tmPlannedStartTime, objOnBehalf.tmPlannedEndTime),
+        decRequestedCreditDays: objOnBehalf.decRequestedCreditDays,
+        strWorkReason: objOnBehalf.strWorkReason,
+        strWorkDescription: objOnBehalf.strWorkDescription,
         intBackupEmployeeID: null, strOnBehalfReason: objOnBehalf.strOnBehalfReason,
       });
       setBlnOnBehalfOpen(false);
-      setObjOnBehalf({ intEmployeeID: "", dtWorkDate: "", strWorkReason: "", strOnBehalfReason: "" });
+      setObjOnBehalf({
+        intEmployeeID: "", dtWorkDate: "", strRequestedOutcomeCode: "COMPOFF",
+        decRequestedCreditDays: 1, tmPlannedStartTime: "", tmPlannedEndTime: "",
+        tmActualStartTime: "", tmActualEndTime: "", strWorkReason: "",
+        strWorkDescription: "", strOnBehalfReason: "",
+      });
       setStrNotice(t("on_behalf_created", "On-behalf draft created successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save request."));
@@ -183,7 +212,181 @@ export default function WorkHolidayRequestsPage() {
         { field: "strErrorMessage", headerName: t("error", "Error"), width: 340 },
       ]} rows={lstExceptions.map((objPosting) => ({ intID: objPosting.intID, intWorkHolidayRequestID: objPosting.intWorkHolidayRequestID, strPostingTypeCode: t(`posting_type_${objPosting.strPostingTypeCode.toLowerCase()}`, objPosting.strPostingTypeCode), strPostingStatus: t(`posting_${objPosting.strPostingStatus.toLowerCase()}`, objPosting.strPostingStatus), strErrorMessage: objPosting.strErrorMessage ?? "—" }))} rowIdField="intID" showExportOptions exportFileName="work_on_holiday_posting_exceptions" testIdPrefix="work-on-holiday-exceptions" /> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={fnCan("WORK_ON_HOLIDAY_REJECT")} blnCanSendBack={fnCan("WORK_ON_HOLIDAY_SEND_BACK")} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
-      <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="md"><DialogTitle>{t("create_on_behalf", "Create On Behalf")}</DialogTitle><DialogContent><Grid container spacing={2} sx={{ mt: 0 }}><Grid item xs={12} md={6}><TextField data-control-id="work-on-holiday.on-behalf.employee.input" fullWidth type="number" label={t("employee", "Employee")} value={objOnBehalf.intEmployeeID} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, intEmployeeID: objEvent.target.value }))} /></Grid><Grid item xs={12} md={6}><TextField data-control-id="work-on-holiday.on-behalf.date.input" fullWidth type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={objOnBehalf.dtWorkDate} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))} /></Grid><Grid item xs={12}><TextField data-control-id="work-on-holiday.on-behalf.reason.input" fullWidth multiline label={t("reason", "Reason")} value={objOnBehalf.strWorkReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strWorkReason: objEvent.target.value }))} /></Grid><Grid item xs={12}><TextField data-control-id="work-on-holiday.on-behalf.hr-reason.input" fullWidth multiline label={t("on_behalf_reason", "On-Behalf Reason")} value={objOnBehalf.strOnBehalfReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strOnBehalfReason: objEvent.target.value }))} /></Grid></Grid></DialogContent><DialogActions><Button data-control-id="work-on-holiday.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button><Button data-control-id="work-on-holiday.on-behalf.create.button" variant="contained" onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button></DialogActions></Dialog>
+      <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">
+        <DialogTitle sx={{ fontWeight: 800 }}>{t("create_on_behalf", "Create On Behalf")}</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t("work_on_holiday_on_behalf_hint", "Create a Work on Holiday draft for an employee. Eligibility is validated during approval.")}
+          </Alert>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.employee.input"
+                fullWidth
+                required
+                type="number"
+                label={t("employee_id", "Employee ID")}
+                value={objOnBehalf.intEmployeeID}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, intEmployeeID: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.date.input"
+                fullWidth
+                required
+                type="date"
+                label={t("work_date", "Work Date")}
+                InputLabelProps={{ shrink: true }}
+                value={objOnBehalf.dtWorkDate}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.outcome.select"
+                select
+                fullWidth
+                label={t("requested_outcome", "Requested Outcome")}
+                value={objOnBehalf.strRequestedOutcomeCode}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestedOutcomeCode: objEvent.target.value }))}
+              >
+                <MenuItem value="COMPOFF">{t("comp_off", "Comp-Off")}</MenuItem>
+                <MenuItem value="ATTENDANCE_CREDIT">{t("attendance_credit", "Attendance Credit")}</MenuItem>
+                <MenuItem value="BOTH">{t("both", "Both")}</MenuItem>
+                <MenuItem value="NONE">{t("none", "None")}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.credit.select"
+                select
+                fullWidth
+                label={t("expected_credit", "Expected Credit")}
+                value={objOnBehalf.decRequestedCreditDays}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, decRequestedCreditDays: Number(objEvent.target.value) }))}
+              >
+                <MenuItem value={0}>0</MenuItem>
+                <MenuItem value={0.5}>0.5</MenuItem>
+                <MenuItem value={1}>1</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.planned-start.input"
+                fullWidth
+                required
+                type="time"
+                label={t("planned_start", "Planned Start")}
+                InputLabelProps={{ shrink: true }}
+                value={objOnBehalf.tmPlannedStartTime}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmPlannedStartTime: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.planned-end.input"
+                fullWidth
+                required
+                type="time"
+                label={t("planned_end", "Planned End")}
+                InputLabelProps={{ shrink: true }}
+                value={objOnBehalf.tmPlannedEndTime}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmPlannedEndTime: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.hours.input"
+                fullWidth
+                label={t("calculated_requested_hours", "Calculated Requested Hours")}
+                value={calculateHours(objOnBehalf.tmPlannedStartTime, objOnBehalf.tmPlannedEndTime)}
+                InputProps={{ readOnly: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.actual-start.input"
+                fullWidth
+                type="time"
+                label={t("actual_start", "Actual Start")}
+                InputLabelProps={{ shrink: true }}
+                value={objOnBehalf.tmActualStartTime}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmActualStartTime: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.actual-end.input"
+                fullWidth
+                type="time"
+                label={t("actual_end", "Actual End")}
+                InputLabelProps={{ shrink: true }}
+                value={objOnBehalf.tmActualEndTime}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, tmActualEndTime: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.reason.input"
+                fullWidth
+                required
+                multiline
+                minRows={2}
+                label={t("reason", "Reason")}
+                value={objOnBehalf.strWorkReason}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strWorkReason: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.description.input"
+                fullWidth
+                multiline
+                minRows={3}
+                label={t("work_description", "Work Description")}
+                value={objOnBehalf.strWorkDescription}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strWorkDescription: objEvent.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                data-control-id="work-on-holiday.on-behalf.hr-reason.input"
+                fullWidth
+                required
+                multiline
+                minRows={2}
+                label={t("on_behalf_reason", "On-Behalf Reason")}
+                value={objOnBehalf.strOnBehalfReason}
+                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strOnBehalfReason: objEvent.target.value }))}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            data-control-id="work-on-holiday.on-behalf.clear.button"
+            variant="outlined"
+            onClick={() => setObjOnBehalf({
+              intEmployeeID: "",
+              dtWorkDate: "",
+              strRequestedOutcomeCode: "COMPOFF",
+              decRequestedCreditDays: 1,
+              tmPlannedStartTime: "",
+              tmPlannedEndTime: "",
+              tmActualStartTime: "",
+              tmActualEndTime: "",
+              strWorkReason: "",
+              strWorkDescription: "",
+              strOnBehalfReason: "",
+            })}
+          >
+            {t("clear", "Clear")}
+          </Button>
+          <Button data-control-id="work-on-holiday.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button>
+          <Button data-control-id="work-on-holiday.on-behalf.create.button" variant="contained" onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

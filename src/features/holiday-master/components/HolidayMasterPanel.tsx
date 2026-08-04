@@ -36,8 +36,8 @@ const objHolidaySchema = yup.object({
   intHolidayYear: yup.number().integer().min(1900).max(9999).required(),
   dtHolidayDate: yup.string().required("Holiday date is required."),
   strHolidayCode: yup.string().trim().matches(/^[A-Za-z0-9][A-Za-z0-9._-]{1,49}$/, "Use 2-50 letters, numbers, dot, underscore, or hyphen.").required("Holiday code is required."),
-  strHolidayName: yup.string().trim().min(2).max(150).required("Holiday name is required."),
-  strHolidayDescription: yup.string().max(500).required(),
+  strHolidayName: yup.string().trim().max(150).defined(),
+  strHolidayDescription: yup.string().max(500).defined(),
   strHolidayTypeCode: yup.string().required("Holiday type is required."),
   blnIsPaid: yup.boolean().required(),
   blnIsOptional: yup.boolean().required(),
@@ -47,8 +47,8 @@ const objHolidaySchema = yup.object({
   lstTexts: yup.array().of(yup.object({
     intLanguageID: yup.number().positive().required().defined(),
     strLanguageName: yup.string().required().defined(),
-    strHolidayName: yup.string().trim().max(150).required().defined(),
-    strHolidayDescription: yup.string().max(500).required().defined(),
+    strHolidayName: yup.string().trim().max(150).defined(),
+    strHolidayDescription: yup.string().max(500).defined(),
   }).required().defined()).required().defined(),
 });
 
@@ -348,7 +348,7 @@ export default function HolidayMasterPanel() {
           gap: 1.25,
           mt: 1.25,
           "& > *": { minWidth: 0 },
-          "& .MuiButton-root": { minHeight: 48, whiteSpace: "nowrap" },
+          "& .MuiButton-root": { minHeight: 34, minWidth: 96, whiteSpace: "nowrap" },
         }}>
           <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} sx={{ gridColumn: { lg: 6 } }}>{t("search", "Search")}</Button>
           <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch} sx={{ gridColumn: { lg: 7 } }}>{t("clear", "Clear")}</Button>
@@ -383,7 +383,7 @@ export default function HolidayMasterPanel() {
             <TextField {...register("intHolidayYear", { valueAsNumber: true })} inputProps={{ "data-control-id": "holiday-master.dialog.year.input" }} label={t("year", "Holiday Year")} type="number" disabled helperText={t("year_derived", "Derived automatically from Holiday Date")} />
             <TextField {...register("strHolidayCode")} inputProps={{ "data-control-id": "holiday-master.dialog.code.input" }} label={t("code", "Holiday Code")} disabled={strMode !== "add"} error={Boolean(errors.strHolidayCode)} helperText={errors.strHolidayCode?.message ?? (strMode === "edit" ? t("code_immutable", "Holiday Code cannot be changed after creation.") : undefined)} required />
             <Controller control={control} name="strHolidayTypeCode" render={({ field }) => <TextField {...field} inputProps={{ "data-control-id": "holiday-master.dialog.type.select" }} select label={t("type", "Holiday Type")} disabled={strMode === "view"} error={Boolean(errors.strHolidayTypeCode)} required>{objOptions.lstHolidayTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}</TextField>} />
-            <Box sx={{ gridColumn: { xs: "auto", md: "span 2" } }}><TextField {...register("strHolidayName", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayName`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.name.input" }} label={t("name", "Holiday Name")} disabled={strMode === "view"} error={Boolean(errors.strHolidayName)} helperText={errors.strHolidayName?.message} required fullWidth /></Box>
+            <Box sx={{ gridColumn: { xs: "auto", md: "span 2" } }}><TextField {...register("strHolidayName", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayName`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.name.input" }} label={t("name", "Holiday Name")} disabled={strMode === "view"} error={Boolean(errors.strHolidayName)} helperText={errors.strHolidayName?.message} fullWidth /></Box>
           </Box>
           <TextField {...register("strHolidayDescription", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayDescription`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.description.input" }} label={t("description", "Description")} disabled={strMode === "view"} error={Boolean(errors.strHolidayDescription)} helperText={errors.strHolidayDescription?.message} multiline minRows={2} fullWidth />
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, max-content)", lg: "repeat(4, max-content)" }, columnGap: 3, rowGap: 1, alignItems: "center" }}>{([ ["blnIsPaid", "paid", "Paid"], ["blnIsOptional", "optional", "Optional"], ["blnIsWorkOnHoliday", "work_on_holiday", "Work on Holiday"], ["blnIsCompensatoryOffApplicable", "comp_off_short_label", "Comp-Off"] ] as const).map(([strName, strKey, strFallback]) => <Controller key={strName} control={control} name={strName} render={({ field }) => <FormControlLabel sx={{ m: 0 }} control={<Switch data-control-id={`holiday-master.dialog.${strName}.switch`} checked={field.value} disabled={strMode === "view"} onChange={(_, blnChecked) => field.onChange(blnChecked)} />} label={t(strKey, strFallback)} />} />)}</Box>
