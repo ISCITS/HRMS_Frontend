@@ -73,7 +73,7 @@ function toNum(strValue: string): number | null {
 
 // Module-scope render helpers (stable identity → inputs keep focus across renders).
 // Read-only is applied via a wrapping <fieldset disabled> around the form body.
-function SectionText(props: { label: string; value: string | null | undefined; onChange: (v: string) => void; type?: string; multiline?: boolean }) {
+function SectionText(props: { label: string; value: string | null | undefined; onChange: (v: string) => void; type?: string; multiline?: boolean; required?: boolean; strError?: string }) {
   return (
     <TextField
       label={props.label}
@@ -82,6 +82,9 @@ function SectionText(props: { label: string; value: string | null | undefined; o
       onChange={(e) => props.onChange(e.target.value)}
       size="small"
       fullWidth
+      required={props.required}
+      error={Boolean(props.strError)}
+      helperText={props.strError || undefined}
       multiline={props.multiline}
       minRows={props.multiline ? 2 : undefined}
       InputLabelProps={props.type === "date" ? { shrink: true } : undefined}
@@ -228,6 +231,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
   const [blnSaving, setBlnSaving] = useState(false);
   // Advanced Configuration (Applicability / Advanced Rules / Combination) is collapsed by default for the POC.
   const [blnAdvancedOpen, setBlnAdvancedOpen] = useState(false);
+  // Field-level validation messages shown inline below the control (not as a generic toast).
+  const [dicFieldErrors, setDicFieldErrors] = useState<{ strTypeCode?: string; strTypeName?: string }>({});
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const objPolicy = objForm.objPolicy ?? emptyPolicy();
@@ -284,10 +289,14 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
   const blnShowEncashment = objForm.blnIsEncashable && blnBalanceTracked;
 
   async function submit() {
-    if (!objForm.strTypeCode.trim() || !objForm.strTypeName.trim()) {
-      showToast("Code and name are required.", "error");
+    const dicErrors: { strTypeCode?: string; strTypeName?: string } = {};
+    if (!objForm.strTypeCode.trim()) dicErrors.strTypeCode = "Code is required.";
+    if (!objForm.strTypeName.trim()) dicErrors.strTypeName = "Name is required.";
+    if (dicErrors.strTypeCode || dicErrors.strTypeName) {
+      setDicFieldErrors(dicErrors);
       return;
     }
+    setDicFieldErrors({});
     const lstText = objForm.lstText.map((objText) => (objText.intLanguageID === 1 && !objText.strTypeName.trim() ? { ...objText, strTypeName: objForm.strTypeName } : objText));
     // The type's effective dates also drive the policy version window (single source of truth).
     const objPolicyOut = objForm.objPolicy
@@ -310,7 +319,19 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       setTimeout(() => objRouter.push("/leave"), 600);
     } catch (objError) {
       const objHandled = await createApiRequestError(objError);
-      showToast(objHandled.message, "error");
+      // Map backend duplicate code/name conflicts to the specific field (shown below it) instead of
+      // a generic toast; anything else still surfaces as a toast.
+      const strMessage = objHandled.message ?? "";
+      const blnCodeConflict = /code/i.test(strMessage) && /exist/i.test(strMessage);
+      const blnNameConflict = /name/i.test(strMessage) && /exist/i.test(strMessage);
+      if (blnCodeConflict || blnNameConflict) {
+        setDicFieldErrors({
+          strTypeCode: blnCodeConflict ? strMessage : undefined,
+          strTypeName: blnNameConflict ? strMessage : undefined,
+        });
+      } else {
+        showToast(strMessage, "error");
+      }
     } finally {
       setBlnSaving(false);
     }
@@ -428,8 +449,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Basic Information</Typography>
         <Box>
           <Box sx={objGridSx}>
-            <SectionText label="Code" value={objForm.strTypeCode} onChange={(v) => setMaster("strTypeCode", v.toUpperCase())} />
-            <SectionText label="Default Name" value={objForm.strTypeName} onChange={(v) => setMaster("strTypeName", v)} />
+            <SectionText label="Code" required value={objForm.strTypeCode} strError={dicFieldErrors.strTypeCode} onChange={(v) => { setMaster("strTypeCode", v.toUpperCase()); if (dicFieldErrors.strTypeCode) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeCode: undefined })); }} />
+            <SectionText label="Default Name" required value={objForm.strTypeName} strError={dicFieldErrors.strTypeName} onChange={(v) => { setMaster("strTypeName", v); if (dicFieldErrors.strTypeName) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeName: undefined })); }} />
             <SectionSelect label="Category" value={objForm.strLeaveCategoryCode} onChange={(v) => setMaster("strLeaveCategoryCode", v)} options={optionsFor("LEAVE_CATEGORY", ["REGULAR", "STATUTORY", "UNPAID", "ON_DUTY", "COMPENSATORY"])} />
             <SectionSelect label="Unit" value={objForm.strUnit} onChange={(v) => setMaster("strUnit", v)} options={optionsFor("LEAVE_UNIT", ["DAY", "HALF_DAY", "HOUR"]).map((o) => ({ code: o.code.toLowerCase(), label: o.label }))} />
             <SectionSelect label="Payroll Treatment" value={objForm.strPayrollTreatmentCode} onChange={(v) => setMaster("strPayrollTreatmentCode", v)} options={optionsFor("LEAVE_PAYROLL_TREATMENT", ["PAID", "UNPAID", "NO_PAY_IMPACT"])} />
