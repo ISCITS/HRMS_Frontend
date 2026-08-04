@@ -261,7 +261,10 @@ export default function PayrollResultListPage({
     canDoAny("PAYROLL_RESULT_LIST");
   const blnCanDownloadPayslips = canDoAny("download");
   const blnCanPrintPayslips = canDoAny("print");
+    canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
   const blnCanExportPayslips = canDoAny("export");
+  const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
+  const blnCanPrintPayslips = canDoAny("print");
   const blnCanUsePayslipRowActions = blnCanDownloadPayslips || blnCanPrintPayslips;
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
