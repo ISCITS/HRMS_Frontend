@@ -786,7 +786,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   }
 
   const lstAllValidationRows = objValidationSummary?.lstIssues ?? objRun.lstValidationResults;
-  const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_BLOCKING_EXCEPTION"]);
+  const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
   const lstValidationRows = blnAttendanceBlockedFilterActive
     ? lstAllValidationRows.filter(
         (dicIssue) => dicIssue.blnIsBlocking && setAttendanceBlockingCodes.has(dicIssue.strValidationCode),

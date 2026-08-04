@@ -71,6 +71,23 @@ function toNum(strValue: string): number | null {
   return strValue === "" ? null : Number(strValue);
 }
 
+function normalizeDateForApi(strValue: string | null | undefined): string | null {
+  const strTrimmed = String(strValue ?? "").trim();
+  if (!strTrimmed) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(strTrimmed)) return strTrimmed;
+  const objDdMmYyyy = /^(\d{2})-(\d{2})-(\d{4})$/.exec(strTrimmed);
+  if (objDdMmYyyy) {
+    const [, strDay, strMonth, strYear] = objDdMmYyyy;
+    return `${strYear}-${strMonth}-${strDay}`;
+  }
+  return strTrimmed;
+}
+
+function emptyToNull(strValue: string | null | undefined): string | null {
+  const strTrimmed = String(strValue ?? "").trim();
+  return strTrimmed || null;
+}
+
 // Module-scope render helpers (stable identity → inputs keep focus across renders).
 // Read-only is applied via a wrapping <fieldset disabled> around the form body.
 function SectionText(props: { label: string; value: string | null | undefined; onChange: (v: string) => void; type?: string; multiline?: boolean; required?: boolean; strError?: string }) {
@@ -297,16 +314,48 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       return;
     }
     setDicFieldErrors({});
-    const lstText = objForm.lstText.map((objText) => (objText.intLanguageID === 1 && !objText.strTypeName.trim() ? { ...objText, strTypeName: objForm.strTypeName } : objText));
+    const lstText = objForm.lstText.map((objText) => ({
+      ...objText,
+      strTypeName: objText.intLanguageID === 1 && !objText.strTypeName.trim() ? objForm.strTypeName : objText.strTypeName.trim(),
+      strDescription: emptyToNull(objText.strDescription),
+      strEmployeeHelpText: emptyToNull(objText.strEmployeeHelpText),
+    }));
+    const strEffectiveFrom = normalizeDateForApi(objForm.dtEffectiveFrom);
+    const strEffectiveTo = normalizeDateForApi(objForm.dtEffectiveTo);
     // The type's effective dates also drive the policy version window (single source of truth).
     const objPolicyOut = objForm.objPolicy
       ? {
           ...objForm.objPolicy,
-          dtEffectiveFrom: objForm.dtEffectiveFrom || objForm.objPolicy.dtEffectiveFrom,
-          dtEffectiveTo: objForm.dtEffectiveTo ?? objForm.objPolicy.dtEffectiveTo,
+          dtEffectiveFrom: strEffectiveFrom || normalizeDateForApi(objForm.objPolicy.dtEffectiveFrom) || new Date().toISOString().slice(0, 10),
+          dtEffectiveTo: strEffectiveTo ?? normalizeDateForApi(objForm.objPolicy.dtEffectiveTo),
+          strPolicyCode: emptyToNull(objForm.objPolicy.strPolicyCode),
+          strPolicyName: emptyToNull(objForm.objPolicy.strPolicyName),
+          strProofDocumentTypeCode: emptyToNull(objForm.objPolicy.strProofDocumentTypeCode),
+          strEscalationRoleCode: emptyToNull(objForm.objPolicy.strEscalationRoleCode),
+          strRemarks: emptyToNull(objForm.objPolicy.strRemarks),
         }
       : objForm.objPolicy;
-    const objPayload: LeaveTypeAggregate = { ...objForm, lstText, objPolicy: objPolicyOut };
+    const objPayload: LeaveTypeAggregate = {
+      ...objForm,
+      strTypeCode: objForm.strTypeCode.trim().toUpperCase(),
+      strTypeName: objForm.strTypeName.trim(),
+      strDescription: emptyToNull(objForm.strDescription),
+      dtEffectiveFrom: strEffectiveFrom,
+      dtEffectiveTo: strEffectiveTo,
+      lstText,
+      lstApplicability: objForm.lstApplicability.map((objRow) => ({
+        ...objRow,
+        strApplicabilityValueCode: emptyToNull(objRow.strApplicabilityValueCode),
+      })),
+      lstRules: objForm.lstRules.map((objRow) => ({
+        ...objRow,
+        strValueFrom: emptyToNull(objRow.strValueFrom),
+        strValueTo: emptyToNull(objRow.strValueTo),
+        strResultCode: emptyToNull(objRow.strResultCode),
+        strFailureMessage: emptyToNull(objRow.strFailureMessage),
+      })),
+      objPolicy: objPolicyOut,
+    };
     setBlnSaving(true);
     try {
       if (strMode === "edit" && intLeaveTypeID) {
