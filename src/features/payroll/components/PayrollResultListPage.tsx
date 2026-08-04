@@ -259,9 +259,6 @@ export default function PayrollResultListPage({
     canDoAny("get") ||
     canDoAny("PAYROLL_RESULT_VIEW") ||
     canDoAny("PAYROLL_RESULT_LIST");
-  const blnCanDownloadPayslips = canDoAny("download");
-  const blnCanPrintPayslips = canDoAny("print");
-    canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
   const blnCanExportPayslips = canDoAny("export");
   const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
   const blnCanPrintPayslips = canDoAny("print");
