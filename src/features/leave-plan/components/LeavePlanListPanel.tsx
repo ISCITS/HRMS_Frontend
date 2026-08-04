@@ -150,8 +150,8 @@ export default function LeavePlanListPanel() {
   }
 
   function exportCsv() {
-    const strHeader = [t("table_plan_code", "Plan Code"), t("table_plan_name", "Plan Name"), t("table_country", "Country"), t("table_effective_from", "Effective From"), t("table_effective_to", "Effective To"), t("table_assigned_employees", "Assigned Employees"), t("table_status", "Status")].join(",");
-    const strRows = lstPlans.map((objPlan) => [objPlan.strPlanCode, objPlan.strDisplayName || objPlan.strPlanName, objPlan.strCountryCode, objPlan.dtEffectiveFrom, objPlan.dtEffectiveTo ?? "", objPlan.intAssignedEmployeeCount ?? 0, objPlan.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")].map((strCell) => `"${String(strCell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const strHeader = [t("table_plan_code", "Plan Code"), t("table_plan_name", "Plan Name"), t("table_effective_from", "Effective From"), t("table_effective_to", "Effective To"), t("table_assigned_employees", "Current Assigned Employees"), t("table_status", "Status")].join(",");
+    const strRows = lstPlans.map((objPlan) => [objPlan.strPlanCode, objPlan.strDisplayName || objPlan.strPlanName, objPlan.dtEffectiveFrom, objPlan.dtEffectiveTo ?? "", objPlan.intAssignedEmployeeCount ?? 0, objPlan.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")].map((strCell) => `"${String(strCell).replace(/"/g, '""')}"`).join(",")).join("\n");
     const strUrl = URL.createObjectURL(new Blob([`﻿${strHeader}\n${strRows}`], { type: "text/csv;charset=utf-8" }));
     const objLink = document.createElement("a");
     objLink.href = strUrl;
@@ -185,7 +185,6 @@ export default function LeavePlanListPanel() {
         ),
         strPlanCode: objPlan.strPlanCode,
         strPlanName: objPlan.strDisplayName || objPlan.strPlanName,
-        strCountryCode: objPlan.strCountryCode,
         strEffectiveFrom: formatDate(objPlan.dtEffectiveFrom),
         strEffectiveTo: formatDate(objPlan.dtEffectiveTo),
         intAssigned: objPlan.intAssignedEmployeeCount ?? 0,
@@ -216,10 +215,9 @@ export default function LeavePlanListPanel() {
       { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 130 },
       { field: "strPlanCode", headerName: t("table_plan_code", "Plan Code"), width: 150 },
       { field: "strPlanName", headerName: t("table_plan_name", "Plan Name"), width: 220 },
-      { field: "strCountryCode", headerName: t("table_country", "Country"), width: 100 },
       { field: "strEffectiveFrom", headerName: t("table_effective_from", "Effective From"), width: 140 },
       { field: "strEffectiveTo", headerName: t("table_effective_to", "Effective To"), width: 140 },
-      { field: "intAssigned", headerName: t("table_assigned_employees", "Assigned Employees"), width: 160 },
+      { field: "intAssigned", headerName: t("table_assigned_employees", "Current Assigned Employees"), width: 190 },
       { field: "blnStatus", headerName: t("table_status", "Status"), sortable: false, width: 120 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

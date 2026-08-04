@@ -1,8 +1,13 @@
 export type LeavePlanItem = {
   intID?: number;
   intLeaveTypeID: number;
+  // Resolved server-side from Leave Type + plan effective date; the UI no longer selects it.
   intLeavePolicyID: number | null;
   decAnnualEntitlement: number;
+  // Entitlement inheritance/override (POC refinement).
+  blnIsEntitlementOverride: boolean;
+  decBaseEntitlementSnapshot?: number | null;
+  strOverrideReason?: string | null;
   blnOpeningBalanceAllowed: boolean;
   decNegativeBalanceLimit: number;
   intDisplayOrder: number;
@@ -46,7 +51,7 @@ export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "intCompanyID" | "s
   lstText: LeavePlanText[];
 };
 
-export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean };
+export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean; blnAllowNegativeBalance?: boolean };
 export type LeavePolicyOption = {
   intID: number;
   intLeaveTypeID: number;
