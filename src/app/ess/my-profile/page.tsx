@@ -8,6 +8,7 @@ import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import HomeWorkRoundedIcon from "@mui/icons-material/HomeWorkRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import {
+  Alert,
   Avatar,
   Box,
   Button,
@@ -220,8 +221,26 @@ export default function EssMyProfilePage() {
       return;
     }
 
-    setBlnAvatarUpdating(true);
     setStrError("");
+
+    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (5 MB,
+    // JPG/PNG/WEBP only) so an oversized/invalid photo always shows a clear message
+    // immediately instead of depending on the network round trip to surface one.
+    const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+    if (objFile.size <= 0) {
+      setStrError(t("error_photo_empty", "The selected photo is empty."));
+      return;
+    }
+    if (objFile.size > AVATAR_MAX_BYTES) {
+      setStrError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 5 MB."));
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(objFile.type)) {
+      setStrError(t("error_photo_unsupported_type", "Unsupported file type. Allowed types: JPG, PNG, WEBP."));
+      return;
+    }
+
+    setBlnAvatarUpdating(true);
     try {
       await authApiService.uploadCurrentAvatar(objFile);
       await refreshUserContext();
@@ -391,6 +410,11 @@ export default function EssMyProfilePage() {
 
       <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
         {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {strError ? (
+          <Alert severity="error" sx={{ mb: 1.5, borderRadius: "8px" }} onClose={() => setStrError("")}>
+            {strError}
+          </Alert>
+        ) : null}
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
           <PersonRoundedIcon sx={{ color: "#0284c7" }} />
           <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_personal_information", "Personal Information")}</Typography>

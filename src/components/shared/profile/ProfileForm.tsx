@@ -82,8 +82,26 @@ export default function ProfileForm() {
       return;
     }
 
-    setBlnAvatarUpdating(true);
     setStrAvatarError("");
+
+    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (5 MB,
+    // JPG/PNG/WEBP only) so an oversized/invalid photo always shows a clear message
+    // immediately instead of depending on the network round trip to surface one.
+    const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+    if (objFile.size <= 0) {
+      setStrAvatarError(t("error_photo_empty", "The selected photo is empty."));
+      return;
+    }
+    if (objFile.size > AVATAR_MAX_BYTES) {
+      setStrAvatarError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 5 MB."));
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(objFile.type)) {
+      setStrAvatarError(t("error_photo_unsupported_type", "Unsupported file type. Allowed types: JPG, PNG, WEBP."));
+      return;
+    }
+
+    setBlnAvatarUpdating(true);
     try {
       await authApiService.uploadCurrentAvatar(objFile);
       await refreshCurrentUser();
