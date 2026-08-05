@@ -36,6 +36,7 @@ import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { employeeService } from "@/features/employee/services/employeeService";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
 import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
@@ -870,6 +871,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
   const blnEmployeeReimbursementContext =
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
@@ -1455,7 +1457,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     }}
                     {...getAutomationProps("app-shell.profile-menu.button")}
                   >
-                    <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                    <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
                       {strAvatarText}
                     </Avatar>
                   </IconButton>

@@ -28,6 +28,7 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -171,6 +172,9 @@ export default function EssMyProfilePage() {
     };
   }, []);
 
+  const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
@@ -205,7 +209,6 @@ export default function EssMyProfilePage() {
   const strFullName = objEmployee?.strFullName?.trim() || t("employee_fallback", "Employee");
   const strInitial = strFullName[0]?.toUpperCase() || "E";
   const strTitleName = [objEmployee?.strTitle ?? "", strFullName].filter(Boolean).join(" ");
-  const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
   const blnCanEditProfile = canDoAny("edit");
 
   async function refreshUserContext() {
@@ -223,16 +226,16 @@ export default function EssMyProfilePage() {
 
     setStrError("");
 
-    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (5 MB,
+    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (200 KB,
     // JPG/PNG/WEBP only) so an oversized/invalid photo always shows a clear message
     // immediately instead of depending on the network round trip to surface one.
-    const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+    const AVATAR_MAX_BYTES = 200 * 1024;
     if (objFile.size <= 0) {
       setStrError(t("error_photo_empty", "The selected photo is empty."));
       return;
     }
     if (objFile.size > AVATAR_MAX_BYTES) {
-      setStrError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 5 MB."));
+      setStrError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 200 KB."));
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(objFile.type)) {
@@ -281,7 +284,7 @@ export default function EssMyProfilePage() {
           <Stack direction="row" spacing={1.1} alignItems="center" sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Box sx={{ position: "relative", width: 56, height: 56 }}>
               <Avatar
-                src={strAvatarUrl || undefined}
+                src={strAuthenticatedAvatarUrl || undefined}
                 sx={{
                   width: 56,
                   height: 56,

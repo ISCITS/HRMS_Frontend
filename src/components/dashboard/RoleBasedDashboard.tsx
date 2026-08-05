@@ -42,6 +42,7 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
 
 type RoleBasedDashboardProps = {
@@ -1899,6 +1900,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   ).trim();
   const strEmployeeName = String(objWelcome.strEmployeeName || strContextEmployeeName || "Employee");
   const strAvatarUrl = objUserContext.strAvatarUrl || objUserContext.objEmployee?.strProfilePhotoUrl || "";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
   const strJoinedOn = objEmployeeProfile?.dtDateOfJoining
     ? formatDateLabel(String(objEmployeeProfile.dtDateOfJoining), t)
     : objWelcome.strJoinedOn
@@ -2036,7 +2038,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
             <Box sx={{ p: { xs: 1.6, md: 2.1 }, position: "relative", zIndex: 1 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.6} alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Box sx={{ position: "relative" }}>
-                  <Avatar src={strAvatarUrl || undefined} sx={{ width: 88, height: 88, border: "3px solid rgba(255,255,255,0.92)", boxShadow: "0 14px 30px rgba(146, 163, 196, 0.2)" }}>{getInitials(strEmployeeName)}</Avatar>
+                  <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 88, height: 88, border: "3px solid rgba(255,255,255,0.92)", boxShadow: "0 14px 30px rgba(146, 163, 196, 0.2)" }}>{getInitials(strEmployeeName)}</Avatar>
                   <Box sx={{ position: "absolute", right: 2, bottom: 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "#22C55E", border: "2px solid white" }} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>

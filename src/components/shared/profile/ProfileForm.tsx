@@ -19,6 +19,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import ProfileSection from "@/components/shared/profile/ProfileSection";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -84,16 +85,16 @@ export default function ProfileForm() {
 
     setStrAvatarError("");
 
-    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (5 MB,
+    // Pre-flight checks mirroring the backend's EmployeeAvatarService limits (200 KB,
     // JPG/PNG/WEBP only) so an oversized/invalid photo always shows a clear message
     // immediately instead of depending on the network round trip to surface one.
-    const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+    const AVATAR_MAX_BYTES = 200 * 1024;
     if (objFile.size <= 0) {
       setStrAvatarError(t("error_photo_empty", "The selected photo is empty."));
       return;
     }
     if (objFile.size > AVATAR_MAX_BYTES) {
-      setStrAvatarError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 5 MB."));
+      setStrAvatarError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 200 KB."));
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(objFile.type)) {
@@ -128,6 +129,7 @@ export default function ProfileForm() {
   const strProfileDisplayName = objUserContext?.objEmployee?.strFullName || objUserContext?.objUser?.strLoginName || t("workspace_user", "Workspace User");
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
   const strEmailAddress = objUserContext?.objUser?.strEmailAddress || t("not_available", "Not available");
 
   return (
@@ -152,7 +154,7 @@ export default function ProfileForm() {
             }}
           >
               <Avatar
-                src={strAvatarUrl || undefined}
+                src={strAuthenticatedAvatarUrl || undefined}
                 sx={{
                   width: 88,
                   height: 88,
