@@ -17,6 +17,7 @@ import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import FileRowActions from "@/components/shared/files/FileRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import WorkHolidayDetailDrawer from "@/features/work-on-holiday/components/WorkHolidayDetailDrawer";
@@ -238,7 +239,29 @@ export default function EssWorkHolidayPage() {
                     <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmActualEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.actual-end.input" fullWidth size="small" type="time" label={t("actual_end", "Actual End")} InputLabelProps={{ shrink: true }} />} /></Box>
                     <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
                   </Stack>
-                  <Box sx={{ width: { xs: "100%", sm: 180 } }}><Button data-control-id="work-on-holiday.ess.attachment.button" component="label" fullWidth variant="outlined" startIcon={<AttachFileRoundedIcon />} sx={{ height: 40 }}>{objAttachment?.name ?? t("attachment", "Attachment")}<input data-control-id="work-on-holiday.ess.attachment.input" hidden type="file" onChange={(objEvent) => setValue("objAttachment", objEvent.target.files?.[0] ?? null)} /></Button></Box>
+                  <Box sx={{ width: { xs: "100%", sm: objAttachment ? 320 : 180 } }}>
+                    {objAttachment ? (
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, height: 40, minWidth: 0 }}>
+                        <Typography title={objAttachment.name} sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.name}</Typography>
+                        <FileRowActions
+                          strFileName={objAttachment.name}
+                          controlIdPrefix="work-on-holiday.ess.attachment"
+                          onPreview={() => {
+                            const strUrl = URL.createObjectURL(objAttachment);
+                            window.open(strUrl, "_blank", "noopener,noreferrer");
+                            window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+                          }}
+                          onReplace={(objNewFile) => setValue("objAttachment", objNewFile)}
+                          onDelete={() => setValue("objAttachment", null)}
+                        />
+                      </Stack>
+                    ) : (
+                      <Button data-control-id="work-on-holiday.ess.attachment.button" component="label" fullWidth variant="outlined" startIcon={<AttachFileRoundedIcon />} sx={{ height: 40 }}>
+                        {t("attachment", "Attachment")}
+                        <input data-control-id="work-on-holiday.ess.attachment.input" hidden type="file" onChange={(objEvent) => setValue("objAttachment", objEvent.target.files?.[0] ?? null)} />
+                      </Button>
+                    )}
+                  </Box>
                 </Stack></Grid>
                 <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>

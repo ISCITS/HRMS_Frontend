@@ -11,6 +11,7 @@ import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
@@ -395,6 +396,20 @@ function buildStateSignature(
     lstProofEntries,
     strRemarks: strRemarks.trim(),
   });
+}
+
+// Flexi-Pay proof upload is a client-side base64-in-JSON flow (FileReader.readAsDataURL, not
+// multipart) and there is no GET/download endpoint for a proof once it's been submitted — see
+// EssFlexiDeclarationRoutes.py. So Preview can only open the base64 payload this browser session
+// already holds in memory (dicProofFiles); a proof uploaded in an earlier session has no local
+// content to preview and no server capability to fetch it from.
+function base64ToObjectUrl(strBase64: string, strMimeType: string): string {
+  const strBinary = atob(strBase64);
+  const bytArray = new Uint8Array(strBinary.length);
+  for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
+    bytArray[intIndex] = strBinary.charCodeAt(intIndex);
+  }
+  return URL.createObjectURL(new Blob([bytArray], { type: strMimeType || "application/octet-stream" }));
 }
 
 function formatFileSize(intFileSizeBytes?: number | null) {
@@ -1236,6 +1251,18 @@ export default function FlexiPayDeclarationPage() {
     }
   }
 
+  function previewFlexiProof(intSalaryComponentID: number) {
+    const objProof = dicProofFiles[intSalaryComponentID];
+    if (!objProof) return;
+    if (!objProof.strBase64Content) {
+      setStrError(t("proof_preview_unavailable_prior_session", "Preview isn't available for a proof uploaded in an earlier session. Replace it to preview the new file."));
+      return;
+    }
+    const strUrl = base64ToObjectUrl(objProof.strBase64Content, objProof.strContentType);
+    window.open(strUrl, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
+  }
+
   function handleClearProofFile(intSalaryComponentID: number) {
     setDicProofFiles((dicPrevious) => ({
       ...dicPrevious,
@@ -2050,6 +2077,21 @@ export default function FlexiPayDeclarationPage() {
                                 ) : null}
                                 {blnCanEditDeclaration ? (
                                   <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                                    {dicProofFiles[objRow.intSalaryComponentID] ? (
+                                      <Tooltip title={t("preview", "Preview")}>
+                                        <span>
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => previewFlexiProof(objRow.intSalaryComponentID)}
+                                            controlId={`flexi-proof.preview.${objRow.intSalaryComponentID}.icon-button`}
+                                            aria-label={`${t("preview", "Preview")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
+                                            sx={{ p: 0.3 }}
+                                          >
+                                            <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </span>
+                                      </Tooltip>
+                                    ) : null}
                                     <Button
                                       size="small"
                                       variant="outlined"
@@ -2061,15 +2103,20 @@ export default function FlexiPayDeclarationPage() {
                                       {dicProofFiles[objRow.intSalaryComponentID] ? t("replace", "Replace") : t("upload", "Upload")}
                                     </Button>
                                     {dicProofFiles[objRow.intSalaryComponentID] ? (
-                                      <Button
-                                        size="small"
-                                        color="error"
-                                        onClick={() => handleClearProofFile(objRow.intSalaryComponentID)}
-                                        controlId={`flexi-proof.clear.${objRow.intSalaryComponentID}.button`}
-                                        sx={{ minWidth: 0, px: 0.6, py: 0.15, fontSize: "0.62rem", textTransform: "none" }}
-                                      >
-                                        {t("remove", "Remove")}
-                                      </Button>
+                                      <Tooltip title={t("delete", "Delete")}>
+                                        <span>
+                                          <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={() => handleClearProofFile(objRow.intSalaryComponentID)}
+                                            controlId={`flexi-proof.clear.${objRow.intSalaryComponentID}.icon-button`}
+                                            aria-label={`${t("delete", "Delete")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
+                                            sx={{ p: 0.3 }}
+                                          >
+                                            <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </span>
+                                      </Tooltip>
                                     ) : null}
                                     <input
                                       ref={(objElement) => {

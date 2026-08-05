@@ -1,18 +1,18 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState, type InputHTMLAttributes } from "react";
 
+import FileRowActions from "@/components/shared/files/FileRowActions";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { formatCurrency, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { useReimbursementLabels } from "@/features/reimbursements/hooks/useReimbursementLabels";
 import { reimbursementService } from "@/features/reimbursements/services/reimbursementService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import type {
   ReimbursementClaimItemDto,
   ReimbursementClaimItemRequest,
@@ -66,13 +66,13 @@ function formatFileSize(intBytes?: number | null) {
 
 function openBlobInNewTab(objBlob: Blob) {
   const strUrl = URL.createObjectURL(objBlob);
-  window.open(strUrl, "_blank", "noopener,noreferrer");
+  openBlobUrlInNewTab(strUrl);
   window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
 }
 
 function openLocalFileInNewTab(objFile: File) {
   const strUrl = URL.createObjectURL(objFile);
-  window.open(strUrl, "_blank", "noopener,noreferrer");
+  openBlobUrlInNewTab(strUrl);
   window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
 }
 
@@ -198,6 +198,27 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
     }
   }
 
+  // Replace = delete the existing proof (reimbursementService.deleteProof, same as the Delete
+  // action above) then queue the newly picked file the same way "Upload Proof" already does —
+  // it's uploaded via reimbursementService.uploadProof through the existing onSave(objProofFile)
+  // flow once the user clicks Save, so no new call target is introduced.
+  async function replaceProof(objProof: ReimbursementProofDto, objNewFile: File) {
+    if (!objItem?.intID || !onDeleteProof) {
+      return;
+    }
+
+    setIntDeletingProofID(objProof.intID);
+    setStrProofError("");
+    try {
+      await onDeleteProof(objItem.intID, objProof.intID);
+      setObjProofFile(objNewFile);
+    } catch (objError) {
+      setStrProofError(objError instanceof Error ? objError.message : t("unable_replace_proof_file", "Unable to replace proof file."));
+    } finally {
+      setIntDeletingProofID(null);
+    }
+  }
+
   const objSelectedSalaryComponent = objOptions.lstSalaryComponents.find((dicComponent) => String(dicComponent.intID) === objForm.intSalaryComponentID) ?? null;
   const blnSelectedComponentProofRequired = isSupportingDocumentRequired(objSelectedSalaryComponent, objForm.blnProofRequired);
   const strReimbursementType = objItem?.strReimbursementType ?? objSelectedSalaryComponent?.strReimbursementType ?? "ctc_based";
@@ -285,7 +306,7 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
           </Stack>
           {lstExistingProofs.length ? (
-            <Stack spacing={0.75}>
+            <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
               {lstExistingProofs.map((objProof) => (
                 <Stack key={objProof.intID} direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75 }}>
                   <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
@@ -297,18 +318,19 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
                   </Stack>
                   <Stack direction="row" spacing={0.6} alignItems="center" justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
                     <ReimbursementClaimStatusBadge strStatus={objProof.strVerificationStatus} />
-                    <Button controlId="reimbursements.claim-item.view-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} disabled={intPreviewingProofID === objProof.intID} onClick={() => void viewProof(objProof)} sx={objSmallProofButtonSx}>
-                      {intPreviewingProofID === objProof.intID ? t("opening", "Opening...") : t("view", "View")}
-                    </Button>
-                    {!blnReadOnly && onDeleteProof ? (
-                      <Button controlId="reimbursements.claim-item.delete-proof.button" data-proof-id={objProof.intID} size="small" variant="outlined" color="error" startIcon={<DeleteOutlineRoundedIcon />} disabled={blnSaving || intDeletingProofID === objProof.intID} onClick={() => void deleteProof(objProof)} sx={objSmallProofButtonSx}>
-                        {intDeletingProofID === objProof.intID ? t("deleting", "Deleting...") : t("delete", "Delete")}
-                      </Button>
-                    ) : null}
+                    <FileRowActions
+                      strFileName={objProof.strFileName || t("proof_document", "Proof document")}
+                      controlIdPrefix="reimbursements.claim-item.proof"
+                      disabled={blnReadOnly}
+                      busy={intPreviewingProofID === objProof.intID || intDeletingProofID === objProof.intID}
+                      onPreview={() => void viewProof(objProof)}
+                      onReplace={onDeleteProof ? (objNewFile) => void replaceProof(objProof, objNewFile) : undefined}
+                      onDelete={onDeleteProof ? () => void deleteProof(objProof) : undefined}
+                    />
                   </Stack>
                 </Stack>
               ))}
-            </Stack>
+            </Box>
           ) : null}
         </Stack>
       </DialogContent>
@@ -324,8 +346,12 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
             {objProofFile && !(blnSaving && intUploadProgress > 0) ? (
               <Stack direction="row" spacing={0.6} alignItems="center">
                 <Typography title={objProofFile.name} sx={{ fontSize: "0.78rem", color: "#475569", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{objProofFile.name}</Typography>
-                <Button size="small" variant="text" startIcon={<VisibilityRoundedIcon />} onClick={() => openLocalFileInNewTab(objProofFile)} sx={objSmallProofButtonSx}>{t("view", "View")}</Button>
-                <Button size="small" variant="text" color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setObjProofFile(null)} sx={objSmallProofButtonSx}>{t("delete", "Delete")}</Button>
+                <FileRowActions
+                  strFileName={objProofFile.name}
+                  controlIdPrefix="reimbursements.claim-item.queued-proof"
+                  onPreview={() => openLocalFileInNewTab(objProofFile)}
+                  onDelete={() => setObjProofFile(null)}
+                />
               </Stack>
             ) : null}
             <FileUploadButton

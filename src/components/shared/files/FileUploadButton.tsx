@@ -37,6 +37,7 @@ type FileUploadButtonProps = {
   progress?: number;
   size?: ButtonProps["size"];
   variant?: ButtonProps["variant"];
+  color?: ButtonProps["color"];
   startIcon?: ReactNode;
   sx?: ButtonProps["sx"];
   onFilesSelected: (lstFiles: File[]) => void;
@@ -55,6 +56,7 @@ export default function FileUploadButton({
   progress,
   size = "small",
   variant = "outlined",
+  color = "primary",
   startIcon,
   sx,
   onFilesSelected,
@@ -93,6 +95,7 @@ export default function FileUploadButton({
         component="label"
         size={size}
         variant={variant}
+        color={color}
         disabled={disabled || isUploading}
         startIcon={isUploading ? <CircularProgress size={14} color="inherit" /> : startIcon ?? <UploadFileRoundedIcon />}
         sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", ...sx }}

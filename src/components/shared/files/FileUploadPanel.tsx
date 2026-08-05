@@ -45,6 +45,9 @@ type FileUploadPanelProps = {
   // card, so it can be embedded inside another card (e.g. under a save button) without a
   // card-inside-a-card look.
   embedded?: boolean;
+  // Passed straight through to FileList — "grid" packs two documents per row on wider screens
+  // instead of the default single full-width row per document.
+  layout?: "stack" | "grid";
 };
 
 export default function FileUploadPanel({
@@ -60,6 +63,7 @@ export default function FileUploadPanel({
   uploadLabel = "Upload Document",
   readOnly = false,
   embedded = false,
+  layout = "stack",
 }: FileUploadPanelProps) {
   const [lstFiles, setLstFiles] = useState<FileMetadataDto[]>([]);
   const [blnLoadingList, setBlnLoadingList] = useState(false);
@@ -200,6 +204,7 @@ export default function FileUploadPanel({
                 controlIdPrefix={controlIdPrefix}
                 disabled={readOnly}
                 emptyMessage={emptyMessage}
+                layout={layout}
                 intBusyFileID={intBusyFileID}
                 intReplacingFileID={intReplacingFileID}
                 intReplaceProgress={objReplace.progress}

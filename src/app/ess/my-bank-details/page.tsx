@@ -270,6 +270,7 @@ export default function EssMyBankDetailsPage() {
 
         <FileUploadPanel
           embedded
+          layout="grid"
           module="BANK"
           relatedEntityId={intBankAccountID}
           relatedEntityType="EMPLOYEE_BANK_ACCOUNT"

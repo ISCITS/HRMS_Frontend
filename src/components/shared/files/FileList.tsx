@@ -1,18 +1,17 @@
 "use client";
 
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Box, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 
-import FileUploadButton from "@/components/shared/files/FileUploadButton";
+import FileRowActions from "@/components/shared/files/FileRowActions";
 import type { FileMetadataDto } from "@/lib/fileUploadService";
 
 /*
 Functional responsibility:
 - Presentational list of uploaded document metadata (Bank/Loan/Profile files today). Renders one row
-  per file with Preview / Replace / Delete actions; all network calls stay with the caller (matches
-  the read-only "objProof" row patterns already used in ReimbursementClaimItemForm.tsx).
+  per file with Preview / Replace / Delete actions (delegated to the shared FileRowActions so every
+  attachment surface in the app shares one visual source of truth); all network calls stay with the
+  caller (matches the read-only "objProof" row patterns already used in ReimbursementClaimItemForm.tsx).
 */
 
 type FileListProps = {
@@ -27,6 +26,10 @@ type FileListProps = {
   onDelete?: (objFile: FileMetadataDto) => void;
   onReplace?: (objFile: FileMetadataDto, objNewFile: File) => void;
   onReplaceValidationError?: (strMessage: string) => void;
+  // "stack" (default) renders one full-width row per file. "grid" packs two files per row on
+  // wider screens — used on Bank Details, where a single cancelled-cheque row was reported as
+  // "too large for a single document, we can add 2 documents in a single row".
+  layout?: "stack" | "grid";
 };
 
 function formatFileSize(intBytes?: number | null) {
@@ -55,13 +58,20 @@ export default function FileList({
   onDelete,
   onReplace,
   onReplaceValidationError,
+  layout = "stack",
 }: FileListProps) {
   if (lstFiles.length === 0) {
     return <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{emptyMessage}</Typography>;
   }
 
   return (
-    <Stack spacing={0.75}>
+    <Box
+      sx={
+        layout === "grid"
+          ? { display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }
+          : { display: "flex", flexDirection: "column", gap: 0.75 }
+      }
+    >
       {lstFiles.map((objFile) => {
         const blnBusy = intBusyFileID === objFile.intFileID;
         const blnReplacing = intReplacingFileID === objFile.intFileID;
@@ -72,7 +82,7 @@ export default function FileList({
             alignItems={{ xs: "stretch", sm: "center" }}
             justifyContent="space-between"
             spacing={0.8}
-            sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75 }}
+            sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}
           >
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <InsertDriveFileOutlinedIcon sx={{ color: "#2563eb", fontSize: 20, flexShrink: 0 }} />
@@ -88,52 +98,22 @@ export default function FileList({
                 </Typography>
               </Stack>
             </Stack>
-            <Stack direction="row" spacing={0.6} alignItems="center" justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
-              <Tooltip title="Preview">
-                <span>
-                  <IconButton
-                    controlId={`${controlIdPrefix}.preview.icon-button`}
-                    size="small"
-                    disabled={blnBusy}
-                    onClick={() => onPreview(objFile)}
-                    aria-label={`Preview ${objFile.strOriginalFileName}`}
-                  >
-                    {blnBusy ? <CircularProgress size={16} /> : <VisibilityRoundedIcon fontSize="small" />}
-                  </IconButton>
-                </span>
-              </Tooltip>
-              {!disabled && onReplace ? (
-                <FileUploadButton
-                  controlId={`${controlIdPrefix}.replace.button`}
-                  label="Replace"
-                  hasExistingFile
-                  isUploading={blnReplacing}
-                  progress={blnReplacing ? intReplaceProgress : undefined}
-                  onFilesSelected={(lstSelected) => lstSelected[0] && onReplace(objFile, lstSelected[0])}
-                  onValidationError={onReplaceValidationError}
-                  sx={{ minHeight: 30, px: 1, py: 0.2, fontSize: "0.72rem" }}
-                />
-              ) : null}
-              {!disabled && onDelete ? (
-                <Tooltip title="Delete">
-                  <span>
-                    <IconButton
-                      controlId={`${controlIdPrefix}.delete.icon-button`}
-                      size="small"
-                      disabled={blnBusy}
-                      onClick={() => onDelete(objFile)}
-                      aria-label={`Delete ${objFile.strOriginalFileName}`}
-                    >
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              ) : null}
-            </Stack>
+            <FileRowActions
+              strFileName={objFile.strOriginalFileName}
+              controlIdPrefix={controlIdPrefix}
+              disabled={disabled}
+              busy={blnBusy}
+              onPreview={() => onPreview(objFile)}
+              onReplace={onReplace ? (objNewFile) => onReplace(objFile, objNewFile) : undefined}
+              onDelete={onDelete ? () => onDelete(objFile) : undefined}
+              isReplacing={blnReplacing}
+              replaceProgress={intReplaceProgress}
+              onReplaceValidationError={onReplaceValidationError}
+            />
           </Stack>
         );
       })}
-    </Stack>
+    </Box>
   );
 }
 

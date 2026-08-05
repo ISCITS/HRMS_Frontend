@@ -88,6 +88,23 @@ export function useEssLeaveApplication() {
     await leaveService.deleteMyLeaveAttachment(intApplicationID, intAttachmentID);
   }, []);
 
+  const fnPreviewAttachment = useCallback(async (intApplicationID: number, intAttachmentID: number) => {
+    await leaveService.previewMyLeaveAttachment(intApplicationID, intAttachmentID);
+  }, []);
+
+  // Replace = delete the existing attachment then upload the newly picked file in its place;
+  // reuses the same delete/upload endpoints already wired above (no new backend call).
+  const fnReplaceAttachment = useCallback(async (
+    intApplicationID: number,
+    intAttachmentID: number,
+    objNewFile: File,
+    fnOnProgress?: (intPercent: number) => void,
+  ) => {
+    await leaveService.deleteMyLeaveAttachment(intApplicationID, intAttachmentID);
+    await leaveService.uploadMyLeaveAttachment(intApplicationID, objNewFile, fnOnProgress);
+    return leaveService.getMyLeaveApplication(intApplicationID);
+  }, []);
+
   return {
     lstTypes,
     lstBalances,
@@ -102,5 +119,7 @@ export function useEssLeaveApplication() {
     fnSubmitDraft,
     fnWithdraw,
     fnDeleteAttachment,
+    fnPreviewAttachment,
+    fnReplaceAttachment,
   };
 }

@@ -5,7 +5,6 @@ import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRou
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
@@ -56,6 +55,7 @@ import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } f
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import { type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
 type FlowStatus = "NOT_STARTED" | "REGIME_SELECTED" | "IN_PROGRESS" | "SUBMITTED";
@@ -1052,29 +1052,10 @@ export default function SalaryEssDeclarationsPage() {
         ? await hrItDeclarationService.previewItemProof(intDeclarationID, intItemIDToPreview)
         : await itDeclarationService.previewItemProof(intDeclarationID, intItemIDToPreview);
       const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
-      window.open(strUrl, "_blank", "noopener,noreferrer");
+      openBlobUrlInNewTab(strUrl);
       window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
     } catch (objError) {
       setStrError(formatApiErrorForUi(objError, t("unable_view_proof", "Unable to view uploaded proof.")));
-    }
-  }
-
-  async function downloadCurrentProof(intItemIDToDownload: number, strFallbackFileName: string) {
-    if (!intDeclarationID) return;
-    try {
-      const objPreview = blnHrMode
-        ? await hrItDeclarationService.previewItemProof(intDeclarationID, intItemIDToDownload)
-        : await itDeclarationService.previewItemProof(intDeclarationID, intItemIDToDownload);
-      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
-      const objAnchor = document.createElement("a");
-      objAnchor.href = strUrl;
-      objAnchor.download = objPreview.strFileName || strFallbackFileName;
-      document.body.appendChild(objAnchor);
-      objAnchor.click();
-      document.body.removeChild(objAnchor);
-      URL.revokeObjectURL(strUrl);
-    } catch (objError) {
-      setStrError(formatApiErrorForUi(objError, t("unable_download_proof", "Unable to download uploaded proof.")));
     }
   }
 
@@ -1317,12 +1298,15 @@ export default function SalaryEssDeclarationsPage() {
     ]);
   }
 
-  async function ensureDeclarationAndSaveSingleItem(objPayload: {
-    intItemID?: number | null;
-    strSection: string;
-    strInvestmentName: string;
-    decDeclaredAmount: number;
-  }) {
+  async function ensureDeclarationAndSaveSingleItem(
+    objPayload: {
+      intItemID?: number | null;
+      strSection: string;
+      strInvestmentName: string;
+      decDeclaredAmount: number;
+    },
+    setResolvedItemIDsThisSave?: Set<number>
+  ) {
     const strRegimeToSave = (strSelectedRegime || strRecommendedRegimeSelectable || "Old Regime") as Regime;
     let intResolvedDeclarationID = intDeclarationID;
     let objLatestData: ItDeclarationDto | null = null;
@@ -1341,11 +1325,21 @@ export default function SalaryEssDeclarationsPage() {
     objLatestData = await saveCurrentItem(intResolvedDeclarationID, objPayload);
     hydrateFromApi(objLatestData);
 
+    // For a brand-new row (intItemID null) matching by section alone breaks down the moment a
+    // section has more than one investment row ("Add Investment"): Array.find always resolves to
+    // the FIRST item ever created for that section, so a second/third new row's proof silently
+    // gets attached to the wrong (earlier) row instead of the one the user just picked a file for.
+    // Excluding item IDs already claimed earlier in this same save cycle (see saveDeclarationEdit)
+    // makes each new row resolve to the item POST /items/save just created for it.
     const objSavedItem = objLatestData.lstItems?.find((objItem) =>
       objPayload.intItemID != null
         ? objItem.intItemID === objPayload.intItemID
-        : objItem.strSection === objPayload.strSection
+        : objItem.strSection === objPayload.strSection &&
+          (objItem.intItemID == null || !setResolvedItemIDsThisSave?.has(objItem.intItemID))
     );
+    if (objSavedItem?.intItemID != null) {
+      setResolvedItemIDsThisSave?.add(objSavedItem.intItemID);
+    }
 
     return {
       intDeclarationID: intResolvedDeclarationID,
@@ -1374,6 +1368,15 @@ export default function SalaryEssDeclarationsPage() {
         }
       }
 
+      // Tracks item IDs already resolved earlier in this same save cycle, so a second/third new
+      // row within the same section never matches the wrong (earlier) sibling row's item ID — see
+      // ensureDeclarationAndSaveSingleItem. Pre-seeded with already-persisted rows' IDs too, since
+      // those are never valid resolution targets for a *new* row's section-based match either.
+      const setResolvedItemIDsThisSave = new Set<number>();
+      for (const objEntry of lstSectionEditEntries) {
+        if (objEntry.intItemID != null) setResolvedItemIDsThisSave.add(objEntry.intItemID);
+      }
+
       for (const objEntry of lstSectionEditEntries) {
         const strInvestmentName = objEntry.strInvestmentName.trim();
         const decAmount = Math.max(0, Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0));
@@ -1383,7 +1386,7 @@ export default function SalaryEssDeclarationsPage() {
           strSection: objEntry.strSection,
           strInvestmentName,
           decDeclaredAmount: decAmount,
-        });
+        }, setResolvedItemIDsThisSave);
         intLastResolvedDeclarationID = objPersisted.intDeclarationID;
         if (objEntry.objProofFileInput && objPersisted.intItemID) {
           setStrActiveProofUploadClientKey(objEntry.strClientKey);
@@ -1408,6 +1411,10 @@ export default function SalaryEssDeclarationsPage() {
       setLstSectionEditEntries([]);
       setBlnDraftSaved(true);
       setStrSuccessToast(t("declaration_rows_saved_successfully", "Declaration rows saved successfully."));
+    } catch (objError) {
+      // Previously uncaught: a thrown error here (e.g. proof upload rejected) left the dialog open
+      // with no visible feedback at all — indistinguishable from "Save silently did nothing".
+      setStrError(formatApiErrorForUi(objError, t("unable_save_declaration_rows", "Unable to save declaration rows.")));
     } finally {
       setBlnSaving(false);
       setStrSavingLabel(t("saving", "Saving..."));
@@ -1894,26 +1901,16 @@ export default function SalaryEssDeclarationsPage() {
                           </Tooltip>
                         ) : null}
                         {objEntry.objProof && objEntry.intItemID ? (
-                          <>
-                            <Tooltip title={t("view", "View")}>
-                              <IconButton
-                                size="small"
-                                sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
-                                onClick={() => void previewCurrentProof(objEntry.intItemID as number)}
-                              >
-                                <VisibilityRoundedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t("download", "Download")}>
-                              <IconButton
-                                size="small"
-                                sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", color: "#475569", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
-                                onClick={() => void downloadCurrentProof(objEntry.intItemID as number, objEntry.objProof?.strFileName || "proof")}
-                              >
-                                <DownloadRoundedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                          <Tooltip title={t("view", "View")}>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              sx={{ border: "1px solid #cbd5e1", borderRadius: "7px", p: 0.45, "&:hover": { backgroundColor: "#f8fafc", borderColor: "#94a3b8" } }}
+                              onClick={() => void previewCurrentProof(objEntry.intItemID as number)}
+                            >
+                              <VisibilityRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         ) : null}
                       </Stack>
                       <Typography

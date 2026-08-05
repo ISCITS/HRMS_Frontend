@@ -9,6 +9,7 @@ import { useState } from "react";
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
 import { payrollReimbursementService } from "@/features/reimbursements/services/payrollReimbursementService";
 import type { ReimbursementProofDto } from "@/features/reimbursements/types";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 type ProofViewerProps = {
   intClaimID: number;
@@ -20,7 +21,7 @@ type ProofViewerProps = {
 
 function openBlobInNewTab(objBlob: Blob) {
   const strUrl = URL.createObjectURL(objBlob);
-  window.open(strUrl, "_blank", "noopener,noreferrer");
+  openBlobUrlInNewTab(strUrl);
   window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
 }
 

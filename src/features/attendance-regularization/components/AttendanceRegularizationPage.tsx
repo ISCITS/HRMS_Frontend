@@ -20,10 +20,11 @@ import * as yup from "yup";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
+import FileRowActions from "@/components/shared/files/FileRowActions";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
   AttendanceSnapshot, DateContext, LookupOption, PreviewResult, RegularizationDetail, RegularizationFormValues,
-  RegularizationLookups, RegularizationRequest,
+  RegularizationLookups, RegularizationRequest, RequestAttachment,
 } from "@/features/attendance-regularization/types/AttendanceRegularizationTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -214,10 +215,18 @@ export default function AttendanceRegularizationPage() {
   const [objDetail, setObjDetail] = useState<RegularizationDetail | null>(null);
   const [blnPunchLogOpen, setBlnPunchLogOpen] = useState(false);
   const [lstFiles, setLstFiles] = useState<File[]>([]);
+  // Attachments already persisted on the request being edited (server-side, have an intID). Kept
+  // separate from lstFiles (locally-picked, not-yet-uploaded File objects) so each can render its
+  // own Preview/Replace/Delete row — the "New Request" form previously showed newly-picked files
+  // as bare filename text with no actions at all.
+  const [lstEditingAttachments, setLstEditingAttachments] = useState<RequestAttachment[]>([]);
+  const [intAttachmentBusyID, setIntAttachmentBusyID] = useState<number | null>(null);
+  const [intAttachmentReplacingID, setIntAttachmentReplacingID] = useState<number | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [objConfirm, setObjConfirm] = useState<{ strAction: "submit" | "withdraw"; objRequest: RegularizationRequest } | null>(null);
+  const [intDetailAttachmentBusyID, setIntDetailAttachmentBusyID] = useState<number | null>(null);
   const [objToast, setObjToast] = useState({ blnOpen: false, strMessage: "", strSeverity: "success" as "success" | "error" });
   const objActionRowRef = useRef<HTMLDivElement | null>(null);
 
@@ -325,6 +334,15 @@ export default function AttendanceRegularizationPage() {
     return objResult;
   }
 
+  async function refreshEditingAttachments(intRequestID: number) {
+    try {
+      const objDetail = await attendanceRegularizationService.getMyDetail(intRequestID);
+      setLstEditingAttachments(objDetail.lstAttachments ?? []);
+    } catch {
+      // Non-fatal: the attachment row list simply won't refresh; previously loaded rows stay visible.
+    }
+  }
+
   async function saveDraft(objValues: RegularizationFormValues) {
     setBlnSaving(true); setStrError("");
     try {
@@ -335,10 +353,50 @@ export default function AttendanceRegularizationPage() {
         : await attendanceRegularizationService.createDraft(objValues);
       for (const objFile of lstFiles) await attendanceRegularizationService.uploadAttachment(objSaved.intID, objFile);
       setObjEditing(objSaved); setLstFiles([]); await loadRequests();
+      if (lstFiles.length > 0) await refreshEditingAttachments(objSaved.intID);
       setObjToast({ blnOpen: true, strMessage: t("draft_saved", "Draft saved."), strSeverity: "success" });
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save draft."));
     } finally { setBlnSaving(false); }
+  }
+
+  async function previewAttachment(intAttachmentID: number) {
+    if (!objEditing) return;
+    setIntAttachmentBusyID(intAttachmentID);
+    try {
+      await attendanceRegularizationService.previewAttachment(objEditing.intID, intAttachmentID);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("attachment_preview_failed", "Unable to open attachment."));
+    } finally {
+      setIntAttachmentBusyID(null);
+    }
+  }
+
+  async function deleteExistingAttachment(intAttachmentID: number) {
+    if (!objEditing) return;
+    setIntAttachmentBusyID(intAttachmentID);
+    try {
+      await attendanceRegularizationService.deleteAttachment(objEditing.intID, intAttachmentID);
+      setLstEditingAttachments((lstPrevious) => lstPrevious.filter((objAttachment) => objAttachment.intID !== intAttachmentID));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("attachment_delete_failed", "Unable to delete attachment."));
+    } finally {
+      setIntAttachmentBusyID(null);
+    }
+  }
+
+  async function replaceExistingAttachment(objAttachment: RequestAttachment, objNewFile: File) {
+    if (!objEditing) return;
+    setIntAttachmentReplacingID(objAttachment.intID);
+    try {
+      await attendanceRegularizationService.deleteAttachment(objEditing.intID, objAttachment.intID);
+      await attendanceRegularizationService.uploadAttachment(objEditing.intID, objNewFile);
+      await refreshEditingAttachments(objEditing.intID);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("attachment_replace_failed", "Unable to replace attachment."));
+    } finally {
+      setIntAttachmentReplacingID(null);
+    }
   }
 
   function editRequest(objRequest: RegularizationRequest) {
@@ -354,6 +412,9 @@ export default function AttendanceRegularizationPage() {
       strProposedRemark: objRequest.objProposalSnapshot.strProposedRemark ?? "",
       strEmployeeReason: objRequest.strEmployeeReason,
     });
+    setLstFiles([]);
+    setLstEditingAttachments([]);
+    void refreshEditingAttachments(objRequest.intID);
   }
 
   function clearRequestForm() {
@@ -431,7 +492,55 @@ export default function AttendanceRegularizationPage() {
                 <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message ?? (blnAutoCalculatedRequest ? t("worked_hours_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
                 <Grid item xs={12}><Controller name="strEmployeeReason" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.reason.input" fullWidth multiline minRows={3} label={t("reason", "Reason")} error={Boolean(objErrors.strEmployeeReason)} helperText={objErrors.strEmployeeReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strProposedRemark" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.remark.input" fullWidth label={t("remark", "Remark")} />} /></Grid>
-                <Grid item xs={12}><Button data-control-id="attendance-regularization.attachments.button" component="label" variant="outlined" startIcon={<AttachFileRoundedIcon />}>{t("add_attachments", "Add Attachments")}<input hidden multiple type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(objEvent) => setLstFiles(Array.from(objEvent.target.files ?? []))} /></Button><Typography variant="caption" sx={{ ml: 1 }}>{lstFiles.map((objFile) => objFile.name).join(", ")}</Typography></Grid>
+                <Grid item xs={12}>
+                  <Stack spacing={1}>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{t("attachments", "Attachments")}</Typography>
+                      <Button data-control-id="attendance-regularization.attachments.button" component="label" size="small" variant="outlined" startIcon={<AttachFileRoundedIcon />}>
+                        {t("add_attachments", "Add Attachments")}
+                        <input hidden multiple type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(objEvent) => { const lstSelected = Array.from(objEvent.target.files ?? []); objEvent.target.value = ""; setLstFiles((lstPrevious) => [...lstPrevious, ...lstSelected]); }} />
+                      </Button>
+                    </Stack>
+                    {lstEditingAttachments.length === 0 && lstFiles.length === 0 ? (
+                      <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("no_attachments", "No attachments.")}</Typography>
+                    ) : (
+                      <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
+                        {lstEditingAttachments.map((objAttachment) => (
+                          <Stack key={objAttachment.intID} direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}>
+                            <Typography title={objAttachment.strFileName} sx={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography>
+                            <FileRowActions
+                              strFileName={objAttachment.strFileName}
+                              controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`}
+                              busy={intAttachmentBusyID === objAttachment.intID}
+                              onPreview={() => void previewAttachment(objAttachment.intID)}
+                              onReplace={(objNewFile) => void replaceExistingAttachment(objAttachment, objNewFile)}
+                              onDelete={() => void deleteExistingAttachment(objAttachment.intID)}
+                              isReplacing={intAttachmentReplacingID === objAttachment.intID}
+                            />
+                          </Stack>
+                        ))}
+                        {lstFiles.map((objFile, intIndex) => (
+                          <Stack key={`${objFile.name}-${intIndex}`} direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={0.8} sx={{ border: "1px dashed #cbd5e1", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}>
+                            <Typography title={objFile.name} sx={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                              {objFile.name} <Typography component="span" sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>({t("pending_upload", "pending upload")})</Typography>
+                            </Typography>
+                            <FileRowActions
+                              strFileName={objFile.name}
+                              controlIdPrefix={`attendance-regularization.pending-attachment.${intIndex}`}
+                              onPreview={() => {
+                                const strUrl = URL.createObjectURL(objFile);
+                                window.open(strUrl, "_blank", "noopener,noreferrer");
+                                window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+                              }}
+                              onReplace={(objNewFile) => setLstFiles((lstPrevious) => lstPrevious.map((objCurrent, intCurrentIndex) => (intCurrentIndex === intIndex ? objNewFile : objCurrent)))}
+                              onDelete={() => setLstFiles((lstPrevious) => lstPrevious.filter((_objCurrent, intCurrentIndex) => intCurrentIndex !== intIndex))}
+                            />
+                          </Stack>
+                        ))}
+                      </Box>
+                    )}
+                  </Stack>
+                </Grid>
               </Grid>
               <Stack ref={objActionRowRef} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ mt: 2, scrollMarginBottom: 16 }}>
                 <Button data-control-id="attendance-regularization.clear.button" className={styles.secondaryButton} disabled={blnSaving} startIcon={<ClearRoundedIcon />} onClick={clearRequestForm}>{t("clear", "Clear")}</Button>
@@ -480,7 +589,7 @@ export default function AttendanceRegularizationPage() {
 
       <Dialog data-control-id="attendance-regularization.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="md">
         <DialogTitle>{t("request_detail", "Request Detail")}</DialogTitle>
-        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "Not recorded"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objOriginalSnapshot.tmFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objOriginalSnapshot.tmLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objProposalSnapshot.tmProposedFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objProposalSnapshot.tmProposedLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Stack spacing={0.5}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between"><Typography>{objAttachment.strFileName}</Typography><Stack direction="row"><Button data-control-id={`attendance-regularization.attachment.${objAttachment.intID}.download.button`} onClick={() => void attendanceRegularizationService.downloadAttachment(objDetail.intID, objAttachment.intID, objAttachment.strFileName)}>{t("download", "Download")}</Button>{["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? <Button data-control-id={`attendance-regularization.attachment.${objAttachment.intID}.delete.button`} color="error" onClick={() => void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail)}>{t("delete", "Delete")}</Button> : null}</Stack></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Stack><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objAction.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
+        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "Not recorded"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objOriginalSnapshot.tmFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objOriginalSnapshot.tmLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objProposalSnapshot.tmProposedFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objProposalSnapshot.tmProposedLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Box sx={objDetail?.lstAttachments.length ? { display: "grid", gap: 0.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } } : undefined}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}><Typography sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography><FileRowActions strFileName={objAttachment.strFileName} controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`} busy={intDetailAttachmentBusyID === objAttachment.intID} onPreview={() => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.previewAttachment(objDetail.intID, objAttachment.intID).finally(() => setIntDetailAttachmentBusyID(null)); }} onDelete={["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? () => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail).finally(() => setIntDetailAttachmentBusyID(null)); } : undefined} /></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Box><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objAction.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
         <DialogActions><Button data-control-id="attendance-regularization.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button></DialogActions>
       </Dialog>
       <Dialog data-control-id="attendance-regularization.punch-log.dialog" open={blnPunchLogOpen} onClose={() => setBlnPunchLogOpen(false)} fullWidth maxWidth="sm">

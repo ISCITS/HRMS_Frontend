@@ -4,6 +4,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import type {
   LeaveApplicationDto,
   LeaveApplyRequest,
@@ -353,6 +354,25 @@ export const leaveService = {
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: LEAVE_MANAGE,
     });
+  },
+
+  // The GET attachment endpoint already exists on the backend (returns the raw file inline, used
+  // for download); this just fetches it as a blob and opens it in a new tab instead of forcing a
+  // save-as prompt, matching ReimbursementProofViewer's fetch-then-window.open preview pattern.
+  async previewMyLeaveAttachment(intApplicationID: number, intAttachmentID: number): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/ess/leave/applications/${intApplicationID}/attachments/${intAttachmentID}`,
+        responseType: "blob",
+        csrfMenuAction: LEAVE_VIEW,
+      } as ApiRequestConfig);
+      const strUrl = URL.createObjectURL(objResponse.data);
+      openBlobUrlInNewTab(strUrl);
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
   },
 
   // ---- HR / Manager: approval queue + workflow ----

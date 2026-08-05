@@ -10,6 +10,7 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 export type EssSelfServiceFileModule = "BANK" | "LOAN" | "PROFILE";
 
@@ -194,7 +195,7 @@ export const fileUploadService = {
   async previewFile(intFileID: number): Promise<void> {
     const objBlob = await this.fetchFileContentBlob(intFileID);
     const strObjectUrl = URL.createObjectURL(objBlob);
-    window.open(strObjectUrl, "_blank", "noopener,noreferrer");
+    openBlobUrlInNewTab(strObjectUrl);
     window.setTimeout(() => URL.revokeObjectURL(strObjectUrl), 30000);
   },
 
