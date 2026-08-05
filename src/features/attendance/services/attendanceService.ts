@@ -16,6 +16,10 @@ import type {
 } from "@/features/attendance/dto";
 import type {
   AttendancePolicy,
+  AttendancePolicyAssignmentEmployee,
+  AttendancePolicyAssignmentHistory,
+  AttendancePolicyAssignmentRequest,
+  AttendancePolicyAssignmentResult,
   AttendancePolicyFormValues,
   AttendancePolicyList,
   DailyAttendanceBulkFillRangeRequest,
@@ -81,6 +85,7 @@ function toAttendancePolicyFormValues(objPolicy: AttendancePolicyFormValues): At
     dtEffectiveTo: objPolicy.dtEffectiveTo,
     blnIsActive: objPolicy.blnIsActive,
     strRemarks: objPolicy.strRemarks,
+    lstTexts: objPolicy.lstTexts ?? [],
   };
 }
 
@@ -130,6 +135,49 @@ export const attendanceService = {
       strMenuAction: ATTENDANCE_MANAGE,
     });
     return toAttendancePolicy(objResult.Data);
+  },
+
+  async listPolicyAssignmentEmployees(objFilters: {
+    strSearch?: string;
+    intDepartmentID?: number;
+    intCurrentPolicyID?: number;
+    strEmployeeStatus?: string;
+    strEffectiveOn?: string;
+  }): Promise<AttendancePolicyAssignmentEmployee[]> {
+    const objQuery = new URLSearchParams();
+    if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
+    if (objFilters.intDepartmentID) objQuery.set("department_id", String(objFilters.intDepartmentID));
+    if (objFilters.intCurrentPolicyID) objQuery.set("current_policy_id", String(objFilters.intCurrentPolicyID));
+    if (objFilters.strEmployeeStatus) objQuery.set("employee_status", objFilters.strEmployeeStatus);
+    if (objFilters.strEffectiveOn) objQuery.set("effective_on", objFilters.strEffectiveOn);
+    const objResult = await requestApi<AttendancePolicyAssignmentEmployee[]>({
+      strPath: `/attendance/policies/assignments/employees?${objQuery.toString()}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async listPolicyAssignmentHistory(objFilters: { intEmployeeID?: number; intPolicyID?: number }): Promise<AttendancePolicyAssignmentHistory[]> {
+    const objQuery = new URLSearchParams();
+    if (objFilters.intEmployeeID) objQuery.set("employee_id", String(objFilters.intEmployeeID));
+    if (objFilters.intPolicyID) objQuery.set("policy_id", String(objFilters.intPolicyID));
+    const objResult = await requestApi<AttendancePolicyAssignmentHistory[]>({
+      strPath: `/attendance/policies/assignments/history?${objQuery.toString()}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async assignAttendancePolicy(objPayload: AttendancePolicyAssignmentRequest): Promise<AttendancePolicyAssignmentResult> {
+    const objResult = await requestApi<AttendancePolicyAssignmentResult>({
+      strPath: "/attendance/policies/assignments",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
   },
 
   async loadDaily(objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }): Promise<DailyAttendanceRow[]> {

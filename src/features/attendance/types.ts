@@ -32,10 +32,63 @@ export type AttendancePolicy = {
   dtEffectiveTo: string | null;
   blnIsActive: boolean;
   strRemarks: string | null;
+  lstTexts?: AttendancePolicyText[];
+  blnHasAssignmentsOrUsage?: boolean;
 };
 
-export type AttendancePolicyFormValues = Omit<AttendancePolicy, "intID">;
+export type AttendancePolicyFormValues = Omit<AttendancePolicy, "intID" | "blnHasAssignmentsOrUsage">;
 export type AttendancePolicyList = { lstItems: AttendancePolicy[]; intTotal: number; intPage: number; intPageSize: number };
+
+export type AttendancePolicyText = {
+  intLanguageID: number;
+  strPolicyName: string;
+  strDescription: string | null;
+};
+
+export type AttendancePolicyAssignmentEmployee = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  intDepartmentID: number | null;
+  strDepartmentName: string | null;
+  strEmployeeStatus: string;
+  intCurrentPolicyID: number | null;
+  strCurrentPolicyCode: string | null;
+  strCurrentPolicyName: string | null;
+  dtCurrentEffectiveFrom: string | null;
+  dtCurrentEffectiveTo: string | null;
+};
+
+export type AttendancePolicyAssignmentHistory = {
+  intID: number;
+  intEmployeeID: number;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+  intAttendancePolicyID: number;
+  strPolicyCode: string | null;
+  strPolicyName: string | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo: string | null;
+  strAssignmentStatus: string;
+  strSourceType: string;
+  strAssignmentReason: string | null;
+  blnIsCurrent: boolean;
+};
+
+export type AttendancePolicyAssignmentRequest = {
+  lstEmployeeIDs: number[];
+  intAttendancePolicyID: number;
+  dtEffectiveFrom: string;
+  dtEffectiveTo: string | null;
+  strAssignmentReason: string | null;
+  blnReplaceExisting: boolean;
+};
+
+export type AttendancePolicyAssignmentResult = {
+  intAssignedCount: number;
+  intClosedCount: number;
+  lstAssignments: AttendancePolicyAssignmentHistory[];
+};
 
 export type DailyAttendanceRow = {
   intID: number | null;

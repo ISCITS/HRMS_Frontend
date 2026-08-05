@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import type {
   AttendancePolicy,
+  AttendancePolicyAssignmentEmployee,
+  AttendancePolicyAssignmentHistory,
+  AttendancePolicyAssignmentRequest,
+  AttendancePolicyAssignmentResult,
   AttendancePolicyFormValues,
   AttendancePolicyList,
   DailyAttendanceBulkFillRangeRequest,
@@ -53,5 +57,20 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function bulkFillRange(objPayload: DailyAttendanceBulkFillRangeRequest): Promise<DailyAttendanceBulkFillRangeResult> {
     setBlnSaving(true); try { return await attendanceService.bulkFillRange(objPayload); } finally { setBlnSaving(false); }
   }
-  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily, bulkFillRange };
+  async function listPolicyAssignmentEmployees(objFilters: {
+    strSearch?: string;
+    intDepartmentID?: number;
+    intCurrentPolicyID?: number;
+    strEmployeeStatus?: string;
+    strEffectiveOn?: string;
+  }): Promise<AttendancePolicyAssignmentEmployee[]> {
+    setBlnLoading(true); try { return await attendanceService.listPolicyAssignmentEmployees(objFilters); } finally { setBlnLoading(false); }
+  }
+  async function listPolicyAssignmentHistory(objFilters: { intEmployeeID?: number; intPolicyID?: number }): Promise<AttendancePolicyAssignmentHistory[]> {
+    return attendanceService.listPolicyAssignmentHistory(objFilters);
+  }
+  async function assignAttendancePolicy(objPayload: AttendancePolicyAssignmentRequest): Promise<AttendancePolicyAssignmentResult> {
+    setBlnSaving(true); try { return await attendanceService.assignAttendancePolicy(objPayload); } finally { setBlnSaving(false); }
+  }
+  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily, bulkFillRange, listPolicyAssignmentEmployees, listPolicyAssignmentHistory, assignAttendancePolicy };
 }
