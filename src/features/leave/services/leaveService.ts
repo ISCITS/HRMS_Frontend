@@ -446,6 +446,16 @@ export const leaveService = {
     return objResult.Data;
   },
 
+  async cancelApprovedLeave(intApplicationID: number, objPayload: LeaveDecisionRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/cancel-approved`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async reassignApplication(intApplicationID: number, objPayload: LeaveReassignRequest): Promise<LeaveApplicationDto> {
     const objResult = await requestApi<LeaveApplicationDto>({
       strPath: `/leave/applications/${intApplicationID}/reassign`,
@@ -476,13 +486,18 @@ export const leaveService = {
   },
 
   async getApplicationRouteSnapshot(intApplicationID: number): Promise<LeaveRouteStepDto[]> {
-    const objResult = await requestApi<LeaveRouteStepDto[] | { lstRoute: LeaveRouteStepDto[] }>({
+    const objResult = await requestApi<
+      LeaveRouteStepDto[] | { lstRoute?: LeaveRouteStepDto[]; objWorkflow?: { lstSteps?: LeaveRouteStepDto[]; lstRouteSnapshot?: LeaveRouteStepDto[] } }
+    >({
       strPath: `/leave/applications/${intApplicationID}/route-snapshot`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
     const objData = objResult.Data;
-    return Array.isArray(objData) ? objData : objData?.lstRoute ?? [];
+    if (Array.isArray(objData)) return objData;
+    // The backend returns { objApplication, objWorkflow: { lstSteps, lstRouteSnapshot } }; the live
+    // workflow steps carry status, so prefer them and fall back to the immutable submission snapshot.
+    return objData?.objWorkflow?.lstSteps ?? objData?.objWorkflow?.lstRouteSnapshot ?? objData?.lstRoute ?? [];
   },
 
   async listWorkflowExceptions(blnOpenOnly = true): Promise<LeaveWorkflowExceptionDto[]> {

@@ -334,6 +334,8 @@ export type LeavePreviewDto = {
   lstDateBreakdown: LeaveDateBreakdownDto[];
   decCalculatedDays: number;
   blnProofRequired: boolean;
+  strBackupResourceRuleCode: string | null;
+  blnManagerCancelApprovedAllowed: boolean | null;
   intLeavePolicyID: number | null;
   intLeavePlanAssignmentID: number | null;
   intBalanceID: number | null;

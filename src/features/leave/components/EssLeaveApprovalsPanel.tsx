@@ -1,5 +1,6 @@
 "use client";
 
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
@@ -14,12 +15,11 @@ import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
-  Alert, Box, Button, Chip, Divider, Drawer, Grid, IconButton, InputAdornment,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, IconButton, InputAdornment,
   LinearProgress, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
   TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -28,13 +28,13 @@ import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWork
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
-  formatLeaveDate, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
-  type LeaveApplicationDto, type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
+  formatLeaveDate, getLeaveStatusLabel, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
+  type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
   type TeamCalendarDto,
 } from "@/features/leave/types";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
-type DecisionKind = "approve" | "reject" | "send_back";
+type DecisionKind = "approve" | "reject" | "send_back" | "cancel";
 type DecisionState = { strKind: DecisionKind; objItem: LeaveQueueItemDto } | null;
 type SortKey = "dtAppliedOn" | "strEmployeeName" | "decDays";
 type LabelFn = (strKey: string, strFallback?: string) => string;
@@ -50,7 +50,6 @@ function fnEmployeeName(objItem: LeaveQueueItemDto): string {
 export default function EssLeaveApprovalsPanel() {
   const objTheme = useTheme();
   const blnMobile = useMediaQuery(objTheme.breakpoints.down("sm"));
-  const objRouter = useRouter();
   const { t } = useModuleLabels("ess-leave-approvals", "Unable to load Leave Approvals labels.");
   const objPermissions = useLeaveWorkflowPermissions();
   const {
@@ -58,10 +57,13 @@ export default function EssLeaveApprovalsPanel() {
     blnCanViewConfidential, blnCanViewTeamCalendar, blnLoading: blnRightsLoading,
   } = objPermissions;
 
-  const { lstQueue, lstActioned, lstMyApplications, objTeamCalendar, blnLoading, strError, fnLoadAll } =
+  const { lstQueue, lstActioned, objTeamCalendar, blnLoading, strError, fnLoadAll } =
     useLeaveApprovals(blnCanView && !blnRightsLoading);
 
   const [intTab, setIntTab] = useState(0);
+  // Team Calendar is an in-page tab (index 4). When it is opened from a specific request we keep the
+  // originating item + previous tab so "Back to Request" restores the same drawer (guide 7).
+  const [objCalendarContext, setObjCalendarContext] = useState<{ objItem: LeaveQueueItemDto; intPrevTab: number } | null>(null);
   const [strSearch, setStrSearch] = useState("");
   const [objSort, setObjSort] = useState<{ strKey: SortKey; blnAsc: boolean }>({ strKey: "dtAppliedOn", blnAsc: false });
   const [intPage, setIntPage] = useState(0);
@@ -150,7 +152,7 @@ export default function EssLeaveApprovalsPanel() {
   async function fnRunDecision() {
     if (!objDecision) return;
     const { strKind, objItem } = objDecision;
-    if ((strKind === "send_back") && !strRemark.trim()) return;
+    if ((strKind === "send_back" || strKind === "reject" || strKind === "cancel") && !strRemark.trim()) return;
     setIntProcessingID(objItem.intID);
     try {
       const objPayload = { strComment: strRemark.trim() || null, intVersionNo: objItem.objWorkflow?.intVersionNo ?? null };
@@ -160,6 +162,9 @@ export default function EssLeaveApprovalsPanel() {
       } else if (strKind === "reject") {
         await leaveService.rejectApplication(objItem.intID, objPayload);
         fnShowToast(t("rejected", "Leave application rejected."), "success");
+      } else if (strKind === "cancel") {
+        await leaveService.cancelApprovedLeave(objItem.intID, { strComment: strRemark.trim() });
+        fnShowToast(t("cancelled", "Approved leave cancelled."), "success");
       } else {
         await leaveService.sendBackApplication(objItem.intID, { strComment: strRemark.trim(), intVersionNo: objItem.objWorkflow?.intVersionNo ?? null });
         fnShowToast(t("sent_back", "Leave application sent back."), "success");
@@ -193,7 +198,7 @@ export default function EssLeaveApprovalsPanel() {
     t("tab_delegated", "Delegated to Me"),
     t("tab_actioned", "Actioned by Me"),
     t("tab_upcoming", "Upcoming Team Leave"),
-    t("tab_my_applications", "My Leave Applications"),
+    ...(blnCanViewTeamCalendar ? [t("tab_team_calendar", "Team Calendar")] : []),
   ];
 
   return <Stack spacing={2}>
@@ -201,7 +206,7 @@ export default function EssLeaveApprovalsPanel() {
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
         <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><FactCheckRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Leave Approvals")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography></Box></Stack>
         <Stack direction="row" spacing={1}>
-          {blnCanViewTeamCalendar ? <Button data-controlid="ess.leave.approvals.calendar" variant="text" startIcon={<CalendarMonthRoundedIcon />} onClick={() => objRouter.push("/ess/team-calendar")} sx={{ color: "white" }}>{t("team_calendar", "Team Calendar")}</Button> : null}
+          {blnCanViewTeamCalendar ? <Button data-controlid="ess.leave.approvals.calendar" variant="text" startIcon={<CalendarMonthRoundedIcon />} onClick={() => { setObjCalendarContext(null); setIntTab(4); }} sx={{ color: "white" }}>{t("team_calendar", "Team Calendar")}</Button> : null}
           <Button data-controlid="ess.leave.approvals.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
         </Stack>
       </Stack>
@@ -219,9 +224,9 @@ export default function EssLeaveApprovalsPanel() {
       {strError ? <Box sx={{ p: 2 }}><Alert severity="error" action={<Button color="inherit" size="small" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button>}>{strError}</Alert></Box> : null}
 
       {intTab === 3 ? (
-        <TeamLeaveList objTeamCalendar={objTeamCalendar} lstUpcoming={lstUpcoming} blnLoading={blnLoading} fnLabel={t} fnOnOpenCalendar={() => objRouter.push("/ess/team-calendar")} blnCanViewCalendar={blnCanViewTeamCalendar} />
+        <TeamLeaveList objTeamCalendar={objTeamCalendar} lstUpcoming={lstUpcoming} blnLoading={blnLoading} fnLabel={t} fnOnOpenCalendar={() => { setObjCalendarContext(null); setIntTab(4); }} blnCanViewCalendar={blnCanViewTeamCalendar} />
       ) : intTab === 4 ? (
-        <MyApplicationsList lstApplications={lstMyApplications} blnLoading={blnLoading} fnLabel={t} />
+        <TeamCalendarTab objTeamCalendar={objTeamCalendar} blnLoading={blnLoading} objContext={objCalendarContext} fnOnBack={() => { if (objCalendarContext) { const objItem = objCalendarContext.objItem; const intPrev = objCalendarContext.intPrevTab; setObjCalendarContext(null); setIntTab(intPrev); void fnOpenDetail(objItem); } }} fnLabel={t} />
       ) : <>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2 }} justifyContent="space-between" alignItems={{ sm: "center" }}>
           <Typography sx={{ fontSize: ".8rem", color: "#64748b" }}>{lstFiltered.length} {t("requests", "request(s)")}</Typography>
@@ -242,20 +247,30 @@ export default function EssLeaveApprovalsPanel() {
       blnCanViewConfidential={blnCanViewConfidential} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject} blnCanSendBack={blnCanSendBack}
       blnProcessing={intProcessingID === objDetail?.intID} fnOnClose={() => setObjDetail(null)}
       fnOnDecision={(strKind) => { setStrRemark(""); setObjDecision({ strKind, objItem: objDetail as LeaveQueueItemDto }); }}
-      fnOnOpenCalendar={(strFrom, strTo) => objRouter.push(`/ess/team-calendar?from=${strFrom}&to=${strTo}`)}
+      fnOnOpenCalendar={() => { if (objDetail) { setObjCalendarContext({ objItem: objDetail, intPrevTab: intTab }); setObjDetail(null); setIntTab(4); } }}
       blnCanViewCalendar={blnCanViewTeamCalendar} fnLabel={t}
     />
 
-    <Drawer anchor="bottom" open={Boolean(objDecision)} onClose={() => intProcessingID === null && setObjDecision(null)} PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, maxWidth: 560, mx: "auto", p: 2.5 } }}>
-      {objDecision ? <Stack spacing={1.5}>
-        <Typography sx={{ fontWeight: 800 }}>{objDecision.strKind === "approve" ? t("confirm_approve", "Approve this application?") : objDecision.strKind === "reject" ? t("confirm_reject", "Reject this application?") : t("confirm_send_back", "Send this application back?")}</Typography>
-        <TextField data-controlid="ess.leave.approvals.remark" autoFocus fullWidth multiline minRows={2} label={objDecision.strKind === "send_back" ? t("remark_required", "Remark (required)") : t("remark_optional", "Remark (optional)")} value={strRemark} onChange={(objEvent) => setStrRemark(objEvent.target.value)} error={objDecision.strKind === "send_back" && !strRemark.trim()} helperText={objDecision.strKind === "send_back" && !strRemark.trim() ? t("remark_required_hint", "A remark is required to send back.") : ""} />
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
-          <Button onClick={() => setObjDecision(null)} disabled={intProcessingID !== null}>{t("cancel", "Cancel")}</Button>
-          <Button variant="contained" color={objDecision.strKind === "approve" ? "success" : objDecision.strKind === "reject" ? "error" : "warning"} disabled={intProcessingID !== null || (objDecision.strKind === "send_back" && !strRemark.trim())} onClick={() => void fnRunDecision()}>{t("submit", "Submit")}</Button>
-        </Stack>
-      </Stack> : null}
-    </Drawer>
+    <Dialog open={Boolean(objDecision)} onClose={() => intProcessingID === null && setObjDecision(null)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: "16px" } }}>
+      {objDecision ? (() => {
+        const blnRemarkRequired = objDecision.strKind === "reject" || objDecision.strKind === "send_back" || objDecision.strKind === "cancel";
+        const blnRemarkMissing = blnRemarkRequired && !strRemark.trim();
+        return <>
+          <DialogTitle sx={{ fontWeight: 800 }}>{objDecision.strKind === "approve" ? t("confirm_approve", "Approve this application?") : objDecision.strKind === "reject" ? t("confirm_reject", "Reject this application?") : objDecision.strKind === "cancel" ? t("confirm_cancel_approved", "Cancel this approved leave?") : t("confirm_send_back", "Send this application back?")}</DialogTitle>
+          <DialogContent>
+            <TextField data-controlid="ess.leave.approvals.remark" autoFocus fullWidth multiline minRows={2} sx={{ mt: 1 }}
+              label={objDecision.strKind === "reject" ? t("reject_reason_required", "Rejection reason (required)") : objDecision.strKind === "send_back" ? t("send_back_reason_required", "Correction reason (required)") : objDecision.strKind === "cancel" ? t("cancel_reason_required", "Cancellation reason (required)") : t("remark_optional", "Remark (optional)")}
+              value={strRemark} onChange={(objEvent) => setStrRemark(objEvent.target.value)}
+              error={blnRemarkMissing}
+              helperText={blnRemarkMissing ? (objDecision.strKind === "reject" ? t("reject_reason_hint", "A reason is required to reject this request.") : objDecision.strKind === "cancel" ? t("cancel_reason_hint", "A reason is required to cancel approved leave.") : t("send_back_reason_hint", "State what the employee must correct before resubmitting.")) : ""} />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setObjDecision(null)} disabled={intProcessingID !== null}>{t("cancel", "Cancel")}</Button>
+            <Button variant="contained" color={objDecision.strKind === "approve" ? "success" : (objDecision.strKind === "reject" || objDecision.strKind === "cancel") ? "error" : "warning"} disabled={intProcessingID !== null || blnRemarkMissing} onClick={() => void fnRunDecision()}>{t("submit", "Submit")}</Button>
+          </DialogActions>
+        </>;
+      })() : null}
+    </Dialog>
 
     <Snackbar open={objToast.blnOpen} autoHideDuration={5000} onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}><Alert severity={objToast.strSeverity} variant="filled" onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))}>{objToast.strMessage}</Alert></Snackbar>
   </Stack>;
@@ -265,9 +280,10 @@ function EmptyState({ strMessage }: { strMessage: string }) {
   return <Box sx={{ p: 5, textAlign: "center" }}><FactCheckRoundedIcon sx={{ color: "#94a3b8", fontSize: 40, mb: .5 }} /><Typography sx={{ color: "#64748b", fontWeight: 600 }}>{strMessage}</Typography></Box>;
 }
 
-function StatusChip({ strStatus }: { strStatus: string }) {
+function StatusChip({ strStatus, fnLabel }: { strStatus: string; fnLabel?: LabelFn }) {
   const objColor = LEAVE_STATUS_COLORS[strStatus] ?? { bg: "#f1f5f9", fg: "#475569" };
-  return <Chip size="small" label={strStatus.replaceAll("_", " ")} sx={{ fontWeight: 700, textTransform: "capitalize", bgcolor: objColor.bg, color: objColor.fg }} />;
+  const strText = getLeaveStatusLabel(strStatus, fnLabel ?? ((_strKey, strFallback) => strFallback ?? ""));
+  return <Chip size="small" label={strText} sx={{ fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} />;
 }
 
 function TypeCell({ objItem, blnCanViewConfidential, fnLabel }: { objItem: LeaveQueueItemDto; blnCanViewConfidential: boolean; fnLabel: LabelFn }) {
@@ -292,7 +308,7 @@ function ApprovalTable({ lstItems, intTab, objSort, fnToggleSort, blnCanViewConf
     <TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell>
     <TableCell>{fnLabel("from_date", "From")}</TableCell>
     <TableCell>{fnLabel("to_date", "To")}</TableCell>
-    <TableCell>{fnSortLabel("decDays", fnLabel("days", "Days"))}</TableCell>
+    <TableCell>{fnSortLabel("decDays", fnLabel("chargeable_days", "Chargeable Days"))}</TableCell>
     <TableCell>{intTab === 2 ? fnLabel("actioned_on", "Actioned On") : fnSortLabel("dtAppliedOn", fnLabel("applied_on", "Applied On"))}</TableCell>
     <TableCell>{fnLabel("status", "Status")}</TableCell>
     <TableCell align="right">{fnLabel("actions", "Actions")}</TableCell>
@@ -304,39 +320,39 @@ function ApprovalTable({ lstItems, intTab, objSort, fnToggleSort, blnCanViewConf
       <TableCell>{formatLeaveDate(objItem.dtToDate)}{objItem.blnToHalf ? " (½)" : ""}</TableCell>
       <TableCell>{objItem.decDays}</TableCell>
       <TableCell>{formatLeaveDate(intTab === 2 ? objItem.dtLastActionOn : objItem.dtAppliedOn)}</TableCell>
-      <TableCell><StatusChip strStatus={objItem.strStatus} /></TableCell>
+      <TableCell><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /></TableCell>
       <TableCell align="right"><Button data-controlid={`ess.leave.approvals.view.${objItem.intID}`} size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => fnOnOpen(objItem)}>{fnLabel("review", "Review")}</Button></TableCell>
     </TableRow>)}
   </TableBody></Table></Box>;
 }
 
 function ApprovalCard({ objItem, blnCanViewConfidential, fnOnOpen, fnLabel }: { objItem: LeaveQueueItemDto; blnCanViewConfidential: boolean; fnOnOpen: () => void; fnLabel: LabelFn }) {
-  return <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }} onClick={fnOnOpen}><Stack direction="row" justifyContent="space-between" alignItems="flex-start"><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{fnEmployeeName(objItem)}</Typography><Box sx={{ mt: .5 }}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></Box><Typography sx={{ fontSize: ".74rem", color: "#64748b", mt: .5 }}>{formatLeaveDate(objItem.dtFromDate)} – {formatLeaveDate(objItem.dtToDate)} · {objItem.decDays} {fnLabel("days_short", "day(s)")}</Typography></Box><Stack spacing={.5} alignItems="flex-end"><StatusChip strStatus={objItem.strStatus} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Stack></Paper>;
+  return <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }} onClick={fnOnOpen}><Stack direction="row" justifyContent="space-between" alignItems="flex-start"><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{fnEmployeeName(objItem)}</Typography><Box sx={{ mt: .5 }}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></Box><Typography sx={{ fontSize: ".74rem", color: "#64748b", mt: .5 }}>{formatLeaveDate(objItem.dtFromDate)} – {formatLeaveDate(objItem.dtToDate)} · {objItem.decDays} {fnLabel("days_short", "day(s)")}</Typography></Box><Stack spacing={.5} alignItems="flex-end"><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Stack></Paper>;
 }
 
-function MyApplicationsList({ lstApplications, blnLoading, fnLabel }: { lstApplications: LeaveApplicationDto[]; blnLoading: boolean; fnLabel: LabelFn }) {
+function TeamCalendarTab({ objTeamCalendar, blnLoading, objContext, fnOnBack, fnLabel }: {
+  objTeamCalendar: TeamCalendarDto | null; blnLoading: boolean;
+  objContext: { objItem: LeaveQueueItemDto; intPrevTab: number } | null;
+  fnOnBack: () => void; fnLabel: LabelFn;
+}) {
   if (blnLoading) return <Box sx={{ p: 2 }}><Skeleton variant="rounded" height={280} /></Box>;
-  if (!lstApplications.length) return <EmptyState strMessage={fnLabel("my_applications_empty", "You have not applied for any leave yet.")} />;
-  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}>
-    <TableCell>{fnLabel("applied_on", "Applied On")}</TableCell>
-    <TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell>
-    <TableCell>{fnLabel("from_date", "From")}</TableCell>
-    <TableCell>{fnLabel("to_date", "To")}</TableCell>
-    <TableCell>{fnLabel("quantity", "Quantity")}</TableCell>
-    <TableCell>{fnLabel("status", "Status")}</TableCell>
-  </TableRow></TableHead><TableBody>
-    {lstApplications.map((objApp) => {
-      const objBadge = getLeaveTypeBadge(objApp.strTypeCode, objApp.strTypeName);
-      return <TableRow key={objApp.intID} hover>
-        <TableCell>{formatLeaveDate(objApp.dtAppliedOn)}</TableCell>
-        <TableCell><Stack direction="row" spacing={1} alignItems="center"><Box aria-hidden sx={{ width: 30, height: 30, borderRadius: "50%", bgcolor: objBadge.bg, color: objBadge.fg, display: "grid", placeItems: "center", fontWeight: 800, fontSize: ".68rem" }}>{objBadge.strLabel}</Box><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApp.strTypeName ?? `#${objApp.intLeaveTypeID}`}</Typography></Stack></TableCell>
-        <TableCell>{formatLeaveDate(objApp.dtFromDate)}{objApp.blnFromHalf ? " (½)" : ""}</TableCell>
-        <TableCell>{formatLeaveDate(objApp.dtToDate)}{objApp.blnToHalf ? " (½)" : ""}</TableCell>
-        <TableCell>{objApp.decDays}</TableCell>
-        <TableCell><StatusChip strStatus={objApp.strStatus} /></TableCell>
-      </TableRow>;
-    })}
-  </TableBody></Table></Box>;
+  if (!objTeamCalendar) return <EmptyState strMessage={fnLabel("team_calendar_unavailable", "Team calendar is not available for your account.")} />;
+  const intHighlightEmployeeID = objContext?.objItem.intEmployeeID ?? null;
+  return <Box sx={{ p: 2 }}><Stack spacing={1.5}>
+    {objContext ? <Alert severity="info" icon={<CalendarMonthRoundedIcon />} action={<Button size="small" startIcon={<ArrowBackRoundedIcon />} onClick={fnOnBack} data-controlid="ess.leave.approvals.calendar.back">{fnLabel("back_to_request", "Back to Request")}</Button>}>
+      {fnLabel("calendar_context", "Showing team leave around {name}'s request ({from} – {to}).").replace("{name}", fnEmployeeName(objContext.objItem)).replace("{from}", formatLeaveDate(objContext.objItem.dtFromDate)).replace("{to}", formatLeaveDate(objContext.objItem.dtToDate))}
+    </Alert> : null}
+    <Typography sx={{ fontSize: ".78rem", color: "#64748b" }}>{formatLeaveDate(objTeamCalendar.dtFromDate)} – {formatLeaveDate(objTeamCalendar.dtToDate)}</Typography>
+    {objTeamCalendar.lstEmployees.length === 0 ? <EmptyState strMessage={fnLabel("team_calendar_empty", "No team leave in this period.")} /> : <Stack spacing={1}>
+      {objTeamCalendar.lstEmployees.map((objMember) => {
+        const blnHighlight = intHighlightEmployeeID === objMember.intEmployeeID;
+        return <Paper key={objMember.intEmployeeID} variant="outlined" sx={{ p: 1.25, borderRadius: "12px", border: blnHighlight ? "2px solid #0a66a3" : "1px solid #e2e8f0", bgcolor: blnHighlight ? "#f0f9ff" : "white" }}>
+          <Box sx={{ mb: objMember.lstLeaveEvents.length ? .75 : 0 }}><Typography sx={{ fontWeight: 700, fontSize: ".84rem" }}>{objMember.strEmployeeName}{blnHighlight ? ` · ${fnLabel("applicant", "Applicant")}` : ""}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{objMember.strEmployeeCode}</Typography></Box>
+          {objMember.lstLeaveEvents.length === 0 ? <Typography sx={{ fontSize: ".74rem", color: "#94a3b8" }}>{fnLabel("no_leave", "No leave")}</Typography> : <Stack spacing={.5}>{objMember.lstLeaveEvents.map((objEvent, intIndex) => <Stack key={`${objEvent.intApplicationID}-${intIndex}`} direction="row" justifyContent="space-between" alignItems="center" spacing={1}><Typography sx={{ fontSize: ".76rem" }}>{objEvent.blnIsMasked ? fnLabel("confidential", "Confidential") : (objEvent.strLabel ?? fnLabel("leave", "Leave"))} · {formatLeaveDate(objEvent.dtFromDate)} – {formatLeaveDate(objEvent.dtToDate)}</Typography><StatusChip strStatus={objEvent.strStatus} fnLabel={fnLabel} /></Stack>)}</Stack>}
+        </Paper>;
+      })}
+    </Stack>}
+  </Stack></Box>;
 }
 
 function TeamLeaveList({ objTeamCalendar, lstUpcoming, blnLoading, fnLabel, fnOnOpenCalendar, blnCanViewCalendar }: {
@@ -351,7 +367,7 @@ function TeamLeaveList({ objTeamCalendar, lstUpcoming, blnLoading, fnLabel, fnOn
       {blnCanViewCalendar ? <Button data-controlid="ess.leave.approvals.open.calendar" size="small" variant="outlined" startIcon={<CalendarMonthRoundedIcon />} onClick={fnOnOpenCalendar}>{fnLabel("open_team_calendar", "Open Team Calendar")}</Button> : null}
     </Stack>
     {lstUpcoming.length === 0 ? <EmptyState strMessage={fnLabel("no_upcoming", "No upcoming team leave in the next 45 days.")} /> : <Stack spacing={.75}>
-      {lstUpcoming.map((objEvent, intIndex) => <Paper key={`${objEvent.strEmployeeName}-${objEvent.dtFromDate}-${intIndex}`} variant="outlined" sx={{ p: 1.25, borderRadius: "12px" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography sx={{ fontWeight: 700, fontSize: ".84rem" }}>{objEvent.strEmployeeName}</Typography><Typography sx={{ fontSize: ".74rem", color: "#64748b" }}>{objEvent.blnMasked ? fnLabel("unavailable", "Unavailable") : objEvent.strLabel ?? fnLabel("leave", "Leave")} · {formatLeaveDate(objEvent.dtFromDate)} – {formatLeaveDate(objEvent.dtToDate)}</Typography></Box><StatusChip strStatus={objEvent.strStatus} /></Stack></Paper>)}
+      {lstUpcoming.map((objEvent, intIndex) => <Paper key={`${objEvent.strEmployeeName}-${objEvent.dtFromDate}-${intIndex}`} variant="outlined" sx={{ p: 1.25, borderRadius: "12px" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography sx={{ fontWeight: 700, fontSize: ".84rem" }}>{objEvent.strEmployeeName}</Typography><Typography sx={{ fontSize: ".74rem", color: "#64748b" }}>{objEvent.blnMasked ? fnLabel("unavailable", "Unavailable") : objEvent.strLabel ?? fnLabel("leave", "Leave")} · {formatLeaveDate(objEvent.dtFromDate)} – {formatLeaveDate(objEvent.dtToDate)}</Typography></Box><StatusChip strStatus={objEvent.strStatus} fnLabel={fnLabel} /></Stack></Paper>)}
     </Stack>}
   </Box>;
 }
@@ -376,24 +392,40 @@ function DetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewCo
       </Stack>
       {blnProcessing ? <LinearProgress /> : null}
       <Box sx={{ p: 2, overflowY: "auto", flex: 1 }}><Stack spacing={2}>
-        <Box><Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{fnEmployeeName(objItem)}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography><Stack direction="row" spacing={.5} sx={{ mt: .75 }}><StatusChip strStatus={objItem.strStatus} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Box>
+        <Box><Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{fnEmployeeName(objItem)}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography><Stack direction="row" spacing={.5} sx={{ mt: .75 }}><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Box>
         <Grid container spacing={1.5}>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("leave_type", "Leave Type")} objValue={blnMasked ? fnLabel("confidential", "Confidential") : (objItem.strTypeName ?? `#${objItem.intLeaveTypeID}`)} /></Grid>
-          <Grid item xs={6}><KeyValue strLabel={fnLabel("days", "Days")} objValue={objItem.decDays} /></Grid>
+          <Grid item xs={6}><KeyValue strLabel={fnLabel("requested_days", "Requested Days")} objValue={objCalc?.lstDateBreakdown?.length ?? "—"} /></Grid>
+          <Grid item xs={6}><KeyValue strLabel={fnLabel("chargeable_days", "Chargeable Days")} objValue={objItem.decDays} /></Grid>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("from_date", "From")} objValue={formatLeaveDate(objItem.dtFromDate)} /></Grid>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("to_date", "To")} objValue={formatLeaveDate(objItem.dtToDate)} /></Grid>
           <Grid item xs={12}><KeyValue strLabel={fnLabel("reason", "Reason")} objValue={blnMasked ? fnLabel("confidential", "Confidential") : (objItem.strReason || "—")} /></Grid>
-          <Grid item xs={12}><KeyValue strLabel={fnLabel("backup_resource", "Backup Resource")} objValue={objItem.intBackupEmployeeID ? `Employee #${objItem.intBackupEmployeeID}` : "—"} /></Grid>
+          <Grid item xs={12}><KeyValue strLabel={fnLabel("backup_resource", "Backup Resource")} objValue={(() => {
+            const strRule = String(objCalc?.strBackupResourceRuleCode || "").toUpperCase();
+            const strRequirement = strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : strRule ? fnLabel("backup_optional", "Optional") : "";
+            const strSelection = objItem.intBackupEmployeeID
+              ? `Employee #${objItem.intBackupEmployeeID}`
+              : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required", "Not required") : fnLabel("backup_not_provided", "Not provided");
+            return strRequirement ? `${strSelection} (${strRequirement})` : strSelection;
+          })()} /></Grid>
         </Grid>
 
         {objCalc && !blnMasked ? <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "12px" }}><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: 1 }}>{fnLabel("balance_and_policy", "Balance & Policy")}</Typography><Grid container spacing={1}>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("balance_before", "Balance Before")} objValue={objCalc.decAvailableBefore ?? "—"} /></Grid>
-          <Grid item xs={6}><KeyValue strLabel={fnLabel("balance_after", "Balance After")} objValue={objCalc.decAvailableAfter ?? "—"} /></Grid>
-          <Grid item xs={6}><KeyValue strLabel={fnLabel("chargeable", "Chargeable")} objValue={objCalc.decCalculatedDays} /></Grid>
+          <Grid item xs={6}><KeyValue strLabel={fnLabel("on_hold", "On Hold")} objValue={objCalc.decCalculatedDays} /></Grid>
+          <Grid item xs={6}><KeyValue strLabel={fnLabel("projected_balance_after", "Projected Balance After Approval")} objValue={objCalc.decAvailableAfter ?? "—"} /></Grid>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("proof_required", "Proof Required")} objValue={objCalc.blnProofRequired ? fnLabel("yes", "Yes") : fnLabel("no", "No")} /></Grid>
         </Grid>
         {objCalc.lstWarnings?.length ? <Alert severity="warning" icon={<WarningAmberRoundedIcon />} sx={{ mt: 1 }}><Typography sx={{ fontWeight: 700, fontSize: ".78rem" }}>{fnLabel("conflicts", "Conflicts")}</Typography>{objCalc.lstWarnings.map((objWarning) => <Typography key={objWarning.strCode} sx={{ fontSize: ".76rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
         </Paper> : null}
+
+        {objCalc?.lstDateBreakdown?.length && !blnMasked ? <Box>
+          <Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("date_explanation", "Date-wise Charge")}</Typography>
+          <Stack spacing={.5} sx={{ maxHeight: 220, overflowY: "auto" }}>{objCalc.lstDateBreakdown.map((objDay) => <Stack key={objDay.dtDate} direction="row" justifyContent="space-between" alignItems="center" sx={{ p: .6, borderRadius: "8px", bgcolor: objDay.blnCounted ? "#f0fdf4" : "#f8fafc" }}>
+            <Box><Typography sx={{ fontSize: ".76rem", fontWeight: 700 }}>{formatLeaveDate(objDay.dtDate)}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b", textTransform: "capitalize" }}>{objDay.strHolidayName || objDay.strCalculationReason?.replaceAll("_", " ")}</Typography></Box>
+            <Chip size="small" label={objDay.decDays} sx={{ height: 20, fontWeight: 700, bgcolor: objDay.blnCounted ? "#dcfce7" : "#f1f5f9", color: "#334155" }} />
+          </Stack>)}</Stack>
+        </Box> : null}
 
         {objItem.lstAttachments?.length ? <Box><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("attachments", "Attachments")}</Typography><Stack spacing={.5}>{objItem.lstAttachments.map((objAttachment) => <Typography key={objAttachment.intID} sx={{ fontSize: ".8rem" }}>• {objAttachment.strFileName}</Typography>)}</Stack></Box> : null}
 
@@ -410,6 +442,10 @@ function DetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewCo
         {blnCanSendBack ? <Button data-controlid="ess.leave.approvals.sendback" fullWidth variant="outlined" color="warning" startIcon={<ReplayRoundedIcon />} disabled={blnProcessing} onClick={() => fnOnDecision("send_back")}>{fnLabel("send_back", "Send Back")}</Button> : null}
         {blnCanReject ? <Button data-controlid="ess.leave.approvals.reject" fullWidth variant="outlined" color="error" startIcon={<CancelRoundedIcon />} disabled={blnProcessing} onClick={() => fnOnDecision("reject")}>{fnLabel("reject", "Reject")}</Button> : null}
         {blnCanApprove ? <Button data-controlid="ess.leave.approvals.approve" fullWidth variant="contained" color="success" startIcon={<CheckCircleRoundedIcon />} disabled={blnProcessing} onClick={() => fnOnDecision("approve")}>{fnLabel("approve", "Approve")}</Button> : null}
+      </Stack> : null}
+
+      {objItem.strStatus === "approved" && blnCanApprove && objCalc?.blnManagerCancelApprovedAllowed !== false ? <Stack direction="row" spacing={1} sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+        <Button data-controlid="ess.leave.approvals.cancel-approved" fullWidth variant="outlined" color="error" startIcon={<CancelRoundedIcon />} disabled={blnProcessing} onClick={() => fnOnDecision("cancel")}>{fnLabel("cancel_approved_leave", "Cancel Approved Leave")}</Button>
       </Stack> : null}
     </Stack> : null}
   </Drawer>;
