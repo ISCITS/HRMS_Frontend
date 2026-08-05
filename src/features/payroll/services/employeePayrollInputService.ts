@@ -96,7 +96,14 @@ function toPayload(dicValues: EmployeePayrollInputFormValues) {
     decPayableDays: parseOptionalNumber(dicValues.strPayableDays),
     decLwpDays: parseOptionalNumber(dicValues.strLwpDays),
     decLopDays: parseOptionalNumber(dicValues.strLopDays),
-    strManualLwpSource: dicValues.strManualLwpSource.trim() || null,
+    // Always stamp MANUAL_HR on save from this screen, rather than echoing back whatever
+    // strManualLwpSource was loaded with (e.g. "SYSTEM_ATTENDANCE" on a row previously
+    // auto-synced from attendance). This is the manual payroll-input editor - saving here
+    // is the human taking explicit ownership of this record, and it must be recognized as
+    // such so the next automatic "Check Leave & Attendance" sync preserves it instead of
+    // silently overwriting it (AttendancePayrollIntegrationService.upsertPayrollInputForEmployee
+    // only preserves a manual value when strManualLwpSource != "SYSTEM_ATTENDANCE").
+    strManualLwpSource: "MANUAL_HR",
     strManualLwpReason: dicValues.strManualLwpReason.trim() || null,
     strRemarks: dicValues.strRemarks.trim() || null,
     strStatus: dicValues.strStatus,
