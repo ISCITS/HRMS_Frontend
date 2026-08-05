@@ -229,6 +229,10 @@ function getLocalizedHeaderTitle(
       : tHeader("header_title", "Payslips");
   }
 
+  if (strHeaderModuleName === "my-compensation") {
+    return tHeader("page_title", "My Compensation");
+  }
+
   if (strHeaderModuleName === "payroll-results") {
     return stripMasterTitle(
       tHeader(

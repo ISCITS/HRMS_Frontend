@@ -69,6 +69,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/ess/my-bank-details")) {
     return "my-bank-details";
   }
+  if (strLowerPath.startsWith("/ess/my-compensation")) {
+    return "my-compensation";
+  }
   if (strLowerPath.startsWith("/payroll/results")) {
     return "payroll-results";
   }

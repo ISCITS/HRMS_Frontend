@@ -804,7 +804,8 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
       ? buildSyntheticMenuLeaf("Leave Approvals", "ESS_LEAVE_APPROVALS", "/ess/leave/approvals", findItem("/ess/leave/approvals", "/leave/approvals"))
       : null,
   ]);
-  const objPayrollGroup = buildSyntheticMenuGroup("ESS_PAYROLL_BENEFITS", "Payroll & Benefits", [
+  const objPayrollGroup = buildSyntheticMenuGroup("ESS_PAYROLL_BENEFITS", "Compensation & Benifits", [
+    buildSyntheticMenuLeaf("My Compensation", "ESS_MY_COMPENSATION", "/ess/my-compensation", findItem("/ess/my-compensation")),
     buildSyntheticMenuLeaf("Payslips", "ESS_MY_PAYSLIPS", "/ess/my-payslips", findItem("/ess/my-payslips", "/reports/payslips")),
     buildSyntheticMenuLeaf("IT Declaration", "ESS_IT_DECLARATION", "/ess/it-declaration", findItem("/ess/it-declaration", "/salary/ess-declarations", "/salary/it-declaration")),
     buildSyntheticMenuLeaf("Flexi Pay Declaration", "ESS_FLEXI_PAY_DECLARATION", "/salary/flexi-pay-declaration", findItem("/salary/flexi-pay-declaration", "/salary/flexi-pay-declarations")),
