@@ -284,7 +284,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
           </Stack>
           {errors.lstItems?.message ? <Typography color="error" variant="caption" sx={{ display: "block", mb: 1 }}>{errors.lstItems.message}</Typography> : null}
           <Box>
-            <TableContainer><Table size="small" sx={{ minWidth: 1200 }}><TableHead><TableRow>{["leave_type", "annual_entitlement", "override", "override_reason", "opening_balance_allowed", "negative_balance_limit", "display_order", "active", "actions"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800, textTransform: "capitalize" }}>{t(`item_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
+            <TableContainer><Table size="small" sx={{ minWidth: 1200, "& tbody td": { verticalAlign: "top", pt: 1.5 } }}><TableHead><TableRow>{["leave_type", "annual_entitlement", "override", "override_reason", "opening_balance_allowed", "negative_balance_limit", "display_order", "active", "actions"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800, textTransform: "capitalize" }}>{t(`item_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
               {objItems.fields.map((objField, intIndex) => {
                 const intTypeID = Number(lstWatchedItems?.[intIndex]?.intLeaveTypeID ?? 0);
                 const blnOverride = Boolean(lstWatchedItems?.[intIndex]?.blnIsEntitlementOverride);

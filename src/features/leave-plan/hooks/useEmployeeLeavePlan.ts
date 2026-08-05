@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -35,11 +35,16 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
   const [lstLeaveTypes, setLstLeaveTypes] = useState<LeaveTypeOption[]>([]);
   const [lstLedger, setLstLedger] = useState<EmployeeLeaveLedger[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnRefreshing, setBlnRefreshing] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
+  // Only the very first load blanks the whole page; later reloads (e.g. changing the Leave Year)
+  // refresh the data in place via blnRefreshing, so the page does not flash a full-screen spinner.
+  const refInitialLoaded = useRef(false);
 
   const loadData = useCallback(async () => {
-    setBlnLoading(true);
+    const blnInitial = !refInitialLoaded.current;
+    if (blnInitial) setBlnLoading(true); else setBlnRefreshing(true);
     setStrError("");
     try {
       const [objEmployeeResult, objOverviewResult, lstPlanResult, lstTypeResult, lstLedgerResult] = await Promise.all([
@@ -57,10 +62,12 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
       setObjCurrentPlan(objOverviewResult.objCurrentAssignment
         ? await leavePlanService.getPlan(objOverviewResult.objCurrentAssignment.intLeavePlanID)
         : null);
+      refInitialLoaded.current = true;
     } catch (objError) {
       setStrError((await createApiRequestError(objError)).message);
     } finally {
       setBlnLoading(false);
+      setBlnRefreshing(false);
     }
   }, [intEmployeeID, intLeaveYear]);
 
@@ -72,7 +79,7 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
   }
 
   return {
-    objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnSaving, strError, loadData,
+    objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnRefreshing, blnSaving, strError, loadData,
     fetchPlan: (intPlanID: number) => leavePlanService.getPlan(intPlanID),
     previewReplacement: (objPayload: ReplacementPreviewRequest) => leavePlanService.previewReplacement(intEmployeeID, objPayload),
     assignPlan: (objPayload: EmployeePlanAssignRequest, blnReplace: boolean) => runMutation(() => leavePlanService.assignPlan(intEmployeeID, objPayload, blnReplace)),
