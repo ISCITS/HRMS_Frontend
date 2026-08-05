@@ -671,9 +671,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         </Box>
       </Paper>
 
-      {/* E. Weekly-off / Holiday / Sandwich */}
+      {/* E. Sandwich Rule */}
       <Paper sx={objSectionSx}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Weekly Off, Holiday &amp; Sandwich</Typography>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Sandwich Rule</Typography>
         <Box>
           <Box sx={objGridSx}>
             {/* Simplified POC controls. The weekly/holiday treatment codes, boundary (BOTH_SIDES) and

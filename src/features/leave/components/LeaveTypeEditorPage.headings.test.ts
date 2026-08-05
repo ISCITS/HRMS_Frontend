@@ -26,7 +26,7 @@ const lstExpectedHeadings = [
   "Application Channels &amp; Behaviour",
   "Entitlement &amp; Accrual",
   "Application Limits",
-  "Weekly Off, Holiday &amp; Sandwich",
+  "Sandwich Rule",
   "Carry Forward &amp; Year-End",
   "Encashment",
   "Proof &amp; Documents",
