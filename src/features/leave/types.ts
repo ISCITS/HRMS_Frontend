@@ -503,12 +503,36 @@ export const LEAVE_UNIT_OPTIONS = ["day", "half_day", "hour"] as const;
 export const ACCRUAL_FREQUENCY_OPTIONS = ["monthly", "yearly", "none"] as const;
 
 export const LEAVE_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  draft: { bg: "#f1f5f9", fg: "#475569" },
   pending: { bg: "#fef3c7", fg: "#92400e" },
   approved: { bg: "#dcfce7", fg: "#166534" },
   rejected: { bg: "#fee2e2", fg: "#991b1b" },
+  sent_back: { bg: "#ffedd5", fg: "#9a3412" },
+  cancellation_pending: { bg: "#fef3c7", fg: "#92400e" },
   cancelled: { bg: "#f1f5f9", fg: "#475569" },
   withdrawn: { bg: "#f1f5f9", fg: "#475569" },
 };
+
+// Canonical status wording (guide §10). Screens render these through the i18n framework via
+// getLeaveStatusLabel so ESS and HR always show identical, consistent status text.
+export const LEAVE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  pending: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+  sent_back: "Sent Back",
+  cancellation_pending: "Cancellation Pending",
+  cancelled: "Cancelled",
+  withdrawn: "Withdrawn",
+};
+
+export function getLeaveStatusLabel(
+  strStatus: string,
+  fnLabel: (strKey: string, strFallback: string) => string,
+): string {
+  const strFallback = LEAVE_STATUS_LABELS[strStatus] ?? strStatus.replaceAll("_", " ");
+  return fnLabel(`leave_status_${strStatus}`, strFallback);
+}
 
 // Rotating palette for leave-type badges (the coloured "CL / OD / SV" circles).
 export const LEAVE_TYPE_PALETTE: { bg: string; fg: string }[] = [
