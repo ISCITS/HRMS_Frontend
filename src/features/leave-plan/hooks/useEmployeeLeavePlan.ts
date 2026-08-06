@@ -41,8 +41,13 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
   // Only the very first load blanks the whole page; later reloads (e.g. changing the Leave Year)
   // refresh the data in place via blnRefreshing, so the page does not flash a full-screen spinner.
   const refInitialLoaded = useRef(false);
+  // Guards against out-of-order responses: typing the Leave Year fires a request per keystroke, so a
+  // superseded request (e.g. the invalid "202" while typing "2027") must not overwrite the newest
+  // result — otherwise its validation error would linger after a valid year is entered.
+  const refRequestToken = useRef(0);
 
   const loadData = useCallback(async () => {
+    const intToken = ++refRequestToken.current;
     const blnInitial = !refInitialLoaded.current;
     if (blnInitial) setBlnLoading(true); else setBlnRefreshing(true);
     setStrError("");
@@ -54,20 +59,25 @@ export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number
         leavePlanService.getActiveLeaveTypes(),
         leavePlanService.getLedger(intEmployeeID, intLeaveYear),
       ]);
+      const objCurrentPlanResult = objOverviewResult.objCurrentAssignment
+        ? await leavePlanService.getPlan(objOverviewResult.objCurrentAssignment.intLeavePlanID)
+        : null;
+      if (intToken !== refRequestToken.current) return;  // a newer request has superseded this one
       setObjEmployee(objEmployeeResult);
       setObjOverview(objOverviewResult);
       setLstPlans(lstPlanResult);
       setLstLeaveTypes(lstTypeResult);
       setLstLedger(lstLedgerResult);
-      setObjCurrentPlan(objOverviewResult.objCurrentAssignment
-        ? await leavePlanService.getPlan(objOverviewResult.objCurrentAssignment.intLeavePlanID)
-        : null);
+      setObjCurrentPlan(objCurrentPlanResult);
       refInitialLoaded.current = true;
     } catch (objError) {
+      if (intToken !== refRequestToken.current) return;  // ignore a stale (superseded) failure
       setStrError((await createApiRequestError(objError)).message);
     } finally {
-      setBlnLoading(false);
-      setBlnRefreshing(false);
+      if (intToken === refRequestToken.current) {
+        setBlnLoading(false);
+        setBlnRefreshing(false);
+      }
     }
   }, [intEmployeeID, intLeaveYear]);
 
