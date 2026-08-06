@@ -18,6 +18,7 @@ export type MyAttendancePolicy = {
   intLateGraceMinutes: number;
   intEarlyDepartureGraceMinutes: number;
   intWorkHoursRoundingMinutes: number;
+  strWeeklyOffPattern?: string | null;
   blnOtEnabled: boolean;
   dtEffectiveFrom: string;
   dtEffectiveTo?: string | null;
