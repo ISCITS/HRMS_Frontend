@@ -8,6 +8,7 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
@@ -262,7 +263,7 @@ export default function PayrollResultListPage({
   const blnCanExportPayslips = canDoAny("export");
   const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
   const blnCanPrintPayslips = canDoAny("print");
-  const blnCanUsePayslipRowActions = blnCanDownloadPayslips || blnCanPrintPayslips;
+  const blnCanUsePayslipRowActions = blnCanAccessResults || blnCanDownloadPayslips || blnCanPrintPayslips;
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
   const dicPayslipFilterOptions = useMemo(() => ({
@@ -452,6 +453,21 @@ export default function PayrollResultListPage({
             )}
             {blnPayslipScreen ? (
               <>
+                {blnCanAccessResults ? (
+                  <Button
+                    className={`${styles.secondaryButton} ${styles.compactButton}`}
+                    startIcon={<VisibilityRoundedIcon />}
+                    onClick={() => {
+                      if (!dicRow.intPayslipID) {
+                        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
+                        return;
+                      }
+                      objRouter.push(blnEssMode ? `/ess/my-payslips/document/${dicRow.intPayslipID}` : `/reports/payslips/document/${dicRow.intPayslipID}`);
+                    }}
+                  >
+                    {t("view_payslip", "View")}
+                  </Button>
+                ) : null}
                 {blnCanDownloadPayslips ? (
                   <Button
                     className={`${styles.secondaryButton} ${styles.compactButton}`}
@@ -503,7 +519,7 @@ export default function PayrollResultListPage({
         ),
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
       })),
-    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
+    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
@@ -528,7 +544,7 @@ export default function PayrollResultListPage({
         sortable: false,
         filterable: false,
         exportable: false,
-        width: blnPayslipScreen ? 260 : 110,
+        width: blnPayslipScreen ? 340 : 110,
       });
     }
 

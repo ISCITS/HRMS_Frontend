@@ -33,7 +33,6 @@ import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SummarizeRoundedIcon from "@mui/icons-material/SummarizeRounded";
 import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Avatar, Box, Button, Chip, Grid, IconButton, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from "@mui/material";
@@ -42,6 +41,8 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
+import { leaveService } from "@/features/leave/services/leaveService";
+import type { LeaveApplicationDto, LeaveBalanceDto } from "@/features/leave/types";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
 
@@ -101,11 +102,6 @@ type ReadinessPayload = {
   intWarningCount?: number;
   intInfoCount?: number;
   lstBreakdown?: Array<{ strLabel: string; intValue?: number; decValue?: number }>;
-};
-
-type ExceptionGroup = {
-  strSeverity: "Blocking" | "Warning" | "Info";
-  lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strRoutePath?: string; strReason?: string; strCategory?: string }>;
 };
 
 type ApprovalAgingRow = {
@@ -267,7 +263,6 @@ type WidgetType = DashboardWidget["strWidgetType"];
 type PayrollDashboardTabCode =
   | "overview"
   | "payroll_run"
-  | "exceptions"
   | "pay_payslips"
   | "reports"
   | "audit_actions"
@@ -462,13 +457,18 @@ function calculateEssProfileCompleteness({
 }
 
 function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
-  const lstWidgets = objDashboard.lstWidgets.map(normalizeDashboardWidget);
+  const setHiddenPayrollWidgetCodes = new Set([
+    "payroll_validation_errors",
+    "payroll_alerts",
+  ]);
+  const lstWidgets = objDashboard.lstWidgets
+    .map(normalizeDashboardWidget)
+    .filter((objWidget) => !setHiddenPayrollWidgetCodes.has(String(objWidget.strWidgetCode || "").toLowerCase()));
   const dicWidgetMap = new Map(lstWidgets.map((objWidget) => [objWidget.strWidgetCode, objWidget]));
   const lstKpiWidgets = [
     ensureWidget(dicWidgetMap.get("employees_in_payroll"), "employees_in_payroll", t("employees_in_payroll", "Employees in Payroll"), "kpi", { intValue: 0, strSubtitle: t("active_employees", "Active Employees") }),
     ensureWidget(dicWidgetMap.get("net_payroll_amount"), "net_payroll_amount", t("net_payroll_amount", "Net Payroll Amount"), "kpi", { decValue: 0, strSubtitle: t("current_cycle", "Current Cycle") }),
     ensureWidget(dicWidgetMap.get("pending_approvals"), "pending_approvals", t("pending_approvals", "Pending Approvals"), "kpi", { intValue: 0, strSubtitle: t("requires_action", "Requires Action") }),
-    ensureWidget(dicWidgetMap.get("payroll_validation_errors"), "payroll_validation_errors", t("payroll_validation_errors", "Payroll Validation Errors"), "kpi", { intValue: 0, strSubtitle: t("needs_attention", "Needs Attention") }),
   ];
   const objTrackerWidget = ensureWidget(dicWidgetMap.get("payroll_workflow_tracker"), "payroll_workflow_tracker", "Payroll Workflow Tracker", "tracker", {
     lstStages: [
@@ -492,7 +492,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
   const objAttendanceTodayWidget = dicWidgetMap.get("attendance_today");
   const objLeaveOverviewWidget = dicWidgetMap.get("leave_overview");
   const objQuickActionsWidget = ensureWidget(dicWidgetMap.get("quick_actions"), "quick_actions", "Quick Actions", "actions", {
-    lstActions: objDashboard.lstQuickActions || [],
+    lstActions: filterPayrollQuickActions(objDashboard.lstQuickActions || []),
   });
   const lstRecentRunRows = (((objRecentRunsWidget.objPayload as { lstRows?: RecentRunRow[] } | undefined)?.lstRows) || []) as RecentRunRow[];
   const lstAvailablePayrollMonths = ((((objRecentRunsWidget.objPayload as { lstAvailablePayrollMonths?: string[] } | undefined)?.lstAvailablePayrollMonths) || [])) as string[];
@@ -522,32 +522,26 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
     onPayrollMonthChange?.(strSelectedMonth === strAllMonthsValue ? null : strSelectedMonth);
   }, [strSelectedMonth, onPayrollMonthChange]);
   const intPendingApprovalCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
-  const intValidationErrorCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
   const objSelectedRun = resolveSelectedRun(lstRecentRunRows, strSelectedMonth, strAllMonthsValue);
   const strRunStatusRaw = String(objSelectedRun?.run_status || objTrackerPayload.strRunStatus || "");
   const lstLifecycleStages = buildLifecycleStages(strRunStatusRaw, t);
   const objRunDetailItems = buildPayrollRunDetailItems(objSelectedRun, t);
   const lstActionPanelItems = buildPayrollActionItems(strRunStatusRaw, objDashboard.lstQuickActions || [], t);
-  const lstValidationCards = buildValidationCards(lstKpiWidgets, objSelectedRun, t);
-  const lstExceptionItems = buildExceptionItems(lstAlerts, intPendingApprovalCount, intValidationErrorCount, objSelectedRun, t);
   const objReadiness = (objDashboard.payrollReadiness || {}) as ReadinessPayload;
   const lstApprovalAging = resolveApprovalAgingRows(objDashboard.approvalAging);
   const lstDetailedSummarySections = buildDetailedSummarySections(objDashboard, t);
   const objOutputReadiness = (objDashboard.outputReadiness || {}) as OutputReadinessPayload;
   const objAudit = (objDashboard.audit || {}) as AuditPayload;
-  const lstExceptionGroups = resolveExceptionGroups(objDashboard.exceptions, lstExceptionItems);
   const objDashboardGridSpacing = { xs: 1.25, md: 1.5, xl: 1.75 };
   const strLastUpdated = formatDateTimeLabel(objDashboard.dtGeneratedOn, t);
   const [strActiveTab, setStrActiveTab] = useState<PayrollDashboardTabCode>("overview");
   const lstTabs: Array<{ strCode: PayrollDashboardTabCode; strLabel: string; objIcon: ReactNode }> = [
     { strCode: "overview", strLabel: t("overview", "Overview"), objIcon: <HomeRoundedIcon sx={{ fontSize: 16 }} /> },
     { strCode: "payroll_run", strLabel: t("payroll_run", "Payroll Run"), objIcon: <AssignmentRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "exceptions", strLabel: t("exceptions", "Exceptions"), objIcon: <WarningAmberRoundedIcon sx={{ fontSize: 16 }} /> },
     { strCode: "pay_payslips", strLabel: t("pay_payslips", "Pay & Payslips"), objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} /> },
     { strCode: "reports", strLabel: t("reports", "Reports"), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 16 }} /> },
     { strCode: "audit_actions", strLabel: t("audit_actions", "Audit & Actions"), objIcon: <RuleFolderRoundedIcon sx={{ fontSize: 16 }} /> },
   ];
-  const lstOverviewAlerts = filterDemoExceptionItems(lstExceptionItems);
   const objAttendanceTodayPayload = ((objAttendanceTodayWidget?.objPayload as Record<string, unknown> | undefined) || {});
   const objAttendanceKpiWidget: DashboardWidget = {
     strWidgetCode: "attendance_today",
@@ -578,7 +572,6 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_payroll_amount"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "employees_in_payroll"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals"),
-    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors"),
     objAttendanceKpiWidget,
     objLeaveKpiWidget,
   ].filter(Boolean) as DashboardWidget[];
@@ -705,8 +698,8 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
               gridTemplateColumns: {
                 xs: "1fr",
                 sm: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(4, minmax(0, 1fr))",
-                lg: "repeat(7, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+                lg: "repeat(6, minmax(0, 1fr))",
               },
               alignItems: "stretch",
             }}
@@ -731,13 +724,10 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
             sx={{
               display: "grid",
               gap: objDashboardGridSpacing,
-              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(0, 1fr)", lg: "minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr)" },
+              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 8fr) minmax(0, 4fr)" },
               alignItems: "stretch",
             }}
           >
-            <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", md: "1 / -1", lg: "auto" } }}>
-              <AlertsPanel lstItems={lstOverviewAlerts} t={t} />
-            </Box>
             <Box sx={{ display: "flex", minWidth: 0 }}>
               <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
             </Box>
@@ -762,24 +752,6 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
           </Box>
           <Box sx={{ display: "flex", minWidth: 0 }}>
             <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
-          </Box>
-        </Box>
-      ) : null}
-
-      {strActiveTab === "exceptions" ? (
-        <Box
-          sx={{
-            display: "grid",
-            gap: objDashboardGridSpacing,
-            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(0, 8fr)" },
-            alignItems: "stretch",
-          }}
-        >
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <ValidationSummaryPanel lstCards={lstValidationCards} t={t} />
-          </Box>
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <ExceptionPanel lstItems={lstExceptionItems} lstGroups={lstExceptionGroups} t={t} />
           </Box>
         </Box>
       ) : null}
@@ -867,7 +839,7 @@ function PayrollKpiPanel({
   const strValue = objPayload.decValue != null ? formatCurrency(objPayload.decValue) : formatInteger(objPayload.intValue || 0);
   const decTrendValue = objPayload.decTrendValue;
   const strComparisonMonth = formatComparisonMonth(strSelectedMonth === strAllMonthsValue ? "" : strSelectedMonth, t);
-  const blnNegativeMetric = objWidget.strWidgetCode === "pending_approvals" || objWidget.strWidgetCode === "payroll_validation_errors";
+  const blnNegativeMetric = objWidget.strWidgetCode === "pending_approvals";
   const strTrendIcon = decTrendValue == null ? "" : decTrendValue >= 0 ? "^" : "v";
   const strTrendText = decTrendValue == null
     ? objWidget.strWidgetCode === "employees_in_payroll"
@@ -890,7 +862,7 @@ function PayrollKpiPanel({
         p: 1.05,
         width: "100%",
         minWidth: 0,
-        minHeight: 88,
+        minHeight: 104,
         height: "auto",
         display: "flex",
         alignItems: "center",
@@ -909,8 +881,8 @@ function PayrollKpiPanel({
           <Stack spacing={0.55} alignItems="center" sx={{ minWidth: 0, width: "100%" }}>
             <Box
               sx={{
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 flexShrink: 0,
                 borderRadius: "9px",
                 display: "grid",
@@ -924,10 +896,10 @@ function PayrollKpiPanel({
               {objIcon}
             </Box>
             <Box sx={{ minWidth: 0, width: "100%" }}>
-              <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: DASHBOARD_COLORS.muted }}>
+              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: DASHBOARD_COLORS.muted, lineHeight: 1.25 }}>
                 {strTitle}
               </Typography>
-              <Typography sx={{ mt: 0.35, fontSize: "1.35rem", lineHeight: 1.03, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
+              <Typography sx={{ mt: 0.35, fontSize: "1.42rem", lineHeight: 1.04, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
                 {strValue}
               </Typography>
               <Typography sx={{ mt: 0.18, fontSize: "0.72rem", color: DASHBOARD_COLORS.muted }}>
@@ -936,7 +908,7 @@ function PayrollKpiPanel({
             </Box>
           </Stack>
         </Stack>
-        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, textAlign: "center", color: objWidget.strWidgetCode === "payroll_validation_errors" ? DASHBOARD_COLORS.red : objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
+        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, textAlign: "center", color: objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
           {strTrendText}
         </Typography>
       </Stack>
@@ -1265,118 +1237,6 @@ function VariancePanel({ lstMetrics, t }: { lstMetrics: VarianceMetric[]; t: Rol
       ) : (
         <CompactEmptyState strTitle={t("no_previous_month_data", "No previous month data")} strSubtitle={t("no_previous_month_data_hint", "Variance will appear after at least two payroll months are available.")} />
       )}
-    </PanelShell>
-  );
-}
-
-function ExceptionPanel({ lstItems, lstGroups, t }: { lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>; lstGroups: ExceptionGroup[]; t: RoleBasedDashboardProps["t"] }) {
-  const [strFilter, setStrFilter] = useState<"All" | "Blocking" | "Warning" | "Info">("All");
-  const [blnExpanded, setBlnExpanded] = useState(false);
-  const lstVisibleGroups = lstGroups.filter((objGroup) => strFilter === "All" || objGroup.strSeverity === strFilter);
-  const lstVisibleItems = lstVisibleGroups.flatMap((objGroup) => objGroup.lstItems.map((objItem) => ({ ...objItem, strSeverity: objGroup.strSeverity })));
-  const lstRenderedItems = blnExpanded ? lstVisibleItems : lstVisibleItems.slice(0, 5);
-  return (
-    <PanelShell strTitle={t("exception_first", "Exception-First View")} strSubtitle={t("exception_first_subtitle", "The highest-priority issues are surfaced before tables and charts")} strAccent={DASHBOARD_COLORS.red}>
-      <Stack spacing={1}>
-        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-          {(["All", "Blocking", "Warning", "Info"] as const).map((strItem) => (
-            <Chip key={strItem} label={strItem === "All" ? t("all", "All") : formatStatusText(strItem, t)} size="small" clickable onClick={() => setStrFilter(strItem)} sx={{ borderRadius: "999px", fontWeight: 700, backgroundColor: strFilter === strItem ? softColor(exceptionTone(strItem === "All" ? "Info" : strItem).accent) : "#F8FAFC", color: strFilter === strItem ? exceptionTone(strItem === "All" ? "Info" : strItem).accent : DASHBOARD_COLORS.muted }} />
-          ))}
-        </Stack>
-        {lstRenderedItems.map((objItem) => {
-          const objTone = exceptionTone(objItem.strSeverity);
-          const strLabel = translateDashboardText(objItem.strLabel, t, objItem.strLabel);
-          return (
-            <Link key={objItem.strCode} href={objItem.strRoutePath || "/payroll/runs"} style={{ textDecoration: "none" }}>
-              <Box sx={{ p: 1.15, borderRadius: "14px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface }}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={0.8} alignItems="center" sx={{ flexWrap: "wrap" }} useFlexGap>
-                      <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.82rem" }}>
-                        {strLabel}
-                      </Typography>
-                      <Chip label={formatStatusText(objItem.strSeverity, t)} size="small" sx={{ height: 22, borderRadius: "999px", backgroundColor: objTone.surface, color: objTone.accent, fontWeight: 700, fontSize: "0.67rem", border: `1px solid ${objTone.border}` }} />
-                    </Stack>
-                    <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.75rem" }}>
-                      {translateDashboardText(objItem.strReason, t, objItem.strReason)}
-                    </Typography>
-                  </Box>
-                  <Typography sx={{ color: objTone.accent, fontWeight: 800, fontSize: "0.84rem", whiteSpace: "nowrap" }}>
-                    {formatInteger(objItem.intCount)} {t("items", "Items")}
-                  </Typography>
-                </Stack>
-              </Box>
-            </Link>
-          );
-        })}
-        {!lstRenderedItems.length ? <CompactEmptyState strTitle={t("no_exceptions", "No exceptions")} strSubtitle={t("no_exceptions_hint", "There are no issues for the current filter.")} /> : null}
-        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
-          <Link href="/payroll/runs" style={{ color: DASHBOARD_COLORS.blue, textDecoration: "none", fontWeight: 700, fontSize: "0.82rem" }}>
-            {t("view_all_issues", "View All Issues")}
-          </Link>
-          {lstVisibleItems.length > 5 ? (
-            <Button size="small" onClick={() => setBlnExpanded((blnValue) => !blnValue)} sx={{ textTransform: "none" }}>
-              {blnExpanded ? t("show_less", "Show Less") : t("show_more", "Show More")}
-            </Button>
-          ) : null}
-        </Stack>
-      </Stack>
-    </PanelShell>
-  );
-}
-
-function AlertsPanel({ lstItems, t }: { lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>; t: RoleBasedDashboardProps["t"] }) {
-  const lstAlerts = lstItems;
-  const intTotal = lstAlerts.reduce((intSum, objAlert) => intSum + Number(objAlert.intCount || 0), 0);
-
-  return (
-    <PanelShell
-      strTitle={t("payroll_exceptions", "Payroll Exceptions")}
-      strSubtitle={intTotal > 0 ? `${formatInteger(intTotal)} ${t("open_items", "open items")}` : t("no_issues", "No issues")}
-      strAccent={intTotal > 0 ? DASHBOARD_COLORS.red : DASHBOARD_COLORS.green}
-    >
-      <Stack spacing={1}>
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <Chip label={intTotal > 0 ? `${formatInteger(intTotal)} ${t("open_items", "open items")}` : t("no_issues", "No issues")} size="small" sx={{ height: 24, borderRadius: "999px", backgroundColor: "#F8FAFC", color: DASHBOARD_COLORS.muted, fontWeight: 700, fontSize: "0.68rem" }} />
-        </Box>
-        {lstAlerts.map((objAlert) => {
-          const blnHasCount = Number(objAlert.intCount || 0) > 0;
-          const objTone = exceptionTone(objAlert.strSeverity);
-          const strLabel = translateDashboardText(objAlert.strLabel, t, objAlert.strLabel);
-          return (
-            <Box
-              key={objAlert.strCode}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-                borderRadius: "12px",
-                px: 1.25,
-                py: 0.72,
-                border: `1px solid ${blnHasCount ? objTone.border : DASHBOARD_COLORS.border}`,
-                backgroundColor: blnHasCount ? objTone.surface : "#FFFFFF",
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ width: 22, height: 22, borderRadius: "8px", display: "grid", placeItems: "center", backgroundColor: blnHasCount ? objTone.surface : "#F8FAFC" }}>
-                  <WarningAmberRoundedIcon sx={{ color: blnHasCount ? objTone.accent : DASHBOARD_COLORS.amber, fontSize: 16 }} />
-                </Box>
-                <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 600, fontSize: "0.82rem", lineHeight: 1.35 }}>
-                  {strLabel}
-                </Typography>
-              </Stack>
-              <Typography sx={{ color: blnHasCount ? objTone.accent : DASHBOARD_COLORS.muted, fontWeight: 800, fontSize: "0.78rem", whiteSpace: "nowrap" }}>
-                {formatInteger(objAlert.intCount)} {t("items", "Items")}
-              </Typography>
-            </Box>
-          );
-        })}
-        {!lstAlerts.length ? <CompactEmptyState strTitle={t("no_issues", "No issues")} strSubtitle={t("no_issues_hint", "No blocking or warning items are currently open for payroll.")} /> : null}
-        <Link href="/payroll/runs" style={{ display: "inline-block", marginTop: 8, color: DASHBOARD_COLORS.blue, textDecoration: "none", fontWeight: 700, fontSize: "0.82rem" }}>
-          {t("review_exceptions", "Review Exceptions")}
-        </Link>
-      </Stack>
     </PanelShell>
   );
 }
@@ -1780,6 +1640,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const [objEmployeeBank, setObjEmployeeBank] = useState<EmployeeBankRecord | null>(null);
   const [objEmployeeStatutory, setObjEmployeeStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [objEmployeeSalarySummary, setObjEmployeeSalarySummary] = useState<EmployeeSalarySummaryRecord | null>(null);
+  const [lstEssLeaveBalances, setLstEssLeaveBalances] = useState<LeaveBalanceDto[]>([]);
+  const [lstEssLeaveApplications, setLstEssLeaveApplications] = useState<LeaveApplicationDto[]>([]);
   const ESS_COLORS = {
     bg: "#F8FAFF",
     shell: "linear-gradient(90deg, #EDF4FF 0%, #E7F0FF 42%, #E8F8F1 100%)",
@@ -1853,6 +1715,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
             employeeService.getEmployeeBankAccount(intEmployeeID),
             employeeService.getEmployeeStatutory(intEmployeeID),
             employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
+            leaveService.getMyBalances(),
+            leaveService.listMyApplications(),
           ]),
         ]);
 
@@ -1877,6 +1741,14 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
 
         if (lstProfileDetails[3].status === "fulfilled") {
           setObjEmployeeSalarySummary(lstProfileDetails[3].value);
+        }
+
+        if (lstProfileDetails[4].status === "fulfilled") {
+          setLstEssLeaveBalances(lstProfileDetails[4].value);
+        }
+
+        if (lstProfileDetails[5].status === "fulfilled") {
+          setLstEssLeaveApplications(lstProfileDetails[5].value);
         }
       } catch {
         if (!blnMounted) {
@@ -1988,9 +1860,18 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strAttendancePunchIn = objAttendance.strPunchIn ? String(objAttendance.strPunchIn).slice(0, 5) : "-";
   const strAttendancePunchOut = objAttendance.strPunchOut ? String(objAttendance.strPunchOut).slice(0, 5) : "-";
   const strAttendanceWorkingHours = objAttendance.strWorkingHours ? `${objAttendance.strWorkingHours} hrs` : "-";
-  const decLeaveBalance = Number(objLeave.decLeaveBalance || 0);
-  const intPendingLeaveRequests = Number(objLeave.intPendingLeaveRequests || 0);
-  const strUpcomingLeave = String(objLeave.strUpcomingLeave || "");
+  const decLiveLeaveBalance = lstEssLeaveBalances.reduce((decTotal, objBalance) => decTotal + Number(objBalance.decAvailable || 0), 0);
+  const decLiveUsedLeave = lstEssLeaveBalances.reduce((decTotal, objBalance) => decTotal + Number(objBalance.decAvailed || 0), 0);
+  const blnHasLiveLeaveBalances = lstEssLeaveBalances.length > 0;
+  const decLeaveBalance = blnHasLiveLeaveBalances ? decLiveLeaveBalance : Number(objLeave.decLeaveBalance || 0);
+  const decUsedLeave = blnHasLiveLeaveBalances ? decLiveUsedLeave : Number(objLeave.decUsedLeave || objLeave.decAvailedLeave || 0);
+  const intPendingLeaveRequests = lstEssLeaveApplications.length
+    ? lstEssLeaveApplications.filter((objApplication) => String(objApplication.strStatus || "").toLowerCase() === "pending").length
+    : Number(objLeave.intPendingLeaveRequests || 0);
+  const objUpcomingLeaveApplication = getUpcomingEssLeaveApplication(lstEssLeaveApplications);
+  const strUpcomingLeave = objUpcomingLeaveApplication
+    ? formatEssLeaveApplicationLabel(objUpcomingLeaveApplication, t)
+    : String(objLeave.strUpcomingLeave || "");
   const strNextHoliday = String(objLeave.strNextHoliday || "");
 
   return (
@@ -2239,7 +2120,8 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
               ) : null}
             </Stack>
             <TwoColMetricGrid lstItems={[
-              { strLabel: t("available_balance", "Available Balance"), strValue: `${decLeaveBalance}` },
+              { strLabel: t("available_balance", "Available Balance"), strValue: formatLeaveBalanceMetric(decLeaveBalance) },
+              { strLabel: t("used_leave", "Used Leave"), strValue: formatLeaveBalanceMetric(decUsedLeave) },
               { strLabel: t("upcoming_leave", "Upcoming Leave"), strValue: strUpcomingLeave || "-" },
               { strLabel: t("next_holiday", "Next Holiday"), strValue: strNextHoliday || "-" },
             ]} />
@@ -2259,11 +2141,22 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                     <Typography noWrap sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: "0.78rem" }}>{formatMonth(String(objRow.payroll_month || ""), t)}</Typography>
                     <Typography noWrap sx={{ mt: 0.2, color: ESS_COLORS.muted, fontSize: "0.64rem" }}>{objRow.payslip_number || "-"}</Typography>
                     <Typography noWrap sx={{ mt: 0.35, color: ESS_COLORS.navy, fontWeight: 800, fontSize: "0.92rem" }}>{formatCurrency(Number(objRow.net_pay || 0))}</Typography>
-                    <Link href="/ess/my-payslips" style={{ textDecoration: "none" }}>
-                      <Box sx={{ mt: 0.65, width: 28, height: 28, borderRadius: "8px", backgroundColor: ESS_COLORS.softBlue, display: "grid", placeItems: "center", color: ESS_COLORS.blue }}>
-                        <DownloadRoundedIcon sx={{ fontSize: 15 }} />
-                      </Box>
-                    </Link>
+                    <Stack direction="row" spacing={0.5} sx={{ mt: 0.65 }}>
+                      <Tooltip title={t("view_payslip", "View")}>
+                        <Link href={objRow.payslip_id ? `/ess/my-payslips/document/${objRow.payslip_id}` : "/ess/my-payslips"} style={{ textDecoration: "none" }}>
+                          <Box sx={{ width: 28, height: 28, borderRadius: "8px", backgroundColor: ESS_COLORS.softBlue, display: "grid", placeItems: "center", color: ESS_COLORS.blue }}>
+                            <VisibilityRoundedIcon sx={{ fontSize: 15 }} />
+                          </Box>
+                        </Link>
+                      </Tooltip>
+                      <Tooltip title={t("download_payslip", "Download")}>
+                        <Link href="/ess/my-payslips" style={{ textDecoration: "none" }}>
+                          <Box sx={{ width: 28, height: 28, borderRadius: "8px", backgroundColor: ESS_COLORS.softBlue, display: "grid", placeItems: "center", color: ESS_COLORS.blue }}>
+                            <DownloadRoundedIcon sx={{ fontSize: 15 }} />
+                          </Box>
+                        </Link>
+                      </Tooltip>
+                    </Stack>
                   </Box>
                 </Grid>
               )) : <Grid item xs={12}><Typography sx={{ color: ESS_COLORS.muted, fontSize: "0.8rem" }}>{t("no_payslips", "No payslips generated yet.")}</Typography></Grid>}
@@ -2715,20 +2608,21 @@ function buildPayrollActionItems(strRunStatus: string, lstQuickActions: Dashboar
 }
 
 function buildDemoQuickActions(lstActions: DashboardQuickAction[], t: RoleBasedDashboardProps["t"]) {
-  const dicByRoute = new Map(lstActions.filter((objAction) => objAction.strRoutePath).map((objAction) => [objAction.strRoutePath as string, objAction]));
+  const dicByRoute = new Map(filterPayrollQuickActions(lstActions).filter((objAction) => objAction.strRoutePath).map((objAction) => [objAction.strRoutePath as string, objAction]));
   const lstDefaults: DashboardQuickAction[] = [
     { strActionCode: "create_payroll_run", strActionName: t("create_payroll_run", "Create Payroll Run"), strRoutePath: "/payroll/runs" },
     { strActionCode: "view_payroll_results", strActionName: t("view_payroll_results", "View Payroll Results"), strRoutePath: "/payroll/results" },
     { strActionCode: "generate_payslips", strActionName: t("generate_payslips", "Generate Payslips"), strRoutePath: "/payroll/payslips" },
-    { strActionCode: "review_exceptions", strActionName: t("review_exceptions", "Review Exceptions"), strRoutePath: "/payroll/runs" },
     { strActionCode: "payroll_reports", strActionName: t("payroll_reports", "Payroll Reports"), strRoutePath: "/reports" },
   ] as DashboardQuickAction[];
   return lstDefaults.map((objDefault) => dicByRoute.get(objDefault.strRoutePath || "") || objDefault);
 }
 
-function filterDemoExceptionItems(lstItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>) {
-  const lstAllowedPatterns = ["salary", "bank", "pan", "tax", "approval", "calculation", "validation"];
-  return lstItems.filter((objItem) => objItem.intCount > 0 && lstAllowedPatterns.some((strPattern) => `${objItem.strCode} ${objItem.strLabel}`.toLowerCase().includes(strPattern)));
+function filterPayrollQuickActions(lstActions: DashboardQuickAction[]) {
+  return lstActions.filter((objAction) => {
+    const strSearchText = `${objAction.strActionCode || ""} ${objAction.strActionName || ""} ${objAction.strRoutePath || ""}`.toLowerCase();
+    return !strSearchText.includes("exception");
+  });
 }
 
 function filterEssPendingActions(lstActions: EssPendingAction[]) {
@@ -2745,50 +2639,6 @@ function buildEssQuickActions(lstActions: DashboardQuickAction[], t: RoleBasedDa
   ] as DashboardQuickAction[];
   const dicByRoute = new Map(lstActions.filter((objAction) => objAction.strRoutePath).map((objAction) => [objAction.strRoutePath as string, objAction]));
   return lstRequired.map((objAction) => dicByRoute.get(objAction.strRoutePath || "") || objAction);
-}
-
-function buildValidationCards(lstKpiWidgets: DashboardWidget[], objSelectedRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
-  const objValidationPayload = (lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload || {}) as KpiPayload;
-  const objApprovalsPayload = (lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload || {}) as KpiPayload;
-  return [
-    { strLabel: t("blocking_issues", "Blocking Issues"), strValue: formatInteger(Number(objValidationPayload.intBlockingCount || 0)), strRoutePath: "/payroll/runs", strTone: "red" as const, strHint: t("blocking_issues_hint", "Open validation blockers that can stop payroll processing.") },
-    { strLabel: t("warnings", "Warnings"), strValue: formatInteger(Number(objValidationPayload.intWarningCount || 0)), strRoutePath: "/payroll/runs", strTone: "amber" as const, strHint: t("warnings_hint", "Warnings should be reviewed before final payroll approval.") },
-    { strLabel: t("pending_approvals", "Pending Approvals"), strValue: formatInteger(Number(objApprovalsPayload.intValue || 0)), strRoutePath: "/payroll/runs", strTone: "blue" as const, strHint: t("pending_approvals_hint", "Approval workload across payroll, tax and reimbursements.") },
-    { strLabel: t("last_validation", "Last Validation"), strValue: formatDateTimeLabel(objSelectedRun?.processed_on, t), strRoutePath: "/payroll/runs", strTone: "green" as const, strHint: t("last_validation_hint", "Current dashboard feed does not expose a separate validation timestamp, so the latest run timestamp is shown.") },
-  ];
-}
-
-function buildExceptionItems(lstAlerts: AlertRow[], intPendingApprovalCount: number, intValidationErrorCount: number, objSelectedRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
-  const lstAlertItems = lstAlerts
-    .filter((objAlert) => Number(objAlert.intCount || 0) > 0)
-    .map((objAlert) => ({
-      strCode: objAlert.strCode,
-      strLabel: t(normalizeDashboardWidgetKey(objAlert.strCode), objAlert.strLabel),
-      intCount: Number(objAlert.intCount || 0),
-      strSeverity: objAlert.strCode.includes("missing") ? "Warning" : "Info" as "Blocking" | "Warning" | "Info",
-      strRoutePath: objAlert.strRoutePath || "/employees",
-      strReason: t("exception_route_hint", "Open the related page to resolve this dashboard exception."),
-    }));
-  const lstPriorityItems = [
-    { strCode: "validation_blockers", strLabel: t("validation_blockers", "Validation Blockers"), intCount: intValidationErrorCount, strSeverity: "Blocking" as const, strRoutePath: "/payroll/runs", strReason: t("validation_blockers_reason", "Unresolved issues can block payroll processing or closure.") },
-    { strCode: "approval_queue", strLabel: t("approval_queue", "Approval Queue"), intCount: intPendingApprovalCount, strSeverity: "Warning" as const, strRoutePath: "/payroll/runs", strReason: t("approval_queue_reason", "Pending approvals still require payroll review or sign-off.") },
-    { strCode: "payslip_pending", strLabel: t("payslip_pending", "Payslip Generation Pending"), intCount: ["processed", "closed"].includes(normalizeRunStatus(objSelectedRun?.run_status || "")) ? Math.max(Number(objSelectedRun?.employee_count || 0), 0) : 0, strSeverity: "Info" as const, strRoutePath: "/payroll/payslips", strReason: t("payslip_pending_reason", "Payslips become actionable only after payroll results are available.") },
-  ];
-  return [...lstPriorityItems, ...lstAlertItems].filter((objItem) => objItem.intCount > 0);
-}
-
-function resolveExceptionGroups(objExceptions: DashboardResponse["exceptions"], lstFallbackItems: Array<{ strCode: string; strLabel: string; intCount: number; strSeverity: "Blocking" | "Warning" | "Info"; strRoutePath: string; strReason: string }>) {
-  const objValue = (objExceptions || {}) as { lstGroups?: ExceptionGroup[] };
-  if (objValue.lstGroups?.length) {
-    return objValue.lstGroups;
-  }
-  const dicGroups = new Map<ExceptionGroup["strSeverity"], ExceptionGroup>();
-  lstFallbackItems.forEach((objItem) => {
-    const objGroup = dicGroups.get(objItem.strSeverity) || { strSeverity: objItem.strSeverity, lstItems: [] };
-    objGroup.lstItems.push(objItem);
-    dicGroups.set(objItem.strSeverity, objGroup);
-  });
-  return Array.from(dicGroups.values());
 }
 
 function resolveApprovalAgingRows(objApprovalAging: DashboardResponse["approvalAging"]) {
@@ -3105,6 +2955,39 @@ function formatComparisonMonth(strValue: string, t: RoleBasedDashboardProps["t"]
 function formatDateLabel(strValue: string, t: RoleBasedDashboardProps["t"]) {
   const objDate = parseDashboardDate(strValue);
   return Number.isNaN(objDate.getTime()) ? strValue : `${String(objDate.getDate()).padStart(2, "0")} ${monthLabel(objDate, t)} ${objDate.getFullYear()}`;
+}
+
+function formatLeaveBalanceMetric(decValue: number) {
+  if (!Number.isFinite(decValue)) {
+    return "0";
+  }
+  return Number.isInteger(decValue) ? String(decValue) : decValue.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function getUpcomingEssLeaveApplication(lstApplications: LeaveApplicationDto[]) {
+  const objToday = new Date();
+  objToday.setHours(0, 0, 0, 0);
+  const lstAllowedStatuses = new Set(["approved", "pending"]);
+
+  return lstApplications
+    .filter((objApplication) => {
+      const strStatus = String(objApplication.strStatus || "").toLowerCase();
+      const objFromDate = parseDashboardDate(String(objApplication.dtFromDate || ""));
+      return lstAllowedStatuses.has(strStatus) && !Number.isNaN(objFromDate.getTime()) && objFromDate >= objToday;
+    })
+    .sort((objLeft, objRight) => {
+      const intLeftTime = parseDashboardDate(String(objLeft.dtFromDate || "")).getTime();
+      const intRightTime = parseDashboardDate(String(objRight.dtFromDate || "")).getTime();
+      return intLeftTime - intRightTime;
+    })[0] || null;
+}
+
+function formatEssLeaveApplicationLabel(objApplication: LeaveApplicationDto, t: RoleBasedDashboardProps["t"]) {
+  const strTypeName = String(objApplication.strTypeName || objApplication.strTypeCode || t("leave", "Leave"));
+  const strFromDate = objApplication.dtFromDate ? formatDateLabel(objApplication.dtFromDate, t) : "";
+  const strToDate = objApplication.dtToDate ? formatDateLabel(objApplication.dtToDate, t) : "";
+  const strDateRange = strFromDate && strToDate && strFromDate !== strToDate ? `${strFromDate} - ${strToDate}` : strFromDate || strToDate;
+  return strDateRange ? `${strTypeName} - ${strDateRange}` : strTypeName;
 }
 
 function chartPointValue(objPoint: ChartPoint | undefined) {

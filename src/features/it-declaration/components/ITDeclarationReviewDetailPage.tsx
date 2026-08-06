@@ -408,13 +408,14 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     [lstCategoryRules]
   );
   const lstItems = useMemo(
-    () => {
-      const lstDeclaredItems = (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0);
-      if (lstCategoryRules === null) return lstDeclaredItems;
-      const setActiveSections = new Set(lstCategoryRules.map((objRule) => normalizeDeclarationSection(objRule.strSection)));
-      return lstDeclaredItems.filter((objItem) => setActiveSections.has(normalizeDeclarationSection(objItem.strSection)));
-    },
-    [objDetail, lstCategoryRules]
+    // Note: intentionally not filtering by lstCategoryRules here - that list is
+    // sourced from a separate ESS category master whose code doesn't reliably
+    // correspond to an item's section code (e.g. HRA's category_code "HRA" vs
+    // its section_code "10(13A)"), so using it as an inclusion filter silently
+    // dropped legitimately declared/approved items from this review screen.
+    // lstCategoryRules is still used below for max-limit lookups.
+    () => (objDetail?.lstItems || []).filter((objItem) => Number(objItem.decDeclaredAmount || 0) > 0),
+    [objDetail]
   );
   const lstSectionGroups = useMemo<DeclarationSectionGroup[]>(() => {
     const dicGroups = new Map<string, DeclarationSectionGroup>();
