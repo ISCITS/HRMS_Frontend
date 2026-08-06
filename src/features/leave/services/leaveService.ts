@@ -456,6 +456,16 @@ export const leaveService = {
     return objResult.Data;
   },
 
+  async assignBackupResource(intApplicationID: number, objPayload: { intBackupEmployeeID: number; strReason?: string | null }): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/backup-resource`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async reassignApplication(intApplicationID: number, objPayload: LeaveReassignRequest): Promise<LeaveApplicationDto> {
     const objResult = await requestApi<LeaveApplicationDto>({
       strPath: `/leave/applications/${intApplicationID}/reassign`,

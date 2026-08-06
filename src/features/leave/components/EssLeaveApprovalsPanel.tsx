@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import EssTeamCalendarPage from "@/features/leave/components/EssTeamCalendarPage";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -16,7 +17,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, IconButton, InputAdornment,
-  LinearProgress, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
+  LinearProgress, MenuItem, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
   TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
@@ -26,6 +27,8 @@ import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { useLeaveApprovals } from "@/features/leave/hooks/useLeaveApprovals";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
+import { employeeService } from "@/features/employee/services/employeeService";
+import type { EmployeeListRecord } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   formatLeaveDate, getLeaveStatusLabel, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
@@ -76,9 +79,32 @@ export default function EssLeaveApprovalsPanel() {
   const [strRemark, setStrRemark] = useState("");
   const [intProcessingID, setIntProcessingID] = useState<number | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  // Colleague list for the approver's backup-resource picker (loaded once when the user can approve).
+  const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
+
+  useEffect(() => {
+    if (!blnCanApprove) return;
+    let blnActive = true;
+    employeeService.getEmployees().then((lstResult) => { if (blnActive) setLstEmployees(lstResult); }).catch(() => { /* picker stays empty on failure */ });
+    return () => { blnActive = false; };
+  }, [blnCanApprove]);
 
   function fnShowToast(strMessage: string, strSeverity: "success" | "error") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  async function fnAssignBackup(intApplicationID: number, intBackupEmployeeID: number) {
+    setIntProcessingID(intApplicationID);
+    try {
+      await leaveService.assignBackupResource(intApplicationID, { intBackupEmployeeID });
+      setObjDetail((objPrev) => (objPrev && objPrev.intID === intApplicationID ? { ...objPrev, intBackupEmployeeID } : objPrev));
+      fnShowToast(t("backup_assigned", "Backup resource assigned."), "success");
+      await fnLoadAll();
+    } catch (objError) {
+      fnShowToast((await createApiRequestError(objError)).message, "error");
+    } finally {
+      setIntProcessingID(null);
+    }
   }
 
   const lstDelegated = useMemo(() => lstQueue.filter((objItem) => objItem.blnIsDelegated), [lstQueue]);
@@ -206,7 +232,6 @@ export default function EssLeaveApprovalsPanel() {
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
         <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><FactCheckRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Leave Approvals")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography></Box></Stack>
         <Stack direction="row" spacing={1}>
-          {blnCanViewTeamCalendar ? <Button data-controlid="ess.leave.approvals.calendar" variant="text" startIcon={<CalendarMonthRoundedIcon />} onClick={() => { setObjCalendarContext(null); setIntTab(4); }} sx={{ color: "white" }}>{t("team_calendar", "Team Calendar")}</Button> : null}
           <Button data-controlid="ess.leave.approvals.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
         </Stack>
       </Stack>
@@ -226,7 +251,14 @@ export default function EssLeaveApprovalsPanel() {
       {intTab === 3 ? (
         <TeamLeaveList objTeamCalendar={objTeamCalendar} lstUpcoming={lstUpcoming} blnLoading={blnLoading} fnLabel={t} fnOnOpenCalendar={() => { setObjCalendarContext(null); setIntTab(4); }} blnCanViewCalendar={blnCanViewTeamCalendar} />
       ) : intTab === 4 ? (
-        <TeamCalendarTab objTeamCalendar={objTeamCalendar} blnLoading={blnLoading} objContext={objCalendarContext} fnOnBack={() => { if (objCalendarContext) { const objItem = objCalendarContext.objItem; const intPrev = objCalendarContext.intPrevTab; setObjCalendarContext(null); setIntTab(intPrev); void fnOpenDetail(objItem); } }} fnLabel={t} />
+        <Box sx={{ p: 2 }}>
+          <EssTeamCalendarPage
+            blnEmbedded
+            intHighlightEmployeeID={objCalendarContext?.objItem.intEmployeeID ?? null}
+            strInitialAnchorISO={objCalendarContext?.objItem.dtFromDate ?? undefined}
+            objBackAction={objCalendarContext ? <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => { const objItem = objCalendarContext.objItem; const intPrev = objCalendarContext.intPrevTab; setObjCalendarContext(null); setIntTab(intPrev); void fnOpenDetail(objItem); }} data-controlid="ess.leave.approvals.calendar.back">{t("back_to_request", "Back to Request")}</Button> : undefined}
+          />
+        </Box>
       ) : <>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2 }} justifyContent="space-between" alignItems={{ sm: "center" }}>
           <Typography sx={{ fontSize: ".8rem", color: "#64748b" }}>{lstFiltered.length} {t("requests", "request(s)")}</Typography>
@@ -248,7 +280,7 @@ export default function EssLeaveApprovalsPanel() {
       blnProcessing={intProcessingID === objDetail?.intID} fnOnClose={() => setObjDetail(null)}
       fnOnDecision={(strKind) => { setStrRemark(""); setObjDecision({ strKind, objItem: objDetail as LeaveQueueItemDto }); }}
       fnOnOpenCalendar={() => { if (objDetail) { setObjCalendarContext({ objItem: objDetail, intPrevTab: intTab }); setObjDetail(null); setIntTab(4); } }}
-      blnCanViewCalendar={blnCanViewTeamCalendar} fnLabel={t}
+      blnCanViewCalendar={blnCanViewTeamCalendar} lstEmployees={lstEmployees} fnOnAssignBackup={fnAssignBackup} fnLabel={t}
     />
 
     <Dialog open={Boolean(objDecision)} onClose={() => intProcessingID === null && setObjDecision(null)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: "16px" } }}>
@@ -330,31 +362,6 @@ function ApprovalCard({ objItem, blnCanViewConfidential, fnOnOpen, fnLabel }: { 
   return <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }} onClick={fnOnOpen}><Stack direction="row" justifyContent="space-between" alignItems="flex-start"><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{fnEmployeeName(objItem)}</Typography><Box sx={{ mt: .5 }}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></Box><Typography sx={{ fontSize: ".74rem", color: "#64748b", mt: .5 }}>{formatLeaveDate(objItem.dtFromDate)} – {formatLeaveDate(objItem.dtToDate)} · {objItem.decDays} {fnLabel("days_short", "day(s)")}</Typography></Box><Stack spacing={.5} alignItems="flex-end"><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></Stack></Paper>;
 }
 
-function TeamCalendarTab({ objTeamCalendar, blnLoading, objContext, fnOnBack, fnLabel }: {
-  objTeamCalendar: TeamCalendarDto | null; blnLoading: boolean;
-  objContext: { objItem: LeaveQueueItemDto; intPrevTab: number } | null;
-  fnOnBack: () => void; fnLabel: LabelFn;
-}) {
-  if (blnLoading) return <Box sx={{ p: 2 }}><Skeleton variant="rounded" height={280} /></Box>;
-  if (!objTeamCalendar) return <EmptyState strMessage={fnLabel("team_calendar_unavailable", "Team calendar is not available for your account.")} />;
-  const intHighlightEmployeeID = objContext?.objItem.intEmployeeID ?? null;
-  return <Box sx={{ p: 2 }}><Stack spacing={1.5}>
-    {objContext ? <Alert severity="info" icon={<CalendarMonthRoundedIcon />} action={<Button size="small" startIcon={<ArrowBackRoundedIcon />} onClick={fnOnBack} data-controlid="ess.leave.approvals.calendar.back">{fnLabel("back_to_request", "Back to Request")}</Button>}>
-      {fnLabel("calendar_context", "Showing team leave around {name}'s request ({from} – {to}).").replace("{name}", fnEmployeeName(objContext.objItem)).replace("{from}", formatLeaveDate(objContext.objItem.dtFromDate)).replace("{to}", formatLeaveDate(objContext.objItem.dtToDate))}
-    </Alert> : null}
-    <Typography sx={{ fontSize: ".78rem", color: "#64748b" }}>{formatLeaveDate(objTeamCalendar.dtFromDate)} – {formatLeaveDate(objTeamCalendar.dtToDate)}</Typography>
-    {objTeamCalendar.lstEmployees.length === 0 ? <EmptyState strMessage={fnLabel("team_calendar_empty", "No team leave in this period.")} /> : <Stack spacing={1}>
-      {objTeamCalendar.lstEmployees.map((objMember) => {
-        const blnHighlight = intHighlightEmployeeID === objMember.intEmployeeID;
-        return <Paper key={objMember.intEmployeeID} variant="outlined" sx={{ p: 1.25, borderRadius: "12px", border: blnHighlight ? "2px solid #0a66a3" : "1px solid #e2e8f0", bgcolor: blnHighlight ? "#f0f9ff" : "white" }}>
-          <Box sx={{ mb: objMember.lstLeaveEvents.length ? .75 : 0 }}><Typography sx={{ fontWeight: 700, fontSize: ".84rem" }}>{objMember.strEmployeeName}{blnHighlight ? ` · ${fnLabel("applicant", "Applicant")}` : ""}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{objMember.strEmployeeCode}</Typography></Box>
-          {objMember.lstLeaveEvents.length === 0 ? <Typography sx={{ fontSize: ".74rem", color: "#94a3b8" }}>{fnLabel("no_leave", "No leave")}</Typography> : <Stack spacing={.5}>{objMember.lstLeaveEvents.map((objEvent, intIndex) => <Stack key={`${objEvent.intApplicationID}-${intIndex}`} direction="row" justifyContent="space-between" alignItems="center" spacing={1}><Typography sx={{ fontSize: ".76rem" }}>{objEvent.blnIsMasked ? fnLabel("confidential", "Confidential") : (objEvent.strLabel ?? fnLabel("leave", "Leave"))} · {formatLeaveDate(objEvent.dtFromDate)} – {formatLeaveDate(objEvent.dtToDate)}</Typography><StatusChip strStatus={objEvent.strStatus} fnLabel={fnLabel} /></Stack>)}</Stack>}
-        </Paper>;
-      })}
-    </Stack>}
-  </Stack></Box>;
-}
-
 function TeamLeaveList({ objTeamCalendar, lstUpcoming, blnLoading, fnLabel, fnOnOpenCalendar, blnCanViewCalendar }: {
   objTeamCalendar: TeamCalendarDto | null; lstUpcoming: { strEmployeeName: string; strLabel: string | null; dtFromDate: string; dtToDate: string; strStatus: string; blnMasked: boolean }[];
   blnLoading: boolean; fnLabel: LabelFn; fnOnOpenCalendar: () => void; blnCanViewCalendar: boolean;
@@ -376,10 +383,30 @@ function KeyValue({ strLabel, objValue }: { strLabel: string; objValue: ReactNod
   return <Box><Typography sx={{ fontSize: ".68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>{strLabel}</Typography><Typography sx={{ fontWeight: 600, fontSize: ".86rem" }}>{objValue}</Typography></Box>;
 }
 
-function DetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewConfidential, blnCanApprove, blnCanReject, blnCanSendBack, blnProcessing, fnOnClose, fnOnDecision, fnOnOpenCalendar, blnCanViewCalendar, fnLabel }: {
+function BackupResourceEditor({ objItem, lstEmployees, blnProcessing, strRule, fnOnAssignBackup, fnLabel }: {
+  objItem: LeaveQueueItemDto; lstEmployees: EmployeeListRecord[]; blnProcessing: boolean; strRule: string;
+  fnOnAssignBackup: (intApplicationID: number, intBackupEmployeeID: number) => void; fnLabel: LabelFn;
+}) {
+  const [intSelection, setIntSelection] = useState<number | "">(objItem.intBackupEmployeeID ?? "");
+  useEffect(() => { setIntSelection(objItem.intBackupEmployeeID ?? ""); }, [objItem.intID, objItem.intBackupEmployeeID]);
+  const strRequirement = strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : fnLabel("backup_optional", "Optional");
+  return <Box>
+    <Typography sx={{ fontSize: ".72rem", color: "#64748b", mb: .5 }}>{fnLabel("backup_resource", "Backup Resource")} · {strRequirement}</Typography>
+    <Stack direction="row" spacing={1} alignItems="center">
+      <TextField select size="small" fullWidth value={intSelection === "" ? "" : String(intSelection)} onChange={(objEvent) => setIntSelection(objEvent.target.value ? Number(objEvent.target.value) : "")} data-controlid="ess.leave.approvals.backup.select">
+        <MenuItem value="">{fnLabel("backup_none_option", "— Select colleague —")}</MenuItem>
+        {lstEmployees.filter((objEmp) => objEmp.intID !== objItem.intEmployeeID).map((objEmp) => <MenuItem key={objEmp.intID} value={String(objEmp.intID)}>{objEmp.strFullName} ({objEmp.strEmployeeCode})</MenuItem>)}
+      </TextField>
+      <Button variant="outlined" size="small" disabled={blnProcessing || intSelection === "" || intSelection === objItem.intBackupEmployeeID} onClick={() => { if (intSelection !== "") fnOnAssignBackup(objItem.intID, Number(intSelection)); }} data-controlid="ess.leave.approvals.backup.save">{fnLabel("save", "Save")}</Button>
+    </Stack>
+  </Box>;
+}
+
+function DetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewConfidential, blnCanApprove, blnCanReject, blnCanSendBack, blnProcessing, fnOnClose, fnOnDecision, fnOnOpenCalendar, blnCanViewCalendar, lstEmployees, fnOnAssignBackup, fnLabel }: {
   objItem: LeaveQueueItemDto | null; lstTimeline: LeaveTimelineEntryDto[]; lstRoute: LeaveRouteStepDto[]; blnLoading: boolean;
   blnCanViewConfidential: boolean; blnCanApprove: boolean; blnCanReject: boolean; blnCanSendBack: boolean; blnProcessing: boolean;
-  fnOnClose: () => void; fnOnDecision: (strKind: DecisionKind) => void; fnOnOpenCalendar: (strFrom: string, strTo: string) => void; blnCanViewCalendar: boolean; fnLabel: LabelFn;
+  fnOnClose: () => void; fnOnDecision: (strKind: DecisionKind) => void; fnOnOpenCalendar: (strFrom: string, strTo: string) => void; blnCanViewCalendar: boolean;
+  lstEmployees: EmployeeListRecord[]; fnOnAssignBackup: (intApplicationID: number, intBackupEmployeeID: number) => void; fnLabel: LabelFn;
 }) {
   const blnMasked = Boolean(objItem?.blnIsMasked && !blnCanViewConfidential);
   const objCalc = objItem?.objCalculation ?? null;
@@ -400,14 +427,16 @@ function DetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewCo
           <Grid item xs={6}><KeyValue strLabel={fnLabel("from_date", "From")} objValue={formatLeaveDate(objItem.dtFromDate)} /></Grid>
           <Grid item xs={6}><KeyValue strLabel={fnLabel("to_date", "To")} objValue={formatLeaveDate(objItem.dtToDate)} /></Grid>
           <Grid item xs={12}><KeyValue strLabel={fnLabel("reason", "Reason")} objValue={blnMasked ? fnLabel("confidential", "Confidential") : (objItem.strReason || "—")} /></Grid>
-          <Grid item xs={12}><KeyValue strLabel={fnLabel("backup_resource", "Backup Resource")} objValue={(() => {
-            const strRule = String(objCalc?.strBackupResourceRuleCode || "").toUpperCase();
-            const strRequirement = strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : strRule ? fnLabel("backup_optional", "Optional") : "";
-            const strSelection = objItem.intBackupEmployeeID
-              ? `Employee #${objItem.intBackupEmployeeID}`
-              : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required", "Not required") : fnLabel("backup_not_provided", "Not provided");
-            return strRequirement ? `${strSelection} (${strRequirement})` : strSelection;
-          })()} /></Grid>
+          <Grid item xs={12}>{blnActionable && blnCanApprove && !blnMasked
+            ? <BackupResourceEditor objItem={objItem} lstEmployees={lstEmployees} blnProcessing={blnProcessing} strRule={String(objCalc?.strBackupResourceRuleCode || "").toUpperCase()} fnOnAssignBackup={fnOnAssignBackup} fnLabel={fnLabel} />
+            : <KeyValue strLabel={fnLabel("backup_resource", "Backup Resource")} objValue={(() => {
+              const strRule = String(objCalc?.strBackupResourceRuleCode || "").toUpperCase();
+              const strRequirement = strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : strRule ? fnLabel("backup_optional", "Optional") : "";
+              const strSelection = objItem.intBackupEmployeeID
+                ? (lstEmployees.find((objEmp) => objEmp.intID === objItem.intBackupEmployeeID)?.strFullName ?? `Employee #${objItem.intBackupEmployeeID}`)
+                : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required", "Not required") : fnLabel("backup_not_provided", "Not provided");
+              return strRequirement ? `${strSelection} (${strRequirement})` : strSelection;
+            })()} />}</Grid>
         </Grid>
 
         {objCalc && !blnMasked ? <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "12px" }}><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: 1 }}>{fnLabel("balance_and_policy", "Balance & Policy")}</Typography><Grid container spacing={1}>

@@ -10,7 +10,7 @@ import {
   ToggleButtonGroup, Tooltip, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { useTeamCalendar, type CalendarDateMeta } from "@/features/leave/hooks/useTeamCalendar";
@@ -65,22 +65,34 @@ function fnEventStyle(objEvent: TeamCalendarEventDto, blnCanViewConfidential: bo
   return { strBg: "#cbd5e1", strFg: "#334155", strChar: (objEvent.strLabel ?? "L").slice(0, 1).toUpperCase() };
 }
 
-export default function EssTeamCalendarPage() {
+export default function EssTeamCalendarPage({
+  blnEmbedded = false,
+  intHighlightEmployeeID = null,
+  strInitialAnchorISO,
+  objBackAction,
+}: {
+  blnEmbedded?: boolean;
+  intHighlightEmployeeID?: number | null;
+  strInitialAnchorISO?: string;
+  objBackAction?: ReactNode;
+} = {}) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("ess-team-calendar", "Unable to load Team Calendar labels.");
   const { blnLoading: blnRightsLoading, blnCanViewTeamCalendar, blnCanViewConfidential, blnCanApprove } = useLeaveWorkflowPermissions();
 
   const [strView, setStrView] = useState<ViewMode>("month");
-  const [dtAnchor, setDtAnchor] = useState<Date>(new Date());
+  const [dtAnchor, setDtAnchor] = useState<Date>(strInitialAnchorISO ? fnParseISO(strInitialAnchorISO) : new Date());
 
-  // A "Team Calendar" deep-link from the approvals screen (?from=&to=) opens the week around it.
+  // A "Team Calendar" deep-link from the approvals screen (?from=&to=) opens the week around it. When
+  // embedded as a tab the context arrives via props instead, so the URL is not consulted.
   useEffect(() => {
+    if (blnEmbedded) return;
     const strFrom = new URLSearchParams(window.location.search).get("from");
     if (strFrom) {
       setStrView("week");
       setDtAnchor(fnParseISO(strFrom));
     }
-  }, []);
+  }, [blnEmbedded]);
 
   const { dtFrom, dtTo } = useMemo(() => fnWindow(strView, dtAnchor), [strView, dtAnchor]);
   const strFromISO = fnLocalISO(dtFrom);
@@ -156,7 +168,7 @@ export default function EssTeamCalendarPage() {
   const intNameWidth = 168;
 
   return <Stack spacing={2}>
-    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
+    {blnEmbedded ? null : <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
         <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><CalendarMonthRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Team Calendar")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Leave, holidays and availability across your team.")}</Typography></Box></Stack>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -167,15 +179,21 @@ export default function EssTeamCalendarPage() {
           <Button data-controlid="ess.team.calendar.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoad()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
         </Stack>
       </Stack>
-    </Paper>
+    </Paper>}
 
     <Paper sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ p: 1.5, borderBottom: "1px solid #e2e8f0" }}>
-        <Stack direction="row" spacing={.5} alignItems="center">
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} justifyContent="space-between" sx={{ p: 1.5, borderBottom: "1px solid #e2e8f0" }}>
+        <Stack direction="row" spacing={.5} alignItems="center" sx={{ flexWrap: "wrap" }}>
+          {blnEmbedded && objBackAction ? objBackAction : null}
           <Button data-controlid="ess.team.calendar.prev" size="small" onClick={() => fnShift(-1)} startIcon={<ChevronLeftRoundedIcon />}>{t("prev", "Prev")}</Button>
           <Typography sx={{ fontWeight: 800, minWidth: 160, textAlign: "center" }}>{strRangeLabel}</Typography>
           <Button data-controlid="ess.team.calendar.next" size="small" onClick={() => fnShift(1)} endIcon={<ChevronRightRoundedIcon />}>{t("next", "Next")}</Button>
           <Button data-controlid="ess.team.calendar.today" size="small" variant="outlined" onClick={() => setDtAnchor(new Date())}>{t("today", "Today")}</Button>
+          {blnEmbedded ? <ToggleButtonGroup exclusive size="small" value={strView} onChange={(_objEvent, strValue) => strValue && setStrView(strValue)}>
+            <ToggleButton data-controlid="ess.team.calendar.view.month" value="month" sx={{ textTransform: "none", fontWeight: 700 }}>{t("month", "Month")}</ToggleButton>
+            <ToggleButton data-controlid="ess.team.calendar.view.week" value="week" sx={{ textTransform: "none", fontWeight: 700 }}>{t("week", "Week")}</ToggleButton>
+          </ToggleButtonGroup> : null}
+          {blnEmbedded ? <Button data-controlid="ess.team.calendar.refresh.embedded" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoad()}>{t("refresh", "Refresh")}</Button> : null}
         </Stack>
         <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
           {[[t("approved", "Approved"), "#16a34a"], [t("pending", "Pending"), "#f59e0b"], [t("holiday", "Holiday"), "#fdba74"], [t("weekly_off", "Weekly Off"), "#cbd5e1"]].map(([strLabel, strColor]) => <Stack key={strLabel} direction="row" spacing={.5} alignItems="center"><Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: strColor }} /><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{strLabel}</Typography></Stack>)}
@@ -198,8 +216,8 @@ export default function EssTeamCalendarPage() {
           </Stack>
 
           {/* Member rows */}
-          {lstMembers.map((objMember) => <Stack key={objMember.intEmployeeID} direction="row" sx={{ borderBottom: "1px solid #f1f5f9", "&:hover": { bgcolor: "#f8fafc" } }}>
-            <Box sx={{ width: intNameWidth, flexShrink: 0, p: 1, position: "sticky", left: 0, bgcolor: "inherit", zIndex: 1, borderRight: "1px solid #e2e8f0" }}><Typography noWrap sx={{ fontWeight: 700, fontSize: ".8rem" }}>{objMember.strEmployeeName}</Typography><Typography sx={{ fontSize: ".68rem", color: "#94a3b8" }}>{objMember.strEmployeeCode}</Typography></Box>
+          {lstMembers.map((objMember) => { const blnHighlight = intHighlightEmployeeID != null && objMember.intEmployeeID === intHighlightEmployeeID; return <Stack key={objMember.intEmployeeID} direction="row" sx={{ borderBottom: "1px solid #f1f5f9", bgcolor: blnHighlight ? "#eff6ff" : undefined, "&:hover": { bgcolor: blnHighlight ? "#dbeafe" : "#f8fafc" } }}>
+            <Box sx={{ width: intNameWidth, flexShrink: 0, p: 1, position: "sticky", left: 0, bgcolor: "inherit", zIndex: 1, borderRight: "1px solid #e2e8f0", borderLeft: blnHighlight ? "3px solid #0a66a3" : undefined }}><Typography noWrap sx={{ fontWeight: blnHighlight ? 800 : 700, fontSize: ".8rem" }}>{objMember.strEmployeeName}{blnHighlight ? ` · ${t("applicant", "Applicant")}` : ""}</Typography><Typography sx={{ fontSize: ".68rem", color: "#94a3b8" }}>{objMember.strEmployeeCode}</Typography></Box>
             {lstDays.map(({ strISO, strMeta }) => {
               const objEvent = dicCellEvents.get(`${objMember.intEmployeeID}|${strISO}`);
               if (!objEvent) {
@@ -214,7 +232,7 @@ export default function EssTeamCalendarPage() {
                 </Tooltip>
               </Box>;
             })}
-          </Stack>)}
+          </Stack>; })}
 
           {/* Availability summary */}
           <Stack direction="row" sx={{ borderTop: "2px solid #e2e8f0", bgcolor: "#f8fafc" }}>
