@@ -30,15 +30,10 @@ function buildRequestIdAwareMessage(strMessage: unknown, strRequestId?: string) 
   const strResolvedMessage = typeof strMessage === "string"
     ? (strNormalizedMessage && strNormalizedMessage !== "[]" ? strNormalizedMessage : ApiDefaultMessage.RequestFailed)
     : ApiDefaultMessage.RequestFailed;
-  if (!strRequestId?.trim()) {
-    return strResolvedMessage;
-  }
-
-  if (strResolvedMessage.toLowerCase().includes("x-request-id")) {
-    return strResolvedMessage;
-  }
-
-  return `${strResolvedMessage} Kindly refer the X-Request-Id ${strRequestId.trim()}`;
+  // The X-Request-Id is still captured on ApiRequestError.strRequestId for diagnostics/logs, but it
+  // is intentionally NOT appended to the user-facing message.
+  void strRequestId;
+  return strResolvedMessage;
 }
 
 export class ApiRequestError extends Error {
