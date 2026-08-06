@@ -93,6 +93,7 @@ function toAttendancePolicy(objPolicy: AttendancePolicy): AttendancePolicy {
   return {
     intID: objPolicy.intID,
     ...toAttendancePolicyFormValues(objPolicy),
+    blnHasAssignmentsOrUsage: objPolicy.blnHasAssignmentsOrUsage,
   };
 }
 

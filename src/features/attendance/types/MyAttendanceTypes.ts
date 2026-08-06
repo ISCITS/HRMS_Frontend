@@ -9,6 +9,7 @@ export type MyAttendancePunch = {
 
 export type MyAttendancePolicy = {
   strPolicyName: string;
+  strPolicySource?: "EMPLOYEE_ASSIGNMENT" | "COMPANY_DEFAULT" | null;
   decFullDayThresholdHours: number;
   decHalfDayThresholdHours: number;
   blnInPunchRequired: boolean;
