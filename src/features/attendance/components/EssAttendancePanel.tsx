@@ -342,7 +342,7 @@ export default function EssAttendancePanel() {
   }
 
   function renderStatusChip(objDay?: AttendanceDayDto | null) {
-    if (!objDay) return <Chip size="small" label={t("not_recorded", "Not recorded")} />;
+    if (!objDay) return <Chip size="small" label={t("not_recorded", "No attendance record")} />;
     const objColor = ATTENDANCE_STATUS_COLORS[objDay.strStatus] ?? {
       bg: "#f1f5f9",
       fg: "#475569",
@@ -605,7 +605,7 @@ export default function EssAttendancePanel() {
                     <Typography variant="caption" color="text.secondary">
                       {blnFutureDate
                         ? t("not_processed", "Not Processed")
-                        : objDay ? formatDuration(objDay.decWorkedHours) : t("not_recorded", "Not recorded")}
+                        : objDay ? formatDuration(objDay.decWorkedHours) : t("not_recorded", "No attendance record")}
                     </Typography>
                   </Box>
                   {blnFutureDate

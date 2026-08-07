@@ -37,6 +37,27 @@ function formatInputTime(strValue?: string | null) {
   return strValue.slice(0, 5);
 }
 
+// Mirrors formatTime in AttendanceRegularizationPage.tsx (HH:MM, no seconds) — duplicated locally
+// since the helper isn't exported from that file and this page has no shared hooks layer to host it.
+function formatTime(strValue?: string | null) {
+  if (!strValue) return "—";
+  const objDate = new Date(strValue);
+  if (!Number.isNaN(objDate.getTime())) {
+    return objDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return strValue.slice(0, 5);
+}
+
+// Mirrors formatDateTime in AttendanceRegularizationPage.tsx — strips seconds from the timeline
+// timestamp so both approval-detail dialogs render dates/times consistently.
+function formatDateTime(strValue?: string | null) {
+  if (!strValue) return "—";
+  const objDate = new Date(strValue);
+  return Number.isNaN(objDate.getTime())
+    ? strValue.slice(0, 5)
+    : objDate.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 function getContextFirstIn(objContext?: DateContext | null) {
   return objContext?.objAttendanceDay.strFirstIn ?? objContext?.objAttendanceDay.tmFirstIn ?? null;
 }
@@ -81,7 +102,9 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
   const [objLookups, setObjLookups] = useState<RegularizationLookups>({});
   const [lstRequests, setLstRequests] = useState<RegularizationRequest[]>([]);
   const [objDetail, setObjDetail] = useState<RegularizationDetail | null>(null);
-  const [strStatus, setStrStatus] = useState("");
+  // Default to Pending Approval so HR doesn't land on employee Drafts by default; "All" (including
+  // Draft, for authorized HR reviewing on-behalf drafts) is still selectable from the dropdown.
+  const [strStatus, setStrStatus] = useState("PENDING_APPROVAL");
   const [strFromDate, setStrFromDate] = useState("");
   const [strToDate, setStrToDate] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
@@ -245,7 +268,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
       </Paper>
       <Dialog data-control-id="regularization-requests.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="lg">
         <DialogTitle>{t("approval_detail", "Approval Detail")}</DialogTitle>
-        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "Not recorded"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objOriginalSnapshot.tmFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objOriginalSnapshot.tmLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objProposalSnapshot.tmProposedFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objProposalSnapshot.tmProposedLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("reason", "Reason")}</Typography><Typography>{objDetail?.strEmployeeReason}</Typography><Divider sx={{ my: 2 }} /><Typography fontWeight={850}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objItem) => <Box key={objItem.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objItem.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{new Date(objItem.dtActionOn).toLocaleString()} {objItem.strRemarks}</Typography></Box>)}</Grid></Grid></DialogContent>
+        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objOriginalSnapshot.tmFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objOriginalSnapshot.tmLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("reason", "Correction Reason")}</Typography><Typography>{objDetail?.strEmployeeReason}</Typography><Divider sx={{ my: 2 }} /><Typography fontWeight={850}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objItem) => <Box key={objItem.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objItem.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objItem.dtActionOn)}{objItem.strRemarks ? ` · ${objItem.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
         <DialogActions><Button data-control-id="regularization-requests.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button>{objDetail?.strRequestStatus === "PENDING_APPROVAL" ? <>{blnCanSendBack ? <Button data-control-id="regularization-requests.send-back.button" onClick={() => setObjAction({ strAction: "send-back", objRequest: objDetail })}>{t("send_back", "Send Back")}</Button> : null}{blnCanReject ? <Button data-control-id="regularization-requests.reject.button" color="error" onClick={() => setObjAction({ strAction: "reject", objRequest: objDetail })}>{t("reject", "Reject")}</Button> : null}{blnCanApprove ? <Button data-control-id="regularization-requests.approve.button" variant="contained" color="success" onClick={() => setObjAction({ strAction: "approve", objRequest: objDetail })}>{t("approve", "Approve")}</Button> : null}</> : null}</DialogActions>
       </Dialog>
       <Dialog data-control-id="regularization-requests.action.dialog" open={Boolean(objAction)} onClose={() => setObjAction(null)} fullWidth maxWidth="sm"><DialogTitle>{objAction ? lookupLabel(lstActions, objAction.strAction.toUpperCase().replace("-", "_"), t("confirm_action", "Confirm Action")) : ""}</DialogTitle><DialogContent><TextField data-control-id="regularization-requests.action.remarks.input" fullWidth multiline minRows={3} required={objAction?.strAction !== "approve"} label={t("remarks", "Remarks")} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} sx={{ mt: 1 }} /></DialogContent><DialogActions><Button data-control-id="regularization-requests.action.cancel.button" onClick={() => setObjAction(null)}>{t("cancel", "Cancel")}</Button><Button data-control-id="regularization-requests.action.confirm.button" variant="contained" disabled={blnWorking || (objAction?.strAction !== "approve" && !strRemarks.trim())} onClick={() => void confirmAction()}>{t("confirm", "Confirm")}</Button></DialogActions></Dialog>
@@ -320,7 +343,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField data-control-id="regularization-requests.on-behalf.employee-reason.input" fullWidth required multiline label={t("employee_reason", "Employee Reason")} value={objOnBehalf.strEmployeeReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strEmployeeReason: objEvent.target.value }))} />
+              <TextField data-control-id="regularization-requests.on-behalf.employee-reason.input" fullWidth required multiline label={t("employee_reason", "Correction Reason")} value={objOnBehalf.strEmployeeReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strEmployeeReason: objEvent.target.value }))} />
             </Grid>
             <Grid item xs={12}>
               <TextField data-control-id="regularization-requests.on-behalf.reason.input" fullWidth required multiline label={t("on_behalf_reason", "On-behalf Reason")} value={objOnBehalf.strOnBehalfReason} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strOnBehalfReason: objEvent.target.value }))} />
