@@ -34,7 +34,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type InputHTMLAttributes, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
@@ -136,9 +136,13 @@ export default function EmployeeEditorScreen({
   strPageTitleOverride
 }: EmployeeEditorScreenProps) {
   const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstAccessModuleCodes);
   const { strLabelError, t } = useEmployeeDetailsLabels();
-  const [strActiveTab, setStrActiveTab] = useState<TabKey>("basicInfo");
+  const [strActiveTab, setStrActiveTab] = useState<TabKey>(() => {
+    const strRequestedTab = objSearchParams.get("tab");
+    return (lstTabOrder as string[]).includes(strRequestedTab || "") ? (strRequestedTab as TabKey) : "basicInfo";
+  });
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [dicBasicForm, setDicBasicForm] = useState<EmployeeFormValues>(dicEmptyEmployeeForm);

@@ -29,6 +29,7 @@ import {
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -515,6 +516,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
+  const [blnEssDashboardActive, setBlnEssDashboardActive] = useState(false);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const [blnMenuLoaded, setBlnMenuLoaded] = useState(false);
   const [blnMenuLoading, setBlnMenuLoading] = useState(false);
@@ -907,6 +909,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
+  useEffect(() => {
+    if (!blnDashboardRoute) {
+      setBlnEssDashboardActive(false);
+    }
+  }, [blnDashboardRoute]);
+
   function handleMenuToggle() {
     void ensureMenuLoaded();
     if (typeof window !== "undefined" && window.innerWidth >= 1200) {
@@ -994,7 +1002,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                HRMS
+                {tCommon("brand_short_name", "ESS")}
               </Typography>
             </Box>
           </Stack>
@@ -1322,7 +1330,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     whiteSpace: "nowrap"
                   }}
                 >
-                  {tCommon("app_title", "Human Resource Management System")}
+                  {blnEssDashboardActive
+                    ? tCommon("ess_app_title", "Employee Self Service")
+                    : tCommon("app_title", "Human Resource Management System")}
                 </Typography>
               </Box>
 
@@ -1406,31 +1416,33 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  minWidth: 0,
-                  pr: { xs: 0.25, md: 0.75 }
-                }}
-              >
-                <Typography
+              {blnDashboardRoute && blnEssDashboardActive ? null : (
+                <Box
                   sx={{
-                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    letterSpacing: "-0.03em",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: { xs: "120px", sm: "220px", md: "320px" },
-                    textAlign: "right"
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    minWidth: 0,
+                    pr: { xs: 0.25, md: 0.75 }
                   }}
                 >
-                  {strPageTitle}
-                </Typography>
-              </Box>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "-0.03em",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: { xs: "120px", sm: "220px", md: "320px" },
+                      textAlign: "right"
+                    }}
+                  >
+                    {strPageTitle}
+                  </Typography>
+                </Box>
+              )}
 
               <Box
                 sx={{
@@ -1534,7 +1546,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               pr: blnDashboardRoute ? 0 : 0.5
             }}
           >
-            {children}
+            <DashboardHeaderModeContext.Provider value={setBlnEssDashboardActive}>
+              {children}
+            </DashboardHeaderModeContext.Provider>
             <BlockingLoader
               blnOpen={blnLoggingOut}
               strLabel="Logging out..."

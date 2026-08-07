@@ -7,8 +7,6 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
-import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
@@ -105,8 +103,6 @@ type PayrollResultDetailPageProps = {
   blnPayslipScreen?: boolean;
   strBackRoute?: string;
 };
-
-const SUMMARY_PAGE_SIZE = 4;
 
 type SummaryDisplayItem = {
   key: string;
@@ -468,33 +464,22 @@ function PaginatedSummaryCard({
   strTitle,
   objIcon,
   lstItems,
-  strAriaLabel,
 }: {
   strTitle: string;
   objIcon: ReactNode;
   lstItems: SummaryDisplayItem[];
   strAriaLabel: string;
 }) {
-  const [intPage, setIntPage] = useState(0);
-  const intTotal = lstItems.length;
-  const intLastPage = Math.max(Math.ceil(intTotal / SUMMARY_PAGE_SIZE) - 1, 0);
-  const intSafePage = Math.min(intPage, intLastPage);
-  const intStart = intSafePage * SUMMARY_PAGE_SIZE;
-  const lstVisibleItems = lstItems.slice(intStart, intStart + SUMMARY_PAGE_SIZE);
-  const intRangeStart = intTotal === 0 ? 0 : intStart + 1;
-  const intRangeEnd = Math.min(intStart + SUMMARY_PAGE_SIZE, intTotal);
-  const lstRows = Array.from({ length: SUMMARY_PAGE_SIZE }, (_, intIndex) => lstVisibleItems[intIndex] ?? null);
-
   return (
     <Paper
       sx={{
         borderRadius: "10px",
         border: "1px solid #dbe7f3",
         boxShadow: "none",
-        minHeight: 270,
+        height: 270,
         overflow: "hidden",
         display: "grid",
-        gridTemplateRows: "45px 176px 48px",
+        gridTemplateRows: "45px 1fr",
         background: "#fff",
       }}
     >
@@ -504,77 +489,59 @@ function PaginatedSummaryCard({
           {strTitle}
         </Typography>
       </Box>
-      <Box sx={{ px: 1.8 }}>
-        {lstRows.map((dicItem, intIndex) => (
+      <Box
+        sx={{
+          px: 1.8,
+          overflowY: "auto",
+          "&::-webkit-scrollbar": { width: 6 },
+          "&::-webkit-scrollbar-thumb": { background: "#cbd8e8", borderRadius: "8px" },
+        }}
+      >
+        {lstItems.map((dicItem, intIndex) => (
           <Box
-            key={dicItem?.key ?? `empty-${intIndex}`}
+            key={dicItem.key}
             sx={{
               minHeight: 44,
               display: "grid",
               gridTemplateColumns: "minmax(0, 1fr) minmax(84px, auto)",
               alignItems: "center",
               gap: 1,
-              borderBottom: intIndex === SUMMARY_PAGE_SIZE - 1 ? "none" : "1px solid #edf3f9",
-              visibility: dicItem ? "visible" : "hidden",
+              borderBottom: intIndex === lstItems.length - 1 ? "none" : "1px solid #edf3f9",
             }}
           >
-            {dicItem ? (
-              dicItem.tone === "note" || dicItem.tone === "info" ? (
-                <Box
-                  sx={{
-                    gridColumn: "1 / -1",
-                    border: dicItem.tone === "info" ? "1px solid #bfdbfe" : "1px solid #fed7aa",
-                    background: dicItem.tone === "info" ? "#eff6ff" : "#fff7ed",
-                    color: dicItem.tone === "info" ? "#1e3a8a" : "#9a3412",
-                    borderRadius: "8px",
-                    px: 1.4,
-                    py: 0.9,
-                    fontSize: "0.78rem",
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {dicItem.value}
-                </Box>
-              ) : (
-                <>
-                  <Tooltip title={dicItem.tooltip ?? dicItem.label} arrow>
-                    <Typography sx={{ color: "#3d5273", fontSize: "0.78rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                      {dicItem.label}
-                    </Typography>
-                  </Tooltip>
-                  <Tooltip title={dicItem.tooltip ?? ""} arrow disableHoverListener={!dicItem.tooltip}>
-                    <Box sx={{ color: "#0f172a", fontSize: "0.78rem", fontWeight: 900, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", whiteSpace: "normal" }}>
-                      {dicItem.value}
-                    </Box>
-                  </Tooltip>
-                </>
-              )
-            ) : null}
+            {dicItem.tone === "note" || dicItem.tone === "info" ? (
+              <Box
+                sx={{
+                  gridColumn: "1 / -1",
+                  border: dicItem.tone === "info" ? "1px solid #bfdbfe" : "1px solid #fed7aa",
+                  background: dicItem.tone === "info" ? "#eff6ff" : "#fff7ed",
+                  color: dicItem.tone === "info" ? "#1e3a8a" : "#9a3412",
+                  borderRadius: "8px",
+                  px: 1.4,
+                  py: 0.9,
+                  my: 0.6,
+                  fontSize: "0.78rem",
+                  lineHeight: 1.35,
+                }}
+              >
+                {dicItem.value}
+              </Box>
+            ) : (
+              <>
+                <Tooltip title={dicItem.tooltip ?? dicItem.label} arrow>
+                  <Typography sx={{ color: "#3d5273", fontSize: "0.78rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {dicItem.label}
+                  </Typography>
+                </Tooltip>
+                <Tooltip title={dicItem.tooltip ?? ""} arrow disableHoverListener={!dicItem.tooltip}>
+                  <Box sx={{ color: "#0f172a", fontSize: "0.78rem", fontWeight: 900, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", whiteSpace: "normal" }}>
+                    {dicItem.value}
+                  </Box>
+                </Tooltip>
+              </>
+            )}
           </Box>
         ))}
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, borderTop: "1px solid #e6eef7" }}>
-        <IconButton
-          size="small"
-          disabled={intSafePage === 0}
-          aria-label={`Previous ${strAriaLabel} page`}
-          onClick={() => setIntPage((intCurrent) => Math.max(intCurrent - 1, 0))}
-          sx={{ width: 32, height: 32, border: "1px solid #dbe7f3", borderRadius: "8px", color: "#1d4ed8" }}
-        >
-          <KeyboardArrowLeftRoundedIcon fontSize="small" />
-        </IconButton>
-        <Typography sx={{ color: "#20385f", fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap" }}>
-          {intRangeStart}-{intRangeEnd} of {intTotal}
-        </Typography>
-        <IconButton
-          size="small"
-          disabled={intSafePage >= intLastPage}
-          aria-label={`Next ${strAriaLabel} page`}
-          onClick={() => setIntPage((intCurrent) => Math.min(intCurrent + 1, intLastPage))}
-          sx={{ width: 32, height: 32, border: "1px solid #dbe7f3", borderRadius: "8px", color: "#1d4ed8" }}
-        >
-          <KeyboardArrowRightRoundedIcon fontSize="small" />
-        </IconButton>
       </Box>
     </Paper>
   );
@@ -1074,7 +1041,7 @@ export default function PayrollResultDetailPage({
             sx={{
               display: "grid",
               gap: 1.5,
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))", lg: "repeat(7, minmax(0, 1fr))" },
             }}
           >
             <KpiCard
