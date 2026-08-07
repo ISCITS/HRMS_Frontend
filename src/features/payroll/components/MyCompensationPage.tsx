@@ -1,7 +1,10 @@
 "use client";
 
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PaidOutlinedIcon from "@mui/icons-material/PaidOutlined";
+import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import {
   Alert,
   Box,
@@ -12,10 +15,12 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import type { EmployeeSalaryDetailRecord } from "@/features/employee-salary/types";
+import type { EmployeeSalaryComponentLine, EmployeeSalaryDetailRecord } from "@/features/employee-salary/types";
+import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
+import { itDeclarationService, type ItDeclarationDashboardCardDto } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authApiService } from "@/services/auth/AuthApiService";
@@ -47,18 +52,62 @@ function normalizeCategory(strValue: string | null | undefined) {
   return strTrimmed || "-";
 }
 
+function normalizeToken(strValue: string | null | undefined) {
+  return String(strValue ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Mirrors the Component Lines filter on the admin Employee Salary page (EmployeeSalaryDetailPage):
+// keep the flexi bucket total line, drop flexi reimbursement options and non-CTC reimbursements,
+// which are surfaced separately in the Flexi Breakdown panel instead.
+function isFlexiBucketComponentLine(dicLine: EmployeeSalaryComponentLine) {
+  const strName = normalizeToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
+  return Boolean(dicLine.blnIsFlexiBasket) || strName === "flexipay" || strName === "flexibucket";
+}
+
+function isFlexiAllocationComponentLine(dicLine: EmployeeSalaryComponentLine) {
+  if (isFlexiBucketComponentLine(dicLine)) {
+    return false;
+  }
+  const strCategory = normalizeToken(dicLine.strComponentCategory ?? "");
+  return Boolean(dicLine.blnIsFlexiBenefit) || strCategory.includes("reimbursement");
+}
+
+function isNonCtcReimbursementComponentLine(dicLine: EmployeeSalaryComponentLine) {
+  if (isFlexiBucketComponentLine(dicLine)) {
+    return false;
+  }
+  const strCategory = normalizeToken(dicLine.strComponentCategory ?? "");
+  return strCategory.includes("reimbursement") && dicLine.blnIncludedInCtc === false;
+}
+
+// Employee-side PF (or similar) deduction lines aren't tagged with a dedicated flag, so this
+// mirrors the admin Employee Salary page's isEmployeePfComponent: a "pf" component that isn't
+// the employer's share, sitting in a deduction category.
+function isEmployeeDeductionComponentLine(dicLine: EmployeeSalaryComponentLine) {
+  const strCategory = normalizeToken(dicLine.strComponentCategory ?? "");
+  if (strCategory.includes("deduction")) {
+    return true;
+  }
+  const strName = normalizeToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
+  return strName.includes("pf") && !strName.includes("employer") && strCategory.includes("deduction");
+}
+
 function DetailCell({
   strLabel,
   strValue,
   blnHighlight = false,
+  objIcon,
+  strIconColor,
 }: {
   strLabel: string;
   strValue: string;
   blnHighlight?: boolean;
+  objIcon?: ReactNode;
+  strIconColor?: string;
 }) {
-  return (
-    <Box sx={{ display: "grid", gap: 0.2 }}>
-      <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>
+  const objTextStack = (
+    <Box sx={{ display: "grid", gap: 0.2, minWidth: 0 }}>
+      <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700, whiteSpace: "nowrap" }}>
         {strLabel}
       </Typography>
       <Typography
@@ -66,46 +115,38 @@ function DetailCell({
           color: blnHighlight ? "#155eef" : "#172b4d",
           fontSize: blnHighlight ? "1.02rem" : "0.9rem",
           fontWeight: blnHighlight ? 900 : 700,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
         {strValue}
       </Typography>
     </Box>
   );
-}
 
-function SnapshotMetric({
-  strLabel,
-  strValue,
-  strTone,
-}: {
-  strLabel: string;
-  strValue: string;
-  strTone: "blue" | "green";
-}) {
-  const dicTone = strTone === "green"
-    ? { bg: "#e7f8ee", fg: "#15803d" }
-    : { bg: "#e8f1ff", fg: "#155eef" };
+  if (!objIcon) {
+    return objTextStack;
+  }
 
   return (
-    <Box sx={{ alignItems: "center", display: "flex", gap: 1.2 }}>
+    <Box sx={{ alignItems: "center", display: "flex", gap: 0.8, minWidth: 0 }}>
       <Box
         sx={{
           alignItems: "center",
-          background: dicTone.bg,
-          borderRadius: 0,
-          color: dicTone.fg,
+          background: `${strIconColor}1a`,
+          borderRadius: "50%",
+          color: strIconColor,
           display: "grid",
-          fontSize: "1.2rem",
-          fontWeight: 900,
-          height: 54,
+          flexShrink: 0,
+          height: 28,
           placeItems: "center",
-          width: 54,
+          width: 28,
         }}
       >
-        {strTone === "green" ? "CTC" : "Rs"}
+        {objIcon}
       </Box>
-      <DetailCell strLabel={strLabel} strValue={strValue} blnHighlight />
+      {objTextStack}
     </Box>
   );
 }
@@ -164,6 +205,7 @@ export default function MyCompensationPage() {
     "EMPLOYEE_SALARY",
   ]);
   const [objDetail, setObjDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
+  const [objItDeclarationCard, setObjItDeclarationCard] = useState<ItDeclarationDashboardCardDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [intRowsPerPage, setIntRowsPerPage] = useState<number>(10);
@@ -192,9 +234,18 @@ export default function MyCompensationPage() {
         if (!intEmployeeID) {
           throw new Error("Employee profile is not linked to this user.");
         }
-        const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID);
+        const [dicDetail, objItDashboard] = await Promise.all([
+          employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID),
+          itDeclarationService.getDashboard().catch(() => null),
+        ]);
         if (!blnCancelled) {
           setObjDetail(dicDetail);
+          const objCurrentItCard = objItDashboard
+            ? objItDashboard.lstDeclarations.find(
+                (dicCard) => dicCard.strFinancialYearCode === objItDashboard.strCurrentFinancialYearCode
+              ) ?? objItDashboard.lstDeclarations[0] ?? null
+            : null;
+          setObjItDeclarationCard(objCurrentItCard);
           setIntPage(1);
         }
       } catch (objError) {
@@ -221,7 +272,17 @@ export default function MyCompensationPage() {
     [objDetail]
   );
 
-  const intTotalPages = Math.max(1, Math.ceil(lstVisibleComponentLines.length / intRowsPerPage));
+  const lstSalaryStructureRows = useMemo(
+    () => lstVisibleComponentLines.filter((dicLine) => {
+      if (isFlexiBucketComponentLine(dicLine)) return true;
+      if (isFlexiAllocationComponentLine(dicLine)) return false;
+      if (isNonCtcReimbursementComponentLine(dicLine)) return false;
+      return true;
+    }),
+    [lstVisibleComponentLines]
+  );
+
+  const intTotalPages = Math.max(1, Math.ceil(lstSalaryStructureRows.length / intRowsPerPage));
   const intSafePage = Math.min(intPage, intTotalPages);
 
   useEffect(() => {
@@ -232,8 +293,8 @@ export default function MyCompensationPage() {
 
   const lstPagedComponentLines = useMemo(() => {
     const intStartIndex = (intSafePage - 1) * intRowsPerPage;
-    return lstVisibleComponentLines.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  }, [intRowsPerPage, intSafePage, lstVisibleComponentLines]);
+    return lstSalaryStructureRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
+  }, [intRowsPerPage, intSafePage, lstSalaryStructureRows]);
 
   if (blnRightsLoading || blnLoading) {
     return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
@@ -247,11 +308,37 @@ export default function MyCompensationPage() {
     return <Alert severity={strError ? "error" : "info"}>{strError || "No compensation detail is available."}</Alert>;
   }
 
-  const objEmployeeSummary = objDetail.objEmployeeSummary;
   const objCurrentSalarySnapshot = objDetail.objCurrentSalarySnapshot;
   const objAssignedStructure = objDetail.objAssignedStructure;
-  const objSalarySummary = objDetail.objSalarySummary;
   const objFlexiAllocation = objDetail.objFlexiAllocation;
+
+  // Recomputed live from component lines (same as the admin Employee Salary page), rather than
+  // trusted from objSalarySummary/objCurrentSalarySnapshot, which can lag behind an approved
+  // flexi declaration and disagree with the admin page's figures.
+  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objDetail);
+  const decCtcAnnual = dicBaseSummaryMetrics.decAnnualCtc;
+  const decGrossMonthly = dicBaseSummaryMetrics.decGrossMonthly;
+  const decGrossAnnual = decGrossMonthly * 12;
+  const decBasicSalaryAnnual = dicBaseSummaryMetrics.decBasicAnnual;
+  const decEmployeeDeductionsMonthly = (objDetail.lstComponentLines ?? []).reduce((decSum, dicLine) => (
+    isEmployeeDeductionComponentLine(dicLine) ? decSum + Number(dicLine.decAmountMonthly ?? 0) : decSum
+  ), 0);
+  const decNetMonthly = Math.max(decGrossMonthly - decEmployeeDeductionsMonthly, 0);
+  const decNetAnnual = decNetMonthly * 12;
+
+  const strTaxRegime = objItDeclarationCard?.strTaxRegime?.trim() || t("tax_regime_na", "NA");
+  const blnHasItDeclaration = Boolean(objItDeclarationCard);
+  const decItDeclaredAnnual = objItDeclarationCard?.decDeclaredAmount ?? null;
+  const decItApprovedAnnual = objItDeclarationCard?.decApprovedAmount ?? null;
+
+  const lstFlexiAllocationLines = objFlexiAllocation?.lstAllocationLines ?? [];
+  const decFlexiBucketAvailableAnnual = dicBaseSummaryMetrics.decFlexiBucketAnnual;
+  const blnHasFlexiBucket = dicBaseSummaryMetrics.blnHasFlexiBucket || lstFlexiAllocationLines.length > 0;
+  const lstApprovedFlexiLines = lstFlexiAllocationLines.filter((dicLine) => Number(dicLine.decApprovedAnnualAmount ?? 0) > 0);
+  const decApprovedFlexiTotalRaw = lstApprovedFlexiLines.reduce((decSum, dicLine) => decSum + Number(dicLine.decApprovedAnnualAmount ?? 0), 0);
+  const decApprovedFlexiTotal = decApprovedFlexiTotalRaw > 0
+    ? decApprovedFlexiTotalRaw
+    : (objFlexiAllocation?.decAllocatedFlexiAnnual ?? 0);
 
   return (
     <Stack spacing={1}>
@@ -280,46 +367,57 @@ export default function MyCompensationPage() {
           borderRadius: 0,
           boxShadow: "0 10px 24px rgba(30, 64, 175, 0.06)",
           overflow: "hidden",
+          p: 1.1,
         }}
       >
-        <Box sx={{ alignItems: "center", display: "flex", gap: 0.8, px: 1.5, py: 1.2 }}>
-          <Box sx={{ alignItems: "center", background: "#e8f1ff", borderRadius: 0, color: "#155eef", display: "grid", height: 26, placeItems: "center", width: 26 }}>
-            <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
-          </Box>
-          <Typography sx={{ color: "#172b4d", fontSize: "0.98rem", fontWeight: 900 }}>
-            {t("current_salary_snapshot", "Current Salary Snapshot")}
-          </Typography>
-        </Box>
-
         <Box
           sx={{
             display: "grid",
-            gap: 1.5,
-            gridTemplateColumns: { xs: "1fr", lg: "1.1fr 1fr 1.4fr" },
-            px: 1.5,
-            pb: 1.5,
+            gap: 1,
+            gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" },
           }}
         >
-          <Box sx={{ alignItems: "center", display: "flex", minHeight: 72 }}>
-            <SnapshotMetric strLabel={t("gross_monthly", "Gross Monthly")} strValue={formatCurrency(objCurrentSalarySnapshot?.decGrossMonthly, strCurrencyCode)} strTone="blue" />
-          </Box>
-          <Box sx={{ alignItems: "center", borderLeft: { lg: "1px solid #d8e4f0" }, display: "flex", minHeight: 72, pl: { lg: 2 } }}>
-            <SnapshotMetric strLabel={t("annual_ctc", "CTC Annual")} strValue={formatCurrency(objCurrentSalarySnapshot?.decCtcAnnual, strCurrencyCode)} strTone="green" />
-          </Box>
-          <Box sx={{ borderLeft: { lg: "1px solid #d8e4f0" }, display: "grid", gap: 0.9, pl: { lg: 2 } }}>
-            <Box sx={{ display: "grid", gap: 0.2, gridTemplateColumns: "minmax(0, 1fr) auto" }}>
-              <Typography sx={{ color: "#61738b", fontSize: "0.82rem", fontWeight: 700 }}>{t("current_since", "Current Since")}</Typography>
-              <Typography sx={{ color: "#172b4d", fontSize: "0.88rem", fontWeight: 900 }}>{formatDate(objCurrentSalarySnapshot?.dtEffectiveFrom || objAssignedStructure?.dtEffectiveFrom)}</Typography>
-            </Box>
-            <Box sx={{ display: "grid", gap: 0.2, gridTemplateColumns: "minmax(0, 1fr) auto" }}>
-              <Typography sx={{ color: "#61738b", fontSize: "0.82rem", fontWeight: 700 }}>{t("revision_status", "Revision Status")}</Typography>
-              <Typography sx={{ color: "#172b4d", fontSize: "0.88rem", fontWeight: 900 }}>{t("current", "Current")}</Typography>
-            </Box>
-            <Box sx={{ display: "grid", gap: 0.2, gridTemplateColumns: "minmax(0, 1fr) auto" }}>
-              <Typography sx={{ color: "#61738b", fontSize: "0.82rem", fontWeight: 700 }}>{t("source_of_salary_assignment", "Source of Salary Assignment")}</Typography>
-              <Typography sx={{ color: "#172b4d", fontSize: "0.88rem", fontWeight: 900 }}>{objAssignedStructure?.strStructureName ? t("structure", "Structure") : "-"}</Typography>
-            </Box>
-          </Box>
+          <DetailCell
+            strLabel={t("annual_ctc", "CTC Annual")}
+            strValue={formatCurrency(decCtcAnnual, strCurrencyCode)}
+            blnHighlight
+            objIcon={<CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#15803d"
+          />
+          <DetailCell
+            strLabel={t("gross_annual", "Gross Annual")}
+            strValue={formatCurrency(decGrossAnnual, strCurrencyCode)}
+            blnHighlight
+            objIcon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#155eef"
+          />
+          <DetailCell
+            strLabel={t("net_annual", "Net Annual")}
+            strValue={formatCurrency(decNetAnnual, strCurrencyCode)}
+            blnHighlight
+            objIcon={<SavingsOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#7c3aed"
+          />
+          <DetailCell strLabel={t("salary_revised_on", "Salary Revised On")} strValue={formatDate(objCurrentSalarySnapshot?.dtEffectiveFrom || objAssignedStructure?.dtEffectiveFrom)} />
+          <DetailCell
+            strLabel={t("basic_salary", "Basic Salary")}
+            strValue={formatCurrency(decBasicSalaryAnnual, strCurrencyCode)}
+            objIcon={<PaidOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#b45309"
+          />
+          <DetailCell
+            strLabel={t("gross_monthly", "Gross Monthly")}
+            strValue={formatCurrency(decGrossMonthly, strCurrencyCode)}
+            objIcon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#155eef"
+          />
+          <DetailCell
+            strLabel={t("net_monthly", "Net Monthly")}
+            strValue={formatCurrency(decNetMonthly, strCurrencyCode)}
+            objIcon={<SavingsOutlinedIcon sx={{ fontSize: 15 }} />}
+            strIconColor="#7c3aed"
+          />
+          <DetailCell strLabel={t("tax_regime", "Tax Regime")} strValue={strTaxRegime} />
         </Box>
       </Box>
 
@@ -335,7 +433,7 @@ export default function MyCompensationPage() {
         >
           <Box sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 1, px: 1.5, py: 1.2 }}>
             <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
-              {t("component_lines", "Component Lines")}
+              {t("salary_structure", "Salary Structure")}
             </Typography>
             <Box sx={{ alignItems: "center", color: "#61738b", display: "flex", flexWrap: "wrap", gap: 0.8, fontSize: "0.84rem" }}>
               <Typography sx={{ fontSize: "0.84rem" }}>{t("rows_per_page", "Rows per page")}</Typography>
@@ -353,7 +451,7 @@ export default function MyCompensationPage() {
                 ))}
               </Select>
               <Typography sx={{ fontSize: "0.84rem" }}>
-                {lstVisibleComponentLines.length ? `${(intSafePage - 1) * intRowsPerPage + 1}-${Math.min(intSafePage * intRowsPerPage, lstVisibleComponentLines.length)} of ${lstVisibleComponentLines.length}` : "0-0 of 0"}
+                {lstSalaryStructureRows.length ? `${(intSafePage - 1) * intRowsPerPage + 1}-${Math.min(intSafePage * intRowsPerPage, lstSalaryStructureRows.length)} of ${lstSalaryStructureRows.length}` : "0-0 of 0"}
               </Typography>
             </Box>
           </Box>
@@ -408,7 +506,7 @@ export default function MyCompensationPage() {
             </table>
           </Box>
 
-          {lstVisibleComponentLines.length > intRowsPerPage ? (
+          {lstSalaryStructureRows.length > intRowsPerPage ? (
             <Box sx={{ display: "flex", justifyContent: "flex-end", px: 1.5, py: 1 }}>
               <Pagination
                 count={intTotalPages}
@@ -432,22 +530,52 @@ export default function MyCompensationPage() {
         >
           <Box sx={{ alignItems: "center", display: "flex", gap: 0.6, mb: 1 }}>
             <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
-              {t("salary_breakdown_impact", "Salary Breakdown Impact")}
+              {t("flexi_breakdown", "Flexi Breakdown")}
             </Typography>
             <InfoOutlinedIcon sx={{ color: "#155eef", fontSize: 16 }} />
           </Box>
 
-          <Stack spacing={0.55}>
-            <ImpactRow strLabel={t("annual_ctc", "Annual CTC")} strValue={formatCurrency(objSalarySummary?.decAnnualCtc ?? objCurrentSalarySnapshot?.decCtcAnnual, strCurrencyCode)} />
-            <ImpactRow strLabel={t("gross_monthly", "Gross Monthly")} strValue={formatCurrency(objSalarySummary?.decGrossMonthly ?? objCurrentSalarySnapshot?.decGrossMonthly, strCurrencyCode)} />
-            <ImpactRow strLabel={t("basic_salary", "Basic Salary")} strValue={formatCurrency(lstVisibleComponentLines.find((dicLine) => (dicLine.strComponentName || "").trim().toLowerCase() === "basic salary")?.decAmountAnnual, strCurrencyCode)} />
-            <ImpactRow strLabel={t("hra", "HRA")} strValue={formatCurrency(lstVisibleComponentLines.find((dicLine) => (dicLine.strComponentName || "").trim().toLowerCase().includes("house rent allowance") || (dicLine.strComponentCode || "").trim().toLowerCase() === "hra")?.decAmountAnnual, strCurrencyCode)} />
-            <ImpactRow strLabel={t("flexi_pay_declaration", "Flexi Pay Declaration")} strValue="" blnSection />
-            <ImpactRow strLabel={t("flexi_bucket_available", "Flexi Bucket Available")} strValue={formatCurrency(objSalarySummary?.decFlexiBucketAnnual ?? objFlexiAllocation?.decFlexiBasketAvailableAnnual, strCurrencyCode)} />
-            <ImpactRow strLabel={t("approved_declared_flexi", "Approved / Declared Flexi")} strValue={formatCurrency(objSalarySummary?.decApprovedFlexiAnnual ?? objFlexiAllocation?.decAllocatedFlexiAnnual, strCurrencyCode)} strTone={Number(objSalarySummary?.decApprovedFlexiAnnual ?? objFlexiAllocation?.decAllocatedFlexiAnnual ?? 0) > 0 ? "default" : "danger"} />
-            <ImpactRow strLabel={t("residual_taxable", "Residual Taxable")} strValue={formatCurrency(objSalarySummary?.decResidualTaxableAnnual ?? objFlexiAllocation?.decResidualTaxableAllowanceAnnual, strCurrencyCode)} strTone="success" />
-            <ImpactRow strLabel={t("estimated_monthly_payroll_impact", "Estimated Monthly Payroll Impact")} strValue={formatCurrency(objSalarySummary?.decResidualTaxableAnnual != null ? (objSalarySummary.decResidualTaxableAnnual || 0) / 12 : objFlexiAllocation?.decResidualTaxableAllowanceMonthly, strCurrencyCode)} strTone="success" />
-          </Stack>
+          {blnHasFlexiBucket ? (
+            <Stack spacing={0.55}>
+              <ImpactRow strLabel={t("flexi_bucket_available", "Flexi Bucket Available")} strValue={formatCurrency(decFlexiBucketAvailableAnnual, strCurrencyCode)} />
+              <ImpactRow strLabel={t("approved_flexi", "Approved Flexi")} strValue={formatCurrency(decApprovedFlexiTotal, strCurrencyCode)} strTone="success" blnSection />
+              {lstApprovedFlexiLines.length ? (
+                lstApprovedFlexiLines.map((dicLine) => (
+                  <ImpactRow
+                    key={`approved-${dicLine.intSalaryComponentID}`}
+                    strLabel={dicLine.strComponentName || dicLine.strComponentCode || "-"}
+                    strValue={formatCurrency(dicLine.decApprovedAnnualAmount, strCurrencyCode)}
+                    strTone="success"
+                  />
+                ))
+              ) : (
+                <ImpactRow strLabel={t("flexi_not_yet_approved", "Not Yet Approved")} strValue="" />
+              )}
+            </Stack>
+          ) : (
+            <Alert severity="info" sx={{ borderRadius: 0, fontSize: "0.82rem" }}>
+              {t("no_flexi_pay_declared_full", "No Flexi Pay Declared.")}
+            </Alert>
+          )}
+
+          <Box sx={{ alignItems: "center", display: "flex", gap: 0.6, mb: 1, mt: 2.2 }}>
+            <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
+              {t("it_declaration", "IT Declaration")}
+            </Typography>
+            <InfoOutlinedIcon sx={{ color: "#155eef", fontSize: 16 }} />
+          </Box>
+
+          {blnHasItDeclaration ? (
+            <Stack spacing={0.55}>
+              <ImpactRow strLabel={t("tax_regime", "Tax Regime")} strValue={strTaxRegime} />
+              <ImpactRow strLabel={t("declared_it_declaration", "Declared IT Declaration")} strValue={formatCurrency(decItDeclaredAnnual, strCurrencyCode)} />
+              <ImpactRow strLabel={t("approved_it_declaration", "Approved IT Declaration")} strValue={formatCurrency(decItApprovedAnnual, strCurrencyCode)} strTone="success" />
+            </Stack>
+          ) : (
+            <Alert severity="info" sx={{ borderRadius: 0, fontSize: "0.82rem" }}>
+              {t("no_it_declaration_declared", "No IT Declaration Declared.")}
+            </Alert>
+          )}
         </Box>
       </Box>
 

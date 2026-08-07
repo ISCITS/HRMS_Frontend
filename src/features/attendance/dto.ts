@@ -9,6 +9,7 @@ export type AttendanceDayDto = {
   strLastOut: string | null;
   decWorkedHours: number;
   intLateMinutes: number;
+  intEarlyMinutes: number;
   decOtHours: number;
   blnIsPaid: boolean;
   strRemark: string | null;

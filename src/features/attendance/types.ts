@@ -16,6 +16,8 @@ export type AttendancePolicy = {
   intEmploymentTypeID: number | null;
   intLateGraceMinutes: number;
   intEarlyDepartureGraceMinutes: number;
+  strInTime: string | null;
+  strOutTime: string | null;
   decFullDayThresholdHours: number;
   decHalfDayThresholdHours: number;
   decAbsentThresholdHours: number;
@@ -105,6 +107,7 @@ export type DailyAttendanceRow = {
   strLastOut: string | null;
   decWorkedHours: number;
   intLateMinutes: number;
+  intEarlyMinutes: number;
   decOtHours: number;
   blnIsPaid: boolean;
   strRemark: string | null;

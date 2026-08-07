@@ -38,6 +38,20 @@ const setHiddenEssRequestTypeCodes = new Set(["MISSING_IN", "OTHER"]);
 const setAutoCalculatedRequestTypeCodes = new Set(["MISSING_OUT", "MISSING_BOTH"]);
 type PunchRecord = DateContext["lstPunches"][number];
 
+// No backend lookup domain exists for regularization reasons yet (verified — no seeded domain in
+// db_scripts, no ATTENDANCE_REGULARIZATION_REASON key in getEssLookups' response). This is a
+// frontend-only bounded option list per the spec; strEmployeeReason stays a free-text string field
+// on the backend (no schema change) and simply gets one of these fixed codes as its value.
+const strOtherReasonCode = "OTHER";
+const lstReasonOptions = [
+  { strValueCode: "MISSED_PUNCH", strLabelKey: "reason_missed_punch", strFallback: "Missed punch" },
+  { strValueCode: "DEVICE_ISSUE", strLabelKey: "reason_device_issue", strFallback: "Device issue" },
+  { strValueCode: "OFFICIAL_DUTY", strLabelKey: "reason_official_duty", strFallback: "Official duty" },
+  { strValueCode: "APPROVED_WORK", strLabelKey: "reason_approved_work", strFallback: "Approved work" },
+  { strValueCode: "DATA_CORRECTION", strLabelKey: "reason_data_correction", strFallback: "Data correction" },
+  { strValueCode: strOtherReasonCode, strLabelKey: "reason_other", strFallback: "Other" },
+];
+
 function todayIso() {
   const objDate = new Date();
   return `${objDate.getFullYear()}-${String(objDate.getMonth() + 1).padStart(2, "0")}-${String(objDate.getDate()).padStart(2, "0")}`;
@@ -54,7 +68,18 @@ function initialValues(strDate: string): RegularizationFormValues {
 function formatDateTime(strValue?: string | null) {
   if (!strValue) return "—";
   const objDate = new Date(strValue);
-  return Number.isNaN(objDate.getTime()) ? strValue.slice(0, 5) : objDate.toLocaleString();
+  return Number.isNaN(objDate.getTime())
+    ? strValue.slice(0, 5)
+    : objDate.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDdMmmYyyy(strValue?: string | null) {
+  if (!strValue) return "";
+  const objDate = new Date(`${strValue}T00:00:00`);
+  if (Number.isNaN(objDate.getTime())) return strValue;
+  const strDay = String(objDate.getDate()).padStart(2, "0");
+  const strMonth = objDate.toLocaleDateString("en-GB", { month: "short" });
+  return `${strDay}-${strMonth}-${objDate.getFullYear()}`;
 }
 
 function formatTime(strValue?: string | null) {
@@ -238,8 +263,12 @@ export default function AttendanceRegularizationPage() {
     tmProposedLastOut: yup.string().default(""),
     decProposedWorkedHours: yup.number().nullable().min(0).max(24),
     blnProposedIsPaid: yup.boolean().nullable(),
-    strProposedRemark: yup.string().max(500).default(""),
-    strEmployeeReason: yup.string().trim().required(t("validation_reason", "Reason is required.")).max(1000),
+    strProposedRemark: yup.string().max(500).default("").when("strEmployeeReason", {
+      is: (strValue: string) => strValue === strOtherReasonCode,
+      then: (objFieldSchema) => objFieldSchema.trim().required(t("validation_remark_required_other", "Additional remarks are required when reason is Other.")),
+      otherwise: (objFieldSchema) => objFieldSchema,
+    }),
+    strEmployeeReason: yup.string().trim().required(t("validation_reason", "Correction reason is required.")).max(1000),
   }), [t]);
   const { control, handleSubmit, reset, setValue, watch, formState: { errors: objErrors } } = useForm<RegularizationFormValues>({
     resolver: yupResolver(objSchema) as Resolver<RegularizationFormValues>,
@@ -250,6 +279,8 @@ export default function AttendanceRegularizationPage() {
   const strProposedStatus = watch("strProposedStatus");
   const strProposedFirstInTime = watch("tmProposedFirstIn");
   const strProposedLastOutTime = watch("tmProposedLastOut");
+  const strEmployeeReasonValue = watch("strEmployeeReason");
+  const blnRemarkRequired = strEmployeeReasonValue === strOtherReasonCode;
   const blnNeedsTimes = ["MISSING_IN", "MISSING_OUT", "MISSING_BOTH"].includes(strRequestTypeCode) || ["present", "half_day", "on_duty"].includes(strProposedStatus);
   const blnMissingOutOnly = strRequestTypeCode === "MISSING_OUT";
   const blnAutoCalculatedRequest = setAutoCalculatedRequestTypeCodes.has(strRequestTypeCode);
@@ -436,6 +467,12 @@ export default function AttendanceRegularizationPage() {
     finally { setBlnSaving(false); }
   }
 
+  const strConfirmMessage = objConfirm
+    ? objConfirm.strAction === "submit"
+      ? t("confirm_submit_message", `Submit attendance correction for ${formatDdMmmYyyy(objConfirm.objRequest.dtWorkDate)}? It will be sent to your current approver for review.`)
+      : t("confirm_withdraw_message", `Withdraw the attendance correction request for ${formatDdMmmYyyy(objConfirm.objRequest.dtWorkDate)}? This will remove it from the approval queue.`)
+    : "";
+
   if (blnRightsLoading || blnLoading) return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Attendance Regularization access is not available.")}</Alert>;
 
@@ -466,14 +503,14 @@ export default function AttendanceRegularizationPage() {
             <Stack spacing={1.5}>
               <Typography fontWeight={850}>{t("original_attendance", "Original Attendance")}</Typography>
               <Grid container spacing={1} alignItems="stretch">
-                <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "Not recorded"))} strTone={objContext?.objAttendanceDay.strStatus === "present" ? "success" : "neutral"} /></Grid>
+                <Grid item xs={6} md={2}><SummaryCard strLabel={t("status", "Status")} strValue={lookupLabel(lstAttendanceStatuses, objContext?.objAttendanceDay.strStatus, t("not_recorded", "No attendance record"))} strTone={objContext?.objAttendanceDay.strStatus === "present" ? "success" : "neutral"} /></Grid>
                 <Grid item xs={6} md={2}><SummaryCard strLabel={t("worked_hours", "Worked Hours")} strValue={objContext?.objAttendanceDay ? formatDuration(objContext.objAttendanceDay.decWorkedHours) : "—"} strTone="info" /></Grid>
                 <Grid item xs={6} md={2}><SummaryCard strLabel={t("first_in", "First IN")} strValue={formatInputTime(getSnapshotFirstIn(objContext?.objAttendanceDay)) || "-"} strTone="warning" /></Grid>
                 <Grid item xs={6} md={2}><SummaryCard strLabel={t("last_out", "Last OUT")} strValue={formatInputTime(getSnapshotLastOut(objContext?.objAttendanceDay)) || "-"} strTone="neutral" /></Grid>
                 <Grid item xs={12} md={2}>
                   <Box sx={{ minHeight: 68, height: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", pl: { xs: 0, md: 0.5 } }}>
                     <Button data-control-id="attendance-regularization.punch-log.button" variant="contained" startIcon={<HistoryRoundedIcon />} onClick={() => setBlnPunchLogOpen(true)} sx={{ minHeight: 38, px: 2.25, borderRadius: "8px", fontWeight: 800, boxShadow: "none", whiteSpace: "nowrap" }}>
-                      {t("view_punch_log", "View Punch Log")}
+                      {t("view_punch_log", "View Original Punches")}
                     </Button>
                   </Box>
                 </Grid>
@@ -490,8 +527,45 @@ export default function AttendanceRegularizationPage() {
                 {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} />} /></Grid></> : null}
                 <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth size="small" label={t("proposed_status", "Proposed Status")} disabled={blnAutoCalculatedRequest} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message ?? (blnAutoCalculatedRequest ? t("status_auto_from_time", "Calculated from proposed timings") : undefined)}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message ?? (blnAutoCalculatedRequest ? t("worked_hours_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
-                <Grid item xs={12}><Controller name="strEmployeeReason" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.reason.input" fullWidth multiline minRows={3} label={t("reason", "Reason")} error={Boolean(objErrors.strEmployeeReason)} helperText={objErrors.strEmployeeReason?.message} />} /></Grid>
-                <Grid item xs={12}><Controller name="strProposedRemark" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.remark.input" fullWidth label={t("remark", "Remark")} />} /></Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="strEmployeeReason"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        data-control-id="attendance-regularization.reason.input"
+                        select
+                        fullWidth
+                        size="small"
+                        label={t("reason", "Correction Reason")}
+                        error={Boolean(objErrors.strEmployeeReason)}
+                        helperText={objErrors.strEmployeeReason?.message}
+                      >
+                        {lstReasonOptions.map((objOption) => (
+                          <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{t(objOption.strLabelKey, objOption.strFallback)}</MenuItem>
+                        ))}
+                      </TextField>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="strProposedRemark"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        data-control-id="attendance-regularization.remark.input"
+                        fullWidth
+                        size="small"
+                        label={blnRemarkRequired ? `${t("remark", "Additional Remarks")} *` : t("remark", "Additional Remarks")}
+                        error={Boolean(objErrors.strProposedRemark)}
+                        helperText={objErrors.strProposedRemark?.message}
+                      />
+                    )}
+                  />
+                </Grid>
                 <Grid item xs={12}>
                   <Stack spacing={1}>
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -589,11 +663,11 @@ export default function AttendanceRegularizationPage() {
 
       <Dialog data-control-id="attendance-regularization.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="md">
         <DialogTitle>{t("request_detail", "Request Detail")}</DialogTitle>
-        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "Not recorded"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objOriginalSnapshot.tmFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objOriginalSnapshot.tmLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {objDetail?.objProposalSnapshot.tmProposedFirstIn ?? "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {objDetail?.objProposalSnapshot.tmProposedLastOut ?? "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Box sx={objDetail?.lstAttachments.length ? { display: "grid", gap: 0.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } } : undefined}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}><Typography sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography><FileRowActions strFileName={objAttachment.strFileName} controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`} busy={intDetailAttachmentBusyID === objAttachment.intID} onPreview={() => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.previewAttachment(objDetail.intID, objAttachment.intID).finally(() => setIntDetailAttachmentBusyID(null)); }} onDelete={["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? () => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail).finally(() => setIntDetailAttachmentBusyID(null)); } : undefined} /></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Box><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objAction.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
+        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatInputTime(objDetail?.objOriginalSnapshot.tmFirstIn) || "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {formatInputTime(objDetail?.objOriginalSnapshot.tmLastOut) || "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatInputTime(objDetail?.objProposalSnapshot.tmProposedFirstIn) || "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {formatInputTime(objDetail?.objProposalSnapshot.tmProposedLastOut) || "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Box sx={objDetail?.lstAttachments.length ? { display: "grid", gap: 0.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } } : undefined}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}><Typography sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography><FileRowActions strFileName={objAttachment.strFileName} controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`} busy={intDetailAttachmentBusyID === objAttachment.intID} onPreview={() => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.previewAttachment(objDetail.intID, objAttachment.intID).finally(() => setIntDetailAttachmentBusyID(null)); }} onDelete={["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? () => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail).finally(() => setIntDetailAttachmentBusyID(null)); } : undefined} /></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Box><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objAction.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
         <DialogActions><Button data-control-id="attendance-regularization.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button></DialogActions>
       </Dialog>
       <Dialog data-control-id="attendance-regularization.punch-log.dialog" open={blnPunchLogOpen} onClose={() => setBlnPunchLogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{t("punch_log", "Punch Log")} - {formatDisplayDate(strWorkDate)}</DialogTitle>
+        <DialogTitle>{t("punch_log", "Original Punches")} - {formatDisplayDate(strWorkDate)}</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: "55vh", overflowY: "auto", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8 } }}>
           {objPunchLog.lstRows.length ? (
             <Stack spacing={0.75}>
@@ -624,7 +698,7 @@ export default function AttendanceRegularizationPage() {
       </Dialog>
       <Dialog data-control-id="attendance-regularization.confirm.dialog" open={Boolean(objConfirm)} onClose={() => setObjConfirm(null)}>
         <DialogTitle>{objConfirm?.strAction === "submit" ? t("confirm_submit_title", "Submit Request") : t("confirm_withdraw_title", "Withdraw Request")}</DialogTitle>
-        <DialogContent><Typography>{t("confirm_action_message", "Please confirm this workflow action.")}</Typography></DialogContent>
+        <DialogContent><Typography>{strConfirmMessage}</Typography></DialogContent>
         <DialogActions><Button data-control-id="attendance-regularization.confirm.cancel.button" onClick={() => setObjConfirm(null)}>{t("cancel", "Cancel")}</Button><Button data-control-id="attendance-regularization.confirm.continue.button" variant="contained" disabled={blnSaving} onClick={() => void runConfirmedAction()}>{t("confirm", "Confirm")}</Button></DialogActions>
       </Dialog>
       <Snackbar data-control-id="attendance-regularization.notification" open={objToast.blnOpen} autoHideDuration={5000} onClose={() => setObjToast((objValue) => ({ ...objValue, blnOpen: false }))}><Alert severity={objToast.strSeverity}>{objToast.strMessage}</Alert></Snackbar>
