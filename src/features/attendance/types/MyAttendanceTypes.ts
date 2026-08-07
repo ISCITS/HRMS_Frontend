@@ -17,6 +17,8 @@ export type MyAttendancePolicy = {
   strMissingPunchTreatmentCode: string;
   intLateGraceMinutes: number;
   intEarlyDepartureGraceMinutes: number;
+  strInTime?: string | null;
+  strOutTime?: string | null;
   intWorkHoursRoundingMinutes: number;
   strWeeklyOffPattern?: string | null;
   blnOtEnabled: boolean;
@@ -43,6 +45,7 @@ export type MyAttendanceHistory = {
     dicStatusCounts: Record<string, number>;
     decWorkedHours: number;
     intLateOccurrences: number;
+    intEarlyOccurrences: number;
   };
   lstDays: AttendanceDayDto[];
 };

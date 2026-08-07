@@ -220,6 +220,7 @@ export default function EssAttendancePanel() {
           strLastOut: null,
           decWorkedHours: 0,
           intLateMinutes: 0,
+          intEarlyMinutes: 0,
           decOtHours: 0,
           blnIsPaid: false,
           strRemark: null,
@@ -278,10 +279,10 @@ export default function EssAttendancePanel() {
   }, [objHistory?.lstDays, objPunchTimeline.intTotalMinutes, objPunchTimeline.lstRows.length, strSelectedDate]);
 
   const loadSelectedMonth = useCallback(() => loadAttendance(
-    strSelectedDate,
+    strToday,
     objMonthBounds.strFromDate,
     objMonthBounds.strToDate,
-  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strSelectedDate]);
+  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday]);
 
   useEffect(() => {
     void loadSelectedMonth();
@@ -486,6 +487,8 @@ export default function EssAttendancePanel() {
                     : strSelectedWorkedHours,
                 ],
                 ...(blnShowOtHours ? [[t("overtime_hours", "OT Hours"), formatDuration(objSelectedDay?.decOtHours)]] : []),
+                ...((objSelectedDay?.intLateMinutes ?? 0) > 0 ? [[t("late_by", "Late By"), `${objSelectedDay?.intLateMinutes} min`]] : []),
+                ...((objSelectedDay?.intEarlyMinutes ?? 0) > 0 ? [[t("early_by", "Early By"), `${objSelectedDay?.intEarlyMinutes} min`]] : []),
                 [t("paid_day", "Paid Day"), objSelectedDay ? (objSelectedDay.blnIsPaid ? t("yes", "Yes") : t("no", "No")) : "—"],
               ].map(([strLabel, strValue]) => (
                 <Box key={strLabel} sx={{ px: 1.25, py: 0.65, minHeight: 52, minWidth: 96, bgcolor: "action.hover", borderRadius: "10px", flex: "0 0 auto" }}>
@@ -524,21 +527,30 @@ export default function EssAttendancePanel() {
             <Typography variant="caption" color="text.secondary">
               {objMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
             </Typography>
-            <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1.5} sx={{ mt: 1 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", columnGap: 0.5, mt: 1, alignItems: "start" }}>
               {[
                 [t("present", "Present"), dicDisplayStatusCounts.present ?? 0],
                 [t("absent", "Absent"), dicDisplayStatusCounts.absent ?? 0],
                 [t("half_day", "Half Day"), dicDisplayStatusCounts.half_day ?? 0],
                 [t("leave", "Leave"), (dicDisplayStatusCounts.on_leave ?? 0) + (dicDisplayStatusCounts.lwp ?? 0)],
                 [t("worked_hours", "Worked Hours"), strMonthlyWorkedHours],
-                [t("late_occurrences", "Late Occurrences"), objHistory?.objSummary.intLateOccurrences ?? 0],
+                [t("late_occurrences_short", "Late Occ."), objHistory?.objSummary.intLateOccurrences ?? 0],
+                [t("early_occurrences_short", "Early Departure"), objHistory?.objSummary.intEarlyOccurrences ?? 0],
               ].map(([strLabel, objValue]) => (
-                <Box key={strLabel} sx={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 86, flex: "0 0 auto" }}>
-                  <Typography variant="body1" lineHeight={1.2} fontWeight={900}>{objValue}</Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ mt: 0.25 }}>{strLabel}</Typography>
+                <Box key={strLabel} sx={{ minWidth: 0, textAlign: "center", px: 0.25 }}>
+                  <Typography variant="body2" lineHeight={1.15} fontWeight={900} noWrap>{objValue}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    title={String(strLabel)}
+                    noWrap
+                    sx={{ display: "block", mt: 0.3, overflow: "hidden", textOverflow: "ellipsis", fontSize: "0.68rem" }}
+                  >
+                    {strLabel}
+                  </Typography>
                 </Box>
               ))}
-            </Stack>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -592,23 +604,24 @@ export default function EssAttendancePanel() {
             {lstMonthDays.map((strDate) => {
               const objDay = dicDaysByDate[strDate];
               const blnFutureDate = strDate > strToday;
+              const blnUnresolvedFutureDate = blnFutureDate && !objDay;
               return (
                 <ButtonBase
                   key={strDate}
                   data-control-id={`ess.my-attendance.day.${strDate}.button`}
-                  disabled={blnFutureDate}
+                  disabled={blnUnresolvedFutureDate}
                   onClick={() => setStrSelectedDate(strDate)}
-                  sx={{ width: "100%", justifyContent: "space-between", p: 1.25, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", opacity: blnFutureDate ? 0.45 : 1, textAlign: "left" }}
+                  sx={{ width: "100%", justifyContent: "space-between", p: 1.25, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", opacity: blnUnresolvedFutureDate ? 0.45 : 1, textAlign: "left" }}
                 >
                   <Box>
                     <Typography fontWeight={800}>{new Date(`${strDate}T00:00:00`).toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" })}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {blnFutureDate
+                      {blnUnresolvedFutureDate
                         ? t("not_processed", "Not Processed")
                         : objDay ? formatDuration(objDay.decWorkedHours) : t("not_recorded", "No attendance record")}
                     </Typography>
                   </Box>
-                  {blnFutureDate
+                  {blnUnresolvedFutureDate
                     ? <Chip size="small" label={t("not_processed", "Not Processed")} />
                     : renderStatusChip(objDay)}
                 </ButtonBase>
@@ -626,30 +639,42 @@ export default function EssAttendancePanel() {
                 const objDay = dicDaysByDate[strDate];
                 const objColor = objDay ? ATTENDANCE_STATUS_COLORS[objDay.strStatus] : null;
                 const blnFutureDate = strDate > strToday;
+                const blnUnresolvedFutureDate = blnFutureDate && !objDay;
                 return (
                   <ButtonBase
                     key={strDate}
                     data-control-id={`ess.my-attendance.day.${strDate}.button`}
-                    disabled={blnFutureDate}
+                    disabled={blnUnresolvedFutureDate}
                     onClick={() => setStrSelectedDate(strDate)}
-                    sx={{ minHeight: 62, alignItems: "stretch", justifyContent: "flex-start", p: 0.75, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "4px", bgcolor: objColor?.bg ?? "background.paper", opacity: blnFutureDate ? 0.45 : 1, textAlign: "left" }}
+                    sx={{ minHeight: 66, alignItems: "stretch", justifyContent: "flex-start", p: 0.85, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", bgcolor: objColor?.bg ?? "background.paper", opacity: blnUnresolvedFutureDate ? 0.45 : 1, textAlign: "left" }}
                   >
-                    <Stack justifyContent="space-between" width="100%" height="100%" spacing={0.25}>
-                      <Stack direction="row" spacing={0.75} alignItems="baseline" sx={{ minWidth: 0 }}>
-                        <Typography fontWeight={900} sx={{ flex: "0 0 auto" }}>{Number(strDate.slice(-2))}</Typography>
-                        <Typography variant="caption" fontWeight={800} color={objColor?.fg ?? "text.secondary"} noWrap sx={{ minWidth: 0 }}>
-                          {blnFutureDate
-                            ? t("not_processed", "Not Processed")
-                            : objDay ? (
-                              objDay.strStatus === "weekly_off"
-                                ? t("status_weekly_off", "Weekly Off")
-                                : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))
-                            ) : ""}
-                        </Typography>
+                    <Stack width="100%" height="100%" spacing={0.25}>
+                      <Typography variant="h6" fontWeight={900} lineHeight={1} sx={{ letterSpacing: 0 }}>{Number(strDate.slice(-2))}</Typography>
+                      <Stack alignItems="center" justifyContent="center" spacing={0.25} sx={{ flex: 1, minHeight: 0, minWidth: 0, textAlign: "center" }}>
+                        <Box
+                          component="span"
+                          sx={{
+                            maxWidth: "100%",
+                            px: 0.9,
+                            py: 0.25,
+                            borderRadius: "999px",
+                            bgcolor: objColor ? alpha(objColor.fg, 0.1) : "transparent",
+                          }}
+                        >
+                          <Typography variant="caption" fontWeight={800} color={objColor?.fg ?? "text.secondary"} noWrap sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {blnUnresolvedFutureDate
+                              ? t("not_processed", "Not Processed")
+                              : objDay ? (
+                                objDay.strStatus === "weekly_off"
+                                  ? t("status_weekly_off", "Weekly Off")
+                                  : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))
+                              ) : ""}
+                          </Typography>
+                        </Box>
+                        {!blnUnresolvedFutureDate && objDay && objDay.decWorkedHours > 0 ? (
+                          <Typography variant="caption" color="text.secondary" lineHeight={1.1}>{formatDuration(objDay.decWorkedHours)}</Typography>
+                        ) : null}
                       </Stack>
-                      {!blnFutureDate && objDay && objDay.decWorkedHours > 0 ? (
-                        <Typography variant="caption" color="text.secondary">{formatDuration(objDay.decWorkedHours)}</Typography>
-                      ) : null}
                     </Stack>
                   </ButtonBase>
                 );
@@ -683,50 +708,75 @@ export default function EssAttendancePanel() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ pb: 1 }}>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
+        <DialogContent sx={{ pt: "0 !important" }}>
           {objOverview?.objPolicy ? (
-            <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Typography fontWeight={900}>{objOverview.objPolicy.strPolicyName}</Typography>
-                <Chip
-                  size="small"
-                  label={objOverview.objPolicy.strPolicySource === "EMPLOYEE_ASSIGNMENT"
-                    ? t("policy_source_employee_assignment", "Employee Assignment")
-                    : t("policy_source_company_default", "Company Default")}
-                  sx={{ fontWeight: 700 }}
-                />
-              </Stack>
-              <Typography variant="caption" color="text.secondary">
-                {t("policy_effective_for_date", "Effective for")} {formatDisplayDate(strSelectedDate)}
-              </Typography>
-              <Typography>{t("policy_effective_from", "Effective From")}: {formatDisplayDate(objOverview.objPolicy.dtEffectiveFrom)}</Typography>
-              <Typography>{t("full_day_threshold", "Minimum Hours for Full Day")}: {objOverview.objPolicy.decFullDayThresholdHours} h</Typography>
-              <Typography>{t("half_day_threshold", "Minimum Hours for Half Day")}: {objOverview.objPolicy.decHalfDayThresholdHours} h</Typography>
-              <Typography>{t("late_grace", "Late Arrival Grace")}: {objOverview.objPolicy.intLateGraceMinutes} min</Typography>
-              <Typography>{t("early_grace", "Early Departure Grace")}: {objOverview.objPolicy.intEarlyDepartureGraceMinutes} min</Typography>
-              <Typography>
-                {t("standard_weekly_off_days", "Standard Weekly Off Days")}: {
-                  lstWeekdays
-                    .map((strDay, intJsIndex) => {
+            <Stack spacing={1.75}>
+              <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.08), border: "1px solid", borderColor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.18) }}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+                  <Typography fontWeight={900} fontSize="1.05rem">{objOverview.objPolicy.strPolicyName}</Typography>
+                  <Chip
+                    size="small"
+                    color="primary"
+                    label={objOverview.objPolicy.strPolicySource === "EMPLOYEE_ASSIGNMENT"
+                      ? t("policy_source_employee_assignment", "Employee Assignment")
+                      : t("policy_source_company_default", "Company Default")}
+                    sx={{ fontWeight: 700 }}
+                  />
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {t("policy_effective_for_date", "Effective for")} {formatDisplayDate(strSelectedDate)} · {t("policy_effective_from", "Effective From")} {formatDisplayDate(objOverview.objPolicy.dtEffectiveFrom)}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("working_hour_rules", "Working Hour Rules")}</Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1, mt: 0.5 }}>
+                  {[
+                    [t("full_day_threshold_short", "Full Day"), `${objOverview.objPolicy.decFullDayThresholdHours} h`],
+                    [t("half_day_threshold_short", "Half Day"), `${objOverview.objPolicy.decHalfDayThresholdHours} h`],
+                    ...(objOverview.objPolicy.strInTime || objOverview.objPolicy.strOutTime
+                      ? [[t("shift_timing", "Shift Timing"), `${objOverview.objPolicy.strInTime?.slice(0, 5) ?? "—"} - ${objOverview.objPolicy.strOutTime?.slice(0, 5) ?? "—"}`]]
+                      : []),
+                    [t("late_grace", "Late Arrival Grace"), `${objOverview.objPolicy.intLateGraceMinutes} min`],
+                    [t("early_grace", "Early Departure Grace"), `${objOverview.objPolicy.intEarlyDepartureGraceMinutes} min`],
+                    [t("overtime_enabled", "Overtime"), objOverview.objPolicy.blnOtEnabled ? t("yes", "Yes") : t("no", "No")],
+                  ].map(([strLabel, strValue]) => (
+                    <Box key={strLabel} sx={{ px: 1.25, py: 0.85, borderRadius: "10px", bgcolor: "action.hover", border: "1px solid", borderColor: "divider" }}>
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">{strLabel}</Typography>
+                      <Typography variant="body2" fontWeight={800} sx={{ mt: 0.25 }}>{strValue}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("standard_weekly_off_days", "Standard Weekly Off Days")}</Typography>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                  {(() => {
+                    const lstOffDays = lstWeekdays.filter((_strDay, intJsIndex) => {
                       const intPatternIndex = (intJsIndex + 6) % 7;
-                      return objOverview.objPolicy?.strWeeklyOffPattern?.[intPatternIndex] === "1"
-                        ? t(`weekday_${strDay}`, strDay)
-                        : null;
-                    })
-                    .filter(Boolean)
-                    .join(", ") || t("none", "None")
+                      return objOverview.objPolicy?.strWeeklyOffPattern?.[intPatternIndex] === "1";
+                    });
+                    return lstOffDays.length > 0
+                      ? lstOffDays.map((strDay) => (
+                        <Chip key={strDay} size="small" color="primary" label={t(`weekday_${strDay}`, strDay)} sx={{ fontWeight: 700 }} />
+                      ))
+                      : <Typography variant="body2" color="text.secondary">{t("none", "None")}</Typography>;
+                  })()}
+                </Stack>
+              </Box>
+
+              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="small" />} sx={{ borderRadius: "10px", "& .MuiAlert-message": { py: 0.25 } }}>
+                {t("missing_punch_treatment", "Missing Punch")}: {
+                  objOverview.objPolicy.strMissingPunchTreatmentCode === "EXCEPTION"
+                    ? t("missing_punch_treatment_exception", "Missing punch creates an attendance exception")
+                    : t(
+                      `missing_punch_treatment_${objOverview.objPolicy.strMissingPunchTreatmentCode?.toLowerCase()}`,
+                      objOverview.objPolicy.strMissingPunchTreatmentCode,
+                    )
                 }
-              </Typography>
-              <Typography>{t("missing_punch_treatment", "Missing Punch")}: {
-                objOverview.objPolicy.strMissingPunchTreatmentCode === "EXCEPTION"
-                  ? t("missing_punch_treatment_exception", "Missing punch creates an attendance exception")
-                  : t(
-                    `missing_punch_treatment_${objOverview.objPolicy.strMissingPunchTreatmentCode?.toLowerCase()}`,
-                    objOverview.objPolicy.strMissingPunchTreatmentCode,
-                  )
-              }</Typography>
-              <Typography>{t("overtime_enabled", "Overtime")}: {objOverview.objPolicy.blnOtEnabled ? t("yes", "Yes") : t("no", "No")}</Typography>
+              </Alert>
             </Stack>
           ) : <Alert severity="info">{t("no_policy", "No attendance policy applies to the selected date. Punching is disabled until a policy is configured.")}</Alert>}
         </DialogContent>

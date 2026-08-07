@@ -69,6 +69,8 @@ function toAttendancePolicyFormValues(objPolicy: AttendancePolicyFormValues): At
     intEmploymentTypeID: objPolicy.intEmploymentTypeID,
     intLateGraceMinutes: objPolicy.intLateGraceMinutes,
     intEarlyDepartureGraceMinutes: objPolicy.intEarlyDepartureGraceMinutes,
+    strInTime: objPolicy.strInTime,
+    strOutTime: objPolicy.strOutTime,
     decFullDayThresholdHours: objPolicy.decFullDayThresholdHours,
     decHalfDayThresholdHours: objPolicy.decHalfDayThresholdHours,
     decAbsentThresholdHours: objPolicy.decAbsentThresholdHours,
