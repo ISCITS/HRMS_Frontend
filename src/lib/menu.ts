@@ -99,17 +99,14 @@ function shouldHideMenuItem(objItem: MenuItem): boolean {
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = (normalizeRoute(objItem.strRoute) ?? "").trim().toLowerCase();
 
-  if (strModuleCode === "settings" || strModuleName === "settings") {
-    return true;
-  }
-
+  // The top-level HR "Settings" screen (/settings) is a real, RBAC-gated screen and must stay
+  // visible. Only the tenant-administration/onboarding surfaces under /settings/tenants remain hidden.
   if (strModuleCode.includes("tenant_onboarding") || strModuleName.includes("tenant onboarding")) {
     return true;
   }
 
   return (
-    strRoute === "/settings" ||
-    strRoute.startsWith("/settings/") ||
+    strRoute.startsWith("/settings/tenants") ||
     strRoute.includes("/tenants/onboarding")
   );
 }
