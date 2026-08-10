@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
@@ -2194,7 +2195,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                 size="small"
                 onClick={handlePunch}
                 disabled={objPunchButtonState.blnDisabled}
-                startIcon={<AccessTimeRoundedIcon sx={{ fontSize: 16 }} />}
+                startIcon={<FingerprintRoundedIcon sx={{ fontSize: 18 }} />}
                 sx={{
                   borderRadius: "12px",
                   px: 1.6,

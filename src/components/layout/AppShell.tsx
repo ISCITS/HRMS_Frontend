@@ -1002,7 +1002,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                {tCommon("brand_short_name", "ESS")}
+                {blnEssDashboardActive
+                  ? tCommon("brand_short_name", "ESS")
+                  : tCommon("brand_short_name_hrms", "HRMS")}
               </Typography>
             </Box>
           </Stack>

@@ -121,8 +121,9 @@ export default function EssWorkHolidayPage() {
         strRequestedOutcomeCode: objValues.strRequestedOutcomeCode,
         tmPlannedStartTime: objValues.tmPlannedStartTime,
         tmPlannedEndTime: objValues.tmPlannedEndTime,
-        tmActualStartTime: objValues.tmActualStartTime || null,
-        tmActualEndTime: objValues.tmActualEndTime || null,
+        // Actual Start/End are system/HR verified after the work date, never employee-entered.
+        tmActualStartTime: null,
+        tmActualEndTime: null,
         decRequestedHours: objValues.decRequestedHours,
         decRequestedCreditDays: objValues.decRequestedCreditDays,
         strWorkReason: objValues.strWorkReason,
@@ -230,15 +231,11 @@ export default function EssWorkHolidayPage() {
               <Grid container spacing={2}>
                 <Grid item xs={12}><Stack direction="row" flexWrap="wrap" useFlexGap gap={2}>
                   <Box sx={{ width: { xs: "100%", sm: 230 } }}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.date.input" fullWidth size="small" type="date" label={t("eligible_date", "Eligible Date")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtWorkDate)} helperText={errors.dtWorkDate?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "100%", sm: 280 } }}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={t("requested_outcome", "Requested Outcome")}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH", "NONE"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Box>
+                  <Box sx={{ width: { xs: "100%", sm: 280 } }}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Box>
                   <Box sx={{ width: { xs: "100%", sm: 180 } }}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.credit-days.select" select fullWidth size="small" label={t("expected_credit", "Expected Credit")}>{[0, 0.5, 1].map((fltValue) => <MenuItem data-control-id={`work-on-holiday.ess.credit-days.${fltValue}.option`} key={fltValue} value={fltValue}>{fltValue}</MenuItem>)}</TextField>} /></Box>
                   <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label={t("planned_start", "Planned Start")} InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} />} /></Box>
                   <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label={t("planned_end", "Planned End")} InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmActualStartTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.actual-start.input" fullWidth size="small" type="time" label={t("actual_start", "Actual Start")} InputLabelProps={{ shrink: true }} />} /></Box>
-                  <Stack direction="row" useFlexGap gap={2} sx={{ width: { xs: "100%", sm: "auto" } }}>
-                    <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmActualEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.actual-end.input" fullWidth size="small" type="time" label={t("actual_end", "Actual End")} InputLabelProps={{ shrink: true }} />} /></Box>
-                    <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
-                  </Stack>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
                   <Box sx={{ width: { xs: "100%", sm: objAttachment ? 320 : 180 } }}>
                     {objAttachment ? (
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, height: 40, minWidth: 0 }}>
