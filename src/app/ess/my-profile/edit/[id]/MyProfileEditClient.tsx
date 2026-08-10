@@ -14,6 +14,7 @@ export default function MyProfileEditClient({ intEmployeeID }: MyProfileEditClie
     <EmployeeEditorScreen
       strMode="edit"
       intEmployeeID={intEmployeeID}
+      blnHideSalarySummaryCard
       strBackRoute="/ess/my-profile"
       lstAccessModuleCodes={["MY_PROFILE"]}
       strMenuActionOverride="MY_PROFILE"

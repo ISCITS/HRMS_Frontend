@@ -78,6 +78,7 @@ import type {
 type EmployeeEditorScreenProps = {
   strMode: "add" | "edit" | "view";
   intEmployeeID?: number;
+  blnHideSalarySummaryCard?: boolean;
   blnHideSalaryOpenPageButton?: boolean;
   blnHidePageHeading?: boolean;
   strBackRoute?: string;
@@ -128,6 +129,7 @@ function buildPartialEmployeeCode() {
 export default function EmployeeEditorScreen({
   strMode,
   intEmployeeID,
+  blnHideSalarySummaryCard = false,
   blnHideSalaryOpenPageButton = false,
   blnHidePageHeading = false,
   strBackRoute = "/employees",
@@ -1290,7 +1292,7 @@ export default function EmployeeEditorScreen({
         </Box>
       </Paper>
 
-      {strMode === "edit" ? (
+      {strMode === "edit" && !blnHideSalarySummaryCard ? (
         <EmployeeSalarySummaryCard
           intEmployeeID={intResolvedEmployeeID}
           blnHideOpenPageButton={blnHideSalaryOpenPageButton}
