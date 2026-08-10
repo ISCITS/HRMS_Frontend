@@ -53,6 +53,7 @@ export type EmployeeDetailRecord = {
   dtDateOfExit: string | null;
   blnIsEssEnabled: boolean;
   blnIsPartialSave: boolean;
+  strProfilePhotoUrl?: string | null;
 };
 
 export type EmployeeFormValues = {

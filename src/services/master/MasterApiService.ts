@@ -500,6 +500,7 @@ export type EmployeeDetailApiRecord = {
   dtDateOfExit: string | null;
   blnIsEssEnabled: boolean;
   blnIsPartialSave: boolean;
+  strProfilePhotoUrl?: string | null;
 };
 
 export type EmployeeLookupOptionApiRecord = {

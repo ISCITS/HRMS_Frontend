@@ -1,13 +1,14 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -16,6 +17,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   Radio,
   RadioGroup,
   MenuItem,
@@ -35,7 +37,7 @@ import {
   Typography
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FocusEvent, type InputHTMLAttributes, type ReactNode, type RefObject, type SyntheticEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type InputHTMLAttributes, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -44,6 +46,7 @@ import dicConstant from "@/constants/Constant.json";
 import FamilyDetailsTab from "@/features/employee/components/FamilyDetailsTab";
 import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import {
   dicEmptyEmployeeAddressForm,
   dicEmptyEmployeeBankForm,
@@ -190,6 +193,9 @@ export default function EmployeeEditorScreen({
     strSeverity: "success" as "success" | "error",
     strTitle: "",
   });
+  const [strEmployeeAvatarUrl, setStrEmployeeAvatarUrl] = useState("");
+  const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
+  const [strAvatarError, setStrAvatarError] = useState("");
   const objLastFocusedFieldRef = useRef<HTMLElement | null>(null);
   const dicFieldRefs: Partial<Record<keyof EmployeeFormValues | keyof EmployeeAddressFormValues | keyof EmployeeBankFormValues, RefObject<HTMLInputElement | null>>> = {
     strEmployeeCode: useRef<HTMLInputElement | null>(null),
@@ -215,6 +221,9 @@ export default function EmployeeEditorScreen({
     () => (strMenuActionOverride ? { strMenuAction: strMenuActionOverride } : undefined),
     [strMenuActionOverride]
   );
+  const strDisplayEmployeeName = [dicBasicForm.strFirstName, dicBasicForm.strMiddleName, dicBasicForm.strLastName].filter(Boolean).join(" ").trim();
+  const strAvatarText = (strDisplayEmployeeName || dicBasicForm.strEmployeeCode || "E").trim().charAt(0).toUpperCase() || "E";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strEmployeeAvatarUrl);
 
   function getFooterActionConfig() {
     if (blnViewOnly) {
@@ -283,6 +292,7 @@ export default function EmployeeEditorScreen({
           }
 
           setDicBasicForm(toEmployeeFormValues(dicEmployee));
+          setStrEmployeeAvatarUrl(dicEmployee.strProfilePhotoUrl || "");
           setIntResolvedEmployeeID(intEmployeeID);
 
           const lstChildResults = await Promise.allSettled([
@@ -392,6 +402,41 @@ export default function EmployeeEditorScreen({
       strSeverity,
       strTitle,
     });
+  }
+
+  async function handleAvatarUpload(objEvent: ChangeEvent<HTMLInputElement>) {
+    const objFile = objEvent.target.files?.[0];
+    objEvent.target.value = "";
+    if (!objFile || !intResolvedEmployeeID) {
+      return;
+    }
+
+    setStrAvatarError("");
+
+    const AVATAR_MAX_BYTES = 200 * 1024;
+    if (objFile.size <= 0) {
+      setStrAvatarError(t("error_photo_empty", "The selected photo is empty."));
+      return;
+    }
+    if (objFile.size > AVATAR_MAX_BYTES) {
+      setStrAvatarError(t("error_photo_too_large", "Photo is too large. Maximum allowed size is 200 KB."));
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(objFile.type)) {
+      setStrAvatarError(t("error_photo_unsupported_type", "Unsupported file type. Allowed types: JPG, PNG, WEBP."));
+      return;
+    }
+
+    setBlnAvatarUpdating(true);
+    try {
+      const dicAvatar = await employeeService.uploadEmployeeAvatar(intResolvedEmployeeID, objFile);
+      setStrEmployeeAvatarUrl(dicAvatar.strProfilePhotoUrl || "");
+      window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
+    } catch (objError: unknown) {
+      setStrAvatarError(objError instanceof Error ? objError.message : t("error_upload_photo", "Unable to upload profile photo."));
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
   }
 
   function closeAlertDialog(_: Event | SyntheticEvent, strReason?: string) {
@@ -1257,16 +1302,88 @@ export default function EmployeeEditorScreen({
       </Stack>
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-              <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
-          {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
-              <TextField data-controlid="employee.editor.first-name.input" inputProps={{ "data-controlid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
-          <Stack spacing={1} sx={{ minWidth: 0 }}>
-              <TextField data-controlid="employee.editor.middle-name.input" inputProps={{ "data-controlid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems={{ xs: "stretch", md: "flex-start" }}>
+          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 118 }, flexShrink: 0, pt: { md: 0.5 } }}>
+            <Box
+              sx={{
+                position: "relative",
+                borderRadius: "50%",
+                p: "3px",
+                boxShadow: "0 8px 20px rgba(15,23,42,0.12)",
+                border: "2px solid rgba(37,99,235,0.2)",
+                transition: "all 0.2s ease",
+                "&:hover .employee-avatar-overlay": {
+                  opacity: intResolvedEmployeeID && !blnViewOnly ? 1 : 0
+                }
+              }}
+            >
+              <Avatar
+                src={strAuthenticatedAvatarUrl || undefined}
+                sx={{
+                  width: 88,
+                  height: 88,
+                  bgcolor: "rgba(37, 99, 235, 0.14)",
+                  color: "primary.main",
+                  fontWeight: 700,
+                  fontSize: 30
+                }}
+              >
+                {strAvatarText}
+              </Avatar>
+              <Box
+                className="employee-avatar-overlay"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  bgcolor: "rgba(15,23,42,0.38)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0,
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <CameraAltOutlinedIcon sx={{ color: "#ffffff", fontSize: 22 }} />
+              </Box>
+              {blnViewOnly ? null : (
+                <IconButton
+                  component="label"
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    right: -2,
+                    bottom: -2,
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    p: 0,
+                    bgcolor: "#2563eb",
+                    color: "#ffffff",
+                    boxShadow: "0 10px 22px rgba(37,99,235,0.35)",
+                    "&:hover": { bgcolor: "#1d4ed8" },
+                    "&.Mui-disabled": { bgcolor: "#94a3b8", color: "#e2e8f0" }
+                  }}
+                  disabled={blnAvatarUpdating || !intResolvedEmployeeID}
+                >
+                  {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <EditRoundedIcon sx={{ fontSize: 16 }} />}
+                  <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
+                </IconButton>
+              )}
+            </Box>
+            {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", maxWidth: 220, textAlign: "center" }}>{strAvatarError}</Typography> : null}
           </Stack>
-              <TextField data-controlid="employee.editor.last-name.input" inputProps={{ "data-controlid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-              <TextField data-controlid="employee.editor.date-of-birth.input" inputProps={{ "data-controlid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
-          <RadioGroup
+
+          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+            <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+          {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
+            <TextField data-controlid="employee.editor.first-name.input" inputProps={{ "data-controlid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+          <Stack spacing={1} sx={{ minWidth: 0 }}>
+            <TextField data-controlid="employee.editor.middle-name.input" inputProps={{ "data-controlid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+          </Stack>
+            <TextField data-controlid="employee.editor.last-name.input" inputProps={{ "data-controlid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField data-controlid="employee.editor.date-of-birth.input" inputProps={{ "data-controlid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+            <RadioGroup
               row
               value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"}
               onChange={(objEvent) => {
@@ -1288,8 +1405,9 @@ export default function EmployeeEditorScreen({
                 sx={{ m: 0 }}
                 disabled={blnViewOnly}
               />
-          </RadioGroup>
-        </Box>
+            </RadioGroup>
+          </Box>
+        </Stack>
       </Paper>
 
       {strMode === "edit" && !blnHideSalarySummaryCard ? (

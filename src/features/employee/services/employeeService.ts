@@ -86,7 +86,8 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
     strEmploymentStatus: dicRecord.strEmploymentStatus,
     dtDateOfExit: dicRecord.dtDateOfExit,
     blnIsEssEnabled: dicRecord.blnIsEssEnabled,
-    blnIsPartialSave: dicRecord.blnIsPartialSave
+    blnIsPartialSave: dicRecord.blnIsPartialSave,
+    strProfilePhotoUrl: dicRecord.strProfilePhotoUrl ?? null
   };
 }
 
@@ -114,6 +115,26 @@ export const employeeService = {
   async updateEmployee(intEmployeeID: number, dicValues: EmployeeFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
     const objResult = await masterApiService.updateEmployee(intEmployeeID, mapEmployeePayload(dicValues), objOptions?.strMenuAction);
     return mapEmployeeDetailRecord(objResult.Data);
+  },
+
+  async uploadEmployeeAvatar(intEmployeeID: number, objFile: File): Promise<{
+    intEmployeeID: number;
+    strEmployeeCode?: string | null;
+    strFullName?: string | null;
+    strProfilePhotoUrl?: string | null;
+  }> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
+      method: "PUT",
+      body: objFormData,
+      credentials: "include",
+    });
+    const objResult = await objResponse.json();
+    if (!objResponse.ok || objResult?.ResultCode === 0) {
+      throw new Error(objResult?.Msg || "Unable to upload profile photo.");
+    }
+    return objResult.Data;
   },
 
   bulkUpdateStatus(lstIDs: number[], blnIsActive: boolean) {
