@@ -129,6 +129,17 @@ function buildPartialEmployeeCode() {
   return `PARTIAL-${Date.now()}`;
 }
 
+function buildEmployeeAvatarUrl(intEmployeeID: number, strProfilePhotoUrl?: string | null) {
+  const strResolvedAvatarUrl = strProfilePhotoUrl?.trim();
+  if (!strResolvedAvatarUrl) {
+    return `/api/employees/avatar/${intEmployeeID}?v=${Date.now()}`;
+  }
+
+  const strVersionedAvatarUrl = new URL(strResolvedAvatarUrl, window.location.origin);
+  strVersionedAvatarUrl.searchParams.set("v", Date.now().toString());
+  return `${strVersionedAvatarUrl.pathname}${strVersionedAvatarUrl.search}`;
+}
+
 export default function EmployeeEditorScreen({
   strMode,
   intEmployeeID,
@@ -430,7 +441,7 @@ export default function EmployeeEditorScreen({
     setBlnAvatarUpdating(true);
     try {
       const dicAvatar = await employeeService.uploadEmployeeAvatar(intResolvedEmployeeID, objFile);
-      setStrEmployeeAvatarUrl(dicAvatar.strProfilePhotoUrl || "");
+      setStrEmployeeAvatarUrl(buildEmployeeAvatarUrl(intResolvedEmployeeID, dicAvatar?.strProfilePhotoUrl));
       window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
     } catch (objError: unknown) {
       setStrAvatarError(objError instanceof Error ? objError.message : t("error_upload_photo", "Unable to upload profile photo."));
@@ -1303,7 +1314,41 @@ export default function EmployeeEditorScreen({
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems={{ xs: "stretch", md: "flex-start" }}>
-          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 118 }, flexShrink: 0, pt: { md: 0.5 } }}>
+          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+            <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+          {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
+            <TextField data-controlid="employee.editor.first-name.input" inputProps={{ "data-controlid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+          <Stack spacing={1} sx={{ minWidth: 0 }}>
+            <TextField data-controlid="employee.editor.middle-name.input" inputProps={{ "data-controlid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+          </Stack>
+            <TextField data-controlid="employee.editor.last-name.input" inputProps={{ "data-controlid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField data-controlid="employee.editor.date-of-birth.input" inputProps={{ "data-controlid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+            <RadioGroup
+              row
+              value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"}
+              onChange={(objEvent) => {
+                const strValue = objEvent.target.value;
+                updateBasicField("blnIsWorker", strValue === "worker");
+              }}
+            >
+              <FormControlLabel
+                value="worker"
+                control={<Radio disabled={blnViewOnly} />}
+                label={t("field_worker", "Worker")}
+                sx={{ m: 0 }}
+                disabled={blnViewOnly}
+              />
+              <FormControlLabel
+                value="nonWorker"
+                control={<Radio disabled={blnViewOnly} />}
+                label={t("field_non_worker", "Non-Worker")}
+                sx={{ m: 0 }}
+                disabled={blnViewOnly}
+              />
+            </RadioGroup>
+          </Box>
+
+          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 118 }, flexShrink: 0, pt: { md: 0.5 }, order: { xs: -1, md: 0 }, ml: { md: "auto" } }}>
             <Box
               sx={{
                 position: "relative",
@@ -1373,40 +1418,6 @@ export default function EmployeeEditorScreen({
             </Box>
             {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", maxWidth: 220, textAlign: "center" }}>{strAvatarError}</Typography> : null}
           </Stack>
-
-          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-            <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
-          {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
-            <TextField data-controlid="employee.editor.first-name.input" inputProps={{ "data-controlid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
-          <Stack spacing={1} sx={{ minWidth: 0 }}>
-            <TextField data-controlid="employee.editor.middle-name.input" inputProps={{ "data-controlid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-          </Stack>
-            <TextField data-controlid="employee.editor.last-name.input" inputProps={{ "data-controlid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-            <TextField data-controlid="employee.editor.date-of-birth.input" inputProps={{ "data-controlid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
-            <RadioGroup
-              row
-              value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"}
-              onChange={(objEvent) => {
-                const strValue = objEvent.target.value;
-                updateBasicField("blnIsWorker", strValue === "worker");
-              }}
-            >
-              <FormControlLabel
-                value="worker"
-                control={<Radio disabled={blnViewOnly} />}
-                label={t("field_worker", "Worker")}
-                sx={{ m: 0 }}
-                disabled={blnViewOnly}
-              />
-              <FormControlLabel
-                value="nonWorker"
-                control={<Radio disabled={blnViewOnly} />}
-                label={t("field_non_worker", "Non-Worker")}
-                sx={{ m: 0 }}
-                disabled={blnViewOnly}
-              />
-            </RadioGroup>
-          </Box>
         </Stack>
       </Paper>
 
