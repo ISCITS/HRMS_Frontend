@@ -276,12 +276,11 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{objProps.strTitle}</Typography>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.payrollRegisterSearchPanel}>
-          <Box className={styles.payrollRegisterSearchLinePrimary} sx={{ flexWrap: "wrap", gap: 1.25 }}>
-            {objProps.lstFilters.map((objFilter) => (
-              objFilter.strType === "multiselect" ? (
+        <Box className={styles.reportSearchPanelRow}>
+          {objProps.lstFilters.map((objFilter) => (
+            <Box className={styles.reportSearchField} key={objFilter.strKey}>
+              {objFilter.strType === "multiselect" ? (
                 <ReportMultiSelect
-                  key={objFilter.strKey}
                   strLabel={objFilter.strLabel}
                   strValue={dicFilters[objFilter.strKey] ?? ""}
                   lstStaticOptions={objFilter.lstOptions}
@@ -291,7 +290,6 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                 />
               ) : objFilter.strType === "select" ? (
                 <TextField
-                  key={objFilter.strKey}
                   select
                   label={objFilter.strLabel}
                   value={dicFilters[objFilter.strKey] ?? ""}
@@ -307,7 +305,6 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                 </TextField>
               ) : (
                 <TextField
-                  key={objFilter.strKey}
                   type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}
                   label={objFilter.strLabel}
                   value={dicFilters[objFilter.strKey] ?? ""}
@@ -317,9 +314,9 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                   InputLabelProps={objFilter.strType === "text" ? undefined : { shrink: true }}
                   data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.input`}
                 />
-              )
-            ))}
-          </Box>
+              )}
+            </Box>
+          ))}
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>

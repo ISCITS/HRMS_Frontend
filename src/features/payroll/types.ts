@@ -788,6 +788,79 @@ export type PayrollResultDetailRecord = PayrollResultRecord & {
   lstStatutoryResults?: PayrollStatutoryResultRecord[];
 };
 
+export type TaxDeclarationItemRecord = {
+  strCategoryCode: string | null;
+  strSectionCode: string | null;
+  strCategoryType: string | null;
+  decDeclaredAmount: number;
+  decApprovedAmount: number;
+};
+
+export type TaxSlabTraceRecord = {
+  mode?: string;
+  intSlabID?: number | null;
+  from_amount: number;
+  to_amount: number | null;
+  taxable_amount: number;
+  rate_percent: number;
+  fixed_tax_amount?: number;
+  tax_amount: number;
+  slab_profile_code?: string | null;
+};
+
+export type TaxCessRuleRecord = {
+  strCalculationBaseCode: string | null;
+  fltCessRatePercent: number | null;
+  decBaseAmount: number;
+  decCessAmount: number;
+};
+
+export type TaxCalculationDetailRecord = {
+  intResultID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strFinancialYearCode: string | null;
+  strRegimeUsed: string | null;
+  strRegimeTypeCode: string | null;
+  decGrossTaxableIncomeYtd: number;
+  decProjectedTaxableIncome: number;
+  dicExemptions: {
+    decTotalAmount: number;
+    lstItems: TaxDeclarationItemRecord[];
+  };
+  dicDeductions: {
+    decDeclaredTotalAmount: number;
+    lstItems: TaxDeclarationItemRecord[];
+    decStandardDeductionAmount: number;
+    dicStandardDeductionRule: Record<string, unknown> | null;
+  };
+  decNetTaxableIncome: number;
+  lstSlabTrace: TaxSlabTraceRecord[];
+  decTaxBeforeRebate: number;
+  dicRebate: {
+    decAmount: number;
+    decMarginalReliefAmount: number;
+    dicRule: Record<string, unknown> | null;
+  };
+  decTaxAfterRebate: number;
+  dicSurcharge: {
+    decAmount: number;
+    decMarginalReliefAmount: number;
+    dicRule: Record<string, unknown> | null;
+  };
+  decTaxAfterSurcharge: number;
+  dicCess: {
+    decTotalAmount: number;
+    lstRules: TaxCessRuleRecord[];
+  };
+  decTotalTaxLiability: number;
+  decTaxDeductedYtd: number;
+  decMonthlyTds: number;
+  intRemainingMonths: number | null;
+  strSlabProfileCode: string | null;
+  strTaxRuleVersion: string | null;
+};
+
 export type StatutoryReportCode = "ALL" | "PF" | "ESI" | "PT" | "LWF";
 
 export type StatutoryReportRow = {

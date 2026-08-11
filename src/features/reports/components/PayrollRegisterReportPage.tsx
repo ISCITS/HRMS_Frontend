@@ -459,20 +459,28 @@ export default function PayrollRegisterReportPage() {
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
           <Box />
         </Box>
-        <Box className={styles.payrollRegisterSearchPanel}>
-          <Box className={styles.payrollRegisterSearchLinePrimary}>
+        <Box className={styles.reportSearchPanelRow}>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.payroll-register.employee-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.payroll-register.run-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.payroll-register.payroll-month.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.payroll-register.department.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.payroll-register.location.input" />
           </Box>
-          <Box className={styles.payrollRegisterSearchLineSecondary}>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (strValue || "All") as SearchForm["strStatus"] }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All statuses" controlId="reports.payroll-register.status.select" />
-            <Box className={styles.searchActions}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.payroll-register.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.payroll-register.clear.button">Clear</Button>
-            </Box>
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.payroll-register.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.payroll-register.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -517,7 +525,7 @@ export default function PayrollRegisterReportPage() {
             </Box>
           )}
           footerContent={lstFilteredRows.length > 0 ? (
-            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
               <Box sx={{ minWidth: 2746, display: "grid", gridTemplateColumns: "56px 150px 220px 140px 140px 120px 110px 110px 110px 150px 150px 150px 170px 140px 150px 140px 140px 180px 140px 120px", alignItems: "center" }}>
                 <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 9" }}>{dicLabels.strTotal}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decOriginalSalary)}</Typography>

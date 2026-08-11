@@ -3,6 +3,7 @@ import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHa
 import type {
   PayrollResultDetailRecord,
   PayrollResultListRecord,
+  TaxCalculationDetailRecord,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
@@ -64,6 +65,17 @@ export const payrollResultService = {
   ): Promise<PayrollResultDetailRecord> {
     const objResult = await requestApi<PayrollResultDetailRecord>({
       strPath: `/payroll/results/${intResultID}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async getTaxCalculationDetails(
+    intResultID: number
+  ): Promise<TaxCalculationDetailRecord> {
+    const objResult = await requestApi<TaxCalculationDetailRecord>({
+      strPath: `/payroll/results/${intResultID}/tax-information`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_VIEW",
     });
