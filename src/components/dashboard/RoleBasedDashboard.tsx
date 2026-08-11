@@ -3064,7 +3064,7 @@ function formatComparisonMonth(strValue: string, t: RoleBasedDashboardProps["t"]
   const objDate = parseDashboardDate(strValue);
   if (Number.isNaN(objDate.getTime())) return t("previous_month", "previous month");
   objDate.setMonth(objDate.getMonth() - 1);
-  return formatMonth(objDate.toISOString(), t);
+  return `${monthLabel(objDate, t)} ${objDate.getFullYear()}`;
 }
 
 function formatDateLabel(strValue: string, t: RoleBasedDashboardProps["t"]) {
