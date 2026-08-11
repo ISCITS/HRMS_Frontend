@@ -3,6 +3,8 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
+  WorkHolidayEarnedCompOffList,
+  WorkHolidayEligibilityPreview,
   WorkHolidayList,
   WorkHolidayMutationPayload,
   WorkHolidayPostingList,
@@ -78,8 +80,13 @@ export const workHolidayService = {
       { page: intPage, page_size: intPageSize },
     ),
   listCompOffEarned: (intPage = 1, intPageSize = 100) =>
-    requestWorkHoliday<WorkHolidayPostingList>(
+    requestWorkHoliday<WorkHolidayEarnedCompOffList>(
       "/comp-off-earned", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_VIEW", undefined,
       { page: intPage, page_size: intPageSize },
+    ),
+  getEligibilityPreview: (strWorkDate: string) =>
+    requestWorkHoliday<WorkHolidayEligibilityPreview>(
+      "/eligibility-preview", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_VIEW", undefined,
+      { work_date: strWorkDate },
     ),
 };

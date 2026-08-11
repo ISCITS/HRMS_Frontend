@@ -6,6 +6,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
+import { getWorkHolidayBusinessStatus } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import type { WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 
@@ -20,6 +21,8 @@ type WorkHolidayDetailDrawerProps = {
   blnCanPost?: boolean;
   blnCanReverse?: boolean;
   blnActionMode?: boolean;
+  /** Show the employee-facing business status (Draft, Pending Approval, ...) instead of the raw workflow code. */
+  blnBusinessStatus?: boolean;
   fnOnClose: () => void;
   fnOnRefresh: () => Promise<void>;
   fnOnConflict: (strMessage: string) => void;
@@ -30,12 +33,6 @@ type WorkHolidayActionOption = {
   strColor: "primary" | "error";
 };
 
-function hasApprovalDecision(objDetail: WorkHolidayRequest) {
-  return (objDetail.lstTimeline ?? []).some((objAction) =>
-    ["APPROVE", "REJECT", "SEND_BACK"].includes(objAction.strActionCode.toUpperCase()),
-  );
-}
-
 function formatDateTime(strValue?: string | null) {
   return strValue ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(strValue)) : "—";
 }
@@ -43,7 +40,7 @@ function formatDateTime(strValue?: string | null) {
 export default function WorkHolidayDetailDrawer({
   objDetail, blnOpen, blnLoading = false, blnCanApprove = false, blnCanReject = false,
   blnCanSendBack = false, blnCanVerify = false, blnCanPost = false, blnCanReverse = false,
-  blnActionMode = false, fnOnClose, fnOnRefresh, fnOnConflict,
+  blnActionMode = false, blnBusinessStatus = false, fnOnClose, fnOnRefresh, fnOnConflict,
 }: WorkHolidayDetailDrawerProps) {
   const { t } = useModuleLabels("work_on_holiday");
   const [strAction, setStrAction] = useState<"approve" | "reject" | "send-back" | "verify" | "post" | "reverse" | null>(null);
@@ -52,7 +49,7 @@ export default function WorkHolidayDetailDrawer({
   const [blnSaving, setBlnSaving] = useState(false);
   const lstAvailableActions = useMemo(() => {
     if (!objDetail) return [];
-    const blnCanTakeApprovalDecision = objDetail.strRequestStatus === "PENDING_APPROVAL" && !hasApprovalDecision(objDetail);
+    const blnCanTakeApprovalDecision = objDetail.strRequestStatus === "PENDING_APPROVAL" && !objDetail.blnApprovalDecisionTaken;
     const lstOptions: (WorkHolidayActionOption | null)[] = [
       blnCanApprove && blnCanTakeApprovalDecision ? { strCode: "approve" as const, strLabel: t("approve", "Approve"), strColor: "primary" as const } : null,
       blnCanReject && blnCanTakeApprovalDecision ? { strCode: "reject" as const, strLabel: t("reject", "Reject"), strColor: "error" as const } : null,
@@ -135,14 +132,32 @@ export default function WorkHolidayDetailDrawer({
           <Stack spacing={2}>
             <Grid container spacing={1.5}>
               {[
+                ["employee", objDetail.strEmployeeName ?? `${t("employee", "Employee")} ${objDetail.intEmployeeID}`],
                 ["work_date", objDetail.dtWorkDate],
                 ["day_type", t(`day_type_${objDetail.strDayTypeCode.toLowerCase()}`, objDetail.strDayTypeCode)],
-                ["outcome", t(`outcome_${objDetail.strRequestedOutcomeCode.toLowerCase()}`, objDetail.strRequestedOutcomeCode)],
-                ["status", t(`status_${objDetail.strRequestStatus.toLowerCase()}`, objDetail.strRequestStatus)],
-                ["attendance_verification", t(`verification_${objDetail.strAttendanceVerificationStatus.toLowerCase()}`, objDetail.strAttendanceVerificationStatus)],
-                ["posting_status", t(`posting_${objDetail.strPostingStatus.toLowerCase()}`, objDetail.strPostingStatus)],
+                ["requested_benefit", t(`outcome_${objDetail.strRequestedOutcomeCode.toLowerCase()}`, objDetail.strRequestedOutcomeCode)],
+                ["status", blnBusinessStatus
+                  ? getWorkHolidayBusinessStatus(objDetail, t)
+                  : t(`status_${objDetail.strRequestStatus.toLowerCase()}`, objDetail.strRequestStatus)],
+                ["current_approver", objDetail.strCurrentApproverName ?? (objDetail.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—")],
               ].map(([strKey, strValue]) => <Grid item xs={6} key={strKey}><Typography variant="caption" color="text.secondary">{t(strKey, strKey.replaceAll("_", " "))}</Typography><Typography fontWeight={750}>{strValue}</Typography></Grid>)}
             </Grid>
+            <Box>
+              <Typography fontWeight={850}>{t("planned_timing", "Planned Timing")}</Typography>
+              <Typography>{t("planned_start", "Planned Start")}: {objDetail.tmPlannedStartTime?.slice(0, 5) ?? "—"} · {t("planned_end", "Planned End")}: {objDetail.tmPlannedEndTime?.slice(0, 5) ?? "—"}</Typography>
+              <Typography>{t("calculated_requested_hours", "Calculated Requested Hours")}: {objDetail.decRequestedHours ?? "—"}</Typography>
+            </Box>
+            <Box>
+              <Typography fontWeight={850}>{t("actual_timing_evidence", "Actual Timing & Evidence")}</Typography>
+              <Typography>{t("actual_start", "Actual Start")}: {objDetail.objAttendanceSnapshot.tmFirstIn?.slice(0, 5) ?? "—"} · {t("actual_end", "Actual End")}: {objDetail.objAttendanceSnapshot.tmLastOut?.slice(0, 5) ?? "—"}</Typography>
+              <Typography>{t("verified_worked_hours", "Verified Worked Hours")}: {objDetail.decVerifiedHours ?? objDetail.objAttendanceSnapshot.decWorkedHours ?? "—"}</Typography>
+              <Typography>{t("attendance_verification", "Attendance Verification")}: {t(`verification_${objDetail.strAttendanceVerificationStatus.toLowerCase()}`, objDetail.strAttendanceVerificationStatus)}</Typography>
+              {lstPunches.map((objPunch) => <Typography key={objPunch.intID} variant="caption" display="block">{t(`punch_${objPunch.strDirection.toLowerCase()}`, objPunch.strDirection)} · {formatDateTime(objPunch.dtPunchAt)}</Typography>)}
+            </Box>
+            <Box>
+              <Typography fontWeight={850}>{t("comp_off_credit", "Comp-Off Credit")}</Typography>
+              <Typography>{t("expected_credit", "Expected Credit")}: {objDetail.decRequestedCreditDays ?? "—"} · {t("final_credit", "Final Credit")}: {objDetail.decApprovedCreditDays ?? t("pending_verification", "Pending verification")}</Typography>
+            </Box>
             <Box><Typography fontWeight={850}>{t("request_summary", "Request Summary")}</Typography><Typography>{objDetail.strWorkReason}</Typography><Typography color="text.secondary">{objDetail.strWorkDescription || t("not_available", "Not available")}</Typography></Box>
             <Alert severity="success">
               {objDetail.objEligibilitySnapshot.strEligibilitySource === "HOLIDAY_MASTER"
@@ -151,11 +166,10 @@ export default function WorkHolidayDetailDrawer({
             </Alert>
             <Box><Typography fontWeight={850}>{t("holiday_information", "Holiday Information")}</Typography><Typography>{objDetail.objEligibilitySnapshot.strHolidayName ?? t(`day_type_${objDetail.strDayTypeCode.toLowerCase()}`, objDetail.strDayTypeCode)}</Typography></Box>
             <Box>
-              <Typography fontWeight={850}>{t("attendance_evidence", "Attendance Evidence")}</Typography>
-              <Typography>{t("attendance_status", "Attendance Status")}: {t(`attendance_${(objDetail.objAttendanceSnapshot.strStatus ?? "not_recorded").toLowerCase()}`, objDetail.objAttendanceSnapshot.strStatus ?? "Not recorded")}</Typography>
-              <Typography>{t("worked_hours", "Worked Hours")}: {objDetail.objAttendanceSnapshot.decWorkedHours ?? "—"}</Typography>
-              <Typography>{t("first_in", "First In")}: {objDetail.objAttendanceSnapshot.tmFirstIn ?? "—"} · {t("last_out", "Last Out")}: {objDetail.objAttendanceSnapshot.tmLastOut ?? "—"}</Typography>
-              {lstPunches.map((objPunch) => <Typography key={objPunch.intID} variant="caption" display="block">{t(`punch_${objPunch.strDirection.toLowerCase()}`, objPunch.strDirection)} · {formatDateTime(objPunch.dtPunchAt)}</Typography>)}
+              <Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography>
+              {(objDetail.lstAttachments ?? []).length
+                ? (objDetail.lstAttachments ?? []).map((objAttachment) => <Typography key={objAttachment.intID} variant="body2">{objAttachment.strFileName} ({Math.max(1, Math.round(objAttachment.intFileSizeBytes / 1024))} KB)</Typography>)
+                : <Typography color="text.secondary">{t("no_attachments", "No attachments provided.")}</Typography>}
             </Box>
             <Box>
               <Typography fontWeight={850}>{t("team_availability", "Team Availability")}</Typography>
@@ -163,7 +177,7 @@ export default function WorkHolidayDetailDrawer({
             </Box>
             <Box>
               <Typography fontWeight={850}>{t("approval_timeline", "Approval Route & Timeline")}</Typography>
-              {(objDetail.lstTimeline ?? []).map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: 3, borderColor: "primary.main", pl: 1.5, my: 1 }}><Chip size="small" label={t(`action_${objAction.strActionCode.toLowerCase()}`, objAction.strActionCode)} /><Typography variant="caption" display="block">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}
+              {(objDetail.lstTimeline ?? []).map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: 3, borderColor: "primary.main", pl: 1.5, my: 1 }}><Chip size="small" label={t(`action_${objAction.strActionCode.toLowerCase()}`, objAction.strActionCode)} />{objAction.strActionByName ? <Typography variant="body2" fontWeight={650}>{objAction.strActionByName}</Typography> : null}<Typography variant="caption" display="block">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}
             </Box>
             {objDetail.strPostingStatus === "POSTED" || objDetail.strPostingStatus === "REVERSED" ? <Alert data-control-id="work-on-holiday.detail.ledger-reference.alert" severity="info">{t("ledger_reference_safe", "Posting is linked to the request number shown above. Internal ledger identifiers are hidden.")}</Alert> : null}
             {blnActionMode ? (

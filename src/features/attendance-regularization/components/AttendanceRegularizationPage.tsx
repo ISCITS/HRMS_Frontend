@@ -457,11 +457,20 @@ export default function AttendanceRegularizationPage() {
 
   async function runConfirmedAction() {
     if (!objConfirm) return;
+    const blnWasSubmit = objConfirm.strAction === "submit";
     setBlnSaving(true);
     try {
-      if (objConfirm.strAction === "submit") await attendanceRegularizationService.submit(objConfirm.objRequest.intID, objConfirm.objRequest.intRowVersion);
+      if (blnWasSubmit) await attendanceRegularizationService.submit(objConfirm.objRequest.intID, objConfirm.objRequest.intRowVersion);
       else await attendanceRegularizationService.withdraw(objConfirm.objRequest.intID, objConfirm.objRequest.intRowVersion, t("withdrawal_reason_default", "Withdrawn by employee."));
       setObjConfirm(null); await loadRequests();
+      if (blnWasSubmit) {
+        // Land on My Requests so the submitted request is visibly there, not left behind on a stale New Request form.
+        reset(initialValues(strInitialDate));
+        setObjPreview(null);
+        setLstFiles([]);
+        setObjEditing(null);
+        setIntTab(1);
+      }
       setObjToast({ blnOpen: true, strMessage: t("action_completed", "Action completed."), strSeverity: "success" });
     } catch (objError) { setStrError(objError instanceof Error ? objError.message : t("action_failed", "Unable to complete action.")); }
     finally { setBlnSaving(false); }
