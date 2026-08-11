@@ -3,6 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";

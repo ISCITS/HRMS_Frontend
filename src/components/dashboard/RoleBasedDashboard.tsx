@@ -2183,37 +2183,48 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
               <SectionHeader strTitle={t("attendance_today", "Attendance Today")} strTone="blue" objIcon={<AccessTimeRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
             </Stack>
             <Chip size="small" label={resolveStatusLabel(strAttendanceTodayStatus, t)} sx={{ mt: 0.5, mb: 1, backgroundColor: ESS_COLORS.softBlue, color: ESS_COLORS.blue, fontWeight: 700 }} />
-            <TwoColMetricGrid lstItems={[
-              { strLabel: t("punch_in", "Punch In"), strValue: strAttendancePunchIn },
-              { strLabel: t("punch_out", "Punch Out"), strValue: strAttendancePunchOut },
-              { strLabel: t("working_hours", "Working Hours"), strValue: strAttendanceWorkingHours },
-            ]} />
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.1 }}>
-              <Button
-                data-control-id="ess.dashboard.punch.button"
-                variant="contained"
-                size="small"
-                onClick={handlePunch}
-                disabled={objPunchButtonState.blnDisabled}
-                startIcon={<FingerprintRoundedIcon sx={{ fontSize: 18 }} />}
-                sx={{
-                  borderRadius: "12px",
-                  px: 1.6,
-                  textTransform: "none",
-                  fontWeight: 700,
-                  fontSize: "0.76rem",
-                  backgroundColor: objPunchButtonState.strDirection === "out" ? ESS_COLORS.orange : ESS_COLORS.blue,
-                }}
-              >
-                {blnPunching
-                  ? t("punching", "Punching...")
-                  : blnAttendanceOverviewLoading && !objAttendanceOverview
-                    ? t("loading", "Loading...")
-                    : objPunchButtonState.strDirection === "out"
-                      ? t("punch_out", "Punch Out")
-                      : t("punch_in", "Punch In")}
-              </Button>
-            </Stack>
+            <Grid container spacing={0} sx={{ borderTop: "1px solid #E6ECF8", borderLeft: "1px solid #E6ECF8" }}>
+              {[
+                { strLabel: t("punch_in", "Punch In"), strValue: strAttendancePunchIn },
+                { strLabel: t("punch_out", "Punch Out"), strValue: strAttendancePunchOut },
+                { strLabel: t("working_hours", "Working Hours"), strValue: strAttendanceWorkingHours },
+              ].map((objItem, intIndex) => (
+                <Grid item xs={6} key={`${objItem.strLabel}-${intIndex}`}>
+                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
+                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
+                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+              <Grid item xs={6}>
+                <Stack sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }} justifyContent="center" alignItems="flex-start">
+                  <Button
+                    data-control-id="ess.dashboard.punch.button"
+                    variant="contained"
+                    size="small"
+                    onClick={handlePunch}
+                    disabled={objPunchButtonState.blnDisabled}
+                    startIcon={<FingerprintRoundedIcon sx={{ fontSize: 18 }} />}
+                    sx={{
+                      borderRadius: "12px",
+                      px: 1.6,
+                      textTransform: "none",
+                      fontWeight: 700,
+                      fontSize: "0.76rem",
+                      backgroundColor: objPunchButtonState.strDirection === "out" ? ESS_COLORS.orange : ESS_COLORS.blue,
+                    }}
+                  >
+                    {blnPunching
+                      ? t("punching", "Punching...")
+                      : blnAttendanceOverviewLoading && !objAttendanceOverview
+                        ? t("loading", "Loading...")
+                        : objPunchButtonState.strDirection === "out"
+                          ? t("punch_out", "Punch Out")
+                          : t("punch_in", "Punch In")}
+                  </Button>
+                </Stack>
+              </Grid>
+            </Grid>
             {strPunchError ? (
               <Typography sx={{ mt: 0.5, color: ESS_COLORS.red, fontSize: "0.68rem" }}>{strPunchError}</Typography>
             ) : strPunchSuccessMessage ? (

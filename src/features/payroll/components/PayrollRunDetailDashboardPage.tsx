@@ -7,6 +7,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
@@ -39,7 +40,7 @@ import {
   Typography,
 } from "@mui/material";
 import { type InputHTMLAttributes, type MouseEvent, type ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -406,6 +407,7 @@ function getWorkflowButtonVariant(strStep: string, objRun: PayrollRunDetailRecor
 
 export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDetailDashboardPageProps) {
   const objRouter = useRouter();
+  const strPathname = usePathname();
   const { t } = useModuleLabels("payroll-runs");
   const { t: tCommon } = useModuleLabels("common");
   const { t: tAttendance } = useModuleLabels("payroll-attendance-integration");
@@ -421,6 +423,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
+  const [intPreviewResultID, setIntPreviewResultID] = useState<number | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [strActionLoaderLabel, setStrActionLoaderLabel] = useState("");
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
@@ -703,14 +706,15 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     try {
       let intPayslipID = dicRow.intPayslipID;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-      }
+      let dicPayslip = intPayslipID
+        ? await payslipService.getPayslipPreview(intRunID, dicRow.intEmployeeID)
+        : await generatePayslip(dicRow);
+      intPayslipID = dicPayslip?.intPayslipID ?? intPayslipID;
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
+      setIntPreviewResultID(dicPayslip?.dicFooter?.intPayrollResultID ?? null);
       setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
@@ -1294,14 +1298,52 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       ) : null}
 
       <Dialog open={blnPayslipDialogOpen} onClose={() => setBlnPayslipDialogOpen(false)} maxWidth="lg" fullWidth controlId="payroll.run-detail.payslip-preview.dialog">
-        <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
+        <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 1 }}>
           {t("payslip_preview", "Payslip Preview")}
-          <IconButton onClick={() => setBlnPayslipDialogOpen(false)} controlId="payroll.run-detail.payslip-preview.close.icon-button">
-            <CloseRoundedIcon />
-          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {intPreviewResultID ? (
+              <Tooltip title="Tax Information" arrow>
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    window.open(
+                      `/reports/payslips/${intPreviewResultID}/tax-information?backRoute=${encodeURIComponent(strPathname)}`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                  sx={{
+                    color: "#fff",
+                    backgroundColor: "#1d4ed8",
+                    border: "1px solid #1d4ed8",
+                    width: 38,
+                    height: 38,
+                    padding: 0,
+                    boxShadow: "0 2px 6px rgba(29, 78, 216, 0.35)",
+                    "&:hover": { backgroundColor: "#1e40af" },
+                  }}
+                  controlId="payroll.run-detail.payslip-preview.tax-information.button"
+                >
+                  <InfoOutlinedIcon sx={{ fontSize: 22 }} />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+            <IconButton onClick={() => setBlnPayslipDialogOpen(false)} controlId="payroll.run-detail.payslip-preview.close.icon-button">
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
         </DialogTitle>
         <DialogContent dividers>
-          {strPayslipPreviewHtml ? <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} /> : null}
+          {strPayslipPreviewHtml ? (
+            <PayslipHtmlPreview
+              strHtml={strPayslipPreviewHtml}
+              strTaxInformationUrl={
+                intPreviewResultID
+                  ? `/reports/payslips/${intPreviewResultID}/tax-information?backRoute=${encodeURIComponent(strPathname)}`
+                  : undefined
+              }
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
       <Dialog

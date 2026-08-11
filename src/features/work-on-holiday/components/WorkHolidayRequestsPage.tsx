@@ -6,7 +6,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography,
+  DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Tab, Tabs, TextField,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
@@ -53,12 +53,10 @@ export default function WorkHolidayRequestsPage() {
   const blnCanAct = blnCanApprove || blnCanReject || blnCanSendBack || blnCanVerify || blnCanPost || blnCanReverse;
   const lstTabs = useMemo(() => [
     { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
-    { strCode: "verification", strLabel: t("tab_pending_verification", "Pending Attendance Verification"), blnVisible: blnCanVerify },
     { strCode: "all", strLabel: t("tab_all_requests", "All Requests"), blnVisible: blnCanViewAll },
-    { strCode: "on_behalf", strLabel: t("tab_hr_on_behalf", "HR On Behalf"), blnVisible: blnCanOnBehalf },
     { strCode: "exceptions", strLabel: t("tab_posting_exceptions", "Posting Exceptions"), blnVisible: blnCanPost },
     { strCode: "history", strLabel: t("tab_completed_history", "Completed / History"), blnVisible: blnCanViewAll },
-  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanOnBehalf, blnCanPost, blnCanVerify, blnCanViewAll, t]);
+  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanPost, blnCanViewAll, t]);
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strStatusFilter, setStrStatusFilter] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(strFilterStorageKey) ?? "");
   const [strSearch, setStrSearch] = useState("");
@@ -76,11 +74,10 @@ export default function WorkHolidayRequestsPage() {
     strWorkDescription: "", strOnBehalfReason: "",
   });
   const strSelectedTab = lstTabs[Math.min(intTab, Math.max(lstTabs.length - 1, 0))]?.strCode ?? "approval";
-  const strApiStatus = strSelectedTab === "verification" ? "PENDING_ATTENDANCE_VERIFICATION"
-    : strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
-      : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
+  const strApiStatus = strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
+    : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
   const strMode = strSelectedTab === "approval" ? "queue" : "all";
-  const blnListEnabled = !["on_behalf", "exceptions"].includes(strSelectedTab) && (strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll || blnCanVerify);
+  const blnListEnabled = strSelectedTab !== "exceptions" && (strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll);
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList(strMode, strApiStatus, 1, 100, blnListEnabled);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
 
@@ -179,8 +176,7 @@ export default function WorkHolidayRequestsPage() {
     { field: "strDayTypeCode", headerName: t("day_type", "Day Type"), width: 130 },
     { field: "strRequestedOutcomeCode", headerName: t("outcome", "Outcome"), width: 150 },
     { field: "strRequestStatus", headerName: t("status", "Status"), width: 170 },
-    { field: "strAttendanceVerificationStatus", headerName: t("attendance_verification", "Attendance Verification"), width: 210 },
-    { field: "strPostingStatus", headerName: t("posting_status", "Posting Status"), width: 160 },
+    { field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 },
   ];
   const lstRows: WorkHolidayWorkbenchRow[] = objList.lstItems.filter((objRequest) => {
     if (strSelectedTab === "approval" && (objRequest.strRequestStatus !== "PENDING_APPROVAL" || objRequest.blnApprovalDecisionTaken)) {
@@ -214,19 +210,23 @@ export default function WorkHolidayRequestsPage() {
     strDayTypeCode: t(`day_type_${objRequest.strDayTypeCode.toLowerCase()}`, objRequest.strDayTypeCode),
     strRequestedOutcomeCode: t(`outcome_${objRequest.strRequestedOutcomeCode.toLowerCase()}`, objRequest.strRequestedOutcomeCode),
     strRequestStatus: <Chip size="small" label={t(`status_${objRequest.strRequestStatus.toLowerCase()}`, objRequest.strRequestStatus)} />,
-    strAttendanceVerificationStatus: t(`verification_${objRequest.strAttendanceVerificationStatus.toLowerCase()}`, objRequest.strAttendanceVerificationStatus),
-    strPostingStatus: t(`posting_${objRequest.strPostingStatus.toLowerCase()}`, objRequest.strPostingStatus),
+    strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—"),
   }));
 
   if (blnRightsLoading) return <Box data-control-id="work-on-holiday.workbench.rights-loading.container" sx={{ display: "grid", placeItems: "center", minHeight: 240 }}><CircularProgress aria-label={t("loading", "Loading")} /></Box>;
-  if (!lstTabs.length) return <Alert data-control-id="work-on-holiday.workbench.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday Requests access is not available. Ask your administrator to assign manager or HR Work on Holiday rights.")}</Alert>;
+  if (!lstTabs.length && !blnCanOnBehalf) return <Alert data-control-id="work-on-holiday.workbench.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday Requests access is not available. Ask your administrator to assign manager or HR Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
       {/* AppShell already provides the screen title, so the workbench starts with its status and tabs. */}
       {strNotice ? <Alert data-control-id="work-on-holiday.workbench.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.workbench.error.alert" severity="error" onClose={() => setStrError("")}>{strError || strListError}</Alert> : null}
+      {blnCanOnBehalf ? (
+        <Stack direction="row" justifyContent="flex-end">
+          <Button data-control-id="work-on-holiday.workbench.on-behalf.open.button" variant="contained" onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create On Behalf")}</Button>
+        </Stack>
+      ) : null}
       <Paper><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
-      {!["on_behalf", "exceptions"].includes(strSelectedTab) ? (
+      {strSelectedTab !== "exceptions" ? (
         <Paper className={styles.controlsCard}>
           <Box
             component="form"
@@ -250,7 +250,6 @@ export default function WorkHolidayRequestsPage() {
       ) : null}
       {blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}
       {blnListEnabled ? <CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_requests" testIdPrefix="work-on-holiday-workbench" emptyMessage={t("empty_requests", "No matching requests found.")} /> : null}
-      {strSelectedTab === "on_behalf" ? <Paper sx={{ p: 3 }}><Typography fontWeight={850} sx={{ mb: 2 }}>{t("hr_on_behalf_guidance", "Create a draft for an employee in your tenant and company.")}</Typography><Button data-control-id="work-on-holiday.workbench.on-behalf.open.button" variant="contained" onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create On Behalf")}</Button></Paper> : null}
       {strSelectedTab === "exceptions" ? <CommonDataGrid columns={[
         { field: "intWorkHolidayRequestID", headerName: t("request_reference", "Request Reference") },
         { field: "strPostingTypeCode", headerName: t("posting_type", "Posting Type") },

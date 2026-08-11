@@ -409,23 +409,33 @@ export default function StatutoryReportPage() {
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
           <Box />
         </Box>
-        <Box className={styles.statutorySearchPanel}>
-          <Box className={styles.statutorySearchLinePrimary}>
+        <Box className={styles.reportSearchPanelRow}>
+          <Box className={styles.reportSearchField}>
             <TextField select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth controlId="reports.statutory.report-type.select">
               {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
             </TextField>
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.statutory.employee-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.statutory.run-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.statutory.payroll-month.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.statutory.department.input" />
           </Box>
-          <Box className={styles.statutorySearchLinePrimary}>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.statutory.location.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
             <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All Statuses" controlId="reports.statutory.status.select" />
-            <Box className={styles.searchActions}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
-            </Box>
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -471,7 +481,7 @@ export default function StatutoryReportPage() {
           footerContent={
             blnSummaryReport ? (
               lstSummaryRows.length > 0 ? (
-                <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+                <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
                   <Box sx={{ minWidth: 2030, display: "grid", gridTemplateColumns: "140px 140px 220px 140px 140px 140px 140px 110px 110px 170px 150px 150px 150px 120px", alignItems: "center" }}>
                     <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 3" }}>Total</Typography>
                     <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decPfEmployee)}</Typography>
@@ -489,7 +499,7 @@ export default function StatutoryReportPage() {
                 </Box>
               ) : null
             ) : lstFilteredRows.length > 0 ? (
-              <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+              <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
                 <Box sx={{ minWidth: 1936, display: "grid", gridTemplateColumns: "56px 140px 140px 220px 170px 140px 130px 130px 150px 150px 140px 130px 140px 120px", alignItems: "center" }}>
                   <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>Total</Typography>
                   <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decBasis)}</Typography>

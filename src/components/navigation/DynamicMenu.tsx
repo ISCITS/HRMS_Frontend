@@ -799,6 +799,7 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
   const objLeaveGroup = buildSyntheticMenuGroup("ESS_LEAVE", "Leave", [
     buildSyntheticMenuLeaf("Apply Leave", "ESS_LEAVE", "/ess/leave", findItem("/ess/leave")),
     findItem("/ess/leave-balance") ? buildSyntheticMenuLeaf("My Leave Balance", "ESS_LEAVE_BALANCE", "/ess/leave-balance", findItem("/ess/leave-balance")) : null,
+    findItem("/ess/leave-ledger") ? buildSyntheticMenuLeaf("Leave Ledger", "ESS_LEAVE_LEDGER", "/ess/leave-ledger", findItem("/ess/leave-ledger")) : null,
     buildSyntheticMenuLeaf("Holiday Calendar", "ESS_CALENDAR", "/ess/calendar", findItem("/ess/calendar")),
     findItem("/ess/leave/approvals", "/leave/approvals")
       ? buildSyntheticMenuLeaf("Leave Approvals", "ESS_LEAVE_APPROVALS", "/ess/leave/approvals", findItem("/ess/leave/approvals", "/leave/approvals"))

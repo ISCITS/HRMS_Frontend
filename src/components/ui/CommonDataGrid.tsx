@@ -442,9 +442,13 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             )}
           </TableBody>
         </Table>
-      </Box>
 
-      {footerContent ? <Box>{footerContent}</Box> : null}
+        {footerContent ? (
+          <Box sx={{ position: "sticky", bottom: 0, bgcolor: "background.paper", zIndex: 2 }}>
+            {footerContent}
+          </Box>
+        ) : null}
+      </Box>
 
     </Stack>
   );

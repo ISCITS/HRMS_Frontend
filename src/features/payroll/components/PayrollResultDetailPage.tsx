@@ -6,6 +6,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
@@ -35,7 +36,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes, type MouseEvent, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -403,6 +404,43 @@ function getLwpExplanation(
   );
 }
 
+function TaxInfoIconButton({
+  onOpen,
+  strControlID,
+  intSize = 38,
+  intIconSize = 22,
+  sx,
+}: {
+  onOpen: () => void;
+  strControlID: string;
+  intSize?: number;
+  intIconSize?: number;
+  sx?: object;
+}) {
+  return (
+    <Tooltip title="Tax Information" arrow>
+      <IconButton
+        size="small"
+        onClick={onOpen}
+        data-controlid={strControlID}
+        sx={{
+          color: "#fff",
+          backgroundColor: "#1d4ed8",
+          border: "1px solid #1d4ed8",
+          width: intSize,
+          height: intSize,
+          padding: 0,
+          boxShadow: "0 2px 6px rgba(29, 78, 216, 0.35)",
+          "&:hover": { backgroundColor: "#1e40af" },
+          ...sx,
+        }}
+      >
+        <InfoOutlinedIcon sx={{ fontSize: intIconSize }} />
+      </IconButton>
+    </Tooltip>
+  );
+}
+
 function KpiCard({
   strLabel,
   strValue,
@@ -411,6 +449,7 @@ function KpiCard({
   strIconColor,
   strBorder = "#dbe7f3",
   blnEmphasis = false,
+  objHeaderAction,
 }: {
   strLabel: string;
   strValue: string;
@@ -419,10 +458,12 @@ function KpiCard({
   strIconColor: string;
   strBorder?: string;
   blnEmphasis?: boolean;
+  objHeaderAction?: ReactNode;
 }) {
   return (
     <Paper
       sx={{
+        position: "relative",
         borderRadius: "12px",
         border: `1px solid ${strBorder}`,
         background: "#fff",
@@ -432,6 +473,7 @@ function KpiCard({
         py: 1.6,
       }}
     >
+      {objHeaderAction ? <Box sx={{ position: "absolute", top: 8, right: 8 }}>{objHeaderAction}</Box> : null}
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%" }}>
         <Box
           sx={{
@@ -464,11 +506,13 @@ function PaginatedSummaryCard({
   strTitle,
   objIcon,
   lstItems,
+  objHeaderAction,
 }: {
   strTitle: string;
   objIcon: ReactNode;
   lstItems: SummaryDisplayItem[];
   strAriaLabel: string;
+  objHeaderAction?: ReactNode;
 }) {
   return (
     <Paper
@@ -483,11 +527,14 @@ function PaginatedSummaryCard({
         background: "#fff",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.8, borderBottom: "1px solid #e6eef7" }}>
-        {objIcon}
-        <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 900, lineHeight: 1.2 }}>
-          {strTitle}
-        </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, borderBottom: "1px solid #e6eef7" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+          {objIcon}
+          <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 900, lineHeight: 1.2 }}>
+            {strTitle}
+          </Typography>
+        </Box>
+        {objHeaderAction}
       </Box>
       <Box
         sx={{
@@ -553,6 +600,7 @@ export default function PayrollResultDetailPage({
   strBackRoute,
 }: PayrollResultDetailPageProps) {
   const objRouter = useRouter();
+  const strPathname = usePathname();
   const { t } = useModuleLabels("payslips");
   const { t: tAttendance } = useModuleLabels("payroll-attendance-integration");
   const { blnLoading: blnRightsLoading, canDoAny } = useModuleActionAccess(
@@ -622,6 +670,16 @@ export default function PayrollResultDetailPage({
   }, [intResultID]);
 
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
+  const strTaxInformationHref = (() => {
+    const strBasePath = blnPayslipScreen
+      ? `/reports/payslips/${intResultID}/tax-information`
+      : `/payroll/results/${intResultID}/tax-information`;
+    const strCurrentPath = strPathname || strResolvedBackRoute;
+    return `${strBasePath}?backRoute=${encodeURIComponent(strCurrentPath)}`;
+  })();
+  const handleOpenTaxInformation = () => {
+    window.open(strTaxInformationHref, "_blank", "noopener,noreferrer");
+  };
   const blnCanDownloadPayslips = canDoAny("download") || canDoAny("export");
   const blnCanPrintPayslips = canDoAny("print");
   const blnCanUsePayslipDocumentActions = blnCanDownloadPayslips || blnCanPrintPayslips;
@@ -1080,6 +1138,14 @@ export default function PayrollResultDetailPage({
               objIcon={<PercentRoundedIcon sx={{ fontSize: 25 }} />}
               strIconBg="#ede9fe"
               strIconColor="#7c3aed"
+              objHeaderAction={
+                <TaxInfoIconButton
+                  onOpen={handleOpenTaxInformation}
+                  strControlID="payroll.result-detail.tax-kpi.tax-information.button"
+                  intSize={30}
+                  intIconSize={18}
+                />
+              }
             />
             <KpiCard
               strLabel={t("net_pay", "Net Pay")}
@@ -1154,7 +1220,20 @@ export default function PayrollResultDetailPage({
             >
               <PaginatedSummaryCard strTitle={t("employee_details", "Employee Details")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />} lstItems={lstEmployeeSummaryItems} strAriaLabel={t("employee_details", "Employee Details")} />
               <PaginatedSummaryCard strTitle={t("job_payroll", "Job & Payroll")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#4f46e5", fontSize: 20 }} />} lstItems={lstJobPayrollItems} strAriaLabel={t("job_payroll", "Job & Payroll")} />
-              <PaginatedSummaryCard strTitle={t("tax_summary", "Tax Summary")} objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />} lstItems={lstTaxSummaryItems} strAriaLabel={t("tax_summary", "Tax Summary")} />
+              <PaginatedSummaryCard
+                strTitle={t("tax_summary", "Tax Summary")}
+                objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />}
+                lstItems={lstTaxSummaryItems}
+                strAriaLabel={t("tax_summary", "Tax Summary")}
+                objHeaderAction={
+                  <TaxInfoIconButton
+                    onOpen={handleOpenTaxInformation}
+                    strControlID="payroll.result-detail.tax-summary.tax-information.button"
+                    intSize={32}
+                    intIconSize={19}
+                  />
+                }
+              />
               <PaginatedSummaryCard strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 20 }} />} lstItems={lstWageRuleItems} strAriaLabel={t("wage_rule_preview", "Wage Rule Preview")} />
               <PaginatedSummaryCard strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 20 }} />} lstItems={lstNotesItems} strAriaLabel={t("notes", "Notes")} />
             </Box>
@@ -1549,11 +1628,17 @@ export default function PayrollResultDetailPage({
                 p: 2.8,
               }}
             >
-              <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, pb: 2, mb: 2.2, borderBottom: "1px solid #e2e8f0" }}>
-                <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
-                {t("payslip_preview", "Payslip Preview")}
-              </Typography>
-              <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} />
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ pb: 2, mb: 2.2, borderBottom: "1px solid #e2e8f0" }}>
+                <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900 }}>
+                  <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
+                  {t("payslip_preview", "Payslip Preview")}
+                </Typography>
+                <TaxInfoIconButton
+                  onOpen={handleOpenTaxInformation}
+                  strControlID="payroll.result-detail.payslip-preview.tax-information.button"
+                />
+              </Stack>
+              <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} strTaxInformationUrl={strTaxInformationHref} />
             </Paper>
           ) : null}
         </Stack>
