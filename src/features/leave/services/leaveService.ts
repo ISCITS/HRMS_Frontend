@@ -10,6 +10,7 @@ import type {
   LeaveApplyRequest,
   LeaveApplicationAttachmentDto,
   LeaveBalanceDto,
+  LeaveLedgerDto,
   LeaveDecisionRequest,
   LeaveDraftRequest,
   LeaveLookups,
@@ -228,6 +229,15 @@ export const leaveService = {
   async getMyBalances(): Promise<LeaveBalanceDto[]> {
     const objResult = await requestApi<LeaveBalanceDto[]>({
       strPath: "/ess/leave/balance",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async getMyLedger(intLeaveYear: number): Promise<LeaveLedgerDto[]> {
+    const objResult = await requestApi<LeaveLedgerDto[]>({
+      strPath: `/ess/leave/ledger?leave_year=${intLeaveYear}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });

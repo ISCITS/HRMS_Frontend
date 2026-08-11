@@ -295,6 +295,25 @@ export type LeaveBalanceDto = {
   decAvailable: number;
 };
 
+export type LeaveLedgerDto = {
+  intID: number;
+  intLeaveTypeID: number;
+  strLeaveTypeCode: string | null;
+  strLeaveTypeName: string | null;
+  intLeaveYear: number;
+  dtTransactionDate: string | null;
+  strTransactionType: string;
+  decCreditDays: number;
+  decDebitDays: number;
+  decHoldDays: number;
+  decReleaseHoldDays: number;
+  decBalanceAfter: number;
+  decHoldAfter: number;
+  strSourceType: string;
+  strTransactionRemarks: string | null;
+  dtTransactionOn: string | null;
+};
+
 export type LeaveApplicationActionDto = {
   intID: number;
   strAction: string;
