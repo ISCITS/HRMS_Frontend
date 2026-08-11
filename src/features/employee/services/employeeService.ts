@@ -16,6 +16,7 @@ import type {
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
+import { authHelpers } from "@/lib/auth";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 
 type EmployeeServiceRequestOptions = {
@@ -123,10 +124,12 @@ export const employeeService = {
     strFullName?: string | null;
     strProfilePhotoUrl?: string | null;
   }> {
+    const strAccessToken = authHelpers.getAccessToken().trim();
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
       method: "PUT",
+      headers: strAccessToken ? { Authorization: `Bearer ${strAccessToken}` } : undefined,
       body: objFormData,
       credentials: "include",
     });
