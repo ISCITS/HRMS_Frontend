@@ -125,11 +125,26 @@ export const employeeService = {
     strProfilePhotoUrl?: string | null;
   }> {
     const strAccessToken = authHelpers.getAccessToken().trim();
+    const intTenantID = authHelpers.getTenantID();
+    const intCompanyID = authHelpers.getCompanyID();
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
+    const objHeaders: Record<string, string> = {};
+
+    if (strAccessToken) {
+      objHeaders.Authorization = `Bearer ${strAccessToken}`;
+      objHeaders["X-Access-Token"] = strAccessToken;
+    }
+    if (intTenantID) {
+      objHeaders["X-Tenant-Id"] = String(intTenantID);
+    }
+    if (intCompanyID) {
+      objHeaders["X-Company-Id"] = String(intCompanyID);
+    }
+
     const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
       method: "PUT",
-      headers: strAccessToken ? { Authorization: `Bearer ${strAccessToken}` } : undefined,
+      headers: Object.keys(objHeaders).length ? objHeaders : undefined,
       body: objFormData,
       credentials: "include",
     });
