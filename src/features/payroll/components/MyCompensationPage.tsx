@@ -59,6 +59,13 @@ function normalizeToken(strValue: string | null | undefined) {
 // Mirrors the Component Lines filter on the admin Employee Salary page (EmployeeSalaryDetailPage):
 // keep the flexi bucket total line, drop flexi reimbursement options and non-CTC reimbursements,
 // which are surfaced separately in the Flexi Breakdown panel instead.
+// Basic Salary is already shown as its own summary tile above the table, so it's dropped here
+// to avoid showing the same figure twice on the page.
+function isBasicSalaryComponentLine(dicLine: EmployeeSalaryComponentLine) {
+  const strName = normalizeToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
+  return strName.includes("basic");
+}
+
 function isFlexiBucketComponentLine(dicLine: EmployeeSalaryComponentLine) {
   const strName = normalizeToken(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
   return Boolean(dicLine.blnIsFlexiBasket) || strName === "flexipay" || strName === "flexibucket";
@@ -277,6 +284,7 @@ export default function MyCompensationPage() {
       if (isFlexiBucketComponentLine(dicLine)) return true;
       if (isFlexiAllocationComponentLine(dicLine)) return false;
       if (isNonCtcReimbursementComponentLine(dicLine)) return false;
+      if (isBasicSalaryComponentLine(dicLine)) return false;
       return true;
     }),
     [lstVisibleComponentLines]
@@ -567,7 +575,6 @@ export default function MyCompensationPage() {
 
           {blnHasItDeclaration ? (
             <Stack spacing={0.55}>
-              <ImpactRow strLabel={t("tax_regime", "Tax Regime")} strValue={strTaxRegime} />
               <ImpactRow strLabel={t("declared_it_declaration", "Declared IT Declaration")} strValue={formatCurrency(decItDeclaredAnnual, strCurrencyCode)} />
               <ImpactRow strLabel={t("approved_it_declaration", "Approved IT Declaration")} strValue={formatCurrency(decItApprovedAnnual, strCurrencyCode)} strTone="success" />
             </Stack>
