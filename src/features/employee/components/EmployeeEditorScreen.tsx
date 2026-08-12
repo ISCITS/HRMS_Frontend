@@ -64,7 +64,8 @@ import {
   validateEmployeeForm
 } from "@/features/employee/EmployeeFormUtils";
 import { useEmployeeDetailsLabels } from "@/features/employee/hooks/useEmployeeDetailsLabels";
-import { employeeService } from "@/features/employee/services/employeeService";
+import { createHrBankFileService, employeeService } from "@/features/employee/services/employeeService";
+import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import type {
   EmployeeAddressFormValues,
   EmployeeBankFormValues,
@@ -1543,6 +1544,20 @@ export default function EmployeeEditorScreen({
                   <FormControlLabel control={<ActiveStatusSwitch blnIsActive={dicBankForm.blnIsActive} onChange={(blnChecked) => updateBankField("blnIsActive", blnChecked)} disabled={blnViewOnly} />} label={t("field_bank_active", dicConstant.employeeMaster.fields.bankActive)} />
                 </Box>
               </Box>
+              <FileUploadPanel
+                module="BANK"
+                relatedEntityId={intResolvedEmployeeID}
+                relatedEntityType="BANK_ACCOUNT"
+                readOnly={blnViewOnly}
+                controlIdPrefix="employee.editor.bank.documents"
+                title={t("bank_documents_title", "Bank Proof Documents")}
+                description={t("bank_documents_description", "Cancelled cheque or bank passbook uploaded by the employee.")}
+                disabledMessage={t("bank_documents_disabled_message", "Save the employee record before viewing or attaching bank documents.")}
+                emptyMessage={t("bank_documents_empty", "No documents uploaded yet.")}
+                uploadLabel={t("bank_documents_upload", "Upload Document")}
+                layout="grid"
+                objFileService={intResolvedEmployeeID ? createHrBankFileService(intResolvedEmployeeID) : undefined}
+              />
             </Stack>
           ) : null}
 

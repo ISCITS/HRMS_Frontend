@@ -233,6 +233,16 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     await runAction(() => payrollReimbursementService.verifyProof(objClaim.intID, intProofID, { strRemarks: "Proof verified." }), "Proof verified.");
   }
 
+  async function uploadProof(intItemID: number, objFile: File) {
+    if (!objClaim) return;
+    await runAction(() => payrollReimbursementService.uploadProof(objClaim.intID, intItemID, objFile), "Proof uploaded.");
+  }
+
+  async function deleteProof(intItemID: number, intProofID: number) {
+    if (!objClaim) return;
+    await runAction(() => payrollReimbursementService.deleteProof(objClaim.intID, intItemID, intProofID), "Proof deleted.");
+  }
+
   async function submitDialogAction() {
     // Purpose: Submits the selected dialog action after required reason/confirmation checks.
     if (!objClaim || !strDialogAction) return;
@@ -331,6 +341,8 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
               onProofPending={(objNextItem) => openReasonDialog("proof_pending", objNextItem)}
               onVerifyProof={(intProofID) => void verifyProof(intProofID)}
               onRejectProof={(intProofID) => openReasonDialog("reject_proof", undefined, intProofID)}
+              onUploadProof={(intItemID, objFile) => void uploadProof(intItemID, objFile)}
+              onDeleteProof={(intItemID, intProofID) => void deleteProof(intItemID, intProofID)}
             />
           ))}
           {objClaim && (objClaim.lstItems ?? []).length === 0 ? <Alert severity="info">No claim items found.</Alert> : null}

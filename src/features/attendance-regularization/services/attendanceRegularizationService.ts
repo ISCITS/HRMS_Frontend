@@ -170,6 +170,33 @@ export const attendanceRegularizationService = {
   getHrDetail(intRequestID: number) {
     return requestApi<RegularizationDetail>(`/attendance/regularization/requests/${intRequestID}`, ApiRequestMethod.Get, objAction.view);
   },
+  async uploadHrAttachment(intRequestID: number, objFile: File) {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    const objConfig: ApiRequestConfig = {
+      headers: { Authorization: `Bearer ${authHelpers.getAccessToken() ?? ""}` },
+      csrfMenuAction: objAction.onBehalf,
+    };
+    const objResponse = await axiosInstance.post(`${ApiRoutePrefix.ApiV1}/attendance/regularization/requests/${intRequestID}/attachments`, objFormData, objConfig);
+    return objResponse.data;
+  },
+  deleteHrAttachment(intRequestID: number, intAttachmentID: number) {
+    return requestApi<null>(`/attendance/regularization/requests/${intRequestID}/attachments/${intAttachmentID}`, ApiRequestMethod.Delete, objAction.onBehalf);
+  },
+  async previewHrAttachment(intRequestID: number, intAttachmentID: number) {
+    const objConfig: ApiRequestConfig = {
+      responseType: "blob",
+      headers: { Authorization: `Bearer ${authHelpers.getAccessToken() ?? ""}` },
+      csrfMenuAction: objAction.view,
+    };
+    const objResponse = await axiosInstance.get(
+      `${ApiRoutePrefix.ApiV1}/attendance/regularization/requests/${intRequestID}/attachments/${intAttachmentID}`,
+      objConfig,
+    );
+    const strUrl = URL.createObjectURL(objResponse.data as Blob);
+    openBlobUrlInNewTab(strUrl);
+    window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+  },
   getHrContext(intEmployeeID: number, strWorkDate: string) {
     const objQuery = new URLSearchParams({ employee_id: String(intEmployeeID), work_date: strWorkDate });
     return requestApi<DateContext>(`/attendance/regularization/context?${objQuery}`, ApiRequestMethod.Get, objAction.onBehalf);

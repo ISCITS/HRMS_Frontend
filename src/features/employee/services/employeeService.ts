@@ -18,6 +18,12 @@ import type {
 } from "@/features/employee/types";
 import { authHelpers } from "@/lib/auth";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
+import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import type { FileUploadPanelService } from "@/components/shared/files/FileUploadPanel";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 type EmployeeServiceRequestOptions = {
   strMenuAction?: string;
@@ -323,4 +329,95 @@ export const employeeService = {
     return masterApiService.deleteEmployeeFamilyDetail(intFamilyID);
   }
 };
+
+// HR-authorized equivalent of fileUploadService.ts's generic /api/v1/files/* self-service API —
+// used by FileUploadPanel (via its objFileService override) when HR manages bank proof documents
+// on an employee's record, since the self-service endpoints derive the employee strictly from the
+// caller's own session and would silently target the wrong person.
+export function createHrBankFileService(intEmployeeID: number): FileUploadPanelService {
+  const strBase = `${ApiRoutePrefix.ApiV1}/master/employee/${intEmployeeID}/bank/files`;
+
+  return {
+    async listFiles(_objFilter?: ListFilesFilter): Promise<FileMetadataDto[]> {
+      const objResult = await requestEncryptedApi<FileMetadataDto[]>({
+        strPath: strBase,
+        strMethod: ApiRequestMethod.Get,
+        strMenuAction: "EmployeeBankView",
+        blnUseAuthHeader: true,
+      });
+      return objResult.Data ?? [];
+    },
+
+    async uploadFile(objRequest: UploadFileRequest): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objRequest.objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Post,
+          url: strBase,
+          data: objFormData,
+          csrfMenuAction: "EmployeeBankSave",
+          onUploadProgress: objRequest.fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  objRequest.fnOnProgress?.(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async replaceFile(intFileID: number, objFile: File, fnOnProgress?: (intPercentComplete: number) => void): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Put,
+          url: `${strBase}/${intFileID}`,
+          data: objFormData,
+          csrfMenuAction: "EmployeeBankSave",
+          onUploadProgress: fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async deleteFile(intFileID: number): Promise<void> {
+      await requestEncryptedApi<null>({
+        strPath: `${strBase}/${intFileID}`,
+        strMethod: ApiRequestMethod.Delete,
+        strMenuAction: "EmployeeBankSave",
+        blnUseAuthHeader: true,
+      });
+    },
+
+    async previewFile(intFileID: number): Promise<void> {
+      try {
+        const objResponse = await axiosInstance.request<Blob>({
+          method: ApiRequestMethod.Get,
+          url: `${strBase}/${intFileID}/content`,
+          responseType: "blob",
+          csrfMenuAction: "EmployeeBankView",
+        } as ApiRequestConfig);
+        const strUrl = URL.createObjectURL(objResponse.data);
+        openBlobUrlInNewTab(strUrl);
+        window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+  };
+}
 

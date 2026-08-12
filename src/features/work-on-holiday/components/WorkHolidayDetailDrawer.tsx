@@ -5,6 +5,8 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import FileRowActions from "@/components/shared/files/FileRowActions";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import { getWorkHolidayBusinessStatus } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import type { WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
@@ -66,6 +68,48 @@ export default function WorkHolidayDetailDrawer({
     setStrReason("");
     setStrError("");
   }, [blnActionMode, objDetail?.intID]);
+
+  const [blnUploadingAttachment, setBlnUploadingAttachment] = useState(false);
+  const [intBusyAttachmentID, setIntBusyAttachmentID] = useState<number | null>(null);
+  const [strAttachmentError, setStrAttachmentError] = useState("");
+
+  async function previewAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setStrAttachmentError("");
+    try {
+      await workHolidayService.previewReviewAttachment(objDetail.intID, intAttachmentID);
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_preview_failed", "Unable to view attachment."));
+    }
+  }
+
+  async function uploadAttachment(objFile: File) {
+    if (!objDetail) return;
+    setBlnUploadingAttachment(true);
+    setStrAttachmentError("");
+    try {
+      await workHolidayService.uploadReviewAttachment(objDetail.intID, objFile);
+      await fnOnRefresh();
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_upload_failed", "Unable to upload attachment."));
+    } finally {
+      setBlnUploadingAttachment(false);
+    }
+  }
+
+  async function deleteAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setIntBusyAttachmentID(intAttachmentID);
+    setStrAttachmentError("");
+    try {
+      await workHolidayService.deleteReviewAttachment(objDetail.intID, intAttachmentID);
+      await fnOnRefresh();
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_delete_failed", "Unable to delete attachment."));
+    } finally {
+      setIntBusyAttachmentID(null);
+    }
+  }
 
   async function runAction() {
     if (!objDetail || !strAction) return;
@@ -167,9 +211,35 @@ export default function WorkHolidayDetailDrawer({
             <Box><Typography fontWeight={850}>{t("holiday_information", "Holiday Information")}</Typography><Typography>{objDetail.objEligibilitySnapshot.strHolidayName ?? t(`day_type_${objDetail.strDayTypeCode.toLowerCase()}`, objDetail.strDayTypeCode)}</Typography></Box>
             <Box>
               <Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography>
-              {(objDetail.lstAttachments ?? []).length
-                ? (objDetail.lstAttachments ?? []).map((objAttachment) => <Typography key={objAttachment.intID} variant="body2">{objAttachment.strFileName} ({Math.max(1, Math.round(objAttachment.intFileSizeBytes / 1024))} KB)</Typography>)
-                : <Typography color="text.secondary">{t("no_attachments", "No attachments provided.")}</Typography>}
+              {strAttachmentError ? <Alert severity="error" onClose={() => setStrAttachmentError("")} sx={{ my: 1 }}>{strAttachmentError}</Alert> : null}
+              {(objDetail.lstAttachments ?? []).length === 0 ? (
+                <Typography color="text.secondary">{t("attachments_empty", "No attachments added.")}</Typography>
+              ) : (
+                <Stack spacing={0.6} sx={{ my: 1 }}>
+                  {(objDetail.lstAttachments ?? []).map((objAttachment) => (
+                    <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", px: 1, py: 0.6 }}>
+                      <Typography title={objAttachment.strFileName} sx={{ fontSize: ".84rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography>
+                      <FileRowActions
+                        strFileName={objAttachment.strFileName}
+                        controlIdPrefix={`work-on-holiday.detail.attachment.${objAttachment.intID}`}
+                        busy={intBusyAttachmentID === objAttachment.intID}
+                        onPreview={() => void previewAttachment(objAttachment.intID)}
+                        onReplace={blnActionMode ? (objNewFile) => void uploadAttachment(objNewFile) : undefined}
+                        onDelete={blnActionMode ? () => void deleteAttachment(objAttachment.intID) : undefined}
+                      />
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
+              {blnActionMode ? (
+                <FileUploadButton
+                  controlId="work-on-holiday.detail.attachment.upload.button"
+                  label={t("add_attachment", "Add Attachment")}
+                  isUploading={blnUploadingAttachment}
+                  onFilesSelected={(lstSelected) => lstSelected[0] && void uploadAttachment(lstSelected[0])}
+                  onValidationError={setStrAttachmentError}
+                />
+              ) : null}
             </Box>
             <Box>
               <Typography fontWeight={850}>{t("team_availability", "Team Availability")}</Typography>

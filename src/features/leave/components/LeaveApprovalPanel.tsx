@@ -18,12 +18,14 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import FileRowActions from "@/components/shared/files/FileRowActions";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   formatLeaveDate, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
-  type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
+  type LeaveApplicationAttachmentDto, type LeaveQueueItemDto, type LeaveRouteStepDto, type LeaveTimelineEntryDto,
   type LeaveWorkflowExceptionDto,
 } from "@/features/leave/types";
 
@@ -134,6 +136,48 @@ export default function LeaveApprovalPanel() {
     }
   }, []);
 
+  const [intUploadingAttachment, setIntUploadingAttachment] = useState(false);
+  const [intBusyAttachmentID, setIntBusyAttachmentID] = useState<number | null>(null);
+  const [strAttachmentError, setStrAttachmentError] = useState("");
+
+  async function fnPreviewAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setStrAttachmentError("");
+    try {
+      await leaveService.previewApplicationAttachment(objDetail.intID, intAttachmentID);
+    } catch (objError) {
+      setStrAttachmentError((await createApiRequestError(objError)).message);
+    }
+  }
+
+  async function fnUploadAttachment(objFile: File) {
+    if (!objDetail) return;
+    setIntUploadingAttachment(true);
+    setStrAttachmentError("");
+    try {
+      const objNewAttachment = await leaveService.uploadApplicationAttachment(objDetail.intID, objFile);
+      setObjDetail((objPrev) => (objPrev ? { ...objPrev, lstAttachments: [...(objPrev.lstAttachments ?? []), objNewAttachment] } : objPrev));
+    } catch (objError) {
+      setStrAttachmentError((await createApiRequestError(objError)).message);
+    } finally {
+      setIntUploadingAttachment(false);
+    }
+  }
+
+  async function fnDeleteAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setIntBusyAttachmentID(intAttachmentID);
+    setStrAttachmentError("");
+    try {
+      await leaveService.deleteApplicationAttachment(objDetail.intID, intAttachmentID);
+      setObjDetail((objPrev) => (objPrev ? { ...objPrev, lstAttachments: (objPrev.lstAttachments ?? []).filter((objAttachment) => objAttachment.intID !== intAttachmentID) } : objPrev));
+    } catch (objError) {
+      setStrAttachmentError((await createApiRequestError(objError)).message);
+    } finally {
+      setIntBusyAttachmentID(null);
+    }
+  }
+
   function fnOpenAction(strKind: ActionKind) {
     if (!objDetail) return;
     setStrRemark("");
@@ -226,6 +270,9 @@ export default function LeaveApprovalPanel() {
       blnCanViewConfidential={blnCanViewConfidential} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject}
       blnCanSendBack={blnCanSendBack} blnCanReassign={blnCanReassign} blnCanOverride={blnCanOverride}
       blnProcessing={intProcessingID === objDetail?.intID} fnOnClose={() => setObjDetail(null)} fnOnAction={fnOpenAction} fnLabel={t}
+      intUploadingAttachment={intUploadingAttachment} intBusyAttachmentID={intBusyAttachmentID} strAttachmentError={strAttachmentError}
+      fnPreviewAttachment={fnPreviewAttachment} fnUploadAttachment={fnUploadAttachment} fnDeleteAttachment={fnDeleteAttachment}
+      fnSetAttachmentError={setStrAttachmentError}
     />
 
     <Dialog open={Boolean(objAction)} onClose={() => intProcessingID === null && setObjAction(null)} maxWidth="xs" fullWidth>
@@ -331,13 +378,20 @@ function KeyValue({ strLabel, strValue }: { strLabel: string; strValue: string }
   return <Box><Typography sx={{ fontSize: ".68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>{strLabel}</Typography><Typography sx={{ fontWeight: 600, fontSize: ".86rem" }}>{strValue}</Typography></Box>;
 }
 
-function HrDetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanViewConfidential, blnCanApprove, blnCanReject, blnCanSendBack, blnCanReassign, blnCanOverride, blnProcessing, fnOnClose, fnOnAction, fnLabel }: {
+function HrDetailDrawer({
+  objItem, lstTimeline, lstRoute, blnLoading, blnCanViewConfidential, blnCanApprove, blnCanReject, blnCanSendBack, blnCanReassign, blnCanOverride,
+  blnProcessing, fnOnClose, fnOnAction, fnLabel, intUploadingAttachment, intBusyAttachmentID, strAttachmentError, fnPreviewAttachment, fnUploadAttachment, fnDeleteAttachment, fnSetAttachmentError,
+}: {
   objItem: LeaveQueueItemDto | null; lstTimeline: LeaveTimelineEntryDto[]; lstRoute: LeaveRouteStepDto[]; blnLoading: boolean;
   blnCanViewConfidential: boolean; blnCanApprove: boolean; blnCanReject: boolean; blnCanSendBack: boolean; blnCanReassign: boolean; blnCanOverride: boolean;
   blnProcessing: boolean; fnOnClose: () => void; fnOnAction: (strKind: ActionKind) => void; fnLabel: LabelFn;
+  intUploadingAttachment: boolean; intBusyAttachmentID: number | null; strAttachmentError: string;
+  fnPreviewAttachment: (intAttachmentID: number) => void; fnUploadAttachment: (objFile: File) => void; fnDeleteAttachment: (intAttachmentID: number) => void;
+  fnSetAttachmentError: (strMessage: string) => void;
 }) {
   const blnMasked = Boolean(objItem?.blnIsMasked && !blnCanViewConfidential);
   const blnPending = objItem?.strStatus === "pending";
+  const lstAttachments: LeaveApplicationAttachmentDto[] = blnMasked ? [] : (objItem?.lstAttachments ?? []);
   return <Drawer anchor="right" open={Boolean(objItem)} onClose={fnOnClose} PaperProps={{ sx: { width: { xs: "100%", sm: 480 }, maxWidth: "100%" } }}>
     {objItem ? <Stack sx={{ height: "100%" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: "1px solid #e2e8f0" }}><Typography sx={{ fontWeight: 800 }}>{fnLabel("request_details", "Request Details")}</Typography><IconButton aria-label={fnLabel("close", "Close")} onClick={fnOnClose}><CloseRoundedIcon /></IconButton></Stack>
@@ -351,6 +405,40 @@ function HrDetailDrawer({ objItem, lstTimeline, lstRoute, blnLoading, blnCanView
           <Grid item xs={6}><KeyValue strLabel={fnLabel("to_date", "To")} strValue={formatLeaveDate(objItem.dtToDate)} /></Grid>
           <Grid item xs={12}><KeyValue strLabel={fnLabel("reason", "Reason")} strValue={blnMasked ? fnLabel("confidential", "Confidential") : (objItem.strReason || "—")} /></Grid>
         </Grid>
+        {!blnMasked ? (
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("attachments", "Attachments")}</Typography>
+            {strAttachmentError ? <Alert severity="error" onClose={() => fnSetAttachmentError("")} sx={{ mb: .75 }}>{strAttachmentError}</Alert> : null}
+            {lstAttachments.length === 0 ? (
+              <Typography sx={{ fontSize: ".78rem", color: "#94a3b8" }}>{fnLabel("attachments_empty", "No attachments added.")}</Typography>
+            ) : (
+              <Stack spacing={.6} sx={{ mb: .75 }}>
+                {lstAttachments.map((objAttachment) => (
+                  <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={.8} sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", px: 1, py: .6 }}>
+                    <Typography title={objAttachment.strFileName} sx={{ fontSize: ".8rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography>
+                    <FileRowActions
+                      strFileName={objAttachment.strFileName}
+                      controlIdPrefix={`hr.leave.workbench.attachment.${objAttachment.intID}`}
+                      busy={intBusyAttachmentID === objAttachment.intID}
+                      onPreview={() => fnPreviewAttachment(objAttachment.intID)}
+                      onReplace={blnPending ? (objNewFile) => fnUploadAttachment(objNewFile) : undefined}
+                      onDelete={blnPending ? () => fnDeleteAttachment(objAttachment.intID) : undefined}
+                    />
+                  </Stack>
+                ))}
+              </Stack>
+            )}
+            {blnPending ? (
+              <FileUploadButton
+                controlId="hr.leave.workbench.attachment.upload.button"
+                label={fnLabel("add_attachment", "Add Attachment")}
+                isUploading={intUploadingAttachment}
+                onFilesSelected={(lstSelected) => lstSelected[0] && fnUploadAttachment(lstSelected[0])}
+                onValidationError={fnSetAttachmentError}
+              />
+            ) : null}
+          </Box>
+        ) : null}
         <Box><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("approval_route", "Approval Route")}</Typography>{blnLoading ? <Skeleton variant="rounded" height={50} /> : lstRoute.length === 0 ? <Typography sx={{ fontSize: ".78rem", color: "#94a3b8" }}>{fnLabel("route_unavailable", "Route not available.")}</Typography> : <Stack spacing={.5}>{lstRoute.map((objStep) => <Stack key={objStep.intStepNo} direction="row" spacing={1} alignItems="center"><Box sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: objStep.strStepStatus === "approved" ? "#dcfce7" : objStep.strStepStatus === "pending" ? "#fef3c7" : "#f1f5f9", display: "grid", placeItems: "center", fontSize: ".68rem", fontWeight: 800 }}>{objStep.intStepNo}</Box><Typography sx={{ fontSize: ".8rem" }}>{objStep.strApproverName || objStep.strApproverSourceCode?.replaceAll("_", " ")}</Typography>{objStep.strStepStatus ? <Chip size="small" label={objStep.strStepStatus} sx={{ height: 20, textTransform: "capitalize" }} /> : null}</Stack>)}</Stack>}</Box>
         <Box><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("timeline", "Timeline")}</Typography>{blnLoading ? <Skeleton variant="rounded" height={50} /> : lstTimeline.length === 0 ? <Typography sx={{ fontSize: ".78rem", color: "#94a3b8" }}>{fnLabel("timeline_empty", "No actions recorded yet.")}</Typography> : <Stack spacing={1}>{lstTimeline.map((objEntry, intIndex) => <Stack key={objEntry.intID ?? intIndex} direction="row" spacing={1.25}><Box sx={{ width: 9, height: 9, mt: .6, borderRadius: "50%", bgcolor: intIndex === 0 ? "#0a66a3" : "#94a3b8", flexShrink: 0 }} /><Box><Typography sx={{ fontWeight: 800, fontSize: ".78rem", textTransform: "capitalize" }}>{(objEntry.strActionCode ?? "").replaceAll("_", " ")}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{formatLeaveDate(objEntry.dtActionOn)}{objEntry.strComment ? ` — ${objEntry.strComment}` : ""}</Typography></Box></Stack>)}</Stack>}</Box>
       </Stack></Box>

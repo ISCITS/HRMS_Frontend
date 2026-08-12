@@ -520,6 +520,46 @@ export const leaveService = {
     return objData?.objWorkflow?.lstSteps ?? objData?.objWorkflow?.lstRouteSnapshot ?? objData?.lstRoute ?? [];
   },
 
+  async previewApplicationAttachment(intApplicationID: number, intAttachmentID: number): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/leave/applications/${intApplicationID}/attachments/${intAttachmentID}`,
+        responseType: "blob",
+        csrfMenuAction: LEAVE_VIEW,
+      } as ApiRequestConfig);
+      const strUrl = URL.createObjectURL(objResponse.data);
+      openBlobUrlInNewTab(strUrl);
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
+  },
+
+  async uploadApplicationAttachment(intApplicationID: number, objFile: File): Promise<LeaveApplicationAttachmentDto> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    try {
+      const objResponse = await axiosInstance.request<{ Data: LeaveApplicationAttachmentDto }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/leave/applications/${intApplicationID}/attachments`,
+        data: objFormData,
+        csrfMenuAction: LEAVE_MANAGE,
+      } as ApiRequestConfig);
+      return objResponse.data.Data;
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
+  },
+
+  async deleteApplicationAttachment(intApplicationID: number, intAttachmentID: number): Promise<void> {
+    await requestApi({
+      strPath: `/leave/applications/${intApplicationID}/attachments/${intAttachmentID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: LEAVE_MANAGE,
+    });
+  },
+
   async listWorkflowExceptions(blnOpenOnly = true): Promise<LeaveWorkflowExceptionDto[]> {
     const objResult = await requestApi<LeaveWorkflowExceptionDto[]>({
       strPath: `/leave/workflow-exceptions?open_only=${blnOpenOnly}`,

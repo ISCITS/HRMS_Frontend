@@ -13,6 +13,8 @@ import { useSearchParams } from "next/navigation";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
+import FileRowActions from "@/components/shared/files/FileRowActions";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
   DateContext, RegularizationDetail, RegularizationFormValues, RegularizationLookups, RegularizationRequest,
@@ -193,6 +195,48 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     ));
   }, [blnOnBehalfAutoCalculated, objOnBehalf.tmProposedFirstIn, objOnBehalf.tmProposedLastOut]);
 
+  const [blnUploadingAttachment, setBlnUploadingAttachment] = useState(false);
+  const [intBusyAttachmentID, setIntBusyAttachmentID] = useState<number | null>(null);
+  const [strAttachmentError, setStrAttachmentError] = useState("");
+
+  async function previewAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setStrAttachmentError("");
+    try {
+      await attendanceRegularizationService.previewHrAttachment(objDetail.intID, intAttachmentID);
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_preview_failed", "Unable to view attachment."));
+    }
+  }
+
+  async function uploadAttachment(objFile: File) {
+    if (!objDetail) return;
+    setBlnUploadingAttachment(true);
+    setStrAttachmentError("");
+    try {
+      const objNewAttachment = await attendanceRegularizationService.uploadHrAttachment(objDetail.intID, objFile);
+      setObjDetail((objPrev) => (objPrev ? { ...objPrev, lstAttachments: [...(objPrev.lstAttachments ?? []), objNewAttachment] } : objPrev));
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_upload_failed", "Unable to upload attachment."));
+    } finally {
+      setBlnUploadingAttachment(false);
+    }
+  }
+
+  async function deleteAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    setIntBusyAttachmentID(intAttachmentID);
+    setStrAttachmentError("");
+    try {
+      await attendanceRegularizationService.deleteHrAttachment(objDetail.intID, intAttachmentID);
+      setObjDetail((objPrev) => (objPrev ? { ...objPrev, lstAttachments: (objPrev.lstAttachments ?? []).filter((objAttachment) => objAttachment.intID !== intAttachmentID) } : objPrev));
+    } catch (objError) {
+      setStrAttachmentError(objError instanceof Error ? objError.message : t("attachment_delete_failed", "Unable to delete attachment."));
+    } finally {
+      setIntBusyAttachmentID(null);
+    }
+  }
+
   async function openDetail(intRequestID: number) {
     setBlnWorking(true);
     try {
@@ -268,7 +312,41 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
       </Paper>
       <Dialog data-control-id="regularization-requests.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="lg">
         <DialogTitle>{t("approval_detail", "Approval Detail")}</DialogTitle>
-        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objOriginalSnapshot.tmFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objOriginalSnapshot.tmLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("reason", "Correction Reason")}</Typography><Typography>{objDetail?.strEmployeeReason}</Typography><Divider sx={{ my: 2 }} /><Typography fontWeight={850}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objItem) => <Box key={objItem.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objItem.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objItem.dtActionOn)}{objItem.strRemarks ? ` · ${objItem.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
+        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objOriginalSnapshot.tmFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objOriginalSnapshot.tmLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("reason", "Correction Reason")}</Typography><Typography>{objDetail?.strEmployeeReason}</Typography>
+          {!blnEssManagerMode ? <>
+            <Divider sx={{ my: 2 }} />
+            <Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography>
+            {strAttachmentError ? <Alert severity="error" onClose={() => setStrAttachmentError("")} sx={{ my: 1 }}>{strAttachmentError}</Alert> : null}
+            {(objDetail?.lstAttachments ?? []).length === 0 ? (
+              <Typography sx={{ fontSize: ".82rem", color: "#94a3b8", my: 1 }}>{t("attachments_empty", "No attachments added.")}</Typography>
+            ) : (
+              <Stack spacing={0.6} sx={{ my: 1 }}>
+                {(objDetail?.lstAttachments ?? []).map((objAttachment) => (
+                  <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", px: 1, py: 0.6 }}>
+                    <Typography title={objAttachment.strFileName} sx={{ fontSize: ".84rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography>
+                    <FileRowActions
+                      strFileName={objAttachment.strFileName}
+                      controlIdPrefix={`regularization-requests.attachment.${objAttachment.intID}`}
+                      busy={intBusyAttachmentID === objAttachment.intID}
+                      onPreview={() => void previewAttachment(objAttachment.intID)}
+                      onReplace={objDetail?.strRequestStatus === "PENDING_APPROVAL" ? (objNewFile) => void uploadAttachment(objNewFile) : undefined}
+                      onDelete={objDetail?.strRequestStatus === "PENDING_APPROVAL" ? () => void deleteAttachment(objAttachment.intID) : undefined}
+                    />
+                  </Stack>
+                ))}
+              </Stack>
+            )}
+            {objDetail?.strRequestStatus === "PENDING_APPROVAL" ? (
+              <FileUploadButton
+                controlId="regularization-requests.attachment.upload.button"
+                label={t("add_attachment", "Add Attachment")}
+                isUploading={blnUploadingAttachment}
+                onFilesSelected={(lstSelected) => lstSelected[0] && void uploadAttachment(lstSelected[0])}
+                onValidationError={setStrAttachmentError}
+              />
+            ) : null}
+          </> : null}
+          <Divider sx={{ my: 2 }} /><Typography fontWeight={850}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objItem) => <Box key={objItem.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objItem.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objItem.dtActionOn)}{objItem.strRemarks ? ` · ${objItem.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
         <DialogActions><Button data-control-id="regularization-requests.detail.close.button" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button>{objDetail?.strRequestStatus === "PENDING_APPROVAL" ? <>{blnCanSendBack ? <Button data-control-id="regularization-requests.send-back.button" onClick={() => setObjAction({ strAction: "send-back", objRequest: objDetail })}>{t("send_back", "Send Back")}</Button> : null}{blnCanReject ? <Button data-control-id="regularization-requests.reject.button" color="error" onClick={() => setObjAction({ strAction: "reject", objRequest: objDetail })}>{t("reject", "Reject")}</Button> : null}{blnCanApprove ? <Button data-control-id="regularization-requests.approve.button" variant="contained" color="success" onClick={() => setObjAction({ strAction: "approve", objRequest: objDetail })}>{t("approve", "Approve")}</Button> : null}</> : null}</DialogActions>
       </Dialog>
       <Dialog data-control-id="regularization-requests.action.dialog" open={Boolean(objAction)} onClose={() => setObjAction(null)} fullWidth maxWidth="sm"><DialogTitle>{objAction ? lookupLabel(lstActions, objAction.strAction.toUpperCase().replace("-", "_"), t("confirm_action", "Confirm Action")) : ""}</DialogTitle><DialogContent><TextField data-control-id="regularization-requests.action.remarks.input" fullWidth multiline minRows={3} required={objAction?.strAction !== "approve"} label={t("remarks", "Remarks")} value={strRemarks} onChange={(objEvent) => setStrRemarks(objEvent.target.value)} sx={{ mt: 1 }} /></DialogContent><DialogActions><Button data-control-id="regularization-requests.action.cancel.button" onClick={() => setObjAction(null)}>{t("cancel", "Cancel")}</Button><Button data-control-id="regularization-requests.action.confirm.button" variant="contained" disabled={blnWorking || (objAction?.strAction !== "approve" && !strRemarks.trim())} onClick={() => void confirmAction()}>{t("confirm", "Confirm")}</Button></DialogActions></Dialog>

@@ -25,6 +25,8 @@ type ItemReviewPanelProps = {
   onProofPending: (objItem: ReimbursementClaimItemDto) => void;
   onVerifyProof: (intProofID: number) => void;
   onRejectProof: (intProofID: number) => void;
+  onUploadProof: (intItemID: number, objFile: File) => void;
+  onDeleteProof: (intItemID: number, intProofID: number) => void;
 };
 
 export default function ReimbursementItemReviewPanel({
@@ -41,6 +43,8 @@ export default function ReimbursementItemReviewPanel({
   onProofPending,
   onVerifyProof,
   onRejectProof,
+  onUploadProof,
+  onDeleteProof,
 }: ItemReviewPanelProps) {
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount || objItem.decClaimedAmount || 0));
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
@@ -116,7 +120,16 @@ export default function ReimbursementItemReviewPanel({
           <Stack spacing={1} alignItems={{ xs: "flex-start", md: "flex-end" }} sx={{ mr: { xs: 0, md: 1 } }}>
             <ReimbursementStatusBadge strStatus={objItem.strItemStatus} />
             <Box sx={{ width: "100%" }}>
-              <ReimbursementProofViewer intClaimID={intClaimID} lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
+              <ReimbursementProofViewer
+                intClaimID={intClaimID}
+                intItemID={objItem.intID}
+                lstProofs={objItem.lstProofs}
+                blnActionsDisabled={blnActionsDisabled || !blnCanProofReview}
+                onVerify={onVerifyProof}
+                onReject={onRejectProof}
+                onUpload={onUploadProof}
+                onDelete={onDeleteProof}
+              />
             </Box>
           </Stack>
         </Grid>

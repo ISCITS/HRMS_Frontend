@@ -6,8 +6,26 @@ import { useEffect, useState } from "react";
 import FileList from "@/components/shared/files/FileList";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { useFileUpload } from "@/hooks/useFileUpload";
-import { fileUploadService, type EssSelfServiceFileModule, type FileMetadataDto } from "@/lib/fileUploadService";
+import {
+  fileUploadService,
+  type EssSelfServiceFileModule,
+  type FileMetadataDto,
+  type FileUploadProgressHandler,
+  type ListFilesFilter,
+  type UploadFileRequest,
+} from "@/lib/fileUploadService";
 import { MAX_UPLOAD_SIZE_LABEL } from "@/lib/fileUploadConstants";
+
+// Matches fileUploadService's shape so callers reviewing another employee's documents (e.g. HR
+// on the Loan/Advance review screen) can supply HR-authorized endpoints instead of the generic
+// self-service /api/v1/files/* ones, while reusing this exact same list/upload/replace/delete UI.
+export type FileUploadPanelService = {
+  listFiles: (objFilter?: ListFilesFilter) => Promise<FileMetadataDto[]>;
+  uploadFile: (objRequest: UploadFileRequest) => Promise<FileMetadataDto>;
+  replaceFile: (intFileID: number, objFile: File, fnOnProgress?: FileUploadProgressHandler) => Promise<FileMetadataDto>;
+  deleteFile: (intFileID: number) => Promise<void>;
+  previewFile: (intFileID: number) => Promise<void>;
+};
 
 /*
 Functional responsibility:
@@ -48,6 +66,10 @@ type FileUploadPanelProps = {
   // Passed straight through to FileList — "grid" packs two documents per row on wider screens
   // instead of the default single full-width row per document.
   layout?: "stack" | "grid";
+  // Overrides the default generic-self-service fileUploadService for all list/upload/replace/
+  // delete/preview calls — used when a reviewer (not the file's own employee) needs HR-authorized
+  // endpoints instead. Defaults to fileUploadService (the /api/v1/files/* ESS self-service API).
+  objFileService?: FileUploadPanelService;
 };
 
 export default function FileUploadPanel({
@@ -64,6 +86,7 @@ export default function FileUploadPanel({
   readOnly = false,
   embedded = false,
   layout = "stack",
+  objFileService = fileUploadService,
 }: FileUploadPanelProps) {
   const [lstFiles, setLstFiles] = useState<FileMetadataDto[]>([]);
   const [blnLoadingList, setBlnLoadingList] = useState(false);
@@ -86,7 +109,7 @@ export default function FileUploadPanel({
       setBlnLoadingList(true);
       setStrError("");
       try {
-        const lstResult = await fileUploadService.listFiles({
+        const lstResult = await objFileService.listFiles({
           strModule,
           intRelatedEntityID,
           strRelatedEntityType,
@@ -118,7 +141,7 @@ export default function FileUploadPanel({
     }
     setStrError("");
     const { objResult, strError: strUploadError } = await objUpload.upload(objFile, (objFileToUpload, fnOnProgress) =>
-      fileUploadService.uploadFile({
+      objFileService.uploadFile({
         objFile: objFileToUpload,
         strModule,
         strDocumentType,
@@ -139,7 +162,7 @@ export default function FileUploadPanel({
     setIntReplacingFileID(objExistingFile.intFileID);
     try {
       const { objResult, strError: strReplaceError } = await objReplace.upload(objNewFile, (objFileToUpload, fnOnProgress) =>
-        fileUploadService.replaceFile(objExistingFile.intFileID, objFileToUpload, fnOnProgress)
+        objFileService.replaceFile(objExistingFile.intFileID, objFileToUpload, fnOnProgress)
       );
       if (objResult) {
         setLstFiles((lstPrevious) => lstPrevious.map((objFile) => (objFile.intFileID === objExistingFile.intFileID ? objResult : objFile)));
@@ -155,7 +178,7 @@ export default function FileUploadPanel({
     setStrError("");
     setIntBusyFileID(objFile.intFileID);
     try {
-      await fileUploadService.deleteFile(objFile.intFileID);
+      await objFileService.deleteFile(objFile.intFileID);
       setLstFiles((lstPrevious) => lstPrevious.filter((objRow) => objRow.intFileID !== objFile.intFileID));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to delete document.");
@@ -168,7 +191,7 @@ export default function FileUploadPanel({
     setStrError("");
     setIntBusyFileID(objFile.intFileID);
     try {
-      await fileUploadService.previewFile(objFile.intFileID);
+      await objFileService.previewFile(objFile.intFileID);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to open document.");
     } finally {

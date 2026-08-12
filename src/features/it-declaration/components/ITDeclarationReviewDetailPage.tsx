@@ -22,6 +22,7 @@ import {
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { masterApiService, type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 type Props = { intDeclarationID: number };
 type ConfirmAction = "approve_all" | "reject" | "release" | "lock" | null;
@@ -354,28 +355,30 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     try {
       const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
       const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
-      window.open(strUrl, "_blank", "noopener,noreferrer");
+      openBlobUrlInNewTab(strUrl);
       window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to view uploaded proof.");
     }
   }
 
-  async function downloadProof(intProofID: number) {
+  async function uploadProof(intItemID: number, objFile: File) {
     if (!objDetail) return;
-    try {
-      const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
-      const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
-      const objAnchor = document.createElement("a");
-      objAnchor.href = strUrl;
-      objAnchor.download = objPreview.strFileName || `proof-${intProofID}`;
-      document.body.appendChild(objAnchor);
-      objAnchor.click();
-      document.body.removeChild(objAnchor);
-      URL.revokeObjectURL(strUrl);
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to download uploaded proof.");
-    }
+    await hrItDeclarationReviewService.uploadProof(objDetail.intDeclarationID, intItemID, objFile);
+    await loadData();
+  }
+
+  async function replaceProof(intItemID: number, intProofID: number, objFile: File) {
+    if (!objDetail) return;
+    await hrItDeclarationReviewService.uploadProof(objDetail.intDeclarationID, intItemID, objFile);
+    await hrItDeclarationReviewService.deleteProofByID(objDetail.intDeclarationID, intItemID, intProofID);
+    await loadData();
+  }
+
+  async function deleteProof(intItemID: number, intProofID: number) {
+    if (!objDetail) return;
+    await hrItDeclarationReviewService.deleteProofByID(objDetail.intDeclarationID, intItemID, intProofID);
+    await loadData();
   }
 
   async function confirmAction() {
@@ -550,7 +553,9 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
                     decSectionMaxLimit={objGroup.decMaxLimitAmount}
                     decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
                     fnPreviewProof={(intProofID) => void previewProof(intProofID)}
-                    fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
+                    fnUploadProof={(objFile) => uploadProof(intCurrentItemID, objFile)}
+                    fnReplaceProof={(intProofID, objFile) => replaceProof(intCurrentItemID, intProofID, objFile)}
+                    fnDeleteProof={(intProofID) => deleteProof(intCurrentItemID, intProofID)}
                     fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
                   />
                 );

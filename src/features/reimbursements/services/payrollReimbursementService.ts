@@ -233,6 +233,28 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
+  async uploadProof(intClaimID: number, intItemID: number, objFile: File, strDocumentType = "reimbursement_proof"): Promise<ReimbursementClaimDto> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    objFormData.append("strDocumentType", strDocumentType);
+    const objResponse = await axiosInstance.request<{ Data: ReimbursementClaimDto }>({
+      method: ApiRequestMethod.Post,
+      url: `${ApiRoutePrefix.ApiV1}/payroll/reimbursements/${intClaimID}/items/${intItemID}/proofs`,
+      data: objFormData,
+      csrfMenuAction: "PAYROLL_REIMBURSEMENT_REVIEW",
+    } as ApiRequestConfig);
+    return objResponse.data.Data;
+  },
+
+  async deleteProof(intClaimID: number, intItemID: number, intProofID: number): Promise<ReimbursementClaimDto> {
+    const objResult = await requestApi<ReimbursementClaimDto>({
+      strPath: `/payroll/reimbursements/${intClaimID}/items/${intItemID}/proofs/${intProofID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "PAYROLL_REIMBURSEMENT_REVIEW",
+    });
+    return objResult.Data;
+  },
+
   async previewProof(intClaimID: number, intProofID: number): Promise<Blob> {
     const objResponse = await axiosInstance.request<Blob>({
       method: ApiRequestMethod.Get,

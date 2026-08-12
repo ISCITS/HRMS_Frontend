@@ -1,7 +1,15 @@
 ﻿"use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+
+export type FlexiProofPreviewDto = {
+  strFileName: string;
+  strMimeType: string;
+  strBase64Content: string;
+  intFileSizeBytes: number;
+};
 
 type FlexiDeclarationItemPayload = {
   intSalaryComponentID: number;
@@ -70,6 +78,7 @@ export type FlexiDeclarationLineRecord = {
   intProofFileSizeBytes?: number | null;
   dtProofUploadedOn?: string | null;
   blnProofUploaded?: boolean | null;
+  intProofFileID?: number | null;
   blnEligible?: boolean | null;
   blnRegimeEligible?: boolean | null;
   blnEligibilityDetailsSatisfied?: boolean | null;
@@ -431,5 +440,37 @@ export const hrFlexiDeclarationReviewService = {
       strMenuAction: strPayrollFlexiMenuAction,
     });
     return objResult.Data;
+  },
+
+  async previewProof(intDeclarationID: number, intSalaryComponentID: number): Promise<FlexiProofPreviewDto> {
+    const objResult = await requestApi<FlexiProofPreviewDto>({
+      strPath: `/hr/flexi-declarations/${intDeclarationID}/items/${intSalaryComponentID}/proof`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: strPayrollFlexiMenuAction,
+    });
+    return objResult.Data;
+  },
+
+  async uploadProof(intDeclarationID: number, intSalaryComponentID: number, objFile: File): Promise<void> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    try {
+      await axiosInstance.request({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/hr/flexi-declarations/${intDeclarationID}/items/${intSalaryComponentID}/proof`,
+        data: objFormData,
+        csrfMenuAction: strPayrollFlexiMenuAction,
+      } as ApiRequestConfig);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
+  },
+
+  async deleteProof(intDeclarationID: number, intSalaryComponentID: number): Promise<void> {
+    await requestApi({
+      strPath: `/hr/flexi-declarations/${intDeclarationID}/items/${intSalaryComponentID}/proof`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: strPayrollFlexiMenuAction,
+    });
   },
 };

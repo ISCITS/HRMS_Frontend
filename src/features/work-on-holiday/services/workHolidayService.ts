@@ -1,8 +1,11 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import type {
+  WorkHolidayAttachment,
   WorkHolidayEarnedCompOffList,
   WorkHolidayEligibilityPreview,
   WorkHolidayList,
@@ -63,6 +66,30 @@ export const workHolidayService = {
     }),
   getDetail: (intRequestID: number) =>
     requestWorkHoliday<WorkHolidayRequest>(`/requests/${intRequestID}`, ApiRequestMethod.Get, "WORK_ON_HOLIDAY_VIEW"),
+  async previewReviewAttachment(intRequestID: number, intAttachmentID: number): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${strBasePath}/requests/${intRequestID}/attachments/${intAttachmentID}`,
+        responseType: "blob",
+        csrfMenuAction: "WORK_ON_HOLIDAY_VIEW",
+      } as ApiRequestConfig);
+      const strUrl = URL.createObjectURL(objResponse.data);
+      openBlobUrlInNewTab(strUrl);
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
+  },
+  uploadReviewAttachment: async (intRequestID: number, objFile: File) => {
+    const objForm = new FormData();
+    objForm.append("objFile", objFile);
+    return requestWorkHoliday<WorkHolidayAttachment>(
+      `/requests/${intRequestID}/attachments/review`, ApiRequestMethod.Post, "WORK_ON_HOLIDAY_APPROVE", objForm,
+    );
+  },
+  deleteReviewAttachment: (intRequestID: number, intAttachmentID: number) =>
+    requestWorkHoliday<null>(`/requests/${intRequestID}/attachments/${intAttachmentID}`, ApiRequestMethod.Delete, "WORK_ON_HOLIDAY_APPROVE"),
   decide: (intRequestID: number, strDecision: "approve" | "reject" | "send-back", objPayload: WorkHolidayMutationPayload) =>
     requestWorkHoliday<WorkHolidayRequest>(`/requests/${intRequestID}/${strDecision}`, ApiRequestMethod.Post, `WORK_ON_HOLIDAY_${strDecision.replace("-", "_").toUpperCase()}`, objPayload),
   verifyAttendance: (intRequestID: number, objPayload: WorkHolidayMutationPayload & { decVerifiedHours: number; blnVerified: boolean }) =>

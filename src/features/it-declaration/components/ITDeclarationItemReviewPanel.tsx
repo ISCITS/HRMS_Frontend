@@ -1,14 +1,13 @@
 "use client";
 
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ThumbDownAltOutlinedIcon from "@mui/icons-material/ThumbDownAltOutlined";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
 import { Alert, Box, Button, Grid, Paper, Stack, TextField, Typography } from "@mui/material";
-import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import FileRowActions from "@/components/shared/files/FileRowActions";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import type { HrItDeclarationItemRecord, HrItDeclarationProofRecord } from "@/features/it-declaration/services/itDeclarationService";
 
@@ -59,7 +58,9 @@ type Props = {
   decSectionMaxLimit?: number | null;
   decOtherApprovedAmount?: number;
   fnPreviewProof?: (intProofID: number) => void;
-  fnDownloadProof?: (intProofID: number) => void;
+  fnUploadProof?: (objFile: File) => Promise<void>;
+  fnReplaceProof?: (intProofID: number, objFile: File) => Promise<void>;
+  fnDeleteProof?: (intProofID: number) => Promise<void>;
   fnAction: (strAction: "approve" | "reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) => Promise<void>;
 };
 
@@ -72,17 +73,60 @@ export default function ITDeclarationItemReviewPanel({
   decSectionMaxLimit = null,
   decOtherApprovedAmount = 0,
   fnPreviewProof,
-  fnDownloadProof,
+  fnUploadProof,
+  fnReplaceProof,
+  fnDeleteProof,
   fnAction,
 }: Props) {
   const [strRemarks, setStrRemarks] = useState(objItem.strReviewerRemarks ?? "");
   const [strApprovedAmount, setStrApprovedAmount] = useState(String(objItem.decApprovedAmount ?? objItem.decDeclaredAmount ?? 0));
   const [strError, setStrError] = useState("");
+  const [blnUploading, setBlnUploading] = useState(false);
+  const [intBusyProofID, setIntBusyProofID] = useState<number | null>(null);
+  const [intReplacingProofID, setIntReplacingProofID] = useState<number | null>(null);
+
+  async function handleUpload(objFile: File) {
+    if (!fnUploadProof) return;
+    setBlnUploading(true);
+    setStrError("");
+    try {
+      await fnUploadProof(objFile);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to upload proof.");
+    } finally {
+      setBlnUploading(false);
+    }
+  }
+
+  async function handleReplace(intProofID: number, objFile: File) {
+    if (!fnReplaceProof) return;
+    setIntReplacingProofID(intProofID);
+    setStrError("");
+    try {
+      await fnReplaceProof(intProofID, objFile);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to replace proof.");
+    } finally {
+      setIntReplacingProofID(null);
+    }
+  }
+
+  async function handleDelete(intProofID: number) {
+    if (!fnDeleteProof) return;
+    setIntBusyProofID(intProofID);
+    setStrError("");
+    try {
+      await fnDeleteProof(intProofID);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to delete proof.");
+    } finally {
+      setIntBusyProofID(null);
+    }
+  }
   const strItemStatus = String(objItem.strItemStatus || "").toLowerCase();
   const blnItemFinalized = ["approved", "rejected", "released", "locked"].includes(strItemStatus);
   const blnDisableApprovalActions = blnLocked || blnItemFinalized || !blnCanApprove;
   const blnDisableRejectActions = blnLocked || blnItemFinalized || !blnCanReject;
-  const objPrimaryProof = lstProofs[0];
   const decDeclaredAmount = Number(objItem.decDeclaredAmount || 0);
   const decApprovedInput = Number(strApprovedAmount || 0);
   const decConfiguredMaxLimit = decSectionMaxLimit ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount ?? parseMaxLimit(objItem.strMaxLimit);
@@ -138,44 +182,57 @@ export default function ITDeclarationItemReviewPanel({
               {objItem.strEmployeeRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
               {objItem.strReviewerRemarks ? <Typography sx={{ color: "#b45309", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
             </Stack>
-            <Box sx={{ flex: { xs: "1 1 auto", sm: "0 0 245px" }, px: 1, py: 0.7, borderRadius: "8px", border: `1px solid ${strProofBorder}`, backgroundColor: strProofBackground }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Proof Status</Typography>
-                  <Typography sx={{ fontSize: "0.84rem", color: strProofTone, fontWeight: 900, overflowWrap: "anywhere" }}>
-                    {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded | ${intVerifiedProofCount} verified${intRejectedProofCount ? ` | ${intRejectedProofCount} rejected` : ""}`}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={0.5}>
-                  <Tooltip title="View Document">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => objPrimaryProof && fnPreviewProof?.(objPrimaryProof.intProofID)}
-                        disabled={!objPrimaryProof || !fnPreviewProof}
-                        controlId="it-declaration.review.proof.view.icon-button"
-                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
-                      >
-                        <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title="Download Document">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => objPrimaryProof && fnDownloadProof?.(objPrimaryProof.intProofID)}
-                        disabled={!objPrimaryProof || !fnDownloadProof}
-                        controlId="it-declaration.review.proof.download.icon-button"
-                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
-                      >
-                        <DownloadRoundedIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Stack>
-              </Stack>
+            <Box sx={{ flex: { xs: "1 1 auto", sm: "0 0 200px" }, px: 1, py: 0.7, borderRadius: "8px", border: `1px solid ${strProofBorder}`, backgroundColor: strProofBackground }}>
+              <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Proof Status</Typography>
+              <Typography sx={{ fontSize: "0.84rem", color: strProofTone, fontWeight: 900, overflowWrap: "anywhere" }}>
+                {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded | ${intVerifiedProofCount} verified${intRejectedProofCount ? ` | ${intRejectedProofCount} rejected` : ""}`}
+              </Typography>
             </Box>
+          </Stack>
+        </Grid>
+        <Grid item xs={12}>
+          <Stack spacing={0.6} sx={{ px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
+            {lstProofs.length === 0 ? (
+              <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>No proof uploaded.</Typography>
+            ) : (
+              lstProofs.map((objProof) => (
+                <Stack
+                  key={objProof.intProofID}
+                  direction={{ xs: "column", sm: "row" }}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  justifyContent="space-between"
+                  spacing={0.8}
+                  sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.6, backgroundColor: "#ffffff" }}
+                >
+                  <Typography
+                    title={objProof.strFileName}
+                    sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+                  >
+                    {objProof.strFileName}
+                  </Typography>
+                  <FileRowActions
+                    strFileName={objProof.strFileName}
+                    controlIdPrefix="it-declaration.review.proof"
+                    busy={intBusyProofID === objProof.intProofID}
+                    onPreview={fnPreviewProof ? () => fnPreviewProof(objProof.intProofID) : undefined}
+                    onReplace={fnReplaceProof ? (objNewFile) => handleReplace(objProof.intProofID, objNewFile) : undefined}
+                    onDelete={fnDeleteProof ? () => handleDelete(objProof.intProofID) : undefined}
+                    isReplacing={intReplacingProofID === objProof.intProofID}
+                  />
+                </Stack>
+              ))
+            )}
+            {fnUploadProof ? (
+              <Box>
+                <FileUploadButton
+                  controlId="it-declaration.review.proof.upload.button"
+                  label="Upload Proof"
+                  isUploading={blnUploading}
+                  onFilesSelected={(lstSelected) => lstSelected[0] && void handleUpload(lstSelected[0])}
+                  onValidationError={(strMessage) => setStrError(strMessage)}
+                />
+              </Box>
+            ) : null}
           </Stack>
         </Grid>
         <Grid item xs={12}>

@@ -1,6 +1,10 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { ApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { ApiRequestError, createApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import type { FileUploadPanelService } from "@/components/shared/files/FileUploadPanel";
 import type { LoanAdvanceCategoryRecord, LoanAdvanceFormValues, LoanAdvanceRecord } from "@/features/payroll/types";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -255,3 +259,92 @@ export const loanAdvanceService = {
     return objResult.Data;
   },
 };
+
+// HR-authorized equivalent of fileUploadService.ts's generic /api/v1/files/* self-service API —
+// used by FileUploadPanel (via its objFileService override) when a payroll/HR reviewer needs to
+// manage documents on an employee's loan/advance request, since the self-service endpoints derive
+// the employee strictly from the caller's own session and would silently target the wrong person.
+export function createHrLoanAdvanceFileService(intLoanAdvanceID: number): FileUploadPanelService {
+  const strBase = `/payroll/loans-advances/${intLoanAdvanceID}/files`;
+
+  return {
+    async listFiles(_objFilter?: ListFilesFilter): Promise<FileMetadataDto[]> {
+      const objResult = await requestApi<FileMetadataDto[]>({
+        strPath: strBase,
+        strMethod: "GET",
+        strMenuAction: "LOAN_ADV_VIEW",
+      });
+      return objResult.Data ?? [];
+    },
+
+    async uploadFile(objRequest: UploadFileRequest): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objRequest.objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Post,
+          url: `${ApiRoutePrefix.ApiV1}${strBase}`,
+          data: objFormData,
+          csrfMenuAction: "LOAN_ADV_EDIT",
+          onUploadProgress: objRequest.fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  objRequest.fnOnProgress?.(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async replaceFile(intFileID: number, objFile: File, fnOnProgress?: (intPercentComplete: number) => void): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Put,
+          url: `${ApiRoutePrefix.ApiV1}${strBase}/${intFileID}`,
+          data: objFormData,
+          csrfMenuAction: "LOAN_ADV_EDIT",
+          onUploadProgress: fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async deleteFile(intFileID: number): Promise<void> {
+      await requestApi<null>({
+        strPath: `${strBase}/${intFileID}`,
+        strMethod: "DELETE",
+        strMenuAction: "LOAN_ADV_EDIT",
+      });
+    },
+
+    async previewFile(intFileID: number): Promise<void> {
+      try {
+        const objResponse = await axiosInstance.request<Blob>({
+          method: ApiRequestMethod.Get,
+          url: `${ApiRoutePrefix.ApiV1}${strBase}/${intFileID}/content`,
+          responseType: "blob",
+          csrfMenuAction: "LOAN_ADV_VIEW",
+        } as ApiRequestConfig);
+        const strUrl = URL.createObjectURL(objResponse.data);
+        openBlobUrlInNewTab(strUrl);
+        window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+  };
+}

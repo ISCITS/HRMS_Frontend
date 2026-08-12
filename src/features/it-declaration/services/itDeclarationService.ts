@@ -674,6 +674,43 @@ export const hrItDeclarationReviewService = {
     return objResult.Data;
   },
 
+  async uploadProof(
+    intDeclarationID: number,
+    intItemID: number,
+    objFile: File,
+    strDocumentType = "investment_proof",
+    fnOnProgress?: FileUploadProgressHandler
+  ): Promise<void> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    objFormData.append("strDocumentType", strDocumentType);
+    try {
+      await axiosInstance.request({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof`,
+        data: objFormData,
+        csrfMenuAction: "PAYROLL_IT_DECLARATION_EDIT",
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
+      } as ApiRequestConfig);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
+  },
+
+  async deleteProofByID(intDeclarationID: number, intItemID: number, intProofID: number): Promise<void> {
+    await requestApi({
+      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof/${intProofID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: "PAYROLL_IT_DECLARATION_EDIT",
+    });
+  },
+
   async previewProofByID(intDeclarationID: number, intProofID: number): Promise<ItDeclarationProofPreviewDto> {
     const objResult = await requestApi<ItDeclarationProofPreviewDto>({
       strPath: `/payroll/it-declaration-review/${intDeclarationID}/proof/${intProofID}`,
