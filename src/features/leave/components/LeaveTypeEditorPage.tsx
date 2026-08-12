@@ -135,8 +135,20 @@ function SectionText(props: { label: string; value: string | null | undefined; o
     />
   );
 }
-function SectionNum(props: { label: string; value: number | null | undefined; onChange: (v: number | null) => void }) {
-  return <TextField label={props.label} type="number" value={props.value ?? ""} onChange={(e) => props.onChange(toNum(e.target.value))} size="small" fullWidth />;
+function SectionNum(props: { label: string; value: number | null | undefined; onChange: (v: number | null) => void; placeholder?: string }) {
+  return (
+    <TextField
+      label={props.label}
+      type="number"
+      value={props.value ?? ""}
+      onChange={(e) => props.onChange(toNum(e.target.value))}
+      size="small"
+      fullWidth
+      placeholder={props.placeholder}
+      // Keep the label floated when a placeholder is supplied so the "No limit" hint stays visible on empty optional fields.
+      InputLabelProps={props.placeholder ? { shrink: true } : undefined}
+    />
+  );
 }
 function SectionSelect(props: { label: string; value: string; onChange: (v: string) => void; options: { code: string; label: string }[] }) {
   return (
@@ -649,15 +661,15 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Application Limits</Typography>
         <Box>
           <Box sx={objGridSx}>
-            <SectionNum label="Minimum Days per Request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} />
-            <SectionNum label="Maximum Days per Request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} />
-            <SectionNum label="Maximum Consecutive Leave Days" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} />
+            <SectionNum label="Minimum Days per Request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} placeholder="No minimum" />
+            <SectionNum label="Maximum Days per Request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} placeholder="No limit" />
+            <SectionNum label="Maximum Consecutive Leave Days" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} placeholder="No limit" />
             {/* POC: Maximum per Month hidden — value preserved. */}
-            <SectionNum label="Maximum Requests per Year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} />
+            <SectionNum label="Maximum Requests per Year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} placeholder="No limit" />
             <SectionNum label="Minimum Advance Notice (Days)" value={objPolicy.intMinNoticeDays} onChange={(v) => setPolicy("intMinNoticeDays", v ?? 0)} />
             {/* Conditional limits — shown (and normalized to 0/null when hidden) with their toggle. */}
             {objPolicy.blnBackdatedApplicationAllowed ? <SectionNum label="Maximum Backdated Days" value={objPolicy.intMaxBackdateDays} onChange={(v) => setPolicy("intMaxBackdateDays", v ?? 0)} /> : null}
-            {objPolicy.blnFutureApplicationAllowed ? <SectionNum label="Maximum Advance Application Days" value={objPolicy.intMaxAdvanceDays} onChange={(v) => setPolicy("intMaxAdvanceDays", v)} /> : null}
+            {objPolicy.blnFutureApplicationAllowed ? <SectionNum label="Maximum Advance Application Days" value={objPolicy.intMaxAdvanceDays} onChange={(v) => setPolicy("intMaxAdvanceDays", v)} placeholder="No limit" /> : null}
             {/* POC: Minimum Balance after Request and Hourly Leave (+ Minimum hours) hidden — values preserved. */}
             <Box sx={objFullCellSx}>
               <Stack direction="row" flexWrap="wrap" gap={0.5}>
