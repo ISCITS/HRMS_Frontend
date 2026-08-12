@@ -22,6 +22,7 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
   const [strHtml, setStrHtml] = useState("");
   const [strError, setStrError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
+  const [intResultID, setIntResultID] = useState<number | null>(null);
 
   useEffect(() => {
     let blnCancelled = false;
@@ -30,9 +31,13 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
       setBlnLoading(true);
       setStrError("");
       try {
-        const strDocumentHtml = await payslipService.getDownloadHtml(intPayslipID);
+        const [strDocumentHtml, dicSummary] = await Promise.all([
+          payslipService.getDownloadHtml(intPayslipID),
+          payslipService.getPayslipSummary(intPayslipID).catch(() => null),
+        ]);
         if (!blnCancelled) {
           setStrHtml(strDocumentHtml);
+          setIntResultID(dicSummary?.intEmployeePayrollResultID ?? null);
         }
       } catch (objError) {
         if (!blnCancelled) {
@@ -67,7 +72,20 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
           {t("back_button", "Back")}
         </Button>
       </Box>
-      {strError ? <Alert severity="error">{strError}</Alert> : <PayslipHtmlPreview strHtml={strHtml} />}
+      {strError ? (
+        <Alert severity="error">{strError}</Alert>
+      ) : (
+        <PayslipHtmlPreview
+          strHtml={strHtml}
+          strTaxInformationUrl={
+            intResultID
+              ? `/reports/payslips/${intResultID}/tax-information?backRoute=${encodeURIComponent(
+                  strBackRoute || "/ess/my-payslips"
+                )}`
+              : undefined
+          }
+        />
+      )}
     </Box>
   );
 }

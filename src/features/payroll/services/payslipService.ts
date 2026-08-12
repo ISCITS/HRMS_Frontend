@@ -100,6 +100,21 @@ export const payslipService = {
     return objResult.Data;
   },
 
+  async getPayslipSummary(
+    intPayslipID: number
+  ): Promise<{ intEmployeeID: number; intPayrollRunID: number; intEmployeePayrollResultID: number }> {
+    const objResult = await requestApi<{
+      intEmployeeID: number;
+      intPayrollRunID: number;
+      intEmployeePayrollResultID: number;
+    }>({
+      strPath: `/payslips/${intPayslipID}/summary`,
+      strMethod: "GET",
+      strMenuAction: "PAYSLIP_VIEW",
+    });
+    return objResult.Data;
+  },
+
   async getDownloadHtml(intPayslipID: number): Promise<string> {
     const objResponse = await axiosInstance.get(
       `${ApiRoutePrefix.ApiV1}/payslips/${intPayslipID}/download`,

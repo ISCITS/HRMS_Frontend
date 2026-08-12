@@ -87,23 +87,6 @@ export type WorkHolidayList = {
   intPageSize: number;
 };
 
-export type WorkHolidayPosting = {
-  intID: number;
-  intWorkHolidayRequestID: number;
-  strPostingTypeCode: string;
-  strPostingStatus: string;
-  decPostedDays?: number | null;
-  strErrorMessage?: string | null;
-  blnIsReversed: boolean;
-};
-
-export type WorkHolidayPostingList = {
-  lstItems: WorkHolidayPosting[];
-  intTotal: number;
-  intPage: number;
-  intPageSize: number;
-};
-
 export type WorkHolidayEarnedCompOff = {
   intID: number;
   intWorkHolidayRequestID: number;

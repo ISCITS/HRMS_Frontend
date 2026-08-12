@@ -52,6 +52,7 @@ import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, E
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 import { leaveService } from "@/features/leave/services/leaveService";
+import { useEssPendingApprovals } from "@/features/dashboard/hooks/useEssPendingApprovals";
 import type { LeaveApplicationDto, LeaveBalanceDto } from "@/features/leave/types";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
@@ -1723,6 +1724,13 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     loadAttendance(strToday, strToday, strToday).catch(() => undefined);
   }, [loadAttendance]);
 
+  const {
+    blnIsLeaveApprover,
+    blnIsRegularizationApprover,
+    intPendingLeaveApprovals,
+    intPendingRegularizationApprovals,
+  } = useEssPendingApprovals();
+
   const objPunchButtonState = resolvePunchButtonState(objAttendanceOverview, blnPunching);
   const [strPunchSuccessMessage, setStrPunchSuccessMessage] = useState("");
 
@@ -2187,15 +2195,35 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
               {[
                 { strLabel: t("punch_in", "Punch In"), strValue: strAttendancePunchIn },
                 { strLabel: t("punch_out", "Punch Out"), strValue: strAttendancePunchOut },
-                { strLabel: t("working_hours", "Working Hours"), strValue: strAttendanceWorkingHours },
               ].map((objItem, intIndex) => (
-                <Grid item xs={6} key={`${objItem.strLabel}-${intIndex}`}>
+                <Grid item xs={blnIsRegularizationApprover ? 4 : 6} key={`${objItem.strLabel}-${intIndex}`}>
                   <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
                     <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
                     <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
                   </Box>
                 </Grid>
               ))}
+              {blnIsRegularizationApprover ? (
+                <Grid item xs={4}>
+                  <PendingApprovalMetricCell
+                    strLabel={t("pending_approvals", "Pending Approvals")}
+                    intCount={intPendingRegularizationApprovals}
+                    strHref="/ess/attendance/regularization/approvals"
+                    strTooltip={t(
+                      "pending_regularization_approvals_tooltip",
+                      `${intPendingRegularizationApprovals} attendance regularization request(s) awaiting your approval`
+                    )}
+                    strAccentColor={ESS_COLORS.orange}
+                    strAccentBg={ESS_COLORS.softOrange}
+                  />
+                </Grid>
+              ) : null}
+              <Grid item xs={6}>
+                <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
+                  <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{t("working_hours", "Working Hours")}</Typography>
+                  <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{strAttendanceWorkingHours}</Typography>
+                </Box>
+              </Grid>
               <Grid item xs={6}>
                 <Stack sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }} justifyContent="center" alignItems="flex-start">
                   <Button
@@ -2347,12 +2375,45 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                 <Chip size="small" label={`${intPendingLeaveRequests} ${t("pending", "Pending")}`} sx={{ height: 20, fontSize: "0.62rem", backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />
               ) : null}
             </Stack>
-            <TwoColMetricGrid lstItems={[
-              { strLabel: t("available_balance", "Available Balance"), strValue: formatLeaveBalanceMetric(decLeaveBalance) },
-              { strLabel: t("used_leave", "Used Leave"), strValue: formatLeaveBalanceMetric(decUsedLeave) },
-              { strLabel: t("upcoming_leave", "Upcoming Leave"), strValue: strUpcomingLeave || "-" },
-              { strLabel: t("next_holiday", "Next Holiday"), strValue: strNextHoliday || "-" },
-            ]} />
+            <Grid container spacing={0} sx={{ mt: 0.5, borderTop: "1px solid #E6ECF8", borderLeft: "1px solid #E6ECF8" }}>
+              {[
+                { strLabel: t("available_balance", "Available Balance"), strValue: formatLeaveBalanceMetric(decLeaveBalance) },
+                { strLabel: t("used_leave", "Used Leave"), strValue: formatLeaveBalanceMetric(decUsedLeave) },
+              ].map((objItem, intIndex) => (
+                <Grid item xs={blnIsLeaveApprover ? 4 : 6} key={`${objItem.strLabel}-${intIndex}`}>
+                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
+                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
+                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+              {blnIsLeaveApprover ? (
+                <Grid item xs={4}>
+                  <PendingApprovalMetricCell
+                    strLabel={t("pending_approvals", "Pending Approvals")}
+                    intCount={intPendingLeaveApprovals}
+                    strHref="/ess/leave/approvals"
+                    strTooltip={t(
+                      "pending_leave_approvals_tooltip",
+                      `${intPendingLeaveApprovals} leave request(s) awaiting your approval`
+                    )}
+                    strAccentColor={ESS_COLORS.green}
+                    strAccentBg={ESS_COLORS.softGreen}
+                  />
+                </Grid>
+              ) : null}
+              {[
+                { strLabel: t("upcoming_leave", "Upcoming Leave"), strValue: strUpcomingLeave || "-" },
+                { strLabel: t("next_holiday", "Next Holiday"), strValue: strNextHoliday || "-" },
+              ].map((objItem, intIndex) => (
+                <Grid item xs={6} key={`${objItem.strLabel}-${intIndex}`}>
+                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
+                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
+                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
             <FooterLink strHref="/ess/leave-balance" strLabel={t("view_leave_balance", "View Leave Balance")} strColor={ESS_COLORS.green} />
           </Paper>
         </Grid>
@@ -2411,6 +2472,54 @@ function SectionHeader({
       </Box>
       <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: blnCompact ? "0.98rem" : "1.05rem" }}>{strTitle}</Typography>
     </Stack>
+  );
+}
+
+// Pending-approvals metric cell for line managers: sits inline with the other stat boxes
+// (Punch In / Punch Out, Available Balance / Used Leave) at the same size and alignment, so
+// a manager sees the count and can jump straight into the approval queue without leaving
+// the dashboard. Only rendered for employees who actually hold approver rights.
+function PendingApprovalMetricCell({
+  strLabel,
+  intCount,
+  strHref,
+  strTooltip,
+  strAccentColor,
+  strAccentBg,
+}: {
+  strLabel: string;
+  intCount: number;
+  strHref: string;
+  strTooltip: string;
+  strAccentColor: string;
+  strAccentBg: string;
+}) {
+  return (
+    <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
+      <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{strLabel}</Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.32 }}>
+        <Typography sx={{ color: intCount > 0 ? strAccentColor : "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>
+          {intCount > 99 ? "99+" : intCount}
+        </Typography>
+        <Tooltip title={strTooltip} arrow>
+          <Link href={strHref} style={{ textDecoration: "none" }} aria-label={strTooltip}>
+            <IconButton
+              data-control-id="ess.dashboard.pending-approvals.button"
+              size="small"
+              sx={{
+                width: 26,
+                height: 26,
+                backgroundColor: strAccentBg,
+                color: strAccentColor,
+                "&:hover": { backgroundColor: strAccentBg, opacity: 0.82 },
+              }}
+            >
+              <ArrowForwardRoundedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Link>
+        </Tooltip>
+      </Stack>
+    </Box>
   );
 }
 

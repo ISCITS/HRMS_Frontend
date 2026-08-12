@@ -100,6 +100,14 @@ function formatInputTime(strValue?: string | null) {
   return strValue.slice(0, 5);
 }
 
+function addOneMinuteToTime(strValue?: string | null) {
+  if (!strValue || !/^\d{2}:\d{2}$/.test(strValue)) return undefined;
+  const [strHour, strMinute] = strValue.split(":");
+  const intTotalMinutes = Number(strHour) * 60 + Number(strMinute) + 1;
+  if (!Number.isFinite(intTotalMinutes) || intTotalMinutes >= 24 * 60) return undefined;
+  return `${String(Math.floor(intTotalMinutes / 60)).padStart(2, "0")}:${String(intTotalMinutes % 60).padStart(2, "0")}`;
+}
+
 function getSnapshotFirstIn(objDay?: AttendanceSnapshot | null) {
   return objDay?.strFirstIn ?? objDay?.tmFirstIn ?? null;
 }
@@ -284,6 +292,7 @@ export default function AttendanceRegularizationPage() {
   const blnNeedsTimes = ["MISSING_IN", "MISSING_OUT", "MISSING_BOTH"].includes(strRequestTypeCode) || ["present", "half_day", "on_duty"].includes(strProposedStatus);
   const blnMissingOutOnly = strRequestTypeCode === "MISSING_OUT";
   const blnAutoCalculatedRequest = setAutoCalculatedRequestTypeCodes.has(strRequestTypeCode);
+  const strMinimumProposedOutTime = useMemo(() => addOneMinuteToTime(strProposedFirstInTime), [strProposedFirstInTime]);
   const lstAllTypes = useMemo(() => objLookups[strTypeDomain] ?? [], [objLookups]);
   const lstTypes = useMemo(() => lstAllTypes.filter((objOption) => !setHiddenEssRequestTypeCodes.has(objOption.strValueCode)), [lstAllTypes]);
   const lstRequestStatuses = useMemo(() => objLookups[strStatusDomain] ?? [], [objLookups]);
@@ -348,6 +357,11 @@ export default function AttendanceRegularizationPage() {
     setValue("decProposedWorkedHours", decWorkedHours, { shouldDirty: true, shouldValidate: true });
     setValue("strProposedStatus", deriveProposedStatus(decWorkedHours), { shouldDirty: true, shouldValidate: true });
   }, [blnAutoCalculatedRequest, setValue, strProposedFirstInTime, strProposedLastOutTime]);
+
+  useEffect(() => {
+    if (!strMinimumProposedOutTime || !strProposedLastOutTime || strProposedLastOutTime >= strMinimumProposedOutTime) return;
+    setValue("tmProposedLastOut", "", { shouldDirty: true, shouldValidate: true });
+  }, [setValue, strMinimumProposedOutTime, strProposedLastOutTime]);
 
   useEffect(() => {
     if (intTab !== 0 || (!strError && (objPreview?.blnValid ?? true))) return;
@@ -487,15 +501,15 @@ export default function AttendanceRegularizationPage() {
 
   return (
     <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "scroll", pb: 2, pr: 0.5, scrollbarGutter: "stable", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 9 }, "&::-webkit-scrollbar-track": { backgroundColor: "#eef4f8", borderRadius: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8, border: "2px solid #eef4f8" }, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
-      <Box className="pageBanner" data-control-id="attendance-regularization.header.banner">
+      <Box className="pageBanner" data-control-id="attendance-regularization.header.banner" sx={{ minHeight: 96, py: { xs: 1.5, md: 2 }, px: { xs: 1.5, md: 2.5 }, alignItems: "center", flexWrap: "nowrap" }}>
         <Box className="bannerDots" />
-        <Box className="bannerIcon">
+        <Box className="bannerIcon" sx={{ flex: "0 0 54px" }}>
           <EventRepeatRoundedIcon sx={{ fontSize: 30 }} />
         </Box>
-        <Box className="bannerDivider" />
+        <Box className="bannerDivider" sx={{ flex: "0 0 1px" }} />
         <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">{t("page_title", "Attendance Regularization")}</Typography>
-          <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Request corrections and follow their approval history.")}</Typography>
+          <Typography component="h1" className="bannerTitle" sx={{ fontSize: { xs: "1.35rem", md: "1.75rem" }, lineHeight: 1.18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("page_title", "Attendance Regularization")}</Typography>
+          <Typography component="p" className="bannerSubTitle" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("page_subtitle", "Request corrections and follow their approval history.")}</Typography>
         </Box>
       </Box>
       <Paper className={styles.controlsCard} sx={{ pt: "0 !important", pb: "0 !important" }}>
@@ -533,7 +547,7 @@ export default function AttendanceRegularizationPage() {
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso() }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.request-type.select" select fullWidth size="small" label={t("request_type", "Request Type")} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message}>{lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
-                {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} />} /></Grid></> : null}
+                {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} inputProps={{ min: strMinimumProposedOutTime }} helperText={strMinimumProposedOutTime ? t("out_after_in_hint", `Must be after ${strProposedFirstInTime}`) : undefined} />} /></Grid></> : null}
                 <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.proposed-status.select" select fullWidth size="small" label={t("proposed_status", "Proposed Status")} disabled={blnAutoCalculatedRequest} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message ?? (blnAutoCalculatedRequest ? t("status_auto_from_time", "Calculated from proposed timings") : undefined)}>{lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message ?? (blnAutoCalculatedRequest ? t("worked_hours_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
                 <Grid item xs={12} sm={6}>
