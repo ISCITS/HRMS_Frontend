@@ -56,6 +56,22 @@ function calculateHours(strStart: string, strEnd: string) {
   return Math.max(0, Number((intMinutes / 60).toFixed(2)));
 }
 
+function addOneMinuteToTime(strValue?: string | null) {
+  if (!strValue || !/^\d{2}:\d{2}$/.test(strValue)) return undefined;
+  const [strHour, strMinute] = strValue.split(":");
+  const intTotalMinutes = Number(strHour) * 60 + Number(strMinute) + 1;
+  if (!Number.isFinite(intTotalMinutes) || intTotalMinutes >= 24 * 60) return undefined;
+  return `${String(Math.floor(intTotalMinutes / 60)).padStart(2, "0")}:${String(intTotalMinutes % 60).padStart(2, "0")}`;
+}
+
+function formatDisplayDate(strValue?: string | null) {
+  if (!strValue) return "—";
+  const strDatePart = strValue.slice(0, 10);
+  const objDate = new Date(`${strDatePart}T00:00:00`);
+  if (Number.isNaN(objDate.getTime())) return strValue;
+  return `${String(objDate.getDate()).padStart(2, "0")}-${String(objDate.getMonth() + 1).padStart(2, "0")}-${objDate.getFullYear()}`;
+}
+
 // Read-only preview only; the authoritative credit is recalculated server-side from the
 // effective Work on Holiday policy once attendance is verified (see WorkHolidayService).
 function calculateExpectedCredit(strOutcome: string, decHours: number) {
@@ -115,12 +131,17 @@ export default function EssWorkHolidayPage() {
   const strOutcome = watch("strRequestedOutcomeCode");
   const strWorkDate = watch("dtWorkDate");
   const objAttachment = watch("objAttachment");
+  const strMinimumEndTime = useMemo(() => addOneMinuteToTime(strStart), [strStart]);
   const [objEligibilityPreview, setObjEligibilityPreview] = useState<WorkHolidayEligibilityPreview | null>(null);
   useEffect(() => {
     const decHours = calculateHours(strStart, strEnd);
     setValue("decRequestedHours", decHours);
     setValue("decRequestedCreditDays", calculateExpectedCredit(strOutcome, decHours));
   }, [setValue, strEnd, strOutcome, strStart]);
+  useEffect(() => {
+    if (!strMinimumEndTime || !strEnd || strEnd >= strMinimumEndTime) return;
+    setValue("tmPlannedEndTime", "", { shouldDirty: true, shouldValidate: true });
+  }, [setValue, strEnd, strMinimumEndTime]);
 
   // Retrospective requests may already have verified punches; show that evidence read-only
   // instead of letting the employee re-key Actual Start/End (see EssWorkHolidayPage guidance).
@@ -389,8 +410,8 @@ export default function EssWorkHolidayPage() {
                   {["COMPOFF", "BOTH"].includes(strOutcome) ? (
                     <Box sx={{ width: { xs: "100%", sm: 180 } }}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.credit-days.input" fullWidth size="small" label={t("expected_credit", "Expected Credit")} InputProps={{ readOnly: true }} />} /></Box>
                   ) : null}
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label="Start Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label="End Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} />} /></Box>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label="Start Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} helperText={errors.tmPlannedStartTime?.message} />} /></Box>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label="End Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} inputProps={{ min: strMinimumEndTime }} helperText={strMinimumEndTime ? t("end_after_start_hint", `Must be after ${strStart}`) : errors.tmPlannedEndTime?.message} />} /></Box>
                   <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
                   <Box sx={{ width: { xs: "100%", sm: objAttachment ? 320 : 180 } }}>
                     {objAttachment ? (
@@ -435,10 +456,10 @@ export default function EssWorkHolidayPage() {
       ]} rows={lstEarned.map((objEarned) => ({
         intID: objEarned.intID,
         strRequestNumber: objEarned.strRequestNumber ?? "—",
-        dtWorkDate: objEarned.dtWorkDate ?? "—",
+        dtWorkDate: formatDisplayDate(objEarned.dtWorkDate),
         decCreditedDays: objEarned.decCreditedDays ?? "—",
-        dtCreditDate: objEarned.dtCreditDate ? new Date(objEarned.dtCreditDate).toLocaleDateString() : "—",
-        dtExpiryDate: objEarned.dtExpiryDate ? new Date(objEarned.dtExpiryDate).toLocaleDateString() : "—",
+        dtCreditDate: formatDisplayDate(objEarned.dtCreditDate),
+        dtExpiryDate: formatDisplayDate(objEarned.dtExpiryDate),
         strStatus: t(`earned_status_${objEarned.strStatus.toLowerCase()}`, objEarned.strStatus === "REVERSED" ? "Reversed" : "Available"),
       }))} rowIdField="intID" showExportOptions exportFileName="earned_comp_off" testIdPrefix="work-on-holiday-earned" emptyMessage={t("empty_earned", "No earned Comp-Off entries found.")} /> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnBusinessStatus fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />

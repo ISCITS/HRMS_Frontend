@@ -7,7 +7,6 @@ import type {
   WorkHolidayEligibilityPreview,
   WorkHolidayList,
   WorkHolidayMutationPayload,
-  WorkHolidayPostingList,
   WorkHolidayRequest,
   WorkHolidayRequestPayload,
 } from "@/features/work-on-holiday/types/WorkHolidayTypes";
@@ -74,11 +73,6 @@ export const workHolidayService = {
     requestWorkHoliday<WorkHolidayRequest>(`/requests/${intRequestID}/reprocess`, ApiRequestMethod.Post, "WORK_ON_HOLIDAY_POST", objPayload),
   reverse: (intRequestID: number, objPayload: WorkHolidayMutationPayload) =>
     requestWorkHoliday<WorkHolidayRequest>(`/requests/${intRequestID}/reverse`, ApiRequestMethod.Post, "WORK_ON_HOLIDAY_REVERSE", objPayload),
-  listPostingExceptions: (intPage = 1, intPageSize = 100) =>
-    requestWorkHoliday<WorkHolidayPostingList>(
-      "/posting-exceptions", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_POST", undefined,
-      { page: intPage, page_size: intPageSize },
-    ),
   listCompOffEarned: (intPage = 1, intPageSize = 100) =>
     requestWorkHoliday<WorkHolidayEarnedCompOffList>(
       "/comp-off-earned", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_VIEW", undefined,

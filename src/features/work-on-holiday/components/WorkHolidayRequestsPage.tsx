@@ -8,7 +8,7 @@ import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Tab, Tabs, TextField,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
@@ -20,7 +20,7 @@ import { useWorkHolidayDetail, useWorkHolidayList } from "@/features/work-on-hol
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import { WORK_HOLIDAY_ACTION_ALIASES as dicActionAliases } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 import { WORK_HOLIDAY_MODULE_CODES as lstModuleCodes } from "@/features/work-on-holiday/types/WorkHolidayTypes";
-import type { WorkHolidayPosting, WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
+import type { WorkHolidayRequest } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 
 type WorkHolidayWorkbenchRow = Record<string, ReactNode> & { intID: number };
 const strTabStorageKey = "hrms:work-on-holiday:workbench-tab";
@@ -54,15 +54,13 @@ export default function WorkHolidayRequestsPage() {
   const lstTabs = useMemo(() => [
     { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
     { strCode: "all", strLabel: t("tab_all_requests", "All Requests"), blnVisible: blnCanViewAll },
-    { strCode: "exceptions", strLabel: t("tab_posting_exceptions", "Posting Exceptions"), blnVisible: blnCanPost },
     { strCode: "history", strLabel: t("tab_completed_history", "Completed / History"), blnVisible: blnCanViewAll },
-  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanPost, blnCanViewAll, t]);
+  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanViewAll, t]);
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strStatusFilter, setStrStatusFilter] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(strFilterStorageKey) ?? "");
   const [strSearch, setStrSearch] = useState("");
   const [strAppliedStatusFilter, setStrAppliedStatusFilter] = useState(strStatusFilter);
   const [strAppliedSearch, setStrAppliedSearch] = useState("");
-  const [lstExceptions, setLstExceptions] = useState<WorkHolidayPosting[]>([]);
   const [strError, setStrError] = useState("");
   const [strNotice, setStrNotice] = useState("");
   const [blnOnBehalfOpen, setBlnOnBehalfOpen] = useState(false);
@@ -77,15 +75,9 @@ export default function WorkHolidayRequestsPage() {
   const strApiStatus = strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
     : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
   const strMode = strSelectedTab === "approval" ? "queue" : "all";
-  const blnListEnabled = strSelectedTab !== "exceptions" && (strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll);
+  const blnListEnabled = strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll;
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList(strMode, strApiStatus, 1, 100, blnListEnabled);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
-
-  useEffect(() => {
-    if (strSelectedTab === "exceptions" && blnCanPost) {
-      void workHolidayService.listPostingExceptions().then((objPage) => setLstExceptions(objPage.lstItems)).catch((objError: unknown) => setStrError(objError instanceof Error ? objError.message : t("error_load", "Unable to load data.")));
-    }
-  }, [blnCanPost, strSelectedTab, t]);
 
   function changeTab(_objEvent: SyntheticEvent, intValue: number) {
     setIntTab(intValue);
@@ -226,36 +218,28 @@ export default function WorkHolidayRequestsPage() {
         </Stack>
       ) : null}
       <Paper><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
-      {strSelectedTab !== "exceptions" ? (
-        <Paper className={styles.controlsCard}>
-          <Box
-            component="form"
-            className={styles.searchRow}
-            sx={{
-              gridTemplateColumns: ["all", "history"].includes(strSelectedTab)
-                ? "minmax(260px, 1fr) minmax(210px, .45fr) auto auto !important"
-                : "minmax(280px, 1fr) auto auto !important",
-            }}
-            onSubmit={(objEvent) => {
-              objEvent.preventDefault();
-              searchRequests();
-            }}
-          >
-            <TextField data-control-id="work-on-holiday.workbench.search.input" size="small" fullWidth label={t("search", "Search")} placeholder={t("search_requests_placeholder", "Request number, employee name or code")} value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} />
-            {["all", "history"].includes(strSelectedTab) ? <TextField data-control-id="work-on-holiday.workbench.status.select" size="small" fullWidth select label={t("status", "Status")} value={strStatusFilter} onChange={(objEvent) => setStrStatusFilter(objEvent.target.value)}><MenuItem data-control-id="work-on-holiday.workbench.status.all.option" value="">{t("all_statuses", "All Statuses")}</MenuItem>{["APPROVED", "POSTED", "REJECTED", "WITHDRAWN", "REVERSED", "POSTING_FAILED"].map((strStatus) => <MenuItem data-control-id={`work-on-holiday.workbench.status.${strStatus.toLowerCase()}.option`} key={strStatus} value={strStatus}>{t(`status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField> : null}
-            <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.search.button" type="submit" className={styles.primaryButton} startIcon={<SearchRoundedIcon />}>{t("search", "Search")}</Button></Box>
-            <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.clear.button" type="button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearRequestFilters}>{t("clear", "Clear")}</Button></Box>
-          </Box>
-        </Paper>
-      ) : null}
+      <Paper className={styles.controlsCard}>
+        <Box
+          component="form"
+          className={styles.searchRow}
+          sx={{
+            gridTemplateColumns: ["all", "history"].includes(strSelectedTab)
+              ? "minmax(260px, 1fr) minmax(210px, .45fr) auto auto !important"
+              : "minmax(280px, 1fr) auto auto !important",
+          }}
+          onSubmit={(objEvent) => {
+            objEvent.preventDefault();
+            searchRequests();
+          }}
+        >
+          <TextField data-control-id="work-on-holiday.workbench.search.input" size="small" fullWidth label={t("search", "Search")} placeholder={t("search_requests_placeholder", "Request number, employee name or code")} value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} />
+          {["all", "history"].includes(strSelectedTab) ? <TextField data-control-id="work-on-holiday.workbench.status.select" size="small" fullWidth select label={t("status", "Status")} value={strStatusFilter} onChange={(objEvent) => setStrStatusFilter(objEvent.target.value)}><MenuItem data-control-id="work-on-holiday.workbench.status.all.option" value="">{t("all_statuses", "All Statuses")}</MenuItem>{["APPROVED", "POSTED", "REJECTED", "WITHDRAWN", "REVERSED", "POSTING_FAILED"].map((strStatus) => <MenuItem data-control-id={`work-on-holiday.workbench.status.${strStatus.toLowerCase()}.option`} key={strStatus} value={strStatus}>{t(`status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField> : null}
+          <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.search.button" type="submit" className={styles.primaryButton} startIcon={<SearchRoundedIcon />}>{t("search", "Search")}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.clear.button" type="button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearRequestFilters}>{t("clear", "Clear")}</Button></Box>
+        </Box>
+      </Paper>
       {blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}
       {blnListEnabled ? <CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_requests" testIdPrefix="work-on-holiday-workbench" emptyMessage={t("empty_requests", "No matching requests found.")} /> : null}
-      {strSelectedTab === "exceptions" ? <CommonDataGrid columns={[
-        { field: "intWorkHolidayRequestID", headerName: t("request_reference", "Request Reference") },
-        { field: "strPostingTypeCode", headerName: t("posting_type", "Posting Type") },
-        { field: "strPostingStatus", headerName: t("posting_status", "Posting Status") },
-        { field: "strErrorMessage", headerName: t("error", "Error"), width: 340 },
-      ]} rows={lstExceptions.map((objPosting) => ({ intID: objPosting.intID, intWorkHolidayRequestID: objPosting.intWorkHolidayRequestID, strPostingTypeCode: t(`posting_type_${objPosting.strPostingTypeCode.toLowerCase()}`, objPosting.strPostingTypeCode), strPostingStatus: t(`posting_${objPosting.strPostingStatus.toLowerCase()}`, objPosting.strPostingStatus), strErrorMessage: objPosting.strErrorMessage ?? "—" }))} rowIdField="intID" showExportOptions exportFileName="work_on_holiday_posting_exceptions" testIdPrefix="work-on-holiday-exceptions" /> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject} blnCanSendBack={blnCanSendBack} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} blnActionMode={blnActionMode} fnOnClose={closeDetailDrawer} fnOnRefresh={async () => { await reload(); if (objDetail) await loadDetail(objDetail.intID); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
       <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">
         <DialogTitle sx={{ fontWeight: 800 }}>{t("create_on_behalf", "Create On Behalf")}</DialogTitle>
