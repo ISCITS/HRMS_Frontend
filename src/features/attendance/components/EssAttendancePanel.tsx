@@ -5,6 +5,7 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   Alert,
@@ -511,6 +512,7 @@ export default function EssAttendancePanel() {
                   data-control-id="ess.my-attendance.regularize.button"
                   variant="outlined"
                   size="small"
+                  endIcon={<OpenInNewRoundedIcon fontSize="small" />}
                   onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
                   sx={{ minHeight: 52, px: 1.75, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap", flex: "0 0 auto" }}
                 >
