@@ -16,7 +16,6 @@ import type {
   EmployeeStatutoryFormValues,
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
-import { authHelpers } from "@/lib/auth";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
@@ -122,43 +121,6 @@ export const employeeService = {
   async updateEmployee(intEmployeeID: number, dicValues: EmployeeFormValues, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
     const objResult = await masterApiService.updateEmployee(intEmployeeID, mapEmployeePayload(dicValues), objOptions?.strMenuAction);
     return mapEmployeeDetailRecord(objResult.Data);
-  },
-
-  async uploadEmployeeAvatar(intEmployeeID: number, objFile: File): Promise<{
-    intEmployeeID: number;
-    strEmployeeCode?: string | null;
-    strFullName?: string | null;
-    strProfilePhotoUrl?: string | null;
-  }> {
-    const strAccessToken = authHelpers.getAccessToken().trim();
-    const intTenantID = authHelpers.getTenantID();
-    const intCompanyID = authHelpers.getCompanyID();
-    const objFormData = new FormData();
-    objFormData.append("objFile", objFile);
-    const objHeaders: Record<string, string> = {};
-
-    if (strAccessToken) {
-      objHeaders.Authorization = `Bearer ${strAccessToken}`;
-      objHeaders["X-Access-Token"] = strAccessToken;
-    }
-    if (intTenantID) {
-      objHeaders["X-Tenant-Id"] = String(intTenantID);
-    }
-    if (intCompanyID) {
-      objHeaders["X-Company-Id"] = String(intCompanyID);
-    }
-
-    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
-      method: "PUT",
-      headers: Object.keys(objHeaders).length ? objHeaders : undefined,
-      body: objFormData,
-      credentials: "include",
-    });
-    const objResult = await objResponse.json();
-    if (!objResponse.ok || objResult?.ResultCode === 0) {
-      throw new Error(objResult?.Msg || "Unable to upload profile photo.");
-    }
-    return objResult.Data;
   },
 
   bulkUpdateStatus(lstIDs: number[], blnIsActive: boolean) {

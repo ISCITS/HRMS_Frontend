@@ -65,6 +65,7 @@ import {
 } from "@/features/employee/EmployeeFormUtils";
 import { useEmployeeDetailsLabels } from "@/features/employee/hooks/useEmployeeDetailsLabels";
 import { createHrBankFileService, employeeService } from "@/features/employee/services/employeeService";
+import { authApiService } from "@/services";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import type {
   EmployeeAddressFormValues,
@@ -134,7 +135,7 @@ function buildPartialEmployeeCode() {
 function buildEmployeeAvatarUrl(intEmployeeID: number, strProfilePhotoUrl?: string | null) {
   const strResolvedAvatarUrl = strProfilePhotoUrl?.trim();
   if (!strResolvedAvatarUrl) {
-    return `/api/employees/avatar/${intEmployeeID}?v=${Date.now()}`;
+    return `/api/auth/avatar/current?employee_id=${intEmployeeID}&v=${Date.now()}`;
   }
 
   const strVersionedAvatarUrl = new URL(strResolvedAvatarUrl, window.location.origin);
@@ -457,7 +458,8 @@ export default function EmployeeEditorScreen({
 
     setBlnAvatarUpdating(true);
     try {
-      const dicAvatar = await employeeService.uploadEmployeeAvatar(intResolvedEmployeeID, objFile);
+      const objAvatarResult = await authApiService.uploadCurrentAvatar(objFile, intResolvedEmployeeID);
+      const dicAvatar = objAvatarResult.Data;
       setStrEmployeeAvatarUrl(buildEmployeeAvatarUrl(intResolvedEmployeeID, dicAvatar?.strProfilePhotoUrl));
       window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
     } catch (objError: unknown) {
@@ -1371,7 +1373,7 @@ export default function EmployeeEditorScreen({
             </RadioGroup>
           </Box>
 
-          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 118 }, flexShrink: 0, pt: { md: 0.5 }, order: { xs: -1, md: 0 }, ml: { md: "auto" } }}>
+          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 142 }, flexShrink: 0, pt: { md: 0.5 }, order: { xs: -1, md: 0 }, ml: { md: "auto" } }}>
             <Box
               sx={{
                 position: "relative",
@@ -1388,8 +1390,8 @@ export default function EmployeeEditorScreen({
               <Avatar
                 src={strAuthenticatedAvatarUrl || undefined}
                 sx={{
-                  width: 88,
-                  height: 88,
+                  width: 120,
+                  height: 120,
                   bgcolor: "rgba(37, 99, 235, 0.14)",
                   color: "primary.main",
                   fontWeight: 700,

@@ -262,6 +262,17 @@ export type EmployeeSalaryDetailRecord = {
   } | null;
   objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
   objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
+  objItDeclarationDashboard?: {
+    strCurrentFinancialYearCode: string;
+    lstDeclarations: Array<{
+      intDeclarationID: number;
+      strFinancialYearCode: string;
+      strTaxRegime: string;
+      strStatus: string;
+      decDeclaredAmount: number;
+      decApprovedAmount: number;
+    }>;
+  };
   lstWarnings?: string[];
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];

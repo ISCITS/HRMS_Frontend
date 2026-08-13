@@ -11,15 +11,20 @@ function resolveBackendBaseUrl() {
   return process.env.BACKEND_API_BASE_URL?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || appConfig.apiBaseUrl;
 }
 
-async function buildAuthorizedHeaders(objRequest: Request) {
-  const strAccessToken = getAccessTokenFromRequest(objRequest) || await getAccessTokenFromCookie();
-  if (!strAccessToken) {
-    return null;
+function buildBackendAvatarUrl(objRequest: Request) {
+  const strBackendBaseUrl = resolveBackendBaseUrl();
+  const objUrl = new URL(objRequest.url);
+  const objBackendQuery = new URLSearchParams();
+  const strEmployeeID = objUrl.searchParams.get("employee_id");
+  const strVersion = objUrl.searchParams.get("v");
+  if (strEmployeeID) {
+    objBackendQuery.set("employee_id", strEmployeeID);
   }
-
-  return {
-    Authorization: `Bearer ${strAccessToken}`,
-  };
+  if (strVersion) {
+    objBackendQuery.set("v", strVersion);
+  }
+  const strQuery = objBackendQuery.toString();
+  return `${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current${strQuery ? `?${strQuery}` : ""}`;
 }
 
 export async function GET(objRequest: Request) {
@@ -29,12 +34,7 @@ export async function GET(objRequest: Request) {
   }
   const objHeaders = buildProtectedProxyRequestHeaders(strAccessToken, "AUTH_ME", objRequest.headers);
 
-  const strBackendBaseUrl = resolveBackendBaseUrl();
-  const objUrl = new URL(objRequest.url);
-  const strVersionQuery = objUrl.searchParams.get("v");
-  const strAvatarUrl = `${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current${strVersionQuery ? `?v=${encodeURIComponent(strVersionQuery)}` : ""}`;
-
-  const objBackendResponse = await fetch(strAvatarUrl, {
+  const objBackendResponse = await fetch(buildBackendAvatarUrl(objRequest), {
     method: "GET",
     headers: objHeaders,
     cache: "no-store",
@@ -63,12 +63,11 @@ export async function PUT(objRequest: Request) {
   }
 
   const objFormData = await objRequest.formData();
-  const strBackendBaseUrl = resolveBackendBaseUrl();
   const objHeaders: Record<string, string> = {
     ...buildProtectedProxyRequestHeaders(strAccessToken, "AUTH_AVATAR_UPDATE", objRequest.headers)
   };
   delete objHeaders["Content-Type"];
-  const objBackendResponse = await fetch(`${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current`, {
+  const objBackendResponse = await fetch(buildBackendAvatarUrl(objRequest), {
     method: "PUT",
     headers: objHeaders,
     body: objFormData,
@@ -89,9 +88,8 @@ export async function DELETE(objRequest: Request) {
     return NextResponse.json({ ResultCode: 0, Msg: "Unauthenticated.", Data: {} }, { status: 401 });
   }
 
-  const strBackendBaseUrl = resolveBackendBaseUrl();
   const objHeaders = buildProtectedProxyRequestHeaders(strAccessToken, "AUTH_AVATAR_DELETE", objRequest.headers);
-  const objBackendResponse = await fetch(`${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current`, {
+  const objBackendResponse = await fetch(buildBackendAvatarUrl(objRequest), {
     method: "DELETE",
     headers: objHeaders,
     cache: "no-store",

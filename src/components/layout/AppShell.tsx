@@ -298,13 +298,13 @@ function getLocalizedHeaderTitle(
   if (strHeaderModuleName === "employee-salary") {
     const blnEmployeeSalaryViewMode = strViewMode === "view";
     if (strLowerPath.includes("/revise")) {
-      return tHeader("employee_salary_detail_title", "Employee Salary Detail");
+      return "";
     }
     if (blnEmployeeSalaryViewMode) {
-      return tHeader("employee_salary_view_title", "View Employee Salary Detail");
+      return "";
     }
     if (Boolean(strLowerPath.match(/^\/employee-salary\/\d+$/))) {
-      return tHeader("employee_salary_detail_title", "Employee Salary Detail");
+      return "";
     }
     return tHeader("page_title", "Employee Salary");
   }
@@ -890,9 +890,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     : strLowerPathname.match(/^\/ess\/reimbursements\/\d+\/edit$/)
       ? tHeader("edit_claim_reimbursement", "Edit Claim Reimbursement")
       : tHeader("view_claim_reimbursement", "View Claim Reimbursement");
+  const blnEmployeeSalaryDetailContext = Boolean(
+    strLowerPathname.match(/^\/employee-salary\/\d+(\/revise)?$/)
+  );
   // Exact menu routes use the tenant-configured database label in the shell header.
   const strDatabaseMenuName = findMenuNameByRoute(objMenu.lstMenuItems, strPathname);
-  const strPageTitle = strDatabaseMenuName || (blnEmployeeReimbursementFormContext
+  const strPageTitle = blnEmployeeSalaryDetailContext ? "" : strDatabaseMenuName || (blnEmployeeReimbursementFormContext
     ? (blnEmployeeReimbursementContext ? strEmployeeReimbursementFormTitle : tHeader("review_reimbursements", "Review Reimbursements"))
     : blnEmployeeReimbursementContext
       ? tHeader("employee_reimbursements", "Employee Reimbursements")

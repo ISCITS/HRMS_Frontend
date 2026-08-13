@@ -29,16 +29,11 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
-import { employeeService } from "@/features/employee/services/employeeService";
 import {
   hrFlexiDeclarationReviewService,
   type FlexiDeclarationContextRecord,
   type FlexiDeclarationLineRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
-import {
-  hrItDeclarationService,
-  type HrEmployeeItDeclarationListRecord,
-} from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
@@ -225,7 +220,6 @@ type SalarySummaryMetrics = {
   decDeemedWageShortfallAnnual: number;
   decDeemedWageAnnual: number;
   decWagePercentOfCtc: number;
-  strFlexiWarning: string;
   blnUsesSubmittedFlexiPreview: boolean;
 };
 
@@ -764,9 +758,6 @@ function calculateSalarySummaryMetrics(
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
     ...dicWageMetrics,
-    strFlexiWarning: decFlexiBucketAnnual > 0 && strFlexiStatusType === "other"
-      ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
-      : "",
     blnUsesSubmittedFlexiPreview: decFlexiBucketAnnual > 0 && strFlexiStatusType === "submitted"
   };
 }
@@ -859,9 +850,6 @@ function calculateRevisionSalarySummaryMetrics(
     decResidualTaxableAnnual,
     decResidualTaxableMonthly: decResidualTaxableAnnual / 12,
     ...dicWageMetrics,
-    strFlexiWarning: decFlexiBucketAnnual > 0 && decApprovedFlexiAnnual <= 0
-      ? "Flexi Bucket exists but employee has no approved or locked Flexi declaration."
-      : "",
     blnUsesSubmittedFlexiPreview: decFlexiBucketAnnual > 0 && decApprovedFlexiAnnual > 0
   };
 }
@@ -1316,8 +1304,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const [objFlexiDeclarationContext, setObjFlexiDeclarationContext] = useState<FlexiDeclarationContextRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeSalaryFormOptions | null>(null);
   const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
-  const [objItDeclarationSummary, setObjItDeclarationSummary] = useState<HrEmployeeItDeclarationListRecord | null>(null);
-  const [strEmployeeTaxRegime, setStrEmployeeTaxRegime] = useState("");
   const [objRevisionPreview, setObjRevisionPreview] = useState<EmployeeSalaryRevisionPreviewRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -1368,16 +1354,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setStrError("");
       try {
         const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID);
-        const [dicFormOptions, dicSalaryComponents, dicItDeclarations, dicEmployeeStatutory] = await Promise.all([
+        const [dicFormOptions, dicSalaryComponents] = await Promise.all([
           employeeSalaryService.getFormOptions().catch(() => ({
             lstEmployees: [],
             lstSalaryStructures: [],
           })),
           masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
-          hrItDeclarationService.getEmployeeDeclarations(intEmployeeID).catch(() => null),
-          employeeService
-            .getEmployeeStatutory(intEmployeeID, { strMenuAction: "EMPLOYEE_SALARY_VIEW" })
-            .catch(() => null),
         ]);
         let intDeclarationID = dicDetail.objFlexiDeclaration?.intDeclarationID ?? null;
         if (!intDeclarationID) {
@@ -1407,14 +1389,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         setObjFlexiDeclarationContext(dicFlexiDeclarationContext);
         setObjFormOptions(dicFormOptions);
         setLstSalaryComponents(dicSalaryComponents.Data);
-        setObjItDeclarationSummary(
-          dicItDeclarations
-            ? [...dicItDeclarations.lstRows].sort((dicLeft, dicRight) =>
-                dicRight.strFinancialYearCode.localeCompare(dicLeft.strFinancialYearCode)
-              )[0] ?? null
-            : null
-        );
-        setStrEmployeeTaxRegime(formatTaxRegime(dicEmployeeStatutory?.strTaxRegimeCode));
         setObjRevisionPreview(null);
         setDicRevisionForm(buildRevisionForm(dicDetail, dicFormOptions, dicSalaryComponents.Data, refTranslate.current));
       } catch (objError) {
@@ -1773,6 +1747,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     0
   );
   const decNetAnnual = decNetMonthly * 12;
+  const objItDeclarationDashboard = objDetail?.objItDeclarationDashboard;
+  const objItDeclarationSummary = objItDeclarationDashboard
+    ? objItDeclarationDashboard.lstDeclarations.find(
+        (dicCard) => dicCard.strFinancialYearCode === objItDeclarationDashboard.strCurrentFinancialYearCode
+      ) ?? objItDeclarationDashboard.lstDeclarations[0] ?? null
+    : null;
   const lstRevisionCurrentBreakdownComponentRows: RevisionBreakdownComponentRow[] = useMemo(() => {
     return (objDetail?.lstComponentLines ?? [])
       .filter((dicLine) =>
@@ -2383,11 +2363,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
             <Box>
-              <Typography sx={{ color: "#64748b", mt: 0.25, maxWidth: 820 }}>
-                {t(
-                  "employee_salary_detail_help",
-                  "Manage employee compensation from a single screen."
-                  )}
+              <Typography component="h1" sx={{ color: "#0f172a", fontSize: "1.25rem", fontWeight: 800 }}>
+                {t("employee_salary_detail_title", "Employee Salary Detail")}
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -2565,7 +2542,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
           }}
         >
-          <Stack spacing={1.2}>
+          <Stack spacing={1.2} sx={{ order: 4 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
                 <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
@@ -2588,7 +2565,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Stack>
           </Stack>
 
-          <Stack spacing={1.2}>
+          <Stack spacing={1.2} sx={{ order: 2 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf0ff", color: "#155eef", display: "grid", flexShrink: 0, placeItems: "center" }}>
                 <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
@@ -2609,7 +2586,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Stack>
           </Stack>
 
-          <Stack spacing={1.2}>
+          <Stack spacing={1.2} sx={{ order: 3 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#f1eafe", color: "#7c3aed", display: "grid", flexShrink: 0, placeItems: "center" }}>
                 <SavingsOutlinedIcon sx={{ fontSize: 15 }} />
@@ -2630,7 +2607,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Stack>
           </Stack>
 
-          <Stack spacing={1.2}>
+          <Stack spacing={1.2} sx={{ order: 1 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf3ff", color: "#1677ff", display: "grid", flexShrink: 0, placeItems: "center" }}>
                 <BadgeOutlinedIcon sx={{ fontSize: 15 }} />
@@ -2880,19 +2857,14 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             </Box>
           ) : null}
         </Stack>
-        {dicRevisionForm.intSalaryStructureID !== "" ? (
+        <Stack spacing={1.5} sx={{ alignSelf: "start", minWidth: 0 }}>
         <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
-            <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
-              {t("employee_salary_breakdown_impact", "Salary Breakdown Impact")}
-            </Typography>
-            <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
-          </Stack>
-
           <Stack spacing={1.25}>
+            {dicRevisionForm.intSalaryStructureID !== "" ? (
+            <>
             <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
               <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-                {t("employee_salary_after_declaration_live_impact", "After Declaration (Live Impact)")}
+                {t("employee_salary_flexi_pay_declaration", "Flexi Pay Declaration")}
               </Typography>
             </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
@@ -2949,22 +2921,38 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>Deemed Wage for Statutory Calculation</Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicResolvedRevisionSalarySummaryMetrics.decDeemedWageAnnual, strCurrencyCode)}</Typography>
             </Stack>
-
-            {dicResolvedRevisionSalarySummaryMetrics.strFlexiWarning ? (
-              <Alert severity="warning">{dicResolvedRevisionSalarySummaryMetrics.strFlexiWarning}</Alert>
+            </>
             ) : null}
-
-            <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
-              <Stack direction="row" spacing={0.8} alignItems="flex-start">
-                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
-                <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
-                  Wage rule preview for statutory calculation. Final applicability depends on statutory configuration and payroll processing.
+            <Box sx={{ alignItems: "center", background: "#e8f1ff", borderRadius: "6px", display: "flex", justifyContent: "space-between", gap: 1, px: 1.25, py: 1 }}>
+              <Box sx={{ alignItems: "center", display: "flex", gap: 0.6, minWidth: 0 }}>
+                <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
+                  {t("employee_salary_it_declaration", "IT Declaration")}
                 </Typography>
-              </Stack>
+                <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 16 }} />
+              </Box>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 800, flexShrink: 0, textAlign: "right" }}>
+                {formatTaxRegime(objItDeclarationSummary?.strTaxRegime)}
+              </Typography>
             </Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>
+                {t("employee_salary_declared_it_declaration", "Declared IT Declaration")}
+              </Typography>
+              <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>
+                {formatCurrency(objItDeclarationSummary?.decDeclaredAmount ?? 0, strCurrencyCode)}
+              </Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+              <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>
+                {t("employee_salary_approved_it_declaration", "Approved IT Declaration")}
+              </Typography>
+              <Typography sx={{ color: "#059669", fontSize: "0.84rem", fontWeight: 800 }}>
+                {formatCurrency(objItDeclarationSummary?.decApprovedAmount ?? 0, strCurrencyCode)}
+              </Typography>
+            </Stack>
           </Stack>
         </Paper>
-        ) : null}
+        </Stack>
         </Box>
       ) : null}
 
@@ -3130,13 +3118,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         )}
         </Stack>
         <Paper variant="outlined" sx={{ alignSelf: "start", border: "1px solid rgba(187, 213, 232, 0.7)", borderRadius: "var(--app-card-radius)", boxShadow: "var(--app-shadow-soft)", p: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
-            <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
-              {t("employee_salary_breakdown_impact", "Salary Breakdown Impact")}
-            </Typography>
-            <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 17 }} />
-          </Stack>
-
           {/* <Box sx={{ background: "#eef3fb", borderRadius: "6px", px: 1.25, py: 1, mb: 1.5 }}>
             <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
               {t("employee_salary_current_before_declaration", "Flexi Declaration Status")}
@@ -3144,16 +3125,9 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           </Box> */}
 
           <Stack spacing={1.25}>
-            {lstFlexiRows.filter((dicRow) => dicRow.decApprovedDeclaredAnnual > 0).map((dicRow) => (
-              <Stack key={dicRow.intSalaryComponentID} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
-                <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700, minWidth: 0 }}>{dicRow.strComponentName}</Typography>
-                <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>{formatCurrency(dicRow.decApprovedDeclaredAnnual, strCurrencyCode)}</Typography>
-              </Stack>
-            ))}
-
             <Box sx={{ background: "#e7f8ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
               <Typography sx={{ color: "#0f172a", fontSize: "0.82rem", fontWeight: 800 }}>
-                {t("employee_salary_after_declaration_live_impact", "Flexi Pay Declaration")}
+                {t("employee_salary_flexi_pay_declaration", "Flexi Pay Declaration")}
               </Typography>
             </Box>
 
@@ -3222,22 +3196,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </>
             ) : null}
 
-            {dicSalarySummaryMetrics.strFlexiWarning ? (
-              <Alert severity="warning">{dicSalarySummaryMetrics.strFlexiWarning}</Alert>
-            ) : null}
-
-            {blnCanViewWageBreakdownPreview ? (
-              <Box sx={{ background: "#eef6ff", border: "1px solid #cfe3ff", borderRadius: "6px", p: 1.35, mt: 0.5 }}>
-                <Stack direction="row" spacing={0.8} alignItems="flex-start">
-                  <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 18, mt: 0.1 }} />
-                  <Typography sx={{ color: "#172554", fontSize: "0.76rem", lineHeight: 1.45 }}>
-                    Wage rule preview for statutory calculation. Final applicability depends on statutory configuration and payroll processing.
-                  </Typography>
-                </Stack>
-              </Box>
-            ) : null}
-
-            <Box sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 1, mt: 1 }}>
+            <Box sx={{ alignItems: "center", background: "#e8f1ff", borderRadius: "6px", display: "flex", justifyContent: "space-between", gap: 1, mt: 1, px: 1.25, py: 1 }}>
               <Box sx={{ alignItems: "center", display: "flex", gap: 0.6, minWidth: 0 }}>
                 <Typography sx={{ color: "#172554", fontSize: "0.95rem", fontWeight: 800 }}>
                   {t("employee_salary_it_declaration", "IT Declaration")}
@@ -3245,7 +3204,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 <InfoOutlinedIcon sx={{ color: "#0757b8", fontSize: 16 }} />
               </Box>
               <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 800, flexShrink: 0, textAlign: "right" }}>
-                {formatTaxRegime(objItDeclarationSummary?.strTaxRegime) || strEmployeeTaxRegime || t("employee_salary_tax_regime_na", "NA")}
+                {formatTaxRegime(objItDeclarationSummary?.strTaxRegime)}
               </Typography>
             </Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
@@ -3253,7 +3212,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_declared_it_declaration", "Declared IT Declaration")}
               </Typography>
               <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 800 }}>
-                {formatCurrency(objItDeclarationSummary?.decDeclaredTotalAmount ?? 0, strCurrencyCode)}
+                {formatCurrency(objItDeclarationSummary?.decDeclaredAmount ?? 0, strCurrencyCode)}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
@@ -3261,7 +3220,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                 {t("employee_salary_approved_it_declaration", "Approved IT Declaration")}
               </Typography>
               <Typography sx={{ color: "#059669", fontSize: "0.84rem", fontWeight: 800 }}>
-                {formatCurrency(objItDeclarationSummary?.decApprovedTotalAmount ?? 0, strCurrencyCode)}
+                {formatCurrency(objItDeclarationSummary?.decApprovedAmount ?? 0, strCurrencyCode)}
               </Typography>
             </Stack>
           </Stack>

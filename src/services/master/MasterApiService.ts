@@ -1230,6 +1230,17 @@ export type EmployeeSalaryDetailApiRecord = {
     strCurrencyCode: string;
     dtEffectiveFrom: string;
   } | null;
+  objItDeclarationDashboard?: {
+    strCurrentFinancialYearCode: string;
+    lstDeclarations: Array<{
+      intDeclarationID: number;
+      strFinancialYearCode: string;
+      strTaxRegime: string;
+      strStatus: string;
+      decDeclaredAmount: number;
+      decApprovedAmount: number;
+    }>;
+  };
   lstComponentLines: EmployeeSalaryComponentLineApiRecord[];
   lstRevisionHistory: EmployeeSalaryHistoryApiRecord[];
 };

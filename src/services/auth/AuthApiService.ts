@@ -296,7 +296,7 @@ export const authApiService = {
     });
   },
 
-  async uploadCurrentAvatar(objFile: File) {
+  async uploadCurrentAvatar(objFile: File, intEmployeeID?: number | null) {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     return requestApi<{
@@ -308,6 +308,7 @@ export const authApiService = {
       strPath: "auth/avatar/current",
       strMethod: ApiRequestMethod.Put,
       objBody: objFormData,
+      objQueryParams: intEmployeeID ? { employee_id: intEmployeeID } : undefined,
       strMenuAction: "AUTH_AVATAR_UPDATE",
       blnUseAuthHeader: true
     });
