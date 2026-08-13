@@ -335,6 +335,18 @@ export const leaveService = {
     return objResult.Data;
   },
 
+  // Withdraw an already-approved, not-yet-started leave. Routes a withdrawal request back through the
+  // same approval chain; the leave stays approved until the withdrawal is approved.
+  async requestApprovedLeaveWithdrawal(intApplicationID: number, strReason: string): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/request-withdrawal`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strReason },
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async uploadMyLeaveAttachment(intApplicationID: number, objFile: File, fnOnProgress?: FileUploadProgressHandler): Promise<LeaveApplicationAttachmentDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);

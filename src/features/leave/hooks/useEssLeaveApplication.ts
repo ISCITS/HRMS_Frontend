@@ -84,6 +84,12 @@ export function useEssLeaveApplication() {
     return leaveService.withdrawMyLeaveApplication(intApplicationID, strReason);
   }, []);
 
+  // Withdraw an already-approved, not-yet-started leave: routes a withdrawal request back through the
+  // same approval chain (distinct from the pending-leave withdraw above).
+  const fnRequestWithdrawal = useCallback(async (intApplicationID: number, strReason: string) => {
+    return leaveService.requestApprovedLeaveWithdrawal(intApplicationID, strReason);
+  }, []);
+
   const fnDeleteAttachment = useCallback(async (intApplicationID: number, intAttachmentID: number) => {
     await leaveService.deleteMyLeaveAttachment(intApplicationID, intAttachmentID);
   }, []);
@@ -118,6 +124,7 @@ export function useEssLeaveApplication() {
     fnPersistDraft,
     fnSubmitDraft,
     fnWithdraw,
+    fnRequestWithdrawal,
     fnDeleteAttachment,
     fnPreviewAttachment,
     fnReplaceAttachment,

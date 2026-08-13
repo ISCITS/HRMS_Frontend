@@ -530,6 +530,7 @@ export const LEAVE_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   rejected: { bg: "#fee2e2", fg: "#991b1b" },
   sent_back: { bg: "#ffedd5", fg: "#9a3412" },
   cancellation_pending: { bg: "#fef3c7", fg: "#92400e" },
+  withdrawal_pending: { bg: "#fef3c7", fg: "#92400e" },
   cancelled: { bg: "#f1f5f9", fg: "#475569" },
   withdrawn: { bg: "#f1f5f9", fg: "#475569" },
 };
@@ -543,6 +544,7 @@ export const LEAVE_STATUS_LABELS: Record<string, string> = {
   rejected: "Rejected",
   sent_back: "Sent Back",
   cancellation_pending: "Cancellation Pending",
+  withdrawal_pending: "Withdrawal Pending",
   cancelled: "Cancelled",
   withdrawn: "Withdrawn",
 };

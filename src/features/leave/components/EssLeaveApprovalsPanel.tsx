@@ -107,7 +107,18 @@ export default function EssLeaveApprovalsPanel() {
     }
   }
 
-  const lstDelegated = useMemo(() => lstQueue.filter((objItem) => objItem.blnIsDelegated), [lstQueue]);
+  // A request that has moved past its first approval step (e.g. Reporting Manager approved, now with
+  // the Line Manager) is shown to the later-step approver under "Delegated to Me", not "Pending My
+  // Approval". Genuine delegations (effective approver != original) also live in "Delegated to Me".
+  const fnIsSubsequentStep = (objItem: LeaveQueueItemDto) => (objItem.intCurrentStepNo ?? 1) > 1;
+  const lstDelegated = useMemo(
+    () => lstQueue.filter((objItem) => objItem.blnIsDelegated || fnIsSubsequentStep(objItem)),
+    [lstQueue],
+  );
+  const lstPendingOwn = useMemo(
+    () => lstQueue.filter((objItem) => !objItem.blnIsDelegated && !fnIsSubsequentStep(objItem)),
+    [lstQueue],
+  );
   const intOverdueCount = useMemo(() => lstQueue.filter((objItem) => objItem.blnIsOverdue).length, [lstQueue]);
   const lstUpcoming = useMemo(() => {
     const strToday = fnTodayISO();
@@ -129,7 +140,7 @@ export default function EssLeaveApprovalsPanel() {
     return lstEvents.sort((objA, objB) => objA.dtFromDate.localeCompare(objB.dtFromDate));
   }, [objTeamCalendar]);
 
-  const lstActiveRows = intTab === 0 ? lstQueue : intTab === 1 ? lstDelegated : lstActioned;
+  const lstActiveRows = intTab === 0 ? lstPendingOwn : intTab === 1 ? lstDelegated : lstActioned;
   const lstFiltered = useMemo(() => {
     const strNeedle = strSearch.trim().toLowerCase();
     const lstSearched = !strNeedle
@@ -214,7 +225,7 @@ export default function EssLeaveApprovalsPanel() {
   }
 
   const lstCards = [
-    { strKey: "pending", strLabel: t("card_pending", "Pending"), intValue: lstQueue.length, strColor: "#0a66a3", objIcon: <ScheduleRoundedIcon /> },
+    { strKey: "pending", strLabel: t("card_pending", "Pending"), intValue: lstPendingOwn.length, strColor: "#0a66a3", objIcon: <ScheduleRoundedIcon /> },
     { strKey: "overdue", strLabel: t("card_overdue", "Overdue"), intValue: intOverdueCount, strColor: "#b91c1c", objIcon: <EventBusyRoundedIcon /> },
     { strKey: "delegated", strLabel: t("card_delegated", "Delegated"), intValue: lstDelegated.length, strColor: "#7c3aed", objIcon: <GroupsRoundedIcon /> },
     { strKey: "upcoming", strLabel: t("card_upcoming", "Upcoming Team Leave"), intValue: lstUpcoming.length, strColor: "#0e7490", objIcon: <CalendarMonthRoundedIcon /> },
