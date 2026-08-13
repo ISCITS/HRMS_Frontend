@@ -238,6 +238,8 @@ export function validateEmployeeForm(
     joiningDateRequired: dicConstant.employeeMaster.validation.joiningDateRequired,
     employmentTypeRequired: dicConstant.employeeMaster.validation.employmentTypeRequired,
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
+    reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
+    lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -275,6 +277,14 @@ export function validateEmployeeForm(
 
   if (dicForm.intLocationID === "") {
     dicNextErrors.intLocationID = dicValidationLabels.locationRequired;
+  }
+
+  if (dicForm.intManagerEmployeeID === "") {
+    dicNextErrors.intManagerEmployeeID = dicValidationLabels.reportingManagerRequired;
+  }
+
+  if (dicForm.intLineManagerEmployeeID === "") {
+    dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
   }
 
   if (strWorkEmail && !isEmailValid(strWorkEmail)) {

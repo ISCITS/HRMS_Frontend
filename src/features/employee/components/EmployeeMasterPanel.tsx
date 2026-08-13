@@ -220,6 +220,19 @@ export default function EmployeeMasterPanel() {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
+  function updateReportingManager(objValue: number | "") {
+    setDicErrors((dicPrevious) => ({
+      ...dicPrevious,
+      intManagerEmployeeID: undefined,
+      ...(objValue !== "" ? { intLineManagerEmployeeID: undefined } : {})
+    }));
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      intManagerEmployeeID: objValue,
+      ...(objValue !== "" ? { intLineManagerEmployeeID: objValue } : {})
+    }));
+  }
+
   function validateForm(): boolean {
     const dicNextErrors: Partial<Record<keyof EmployeeFormValues, string>> = {};
     const strEmployeeCode = dicForm.strEmployeeCode.trim().toUpperCase();
@@ -251,6 +264,14 @@ export default function EmployeeMasterPanel() {
 
     if (dicForm.intLocationID === "") {
       dicNextErrors.intLocationID = dicConstant.employeeMaster.validation.locationRequired;
+    }
+
+    if (dicForm.intManagerEmployeeID === "") {
+      dicNextErrors.intManagerEmployeeID = dicConstant.employeeMaster.validation.reportingManagerRequired;
+    }
+
+    if (dicForm.intLineManagerEmployeeID === "") {
+      dicNextErrors.intLineManagerEmployeeID = dicConstant.employeeMaster.validation.lineManagerRequired;
     }
 
     if (strWorkEmail && !isEmailValid(strWorkEmail)) {
@@ -362,7 +383,14 @@ export default function EmployeeMasterPanel() {
         label={strLabel}
         value={dicForm[strField]}
         disabled={blnDisabled || strMode === "view"}
-        onChange={(objEvent) => updateField(strField, (objEvent.target.value ? Number(objEvent.target.value) : "") as EmployeeFormValues[typeof strField])}
+        onChange={(objEvent) => {
+          const objValue = objEvent.target.value ? Number(objEvent.target.value) : "";
+          if (strField === "intManagerEmployeeID") {
+            updateReportingManager(objValue);
+            return;
+          }
+          updateField(strField, objValue as EmployeeFormValues[typeof strField]);
+        }}
         error={Boolean(dicErrors[strField])}
         helperText={dicErrors[strField]}
         fullWidth
@@ -537,7 +565,8 @@ export default function EmployeeMasterPanel() {
             {renderOptionField(dicConstant.employeeMaster.fields.costCenter, "intCostCenterID", objFormOptions?.lstCostCenters ?? [])}
             {renderOptionField(`${dicConstant.employeeMaster.fields.location} *`, "intLocationID", objFormOptions?.lstLocations ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.payrollGroup, "intPayrollGroupID", objFormOptions?.lstPayrollGroups ?? [])}
-            {renderOptionField(dicConstant.employeeMaster.fields.manager, "intManagerEmployeeID", lstManagerOptions)}
+            {renderOptionField(`${dicConstant.employeeMaster.fields.manager} *`, "intManagerEmployeeID", lstManagerOptions)}
+            {renderOptionField(`${dicConstant.employeeMaster.fields.lineManager} *`, "intLineManagerEmployeeID", lstManagerOptions)}
           </Box>
 
           <Typography className={styles.sectionBar}>Contact & Preferences</Typography>

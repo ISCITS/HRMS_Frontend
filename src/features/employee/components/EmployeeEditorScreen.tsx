@@ -216,6 +216,8 @@ export default function EmployeeEditorScreen({
     dtDateOfJoining: useRef<HTMLInputElement | null>(null),
     intEmploymentTypeID: useRef<HTMLInputElement | null>(null),
     intLocationID: useRef<HTMLInputElement | null>(null),
+    intManagerEmployeeID: useRef<HTMLInputElement | null>(null),
+    intLineManagerEmployeeID: useRef<HTMLInputElement | null>(null),
     strAddressLine1: useRef<HTMLInputElement | null>(null),
     intCountryID: useRef<HTMLInputElement | null>(null),
     intBankID: useRef<HTMLInputElement | null>(null),
@@ -372,6 +374,19 @@ export default function EmployeeEditorScreen({
     setDicBasicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
+  function updateReportingManager(objValue: number | "") {
+    setDicBasicErrors((dicPrevious) => ({
+      ...dicPrevious,
+      intManagerEmployeeID: undefined,
+      ...(objValue !== "" ? { intLineManagerEmployeeID: undefined } : {})
+    }));
+    setDicBasicForm((dicPrevious) => ({
+      ...dicPrevious,
+      intManagerEmployeeID: objValue,
+      ...(objValue !== "" ? { intLineManagerEmployeeID: objValue } : {})
+    }));
+  }
+
   function updateAddressField<TKey extends keyof EmployeeAddressFormValues>(strField: TKey, objValue: EmployeeAddressFormValues[TKey]) {
     setDicAddressErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined }));
     setDicAddressForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
@@ -511,6 +526,8 @@ export default function EmployeeEditorScreen({
         joiningDateRequired: t("validation_joining_date_required", dicConstant.employeeMaster.validation.joiningDateRequired),
         employmentTypeRequired: t("validation_employment_type_required", dicConstant.employeeMaster.validation.employmentTypeRequired),
         locationRequired: t("validation_location_required", dicConstant.employeeMaster.validation.locationRequired),
+        reportingManagerRequired: t("validation_reporting_manager_required", dicConstant.employeeMaster.validation.reportingManagerRequired),
+        lineManagerRequired: t("validation_line_manager_required", dicConstant.employeeMaster.validation.lineManagerRequired),
         workEmailInvalid: t("validation_work_email_invalid", dicConstant.employeeMaster.validation.workEmailInvalid),
         personalEmailInvalid: t("validation_personal_email_invalid", dicConstant.employeeMaster.validation.personalEmailInvalid),
         mobileNumberInvalid: t("validation_mobile_number_invalid", dicConstant.employeeMaster.validation.mobileNumberInvalid),
@@ -671,7 +688,9 @@ export default function EmployeeEditorScreen({
         "strFirstName",
         "dtDateOfJoining",
         "intEmploymentTypeID",
-        "intLocationID"
+        "intLocationID",
+        "intManagerEmployeeID",
+        "intLineManagerEmployeeID"
       ]);
       return;
     }
@@ -708,7 +727,9 @@ export default function EmployeeEditorScreen({
         "strFirstName",
         "dtDateOfJoining",
         "intEmploymentTypeID",
-        "intLocationID"
+        "intLocationID",
+        "intManagerEmployeeID",
+        "intLineManagerEmployeeID"
       ]);
       return;
     }
@@ -1476,8 +1497,8 @@ export default function EmployeeEditorScreen({
                   {renderSelectField(t("field_cost_center", dicConstant.employeeMaster.fields.costCenter), dicBasicForm.intCostCenterID, (objValue) => updateBasicField("intCostCenterID", objValue as number | ""), objFormOptions?.lstCostCenters ?? [], blnViewOnly)}
                   {renderSelectField(renderRequiredLabel(t("field_location", dicConstant.employeeMaster.fields.location)), dicBasicForm.intLocationID, (objValue) => updateBasicField("intLocationID", objValue as number | ""), objFormOptions?.lstLocations ?? [], blnViewOnly, dicBasicErrors.intLocationID, Boolean(dicBasicErrors.intLocationID), dicFieldRefs.intLocationID)}
                   {renderSelectField(t("field_payroll_group", dicConstant.employeeMaster.fields.payrollGroup), dicBasicForm.intPayrollGroupID, (objValue) => updateBasicField("intPayrollGroupID", objValue as number | ""), objFormOptions?.lstPayrollGroups ?? [], blnViewOnly)}
-                  {renderSelectField(t("field_manager", dicConstant.employeeMaster.fields.manager), dicBasicForm.intManagerEmployeeID, (objValue) => updateBasicField("intManagerEmployeeID", objValue as number | ""), lstManagerOptions, blnViewOnly)}
-                  {renderSelectField(t("field_line_manage", "Line Manage"), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", objValue as number | ""), lstManagerOptions, blnViewOnly)}
+                  {renderSelectField(renderRequiredLabel(t("field_manager", dicConstant.employeeMaster.fields.manager)), dicBasicForm.intManagerEmployeeID, (objValue) => updateReportingManager(objValue as number | ""), lstManagerOptions, blnViewOnly, dicBasicErrors.intManagerEmployeeID, Boolean(dicBasicErrors.intManagerEmployeeID), dicFieldRefs.intManagerEmployeeID)}
+                  {renderSelectField(renderRequiredLabel(t("field_line_manager", dicConstant.employeeMaster.fields.lineManager)), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", objValue as number | ""), lstManagerOptions, blnViewOnly, dicBasicErrors.intLineManagerEmployeeID, Boolean(dicBasicErrors.intLineManagerEmployeeID), dicFieldRefs.intLineManagerEmployeeID)}
                 </Box>
               </Box>
 
@@ -1503,7 +1524,7 @@ export default function EmployeeEditorScreen({
                   />
                   {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
                   {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 56, border: "1px solid #dbe4ee", borderRadius: "14px", px: 1.75, py: 1.25 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", boxSizing: "border-box", height: 40, border: "1px solid #dbe4ee", borderRadius: "14px", px: 1.75 }}>
                     <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("field_employment_status", dicConstant.employeeMaster.fields.employmentStatus)}</Typography>
                     <ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} />
                   </Box>

@@ -1,7 +1,10 @@
 "use client";
 
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import MonetizationOnRoundedIcon from "@mui/icons-material/MonetizationOnRounded";
+import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import { Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +12,7 @@ import { useRouter } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import type { EmployeeSalaryDetailRecord, EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
+import type { EmployeeSalaryDetailRecord } from "@/features/employee-salary/types";
 import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 
 function formatCurrency(decValue: number | null) {
@@ -23,6 +26,21 @@ function formatCurrency(decValue: number | null) {
   }).format(decValue);
 }
 
+function formatDate(strValue: string | null | undefined) {
+  if (!strValue) {
+    return "-";
+  }
+  const objDate = new Date(`${strValue.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(objDate.getTime())) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(objDate);
+}
+
 type EmployeeSalarySummaryCardProps = {
   intEmployeeID?: number | null;
   blnHideOpenPageButton?: boolean;
@@ -31,10 +49,12 @@ type EmployeeSalarySummaryCardProps = {
 export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeLabels();
-  const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [objSalaryDetail, setObjSalaryDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
   const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objSalaryDetail);
+  const decGrossAnnual = dicBaseSummaryMetrics.decGrossMonthly * 12;
+  const decEmployeeDeductionsMonthly = Number(objSalaryDetail?.objSalarySummary?.decEmployeeDeductionsMonthly ?? 0);
+  const decNetAnnual = Math.max(dicBaseSummaryMetrics.decGrossMonthly - decEmployeeDeductionsMonthly, 0) * 12;
 
   function openSalaryPage() {
     if (!intEmployeeID) {
@@ -47,24 +67,18 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   useEffect(() => {
     let blnMounted = true;
     if (!intEmployeeID) {
-      setObjSummary(null);
       setObjSalaryDetail(null);
       return;
     }
     setBlnLoading(true);
-    Promise.all([
-      employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
-      employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID)
-    ])
-      .then(([objSummaryResult, objDetailResult]) => {
+    employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID)
+      .then((objDetailResult) => {
         if (blnMounted) {
-          setObjSummary(objSummaryResult);
           setObjSalaryDetail(objDetailResult);
         }
       })
       .catch(() => {
         if (blnMounted) {
-          setObjSummary(null);
           setObjSalaryDetail(null);
         }
       })
@@ -88,8 +102,13 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
       }}
     >
       <Stack spacing={1.5}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Stack direction="row" spacing={1.25} alignItems="center">
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", lg: "center" }}
+          spacing={1.5}
+        >
+          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ flexShrink: 0 }}>
             <Box
               sx={{
                 width: 42,
@@ -105,11 +124,86 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                {t("salary_summary_card_subtitle", "Snapshot only. Full maintenance stays on the dedicated salary page.")}
-              </Typography>
             </Box>
           </Stack>
+
+          {intEmployeeID && !blnLoading ? (
+            <Box
+              sx={{
+                display: "grid",
+                flex: 1,
+                gap: { xs: 1.5, md: 1 },
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" },
+                ml: { lg: 2 }
+              }}
+            >
+              {[
+                {
+                  strLabel: t("salary_summary_card_ctc_annual", "CTC Annual"),
+                  strValue: formatCurrency(dicBaseSummaryMetrics.decAnnualCtc),
+                  objIcon: <CalendarMonthOutlinedIcon sx={{ fontSize: 17 }} />,
+                  strIconBackground: "#e7f5ec",
+                  strIconColor: "#15803d"
+                },
+                {
+                  strLabel: t("salary_summary_card_gross_annual", "Gross Annual"),
+                  strValue: formatCurrency(decGrossAnnual),
+                  objIcon: <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 17 }} />,
+                  strIconBackground: "#eaf0ff",
+                  strIconColor: "#155eef"
+                },
+                {
+                  strLabel: t("salary_summary_card_net_annual", "Net Annual"),
+                  strValue: formatCurrency(decNetAnnual),
+                  objIcon: <SavingsOutlinedIcon sx={{ fontSize: 17 }} />,
+                  strIconBackground: "#f1eafe",
+                  strIconColor: "#7c3aed"
+                },
+                {
+                  strLabel: t("salary_summary_card_salary_revised_on", "Salary Revised On"),
+                  strValue: formatDate(objSalaryDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom ?? objSalaryDetail?.objAssignedStructure?.dtEffectiveFrom),
+                  objIcon: null,
+                  strIconBackground: "transparent",
+                  strIconColor: "transparent"
+                }
+              ].map((dicMetric) => (
+                <Stack key={dicMetric.strLabel} direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                  {dicMetric.objIcon ? (
+                    <Box
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        bgcolor: dicMetric.strIconBackground,
+                        color: dicMetric.strIconColor,
+                        display: "grid",
+                        flexShrink: 0,
+                        placeItems: "center"
+                      }}
+                    >
+                      {dicMetric.objIcon}
+                    </Box>
+                  ) : null}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ color: "#52667f", fontSize: "0.78rem", fontWeight: 700 }}>
+                      {dicMetric.strLabel}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: dicMetric.objIcon ? "#155eef" : "#0f172a",
+                        fontSize: dicMetric.objIcon ? "1.05rem" : "0.94rem",
+                        fontWeight: dicMetric.objIcon ? 900 : 700,
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      {dicMetric.strValue}
+                    </Typography>
+                  </Box>
+                </Stack>
+              ))}
+            </Box>
+          ) : null}
+
           {!blnHideOpenPageButton ? (
             <Button
               controlId="employee-salary.summary.open-page.button"
@@ -134,40 +228,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             <CircularProgress size={18} />
             <Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Box>
-        ) : (
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }
-            }}
-          >
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_current_structure", "Current Structure")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {objSummary?.objAssignedStructure?.strStructureName ?? t("salary_summary_card_not_assigned", "Not assigned")}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_gross_monthly", "Gross Monthly")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decGrossMonthly : null)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decAnnualCtc : null)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_revisions", "Revisions")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {objSummary?.intRevisionCount ?? 0}
-              </Typography>
-            </Box>
-          </Box>
-        )}
+        ) : null}
       </Stack>
     </Paper>
   );
