@@ -1,5 +1,5 @@
-import LeaveSettingsPanel from "@/features/settings/components/LeaveSettingsPanel";
+import ApprovalFlowListPage from "@/features/approval-flows/components/ApprovalFlowListPage";
 
 export default function SettingsPage() {
-  return <LeaveSettingsPanel />;
+  return <ApprovalFlowListPage />;
 }

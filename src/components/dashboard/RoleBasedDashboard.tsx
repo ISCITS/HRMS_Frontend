@@ -678,58 +678,12 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
         }}
       >
         <Stack spacing={0.9}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" alignItems={{ xs: "stretch", sm: "center" }} spacing={0.7}>
-            <Select
-              value={strSelectedMonth}
-              onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
-              variant="standard"
-              disableUnderline
-              IconComponent={KeyboardArrowDownRoundedIcon}
-              sx={{
-                minWidth: { xs: "100%", sm: 200 },
-                px: 0.95,
-                py: 0,
-                borderRadius: "12px",
-                border: "none",
-                backgroundColor: "#FFFFFF",
-                fontWeight: 700,
-                fontSize: "0.76rem",
-                color: DASHBOARD_COLORS.text,
-                minHeight: 30,
-                "& .MuiSelect-select": { py: 0.5, pr: 3 },
-                "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 8, fontSize: "1.05rem" },
-              }}
-              renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
-            >
-              <MenuItem value={strAllMonthsValue}>
-                {t("all_months", "All Months")}
-              </MenuItem>
-              {objNormalizedMonthOptions.map((strMonth) => (
-                <MenuItem key={strMonth} value={strMonth}>
-                  {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
-                </MenuItem>
-              ))}
-            </Select>
-            <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
-              <span>
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshRoundedIcon sx={{ fontSize: 13 }} />}
-                  onClick={onRefresh}
-                  disabled={blnRefreshing}
-                  sx={{ minWidth: 76, height: 30, px: 1.1, borderRadius: "12px", textTransform: "none", fontSize: "0.76rem", border: "none", color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff" }}
-                >
-                  {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
           <Stack
-            direction="row"
+            direction={{ xs: "column", lg: "row" }}
             justifyContent="space-between"
-            alignItems="center"
+            alignItems={{ xs: "stretch", lg: "center" }}
             spacing={1.25}
-            sx={{ flexWrap: "nowrap", overflowX: "auto" }}
+            sx={{ minWidth: 0 }}
           >
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexShrink: 0 }}>
               <Box sx={{ width: 62, height: 62, borderRadius: "17px", background: "rgba(255,255,255,0.18)", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -744,60 +698,122 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
                 </Typography>
               </Box>
             </Stack>
-            <Stack direction="row" spacing={0.6} alignItems="center" justifyContent="flex-end" sx={{ flexShrink: 0, flexWrap: "nowrap" }}>
-            {lstTabs.map((objTab) => {
-              const blnActive = strActiveTab === objTab.strCode;
-              return (
-                <Button
-                  key={objTab.strCode}
-                  onClick={() => setStrActiveTab(objTab.strCode)}
-                  startIcon={objTab.objIcon}
-                  sx={{
-                    px: 0.95,
-                    py: 0.65,
-                    minWidth: "auto",
-                    borderRadius: "11px",
-                    border: blnActive ? "1px solid transparent" : "1px solid rgba(255,255,255,0.6)",
-                    color: blnActive ? "#1D4ED8" : "#1E3A5F",
-                    fontWeight: blnActive ? 800 : 700,
-                    textTransform: "none",
-                    fontSize: "0.74rem",
-                    whiteSpace: "nowrap",
-                    backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.92)",
-                    boxShadow: blnActive ? "0 0 0 2px rgba(255,255,255,0.55), 0 8px 20px rgba(0,0,0,0.18)" : "none",
-                    transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
-                    "& .MuiButton-startIcon": {
-                      marginRight: 0.55,
-                      marginLeft: 0,
-                    },
-                    "&:hover": {
-                      transform: "scale(1.03)",
-                      backgroundColor: "#FFFFFF",
-                    },
-                    "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
-                      color: blnActive ? "#1D4ED8" : "#1E3A5F",
-                    },
-                  }}
-                >
-                  {objTab.strLabel}
-                </Button>
-              );
-            })}
-            <IconButton
-              aria-label={t("more_options", "More options")}
-              sx={{
-                width: 34,
-                height: 34,
-                flexShrink: 0,
-                color: "#1E3A5F",
-                border: "1px solid rgba(255,255,255,0.6)",
-                backgroundColor: "rgba(255,255,255,0.55)",
-                "&:hover": { backgroundColor: "rgba(255,255,255,0.75)" },
-              }}
+            <Stack
+              direction="row"
+              spacing={0.6}
+              alignItems="center"
+              justifyContent={{ xs: "flex-start", lg: "flex-end" }}
+              sx={{ minWidth: 0, flexWrap: "nowrap", overflowX: "auto", pb: 0.15 }}
             >
-              <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Stack>
+              {lstTabs.map((objTab) => {
+                const blnActive = strActiveTab === objTab.strCode;
+                return (
+                  <Button
+                    key={objTab.strCode}
+                    onClick={() => setStrActiveTab(objTab.strCode)}
+                    startIcon={objTab.objIcon}
+                    sx={{
+                      px: 0.95,
+                      py: 0.65,
+                      minWidth: "auto",
+                      height: 34,
+                      flexShrink: 0,
+                      borderRadius: "11px",
+                      border: blnActive ? "1px solid transparent" : "1px solid rgba(255,255,255,0.6)",
+                      color: blnActive ? "#1D4ED8" : "#1E3A5F",
+                      fontWeight: blnActive ? 800 : 700,
+                      textTransform: "none",
+                      fontSize: "0.74rem",
+                      whiteSpace: "nowrap",
+                      backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.92)",
+                      boxShadow: blnActive ? "0 0 0 2px rgba(255,255,255,0.55), 0 8px 20px rgba(0,0,0,0.18)" : "none",
+                      transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
+                      "& .MuiButton-startIcon": {
+                        marginRight: 0.55,
+                        marginLeft: 0,
+                      },
+                      "&:hover": {
+                        transform: "scale(1.03)",
+                        backgroundColor: "#FFFFFF",
+                      },
+                      "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
+                        color: blnActive ? "#1D4ED8" : "#1E3A5F",
+                      },
+                    }}
+                  >
+                    {objTab.strLabel}
+                  </Button>
+                );
+              })}
+              <IconButton
+                aria-label={t("more_options", "More options")}
+                sx={{
+                  width: 34,
+                  height: 34,
+                  flexShrink: 0,
+                  color: "#1E3A5F",
+                  border: "1px solid rgba(255,255,255,0.6)",
+                  backgroundColor: "rgba(255,255,255,0.55)",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.75)" },
+                }}
+              >
+                <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <Box
+                sx={{
+                  width: "1px",
+                  height: 24,
+                  flexShrink: 0,
+                  mx: 0.2,
+                  backgroundColor: "rgba(255,255,255,0.55)",
+                }}
+              />
+              <Select
+                value={strSelectedMonth}
+                onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
+                variant="standard"
+                disableUnderline
+                IconComponent={KeyboardArrowDownRoundedIcon}
+                sx={{
+                  width: { xs: 212, sm: 230 },
+                  flexShrink: 0,
+                  px: 0.95,
+                  py: 0,
+                  borderRadius: "12px",
+                  border: "none",
+                  backgroundColor: "#FFFFFF",
+                  fontWeight: 700,
+                  fontSize: "0.76rem",
+                  color: DASHBOARD_COLORS.text,
+                  height: 34,
+                  "& .MuiSelect-select": { py: 0.5, pr: 3 },
+                  "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 8, fontSize: "1.05rem" },
+                }}
+                renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
+              >
+                <MenuItem value={strAllMonthsValue}>
+                  {t("all_months", "All Months")}
+                </MenuItem>
+                {objNormalizedMonthOptions.map((strMonth) => (
+                  <MenuItem key={strMonth} value={strMonth}>
+                    {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={<RefreshRoundedIcon sx={{ fontSize: 13 }} />}
+                    onClick={onRefresh}
+                    disabled={blnRefreshing}
+                    sx={{ minWidth: 88, height: 34, px: 1.1, borderRadius: "12px", textTransform: "none", fontSize: "0.76rem", border: "none", color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff", whiteSpace: "nowrap" }}
+                  >
+                    {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
           </Stack>
         </Stack>
       </Paper>
