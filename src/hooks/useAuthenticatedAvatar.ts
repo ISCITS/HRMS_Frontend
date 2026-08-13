@@ -19,17 +19,28 @@ export function useAuthenticatedAvatar(strAvatarUrl: string) {
       }
 
       const strAccessToken = authHelpers.getAccessToken().trim();
+      const intTenantID = authHelpers.getTenantID();
+      const intCompanyID = authHelpers.getCompanyID();
       if (!strAccessToken) {
         setStrResolvedAvatarUrl("");
         return;
       }
 
       try {
+        const objHeaders: Record<string, string> = {
+          Authorization: `Bearer ${strAccessToken}`,
+          "X-Access-Token": strAccessToken,
+        };
+        if (intTenantID) {
+          objHeaders["X-Tenant-Id"] = String(intTenantID);
+        }
+        if (intCompanyID) {
+          objHeaders["X-Company-Id"] = String(intCompanyID);
+        }
+
         const objResponse = await fetch(strNormalizedAvatarUrl, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${strAccessToken}`
-          },
+          headers: objHeaders,
           cache: "no-store",
           credentials: "same-origin",
         });

@@ -17,6 +17,7 @@ import type {
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
 import { authHelpers } from "@/lib/auth";
+import { decryptPayload } from "@/lib/security/decryptPayload";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 
 type EmployeeServiceRequestOptions = {
@@ -148,7 +149,19 @@ export const employeeService = {
       body: objFormData,
       credentials: "include",
     });
-    const objResult = await objResponse.json();
+    const objRawResult = await objResponse.json();
+    const objResult = typeof objRawResult?.payload === "string"
+      ? await decryptPayload<{
+        ResultCode: number;
+        Msg?: string;
+        Data: {
+          intEmployeeID: number;
+          strEmployeeCode?: string | null;
+          strFullName?: string | null;
+          strProfilePhotoUrl?: string | null;
+        };
+      }>(objRawResult.payload)
+      : objRawResult;
     if (!objResponse.ok || objResult?.ResultCode === 0) {
       throw new Error(objResult?.Msg || "Unable to upload profile photo.");
     }

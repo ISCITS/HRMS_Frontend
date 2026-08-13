@@ -304,7 +304,7 @@ export default function EmployeeEditorScreen({
           }
 
           setDicBasicForm(toEmployeeFormValues(dicEmployee));
-          setStrEmployeeAvatarUrl(dicEmployee.strProfilePhotoUrl || "");
+          setStrEmployeeAvatarUrl(buildEmployeeAvatarUrl(intEmployeeID, dicEmployee.strProfilePhotoUrl));
           setIntResolvedEmployeeID(intEmployeeID);
 
           const lstChildResults = await Promise.allSettled([
