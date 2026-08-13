@@ -16,6 +16,7 @@ import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
@@ -73,10 +74,16 @@ type KpiPayload = {
   decValue?: number;
   strSubtitle?: string;
   decTrendValue?: number | null;
+  intRunPendingCount?: number;
   intTaxPendingCount?: number;
   intReimbursementPendingCount?: number;
   intBlockingCount?: number;
   intWarningCount?: number;
+  intAttendanceBlockingCount?: number;
+  intMasterDataGapCount?: number;
+  decPfAmount?: number;
+  decEsiAmount?: number;
+  decTdsAmount?: number;
   lstPoints?: ChartPoint[];
   lstSeries?: ChartSeries[];
   strRunStatus?: string;
@@ -106,15 +113,6 @@ type DrilldownStat = SummaryStat & {
   strRoutePath?: string;
 };
 
-type ReadinessPayload = {
-  decScore?: number;
-  strStatus?: string;
-  intBlockingCount?: number;
-  intWarningCount?: number;
-  intInfoCount?: number;
-  lstBreakdown?: Array<{ strLabel: string; intValue?: number; decValue?: number }>;
-};
-
 type ApprovalAgingRow = {
   strLabel: string;
   intPendingCount: number;
@@ -139,6 +137,16 @@ type HighRiskEmployeeRow = {
   strSeverity?: "Blocking" | "Warning" | "Info";
   strDetail: string;
   strRoutePath?: string;
+};
+
+type ExceptionItem = {
+  strCode: string;
+  strLabel: string;
+  intCount: number;
+  strRoutePath?: string;
+  strReason?: string;
+  strCategory?: string;
+  strSeverity?: "Blocking" | "Warning" | "Info";
 };
 
 type OutputReadinessPayload = {
@@ -264,10 +272,10 @@ type ChartSeries = {
 type WidgetType = DashboardWidget["strWidgetType"];
 type PayrollDashboardTabCode =
   | "overview"
-  | "payroll_run"
-  | "pay_payslips"
+  | "approvals"
+  | "outputs"
   | "reports"
-  | "audit_actions"
+  | "audit_trail"
   ;
 
 const DASHBOARD_COLORS = {
@@ -290,14 +298,15 @@ const DASHBOARD_COLORS = {
   amberSoft: "#FFF7ED",
   redSoft: "#FFF5F5",
   gradient: "linear-gradient(90deg, #9333EA 0%, #6366F1 28%, #2563EB 56%, #0891B2 78%, #10B981 100%)",
-  navGradient: "linear-gradient(90deg, #C026D3 0%, #7C3AED 24%, #2563EB 54%, #0891B2 77%, #10B981 100%)",
+  navGradient: "linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #3B82F6 75%, #60A5FA 100%)",
 };
 
 const lstPayrollCardPalette = [
-  { accent: DASHBOARD_COLORS.purple, surface: "linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)" },
-  { accent: DASHBOARD_COLORS.blue, surface: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)" },
-  { accent: DASHBOARD_COLORS.amber, surface: "linear-gradient(135deg, #FB923C 0%, #F97316 100%)" },
-  { accent: DASHBOARD_COLORS.red, surface: "linear-gradient(135deg, #FB7185 0%, #F43F5E 100%)" },
+  { accent: DASHBOARD_COLORS.purple, surface: "#F1E7FE" },
+  { accent: DASHBOARD_COLORS.blue, surface: "#DDEBFF" },
+  { accent: DASHBOARD_COLORS.amber, surface: "#FFE9D6" },
+  { accent: DASHBOARD_COLORS.red, surface: "#FFE0E6" },
+  { accent: DASHBOARD_COLORS.green, surface: "#DDF6E8" },
 ];
 
 export default function RoleBasedDashboard({ objDashboard, objUserContext, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
@@ -459,10 +468,7 @@ function calculateEssProfileCompleteness({
 }
 
 function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
-  const setHiddenPayrollWidgetCodes = new Set([
-    "payroll_validation_errors",
-    "payroll_alerts",
-  ]);
+  const setHiddenPayrollWidgetCodes = new Set<string>([]);
   const lstWidgets = objDashboard.lstWidgets
     .map(normalizeDashboardWidget)
     .filter((objWidget) => !setHiddenPayrollWidgetCodes.has(String(objWidget.strWidgetCode || "").toLowerCase()));
@@ -471,6 +477,9 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
     ensureWidget(dicWidgetMap.get("employees_in_payroll"), "employees_in_payroll", t("employees_in_payroll", "Employees in Payroll"), "kpi", { intValue: 0, strSubtitle: t("active_employees", "Active Employees") }),
     ensureWidget(dicWidgetMap.get("net_payroll_amount"), "net_payroll_amount", t("net_payroll_amount", "Net Payroll Amount"), "kpi", { decValue: 0, strSubtitle: t("current_cycle", "Current Cycle") }),
     ensureWidget(dicWidgetMap.get("pending_approvals"), "pending_approvals", t("pending_approvals", "Pending Approvals"), "kpi", { intValue: 0, strSubtitle: t("requires_action", "Requires Action") }),
+    ensureWidget(dicWidgetMap.get("payroll_validation_errors"), "payroll_validation_errors", t("validation_blockers", "Validation Blockers"), "kpi", { intBlockingCount: 0, strSubtitle: t("employees_blocked_from_processing", "Employees blocked from processing") }),
+    ensureWidget(dicWidgetMap.get("statutory_liability"), "statutory_liability", t("statutory_liability", "Statutory Liability"), "kpi", { decValue: 0, strSubtitle: t("pf_esi_tds", "PF + ESI + TDS") }),
+    ensureWidget(dicWidgetMap.get("net_pay_movement"), "net_pay_movement", t("net_pay_movement", "Net Pay Movement"), "kpi", { decTrendValue: null, strSubtitle: t("vs_previous_month", "Vs previous month") }),
   ];
   const objTrackerWidget = ensureWidget(dicWidgetMap.get("payroll_workflow_tracker"), "payroll_workflow_tracker", "Payroll Workflow Tracker", "tracker", {
     lstStages: [
@@ -491,7 +500,6 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
     ],
   });
   const objRecentRunsWidget = ensureWidget(dicWidgetMap.get("recent_payroll_runs"), "recent_payroll_runs", "Recent Payroll Runs", "table", { lstRows: [] });
-  const objAttendanceTodayWidget = dicWidgetMap.get("attendance_today");
   const objLeaveOverviewWidget = dicWidgetMap.get("leave_overview");
   const objQuickActionsWidget = ensureWidget(dicWidgetMap.get("quick_actions"), "quick_actions", "Quick Actions", "actions", {
     lstActions: filterPayrollQuickActions(objDashboard.lstQuickActions || []),
@@ -526,56 +534,127 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
   const intPendingApprovalCount = Number((((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload as KpiPayload | undefined)?.intValue) || 0));
   const objSelectedRun = resolveSelectedRun(lstRecentRunRows, strSelectedMonth, strAllMonthsValue);
   const strRunStatusRaw = String(objSelectedRun?.run_status || objTrackerPayload.strRunStatus || "");
-  const lstLifecycleStages = buildLifecycleStages(strRunStatusRaw, t);
-  const objRunDetailItems = buildPayrollRunDetailItems(objSelectedRun, t);
   const lstActionPanelItems = buildPayrollActionItems(strRunStatusRaw, objDashboard.lstQuickActions || [], t);
-  const objReadiness = (objDashboard.payrollReadiness || {}) as ReadinessPayload;
   const lstApprovalAging = resolveApprovalAgingRows(objDashboard.approvalAging);
   const lstDetailedSummarySections = buildDetailedSummarySections(objDashboard, t);
   const objOutputReadiness = (objDashboard.outputReadiness || {}) as OutputReadinessPayload;
   const objAudit = (objDashboard.audit || {}) as AuditPayload;
+  const lstHighRiskEmployeeRows = resolveHighRiskEmployees(objDashboard.highRiskEmployees);
+  const lstAllExceptionItems = resolveExceptionGroups(objDashboard.exceptions);
+  const objPendingApprovalsPayload = ((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals")?.objPayload as KpiPayload | undefined) || {});
+  const objAttendanceBlockersItem = lstAllExceptionItems.find((objItem) => objItem.strCode === "attendance_blockers");
+  const objMissingMasterDataItem = lstAllExceptionItems.find((objItem) => objItem.strCode === "missing_master_data");
+  const lstExceptionItems: ExceptionItem[] = [
+    {
+      strCode: "attendance_blockers",
+      strLabel: t("attendance_blockers", "Attendance Blockers"),
+      intCount: Number(objAttendanceBlockersItem?.intCount || 0),
+      strRoutePath: "/attendance/exceptions",
+      strSeverity: "Blocking" as const,
+    },
+    {
+      strCode: "missing_master_data",
+      strLabel: t("missing_master_data", "Missing Master Data"),
+      intCount: Number(objMissingMasterDataItem?.intCount || 0),
+      strRoutePath: "/employees",
+      strSeverity: "Info" as const,
+    },
+    {
+      strCode: "pending_reimbursements",
+      strLabel: t("pending_reimbursements", "Pending Reimbursements"),
+      intCount: Number(objPendingApprovalsPayload.intReimbursementPendingCount || 0),
+      strRoutePath: "/payroll/reimbursements",
+      strSeverity: "Warning" as const,
+    },
+    {
+      strCode: "high_risk_employees",
+      strLabel: t("high_risk_employees", "High-Risk Employees"),
+      intCount: lstHighRiskEmployeeRows.length,
+      strRoutePath: "/payroll/results",
+      strSeverity: "Blocking" as const,
+    },
+  ].filter((objItem) => objItem.intCount > 0);
+  const objValidationWidgetPayload = ((lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors")?.objPayload as KpiPayload | undefined) || {});
+  const objMissingTaxRegimeAlert = lstAlerts.find((objAlert) => objAlert.strCode === "missing_tax_regime");
+  const lstValidationSummaryCards = [
+    {
+      strLabel: t("blocking_issues", "Blocking Issues"),
+      strValue: formatInteger(Number(objValidationWidgetPayload.intBlockingCount || 0)),
+      strRoutePath: "/payroll/runs",
+      strTone: "red" as const,
+      strHint: t("blocking_issues_hint", "Must be resolved before this run can proceed."),
+    },
+    {
+      strLabel: t("warnings", "Warnings"),
+      strValue: formatInteger(Number(objValidationWidgetPayload.intWarningCount || 0)),
+      strRoutePath: "/payroll/runs",
+      strTone: "amber" as const,
+      strHint: t("warnings_hint", "Review recommended but not blocking."),
+    },
+    {
+      strLabel: t("attendance_blockers", "Attendance Blockers"),
+      strValue: formatInteger(Number(objValidationWidgetPayload.intAttendanceBlockingCount || 0)),
+      strRoutePath: "/attendance/exceptions",
+      strTone: "red" as const,
+      strHint: t("attendance_blockers_hint", "Missing or unresolved attendance is blocking payroll."),
+    },
+    {
+      strLabel: t("missing_tax_regime", "Missing Tax Regime"),
+      strValue: formatInteger(Number(objMissingTaxRegimeAlert?.intCount || 0)),
+      strRoutePath: "/payroll/it-declaration-review",
+      strTone: "blue" as const,
+      strHint: t("missing_tax_regime_hint", "Employees without a selected tax regime."),
+    },
+  ];
   const objDashboardGridSpacing = { xs: 1.25, md: 1.5, xl: 1.75 };
   const strLastUpdated = formatDateTimeLabel(objDashboard.dtGeneratedOn, t);
   const [strActiveTab, setStrActiveTab] = useState<PayrollDashboardTabCode>("overview");
   const lstTabs: Array<{ strCode: PayrollDashboardTabCode; strLabel: string; objIcon: ReactNode }> = [
     { strCode: "overview", strLabel: t("overview", "Overview"), objIcon: <HomeRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "payroll_run", strLabel: t("payroll_run", "Payroll Run"), objIcon: <AssignmentRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "pay_payslips", strLabel: t("pay_payslips", "Pay & Payslips"), objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "approvals", strLabel: t("approvals", "Approvals"), objIcon: <RuleFolderRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "outputs", strLabel: t("outputs", "Outputs"), objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} /> },
     { strCode: "reports", strLabel: t("reports", "Reports"), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "audit_actions", strLabel: t("audit_actions", "Audit & Actions"), objIcon: <RuleFolderRoundedIcon sx={{ fontSize: 16 }} /> },
+    { strCode: "audit_trail", strLabel: t("audit_trail", "Audit Trail"), objIcon: <AccessTimeRoundedIcon sx={{ fontSize: 16 }} /> },
   ];
-  const objAttendanceTodayPayload = ((objAttendanceTodayWidget?.objPayload as Record<string, unknown> | undefined) || {});
-  const objAttendanceKpiWidget: DashboardWidget = {
-    strWidgetCode: "attendance_today",
-    strWidgetName: t("attendance_today", "Attendance Today"),
-    strWidgetType: "kpi",
-    strDashboardType: "PAYROLL",
-    intDisplayOrder: 45,
-    blnIsVisible: true,
-    objPayload: {
-      intValue: Number(objAttendanceTodayPayload.intPresentCount || 0),
-      strSubtitle: `${t("present_of", "Present of")} ${formatInteger(Number(objAttendanceTodayPayload.intActiveEmployeeCount || 0))} ${t("active_employees", "Active Employees")}`,
-    },
-  };
+  const blnAllMonthsSelected = strSelectedMonth === strAllMonthsValue;
+  const strSelectedMonthLongLabel = blnAllMonthsSelected ? "" : formatLongMonth(strSelectedMonth, t);
   const objLeaveOverviewPayload = ((objLeaveOverviewWidget?.objPayload as Record<string, unknown> | undefined) || {});
   const objLeaveKpiWidget: DashboardWidget = {
     strWidgetCode: "leave_overview",
-    strWidgetName: t("leave_overview", "Leave Overview"),
+    strWidgetName: t("leave_impact", "Leave Impact"),
     strWidgetType: "kpi",
     strDashboardType: "PAYROLL",
     intDisplayOrder: 46,
     blnIsVisible: true,
     objPayload: {
       intValue: Number(objLeaveOverviewPayload.intPendingApprovals || 0),
-      strSubtitle: t("requests_awaiting_approval", "Requests Awaiting Approval"),
+      strSubtitle: blnAllMonthsSelected
+        ? t("requests_affecting_payroll", "Requests affecting payroll")
+        : `${t("requests_affecting_payroll", "Requests affecting payroll")} (${strSelectedMonthLongLabel})`,
+    },
+  };
+  const objAlertsPayload = ((objAlertsWidget.objPayload as Record<string, unknown> | undefined) || {});
+  const objMasterDataGapsKpiWidget: DashboardWidget = {
+    strWidgetCode: "master_data_gaps",
+    strWidgetName: t("master_data_gaps", "Master Data Gaps"),
+    strWidgetType: "kpi",
+    strDashboardType: "PAYROLL",
+    intDisplayOrder: 42,
+    blnIsVisible: true,
+    objPayload: {
+      intValue: Number(objAlertsPayload.intMasterDataGapCount || 0),
+      strSubtitle: t("missing_bank_pan_pf_uan", "Missing bank / PAN / PF / UAN"),
     },
   };
   const lstOverviewKpis = [
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_payroll_amount"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "employees_in_payroll"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals"),
-    objAttendanceKpiWidget,
     objLeaveKpiWidget,
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors"),
+    objMasterDataGapsKpiWidget,
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "statutory_liability"),
+    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_pay_movement"),
   ].filter(Boolean) as DashboardWidget[];
 
   return (
@@ -587,107 +666,139 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
         boxSizing: "border-box",
       }}
     >
-      <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", lg: "center" }} spacing={1.25} sx={{ px: 0.2, py: 0.15 }}>
-        <Stack direction="row" spacing={1.25} alignItems="flex-start">
-          <Box sx={{ width: 48, height: 48, borderRadius: "16px", background: DASHBOARD_COLORS.gradient, color: "#fff", display: "grid", placeItems: "center", boxShadow: "0 12px 28px rgba(99,102,241,0.28)", flexShrink: 0 }}>
-            <CalendarMonthRoundedIcon sx={{ fontSize: 21 }} />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, letterSpacing: "-0.02em", fontSize: { xs: "1.12rem", md: "1.35rem" }, lineHeight: 1.15 }}>
-              {t("payroll_dashboard", "Payroll Dashboard")}
-            </Typography>
-            <Typography sx={{ mt: 0.25, color: "#5B6B87", fontSize: "0.83rem" }}>
-              {t("payroll_dashboard_subtitle", "Real-time overview of payroll health and key insights")}
-            </Typography>
-          </Box>
-        </Stack>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={0.9} alignItems={{ xs: "stretch", sm: "center" }}>
-          <Select
-            value={strSelectedMonth}
-            onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
-            variant="standard"
-            disableUnderline
-            IconComponent={KeyboardArrowDownRoundedIcon}
-            sx={{
-              minWidth: { xs: "100%", sm: 305 },
-              px: 1.15,
-              py: 0.15,
-              borderRadius: "16px",
-              border: `1px solid ${DASHBOARD_COLORS.border}`,
-              backgroundColor: "#FFFFFF",
-              fontWeight: 700,
-              color: DASHBOARD_COLORS.text,
-              minHeight: 38,
-              "& .MuiSelect-select": { py: 0.95, pr: 4 },
-              "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 10 },
-            }}
-            renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
-          >
-            <MenuItem value={strAllMonthsValue}>
-              {t("all_months", "All Months")}
-            </MenuItem>
-            {objNormalizedMonthOptions.map((strMonth) => (
-              <MenuItem key={strMonth} value={strMonth}>
-                {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
+      <Paper
+        sx={{
+          px: { xs: 1.1, lg: 1.4 },
+          py: 1.7,
+          borderRadius: "20px",
+          border: "none",
+          boxShadow: "0 10px 30px rgba(37,99,235,0.28)",
+          background: DASHBOARD_COLORS.navGradient,
+          overflow: "hidden",
+        }}
+      >
+        <Stack spacing={0.9}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" alignItems={{ xs: "stretch", sm: "center" }} spacing={0.7}>
+            <Select
+              value={strSelectedMonth}
+              onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
+              variant="standard"
+              disableUnderline
+              IconComponent={KeyboardArrowDownRoundedIcon}
+              sx={{
+                minWidth: { xs: "100%", sm: 200 },
+                px: 0.95,
+                py: 0,
+                borderRadius: "12px",
+                border: "none",
+                backgroundColor: "#FFFFFF",
+                fontWeight: 700,
+                fontSize: "0.76rem",
+                color: DASHBOARD_COLORS.text,
+                minHeight: 30,
+                "& .MuiSelect-select": { py: 0.5, pr: 3 },
+                "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 8, fontSize: "1.05rem" },
+              }}
+              renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
+            >
+              <MenuItem value={strAllMonthsValue}>
+                {t("all_months", "All Months")}
               </MenuItem>
-            ))}
-          </Select>
-          <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
-                onClick={onRefresh}
-                disabled={blnRefreshing}
-                sx={{ minWidth: 104, height: 46, borderRadius: "16px", textTransform: "none", borderColor: DASHBOARD_COLORS.border, color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff", boxShadow: "0 8px 24px rgba(15,23,42,0.08)" }}
-              >
-                {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
-              </Button>
-            </span>
-          </Tooltip>
-        </Stack>
-      </Stack>
-
-      <Paper sx={{ px: 0.55, py: 0.45, borderRadius: "16px", border: "none", boxShadow: "0 10px 30px rgba(99,102,241,0.25)", background: DASHBOARD_COLORS.navGradient, overflowX: "auto" }}>
-        <Stack direction="row" spacing={0.25} sx={{ minWidth: "max-content" }}>
-          {lstTabs.map((objTab) => {
-            const blnActive = strActiveTab === objTab.strCode;
-            return (
-              <Button
-                key={objTab.strCode}
-                onClick={() => setStrActiveTab(objTab.strCode)}
-                startIcon={objTab.objIcon}
-                sx={{
-                  px: 1.02,
-                  py: 1.02,
-                  minWidth: "auto",
-                  borderRadius: "12px",
-                  borderBottom: "none",
-                  color: blnActive ? "#6D28D9" : "#FFFFFF",
-                  fontWeight: blnActive ? 800 : 700,
-                  textTransform: "none",
-                  fontSize: "0.74rem",
-                  whiteSpace: "nowrap",
-                  backgroundColor: blnActive ? "#FFFFFF" : "transparent",
-                  boxShadow: blnActive ? "0 8px 24px rgba(0,0,0,0.12)" : "none",
-                  transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
-                  "& .MuiButton-startIcon": {
-                    marginRight: 0.55,
-                    marginLeft: 0,
-                  },
-                  "&:hover": {
-                    transform: "scale(1.03)",
-                    backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.12)",
-                  },
-                  "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
-                    color: blnActive ? "#6D28D9" : "#FFFFFF",
-                  },
-                }}
-              >
-                {objTab.strLabel}
-              </Button>
-            );
-          })}
+              {objNormalizedMonthOptions.map((strMonth) => (
+                <MenuItem key={strMonth} value={strMonth}>
+                  {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
+                </MenuItem>
+              ))}
+            </Select>
+            <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshRoundedIcon sx={{ fontSize: 13 }} />}
+                  onClick={onRefresh}
+                  disabled={blnRefreshing}
+                  sx={{ minWidth: 76, height: 30, px: 1.1, borderRadius: "12px", textTransform: "none", fontSize: "0.76rem", border: "none", color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff" }}
+                >
+                  {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
+                </Button>
+              </span>
+            </Tooltip>
+          </Stack>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={1.25}
+            sx={{ flexWrap: "nowrap", overflowX: "auto" }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexShrink: 0 }}>
+              <Box sx={{ width: 62, height: 62, borderRadius: "17px", background: "rgba(255,255,255,0.18)", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#FFFFFF", fontWeight: 800, letterSpacing: "-0.02em", fontSize: { xs: "1.5rem", md: "1.8rem" }, lineHeight: 1.15, whiteSpace: "nowrap" }}>
+                  {t("payroll_dashboard", "HR Dashboard")}
+                </Typography>
+                <Typography sx={{ mt: 0.3, color: "rgba(255,255,255,0.85)", fontSize: "1rem", whiteSpace: "nowrap" }}>
+                  {t("payroll_dashboard_subtitle", "Real-time overview of payroll health and HR operations")}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" spacing={0.6} alignItems="center" justifyContent="flex-end" sx={{ flexShrink: 0, flexWrap: "nowrap" }}>
+            {lstTabs.map((objTab) => {
+              const blnActive = strActiveTab === objTab.strCode;
+              return (
+                <Button
+                  key={objTab.strCode}
+                  onClick={() => setStrActiveTab(objTab.strCode)}
+                  startIcon={objTab.objIcon}
+                  sx={{
+                    px: 0.95,
+                    py: 0.65,
+                    minWidth: "auto",
+                    borderRadius: "11px",
+                    border: blnActive ? "1px solid transparent" : "1px solid rgba(255,255,255,0.6)",
+                    color: blnActive ? "#1D4ED8" : "#1E3A5F",
+                    fontWeight: blnActive ? 800 : 700,
+                    textTransform: "none",
+                    fontSize: "0.74rem",
+                    whiteSpace: "nowrap",
+                    backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.92)",
+                    boxShadow: blnActive ? "0 0 0 2px rgba(255,255,255,0.55), 0 8px 20px rgba(0,0,0,0.18)" : "none",
+                    transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
+                    "& .MuiButton-startIcon": {
+                      marginRight: 0.55,
+                      marginLeft: 0,
+                    },
+                    "&:hover": {
+                      transform: "scale(1.03)",
+                      backgroundColor: "#FFFFFF",
+                    },
+                    "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
+                      color: blnActive ? "#1D4ED8" : "#1E3A5F",
+                    },
+                  }}
+                >
+                  {objTab.strLabel}
+                </Button>
+              );
+            })}
+            <IconButton
+              aria-label={t("more_options", "More options")}
+              sx={{
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                color: "#1E3A5F",
+                border: "1px solid rgba(255,255,255,0.6)",
+                backgroundColor: "rgba(255,255,255,0.55)",
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.75)" },
+              }}
+            >
+              <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Stack>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -701,7 +812,7 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
                 xs: "1fr",
                 sm: "repeat(2, minmax(0, 1fr))",
                 md: "repeat(3, minmax(0, 1fr))",
-                lg: "repeat(6, minmax(0, 1fr))",
+                lg: "repeat(4, minmax(0, 1fr))",
               },
               alignItems: "stretch",
             }}
@@ -717,16 +828,13 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
                 />
               </Box>
             ))}
-            <Box sx={{ display: "flex", minWidth: 0 }}>
-              <ReadinessPanel objReadiness={objReadiness} t={t} blnCompact />
-            </Box>
           </Box>
 
           <Box
             sx={{
               display: "grid",
               gap: objDashboardGridSpacing,
-              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 8fr) minmax(0, 4fr)" },
+              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 5fr) minmax(0, 3fr) minmax(0, 4fr)" },
               alignItems: "stretch",
             }}
           >
@@ -736,29 +844,14 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
             <Box sx={{ display: "flex", minWidth: 0 }}>
               <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
             </Box>
+            <Box sx={{ display: "flex", minWidth: 0 }}>
+              <ExceptionWorkQueuePanel lstItems={lstExceptionItems} t={t} />
+            </Box>
           </Box>
         </>
       ) : null}
 
-      {strActiveTab === "payroll_run" ? (
-        <Box
-          sx={{
-            display: "grid",
-            gap: objDashboardGridSpacing,
-            gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 7fr) minmax(0, 5fr)" },
-            alignItems: "stretch",
-          }}
-        >
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <RunOverviewPanel objRun={objSelectedRun} lstDetails={objRunDetailItems} strRunStatus={strRunStatusRaw} t={t} />
-          </Box>
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <WorkflowPanel objWidget={objTrackerWidget} lstLifecycleStages={lstLifecycleStages} strRunStatus={strRunStatusRaw} t={t} />
-          </Box>
-        </Box>
-      ) : null}
-
-      {strActiveTab === "pay_payslips" ? (
+      {strActiveTab === "approvals" ? (
         <Box
           sx={{
             display: "grid",
@@ -771,6 +864,24 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
             <ApprovalAgingPanel lstRows={lstApprovalAging} t={t} />
           </Box>
           <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 7" } }}>
+            <ValidationSummaryPanel lstCards={lstValidationSummaryCards} t={t} />
+          </Box>
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: "1 / -1" }}>
+            <HighRiskEmployeesPanel lstEmployees={lstHighRiskEmployeeRows} t={t} />
+          </Box>
+        </Box>
+      ) : null}
+
+      {strActiveTab === "outputs" ? (
+        <Box
+          sx={{
+            display: "grid",
+            gap: objDashboardGridSpacing,
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(12, minmax(0, 1fr))" },
+            alignItems: "stretch",
+          }}
+        >
+          <Box sx={{ display: "flex", minWidth: 0, gridColumn: "1 / -1" }}>
             <OutputReadinessPanel objOutputReadiness={objOutputReadiness} t={t} />
           </Box>
           {lstDetailedSummarySections.filter((objSection) => objSection.strCode === "reimbursement").map((objSection) => (
@@ -782,24 +893,12 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
       ) : null}
 
       {strActiveTab === "reports" ? (
-        <Box
-          sx={{
-            display: "grid",
-            gap: objDashboardGridSpacing,
-            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 7fr) minmax(0, 5fr)" },
-            alignItems: "stretch",
-          }}
-        >
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
-          </Box>
-          <Box sx={{ display: "flex", minWidth: 0 }}>
-            <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-          </Box>
+        <Box sx={{ display: "flex", minWidth: 0 }}>
+          <RecentRunsPanel objWidget={objRecentRunsWidget} t={t} />
         </Box>
       ) : null}
 
-      {strActiveTab === "audit_actions" ? (
+      {strActiveTab === "audit_trail" ? (
         <Box
           sx={{
             display: "grid",
@@ -813,9 +912,6 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
           </Box>
           <Box sx={{ display: "flex", minWidth: 0, gridColumn: { xs: "auto", lg: "span 7" } }}>
             <AuditPanel objAudit={objAudit} t={t} />
-          </Box>
-          <Box sx={{ display: "flex", minWidth: 0, gridColumn: "1 / -1" }}>
-            <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
           </Box>
         </Box>
       ) : null}
@@ -838,37 +934,45 @@ function PayrollKpiPanel({
   t: RoleBasedDashboardProps["t"];
 }) {
   const objPayload = (objWidget.objPayload || {}) as KpiPayload;
-  const strValue = objPayload.decValue != null ? formatCurrency(objPayload.decValue) : formatInteger(objPayload.intValue || 0);
   const decTrendValue = objPayload.decTrendValue;
   const strComparisonMonth = formatComparisonMonth(strSelectedMonth === strAllMonthsValue ? "" : strSelectedMonth, t);
-  const blnNegativeMetric = objWidget.strWidgetCode === "pending_approvals";
+  const blnShowNetPayTrendRow = objWidget.strWidgetCode === "net_payroll_amount" && decTrendValue != null;
   const strTrendIcon = decTrendValue == null ? "" : decTrendValue >= 0 ? "^" : "v";
-  const strTrendText = decTrendValue == null
-    ? objWidget.strWidgetCode === "employees_in_payroll"
-      ? `${t("employees_in_selected_run", "Employees in selected run")}: ${formatInteger(Number(objPayload.intRunEmployeeCount || 0))}`
-      : t("current_snapshot", "Current Snapshot")
-    : `${strTrendIcon} ${Math.abs(decTrendValue)}% ${t("vs_previous", "vs")} ${strComparisonMonth}`;
+  const strTrendText = `${strTrendIcon} ${Math.abs(decTrendValue || 0)}% ${t("vs_previous", "vs")} ${strComparisonMonth}`;
   const objIcon = getKpiIcon(objWidget.strWidgetCode);
+
+  const strValue = objWidget.strWidgetCode === "net_pay_movement"
+    ? (decTrendValue == null ? "—" : `${decTrendValue >= 0 ? "+" : ""}${decTrendValue}%`)
+    : objWidget.strWidgetCode === "payroll_validation_errors"
+      ? formatInteger(Number(objPayload.intBlockingCount || 0))
+      : objPayload.decValue != null
+        ? formatCurrency(objPayload.decValue)
+        : formatInteger(objPayload.intValue || 0);
+
   const strSubtitle = objWidget.strWidgetCode === "net_payroll_amount"
     ? strSelectedMonth === strAllMonthsValue
       ? t("all_months_generated_payslips", "All Months (Generated Payslips)")
       : `${t("this_month", "This Month")} (${formatLongMonth(strSelectedMonth, t)})`
-    : translateDashboardText(objPayload.strSubtitle, t, t("current_snapshot", "Current Snapshot"));
-  const strTitle = objWidget.strWidgetCode === "employees_in_payroll"
-    ? t("total_employees", "Total Employees")
+    : objWidget.strWidgetCode === "employees_in_payroll"
+      ? `${t("selected_run_employees", "Selected run employees")}: ${formatInteger(Number(objPayload.intRunEmployeeCount || 0))}`
+      : objWidget.strWidgetCode === "pending_approvals"
+        ? buildPendingApprovalsBreakdown(objPayload, t)
+        : translateDashboardText(objPayload.strSubtitle, t, t("current_snapshot", "Current Snapshot"));
+
+  const strTitle = objWidget.strWidgetCode === "payroll_validation_errors"
+    ? t("validation_blockers", "Validation Blockers")
     : translateDashboardText(objWidget.strWidgetName, t, objWidget.strWidgetName);
 
   return (
     <Paper
       sx={{
-        p: 1.05,
+        p: 1.2,
         width: "100%",
         minWidth: 0,
-        minHeight: 104,
+        minHeight: 116,
         height: "auto",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "flex-start",
         borderRadius: "18px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
@@ -877,118 +981,54 @@ function PayrollKpiPanel({
         overflow: "hidden",
       }}
     >
-      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid rgba(255,255,255,0)`, pointerEvents: "none" }} />
-      <Stack spacing={0.55} alignItems="center" sx={{ minWidth: 0, width: "100%", textAlign: "center" }}>
-        <Stack justifyContent="center" alignItems="center" spacing={0.7} sx={{ width: "100%" }}>
-          <Stack spacing={0.55} alignItems="center" sx={{ minWidth: 0, width: "100%" }}>
-            <Box
-              sx={{
-                width: 34,
-                height: 34,
-                flexShrink: 0,
-                borderRadius: "9px",
-                display: "grid",
-                placeItems: "center",
-                background: objTone.surface,
-                color: "#FFFFFF",
-                border: "none",
-                boxShadow: "0 12px 24px rgba(15,23,42,0.14)",
-              }}
-            >
-              {objIcon}
-            </Box>
-            <Box sx={{ minWidth: 0, width: "100%" }}>
-              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: DASHBOARD_COLORS.muted, lineHeight: 1.25 }}>
-                {strTitle}
-              </Typography>
-              <Typography sx={{ mt: 0.35, fontSize: "1.42rem", lineHeight: 1.04, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
-                {strValue}
-              </Typography>
-              <Typography sx={{ mt: 0.18, fontSize: "0.72rem", color: DASHBOARD_COLORS.muted }}>
-                {strSubtitle}
-              </Typography>
-            </Box>
-          </Stack>
-        </Stack>
-        <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, textAlign: "center", color: objWidget.strWidgetCode === "pending_approvals" ? DASHBOARD_COLORS.amber : objWidget.strWidgetCode === "employees_in_payroll" ? DASHBOARD_COLORS.blue : DASHBOARD_COLORS.green }}>
-          {strTrendText}
-        </Typography>
+      <Stack spacing={0.7} sx={{ minWidth: 0, width: "100%" }}>
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            flexShrink: 0,
+            borderRadius: "10px",
+            display: "grid",
+            placeItems: "center",
+            backgroundColor: objTone.surface,
+            color: objTone.accent,
+          }}
+        >
+          {objIcon}
+        </Box>
+        <Box sx={{ minWidth: 0, width: "100%" }}>
+          <Typography sx={{ fontSize: "0.74rem", fontWeight: 700, color: DASHBOARD_COLORS.muted, lineHeight: 1.25 }}>
+            {strTitle}
+          </Typography>
+          <Typography sx={{ mt: 0.3, fontSize: "1.4rem", lineHeight: 1.08, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
+            {strValue}
+          </Typography>
+          <Typography sx={{ mt: 0.2, fontSize: "0.74rem", color: DASHBOARD_COLORS.muted }}>
+            {strSubtitle}
+          </Typography>
+          {blnShowNetPayTrendRow ? (
+            <Typography sx={{ mt: 0.3, fontSize: "0.72rem", fontWeight: 700, color: (decTrendValue || 0) >= 0 ? DASHBOARD_COLORS.green : DASHBOARD_COLORS.red }}>
+              {strTrendText}
+            </Typography>
+          ) : null}
+        </Box>
       </Stack>
     </Paper>
   );
 }
 
-function RunOverviewPanel({
-  objRun,
-  lstDetails,
-  strRunStatus,
-  t,
-}: {
-  objRun?: RecentRunRow;
-  lstDetails: Array<{ strLabel: string; strValue: string }>;
-  strRunStatus: string;
-  t: RoleBasedDashboardProps["t"];
-}) {
-  return (
-    <PanelShell
-      strTitle={t("payroll_run_overview", "Payroll Run Overview")}
-      strSubtitle={objRun ? `${objRun.run_name || "-"} • ${formatLongMonth(objRun.payroll_month || "", t)}` : t("no_payroll_run_available", "No payroll run available for the selected month")}
-      strAccent={DASHBOARD_COLORS.blue}
-    >
-      {objRun ? (
-        <Stack spacing={1.4}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between">
-            <Box>
-              <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "1.08rem" }}>
-                {objRun.run_name || "-"}
-              </Typography>
-              <Typography sx={{ mt: 0.35, color: DASHBOARD_COLORS.muted, fontSize: "0.82rem" }}>
-                {t("selected_month_cycle", "Selected month, company, cycle and last processing context")}
-              </Typography>
-            </Box>
-            <Chip
-              label={formatLifecycleLabel(strRunStatus, t)}
-              size="small"
-              sx={{
-                fontWeight: 700,
-                borderRadius: "999px",
-                backgroundColor: chipBackground(strRunStatus),
-                color: statusAccentColor(strRunStatus),
-                fontSize: "0.72rem",
-              }}
-            />
-          </Stack>
-          <Grid container spacing={1.2}>
-            {lstDetails.map((objDetail, intIndex) => (
-              <Grid key={`${objDetail.strLabel}-${objDetail.strValue}-${intIndex}`} item xs={12} sm={6} lg={4}>
-                <Box sx={{ p: 1.2, borderRadius: "14px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF", minHeight: 74 }}>
-                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>
-                    {objDetail.strLabel}
-                  </Typography>
-                  <Typography sx={{ mt: 0.45, color: DASHBOARD_COLORS.text, fontSize: "0.88rem", fontWeight: 700, lineHeight: 1.35 }}>
-                    {objDetail.strValue}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Stack>
-      ) : (
-        <Stack spacing={1.1} sx={{ minHeight: 180, justifyContent: "center" }}>
-          <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: "0.98rem" }}>
-            {t("no_run_for_selected_month", "No payroll run found for the selected month")}
-          </Typography>
-          <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.84rem", maxWidth: 560 }}>
-            {t("no_run_for_selected_month_hint", "The current dashboard feed does not include a payroll run for this selection. Use the existing payroll run screen to create or review the cycle.")}
-          </Typography>
-          <Link href="/payroll/runs" style={{ color: DASHBOARD_COLORS.blue, fontWeight: 700, textDecoration: "none", fontSize: "0.84rem" }}>
-            {t("open_payroll_runs", "Open Payroll Runs")}
-          </Link>
-        </Stack>
-      )}
-    </PanelShell>
-  );
+function buildPendingApprovalsBreakdown(objPayload: KpiPayload, t: RoleBasedDashboardProps["t"]) {
+  const lstParts = [
+    { intCount: Number(objPayload.intReimbursementPendingCount || 0), strLabel: t("reimbursement", "reimbursement") },
+    { intCount: Number(objPayload.intTaxPendingCount || 0), strLabel: t("tax", "tax") },
+    { intCount: Number(objPayload.intRunPendingCount || 0), strLabel: t("run", "run") },
+  ].filter((objPart) => objPart.intCount > 0);
+  if (!lstParts.length) {
+    return t("no_pending_approvals_short", "No pending approvals");
+  }
+  return lstParts.map((objPart) => `${formatInteger(objPart.intCount)} ${objPart.strLabel}`).join(", ");
 }
+
 
 function RunActionPanel({ lstActions, strRunStatus, t }: { lstActions: PayrollActionItem[]; strRunStatus: string; t: RoleBasedDashboardProps["t"] }) {
   return (
@@ -1028,96 +1068,6 @@ function RunActionPanel({ lstActions, strRunStatus, t }: { lstActions: PayrollAc
   );
 }
 
-function WorkflowPanel({
-  objWidget,
-  lstLifecycleStages,
-  strRunStatus,
-  t,
-}: {
-  objWidget?: DashboardWidget;
-  lstLifecycleStages: Array<{ strLabel: string; strState: "completed" | "active" | "upcoming" | "locked" }>;
-  strRunStatus: string;
-  t: RoleBasedDashboardProps["t"];
-}) {
-  const objPayload = ((objWidget?.objPayload as { lstStages?: TrackerStage[] } | undefined) || {});
-  const lstStages = (objPayload.lstStages || []) as TrackerStage[];
-  const decCompletedStageUnits = lstStages.reduce((decSum, objStage) => (
-    decSum + (objStage.strStatus === "completed" ? 1 : objStage.strStatus === "in_progress" ? 0.5 : 0)
-  ), 0);
-  const decProgressPercent = lstStages.length ? Math.max(0, Math.min(100, (decCompletedStageUnits / lstStages.length) * 100)) : 0;
-  const lstWorkflowSummary = [
-    { strLabel: t("blocking_issues", "Blocking Issues"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intBlockingCount || 0)), strTone: "red" as const },
-    { strLabel: t("warnings", "Warnings"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intWarningCount || 0)), strTone: "amber" as const },
-    { strLabel: t("info", "Info"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intInfoCount || 0)), strTone: "blue" as const },
-    { strLabel: t("pending_approvals", "Pending Approvals"), strValue: formatInteger(Number((objWidget?.objPayload as Record<string, unknown> | undefined)?.intPendingApprovalCount || 0)), strTone: "blue" as const },
-  ];
-
-  return (
-    <PanelShell
-      strTitle={t("payroll_workflow", "Payroll Workflow")}
-      strAccent={DASHBOARD_COLORS.blue}
-    >
-      <Stack spacing={1.45}>
-        <Stack direction="row" alignItems="center" spacing={0} sx={{ display: { xs: "none", md: "flex" } }}>
-          {lstStages.map((objStage, intIndex) => {
-            const objTone = lifecycleTone(lstLifecycleStages[intIndex]?.strState || "upcoming");
-            return (
-              <Stack key={objStage.strCode} direction="row" alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-                  <Box sx={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${objTone.accent}`, backgroundColor: "#fff", color: objTone.accent, display: "grid", placeItems: "center", fontWeight: 800, fontSize: "0.74rem", flexShrink: 0 }}>
-                    {intIndex + 1}
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.78rem", lineHeight: 1.18 }}>
-              {formatLifecycleLabel(objStage.strCode, t)}
-            </Typography>
-                    <Typography sx={{ mt: 0.16, color: objTone.accent, fontWeight: 700, fontSize: "0.72rem", lineHeight: 1.15 }}>
-                      {formatStageStatus(objStage.strStatus, t)}
-                    </Typography>
-                  </Box>
-                </Stack>
-                {intIndex < lstStages.length - 1 ? (
-                  <Box sx={{ flex: 1, mx: 1.15, height: 2, backgroundColor: "#CBD5E1" }} />
-                ) : null}
-              </Stack>
-            );
-          })}
-        </Stack>
-        <Stack spacing={0.55}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontSize: "0.78rem", fontWeight: 700 }}>
-              {t("stage_progress", "Stage Progress")}
-            </Typography>
-            <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.76rem", fontWeight: 700 }}>
-              {`${Math.max(Math.floor(decCompletedStageUnits), 0)} ${t("of", "of")} ${lstStages.length} ${t("completed", "Completed")}`}
-            </Typography>
-          </Stack>
-          <Box sx={{ width: "100%", height: 6, borderRadius: "999px", backgroundColor: "#E2E8F0", overflow: "hidden" }}>
-            <Box sx={{ width: `${decProgressPercent}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, #9333EA 0%, #6366F1 100%)" }} />
-          </Box>
-        </Stack>
-        <Grid container spacing={1}>
-          {lstWorkflowSummary.map((objItem, intIndex) => {
-            const objTone = validationTone(objItem.strTone);
-            return (
-              <Grid key={`${objItem.strLabel}-${intIndex}`} item xs={12} sm={6} lg={3}>
-                <Box sx={{ p: 1.05, borderRadius: "12px", border: `1px solid ${objTone.border}`, backgroundColor: objTone.surface }}>
-                  <Typography sx={{ color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", fontWeight: 700 }}>
-                    {objItem.strLabel}
-                  </Typography>
-                  <Typography sx={{ mt: 0.42, color: objTone.accent, fontSize: "1.04rem", fontWeight: 800 }}>
-                    {objItem.strValue}
-                  </Typography>
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
-      </Stack>
-    </PanelShell>
-  );
-}
-
 function ValidationSummaryPanel({ lstCards, t }: { lstCards: Array<{ strLabel: string; strValue: string; strRoutePath: string; strTone: "red" | "amber" | "blue" | "green"; strHint: string }>; t: RoleBasedDashboardProps["t"] }) {
   return (
     <PanelShell strTitle={t("validation_summary", "Validation Summary")} strSubtitle={t("validation_summary_subtitle", "Current run validation, blockers and review shortcuts")} strAccent={DASHBOARD_COLORS.red}>
@@ -1143,73 +1093,6 @@ function ValidationSummaryPanel({ lstCards, t }: { lstCards: Array<{ strLabel: s
           );
         })}
       </Grid>
-    </PanelShell>
-  );
-}
-
-function ReadinessPanel({ objReadiness, t, blnCompact = false }: { objReadiness: ReadinessPayload; t: RoleBasedDashboardProps["t"]; blnCompact?: boolean }) {
-  const decScore = Math.max(0, Math.min(100, Number(objReadiness.decScore || 0)));
-  const strStatus = resolveReadinessStatus(objReadiness);
-  const lstBreakdown = objReadiness.lstBreakdown || [];
-  return (
-    <PanelShell strTitle={t("payroll_readiness", "Payroll Readiness")} strSubtitle={blnCompact ? undefined : t("payroll_readiness_subtitle", "Operational readiness based on current blockers, warnings and pending setup")} strAccent={readinessAccent(strStatus)} blnCenterHeader={blnCompact} blnCompactPanel={blnCompact}>
-      <Stack spacing={blnCompact ? 0.45 : 1.4} alignItems={blnCompact ? "center" : "stretch"} sx={{ minWidth: 0, textAlign: blnCompact ? "center" : "left" }}>
-        <Stack direction={blnCompact ? "column" : "row"} spacing={blnCompact ? 0.35 : 0.8} alignItems="center" justifyContent={blnCompact ? "center" : "space-between"} sx={{ minWidth: 0, width: "100%" }}>
-          <Stack spacing={0.4} alignItems={blnCompact ? "center" : "flex-start"} sx={{ minWidth: 0, flex: blnCompact ? "initial" : 1, width: blnCompact ? "100%" : "auto" }}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompact ? "1.32rem" : "1.8rem", textAlign: blnCompact ? "center" : "left", lineHeight: 1.05 }}>{decScore.toFixed(decScore % 1 ? 1 : 0)}%</Typography>
-            <Chip
-              label={formatStatusText(strStatus, t)}
-              size="small"
-              sx={{
-                width: blnCompact ? "fit-content" : "fit-content",
-                maxWidth: "100%",
-                height: blnCompact ? 22 : 32,
-                fontWeight: 700,
-                borderRadius: "999px",
-                backgroundColor: softColor(readinessAccent(strStatus)),
-                color: readinessAccent(strStatus),
-                fontSize: blnCompact ? "0.7rem" : "0.78rem",
-                "& .MuiChip-label": {
-                  px: blnCompact ? 0.95 : 1.4,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                },
-              }}
-            />
-          </Stack>
-          <Box sx={{ transform: blnCompact ? "scale(0.56)" : "none", transformOrigin: blnCompact ? "center center" : "right center", flexShrink: 0, mt: blnCompact ? -0.75 : 0 }}>
-            <ProgressRing decPercent={decScore} strColor={readinessAccent(strStatus)} strLabel={dashboardTextFallback("ready", t, "Ready")} />
-          </Box>
-        </Stack>
-        {!blnCompact ? (
-          <Box sx={{ width: "100%" }}>
-            <MiniProgressBar decValue={decScore} strColor={readinessAccent(strStatus)} />
-          </Box>
-        ) : null}
-        {!blnCompact ? (
-        <Grid container spacing={1}>
-          <Grid item xs={4}>
-            <MetricPill strLabel={t("blocking", "Blocking")} strValue={formatInteger(Number(objReadiness.intBlockingCount || 0))} strTone={DASHBOARD_COLORS.red} />
-          </Grid>
-          <Grid item xs={4}>
-            <MetricPill strLabel={t("warning", "Warning")} strValue={formatInteger(Number(objReadiness.intWarningCount || 0))} strTone={DASHBOARD_COLORS.amber} />
-          </Grid>
-          <Grid item xs={4}>
-            <MetricPill strLabel={t("info", "Info")} strValue={formatInteger(Number(objReadiness.intInfoCount || 0))} strTone={DASHBOARD_COLORS.blue} />
-          </Grid>
-        </Grid>
-        ) : null}
-        {!blnCompact && lstBreakdown.length ? (
-          <Stack spacing={0.8}>
-            {lstBreakdown.slice(0, 4).map((objItem, intIndex) => (
-              <CompactStatRow key={`${objItem.strLabel}-${intIndex}`} strLabel={objItem.strLabel} strValue={objItem.decValue != null ? formatCurrency(Number(objItem.decValue || 0)) : formatInteger(Number(objItem.intValue || 0))} />
-            ))}
-          </Stack>
-        ) : !blnCompact ? (
-          <CompactEmptyState strTitle={t("no_readiness_breakdown", "No readiness breakdown yet")} strSubtitle={t("no_readiness_breakdown_hint", "Readiness details will appear after the dashboard validations run.")} />
-        ) : null}
-      </Stack>
     </PanelShell>
   );
 }
@@ -1366,6 +1249,36 @@ function HighRiskEmployeesPanel({ lstEmployees, t }: { lstEmployees: HighRiskEmp
             </Box>
           </Link>
         )) : <CompactEmptyState strTitle={t("no_high_risk_employees", "No high-risk employees")} strSubtitle={t("no_high_risk_employees_hint", "No employee-level blockers matched the current filter.")} />}
+      </Stack>
+    </PanelShell>
+  );
+}
+
+function ExceptionWorkQueuePanel({ lstItems, t }: { lstItems: ExceptionItem[]; t: RoleBasedDashboardProps["t"] }) {
+  return (
+    <PanelShell strTitle={t("exception_work_queue", "Exception Work Queue")} strSubtitle={t("exception_work_queue_subtitle", "Items that need attention before payroll closes")} strAccent={DASHBOARD_COLORS.red}>
+      <Stack spacing={1}>
+        {lstItems.length ? lstItems.map((objItem, intIndex) => (
+          <Link key={`${objItem.strCode}-${intIndex}`} href={objItem.strRoutePath || "/payroll/runs"} style={{ textDecoration: "none" }}>
+            <Box sx={{ p: 1.1, borderRadius: "12px", border: `1px solid ${DASHBOARD_COLORS.border}`, backgroundColor: "#FBFDFF" }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Stack direction="row" spacing={0.9} alignItems="center" sx={{ minWidth: 0 }}>
+                  <Box sx={{ width: 30, height: 30, borderRadius: "9px", flexShrink: 0, display: "grid", placeItems: "center", backgroundColor: exceptionTone(objItem.strSeverity || "Warning").surface, color: exceptionTone(objItem.strSeverity || "Warning").accent }}>
+                    {getKpiIcon(objItem.strCode)}
+                  </Box>
+                  <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 700, fontSize: "0.82rem" }}>{objItem.strLabel}</Typography>
+                </Stack>
+                <Stack direction="row" spacing={0.6} alignItems="center" flexShrink={0}>
+                  <Chip label={formatInteger(objItem.intCount)} size="small" sx={{ height: 24, borderRadius: "999px", fontWeight: 800, backgroundColor: exceptionTone(objItem.strSeverity || "Warning").surface, color: exceptionTone(objItem.strSeverity || "Warning").accent }} />
+                  <ChevronRightRoundedIcon sx={{ fontSize: 18, color: DASHBOARD_COLORS.muted }} />
+                </Stack>
+              </Stack>
+            </Box>
+          </Link>
+        )) : <CompactEmptyState strTitle={t("no_exceptions", "No open exceptions")} strSubtitle={t("no_exceptions_hint", "Exceptions will appear here as payroll data is reviewed.")} />}
+        <Link href="/payroll/runs" style={{ color: DASHBOARD_COLORS.blue, fontWeight: 700, textDecoration: "none", fontSize: "0.8rem" }}>
+          {t("view_all_exceptions", "View All Exceptions")} →
+        </Link>
       </Stack>
     </PanelShell>
   );
@@ -1542,7 +1455,7 @@ function RecentRunsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: Rol
               </Box>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Tooltip title={t("view_results", "View Results")}>
-                  <Link href="/payroll/results" style={{ display: "inline-flex" }}>
+                  <Link href={`/payroll/runs/${objRow.id}`} style={{ display: "inline-flex" }}>
                     <IconButton size="small" sx={{ color: DASHBOARD_COLORS.blue, backgroundColor: "#EFF6FF", "&:hover": { backgroundColor: "#DCEAFE" } }}>
                       <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
                     </IconButton>
@@ -1566,11 +1479,19 @@ function QuickActionsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: R
   const lstActions = buildDemoQuickActions(((((objWidget?.objPayload as { lstActions?: DashboardQuickAction[] } | undefined)?.lstActions) || []) as DashboardQuickAction[]), t);
   return (
     <PanelShell strTitle={resolveWidgetTitle(t, objWidget?.strWidgetCode, objWidget?.strWidgetName || "Quick Actions")} strAccent={DASHBOARD_COLORS.blue}>
-      <Grid container spacing={1.25}>
-        {lstActions.length ? lstActions.map((objAction) => (
-          <Grid key={objAction.strActionCode} item xs={12} sm={6} sx={{ display: "flex" }}>
-            <Link href={objAction.strRoutePath || "/dashboard"} style={{ display: "block", width: "100%", textDecoration: "none" }}>
-              <Paper sx={{ p: 1.4, height: "100%", borderRadius: "16px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#f8fafc" }}>
+      {lstActions.length ? (
+        <Box
+          sx={{
+            height: "100%",
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+            gridAutoRows: "1fr",
+            gap: 1.25,
+          }}
+        >
+          {lstActions.map((objAction) => (
+            <Link key={objAction.strActionCode} href={objAction.strRoutePath || "/dashboard"} style={{ display: "block", width: "100%", height: "100%", textDecoration: "none" }}>
+              <Paper sx={{ p: 1.4, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", borderRadius: "16px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#f8fafc" }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                   <Box sx={{ width: 36, height: 36, borderRadius: "12px", backgroundColor: quickActionColor(objAction.strActionCode), display: "grid", placeItems: "center", flexShrink: 0 }}>
                     {renderQuickActionIcon(objAction.strActionCode)}
@@ -1582,8 +1503,10 @@ function QuickActionsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: R
                 </Stack>
               </Paper>
             </Link>
-          </Grid>
-        )) : (
+          ))}
+        </Box>
+      ) : (
+        <Grid container>
           <Grid item xs={12}>
             <Box sx={{ minHeight: 180, display: "grid", placeItems: "center", px: 2, py: 2 }}>
               <Stack spacing={1.15} alignItems="center">
@@ -1607,8 +1530,8 @@ function QuickActionsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: R
               </Stack>
             </Box>
           </Grid>
-        )}
-      </Grid>
+        </Grid>
+      )}
     </PanelShell>
   );
 }
@@ -2768,6 +2691,18 @@ function PanelShell({
 }
 
 function getKpiIcon(strWidgetCode: string) {
+  if (strWidgetCode.includes("reimbursement")) {
+    return <ReceiptLongRoundedIcon sx={{ fontSize: 22 }} />;
+  }
+  if (strWidgetCode.includes("net_pay_movement")) {
+    return <TimelineRoundedIcon sx={{ fontSize: 22 }} />;
+  }
+  if (strWidgetCode.includes("statutory")) {
+    return <AccountBalanceWalletRoundedIcon sx={{ fontSize: 22 }} />;
+  }
+  if (strWidgetCode.includes("master_data")) {
+    return <ManageAccountsRoundedIcon sx={{ fontSize: 22 }} />;
+  }
   if (strWidgetCode.includes("employee")) {
     return <PeopleAltRoundedIcon sx={{ fontSize: 22 }} />;
   }
@@ -2777,7 +2712,7 @@ function getKpiIcon(strWidgetCode: string) {
   if (strWidgetCode.includes("approval")) {
     return <AssignmentTurnedInRoundedIcon sx={{ fontSize: 22 }} />;
   }
-  if (strWidgetCode.includes("validation")) {
+  if (strWidgetCode.includes("validation") || strWidgetCode.includes("blocker")) {
     return <ErrorOutlineRoundedIcon sx={{ fontSize: 22 }} />;
   }
   if (strWidgetCode.includes("leave")) {
@@ -2796,41 +2731,6 @@ function resolveSelectedRun(lstRecentRunRows: RecentRunRow[], strSelectedMonth: 
 
 function normalizeRunStatus(strStatus: string) {
   return String(strStatus || "").trim().toLowerCase();
-}
-
-function resolveReadinessStatus(objReadiness: ReadinessPayload) {
-  const intBlockingCount = Number(objReadiness.intBlockingCount || 0);
-  const intWarningCount = Number(objReadiness.intWarningCount || 0);
-  if (intBlockingCount > 0) return "Not Ready";
-  if (intWarningCount > 0) return "Ready with Warnings";
-  return "Ready";
-}
-
-function buildLifecycleStages(strRunStatus: string, t: RoleBasedDashboardProps["t"]) {
-  const strNormalizedStatus = normalizeRunStatus(strRunStatus);
-  const lstStatuses = ["open", "submitted", "approved", "processed", "closed"];
-  const intActiveIndex = Math.max(lstStatuses.indexOf(strNormalizedStatus), 0);
-  return lstStatuses.map((strStatus, intIndex) => ({
-    strLabel: formatLifecycleLabel(strStatus, t),
-    strState: intIndex < intActiveIndex
-      ? "completed"
-      : intIndex === intActiveIndex
-        ? (strNormalizedStatus === "closed" ? "completed" : "active")
-        : strNormalizedStatus === "closed"
-          ? "locked"
-          : "upcoming",
-  })) as Array<{ strLabel: string; strState: "completed" | "active" | "upcoming" | "locked" }>;
-}
-
-function buildPayrollRunDetailItems(objRun: RecentRunRow | undefined, t: RoleBasedDashboardProps["t"]) {
-  return [
-    { strLabel: t("run_name", "Run Name"), strValue: objRun?.run_name || "-" },
-    { strLabel: t("payroll_month", "Payroll Month"), strValue: objRun?.payroll_month ? formatLongMonth(objRun.payroll_month, t) : "-" },
-    { strLabel: t("company", "Company"), strValue: objRun?.company_name || "-" },
-    { strLabel: t("payroll_cycle", "Payroll Cycle"), strValue: objRun?.cycle_name || "-" },
-    { strLabel: t("last_processed_time", "Last Processed Time"), strValue: formatDateTimeLabel(objRun?.processed_on, t) },
-    { strLabel: t("last_processed_by", "Last Processed By"), strValue: objRun?.processed_by || "-" },
-  ];
 }
 
 function buildPayrollActionItems(strRunStatus: string, lstQuickActions: DashboardQuickAction[], t: RoleBasedDashboardProps["t"]): PayrollActionItem[] {
@@ -2889,6 +2789,12 @@ function resolveVarianceMetrics(objVariance: DashboardResponse["variance"]) {
 function resolveHighRiskEmployees(objHighRiskEmployees: DashboardResponse["highRiskEmployees"]) {
   const objValue = (objHighRiskEmployees || {}) as { lstEmployees?: HighRiskEmployeeRow[] };
   return objValue.lstEmployees || [];
+}
+
+function resolveExceptionGroups(objExceptions: DashboardResponse["exceptions"]) {
+  const objValue = (objExceptions || {}) as { lstGroups?: Array<{ strSeverity: "Blocking" | "Warning" | "Info"; lstItems: ExceptionItem[] }> };
+  const lstGroups = objValue.lstGroups || [];
+  return lstGroups.flatMap((objGroup) => (objGroup.lstItems || []).map((objItem) => ({ ...objItem, strSeverity: objGroup.strSeverity })));
 }
 
 function buildDetailedSummarySections(objDashboard: DashboardResponse, t: RoleBasedDashboardProps["t"]) {
@@ -3028,13 +2934,6 @@ function getStageColor(strStatus: TrackerStage["strStatus"]) {
   return "#94a3b8";
 }
 
-function lifecycleTone(strState: "completed" | "active" | "upcoming" | "locked") {
-  if (strState === "completed") return { accent: DASHBOARD_COLORS.green, surface: DASHBOARD_COLORS.greenSoft, border: "#BFE7CC" };
-  if (strState === "active") return { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft, border: "#D6E4FF" };
-  if (strState === "locked") return { accent: "#94A3B8", surface: "#F8FAFC", border: "#E2E8F0" };
-  return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
-}
-
 function validationTone(strTone: "red" | "amber" | "blue" | "green") {
   if (strTone === "red") return { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft, border: "#F9D2D2" };
   if (strTone === "amber") return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
@@ -3046,12 +2945,6 @@ function exceptionTone(strSeverity: "Blocking" | "Warning" | "Info") {
   if (strSeverity === "Blocking") return { accent: DASHBOARD_COLORS.red, surface: DASHBOARD_COLORS.redSoft, border: "#F9D2D2" };
   if (strSeverity === "Warning") return { accent: DASHBOARD_COLORS.amber, surface: DASHBOARD_COLORS.amberSoft, border: "#F7C99D" };
   return { accent: DASHBOARD_COLORS.blue, surface: DASHBOARD_COLORS.blueSoft, border: "#D6E4FF" };
-}
-
-function formatStageStatus(strStatus: TrackerStage["strStatus"], t: RoleBasedDashboardProps["t"]) {
-  if (strStatus === "completed") return t("completed", "Completed");
-  if (strStatus === "in_progress") return t("in_progress", "In Progress");
-  return t("pending", "Pending");
 }
 
 function formatLifecycleLabel(strStatus: string, t: RoleBasedDashboardProps["t"]) {
@@ -3073,13 +2966,6 @@ function disabledActionReason(strActionCode: string, strRunStatus: string, t: Ro
   if (strActionCode === "results") return t("results_require_processed", "Results are available only after payroll processing completes.");
   if (strActionCode === "edit_inputs" && ["processed", "closed"].includes(strNormalizedStatus)) return t("edit_locked_after_processing", "Input editing is disabled after processing unless a controlled reprocess flow is used.");
   return t("action_not_available_for_status", "This action is not available for the current run status.");
-}
-
-function readinessAccent(strStatus: string) {
-  const strNormalized = String(strStatus || "").trim().toLowerCase();
-  if (strNormalized.includes("ready with warnings")) return DASHBOARD_COLORS.amber;
-  if (strNormalized.includes("ready")) return DASHBOARD_COLORS.green;
-  return DASHBOARD_COLORS.red;
 }
 
 function formatMetricValue(decValue: number | undefined, blnCurrency?: boolean) {
