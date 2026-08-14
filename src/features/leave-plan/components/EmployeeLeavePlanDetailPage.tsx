@@ -7,7 +7,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, Drawer, MenuItem, Paper, Snackbar, Stack, Table, TableBody,
+  DialogActions, DialogContent, DialogTitle, Divider, MenuItem, Paper, Snackbar, Stack, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -118,11 +118,10 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const [objMovement, setObjMovement] = useState<MovementDialog>(null);
   const [objPendingAssignment, setObjPendingAssignment] = useState<EmployeePlanAssignRequest | null>(null);
   const [objImpact, setObjImpact] = useState<ReplacementImpact | null>(null);
-  const [blnLedgerOpen, setBlnLedgerOpen] = useState(false);
   const [strActionError, setStrActionError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const {
-    objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, lstLedger, blnLoading, blnRefreshing, blnSaving, strError,
+    objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, blnLoading, blnRefreshing, blnSaving, strError,
     fetchPlan, previewReplacement, assignPlan, initializeBalances, setOpeningBalance, adjustBalance,
   } = useEmployeeLeavePlan(intEmployeeID, intLeaveYear);
   // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
@@ -311,15 +310,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
       </Box> : null}
     </Box></CollapsibleCard> : null}
 
-    {/* 4. Recent Leave Transactions — collapsed by default; last 10 + full ledger drawer. */}
-    <CollapsibleCard strTitle={t("section_recent_transactions", "Recent Leave Transactions")} objAction={
-      <Button size="small" variant="outlined" onClick={() => setBlnLedgerOpen(true)} disabled={!lstLedger.length} data-control-id="employee-leave-plan.ledger.view-all.button">{t("view_complete_ledger", "View Complete Ledger")}</Button>
-    }>
-      <TableContainer><Table size="small" sx={{ minWidth: 950 }}><TableHead><TableRow>{["date", "leave_type", "transaction_type", "credit", "debit", "balance_after", "remarks"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`ledger_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!lstLedger.length ? <TableRow><TableCell colSpan={7} align="center">{t("no_ledger", "No ledger movements found.")}</TableCell></TableRow> : lstLedger.slice(0, 10).map((objLedger) => <TableRow key={objLedger.intID}><TableCell>{formatDate(objLedger.dtTransactionDate)}</TableCell><TableCell>{dicTypeNames[objLedger.intLeaveTypeID] ?? `#${objLedger.intLeaveTypeID}`}</TableCell><TableCell>{objLedger.strTransactionType}</TableCell><TableCell>{objLedger.decCreditDays}</TableCell><TableCell>{objLedger.decDebitDays}</TableCell><TableCell>{objLedger.decBalanceAfter}</TableCell><TableCell>{objLedger.strTransactionRemarks ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
-      {lstLedger.length > 10 ? <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>{t("recent_hint", "Showing the latest 10 transactions. Use View Complete Ledger for the full append-only history.")}</Typography> : null}
-    </CollapsibleCard>
-
-    {/* 5. Leave Plan History — collapsed by default; Source hidden (POC). */}
+    {/* Leave Plan History — collapsed by default; Source hidden (POC). */}
     <CollapsibleCard strTitle={t("section_plan_history", "Leave Plan History")}>
       <TableContainer><Table size="small"><TableHead><TableRow>{["plan", "effective_from", "effective_to", "status", "reason"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`history_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstAssignments.length) ? <TableRow><TableCell colSpan={5} align="center">{t("no_assignment_history", "No plan history.")}</TableCell></TableRow> : objOverview.lstAssignments.map((objRow) => <TableRow key={objRow.intID}><TableCell>{dicPlanNames[objRow.intLeavePlanID] ?? `#${objRow.intLeavePlanID}`}</TableCell><TableCell>{formatDate(objRow.dtEffectiveFrom)}</TableCell><TableCell>{formatDate(objRow.dtEffectiveTo)}</TableCell><TableCell>{objRow.strAssignmentStatus}</TableCell><TableCell>{objRow.strAssignmentReason ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
     </CollapsibleCard>
@@ -340,14 +331,6 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
       </Stack> : null}
     </DialogContent><DialogActions><Button onClick={() => { setObjPendingAssignment(null); setObjImpact(null); }} data-control-id="employee-leave-plan.replace.cancel.button">{t("cancel", "Cancel")}</Button><Button variant="contained" onClick={() => void confirmReplacement()} disabled={blnSaving || Boolean(objImpact && !objImpact.blnCanReplace)} data-control-id="employee-leave-plan.replace.confirm.button">{t("replace", "Replace")}</Button></DialogActions></Dialog>
 
-    {/* Complete append-only ledger (drawer) — filters by leave type; year comes from the page selector. */}
-    <Drawer anchor="right" open={blnLedgerOpen} onClose={() => setBlnLedgerOpen(false)} PaperProps={{ sx: { width: { xs: "100%", sm: 720 }, p: 2.5 } }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("complete_ledger_title", "Complete Leave Ledger")} · {intLeaveYear}</Typography>
-        <Button size="small" onClick={() => setBlnLedgerOpen(false)} data-control-id="employee-leave-plan.ledger.close.button">{t("close", "Close")}</Button>
-      </Box>
-      <TableContainer sx={{ maxHeight: "80vh" }}><Table size="small" stickyHeader sx={{ minWidth: 640 }}><TableHead><TableRow>{["date", "leave_type", "transaction_type", "credit", "debit", "balance_after", "source", "remarks"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`ledger_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!lstLedger.length ? <TableRow><TableCell colSpan={8} align="center">{t("no_ledger", "No ledger movements found.")}</TableCell></TableRow> : lstLedger.map((objLedger) => <TableRow key={objLedger.intID}><TableCell>{formatDate(objLedger.dtTransactionDate)}</TableCell><TableCell>{dicTypeNames[objLedger.intLeaveTypeID] ?? `#${objLedger.intLeaveTypeID}`}</TableCell><TableCell>{objLedger.strTransactionType}</TableCell><TableCell>{objLedger.decCreditDays}</TableCell><TableCell>{objLedger.decDebitDays}</TableCell><TableCell>{objLedger.decBalanceAfter}</TableCell><TableCell>{objLedger.strSourceType}</TableCell><TableCell>{objLedger.strTransactionRemarks ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
-    </Drawer>
     <Dialog open={Boolean(objMovement)} onClose={() => !blnSaving && setObjMovement(null)} PaperProps={{ "data-control-id": "employee-leave-plan.movement.dialog" } as Record<string, string>}><Box component="form" onSubmit={objMovementForm.handleSubmit(submitMovement)}><DialogTitle>{objMovement?.strType === "opening" ? t("opening_balance_title", "Set Opening Balance") : objMovement?.strType === "credit" ? t("manual_credit_title", "Manual Credit") : t("manual_debit_title", "Manual Debit")}</DialogTitle><DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important", minWidth: { sm: 440 } }}>
       <Controller name="decValue" control={objMovementForm.control} render={({ field }) => <TextField {...field} type="number" label={objMovement?.strType === "opening" ? t("opening_balance", "Opening Balance") : t("days", "Days")} error={Boolean(objMovementForm.formState.errors.decValue)} helperText={objMovementForm.formState.errors.decValue?.message} inputProps={{ "data-control-id": "employee-leave-plan.movement.days.input", min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} />} />
       <Controller name="dtTransactionDate" control={objMovementForm.control} render={({ field }) => <TextField {...field} type="date" label={t("transaction_date", "Transaction Date")} InputLabelProps={{ shrink: true }} error={Boolean(objMovementForm.formState.errors.dtTransactionDate)} helperText={objMovementForm.formState.errors.dtTransactionDate?.message} inputProps={{ "data-control-id": "employee-leave-plan.movement.date.input" }} />} />

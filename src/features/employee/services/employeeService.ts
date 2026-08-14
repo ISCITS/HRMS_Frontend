@@ -19,7 +19,7 @@ import type {
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
-import type { FileUploadPanelService } from "@/components/shared/files/FileUploadPanel";
+import { authHelpers } from "@/lib/auth";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
 import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
@@ -100,6 +100,43 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
 export const employeeService = {
   async getEmployees(): Promise<EmployeeListRecord[]> {
     const objResult = await masterApiService.getEmployees();
+    return objResult.Data;
+  },
+
+  async uploadEmployeeAvatar(intEmployeeID: number, objFile: File): Promise<{
+    intEmployeeID: number;
+    strEmployeeCode?: string | null;
+    strFullName?: string | null;
+    strProfilePhotoUrl?: string | null;
+  }> {
+    const strAccessToken = authHelpers.getAccessToken().trim();
+    const intTenantID = authHelpers.getTenantID();
+    const intCompanyID = authHelpers.getCompanyID();
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    const objHeaders: Record<string, string> = {};
+
+    if (strAccessToken) {
+      objHeaders.Authorization = `Bearer ${strAccessToken}`;
+      objHeaders["X-Access-Token"] = strAccessToken;
+    }
+    if (intTenantID) {
+      objHeaders["X-Tenant-Id"] = String(intTenantID);
+    }
+    if (intCompanyID) {
+      objHeaders["X-Company-Id"] = String(intCompanyID);
+    }
+
+    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
+      method: "PUT",
+      headers: Object.keys(objHeaders).length ? objHeaders : undefined,
+      body: objFormData,
+      credentials: "include",
+    });
+    const objResult = await objResponse.json();
+    if (!objResponse.ok || objResult?.ResultCode === 0) {
+      throw new Error(objResult?.Msg || "Unable to upload profile photo.");
+    }
     return objResult.Data;
   },
 
@@ -316,7 +353,9 @@ export const employeeService = {
 // used by FileUploadPanel (via its objFileService override) when HR manages bank proof documents
 // on an employee's record, since the self-service endpoints derive the employee strictly from the
 // caller's own session and would silently target the wrong person.
-export function createHrBankFileService(intEmployeeID: number): FileUploadPanelService {
+// NOTE: return type inferred — the former FileUploadPanelService type was removed when FileUploadPanel
+// dropped its service-override prop; this helper is currently unused but kept for a future re-wire.
+export function createHrBankFileService(intEmployeeID: number) {
   const strBase = `${ApiRoutePrefix.ApiV1}/master/employee/${intEmployeeID}/bank/files`;
 
   return {

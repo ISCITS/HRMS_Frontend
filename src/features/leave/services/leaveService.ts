@@ -11,6 +11,7 @@ import type {
   LeaveApplicationAttachmentDto,
   LeaveBalanceDto,
   LeaveLedgerDto,
+  LedgerEmployeeDto,
   LeaveDecisionRequest,
   LeaveDraftRequest,
   LeaveLookups,
@@ -235,9 +236,30 @@ export const leaveService = {
     return objResult.Data ?? [];
   },
 
-  async getMyLedger(intLeaveYear: number): Promise<LeaveLedgerDto[]> {
+  async getMyLedger(intLeaveYear: number, intEmployeeID?: number | null): Promise<LeaveLedgerDto[]> {
+    const strEmployee = intEmployeeID ? `&employee_id=${intEmployeeID}` : "";
     const objResult = await requestApi<LeaveLedgerDto[]>({
-      strPath: `/ess/leave/ledger?leave_year=${intLeaveYear}`,
+      strPath: `/ess/leave/ledger?leave_year=${intLeaveYear}${strEmployee}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // HR: view any employee's ledger (gated by the Leave view right on the backend).
+  async getHrLedger(intLeaveYear: number, intEmployeeID: number): Promise<LeaveLedgerDto[]> {
+    const objResult = await requestApi<LeaveLedgerDto[]>({
+      strPath: `/leave/ledger?leave_year=${intLeaveYear}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // Employees whose ledger the logged-in user may view: themselves + their direct reports (line/reporting manager).
+  async getLedgerEmployees(): Promise<LedgerEmployeeDto[]> {
+    const objResult = await requestApi<LedgerEmployeeDto[]>({
+      strPath: "/ess/leave/ledger/employees",
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });

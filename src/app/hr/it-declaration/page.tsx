@@ -191,6 +191,7 @@ export default function HrItDeclarationListPage() {
       const objData = await hrItDeclarationService.getEmployeeDeclarations(
         objEmployee?.intEmployeeID,
         strFinancialYearCode.trim() || undefined,
+        strRegime,
       );
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(strHrListFilterStorageKey, JSON.stringify({
@@ -199,7 +200,7 @@ export default function HrItDeclarationListPage() {
           strRegime,
         }));
       }
-      setLstRows((objData.lstRows ?? []).filter((objRow) => matchesRegime(objRow, strRegime)));
+      setLstRows(objData.lstRows ?? []);
       setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("IT_DECLARATION_UNABLE_LOAD_IT_DECLARATIONS", "Unable to load IT declarations."));
@@ -301,7 +302,7 @@ export default function HrItDeclarationListPage() {
       setStrSearchRegime(strRegime);
       setStrAddRegime(strRegime);
       setBlnFiltersHydrated(true);
-      if (blnAutoload) {
+      if (blnAutoload && !blnRightsLoading && blnCanView) {
         void loadDeclarations({
           objEmployee: objEmployeeOption,
           strFinancialYearCode,
@@ -353,7 +354,7 @@ export default function HrItDeclarationListPage() {
       window.sessionStorage.removeItem(strHrListFilterStorageKey);
       setBlnFiltersHydrated(true);
     }
-  }, [blnQueryAutoload, lstFyOptions, strQueryEmployeeCode, strQueryEmployeeId, strQueryEmployeeName, strQueryFinancialYearCode, strQueryRegime]);
+  }, [blnCanView, blnQueryAutoload, blnRightsLoading, lstFyOptions, strQueryEmployeeCode, strQueryEmployeeId, strQueryEmployeeName, strQueryFinancialYearCode, strQueryRegime]);
 
   return (
     <Stack spacing={0.8} className={styles.page}>

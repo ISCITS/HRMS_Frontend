@@ -29,3 +29,6 @@ ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 
 *.tsbuildinfo
 /public/HRMS - Shortcut.lnk
+
+# Local dev hot-reload override (must NOT be deployed)
+docker-compose.override.yml

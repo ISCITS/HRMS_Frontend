@@ -314,6 +314,13 @@ export type LeaveLedgerDto = {
   dtTransactionOn: string | null;
 };
 
+export type LedgerEmployeeDto = {
+  intEmployeeID: number;
+  strFullName: string;
+  strEmployeeCode: string | null;
+  blnIsSelf: boolean;
+};
+
 export type LeaveApplicationActionDto = {
   intID: number;
   strAction: string;

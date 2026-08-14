@@ -345,10 +345,11 @@ export const hrItDeclarationService = {
     return objResult.Data ?? [];
   },
 
-  async getEmployeeDeclarations(intEmployeeID?: number | null, strFinancialYearCode?: string): Promise<HrEmployeeItDeclarationListDto> {
+  async getEmployeeDeclarations(intEmployeeID?: number | null, strFinancialYearCode?: string, strRegime?: string): Promise<HrEmployeeItDeclarationListDto> {
     const objQueryParams = {
       ...(intEmployeeID ? { employee_id: intEmployeeID } : {}),
       ...(strFinancialYearCode?.trim() ? { financial_year_code: strFinancialYearCode.trim() } : {}),
+      ...(strRegime?.trim() ? { regime: strRegime.trim() } : {}),
     };
     const objResult = await requestApi<HrEmployeeItDeclarationListDto>({
       strPath: "/hr/it-declaration",

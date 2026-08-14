@@ -215,6 +215,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         } else {
           showErrorDialog(strMessage);
         }
+        if (typeof document !== "undefined") {
+          document.cookie = `${authHelpers.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+        }
         authHelpers.clearStoredSessionState();
         setObjTenantAuthDetails(null);
         setIntSelectedLanguageID(null);
@@ -593,7 +596,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     !strIdentityValidationError &&
     !blnSubmitting &&
     intLockRemainingSeconds <= 0 &&
-    !(strMode === "tenant" && blnTenantLoading);
+    !(strMode === "tenant" && (blnTenantLoading || !objTenantAuthDetails));
   const blnCanSubmitOtpStep = Boolean(strOtp.trim()) && !blnSubmitting;
   const blnCanSubmitCurrentStep = blnOtpStep ? blnCanSubmitOtpStep : blnCanSubmitLoginStep;
  

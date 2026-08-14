@@ -349,8 +349,10 @@ function mergeSectionRules(lstBaseRows: DeclarationRow[], lstRuleRows: Declarati
     const decConfigured = objRule.decMaxEligibleAmount ?? parseMaxLimit(objRule.strMaxLimitDisplay);
     const objMerged: DeclarationRow = {
       ...objRow,
+      strDescription: objRule.strDescription || objRow.strDescription,
       decMaxEligibleAmount: decConfigured ?? null,
       strCategory: objRule.strCategory ?? objRow.strCategory,
+      strApplicableRegime: objRule.strApplicableRegime ?? objRow.strApplicableRegime,
       strMaxLimitAppliedAt: objRule.strMaxLimitAppliedAt ?? objRow.strMaxLimitAppliedAt ?? "ENTRY_LEVEL",
       blnProofRequired: objRule.blnProofRequired ?? objRow.blnProofRequired,
       strMaxLimitDisplay:
