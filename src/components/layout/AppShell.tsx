@@ -893,9 +893,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnEmployeeSalaryDetailContext = Boolean(
     strLowerPathname.match(/^\/employee-salary\/\d+(\/revise)?$/)
   );
+  const blnSalaryStructureDetailContext = Boolean(
+    strLowerPathname === "/salary-structures/add" ||
+    strLowerPathname.match(/^\/salary-structures\/edit\/\d+$/)
+  );
   // Exact menu routes use the tenant-configured database label in the shell header.
   const strDatabaseMenuName = findMenuNameByRoute(objMenu.lstMenuItems, strPathname);
-  const strPageTitle = blnEmployeeSalaryDetailContext ? "" : strDatabaseMenuName || (blnEmployeeReimbursementFormContext
+  const strPageTitle = blnEmployeeSalaryDetailContext || blnSalaryStructureDetailContext ? "" : strDatabaseMenuName || (blnEmployeeReimbursementFormContext
     ? (blnEmployeeReimbursementContext ? strEmployeeReimbursementFormTitle : tHeader("review_reimbursements", "Review Reimbursements"))
     : blnEmployeeReimbursementContext
       ? tHeader("employee_reimbursements", "Employee Reimbursements")

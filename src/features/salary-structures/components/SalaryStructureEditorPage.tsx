@@ -1601,6 +1601,20 @@ export default function SalaryStructureEditorPage({
         <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.25}>
             <Box>
+              <Typography
+                component="h1"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.25rem", md: "1.5rem" },
+                  fontWeight: 800,
+                  letterSpacing: "-0.025em",
+                  lineHeight: 1.2
+                }}
+              >
+                {strMode === "add"
+                  ? t("add_salary_structure", "Add Salary Structure")
+                  : t("edit_salary_structure", "Edit Salary Structure")}
+              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.9rem", lineHeight: 1.35 }}>
                 {t(
                   "editor_description",
