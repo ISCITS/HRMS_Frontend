@@ -296,7 +296,7 @@ export const authApiService = {
     });
   },
 
-  async uploadCurrentAvatar(objFile: File) {
+  async uploadCurrentAvatar(objFile: File, intEmployeeID?: number) {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     return requestApi<{
@@ -308,15 +308,17 @@ export const authApiService = {
       strPath: "auth/avatar/current",
       strMethod: ApiRequestMethod.Put,
       objBody: objFormData,
+      objQueryParams: intEmployeeID ? { employee_id: intEmployeeID } : undefined,
       strMenuAction: "AUTH_AVATAR_UPDATE",
       blnUseAuthHeader: true
     });
   },
 
-  async deleteCurrentAvatar() {
+  async deleteCurrentAvatar(intEmployeeID?: number) {
     return requestApi<{ blnDeleted: boolean }>({
       strPath: "auth/avatar/current",
       strMethod: ApiRequestMethod.Delete,
+      objQueryParams: intEmployeeID ? { employee_id: intEmployeeID } : undefined,
       strMenuAction: "AUTH_AVATAR_DELETE",
       blnUseAuthHeader: true
     });

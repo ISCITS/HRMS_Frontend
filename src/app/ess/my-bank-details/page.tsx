@@ -29,6 +29,11 @@ const dicEmptyForm: EmployeeBankFormValues = {
   strAccountHolderName: "",
   strAccountNumber: "",
   strIfscCode: "",
+  intSecondaryBankID: "",
+  strSecondaryAccountHolderName: "",
+  strSecondaryAccountNumber: "",
+  strSecondaryIfscCode: "",
+  blnSecondaryIsActive: false,
   blnIsPrimary: true,
   blnIsActive: true
 };
@@ -82,6 +87,11 @@ export default function EssMyBankDetailsPage() {
           strAccountHolderName: dicBank.strAccountHolderName ?? "",
           strAccountNumber: dicBank.strAccountNumber ?? "",
           strIfscCode: dicBank.strIfscCode ?? "",
+          intSecondaryBankID: dicBank.intSecondaryBankID ?? "",
+          strSecondaryAccountHolderName: dicBank.strSecondaryAccountHolderName ?? "",
+          strSecondaryAccountNumber: dicBank.strSecondaryAccountNumber ?? "",
+          strSecondaryIfscCode: dicBank.strSecondaryIfscCode ?? "",
+          blnSecondaryIsActive: dicBank.blnSecondaryIsActive ?? false,
           blnIsPrimary: dicBank.blnIsPrimary ?? true,
           blnIsActive: dicBank.blnIsActive ?? true
         });

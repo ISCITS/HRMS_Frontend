@@ -133,6 +133,12 @@ export type EmployeeBankRecord = {
   strAccountNumber: string | null;
   strAccountNumberMasked?: string | null;
   strIfscCode: string | null;
+  intSecondaryBankID: number | null;
+  strSecondaryAccountHolderName: string | null;
+  strSecondaryAccountNumber: string | null;
+  strSecondaryAccountNumberMasked?: string | null;
+  strSecondaryIfscCode: string | null;
+  blnSecondaryIsActive: boolean;
   blnIsPrimary: boolean;
   blnIsActive: boolean;
 };
@@ -142,6 +148,11 @@ export type EmployeeBankFormValues = {
   strAccountHolderName: string;
   strAccountNumber: string;
   strIfscCode: string;
+  intSecondaryBankID: number | "";
+  strSecondaryAccountHolderName: string;
+  strSecondaryAccountNumber: string;
+  strSecondaryIfscCode: string;
+  blnSecondaryIsActive: boolean;
   blnIsPrimary: boolean;
   blnIsActive: boolean;
 };
