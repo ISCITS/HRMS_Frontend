@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
   const [strError, setStrError] = useState("");
-  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
+  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null | undefined>(undefined);
   const [intReloadKey, setIntReloadKey] = useState(0);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function DashboardPage() {
     setBlnLoading(true);
     setStrError("");
 
-    Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard(strSelectedPayrollMonth)])
+    Promise.all([authApiService.getCurrentUser(), authApiService.getDashboard(strSelectedPayrollMonth ?? null)])
       .then(([objUserResult, objDashboardResult]) => {
         if (!blnMounted) {
           return;
@@ -95,6 +95,7 @@ export default function DashboardPage() {
     <RoleBasedDashboard
       objDashboard={objDashboard}
       objUserContext={objUserContext}
+      strSelectedPayrollMonth={strSelectedPayrollMonth}
       t={t}
       onPayrollMonthChange={setStrSelectedPayrollMonth}
       onRefresh={() => setIntReloadKey((intValue) => intValue + 1)}
