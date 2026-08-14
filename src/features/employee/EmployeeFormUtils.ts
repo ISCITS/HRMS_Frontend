@@ -60,6 +60,11 @@ export const dicEmptyEmployeeBankForm: EmployeeBankFormValues = {
   strAccountHolderName: "",
   strAccountNumber: "",
   strIfscCode: "",
+  intSecondaryBankID: "",
+  strSecondaryAccountHolderName: "",
+  strSecondaryAccountNumber: "",
+  strSecondaryIfscCode: "",
+  blnSecondaryIsActive: false,
   blnIsPrimary: true,
   blnIsActive: true
 };
@@ -130,7 +135,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     intLocationID: dicRecord.intLocationID ?? "",
     intPayrollGroupID: dicRecord.intPayrollGroupID ?? "",
     intManagerEmployeeID: dicRecord.intManagerEmployeeID ?? "",
-    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? "",
+    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? dicRecord.intManagerEmployeeID ?? "",
     strWorkEmail: dicRecord.strWorkEmail ?? "",
     strPersonalEmail: dicRecord.strPersonalEmail ?? "",
     strMobileNumber: dicRecord.strMobileNumber ?? "",
@@ -161,6 +166,11 @@ export function toEmployeeBankFormValues(dicRecord: EmployeeBankRecord): Employe
     strAccountHolderName: dicRecord.strAccountHolderName ?? "",
     strAccountNumber: dicRecord.strAccountNumber ?? "",
     strIfscCode: dicRecord.strIfscCode ?? "",
+    intSecondaryBankID: dicRecord.intSecondaryBankID ?? "",
+    strSecondaryAccountHolderName: dicRecord.strSecondaryAccountHolderName ?? "",
+    strSecondaryAccountNumber: dicRecord.strSecondaryAccountNumber ?? "",
+    strSecondaryIfscCode: dicRecord.strSecondaryIfscCode ?? "",
+    blnSecondaryIsActive: dicRecord.blnSecondaryIsActive ?? false,
     blnIsPrimary: dicRecord.blnIsPrimary,
     blnIsActive: dicRecord.blnIsActive
   };
@@ -238,6 +248,8 @@ export function validateEmployeeForm(
     joiningDateRequired: dicConstant.employeeMaster.validation.joiningDateRequired,
     employmentTypeRequired: dicConstant.employeeMaster.validation.employmentTypeRequired,
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
+    reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
+    lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -275,6 +287,15 @@ export function validateEmployeeForm(
 
   if (dicForm.intLocationID === "") {
     dicNextErrors.intLocationID = dicValidationLabels.locationRequired;
+  }
+
+  // Reporting Manager is required for a complete employee record.
+  if (dicForm.intManagerEmployeeID === "") {
+    dicNextErrors.intManagerEmployeeID = dicValidationLabels.reportingManagerRequired;
+  }
+
+  if (dicForm.intLineManagerEmployeeID === "") {
+    dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
   }
 
   if (strWorkEmail && !isEmailValid(strWorkEmail)) {

@@ -194,6 +194,37 @@
   min-height: 0;
 }
 
+.salaryStructureAmountTable :is(th, td):nth-child(4),
+.salaryStructureAmountTable :is(th, td):nth-child(5),
+.revisionHistoryAmountTable :is(th, td):nth-child(4),
+.revisionHistoryAmountTable :is(th, td):nth-child(5),
+.flexiAmountTable :is(th, td):nth-child(3),
+.flexiAmountTable :is(th, td):nth-child(4),
+.flexiAmountTable :is(th, td):nth-child(5),
+.flexiCompactAmountTable :is(th, td):nth-child(2),
+.flexiCompactAmountTable :is(th, td):nth-child(3),
+.flexiCompactAmountTable :is(th, td):nth-child(4),
+.flexiCompactAmountTable :is(th, td):nth-child(5),
+.overrideSimpleAmountTable :is(th, td):nth-child(2),
+.overrideSimpleAmountTable :is(th, td):nth-child(3),
+.overrideSimpleAmountTable :is(th, td):nth-child(4),
+.overrideSimpleAmountTable :is(th, td):nth-child(5),
+.overrideSimpleAmountTable :is(th, td):nth-child(6),
+.overrideDetailedAmountTable :is(th, td):nth-child(4),
+.overrideDetailedAmountTable :is(th, td):nth-child(5),
+.overrideDetailedAmountTable :is(th, td):nth-child(6),
+.overrideDetailedAmountTable :is(th, td):nth-child(7),
+.overrideDetailedAmountTable :is(th, td):nth-child(8) {
+  text-align: right;
+}
+
+.flexiAmountTable :is(td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
+.flexiCompactAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
+.overrideSimpleAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(6)) input,
+.overrideDetailedAmountTable :is(td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8)) input {
+  text-align: right;
+}
+
 .revisionContent {
   flex: 1 1 auto;
   min-height: 0;

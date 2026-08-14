@@ -882,6 +882,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
+  const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1418,7 +1419,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {blnDashboardRoute && blnEssDashboardActive ? null : (
+              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

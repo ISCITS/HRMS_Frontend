@@ -31,10 +31,15 @@ export async function GET(objRequest: Request) {
 
   const strBackendBaseUrl = resolveBackendBaseUrl();
   const objUrl = new URL(objRequest.url);
-  const strVersionQuery = objUrl.searchParams.get("v");
-  const strAvatarUrl = `${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current${strVersionQuery ? `?v=${encodeURIComponent(strVersionQuery)}` : ""}`;
+  const objAvatarUrl = new URL(`${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current`);
+  ["employee_id", "v"].forEach((strQueryName) => {
+    const strQueryValue = objUrl.searchParams.get(strQueryName);
+    if (strQueryValue) {
+      objAvatarUrl.searchParams.set(strQueryName, strQueryValue);
+    }
+  });
 
-  const objBackendResponse = await fetch(strAvatarUrl, {
+  const objBackendResponse = await fetch(objAvatarUrl, {
     method: "GET",
     headers: objHeaders,
     cache: "no-store",
@@ -64,11 +69,14 @@ export async function PUT(objRequest: Request) {
 
   const objFormData = await objRequest.formData();
   const strBackendBaseUrl = resolveBackendBaseUrl();
+  const objUrl = new URL(objRequest.url);
+  const strEmployeeID = objUrl.searchParams.get("employee_id");
+  const strAvatarUrl = `${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current${strEmployeeID ? `?employee_id=${encodeURIComponent(strEmployeeID)}` : ""}`;
   const objHeaders: Record<string, string> = {
     ...buildProtectedProxyRequestHeaders(strAccessToken, "AUTH_AVATAR_UPDATE", objRequest.headers)
   };
   delete objHeaders["Content-Type"];
-  const objBackendResponse = await fetch(`${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current`, {
+  const objBackendResponse = await fetch(strAvatarUrl, {
     method: "PUT",
     headers: objHeaders,
     body: objFormData,
@@ -90,8 +98,11 @@ export async function DELETE(objRequest: Request) {
   }
 
   const strBackendBaseUrl = resolveBackendBaseUrl();
+  const objUrl = new URL(objRequest.url);
+  const strEmployeeID = objUrl.searchParams.get("employee_id");
+  const strAvatarUrl = `${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current${strEmployeeID ? `?employee_id=${encodeURIComponent(strEmployeeID)}` : ""}`;
   const objHeaders = buildProtectedProxyRequestHeaders(strAccessToken, "AUTH_AVATAR_DELETE", objRequest.headers);
-  const objBackendResponse = await fetch(`${strBackendBaseUrl.replace(/\/$/, "")}/api/v1/auth/avatar/current`, {
+  const objBackendResponse = await fetch(strAvatarUrl, {
     method: "DELETE",
     headers: objHeaders,
     cache: "no-store",

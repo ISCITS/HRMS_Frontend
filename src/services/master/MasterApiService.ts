@@ -556,6 +556,12 @@ export type EmployeeBankApiRecord = {
   strAccountNumber: string | null;
   strAccountNumberMasked?: string | null;
   strIfscCode: string | null;
+  intSecondaryBankID: number | null;
+  strSecondaryAccountHolderName: string | null;
+  strSecondaryAccountNumber: string | null;
+  strSecondaryAccountNumberMasked?: string | null;
+  strSecondaryIfscCode: string | null;
+  blnSecondaryIsActive: boolean;
   blnIsPrimary: boolean;
   blnIsActive: boolean;
 };

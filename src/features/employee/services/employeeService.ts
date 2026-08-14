@@ -50,7 +50,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intLocationID: dicValues.intLocationID,
     intPayrollGroupID: normalizeOptionalNumber(dicValues.intPayrollGroupID),
     intManagerEmployeeID: normalizeOptionalNumber(dicValues.intManagerEmployeeID),
-    intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID),
+    intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID || dicValues.intManagerEmployeeID),
     strWorkEmail: dicValues.strWorkEmail.trim() || null,
     strPersonalEmail: dicValues.strPersonalEmail.trim() || null,
     strMobileNumber: dicValues.strMobileNumber.trim() || null,
@@ -160,6 +160,11 @@ export const employeeService = {
       strAccountHolderName: dicValues.strAccountHolderName.trim(),
       strAccountNumber: dicValues.strAccountNumber.trim(),
       strIfscCode: dicValues.strIfscCode.trim() || null,
+      intSecondaryBankID: dicValues.blnSecondaryIsActive ? dicValues.intSecondaryBankID || null : null,
+      strSecondaryAccountHolderName: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountHolderName.trim() || null : null,
+      strSecondaryAccountNumber: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountNumber.trim() || null : null,
+      strSecondaryIfscCode: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryIfscCode.trim() || null : null,
+      blnSecondaryIsActive: dicValues.blnSecondaryIsActive,
       blnIsPrimary: dicValues.blnIsPrimary,
       blnIsActive: dicValues.blnIsActive
     }, objOptions?.strMenuAction);
@@ -175,7 +180,7 @@ export const employeeService = {
     const objResult = await masterApiService.saveEmployeeStatutory(intEmployeeID, {
       strPanNumber: dicValues.strPanNumber.trim() || null,
       strUanNumber: dicValues.strUanNumber.trim() || null,
-      strEsiNumber: dicValues.strEsiNumber.trim() || null,
+      strEsiNumber: dicValues.blnEsiApplicable ? dicValues.strEsiNumber.trim() || null : null,
       strPfNumber: dicValues.blnPfApplicable ? dicValues.strPfNumber.trim() || null : null,
       strTaxRegimeCode: dicValues.strTaxRegimeCode.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
