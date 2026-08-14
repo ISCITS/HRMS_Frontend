@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
@@ -36,7 +36,7 @@ import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Avatar, Box, Button, Chip, Grid, IconButton, Menu, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Avatar, Box, Button, Chip, Grid, IconButton, Menu, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography, useMediaQuery } from "@mui/material";
 
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import { useSetEssDashboardHeaderMode } from "@/components/layout/DashboardHeaderModeContext";
@@ -53,6 +53,7 @@ import { employeeSalaryService } from "@/features/employee-salary/services/emplo
 import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useEssPendingApprovals } from "@/features/dashboard/hooks/useEssPendingApprovals";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 import type { LeaveApplicationDto, LeaveBalanceDto } from "@/features/leave/types";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import type { CurrentUserContext, DashboardQuickAction, DashboardResponse, DashboardWidget } from "@/models/AuthModels";
@@ -267,8 +268,17 @@ type PayrollDashboardTabCode =
   | "payroll_run"
   | "pay_payslips"
   | "reports"
-  | "audit_actions"
-  ;
+  | "audit_actions";
+
+type PayrollShortcutItem = {
+  strCode: string;
+  strLabel: string;
+  strRoutePath: string;
+  objIcon: ReactNode;
+  lstModuleHints: string[];
+  lstActionHints?: string[];
+  lstPermissionCodes?: string[];
+};
 
 const DASHBOARD_COLORS = {
   purple: "#9333EA",
@@ -536,14 +546,106 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
   const objAudit = (objDashboard.audit || {}) as AuditPayload;
   const objDashboardGridSpacing = { xs: 1.25, md: 1.5, xl: 1.75 };
   const strLastUpdated = formatDateTimeLabel(objDashboard.dtGeneratedOn, t);
-  const [strActiveTab, setStrActiveTab] = useState<PayrollDashboardTabCode>("overview");
-  const lstTabs: Array<{ strCode: PayrollDashboardTabCode; strLabel: string; objIcon: ReactNode }> = [
-    { strCode: "overview", strLabel: t("overview", "Overview"), objIcon: <HomeRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "payroll_run", strLabel: t("payroll_run", "Payroll Run"), objIcon: <AssignmentRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "pay_payslips", strLabel: t("pay_payslips", "Pay & Payslips"), objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "reports", strLabel: t("reports", "Reports"), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 16 }} /> },
-    { strCode: "audit_actions", strLabel: t("audit_actions", "Audit & Actions"), objIcon: <RuleFolderRoundedIcon sx={{ fontSize: 16 }} /> },
+  const strActiveTab = "overview" as PayrollDashboardTabCode;
+  const objShortcutActionRights = useActionRights();
+  const [objPayrollShortcutMenuAnchor, setObjPayrollShortcutMenuAnchor] = useState<HTMLElement | null>(null);
+  const blnShowFiveHeaderShortcuts = useMediaQuery("(min-width: 1780px)", { noSsr: true });
+  const blnShowFourHeaderShortcuts = useMediaQuery("(min-width: 1600px)", { noSsr: true });
+  const blnShowThreeHeaderShortcuts = useMediaQuery("(min-width: 1380px)", { noSsr: true });
+  const blnShowTwoHeaderShortcuts = useMediaQuery("(min-width: 1180px)", { noSsr: true });
+  const lstPrimaryShortcuts: PayrollShortcutItem[] = [
+    {
+      strCode: "employee_master",
+      strLabel: t("employee", "Employee"),
+      strRoutePath: "/masters/employee",
+      objIcon: <BadgeRoundedIcon sx={{ fontSize: 16 }} />,
+      lstModuleHints: ["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"],
+      lstActionHints: ["view", "list", "MASTER_EMPLOYEE_VIEW", "MASTER_EMPLOYEE_LIST"],
+    },
+    {
+      strCode: "daily_attendance",
+      strLabel: t("daily_attendance", "Daily Attendance"),
+      strRoutePath: "/attendance/daily",
+      objIcon: <FingerprintRoundedIcon sx={{ fontSize: 16 }} />,
+      lstModuleHints: ["DAILY_ATTENDANCE", "ATTENDANCE", "ATTENDANCE_MANAGEMENT"],
+      lstActionHints: ["view", "list"],
+    },
+    {
+      strCode: "payroll_result",
+      strLabel: t("payroll_result", "Payroll Result"),
+      strRoutePath: "/payroll/results",
+      objIcon: <PaymentsRoundedIcon sx={{ fontSize: 16 }} />,
+      lstModuleHints: [
+        "EMPLOYEE_PAYROLL_RESULT",
+        "EMPLOYEE_PAYROLL_RESULTS",
+        "PAYROLL_RESULT",
+        "PAYROLL_RESULTS",
+        "PAYROLL_PAYROLL_RESULT",
+        "PAYROLL_PAYROLL_RESULTS",
+        "REPORT_PAYROLL_RESULT",
+        "REPORT_PAYROLL_RESULTS",
+      ],
+      lstActionHints: ["view", "list", "get", "PAYROLL_RESULT_VIEW", "PAYROLL_RESULT_LIST"],
+    },
+    {
+      strCode: "settings",
+      strLabel: t("settings", "Settings"),
+      strRoutePath: "/settings",
+      objIcon: <ManageAccountsRoundedIcon sx={{ fontSize: 16 }} />,
+      lstModuleHints: ["SETTINGS"],
+      lstActionHints: ["view", "list", "SETTINGS_VIEW"],
+      lstPermissionCodes: ["SETTINGS_VIEW"],
+    },
+    {
+      strCode: "it_declaration_review",
+      strLabel: t("it_declaration_review", "IT Declaration Review"),
+      strRoutePath: "/payroll/it-declaration-review",
+      objIcon: <DescriptionRoundedIcon sx={{ fontSize: 16 }} />,
+      lstModuleHints: ["IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"],
+      lstActionHints: ["view", "list", "review", "PAYROLL_IT_DECLARATION_VIEW", "PAYROLL_IT_DECLARATION_REVIEW"],
+      lstPermissionCodes: ["PAYROLL_IT_DECLARATION_VIEW", "PAYROLL_IT_DECLARATION_REVIEW"],
+    },
   ];
+  const lstOverflowShortcuts: PayrollShortcutItem[] = [
+    {
+      strCode: "employee_salary",
+      strLabel: t("employee_salary", "Employee Salary"),
+      strRoutePath: "/employee-salary",
+      objIcon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} />,
+      lstModuleHints: ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"],
+      lstActionHints: ["view", "list", "EMPLOYEE_SALARY_VIEW", "EMPLOYEE_SALARY_LIST"],
+      lstPermissionCodes: ["EMPLOYEE_SALARY_VIEW", "EMPLOYEE_SALARY_LIST"],
+    },
+    {
+      strCode: "leave_application_register",
+      strLabel: t("leave_application_register", "Leave Application Register"),
+      strRoutePath: "/reports/leave/applications",
+      objIcon: <AssignmentRoundedIcon sx={{ fontSize: 18 }} />,
+      lstModuleHints: ["LEAVE_APPLICATION", "LEAVE_APPLICATIONS", "LEAVE", "LEAVE_MANAGEMENT", "REPORT_LEAVE_APPLICATIONS"],
+      lstActionHints: ["view", "list", "report"],
+    },
+  ];
+  const lstPermittedPrimaryShortcuts = useMemo(
+    () => lstPrimaryShortcuts.filter((objShortcut) => canAccessPayrollShortcut(objShortcut, objShortcutActionRights)),
+    [lstPrimaryShortcuts, objShortcutActionRights],
+  );
+  const lstPermittedOverflowShortcuts = useMemo(
+    () => lstOverflowShortcuts.filter((objShortcut) => canAccessPayrollShortcut(objShortcut, objShortcutActionRights)),
+    [lstOverflowShortcuts, objShortcutActionRights],
+  );
+  const intVisibleHeaderShortcutCount = blnShowFiveHeaderShortcuts
+    ? 5
+    : blnShowFourHeaderShortcuts
+      ? 4
+      : blnShowThreeHeaderShortcuts
+        ? 3
+        : blnShowTwoHeaderShortcuts
+          ? 2
+          : 1;
+  const lstVisibleHeaderShortcuts = lstPermittedPrimaryShortcuts.slice(0, intVisibleHeaderShortcutCount);
+  const lstMenuShortcuts = [...lstPermittedPrimaryShortcuts.slice(intVisibleHeaderShortcutCount), ...lstPermittedOverflowShortcuts];
+  const blnAllMonthsSelected = strSelectedMonth === strAllMonthsValue;
+  const strSelectedMonthLongLabel = blnAllMonthsSelected ? "" : formatLongMonth(strSelectedMonth, t);
   const objAttendanceTodayPayload = ((objAttendanceTodayWidget?.objPayload as Record<string, unknown> | undefined) || {});
   const objAttendanceKpiWidget: DashboardWidget = {
     strWidgetCode: "attendance_today",
@@ -587,107 +689,200 @@ function PayrollDashboard({ objDashboard, t, onPayrollMonthChange, onRefresh, bl
         boxSizing: "border-box",
       }}
     >
-      <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", lg: "center" }} spacing={1.25} sx={{ px: 0.2, py: 0.15 }}>
-        <Stack direction="row" spacing={1.25} alignItems="flex-start">
-          <Box sx={{ width: 48, height: 48, borderRadius: "16px", background: DASHBOARD_COLORS.gradient, color: "#fff", display: "grid", placeItems: "center", boxShadow: "0 12px 28px rgba(99,102,241,0.28)", flexShrink: 0 }}>
-            <CalendarMonthRoundedIcon sx={{ fontSize: 21 }} />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, letterSpacing: "-0.02em", fontSize: { xs: "1.12rem", md: "1.35rem" }, lineHeight: 1.15 }}>
-              {t("payroll_dashboard", "Payroll Dashboard")}
-            </Typography>
-            <Typography sx={{ mt: 0.25, color: "#5B6B87", fontSize: "0.83rem" }}>
-              {t("payroll_dashboard_subtitle", "Real-time overview of payroll health and key insights")}
-            </Typography>
-          </Box>
-        </Stack>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={0.9} alignItems={{ xs: "stretch", sm: "center" }}>
-          <Select
-            value={strSelectedMonth}
-            onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
-            variant="standard"
-            disableUnderline
-            IconComponent={KeyboardArrowDownRoundedIcon}
+      <Paper
+        sx={{
+          px: { xs: 1.1, lg: 1.4 },
+          py: 1.7,
+          borderRadius: "20px",
+          border: "none",
+          boxShadow: "0 10px 30px rgba(37,99,235,0.28)",
+          background: DASHBOARD_COLORS.navGradient,
+          overflow: "hidden",
+        }}
+      >
+        <Stack spacing={0.9}>
+          <Box
             sx={{
-              minWidth: { xs: "100%", sm: 305 },
-              px: 1.15,
-              py: 0.15,
-              borderRadius: "16px",
-              border: `1px solid ${DASHBOARD_COLORS.border}`,
-              backgroundColor: "#FFFFFF",
-              fontWeight: 700,
-              color: DASHBOARD_COLORS.text,
-              minHeight: 38,
-              "& .MuiSelect-select": { py: 0.95, pr: 4 },
-              "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 10 },
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                lg: "minmax(360px, 35vw) minmax(0, 1fr)",
+                xl: "minmax(420px, 36vw) minmax(0, 1fr)",
+              },
+              alignItems: "center",
+              gap: 1.25,
+              minWidth: 0,
             }}
-            renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
           >
-            <MenuItem value={strAllMonthsValue}>
-              {t("all_months", "All Months")}
-            </MenuItem>
-            {objNormalizedMonthOptions.map((strMonth) => (
-              <MenuItem key={strMonth} value={strMonth}>
-                {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
-              </MenuItem>
-            ))}
-          </Select>
-          <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
-                onClick={onRefresh}
-                disabled={blnRefreshing}
-                sx={{ minWidth: 104, height: 46, borderRadius: "16px", textTransform: "none", borderColor: DASHBOARD_COLORS.border, color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff", boxShadow: "0 8px 24px rgba(15,23,42,0.08)" }}
-              >
-                {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
-              </Button>
-            </span>
-          </Tooltip>
-        </Stack>
-      </Stack>
-
-      <Paper sx={{ px: 0.55, py: 0.45, borderRadius: "16px", border: "none", boxShadow: "0 10px 30px rgba(99,102,241,0.25)", background: DASHBOARD_COLORS.navGradient, overflowX: "auto" }}>
-        <Stack direction="row" spacing={0.25} sx={{ minWidth: "max-content" }}>
-          {lstTabs.map((objTab) => {
-            const blnActive = strActiveTab === objTab.strCode;
-            return (
-              <Button
-                key={objTab.strCode}
-                onClick={() => setStrActiveTab(objTab.strCode)}
-                startIcon={objTab.objIcon}
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 62, height: 62, borderRadius: "17px", background: "rgba(255,255,255,0.18)", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#FFFFFF", fontWeight: 800, fontSize: { xs: "1.5rem", md: "1.8rem" }, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {t("payroll_dashboard", "HR Dashboard")}
+                </Typography>
+                <Typography sx={{ mt: 0.3, color: "rgba(255,255,255,0.85)", fontSize: "1rem", whiteSpace: { xs: "normal", md: "nowrap" }, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {t("payroll_dashboard_subtitle", "Real-time overview of payroll health and HR operations")}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack
+              direction="row"
+              spacing={0.6}
+              alignItems="center"
+              justifyContent={{ xs: "flex-start", lg: "flex-end" }}
+              sx={{
+                width: "100%",
+                minWidth: 0,
+                flexWrap: "nowrap",
+                overflow: "hidden",
+                overflowY: "hidden",
+                pb: 0.15,
+                "& > *": { flexShrink: 0 },
+              }}
+            >
+              {lstVisibleHeaderShortcuts.map((objShortcut) => (
+                <Button
+                  key={objShortcut.strCode}
+                  component={Link}
+                  href={objShortcut.strRoutePath}
+                  startIcon={objShortcut.objIcon}
+                  sx={{
+                    px: 0.95,
+                    py: 0.65,
+                    minWidth: 0,
+                    maxWidth: objShortcut.strCode === "it_declaration_review" ? 205 : objShortcut.strCode === "daily_attendance" ? 162 : 136,
+                    height: 34,
+                    flexShrink: 0,
+                    borderRadius: "11px",
+                    border: "1px solid rgba(255,255,255,0.6)",
+                    color: "#1E3A5F",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    fontSize: "0.74rem",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "rgba(255,255,255,0.92)",
+                    boxShadow: "none",
+                    transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
+                    "& .MuiButton-startIcon": {
+                      marginRight: 0.55,
+                      marginLeft: 0,
+                      flexShrink: 0,
+                    },
+                    "& .MuiButton-startIcon + *": {
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    },
+                    "&:hover": {
+                      transform: "scale(1.03)",
+                      backgroundColor: "#FFFFFF",
+                      boxShadow: "0 0 0 2px rgba(255,255,255,0.35), 0 8px 18px rgba(0,0,0,0.14)",
+                    },
+                    "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
+                      color: "#1E3A5F",
+                    },
+                  }}
+                >
+                  {objShortcut.strLabel}
+                </Button>
+              ))}
+              {lstMenuShortcuts.length > 0 ? (
+                <>
+                  <IconButton
+                    aria-label={t("more_shortcuts", "More shortcuts")}
+                    onClick={(objEvent) => setObjPayrollShortcutMenuAnchor(objEvent.currentTarget)}
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      flexShrink: 0,
+                      color: "#1E3A5F",
+                      border: "1px solid rgba(255,255,255,0.6)",
+                      backgroundColor: "rgba(255,255,255,0.55)",
+                      "&:hover": { backgroundColor: "rgba(255,255,255,0.75)" },
+                    }}
+                  >
+                    <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                  <Menu
+                    anchorEl={objPayrollShortcutMenuAnchor}
+                    open={Boolean(objPayrollShortcutMenuAnchor)}
+                    onClose={() => setObjPayrollShortcutMenuAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    PaperProps={{ sx: { mt: 0.75, minWidth: 240, borderRadius: "10px", boxShadow: "0 16px 36px rgba(15,23,42,0.18)" } }}
+                  >
+                    {lstMenuShortcuts.map((objShortcut) => (
+                      <MenuItem
+                        key={objShortcut.strCode}
+                        component={Link}
+                        href={objShortcut.strRoutePath}
+                        onClick={() => setObjPayrollShortcutMenuAnchor(null)}
+                        sx={{ gap: 1, py: 1, fontSize: "0.86rem", fontWeight: 700, color: "#1E3A5F" }}
+                      >
+                        {objShortcut.objIcon}
+                        {objShortcut.strLabel}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                  <Box
+                    sx={{
+                      width: "1px",
+                      height: 24,
+                      flexShrink: 0,
+                      mx: 0.2,
+                      backgroundColor: "rgba(255,255,255,0.55)",
+                    }}
+                  />
+                </>
+              ) : null}
+              <Select
+                value={strSelectedMonth}
+                onChange={(objEvent) => setStrSelectedMonth(String(objEvent.target.value || ""))}
+                variant="standard"
+                disableUnderline
+                IconComponent={KeyboardArrowDownRoundedIcon}
                 sx={{
-                  px: 1.02,
-                  py: 1.02,
-                  minWidth: "auto",
+                  width: { xs: 212, sm: 230 },
+                  flexShrink: 0,
+                  px: 0.95,
+                  py: 0,
                   borderRadius: "12px",
-                  borderBottom: "none",
-                  color: blnActive ? "#6D28D9" : "#FFFFFF",
-                  fontWeight: blnActive ? 800 : 700,
-                  textTransform: "none",
-                  fontSize: "0.74rem",
-                  whiteSpace: "nowrap",
-                  backgroundColor: blnActive ? "#FFFFFF" : "transparent",
-                  boxShadow: blnActive ? "0 8px 24px rgba(0,0,0,0.12)" : "none",
-                  transition: "transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
-                  "& .MuiButton-startIcon": {
-                    marginRight: 0.55,
-                    marginLeft: 0,
-                  },
-                  "&:hover": {
-                    transform: "scale(1.03)",
-                    backgroundColor: blnActive ? "#FFFFFF" : "rgba(255,255,255,0.12)",
-                  },
-                  "& .MuiButton-startIcon, & .MuiSvgIcon-root": {
-                    color: blnActive ? "#6D28D9" : "#FFFFFF",
-                  },
+                  border: "none",
+                  backgroundColor: "#FFFFFF",
+                  fontWeight: 700,
+                  fontSize: "0.76rem",
+                  color: DASHBOARD_COLORS.text,
+                  height: 34,
+                  "& .MuiSelect-select": { py: 0.5, pr: 3 },
+                  "& .MuiSvgIcon-root": { color: DASHBOARD_COLORS.muted, right: 8, fontSize: "1.05rem" },
                 }}
+                renderValue={(strValue) => `${t("payroll_period", "Payroll Period")}: ${formatPayrollMonthSelectionLabel(String(strValue), t)}`}
               >
-                {objTab.strLabel}
-              </Button>
-            );
-          })}
+                <MenuItem value={strAllMonthsValue}>
+                  {t("all_months", "All Months")}
+                </MenuItem>
+                {objNormalizedMonthOptions.map((strMonth) => (
+                  <MenuItem key={strMonth} value={strMonth}>
+                    {`${formatLongMonth(strMonth, t)} ${t("payroll", "Payroll")}`}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Tooltip title={strError ? strError : t("refresh_dashboard", "Refresh dashboard")}>
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={<RefreshRoundedIcon sx={{ fontSize: 13 }} />}
+                    onClick={onRefresh}
+                    disabled={blnRefreshing}
+                    sx={{ minWidth: 88, height: 34, px: 1.1, borderRadius: "12px", textTransform: "none", fontSize: "0.76rem", border: "none", color: DASHBOARD_COLORS.text, fontWeight: 700, backgroundColor: "#fff", whiteSpace: "nowrap" }}
+                  >
+                    {blnRefreshing ? t("refreshing", "Refreshing") : t("refresh", "Refresh")}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
+          </Box>
         </Stack>
       </Paper>
 
@@ -3403,6 +3598,79 @@ function formatStatusText(strStatus: string, t: RoleBasedDashboardProps["t"]) {
     .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
     .join(" ");
   return dashboardTextFallback(strKey, t, strFallback);
+}
+
+type ShortcutActionRights = ReturnType<typeof useActionRights>;
+
+function normalizeShortcutAccessCode(strValue: string) {
+  return strValue.trim().toUpperCase().replace(/[-\s]/g, "_");
+}
+
+function compactShortcutAccessCode(strValue: string) {
+  return normalizeShortcutAccessCode(strValue).replace(/_/g, "");
+}
+
+function resolveShortcutModuleCodes(objShortcut: PayrollShortcutItem, objActionRights: ShortcutActionRights) {
+  const lstKnownCodes = Object.keys(objActionRights.objRights.dicAllowedActions ?? {});
+  const lstNormalizedHints = objShortcut.lstModuleHints.map(normalizeShortcutAccessCode);
+  const setExactMatches = new Set(
+    lstKnownCodes.filter((strModuleCode) => {
+      const strNormalizedCode = normalizeShortcutAccessCode(strModuleCode);
+      const strCompactKnownCode = compactShortcutAccessCode(strModuleCode);
+      return lstNormalizedHints.some((strHint) =>
+        strNormalizedCode === strHint || strCompactKnownCode === compactShortcutAccessCode(strHint)
+      );
+    }),
+  );
+  if (setExactMatches.size > 0) {
+    return Array.from(setExactMatches);
+  }
+
+  const setPrefixMatches = new Set(
+    lstKnownCodes.filter((strModuleCode) => {
+      const strNormalizedCode = normalizeShortcutAccessCode(strModuleCode);
+      const strCompactKnownCode = compactShortcutAccessCode(strModuleCode);
+      return lstNormalizedHints.some((strHint) => {
+        const strCompactHint = compactShortcutAccessCode(strHint);
+        return (
+          strNormalizedCode.startsWith(`${strHint}_`) ||
+          strHint.startsWith(`${strNormalizedCode}_`) ||
+          strCompactKnownCode.startsWith(strCompactHint) ||
+          strCompactHint.startsWith(strCompactKnownCode)
+        );
+      });
+    }),
+  );
+  return setPrefixMatches.size > 0 ? Array.from(setPrefixMatches) : objShortcut.lstModuleHints;
+}
+
+function hasShortcutPermissionCode(strPermissionCode: string, objActionRights: ShortcutActionRights) {
+  const strNormalizedPermissionCode = normalizeShortcutAccessCode(strPermissionCode);
+  const strCompactPermissionCode = compactShortcutAccessCode(strPermissionCode);
+  return Object.values(objActionRights.objRights.dicAllowedActions ?? {}).some((lstActions) =>
+    lstActions.some((strActionCode) => {
+      const strNormalizedActionCode = normalizeShortcutAccessCode(strActionCode);
+      return strNormalizedActionCode === strNormalizedPermissionCode || compactShortcutAccessCode(strActionCode) === strCompactPermissionCode;
+    }),
+  );
+}
+
+function canAccessPayrollShortcut(objShortcut: PayrollShortcutItem, objActionRights: ShortcutActionRights) {
+  if (objActionRights.blnLoading) {
+    return false;
+  }
+  const lstResolvedModuleCodes = resolveShortcutModuleCodes(objShortcut, objActionRights);
+  if (lstResolvedModuleCodes.some((strModuleCode) => objActionRights.canViewModule(strModuleCode))) {
+    return true;
+  }
+  if (
+    (objShortcut.lstActionHints ?? []).some((strActionCode) =>
+      lstResolvedModuleCodes.some((strModuleCode) => objActionRights.canDo(strModuleCode, strActionCode)),
+    )
+  ) {
+    return true;
+  }
+  return (objShortcut.lstPermissionCodes ?? []).some((strPermissionCode) => hasShortcutPermissionCode(strPermissionCode, objActionRights));
 }
 
 
