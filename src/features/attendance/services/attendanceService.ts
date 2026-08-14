@@ -25,6 +25,9 @@ import type {
   DailyAttendanceBulkFillRangeRequest,
   DailyAttendanceBulkFillRangeResult,
   DailyAttendanceBulkResult,
+  DailyAttendanceFinalizeRequest,
+  DailyAttendanceFinalizeResult,
+  DailyAttendanceOverrideRequest,
   DailyAttendanceRow,
   DailyAttendanceSaveRow,
 } from "@/features/attendance/types";
@@ -35,6 +38,7 @@ import type {
 
 const ATTENDANCE_VIEW = "ATTENDANCE_VIEW";
 const ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
+const ATTENDANCE_CORRECTION = "ATTENDANCE_CORRECTION";
 const HOLIDAY_MASTER_VIEW = "HOLIDAY_MASTER_VIEW";
 const HOLIDAY_MASTER_CREATE = "HOLIDAY_MASTER_CREATE";
 const HOLIDAY_MASTER_EDIT = "HOLIDAY_MASTER_EDIT";
@@ -201,6 +205,28 @@ export const attendanceService = {
     const objResult = await requestApi<DailyAttendanceBulkFillRangeResult>({
       strPath: "/attendance/daily/bulk-fill-range",
       strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // Row-level HR Edit/Override (Developer Guide Section E) - gated by the dedicated
+  // ATTENDANCE_CORRECTION permission, distinct from general ATTENDANCE_MANAGE.
+  async saveDailyOverride(objPayload: DailyAttendanceOverrideRequest): Promise<DailyAttendanceRow> {
+    const objResult = await requestApi<DailyAttendanceRow>({
+      strPath: "/attendance/daily",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_CORRECTION,
+    });
+    return objResult.Data;
+  },
+
+  async finalizeAttendance(objPayload: DailyAttendanceFinalizeRequest): Promise<DailyAttendanceFinalizeResult> {
+    const objResult = await requestApi<DailyAttendanceFinalizeResult>({
+      strPath: "/attendance/daily/finalize",
+      strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: ATTENDANCE_MANAGE,
     });

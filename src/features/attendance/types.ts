@@ -120,10 +120,15 @@ export type DailyAttendanceSaveRow = {
   tmLastOut: string | null;
   decWorkedHours: number;
   intLateMinutes: number;
+  intEarlyMinutes: number;
   decOtHours: number;
   blnIsPaid: boolean;
   strRemark: string | null;
 };
+
+// Single-row HR Edit/Override payload (Attendance Finalization POC stabilization,
+// Developer Guide Section E). Reason is mandatory whenever the row already exists.
+export type DailyAttendanceOverrideRequest = DailyAttendanceSaveRow & { dtWorkDate: string };
 
 export type DailyAttendanceValidationResult = { intRowIndex: number; intEmployeeID: number; blnValid: boolean; strErrorCode: string | null; strMessage: string | null };
 export type DailyAttendanceBulkResult = { blnSaved: boolean; intSavedCount: number; lstResults: DailyAttendanceValidationResult[] };
@@ -144,4 +149,29 @@ export type DailyAttendanceBulkFillRangeResult = {
   intSkippedCount: number;
   lstCreatedDates: string[];
   lstSkipped: DailyAttendanceBulkFillSkippedDay[];
+};
+
+export type DailyAttendanceFinalizeRequest = {
+  dtWorkDate: string;
+  intDepartmentID?: number;
+  intLocationID?: number;
+  intEmployeeID?: number;
+};
+
+export type DailyAttendanceFinalizeSkippedEmployee = {
+  intEmployeeID: number;
+  strEmployeeCode?: string | null;
+  strReason: string;
+  strMissingDirection?: string | null;
+};
+
+export type DailyAttendanceFinalizeConfigError = { intEmployeeID: number; strEmployeeCode?: string | null; strReason: string };
+
+export type DailyAttendanceFinalizeResult = {
+  dtWorkDate: string;
+  intProcessed: number;
+  intFinalized: number;
+  intExceptionsCreated: number;
+  lstSkipped: DailyAttendanceFinalizeSkippedEmployee[];
+  lstConfigurationErrors: DailyAttendanceFinalizeConfigError[];
 };
