@@ -35,7 +35,6 @@ import LookupChip, {
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
-  AssignableUser,
   BulkActionResult,
   DateContext,
   ExceptionFilters,
@@ -73,22 +72,14 @@ export default function AttendanceExceptionsPage() {
   });
   const [intPage, setIntPage] = useState(1);
   const [setSelected, setSetSelected] = useState<Set<number>>(new Set());
-  const [lstUsers, setLstUsers] = useState<AssignableUser[]>([]);
   const [objSelected, setObjSelected] = useState<ExceptionRecord | null>(null);
   const [objDetail, setObjDetail] = useState<Record<string, unknown> | null>(
     null,
   );
   const [objDialog, setObjDialog] = useState<{
-    strAction:
-      | "assign"
-      | "ignore"
-      | "resolve"
-      | "bulk-assign"
-      | "bulk-ignore"
-      | "create-request";
+    strAction: "ignore" | "resolve" | "bulk-ignore" | "create-request";
     objException?: ExceptionRecord;
   } | null>(null);
-  const [intAssigneeID, setIntAssigneeID] = useState<number | "">("");
   const [strReason, setStrReason] = useState("");
   const [strResolutionCode, setStrResolutionCode] = useState("");
   const [objRequestDraft, setObjRequestDraft] =
@@ -146,25 +137,11 @@ export default function AttendanceExceptionsPage() {
   const objDrilldownContext = objDetail?.objContext as DateContext | undefined;
   const blnCanGenerate = canDoAny("ATT_EXCEPTION_GENERATE");
   const blnCanExport = canDoAny("ATT_EXCEPTION_EXPORT");
-  const blnCanAssign = canDoAny("ATT_EXCEPTION_ASSIGN");
   const blnCanReview = canDoAny("ATT_EXCEPTION_REVIEW");
   const blnCanResolve = canDoAny("ATT_EXCEPTION_RESOLVE");
   const blnCanIgnore = canDoAny("ATT_EXCEPTION_IGNORE");
-  const blnCanBulkAssign = canDoAny("ATT_EXCEPTION_BULK_ASSIGN");
   const blnCanBulkIgnore = canDoAny("ATT_EXCEPTION_BULK_IGNORE");
   const blnCanCreateRequest = canDoAny("ATT_EXCEPTION_CREATE_REQUEST");
-
-  async function openAssign(objException?: ExceptionRecord, blnBulk = false) {
-    try {
-      setLstUsers(await attendanceRegularizationService.listAssignableUsers());
-    } catch {
-      setLstUsers([]);
-    }
-    setObjDialog({
-      strAction: blnBulk ? "bulk-assign" : "assign",
-      objException,
-    });
-  }
 
   async function runDialogAction() {
     if (!objDialog) return;
@@ -172,16 +149,6 @@ export default function AttendanceExceptionsPage() {
     setObjBulkResult(null);
     try {
       if (
-        objDialog.strAction === "assign" &&
-        objDialog.objException &&
-        intAssigneeID
-      ) {
-        await attendanceRegularizationService.exceptionAction(
-          objDialog.objException.intID,
-          "assign",
-          { intAssignedToUserID: intAssigneeID },
-        );
-      } else if (
         objDialog.strAction === "ignore" &&
         objDialog.objException &&
         strReason.trim()
@@ -204,19 +171,6 @@ export default function AttendanceExceptionsPage() {
             strResolutionCode: strResolutionCode.trim(),
             strResolutionRemarks: strReason.trim(),
           },
-        );
-      } else if (objDialog.strAction === "bulk-assign" && intAssigneeID) {
-        const objResult = await attendanceRegularizationService.bulkAssign(
-          Array.from(setSelected),
-          intAssigneeID,
-        );
-        setObjBulkResult(objResult);
-        setSetSelected(
-          new Set(
-            objResult.lstResults
-              .filter((objItem) => !objItem.blnSuccess)
-              .map((objItem) => objItem.intExceptionID),
-          ),
         );
       } else if (objDialog.strAction === "bulk-ignore" && strReason.trim()) {
         const objResult = await attendanceRegularizationService.bulkIgnore(
@@ -255,7 +209,6 @@ export default function AttendanceExceptionsPage() {
       setObjDialog(null);
       setStrReason("");
       setStrResolutionCode("");
-      setIntAssigneeID("");
       await loadQueue();
     } catch (objError) {
       setStrError(
@@ -553,7 +506,6 @@ export default function AttendanceExceptionsPage() {
               <MenuItem value="detected_on">{t("detected_on", "Detected On")}</MenuItem>
               <MenuItem value="work_date">{t("work_date", "Work Date")}</MenuItem>
               <MenuItem value="employee">{t("employee", "Employee")}</MenuItem>
-              <MenuItem value="assignee">{t("assignee", "Assignee")}</MenuItem>
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.55}>
@@ -612,14 +564,6 @@ export default function AttendanceExceptionsPage() {
           severity="info"
           action={
             <Stack direction="row">
-              {blnCanBulkAssign ? (
-                <Button
-                  data-control-id="attendance-exceptions.bulk-assign.button"
-                  onClick={() => void openAssign(undefined, true)}
-                >
-                  {t("bulk_assign", "Bulk Assign")}
-                </Button>
-              ) : null}
               {blnCanBulkIgnore ? (
                 <Button
                   data-control-id="attendance-exceptions.bulk-ignore.button"
@@ -676,7 +620,6 @@ export default function AttendanceExceptionsPage() {
                 <TableCell>{t("severity", "Severity")}</TableCell>
                 <TableCell>{t("status", "Status")}</TableCell>
                 <TableCell>{t("punch_request", "Punch / Request")}</TableCell>
-                <TableCell>{t("assignee", "Assignee")}</TableCell>
                 <TableCell>{t("age", "Age")}</TableCell>
                 <TableCell>{t("actions", "Actions")}</TableCell>
               </TableRow>
@@ -729,7 +672,6 @@ export default function AttendanceExceptionsPage() {
                       ? `${t("request", "Request")} #${objItem.intRequestID}`
                       : objItem.strExceptionMessage}
                   </TableCell>
-                  <TableCell>{objItem.intAssignedToUserID ?? "—"}</TableCell>
                   <TableCell>
                     {objItem.intAgeingDays} {t("days", "days")}
                   </TableCell>
@@ -741,14 +683,6 @@ export default function AttendanceExceptionsPage() {
                       >
                         {t("view", "View")}
                       </Button>
-                      {blnCanAssign ? (
-                        <Button
-                          data-control-id={`attendance-exceptions.${objItem.intID}.assign.button`}
-                          onClick={() => void openAssign(objItem)}
-                        >
-                          {t("assign", "Assign")}
-                        </Button>
-                      ) : null}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -959,26 +893,7 @@ export default function AttendanceExceptionsPage() {
           {t(`action_${objDialog?.strAction ?? "manage"}`, "Exception Action")}
         </DialogTitle>
         <DialogContent>
-          {objDialog?.strAction.includes("assign") ? (
-            <TextField
-              data-control-id="attendance-exceptions.action.assignee.select"
-              select
-              fullWidth
-              required
-              label={t("assignee", "Assignee")}
-              value={intAssigneeID}
-              onChange={(objEvent) =>
-                setIntAssigneeID(Number(objEvent.target.value))
-              }
-              sx={{ mt: 1 }}
-            >
-              {lstUsers.map((objUser) => (
-                <MenuItem key={objUser.intUserID} value={objUser.intUserID}>
-                  {objUser.strLoginName ?? objUser.strEmailAddress}
-                </MenuItem>
-              ))}
-            </TextField>
-          ) : objDialog?.strAction === "create-request" ? (
+          {objDialog?.strAction === "create-request" ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
                 data-control-id="attendance-exceptions.request.type.select"
