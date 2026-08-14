@@ -5,7 +5,6 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   Alert,
   Box,
@@ -155,7 +154,6 @@ export default function EssAttendancePanel() {
     "ESS_ATTENDANCE",
     "ESS_MY_ATTENDANCE",
     "MY_ATTENDANCE",
-    "ATTENDANCE",
   ]);
   const { canViewAny: canViewRegularization } = useModuleActionAccess([
     "ESS_ATTENDANCE_REGULARIZATION",
@@ -187,6 +185,7 @@ export default function EssAttendancePanel() {
     strMessage: "",
     strSeverity: "success",
   });
+  const blnCanViewMyAttendance = canViewAny();
 
   const objMonthBounds = useMemo(() => getMonthBounds(objMonth), [objMonth]);
   const lstDisplayDays = useMemo(() => {
@@ -285,8 +284,9 @@ export default function EssAttendancePanel() {
   ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday]);
 
   useEffect(() => {
+    if (blnRightsLoading || !blnCanViewMyAttendance) return;
     void loadSelectedMonth();
-  }, [loadSelectedMonth]);
+  }, [blnCanViewMyAttendance, blnRightsLoading, loadSelectedMonth]);
 
   const lstCalendarCells = useMemo(() => {
     const intYear = objMonth.getFullYear();
@@ -363,7 +363,7 @@ export default function EssAttendancePanel() {
   if (blnRightsLoading) {
     return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
   }
-  if (!canViewAny()) {
+  if (!blnCanViewMyAttendance) {
     return <Alert severity="warning">{t("permission_denied", "My Attendance access is not available for your user group.")}</Alert>;
   }
 
@@ -379,7 +379,44 @@ export default function EssAttendancePanel() {
           <Typography component="h1" className="bannerTitle">{t("page_title", "My Attendance")}</Typography>
           <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Punch in or out and review your personal attendance record.")}</Typography>
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1, ml: { md: "auto" } }}>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          justifyContent={{ xs: "flex-start", md: "flex-end" }}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            ml: { md: "auto" },
+            maxWidth: "100%",
+            rowGap: 0.75,
+            "& .MuiButton-root": {
+              height: 40,
+              minHeight: 40,
+              borderRadius: "8px",
+              fontWeight: 800,
+              textTransform: "none",
+            },
+            "& .MuiButton-root.MuiButton-outlined": {
+              bgcolor: "#fff",
+              borderColor: "var(--app-primary-color)",
+              color: "var(--app-primary-color)",
+              "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" },
+            },
+            "& .MuiInputBase-root": {
+              bgcolor: "#fff",
+              height: 40,
+              borderRadius: "8px",
+            },
+            "& .MuiSelect-select": {
+              display: "flex",
+              alignItems: "center",
+              py: 0,
+            },
+          }}
+        >
           <Button
             data-control-id="ess.my-attendance.policy-info.button"
             variant="outlined"
@@ -389,16 +426,41 @@ export default function EssAttendancePanel() {
           >
             {t("my_attendance_policy", "My Attendance Policy")}
           </Button>
-          <Button
-            data-control-id="ess.my-attendance.refresh.button"
-            variant="outlined"
-            startIcon={<RefreshRoundedIcon />}
-            onClick={() => void loadSelectedMonth()}
-            disabled={blnLoading}
-            sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}
+          <Button data-control-id="ess.my-attendance.previous-month.button" variant="outlined" onClick={() => moveMonth(-1)} aria-label={t("previous_month", "Previous month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronLeftRoundedIcon /></Button>
+          <TextField
+            data-control-id="ess.my-attendance.month.select"
+            select
+            size="small"
+            value={objMonth.getMonth()}
+            onChange={(objEvent) => {
+              const objNext = new Date(objMonth.getFullYear(), Number(objEvent.target.value), 1);
+              setObjMonth(objNext);
+              setStrSelectedDate(toLocalISO(objNext));
+            }}
+            sx={{ width: 126 }}
           >
-            {t("refresh", "Refresh")}
-          </Button>
+            {Array.from({ length: 12 }, (_, intMonth) => (
+              <MenuItem key={intMonth} value={intMonth} disabled={objMonth.getFullYear() === objToday.getFullYear() && intMonth > objToday.getMonth()}>
+                {new Date(2020, intMonth, 1).toLocaleString([], { month: "long" })}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            data-control-id="ess.my-attendance.year.select"
+            select
+            size="small"
+            value={objMonth.getFullYear()}
+            onChange={(objEvent) => {
+              const objNext = new Date(Number(objEvent.target.value), objMonth.getMonth(), 1);
+              setObjMonth(objNext);
+              setStrSelectedDate(toLocalISO(objNext));
+            }}
+            sx={{ width: 96 }}
+          >
+            {lstYears.map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)}
+          </TextField>
+          <Button data-control-id="ess.my-attendance.today.button" variant="outlined" onClick={goToToday} sx={{ minWidth: 72, px: 1.5 }}>{t("today", "Today")}</Button>
+          <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
         </Stack>
       </Box>
 
@@ -476,7 +538,13 @@ export default function EssAttendancePanel() {
         <Grid item xs={12} sm={7} md={5}>
           <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: "100%", boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
-            <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} alignItems="stretch">
+            <Stack
+              direction="row"
+              useFlexGap
+              spacing={0.75}
+              alignItems="stretch"
+              sx={{ flexWrap: { xs: "wrap", lg: "nowrap" }, overflowX: { lg: "hidden" } }}
+            >
               {[
                 [t("first_in", "First In"), objSelectedDay?.strFirstIn?.slice(0, 5) ?? "—"],
                 [t("last_out", "Last Out"), objSelectedDay?.strLastOut?.slice(0, 5) ?? "—"],
@@ -491,9 +559,18 @@ export default function EssAttendancePanel() {
                 ...((objSelectedDay?.intEarlyMinutes ?? 0) > 0 ? [[t("early_by", "Early By"), `${objSelectedDay?.intEarlyMinutes} min`]] : []),
                 [t("paid_day", "Paid Day"), objSelectedDay ? (objSelectedDay.blnIsPaid ? t("yes", "Yes") : t("no", "No")) : "—"],
               ].map(([strLabel, strValue]) => (
-                <Box key={strLabel} sx={{ px: 1.25, py: 0.65, minHeight: 52, minWidth: 96, bgcolor: "action.hover", borderRadius: "10px", flex: "0 0 auto" }}>
+                <Box key={strLabel} sx={{ px: 1, py: 0.6, minHeight: 52, minWidth: 86, bgcolor: "action.hover", borderRadius: "10px", flex: "1 1 86px", overflow: "hidden" }}>
                   <Typography variant="caption" lineHeight={1.1} color="text.secondary" noWrap>{strLabel}</Typography>
-                  <Typography variant="body2" lineHeight={1.25} fontWeight={900} sx={{ mt: 0.4, overflowWrap: "anywhere" }}>{strValue}</Typography>
+                  <Typography
+                    variant="body2"
+                    lineHeight={1.25}
+                    fontWeight={900}
+                    title={String(strValue)}
+                    noWrap
+                    sx={{ mt: 0.4, fontSize: { xs: "0.78rem", md: "0.76rem", xl: "0.875rem" }, overflow: "hidden", textOverflow: "ellipsis" }}
+                  >
+                    {strValue}
+                  </Typography>
                 </Box>
               ))}
               <Button
@@ -502,7 +579,7 @@ export default function EssAttendancePanel() {
                 size="small"
                 startIcon={<AccessTimeRoundedIcon />}
                 onClick={() => setBlnTimelineDialogOpen(true)}
-                sx={{ minHeight: 52, px: 1.75, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}
+                sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}
               >
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
@@ -512,7 +589,7 @@ export default function EssAttendancePanel() {
                   variant="outlined"
                   size="small"
                   onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
-                  sx={{ minHeight: 52, px: 1.75, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap", flex: "0 0 auto" }}
+                  sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap", flex: "0 0 auto" }}
                 >
                   {t("regularize", "Regularize")}
                 </Button>
@@ -556,76 +633,7 @@ export default function EssAttendancePanel() {
       </Grid>
 
       <Paper sx={{ p: { xs: 1.25, md: 2 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", boxShadow: 0, overflow: "hidden" }}>
-        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
-          <Typography variant="h6" fontWeight={900}>{t("monthly_history", "Monthly Attendance")}</Typography>
-          <Stack
-            direction="row"
-            spacing={0.75}
-            flexWrap="wrap"
-            alignItems="center"
-            justifyContent={{ xs: "flex-start", md: "flex-end" }}
-            sx={{
-              maxWidth: "100%",
-              rowGap: 0.75,
-              "& .MuiButton-root": {
-                height: 40,
-                minHeight: 40,
-                borderRadius: "8px",
-                fontWeight: 800,
-                textTransform: "none",
-              },
-              "& .MuiButton-root.MuiButton-outlined": {
-                borderColor: "#bfd3ea",
-                color: "#0f4f8d",
-              },
-              "& .MuiInputBase-root": {
-                height: 40,
-                borderRadius: "8px",
-              },
-              "& .MuiSelect-select": {
-                display: "flex",
-                alignItems: "center",
-                py: 0,
-              },
-            }}
-          >
-            <Button data-control-id="ess.my-attendance.previous-month.button" variant="outlined" onClick={() => moveMonth(-1)} aria-label={t("previous_month", "Previous month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronLeftRoundedIcon /></Button>
-            <TextField
-              data-control-id="ess.my-attendance.month.select"
-              select
-              size="small"
-              value={objMonth.getMonth()}
-              onChange={(objEvent) => {
-                const objNext = new Date(objMonth.getFullYear(), Number(objEvent.target.value), 1);
-                setObjMonth(objNext);
-                setStrSelectedDate(toLocalISO(objNext));
-              }}
-              sx={{ width: 126 }}
-            >
-              {Array.from({ length: 12 }, (_, intMonth) => (
-                <MenuItem key={intMonth} value={intMonth} disabled={objMonth.getFullYear() === objToday.getFullYear() && intMonth > objToday.getMonth()}>
-                  {new Date(2020, intMonth, 1).toLocaleString([], { month: "long" })}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              data-control-id="ess.my-attendance.year.select"
-              select
-              size="small"
-              value={objMonth.getFullYear()}
-              onChange={(objEvent) => {
-                const objNext = new Date(Number(objEvent.target.value), objMonth.getMonth(), 1);
-                setObjMonth(objNext);
-                setStrSelectedDate(toLocalISO(objNext));
-              }}
-              sx={{ width: 96 }}
-            >
-              {lstYears.map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)}
-            </TextField>
-            <Button data-control-id="ess.my-attendance.today.button" variant="outlined" onClick={goToToday} sx={{ minWidth: 72, px: 1.5 }}>{t("today", "Today")}</Button>
-            <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
-          </Stack>
-        </Stack>
+        <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>{t("monthly_history", "Monthly Attendance")}</Typography>
 
         {blnLoading ? (
           <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>
