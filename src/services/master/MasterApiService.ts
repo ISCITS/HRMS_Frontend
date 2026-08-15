@@ -181,6 +181,7 @@ export type EssDeclarationCategoryApiRecord = {
   strCategoryName: string;
   strCategoryDescription?: string | null;
   strDeclarationKind: string;
+  strSection?: string | null;
   strApplicableRegime?: "old" | "new" | "both" | string | null;
   intLinkedSalaryComponentID: number | null;
   strLinkedSalaryComponentName?: string | null;
@@ -617,6 +618,20 @@ export type EmployeeFamilyDetailApiRecord = {
   blnIsNominee: boolean;
   decNomineePercentage: number | null;
   strAddress: string | null;
+};
+
+export type DeclarationKindTypeApiRecord = {
+  strKindCode: string;
+  strKindName: string;
+};
+
+export type InvestmentOptionApiRecord = {
+  intID: number;
+  strSectionCode: string;
+  strOptionCode: string;
+  strOptionName: string;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
 };
 
 export type SalaryComponentApiRecord = {
@@ -1735,6 +1750,14 @@ export const masterApiService = {
     });
   },
 
+  getDeclarationKindTypes() {
+    return requestApi<DeclarationKindTypeApiRecord[]>({
+      strPath: MasterApiResource.DeclarationKindTypes,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EssDeclarationCategoryList
+    });
+  },
+
   getTaxDeclarationComponents(strMenuAction: string = MasterMenuAction.EssDeclarationCategoryList) {
     return requestApi<EssDeclarationCategoryApiRecord[] | { lstRecords?: EssDeclarationCategoryApiRecord[]; lstCategories?: EssDeclarationCategoryApiRecord[]; items?: EssDeclarationCategoryApiRecord[] }>({
       strPath: "/masters/tax-declaration-components",
@@ -1798,6 +1821,63 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.EssDeclarationCategoryBulkDelete
+    });
+  },
+
+  getInvestmentOptions(strSectionCode: string) {
+    return requestApi<InvestmentOptionApiRecord[]>({
+      strPath: MasterApiResource.InvestmentOptions,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: { strSectionCode },
+      strMenuAction: MasterMenuAction.InvestmentOptionList
+    });
+  },
+
+  createInvestmentOption(objBody: {
+    strSectionCode: string;
+    strOptionCode: string;
+    strOptionName: string;
+    intDisplayOrder: number;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<InvestmentOptionApiRecord>({
+      strPath: MasterApiResource.InvestmentOptions,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.InvestmentOptionCreate
+    });
+  },
+
+  updateInvestmentOption(intID: number, objBody: {
+    strSectionCode: string;
+    strOptionCode: string;
+    strOptionName: string;
+    intDisplayOrder: number;
+    blnIsActive: boolean;
+  }) {
+    return requestApi<InvestmentOptionApiRecord>({
+      strPath: buildApiPath(MasterApiResource.InvestmentOptions, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.InvestmentOptionUpdate
+    });
+  },
+
+  bulkInvestmentOptionStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.InvestmentOptions, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: MasterMenuAction.InvestmentOptionBulkStatus
+    });
+  },
+
+  bulkInvestmentOptionDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.InvestmentOptions, MasterApiRouteSegment.BulkDelete),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs },
+      strMenuAction: MasterMenuAction.InvestmentOptionBulkDelete
     });
   },
 

@@ -3,8 +3,9 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControl, FormControlLabel, FormHelperText, FormLabel, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControl, FormControlLabel, FormHelperText, FormLabel, IconButton, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Tooltip, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -18,7 +19,8 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import { EssDeclarationCategoryApiRecord, masterApiService, SalaryComponentApiRecord } from "@/services/master/MasterApiService";
+import InvestmentOptionsManagerDialog from "@/features/payroll/components/InvestmentOptionsManagerDialog";
+import { DeclarationKindTypeApiRecord, EssDeclarationCategoryApiRecord, masterApiService } from "@/services/master/MasterApiService";
 
 type CategoryStatus = "Active" | "Inactive";
 type CategoryMode = "add" | "edit" | "view";
@@ -31,6 +33,7 @@ type EssDeclarationCategoryRecord = {
   name: string;
   description: string;
   declarationKind: string;
+  section: string;
   applicableRegime: ApplicableRegime;
   linkedSalaryComponentId: number | null;
   linkedSalaryComponentName: string;
@@ -56,6 +59,8 @@ type EssDeclarationCategoryForm = {
 type SearchForm = {
   code: string;
   name: string;
+  section: string;
+  declarationKind: string;
   status: "All" | CategoryStatus;
 };
 
@@ -84,7 +89,7 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
   proofRequired: false,
   status: "Active",
 };
-const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const dicEmptySearch: SearchForm = { code: "", name: "", section: "", declarationKind: "All", status: "All" };
 const lstModuleCodes = [
   "TAX_DECLARATION_COMPONENT",
   "MY_TAX_DECLARATIONS",
@@ -113,6 +118,7 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
   const strCategoryName = objRecord.strCategoryName ?? objRecord.strName ?? objRecord.category_name;
   const strCategoryDescription = objRecord.strCategoryDescription ?? objRecord.strDescription ?? objRecord.category_description;
   const strDeclarationKind = objRecord.strDeclarationKind ?? objRecord.strKind ?? objRecord.declaration_kind;
+  const strSection = objRecord.strSection ?? objRecord.section;
   const strApplicableRegime =
     objRecord.strApplicableRegime
     ?? objRecord.applicableRegime
@@ -139,6 +145,7 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
     name: String(strCategoryName ?? ""),
     description: String(strCategoryDescription ?? ""),
     declarationKind: String(strDeclarationKind ?? ""),
+    section: String(strSection ?? ""),
     applicableRegime: normalizeApplicableRegime(strApplicableRegime),
     linkedSalaryComponentId: Number.isFinite(intLinkedSalaryComponentIDResolved) ? intLinkedSalaryComponentIDResolved : null,
     linkedSalaryComponentName: String(strLinkedSalaryComponentName ?? ""),
@@ -225,8 +232,9 @@ export default function EssDeclarationCategoryMasterPanel({
   const { t } = useModuleLabels("ess_declaration_category");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstModuleCodes);
   const [lstCategories, setLstCategories] = useState<EssDeclarationCategoryRecord[]>([]);
-  const [lstSalaryComponents, setLstSalaryComponents] = useState<SalaryComponentApiRecord[]>([]);
-  const [strSalaryComponentError, setStrSalaryComponentError] = useState("");
+  const [lstDeclarationKindTypes, setLstDeclarationKindTypes] = useState<DeclarationKindTypeApiRecord[]>([]);
+  const [strDeclarationKindTypeError, setStrDeclarationKindTypeError] = useState("");
+  const [blnDeclarationKindTypeLoading, setBlnDeclarationKindTypeLoading] = useState(false);
   const [strMode, setStrMode] = useState<CategoryMode>("add");
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingId, setStrEditingId] = useState("");
@@ -237,10 +245,10 @@ export default function EssDeclarationCategoryMasterPanel({
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [blnLookupLoading, setBlnLookupLoading] = useState(false);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [strLoadDiagnostics, setStrLoadDiagnostics] = useState("");
+  const [objInvestmentOptionsTarget, setObjInvestmentOptionsTarget] = useState<{ code: string; name: string } | null>(null);
 
   const dicCommonLabels = {
     activate: t("activate", "Activate"),
@@ -274,8 +282,6 @@ export default function EssDeclarationCategoryMasterPanel({
     bulkApplyingChanges: t("bulk_applying_changes", "Applying changes..."),
     bulkDeactivate: t("bulk_deactivate", "Bulk Deactivate"),
     bulkDeactivateSuccess: t("bulk_deactivate_success", "Selected ESS declaration categories were deactivated successfully."),
-    bulkDelete: t("bulk_delete", "Bulk Delete"),
-    bulkDeleteSuccess: t("bulk_delete_success", "Selected ESS declaration categories were deleted successfully."),
     bulkRowsSelected: t("bulk_rows_selected", "rows selected"),
     confirmActivateMessage: t("confirm_activate_message", "Are you sure you want to mark this ESS declaration category as active?"),
     confirmActivateTitle: t("confirm_activate_title", "Activate ESS Declaration Category"),
@@ -283,14 +289,9 @@ export default function EssDeclarationCategoryMasterPanel({
     confirmBulkActivateTitle: t("confirm_bulk_activate_title", "Bulk Activate ESS Declaration Categories"),
     confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message", "Are you sure you want to deactivate {count} ESS declaration category record(s)?"),
     confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title", "Bulk Deactivate ESS Declaration Categories"),
-    confirmBulkDeleteMessage: t("confirm_bulk_delete_message", "Are you sure you want to delete {count} ESS declaration category record(s)?"),
-    confirmBulkDeleteTitle: t("confirm_bulk_delete_title", "Bulk Delete ESS Declaration Categories"),
     confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this ESS declaration category as inactive?"),
     confirmDeactivateTitle: t("confirm_deactivate_title", "Deactivate ESS Declaration Category"),
-    confirmDeleteMessage: t("confirm_delete_message", "Are you sure you want to delete this ESS declaration category record?"),
-    confirmDeleteTitle: t("confirm_delete_title", "Delete ESS Declaration Category"),
     deactivateSuccess: t("deactivate_success", "ESS declaration category deactivated successfully."),
-    deleteSuccess: t("delete_success", "ESS declaration category deleted successfully."),
     dialogAddTitle: t("dialog_add_title", `Add ${strEntityLabel}`),
     dialogEditTitle: t("dialog_edit_title", `Edit ${strEntityLabel}`),
     dialogViewTitle: t("dialog_view_title", `View ${strEntityLabel}`),
@@ -298,13 +299,12 @@ export default function EssDeclarationCategoryMasterPanel({
     exportFileName: t("export_file_name", "ess-declaration-categories.csv"),
     exportTitle: stripMasterTitle(t("export_title", strEntityLabelPlural)),
     fieldCategoryCode: t("field_category_code", "Category Code"),
-    fieldCategoryName: t("field_category_name", "Category Name"),
-    fieldDeclarationKind: t("field_declaration_kind", "Declaration Kind"),
+    fieldCategoryName: t("field_category_name", "Description"),
+    fieldSection: t("field_section", "Section"),
+    fieldDeclarationKind: t("field_declaration_kind", "Category"),
     fieldApplicableRegime: t("field_applicable_regime", "Applicable Regime"),
-    fieldDescription: t("field_description", "Description"),
-    fieldIsActive: t("field_is_active", "Is Active"),
-    fieldLinkedSalaryComponent: t("field_linked_salary_component", "Linked Salary Component"),
-    fieldMaxLimitAmount: t("field_max_limit_amount", "Max Limit Amount"),
+    fieldIsActive: t("field_is_active", "Status"),
+    fieldMaxLimitAmount: t("field_max_limit_amount", "Max Limit"),
     fieldMaxLimitAppliedAt: t("field_max_limit_applied_at", "Maximum Limit Applied At"),
     fieldProofRequired: t("field_proof_required", "Proof Required"),
     loadingRecords: t("loading_records", "Loading ESS declaration categories..."),
@@ -313,12 +313,15 @@ export default function EssDeclarationCategoryMasterPanel({
     saveSuccess: t("save_success", "ESS declaration category saved successfully."),
     activateSuccess: t("activate_success", "ESS declaration category activated successfully."),
     searchCodePlaceholder: t("search_code_placeholder", "Search by category code"),
-    searchNamePlaceholder: t("search_name_placeholder", "Search by category name"),
+    searchNamePlaceholder: t("search_name_placeholder", "Search by description"),
+    searchSectionPlaceholder: t("search_section_placeholder", "Search by section"),
+    searchDeclarationKindPlaceholder: t("search_declaration_kind_placeholder", "Category"),
     searchStatusPlaceholder: t("search_status_placeholder", "Status"),
     tableActions: t("table_actions", "Actions"),
     tableCategoryCode: t("table_category_code", "Category Code"),
-    tableCategoryName: t("table_category_name", "Category Name"),
-    tableDeclarationKind: t("table_declaration_kind", "Declaration Kind"),
+    tableDescription: t("table_description", "Description"),
+    tableSection: t("table_section", "Section"),
+    tableCategory: t("table_category", "Category"),
     tableApplicableRegime: t("table_applicable_regime", "Applicable Regime"),
     tableLinkedSalaryComponent: t("table_linked_salary_component", "Linked Salary Component"),
     tableMaxLimitAmount: t("table_max_limit_amount", "Max Limit"),
@@ -333,9 +336,9 @@ export default function EssDeclarationCategoryMasterPanel({
     validationApplicableRegimeRequired: t("validation_applicable_regime_required", "Applicable regime is required."),
     validationMaxLimitAmount: t("validation_max_limit_amount", "Max limit amount must be a valid amount greater than zero."),
     validationMaxLimitRequired: t("validation_max_limit_required", "Max limit amount is required."),
-    validationNameDuplicate: t("validation_name_duplicate", "Category name already exists."),
-    validationNameMin: t("validation_name_min", "Category name must be at least 3 characters long."),
-    validationNameRequired: t("validation_name_required", "Category name is required."),
+    validationNameDuplicate: t("validation_name_duplicate", "Description already exists."),
+    validationNameMin: t("validation_name_min", "Description must be at least 3 characters long."),
+    validationNameRequired: t("validation_name_required", "Description is required."),
   };
   const dicMaxLimitAppliedAtLabels: Record<MaxLimitAppliedAt, string> = {
     ENTRY_LEVEL: t("option_entry_level", "Entry Level"),
@@ -377,25 +380,25 @@ export default function EssDeclarationCategoryMasterPanel({
     }
   }
 
-  async function loadSalaryComponentOptions() {
-    setBlnLookupLoading(true);
-    setStrSalaryComponentError("");
+  async function loadDeclarationKindTypeOptions() {
+    setBlnDeclarationKindTypeLoading(true);
+    setStrDeclarationKindTypeError("");
     try {
-      const objResult = await masterApiService.getSalaryComponents();
-      setLstSalaryComponents(objResult.Data.filter((dicComponent) => dicComponent.blnIsActive));
+      const objResult = await masterApiService.getDeclarationKindTypes();
+      setLstDeclarationKindTypes(objResult.Data);
     } catch (objError) {
-      setLstSalaryComponents([]);
-      setStrSalaryComponentError(objError instanceof Error ? objError.message : "Unable to load salary component options.");
+      setLstDeclarationKindTypes([]);
+      setStrDeclarationKindTypeError(objError instanceof Error ? objError.message : "Unable to load declaration kind options.");
     } finally {
-      setBlnLookupLoading(false);
+      setBlnDeclarationKindTypeLoading(false);
     }
   }
 
-  async function ensureSalaryComponentOptions() {
-    if (blnLookupLoading || lstSalaryComponents.length > 0) {
+  async function ensureDeclarationKindTypeOptions() {
+    if (blnDeclarationKindTypeLoading || lstDeclarationKindTypes.length > 0) {
       return;
     }
-    await loadSalaryComponentOptions();
+    await loadDeclarationKindTypeOptions();
   }
 
   useEffect(() => {
@@ -409,31 +412,25 @@ export default function EssDeclarationCategoryMasterPanel({
       return;
     }
     loadCategories().catch(() => undefined);
+    ensureDeclarationKindTypeOptions().catch(() => undefined);
   }, [blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     if (!blnDialogOpen || strMode === "view") {
       return;
     }
-    ensureSalaryComponentOptions().catch(() => undefined);
+    ensureDeclarationKindTypeOptions().catch(() => undefined);
   }, [blnDialogOpen, strMode]);
 
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnCanChangeStatus = blnCanEdit;
   const blnReadOnly = isReadOnly();
-  const dicSalaryComponentOptions = useMemo(
-    () =>
-      lstSalaryComponents
-        .slice()
-        .sort((a, b) => a.strComponentName.localeCompare(b.strComponentName))
-        .map((dicComponent) => ({
-          intID: dicComponent.intID,
-          strLabel: dicComponent.strComponentCode ? `${dicComponent.strComponentName} (${dicComponent.strComponentCode})` : dicComponent.strComponentName,
-        })),
-    [lstSalaryComponents],
+
+  const dicDeclarationKindNameByCode = useMemo(
+    () => Object.fromEntries(lstDeclarationKindTypes.map((dicKind) => [dicKind.strKindCode, dicKind.strKindName])),
+    [lstDeclarationKindTypes],
   );
 
   const lstFilteredCategories = useMemo(
@@ -441,8 +438,10 @@ export default function EssDeclarationCategoryMasterPanel({
       lstCategories.filter((dicCategory) => {
         const blnCodeMatch = !dicSearchApplied.code || dicCategory.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
         const blnNameMatch = !dicSearchApplied.name || dicCategory.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+        const blnSectionMatch = !dicSearchApplied.section || dicCategory.section.toLowerCase().includes(dicSearchApplied.section.toLowerCase());
+        const blnDeclarationKindMatch = dicSearchApplied.declarationKind === "All" || dicCategory.declarationKind === dicSearchApplied.declarationKind;
         const blnStatusMatch = dicSearchApplied.status === "All" || dicCategory.status === dicSearchApplied.status;
-        return blnCodeMatch && blnNameMatch && blnStatusMatch;
+        return blnCodeMatch && blnNameMatch && blnSectionMatch && blnDeclarationKindMatch && blnStatusMatch;
       }),
     [dicSearchApplied, lstCategories],
   );
@@ -463,20 +462,34 @@ export default function EssDeclarationCategoryMasterPanel({
           />
         ),
         action: (
-          <CommonRowActions
-            testIdPrefix="ess-declaration-category.list.row"
-            rowKey={dicCategory.id}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit}
-            blnCanDelete={blnCanDelete}
-            onView={() => openDialog("view", dicCategory)}
-            onEdit={() => openDialog("edit", dicCategory)}
-            onDelete={() => deleteCategory(dicCategory.id)}
-          />
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <CommonRowActions
+              testIdPrefix="ess-declaration-category.list.row"
+              rowKey={dicCategory.id}
+              blnCanView={blnCanView}
+              blnCanEdit={blnCanEdit}
+              onView={() => openDialog("view", dicCategory)}
+              onEdit={() => openDialog("edit", dicCategory)}
+            />
+            {blnCanEdit ? (
+              <Tooltip title={dicCategory.section ? "Manage investment options" : "No matching IT Declaration section — investment options aren't shown to employees for this component"}>
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!dicCategory.section}
+                    onClick={() => setObjInvestmentOptionsTarget({ code: dicCategory.section, name: dicCategory.name })}
+                  >
+                    <ListAltRoundedIcon fontSize="small" sx={{ color: dicCategory.section ? "var(--app-primary-color)" : "#cbd5e1" }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
+          </Box>
         ),
         name: dicCategory.name,
         code: dicCategory.code,
-        declarationKind: dicCategory.declarationKind,
+        section: dicCategory.section || "-",
+        declarationKind: dicDeclarationKindNameByCode[dicCategory.declarationKind] || dicCategory.declarationKind,
         applicableRegime: formatApplicableRegime(dicCategory.applicableRegime),
         linkedSalaryComponentName: dicCategory.linkedSalaryComponentName || "-",
         maxLimitAmount: formatAmount(dicCategory.maxLimitAmount),
@@ -490,7 +503,7 @@ export default function EssDeclarationCategoryMasterPanel({
         blnSelected
       };
     }),
-    [blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.no, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, dicCommonLabels.yes, dicMaxLimitAppliedAtLabels, lstFilteredCategories, lstSelectedIds]
+    [blnCanEdit, blnCanView, dicCommonLabels.no, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, dicCommonLabels.yes, dicDeclarationKindNameByCode, dicMaxLimitAppliedAtLabels, lstFilteredCategories, lstSelectedIds]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -510,16 +523,17 @@ export default function EssDeclarationCategoryMasterPanel({
         exportable: false,
         width: 56
       },
-      { field: "action", headerName: dicLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 116 },
-      { field: "name", headerName: dicLabels.tableCategoryName },
-      { field: "code", headerName: dicLabels.tableCategoryCode, width: 190 },
-      { field: "declarationKind", headerName: dicLabels.tableDeclarationKind, width: 150 },
-      { field: "applicableRegime", headerName: dicLabels.tableApplicableRegime, width: 210 },
-      { field: "linkedSalaryComponentName", headerName: dicLabels.tableLinkedSalaryComponent, width: 300 },
-      { field: "maxLimitAmount", headerName: dicLabels.tableMaxLimitAmount, align: "right", width: 140 },
-      { field: "maxLimitAppliedAt", headerName: dicLabels.tableMaxLimitAppliedAt, width: 180 },
-      { field: "proofRequired", headerName: dicLabels.tableProofRequired, width: 130 },
-      { field: "status", headerName: dicLabels.tableStatus, sortable: false, filterable: false, width: 120 }
+      { field: "action", headerName: dicLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 90 },
+      { field: "name", headerName: dicLabels.tableDescription, width: 190, blnWrapText: true },
+      { field: "code", headerName: dicLabels.tableCategoryCode, width: 140 },
+      { field: "section", headerName: dicLabels.tableSection, width: 95 },
+      { field: "declarationKind", headerName: dicLabels.tableCategory, width: 110 },
+      { field: "applicableRegime", headerName: dicLabels.tableApplicableRegime, width: 130 },
+      { field: "linkedSalaryComponentName", headerName: dicLabels.tableLinkedSalaryComponent, width: 160 },
+      { field: "maxLimitAmount", headerName: dicLabels.tableMaxLimitAmount, align: "right", width: 100 },
+      { field: "maxLimitAppliedAt", headerName: dicLabels.tableMaxLimitAppliedAt, width: 120 },
+      { field: "proofRequired", headerName: dicLabels.tableProofRequired, width: 85 },
+      { field: "status", headerName: dicLabels.tableStatus, sortable: false, filterable: false, width: 95 }
     ],
     [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstTableRows]
   );
@@ -635,9 +649,10 @@ export default function EssDeclarationCategoryMasterPanel({
       name: dicForm.name.trim(),
       description: dicForm.description.trim(),
       declarationKind: dicForm.declarationKind.trim(),
+      section: "",
       applicableRegime: dicForm.applicableRegime,
       linkedSalaryComponentId: dicForm.linkedSalaryComponentId === "" ? null : Number(dicForm.linkedSalaryComponentId),
-      linkedSalaryComponentName: dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? "",
+      linkedSalaryComponentName: "",
       maxLimitAmount: dicForm.maxLimitAmount.trim() ? Number(dicForm.maxLimitAmount) : null,
       maxLimitAppliedAt: dicForm.maxLimitAppliedAt,
       proofRequired: dicForm.proofRequired,
@@ -694,33 +709,6 @@ export default function EssDeclarationCategoryMasterPanel({
     });
   }
 
-  function bulkDelete() {
-    openConfirmDialog({
-      strTitle: dicLabels.confirmBulkDeleteTitle,
-      strMessage: dicLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
-      strConfirmLabel: dicLabels.bulkDelete,
-      fnOnConfirm: async () => {
-        const lstNumericIDs = lstSelectedIds.map(Number);
-        await masterApiService.bulkEssDeclarationCategoryDelete(lstNumericIDs);
-        await loadCategories();
-        showToast(dicLabels.bulkDeleteSuccess);
-      },
-    });
-  }
-
-  function deleteCategory(strID: string) {
-    openConfirmDialog({
-      strTitle: dicLabels.confirmDeleteTitle,
-      strMessage: dicLabels.confirmDeleteMessage,
-      strConfirmLabel: dicCommonLabels.delete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkEssDeclarationCategoryDelete([Number(strID)]);
-        await loadCategories();
-        showToast(dicLabels.deleteSuccess);
-      },
-    });
-  }
-
   const strDialogTitle = strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle;
   const blnDialogReadOnly = strMode === "view";
   function renderDialogSection(strTitle: string, strSubtitle: string, nodeContent: ReactNode) {
@@ -763,8 +751,6 @@ export default function EssDeclarationCategoryMasterPanel({
 
   const nodeDialogContent = (
     <Stack spacing={1.5} sx={{ pt: 0.25 }}>
-      {strSalaryComponentError && !blnDialogReadOnly ? <Alert severity="warning" variant="outlined">{strSalaryComponentError}</Alert> : null}
-
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.45fr) minmax(280px, 0.9fr)" }, gap: 1.5, alignItems: "start" }}>
         <Stack spacing={1.5}>
           {renderDialogSection(
@@ -800,6 +786,7 @@ export default function EssDeclarationCategoryMasterPanel({
                 size="small"
               />
               <TextField
+                select
                 label={dicLabels.fieldDeclarationKind}
                 required
                 value={dicForm.declarationKind}
@@ -808,11 +795,20 @@ export default function EssDeclarationCategoryMasterPanel({
                   setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }));
                 }}
                 error={Boolean(dicErrors.declarationKind)}
-                helperText={dicErrors.declarationKind}
+                helperText={dicErrors.declarationKind || strDeclarationKindTypeError}
                 fullWidth
-                disabled={blnDialogReadOnly}
+                disabled={blnDialogReadOnly || blnDeclarationKindTypeLoading}
                 size="small"
-              />
+              >
+                {lstDeclarationKindTypes.map((dicOption) => (
+                  <MenuItem key={dicOption.strKindCode} value={dicOption.strKindCode}>
+                    {dicOption.strKindName}
+                  </MenuItem>
+                ))}
+                {dicForm.declarationKind && !lstDeclarationKindTypes.some((dicOption) => dicOption.strKindCode === dicForm.declarationKind) ? (
+                  <MenuItem value={dicForm.declarationKind}>{dicForm.declarationKind}</MenuItem>
+                ) : null}
+              </TextField>
               <FormControl
                 required
                 error={Boolean(dicErrors.applicableRegime)}
@@ -911,67 +907,33 @@ export default function EssDeclarationCategoryMasterPanel({
                   onChange={(_, blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, proofRequired: blnChecked }))}
                 />
               </Box>
+              <Box
+                className={styles.switchRow}
+                sx={{
+                  gridColumn: { xs: "auto", md: "1 / -1" },
+                  px: 1,
+                  py: 0.35,
+                  minHeight: 44,
+                  borderRadius: "8px",
+                  border: "1px solid rgba(203,213,225,0.9)",
+                  background: "#fff",
+                  gap: 0.75,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Typography sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 700 }}>{dicLabels.fieldIsActive}</Typography>
+                <ActiveStatusSwitch
+                  size="small"
+                  blnIsActive={dicForm.status === "Active"}
+                  disabled={blnDialogReadOnly}
+                  onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+                />
+              </Box>
             </Box>,
-          )}
-
-          {renderDialogSection(
-            t("section_notes", "Description"),
-            t("section_notes_help", "Add explanatory text or internal policy guidance for this declaration."),
-            <Stack spacing={1}>
-              <TextField
-                label={dicLabels.fieldDescription}
-                value={dicForm.description}
-                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, description: objEvent.target.value }))}
-                fullWidth
-                multiline
-                minRows={4}
-                disabled={blnDialogReadOnly}
-                size="small"
-              />
-            </Stack>,
           )}
         </Stack>
 
         <Stack spacing={1.5}>
-          <Box
-            className={styles.switchRow}
-            sx={{
-              minHeight: 34,
-              px: 0,
-              py: 0,
-              justifyContent: "flex-end",
-              gap: 1,
-            }}
-          >
-            <Typography className={styles.switchLabel} sx={{ fontSize: "0.84rem" }}>
-              {dicLabels.fieldIsActive}
-            </Typography>
-            <ActiveStatusSwitch
-              size="small"
-              blnIsActive={dicForm.status === "Active"}
-              disabled={blnDialogReadOnly}
-              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
-            />
-          </Box>
-          {renderDialogSection(
-            t("section_configuration", "Configuration"),
-            t("section_configuration_help", "Map this declaration component to payroll configuration."),
-            <Stack spacing={1}>
-              <TextField
-                select
-                label={dicLabels.fieldLinkedSalaryComponent}
-                value={dicForm.linkedSalaryComponentId}
-                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, linkedSalaryComponentId: objEvent.target.value === "" ? "" : Number(objEvent.target.value) }))}
-                fullWidth
-                disabled={blnDialogReadOnly || blnLookupLoading}
-                size="small"
-              >
-                <MenuItem value="">{t("none_option", "None")}</MenuItem>
-                {dicSalaryComponentOptions.map((dicOption) => <MenuItem key={dicOption.intID} value={dicOption.intID}>{dicOption.strLabel}</MenuItem>)}
-              </TextField>
-            </Stack>,
-          )}
-
           <Paper
             elevation={0}
             sx={{
@@ -989,17 +951,12 @@ export default function EssDeclarationCategoryMasterPanel({
             </Typography>
             <Box sx={{ mt: 0.75 }}>
               {renderInfoRow(t("summary_code", "Category Code"), dicForm.code.trim() || t("summary_empty", "Not set"))}
-              {renderInfoRow(t("summary_kind", "Declaration Kind"), dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
+              {renderInfoRow(t("summary_section", "Section"), (strMode !== "add" ? lstCategories.find((dicCategory) => dicCategory.id === strEditingId)?.section : "") || t("summary_auto_matched", "Auto-matched on save"))}
+              {renderInfoRow(t("summary_kind", "Category"), dicDeclarationKindNameByCode[dicForm.declarationKind.trim()] || dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
               {renderInfoRow(t("summary_applicable_regime", "Applicable Regime"), formatApplicableRegime(dicForm.applicableRegime))}
               {renderInfoRow(t("summary_limit", "Max Limit"), dicForm.maxLimitAmount.trim() || t("summary_unlimited", "Not specified"))}
-              {renderInfoRow(t("summary_limit_applied_at", "Limit Applied At"), formatMaxLimitAppliedAt(dicForm.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels))}
+              {renderInfoRow(t("summary_limit_applied_at", "Maximum Limit Applied At"), formatMaxLimitAppliedAt(dicForm.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels))}
               {renderInfoRow(t("summary_proof", "Proof"), dicForm.proofRequired ? t("summary_required", "Required") : t("summary_optional", "Optional"))}
-              {renderInfoRow(
-                t("summary_component", "Salary Component"),
-                blnLookupLoading
-                  ? t("summary_loading", "Loading...")
-                  : dicSalaryComponentOptions.find((dicOption) => dicOption.intID === dicForm.linkedSalaryComponentId)?.strLabel ?? t("summary_none", "None"),
-              )}
             </Box>
           </Paper>
         </Stack>
@@ -1016,10 +973,23 @@ export default function EssDeclarationCategoryMasterPanel({
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
         <Typography sx={{ display: "none" }}>{strLoadDiagnostics}</Typography>
-        <Box className={styles.searchRow}>
-          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
-          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
-          <TextField inputProps={{ "data-testid": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(5, minmax(120px, 1fr)) auto auto" },
+            gap: 1,
+            mt: 1,
+            alignItems: "stretch",
+          }}
+        >
+          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
+          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
+          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-section.input" }} value={dicSearchDraft.section} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value }))} placeholder={dicLabels.searchSectionPlaceholder} fullWidth />
+          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-kind.select" }} select label={dicLabels.searchDeclarationKindPlaceholder} value={dicSearchDraft.declarationKind} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }))} fullWidth>
+            <MenuItem value="All">{dicCommonLabels.all}</MenuItem>
+            {lstDeclarationKindTypes.map((dicKind) => <MenuItem key={dicKind.strKindCode} value={dicKind.strKindCode}>{dicKind.strKindName}</MenuItem>)}
+          </TextField>
+          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
             <MenuItem data-testid="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
             <MenuItem data-testid="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem data-testid="ess-declaration-category.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
@@ -1032,12 +1002,11 @@ export default function EssDeclarationCategoryMasterPanel({
             <CircularProgress size={20} />
             <Typography className={styles.bulkCount}>{dicLabels.bulkApplyingChanges}</Typography>
           </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
+        ) : lstSelectedIds.length > 0 && !blnReadOnly && blnCanChangeStatus ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicLabels.bulkRowsSelected}</Typography>
             {blnCanChangeStatus ? <Button data-testid="ess-declaration-category.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}
             {blnCanChangeStatus ? <Button data-testid="ess-declaration-category.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-testid="ess-declaration-category.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
@@ -1114,6 +1083,12 @@ export default function EssDeclarationCategoryMasterPanel({
         nodeContent={nodeDialogContent}
       />
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm} blnConfirmDisabled={blnSubmitting} blnCancelDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction} />
+      <InvestmentOptionsManagerDialog
+        blnOpen={Boolean(objInvestmentOptionsTarget)}
+        strSectionCode={objInvestmentOptionsTarget?.code ?? ""}
+        strSectionName={objInvestmentOptionsTarget?.name ?? ""}
+        onClose={() => setObjInvestmentOptionsTarget(null)}
+      />
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

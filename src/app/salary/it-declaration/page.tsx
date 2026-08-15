@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -25,6 +26,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  MenuItem,
   Tooltip,
   Snackbar,
   Grid,
@@ -492,6 +494,7 @@ export default function SalaryEssDeclarationsPage() {
   const [strSelectedRegime, setStrSelectedRegime] = useState<Regime | "">("");
   const [lstRows, setLstRows] = useState<DeclarationRow[]>([]);
   const [lstMasterRows, setLstMasterRows] = useState<DeclarationRow[]>([]);
+  const [strSectionFilter, setStrSectionFilter] = useState<string>("All");
   const [strLastUpdated, setStrLastUpdated] = useState(getDateLabel());
   const [blnDraftSaved, setBlnDraftSaved] = useState(false);
   const [strSuccessToast, setStrSuccessToast] = useState("");
@@ -647,8 +650,64 @@ export default function SalaryEssDeclarationsPage() {
     }
     return Array.from(dicBySection.values());
   }, [lstRows]);
+
+  const lstSectionFilterOptions = useMemo(() => {
+    const dicSeen = new Map<string, string>();
+    for (const objRow of lstSectionRows) {
+      if (objRow.strSection && !dicSeen.has(objRow.strSection)) {
+        dicSeen.set(objRow.strSection, objRow.strDescription || objRow.strSection);
+      }
+    }
+    return Array.from(dicSeen.entries())
+      .map(([strSection, strDescription]) => ({ strSection, strDescription }))
+      .sort((a, b) => a.strSection.localeCompare(b.strSection, undefined, { numeric: true }));
+  }, [lstSectionRows]);
+
+  const lstFilteredSectionRows = useMemo(
+    () => strSectionFilter === "All" ? lstSectionRows : lstSectionRows.filter((objRow) => objRow.strSection === strSectionFilter),
+    [lstSectionRows, strSectionFilter]
+  );
+
+  function renderDeclarationRowAction(objRow: DeclarationRow) {
+    const blnHasAmount = objRow.decDeclaredAmount > 0;
+    const strDash = <Typography sx={{ fontSize: "0.76rem", color: "#94a3b8", fontWeight: 700 }}>-</Typography>;
+
+    let objIcon: React.ReactNode = null;
+    let strLabel = "";
+    if (blnLocked) {
+      if (!blnCanViewDeclaration || !blnHasAmount) return strDash;
+      objIcon = <VisibilityRoundedIcon fontSize="small" />;
+      strLabel = t("view", "View");
+    } else if (blnCanEditDeclaration) {
+      if (blnHasAmount) {
+        objIcon = <EditRoundedIcon fontSize="small" />;
+        strLabel = t("view_edit", "View / Edit");
+      } else {
+        objIcon = <AddCircleOutlineRoundedIcon fontSize="small" />;
+        strLabel = blnStarted ? t("add", "Add") : t("start", "Start");
+      }
+    } else {
+      if (!blnCanViewDeclaration || !blnHasAmount) return strDash;
+      objIcon = <VisibilityRoundedIcon fontSize="small" />;
+      strLabel = t("view", "View");
+    }
+
+    return (
+      <Tooltip title={strLabel}>
+        <IconButton
+          data-controlid="salary.it-declaration.back.button"
+          size="small"
+          onClick={() => openEditModal(objRow)}
+          sx={{ color: "var(--app-primary-color, #1d4ed8)" }}
+        >
+          {objIcon}
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
   const lstDeclarationGridRows = useMemo(() => {
-    return lstSectionRows.map((objRow, intIndex) => ({
+    return lstFilteredSectionRows.map((objRow, intIndex) => ({
       id: objRow.intItemID ?? `${objRow.strSection}-${intIndex}`,
       category: getGroupName(objRow),
       section: <Typography sx={{ fontWeight: 700 }}>{objRow.strSection}</Typography>,
@@ -671,61 +730,17 @@ export default function SalaryEssDeclarationsPage() {
           }}
         />
       ),
-      action: blnLocked
-        ? (
-          blnCanViewDeclaration && objRow.decDeclaredAmount > 0
-            ? (
-              <Button
-                data-controlid="salary.it-declaration.back.button"
-                variant="text"
-                size="small"
-                sx={{ fontSize: "0.76rem", fontWeight: 700 }}
-                onClick={() => openEditModal(objRow)}
-              >
-                {t("view", "View")}
-              </Button>
-            )
-            : <Typography sx={{ fontSize: "0.76rem", color: "#94a3b8", fontWeight: 700 }}>-</Typography>
-        )
-        : (
-          blnCanEditDeclaration
-            ? (
-              <Button
-                data-controlid="salary.it-declaration.back.button"
-                variant="text"
-                size="small"
-                sx={{ fontSize: "0.76rem", fontWeight: 700 }}
-                onClick={() => openEditModal(objRow)}
-              >
-                {objRow.decDeclaredAmount > 0 ? t("view_edit", "View / Edit") : blnStarted ? t("add", "Add") : t("start", "Start")}
-              </Button>
-            )
-            : (
-              blnCanViewDeclaration && objRow.decDeclaredAmount > 0
-                ? (
-                  <Button
-                    data-controlid="salary.it-declaration.back.button"
-                    variant="text"
-                    size="small"
-                    sx={{ fontSize: "0.76rem", fontWeight: 700 }}
-                    onClick={() => openEditModal(objRow)}
-                  >
-                    {t("view", "View")}
-                  </Button>
-                )
-                : <Typography sx={{ fontSize: "0.76rem", color: "#94a3b8", fontWeight: 700 }}>-</Typography>
-            )
-        ),
+      action: renderDeclarationRowAction(objRow),
     }));
-  }, [blnCanEditDeclaration, blnCanViewDeclaration, blnLocked, blnStarted, lstSectionRows, t]);
+  }, [blnCanEditDeclaration, blnCanViewDeclaration, blnLocked, blnStarted, lstFilteredSectionRows, t]);
   const lstDeclarationColumns: CommonTableColumn<(typeof lstDeclarationGridRows)[number]>[] = [
-    { field: "category", headerName: t("category", "Category"), width: 130 },
-    { field: "section", headerName: t("section", "Section"), width: 90, sortable: false },
-    { field: "description", headerName: t("description", "Description"), width: 180, sortable: false },
-    { field: "declaredAmount", headerName: t("declared_amount", "Declared Amount"), width: 150, sortable: false },
-    { field: "maxLimit", headerName: t("max_limit", "Max Limit"), width: 100, sortable: false },
-    { field: "status", headerName: t("status", "Status"), width: 120, sortable: false },
-    { field: "action", headerName: t("action", "Action"), width: 100, sortable: false, align: "center", exportable: false },
+    { field: "category", headerName: t("category", "Category"), width: 110 },
+    { field: "section", headerName: t("section", "Section"), width: 80, sortable: false },
+    { field: "description", headerName: t("description", "Description"), width: 260, sortable: false, blnWrapText: true },
+    { field: "declaredAmount", headerName: t("declared_amount", "Declared Amount"), width: 130, sortable: false },
+    { field: "maxLimit", headerName: t("max_limit", "Max Limit"), width: 90, sortable: false },
+    { field: "status", headerName: t("status", "Status"), width: 100, sortable: false },
+    { field: "action", headerName: t("action", "Action"), width: 90, sortable: false, align: "center", exportable: false },
   ];
   const decDeclaredTotal = useMemo(
     () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
@@ -932,13 +947,16 @@ export default function SalaryEssDeclarationsPage() {
 
   function mapCategoryToRow(objCategory: EssDeclarationCategoryApiRecord): DeclarationRow {
     const objCategoryRecord = objCategory as unknown as Record<string, unknown>;
-    const strDescription = objCategory.strCategoryDescription?.trim() || objCategory.strCategoryName;
+    // The category's own Description field is internal admin/policy notes, not what employees
+    // should see as the component's label — always use the synced Category Name here, matching
+    // the same source the backend's buildDeclarationResponse uses.
+    const strDescription = objCategory.strCategoryName;
     const decMaxLimitAmount = resolveMaxLimitAmount(objCategoryRecord);
     const strMaxLimitDisplay = decMaxLimitAmount == null ? "-" : formatCurrency(decMaxLimitAmount);
     const strCategory = formatDeclarationKind(objCategory.strDeclarationKind ?? objCategoryRecord.strKind ?? objCategoryRecord.declaration_kind);
     return {
       intItemID: null,
-      strSection: (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
+      strSection: objCategory.strSection || (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
       strCategory,
       strDescription,
       strApplicableRegime: normalizeApplicableRegime(
@@ -1250,9 +1268,13 @@ export default function SalaryEssDeclarationsPage() {
       objProof: null,
       objProofFileInput: null,
     }]);
+    // The section's own Description/Category Name (objRow.strDescription) is NOT an
+    // investment-name suggestion — it's the section's label (e.g. "Medical Insurance
+    // Premium" for 80D) and must never be offered here. Only the employee's already-saved
+    // custom investment name (if any) is a legitimate local hint before the real list loads.
     const lstFallbackOptions = getFallbackInvestmentOptions(objRow.strSection);
-    const lstLocalHints = [objRow.strDescription?.trim(), objRow.strInvestmentName?.trim()]
-      .filter((strValue): strValue is string => Boolean(strValue && strValue !== "-"));
+    const strSavedInvestmentName = objRow.strInvestmentName?.trim();
+    const lstLocalHints = strSavedInvestmentName && strSavedInvestmentName !== "-" ? [strSavedInvestmentName] : [];
     const lstSeedOptions = Array.from(new Set([...lstFallbackOptions, ...lstLocalHints]));
     setLstInvestmentOptionsForRow(lstSeedOptions);
     void (async () => {
@@ -1261,8 +1283,10 @@ export default function SalaryEssDeclarationsPage() {
         const lstApiOptions = lstOptions
           .map((objOption) => objOption.strOptionName?.trim() || objOption.strOptionCode?.trim())
           .filter((strValue): strValue is string => Boolean(strValue));
-        const lstMerged = Array.from(new Set([...lstSeedOptions, ...lstApiOptions]));
-        setLstInvestmentOptionsForRow(lstMerged);
+        // Once the real master-configured list loads, it replaces the generic fallback
+        // text entirely — only the employee's own saved custom name is preserved alongside it.
+        const lstMerged = Array.from(new Set([...lstApiOptions, ...lstLocalHints]));
+        setLstInvestmentOptionsForRow(lstMerged.length > 0 ? lstMerged : lstSeedOptions);
       } catch {
         setLstInvestmentOptionsForRow(lstSeedOptions);
       }
@@ -1688,11 +1712,29 @@ export default function SalaryEssDeclarationsPage() {
         </Stack>
       </Paper>
       <Grid container spacing={0.6}>
-        <Grid item xs={12} lg={8}>
+        <Grid item xs={12} lg={9}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8} flexWrap="wrap" rowGap={0.6}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{t("your_declarations", "Your Declarations")}</Typography>
-              <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked || !blnCanViewDeclaration}>{t("refresh_amounts", "Refresh Amounts")}</Button>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <TextField
+                  select
+                  size="small"
+                  value={strSectionFilter}
+                  onChange={(objEvent) => setStrSectionFilter(objEvent.target.value)}
+                  sx={{ minWidth: 190 }}
+                  label={t("filter_by_section", "Section")}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem value="All">{t("all_sections", "All Sections")}</MenuItem>
+                  {lstSectionFilterOptions.map((objOption) => (
+                    <MenuItem key={objOption.strSection} value={objOption.strSection}>
+                      {objOption.strSection} — {objOption.strDescription}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked || !blnCanViewDeclaration}>{t("refresh_amounts", "Refresh Amounts")}</Button>
+              </Stack>
             </Stack>
             <Box sx={{ height: intDeclarationTableMaxHeight, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
               <CommonTable
@@ -1701,7 +1743,7 @@ export default function SalaryEssDeclarationsPage() {
                 rowIdField={"id"}
                 defaultPageSize={500}
                 hideToolbar
-                minTableWidth={840}
+                minTableWidth={860}
                 withPaper={false}
                 emptyMessage={t("no_declaration_sections", "No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.")}
               />
@@ -1709,9 +1751,9 @@ export default function SalaryEssDeclarationsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} lg={4}>
+        <Grid item xs={12} lg={3}>
           <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.4 }}>
               <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>{t("tax_summary_live", "Tax Summary (Live)")}</Typography>
               <Tooltip title={t("view_detailed_tax_calculation", "View detailed tax calculation")}>
                 <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
@@ -1719,7 +1761,7 @@ export default function SalaryEssDeclarationsPage() {
                 </IconButton>
               </Tooltip>
             </Stack>
-            <Stack spacing={0.72}>
+            <Stack spacing={0.45}>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("gross_salary", "Gross Salary")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_exemptions", "Total Exemptions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_deductions", "Total Deductions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objTaxSummary.decDeductions || 0)}</Typography></Stack>

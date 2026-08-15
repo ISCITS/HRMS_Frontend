@@ -35,6 +35,8 @@ export type DataGridColumn<T extends Record<string, ReactNode>> = {
   sortAccessor?: (row: T) => string | number;
   filterable?: boolean;
   exportable?: boolean;
+  /** When true, long cell content wraps onto multiple lines instead of overflowing past the column. */
+  blnWrapText?: boolean;
 };
 
 export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
@@ -355,7 +357,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             borderCollapse: "separate",
             borderSpacing: 0,
             minWidth: Math.max(intMinimumTableWidth, minTableWidth),
-            width: "100%"
+            width: "100%",
+            tableLayout: "fixed"
           }}
         >
           <TableHead data-controlid={`${testIdPrefix}.table.head`}>
@@ -376,7 +379,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       borderBottom: "1px solid",
                       borderColor: "divider",
                       whiteSpace: "nowrap",
-                      verticalAlign: "middle"
+                      verticalAlign: "middle",
+                      px: 1,
+                      py: 0.5
                     }}
                   >
                     {column.sortable === false ? (
@@ -420,8 +425,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       "& td": {
                         borderBottom: "1px solid",
                         borderColor: "divider",
-                        verticalAlign: "middle",
-                        whiteSpace: "nowrap"
+                        verticalAlign: "middle"
                       }
                     },
                     getRowSx?.(row) ?? {}
@@ -431,7 +435,18 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     const strField = String(column.field);
                     const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
                     return (
-                      <TableCell key={`${String(column.field)}-${index}`} align={strAlign} data-controlid={`${testIdPrefix}.row.${strField}.cell`} data-row-key={strRowKey}>
+                      <TableCell
+                        key={`${String(column.field)}-${index}`}
+                        align={strAlign}
+                        data-controlid={`${testIdPrefix}.row.${strField}.cell`}
+                        data-row-key={strRowKey}
+                        sx={{
+                          whiteSpace: column.blnWrapText ? "normal" : "nowrap",
+                          wordBreak: column.blnWrapText ? "break-word" : undefined,
+                          px: 1,
+                          py: 0.5
+                        }}
+                      >
                         {row[column.field]}
                       </TableCell>
                     );
