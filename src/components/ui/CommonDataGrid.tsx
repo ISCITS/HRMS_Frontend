@@ -19,7 +19,7 @@ import {
   Typography,
   Theme
 } from "@mui/material";
-import { ReactNode, isValidElement, useEffect, useMemo, useState } from "react";
+import { ReactNode, isValidElement, useEffect, useMemo, useState, type MouseEvent } from "react";
 import dicConstant from "@/constants/Constant.json";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -47,6 +47,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   hideToolbar?: boolean;
   minTableWidth?: number;
   getRowSx?: (row: T) => SxProps<Theme> | undefined;
+  onRowDoubleClick?: (row: T, event: MouseEvent<HTMLTableRowElement>) => void;
   rowIdField?: keyof T;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
@@ -68,6 +69,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   hideToolbar = false,
   minTableWidth = 980,
   getRowSx,
+  onRowDoubleClick,
   rowIdField,
   defaultPageSize = 20,
   pageSizeOptions = [10, 20, 50],
@@ -420,6 +422,13 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   data-controlid={`${testIdPrefix}.row`}
                   data-row-key={strRowKey}
                   hover
+                  onDoubleClick={(objEvent) => {
+                    const objTarget = objEvent.target as HTMLElement;
+                    if (objTarget.closest("button, input, a, [role='button']")) {
+                      return;
+                    }
+                    onRowDoubleClick?.(row, objEvent);
+                  }}
                   sx={[
                     {
                       "& td": {

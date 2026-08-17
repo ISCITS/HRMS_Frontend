@@ -232,6 +232,20 @@ export default function EmployeeEditorScreen({
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanDelete = canDoAny("delete");
+  // Preserve the existing editor by default while action rights are loading or
+  // unavailable. Once rights load successfully, each tab follows its action.
+  const blnCanViewBankDetails = blnRightsLoading || Boolean(strRightsError) || canDoAny("view_bank_details");
+  const blnCanViewStatutoryDetails = blnRightsLoading || Boolean(strRightsError) || canDoAny("view_statutory_details");
+  const lstVisibleTabOrder = useMemo(
+    () => lstTabOrder.filter((strTabKey) => (
+      (strTabKey !== "bankDetails" || blnCanViewBankDetails)
+      && (strTabKey !== "statutory" || blnCanViewStatutoryDetails)
+    )),
+    [blnCanViewBankDetails, blnCanViewStatutoryDetails]
+  );
+  const strVisibleActiveTab = lstVisibleTabOrder.includes(strActiveTab)
+    ? strActiveTab
+    : (lstVisibleTabOrder[0] ?? "basicInfo");
   const blnCanSaveEmployee = strMode === "add" ? blnCanAdd : blnCanEdit;
   const blnViewOnly = strMode === "view" || !blnCanSaveEmployee;
   const blnAnySaving = blnBasicSaving || blnAddressSaving || blnBankSaving || blnStatutorySaving || blnExperienceSaving || blnQualificationSaving;
@@ -315,8 +329,12 @@ export default function EmployeeEditorScreen({
 
           const lstChildResults = await Promise.allSettled([
             employeeService.getEmployeeAddress(intEmployeeID, objEmployeeRequestOptions),
-            employeeService.getEmployeeBankAccount(intEmployeeID, objEmployeeRequestOptions),
-            employeeService.getEmployeeStatutory(intEmployeeID, objEmployeeRequestOptions),
+            blnCanViewBankDetails
+              ? employeeService.getEmployeeBankAccount(intEmployeeID, objEmployeeRequestOptions)
+              : Promise.resolve(null),
+            blnCanViewStatutoryDetails
+              ? employeeService.getEmployeeStatutory(intEmployeeID, objEmployeeRequestOptions)
+              : Promise.resolve(null),
             employeeService.getEmployeeExperiences(intEmployeeID, objEmployeeRequestOptions),
             employeeService.getEmployeeQualifications(intEmployeeID, objEmployeeRequestOptions),
             employeeService.getEmployeeFamilyDetails(intEmployeeID, objEmployeeRequestOptions)
@@ -330,11 +348,11 @@ export default function EmployeeEditorScreen({
             setDicAddressForm(toEmployeeAddressFormValues(lstChildResults[0].value));
           }
 
-          if (lstChildResults[1].status === "fulfilled") {
+          if (lstChildResults[1].status === "fulfilled" && lstChildResults[1].value) {
             setDicBankForm(toEmployeeBankFormValues(lstChildResults[1].value));
           }
 
-          if (lstChildResults[2].status === "fulfilled") {
+          if (lstChildResults[2].status === "fulfilled" && lstChildResults[2].value) {
             setDicStatutoryForm(toEmployeeStatutoryFormValues(lstChildResults[2].value));
           }
 
@@ -365,7 +383,7 @@ export default function EmployeeEditorScreen({
     return () => {
       blnMounted = false;
     };
-  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, objEmployeeRequestOptions]);
+  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, blnCanViewBankDetails, blnCanViewStatutoryDetails, objEmployeeRequestOptions]);
 
   const lstManagerOptions = useMemo(
     () => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intResolvedEmployeeID),
@@ -767,7 +785,7 @@ export default function EmployeeEditorScreen({
       setDicAddressErrors({});
     }
 
-    if (hasBankData()) {
+    if (blnCanViewBankDetails && hasBankData()) {
       const dicValidationErrors = validateBankForm();
       if (Object.keys(dicValidationErrors).length > 0) {
         setStrActiveTab("bankDetails");
@@ -778,7 +796,7 @@ export default function EmployeeEditorScreen({
       setDicBankErrors({});
     }
 
-    if (hasStatutoryData()) {
+    if (blnCanViewStatutoryDetails && hasStatutoryData()) {
       const dicValidationErrors = validateStatutoryForm();
       if (Object.keys(dicValidationErrors).length > 0) {
         setStrActiveTab("statutory");
@@ -806,8 +824,8 @@ export default function EmployeeEditorScreen({
 
     setBlnBasicSaving(true);
     setBlnAddressSaving(hasAddressData());
-    setBlnBankSaving(hasBankData());
-    setBlnStatutorySaving(hasStatutoryData());
+    setBlnBankSaving(blnCanViewBankDetails && hasBankData());
+    setBlnStatutorySaving(blnCanViewStatutoryDetails && hasStatutoryData());
     setBlnExperienceSaving(blnAddingExperience || Boolean(intEditingExperienceID));
     setBlnQualificationSaving(blnAddingQualification || Boolean(intEditingQualificationID));
 
@@ -824,7 +842,7 @@ export default function EmployeeEditorScreen({
         setDicAddressForm(toEmployeeAddressFormValues(dicRecord));
       }
 
-      if (hasBankData()) {
+      if (blnCanViewBankDetails && hasBankData()) {
         const dicRecord = await employeeService.saveEmployeeBankAccount(dicSavedEmployee.intID, dicBankForm, objEmployeeRequestOptions);
         setDicBankForm((dicPrevious) => ({
           ...toEmployeeBankFormValues(dicRecord),
@@ -833,7 +851,7 @@ export default function EmployeeEditorScreen({
         }));
       }
 
-      if (hasStatutoryData()) {
+      if (blnCanViewStatutoryDetails && hasStatutoryData()) {
         const dicRecord = await employeeService.saveEmployeeStatutory(dicSavedEmployee.intID, dicStatutoryForm, objEmployeeRequestOptions);
         setDicStatutoryForm(toEmployeeStatutoryFormValues(dicRecord));
       }
@@ -943,7 +961,7 @@ export default function EmployeeEditorScreen({
   }
 
   async function handleBankSave() {
-    if (blnViewOnly) {
+    if (blnViewOnly || !blnCanViewBankDetails) {
       return;
     }
     const dicValidationErrors = validateBankForm();
@@ -976,7 +994,7 @@ export default function EmployeeEditorScreen({
   }
 
   async function handleStatutorySave() {
-    if (blnViewOnly) {
+    if (blnViewOnly || !blnCanViewStatutoryDetails) {
       return;
     }
     const dicValidationErrors = validateStatutoryForm();
@@ -1492,12 +1510,12 @@ export default function EmployeeEditorScreen({
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
           <Tabs
             data-controlid="employee.editor.tabs"
-            value={strActiveTab}
+            value={strVisibleActiveTab}
             onChange={(_, strNextValue) => setStrActiveTab(strNextValue)}
             variant="scrollable"
             scrollButtons="auto"
           >
-            {lstTabOrder.map((strTabKey) => (
+            {lstVisibleTabOrder.map((strTabKey) => (
               <Tab
                 key={strTabKey}
                 value={strTabKey}
@@ -1521,7 +1539,7 @@ export default function EmployeeEditorScreen({
         </Box>
 
         <Box sx={{ p: { xs: 2, md: 3 } }}>
-          {strActiveTab === "basicInfo" ? (
+          {strVisibleActiveTab === "basicInfo" ? (
             <Stack spacing={3}>
               <Box>
                 <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.5 }}>{t("section_identity_employment", "Identity & Employment")}</Typography>
@@ -1573,7 +1591,7 @@ export default function EmployeeEditorScreen({
             </Stack>
           ) : null}
 
-          {strActiveTab === "address" ? (
+          {strVisibleActiveTab === "address" ? (
             <Stack spacing={2.5}>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
                 {renderSelectField(t("field_address_type", dicConstant.employeeMaster.fields.addressType), dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
@@ -1587,7 +1605,7 @@ export default function EmployeeEditorScreen({
             </Stack>
           ) : null}
 
-          {strActiveTab === "bankDetails" ? (
+          {blnCanViewBankDetails && strVisibleActiveTab === "bankDetails" ? (
             <Box sx={{ display: "grid", gap: 3, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
               <Box sx={{ border: "1px solid rgba(148,163,184,0.24)", borderRadius: "18px", p: 2.5, height: "100%" }}>
                 <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
@@ -1648,7 +1666,7 @@ export default function EmployeeEditorScreen({
             </Box>
           ) : null}
 
-          {strActiveTab === "statutory" ? (
+          {blnCanViewStatutoryDetails && strVisibleActiveTab === "statutory" ? (
             <Stack spacing={2.5} sx={{ width: { xs: "100%", md: "calc(100% - 138px)" } }}>
               <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
                 <TextField data-controlid="employee.editor.pan-number.input" inputProps={{ "data-controlid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
@@ -1729,7 +1747,7 @@ export default function EmployeeEditorScreen({
             </Stack>
           ) : null}
 
-          {strActiveTab === "experience" ? (
+          {strVisibleActiveTab === "experience" ? (
             <Stack spacing={2.5}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
@@ -1905,7 +1923,7 @@ export default function EmployeeEditorScreen({
             </Stack>
           ) : null}
 
-          {strActiveTab === "qualification" ? (
+          {strVisibleActiveTab === "qualification" ? (
             <Stack spacing={2.5}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
@@ -2106,7 +2124,7 @@ export default function EmployeeEditorScreen({
             </Stack>
           ) : null}
 
-          {strActiveTab === "family" ? (
+          {strVisibleActiveTab === "family" ? (
             <FamilyDetailsTab
               lstInitialRows={lstFamilyRecords}
               blnViewOnly={blnViewOnly}

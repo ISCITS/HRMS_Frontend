@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Grid,
   MenuItem,
   Paper,
@@ -17,6 +18,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeBankFormValues, EmployeeFormOptions } from "@/features/employee/types";
@@ -120,7 +122,13 @@ export default function EssMyBankDetailsPage() {
     const blnHasBank = Number(dicForm.intBankID) > 0;
     const blnHasHolder = Boolean(dicForm.strAccountHolderName.trim());
     const blnHasAccountNumber = Boolean(dicForm.strAccountNumber.trim());
-    return blnCanSaveAction && blnHasBank && blnHasHolder && blnHasAccountNumber;
+    // Secondary account details become mandatory only when the employee enables that account.
+    const blnHasValidSecondaryBank = !dicForm.blnSecondaryIsActive || (
+      Number(dicForm.intSecondaryBankID) > 0
+      && Boolean(dicForm.strSecondaryAccountHolderName.trim())
+      && Boolean(dicForm.strSecondaryAccountNumber.trim())
+    );
+    return blnCanSaveAction && blnHasBank && blnHasHolder && blnHasAccountNumber && blnHasValidSecondaryBank;
   }, [blnCanSaveAction, dicForm]);
 
   async function onSaveBankDetails() {
@@ -141,7 +149,12 @@ export default function EssMyBankDetailsPage() {
         intBankID: dicSaved.intBankID ?? dicPrevious.intBankID,
         strAccountHolderName: dicSaved.strAccountHolderName ?? dicPrevious.strAccountHolderName,
         strAccountNumber: dicSaved.strAccountNumber ?? dicPrevious.strAccountNumber,
-        strIfscCode: dicSaved.strIfscCode ?? ""
+        strIfscCode: dicSaved.strIfscCode ?? "",
+        intSecondaryBankID: dicSaved.intSecondaryBankID ?? "",
+        strSecondaryAccountHolderName: dicSaved.strSecondaryAccountHolderName ?? "",
+        strSecondaryAccountNumber: dicSaved.strSecondaryAccountNumber ?? "",
+        strSecondaryIfscCode: dicSaved.strSecondaryIfscCode ?? "",
+        blnSecondaryIsActive: dicSaved.blnSecondaryIsActive ?? false
       }));
       setStrSuccess(t("success_saved", "Bank details saved successfully."));
     } catch (objError: unknown) {
@@ -277,6 +290,113 @@ export default function EssMyBankDetailsPage() {
             />
           </Grid>
         </Grid>
+
+        <Box
+          sx={{
+            mt: 2,
+            p: { xs: 1.5, md: 2 },
+            border: "1px solid #e2e8f0",
+            borderRadius: "16px",
+            backgroundColor: "#f8fafc"
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            spacing={1}
+            sx={{ mb: dicForm.blnSecondaryIsActive ? 1.5 : 0 }}
+          >
+            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
+              {t("field_secondary_bank_details", "Secondary Bank Details")}
+            </Typography>
+            <FormControlLabel
+              control={
+                <ActiveStatusSwitch
+                  controlId="ess.my-bank-details.secondary-bank-active.switch"
+                  blnIsActive={dicForm.blnSecondaryIsActive}
+                  onChange={(blnChecked) => {
+                    setDicForm((dicPrevious) => ({
+                      ...dicPrevious,
+                      blnSecondaryIsActive: blnChecked,
+                      ...(!blnChecked ? {
+                        intSecondaryBankID: "",
+                        strSecondaryAccountHolderName: "",
+                        strSecondaryAccountNumber: "",
+                        strSecondaryIfscCode: ""
+                      } : {})
+                    }));
+                  }}
+                  disabled={!blnCanModify}
+                />
+              }
+              label={t("field_secondary_bank_active", "Secondary Bank Active")}
+              sx={{ m: 0 }}
+            />
+          </Stack>
+
+          {dicForm.blnSecondaryIsActive ? (
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  controlId="ess.my-bank-details.secondary-bank.select"
+                  fullWidth
+                  select
+                  required
+                  label={t("field_secondary_bank", "Secondary Bank")}
+                  value={dicForm.intSecondaryBankID}
+                  onChange={(objEvent) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, intSecondaryBankID: Number(objEvent.target.value) || "" }));
+                  }}
+                  disabled={!blnCanModify}
+                >
+                  <MenuItem value="">{t("select_secondary_bank", "Select secondary bank")}</MenuItem>
+                  {(objFormOptions?.lstBanks ?? []).map((dicBank) => (
+                    <MenuItem key={dicBank.intID} value={dicBank.intID}>{dicBank.strLabel}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  controlId="ess.my-bank-details.secondary-account-holder-name.input"
+                  fullWidth
+                  required
+                  label={t("field_secondary_account_holder_name", "Secondary Account Holder Name")}
+                  value={dicForm.strSecondaryAccountHolderName}
+                  onChange={(objEvent) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryAccountHolderName: objEvent.target.value }));
+                  }}
+                  disabled={!blnCanModify}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  controlId="ess.my-bank-details.secondary-account-number.input"
+                  fullWidth
+                  required
+                  label={t("field_secondary_account_number", "Secondary Account Number")}
+                  value={dicForm.strSecondaryAccountNumber}
+                  onChange={(objEvent) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryAccountNumber: objEvent.target.value }));
+                  }}
+                  disabled={!blnCanModify}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  controlId="ess.my-bank-details.secondary-ifsc-code.input"
+                  fullWidth
+                  label={t("field_secondary_ifsc_code", "Secondary IFSC Code")}
+                  value={dicForm.strSecondaryIfscCode}
+                  onChange={(objEvent) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryIfscCode: objEvent.target.value.toUpperCase() }));
+                  }}
+                  disabled={!blnCanModify}
+                />
+              </Grid>
+            </Grid>
+          ) : null}
+        </Box>
 
         <FileUploadPanel
           embedded

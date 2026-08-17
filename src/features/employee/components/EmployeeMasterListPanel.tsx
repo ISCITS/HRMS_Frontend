@@ -279,7 +279,8 @@ export default function EmployeeMasterListPanel() {
     { field: "action", headerName: t("grid_actions", dicConstant.employeeMaster.grid.actions), sortable: false, filterable: false, exportable: false, width: 110 },
     { field: "employeeCode", headerName: t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode) },
     { field: "fullName", headerName: t("grid_full_name", dicConstant.employeeMaster.grid.fullName) },
-    { field: "workEmail", headerName: t("grid_work_email", dicConstant.employeeMaster.grid.workEmail) },
+    // Email addresses need additional space and must stay inside their cell beside the phone column.
+    { field: "workEmail", headerName: t("grid_work_email", dicConstant.employeeMaster.grid.workEmail), width: 260, blnWrapText: true },
     { field: "mobileNumber", headerName: t("grid_mobile_number", dicConstant.employeeMaster.grid.mobileNumber) },
     { field: "department", headerName: t("grid_department", dicConstant.employeeMaster.grid.department) },
     { field: "designation", headerName: t("grid_designation", dicConstant.employeeMaster.grid.designation) },
@@ -361,7 +362,7 @@ export default function EmployeeMasterListPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
+            defaultPageSize={20}
             pageSizeOptions={[10, 20, 50]}
             exportFileName="employee-master"
             showExportOptions={blnCanExport}
@@ -377,6 +378,10 @@ export default function EmployeeMasterListPanel() {
                 ) : null}
               </Box>
             )}
+            onRowDoubleClick={(dicRow) => {
+              const strMode = blnCanEdit ? "edit" : "view";
+              objRouter.push(`/employees/${strMode}/${dicRow.id}`);
+            }}
             getRowSx={(dicRow) => lstSelectedIDs.includes(Number(dicRow.id)) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
