@@ -51,9 +51,10 @@ export default function EssMyBankDetailsPage() {
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const blnCanView = canViewAny();
 
   useEffect(() => {
-    if (blnRightsLoading || !canViewAny()) {
+    if (blnRightsLoading || !blnCanView) {
       setBlnLoading(false);
       return;
     }
@@ -113,7 +114,7 @@ export default function EssMyBankDetailsPage() {
     return () => {
       blnMounted = false;
     };
-  }, [blnRightsLoading, canViewAny, t]);
+  }, [blnRightsLoading, blnCanView, t]);
 
   const blnCanEdit = canDoAny("edit");
   const blnCanSaveAction = canDoAny("save");
@@ -175,7 +176,7 @@ export default function EssMyBankDetailsPage() {
     );
   }
 
-  if (!canViewAny()) {
+  if (!blnCanView) {
     return (
       <Paper sx={{ p: 3, borderRadius: "24px" }}>
         <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>{t("page_title", "My Bank Details")}</Typography>
