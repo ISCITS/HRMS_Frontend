@@ -12,6 +12,7 @@ export type AttendanceDayDto = {
   intEarlyMinutes: number;
   decOtHours: number;
   blnIsPaid: boolean;
+  blnIsFinalized?: boolean;
   strRemark: string | null;
   strEmployeeCode?: string | null;
   strEmployeeName?: string | null;

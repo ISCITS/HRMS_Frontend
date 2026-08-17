@@ -146,6 +146,12 @@ function punchSourceLabel(strSource: string) {
   return strSource;
 }
 
+function toTitleCase(strValue: string) {
+  return strValue
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (strMatch) => strMatch.toUpperCase());
+}
+
 export default function EssAttendancePanel() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("my_attendance", "Unable to load My Attendance labels.");
@@ -222,6 +228,7 @@ export default function EssAttendancePanel() {
           intEarlyMinutes: 0,
           decOtHours: 0,
           blnIsPaid: false,
+          blnIsFinalized: false,
           strRemark: null,
         });
       }
@@ -252,6 +259,7 @@ export default function EssAttendancePanel() {
   const blnSelectedDayEligibleForRegularization = Boolean(
     objSelectedDay
       && strSelectedDate <= strToday
+      && objSelectedDay.blnIsFinalized
       && (
         objSelectedDay.strStatus === "absent"
         || objSelectedDay.strStatus === "half_day"
@@ -349,12 +357,15 @@ export default function EssAttendancePanel() {
       fg: "#475569",
       short: "",
     };
+    const strFallbackLabel = objDay.strStatus === "weekly_off"
+      ? "Weekly Off"
+      : toTitleCase(objDay.strStatus);
     return (
       <Chip
         size="small"
         label={objDay.strStatus === "weekly_off"
-          ? t("status_weekly_off", "Weekly Off")
-          : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))}
+          ? t("status_weekly_off", strFallbackLabel)
+          : t(`status_${objDay.strStatus}`, strFallbackLabel)}
         sx={{ bgcolor: objColor.bg, color: objColor.fg, fontWeight: 800, textTransform: "capitalize" }}
       />
     );
@@ -443,8 +454,9 @@ export default function EssAttendancePanel() {
               <MenuItem key={intMonth} value={intMonth} disabled={objMonth.getFullYear() === objToday.getFullYear() && intMonth > objToday.getMonth()}>
                 {new Date(2020, intMonth, 1).toLocaleString([], { month: "long" })}
               </MenuItem>
-            ))}
-          </TextField>
+              ))}
+            </TextField>
+          <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
           <TextField
             data-control-id="ess.my-attendance.year.select"
             select
@@ -460,7 +472,6 @@ export default function EssAttendancePanel() {
             {lstYears.map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)}
           </TextField>
           <Button data-control-id="ess.my-attendance.today.button" variant="outlined" onClick={goToToday} sx={{ minWidth: 72, px: 1.5 }}>{t("today", "Today")}</Button>
-          <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
         </Stack>
       </Box>
 
@@ -482,45 +493,49 @@ export default function EssAttendancePanel() {
         </Alert>
       ) : null}
 
-      <Grid container spacing={1}>
+      <Grid container spacing={1} alignItems="stretch">
         <Grid item xs={12} sm={5} md={2}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: "100%", boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
+            <Box sx={{ position: "absolute", top: 8, right: 12, zIndex: 1 }}>
+              {renderStatusChip(objSelectedDay)}
+            </Box>
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ height: "100%" }}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography fontWeight={900}>
+              <Box sx={{ minWidth: 0, flex: "1 1 auto", pr: 0 }}>
+                <Typography fontWeight={900} noWrap>
                   {strSelectedDate === strToday
                     ? t("today", "Today")
                     : t("selected_date", "Selected Date")}
                 </Typography>
-                <Typography variant="h6" fontWeight={900} sx={{ mt: 0.25 }}>
+                <Typography variant="h6" fontWeight={900} noWrap sx={{ mt: 0.25, fontSize: { md: "1.08rem", xl: "1.25rem" } }}>
                   {new Date(`${strSelectedDate}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
                 </Typography>
                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
-                  {renderStatusChip(objSelectedDay)}
                   {strSelectedDate === strToday ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, (objOverview?.strCurrentState ?? "not_punched").replaceAll("_", " "))}
+                    <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: "capitalize" }}>
+                      {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, toTitleCase(objOverview?.strCurrentState ?? "not_punched"))}
                     </Typography>
                   ) : null}
                 </Stack>
               </Box>
-              {strSelectedDate === strToday ? (
-                <Button
-                  data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
-                  size="medium"
-                  variant="contained"
-                  startIcon={<FingerprintRoundedIcon />}
-                  disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
-                  onClick={() => setBlnPunchDialogOpen(true)}
-                  sx={{ minHeight: 44, px: 1.5, borderRadius: "8px", fontWeight: 900, flex: "0 0 auto", whiteSpace: "nowrap" }}
-                >
-                  {blnPunching
-                    ? t("recording", "Recording...")
-                    : objOverview?.strNextPunchDirection === "out"
-                      ? t("punch_out", "Punch Out")
-                      : t("punch_in", "Punch In")}
-                </Button>
-              ) : null}
+              <Box sx={{ flex: "0 0 118px", display: "flex", justifyContent: "flex-end" }}>
+                {strSelectedDate === strToday ? (
+                  <Button
+                    data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
+                    size="medium"
+                    variant="contained"
+                    startIcon={<FingerprintRoundedIcon />}
+                    disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
+                    onClick={() => setBlnPunchDialogOpen(true)}
+                    sx={{ minHeight: 44, px: 1.25, borderRadius: "8px", fontWeight: 900, whiteSpace: "nowrap" }}
+                  >
+                    {blnPunching
+                      ? t("recording", "Recording...")
+                      : objOverview?.strNextPunchDirection === "out"
+                        ? t("punch_out", "Punch Out")
+                        : t("punch_in", "Punch In")}
+                  </Button>
+                ) : null}
+              </Box>
             </Stack>
             {strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
               <Alert severity="info" sx={{ mt: 1, py: 0, "& .MuiAlert-message": { py: 0.75 } }}>
@@ -536,7 +551,7 @@ export default function EssAttendancePanel() {
         </Grid>
 
         <Grid item xs={12} sm={7} md={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: "100%", boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
             <Stack
               direction="row"
@@ -583,23 +598,26 @@ export default function EssAttendancePanel() {
               >
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
-              {blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
-                <Button
-                  data-control-id="ess.my-attendance.regularize.button"
-                  variant="outlined"
-                  size="small"
-                  onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
-                  sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap", flex: "0 0 auto" }}
-                >
-                  {t("regularize", "Regularize")}
-                </Button>
-              ) : null}
+              <Box sx={{ flex: "0 0 94px", minHeight: 52 }}>
+                {blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
+                  <Button
+                    data-control-id="ess.my-attendance.regularize.button"
+                    variant="outlined"
+                    size="small"
+                    fullWidth
+                    onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
+                    sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap" }}
+                  >
+                    {t("regularize", "Regularize")}
+                  </Button>
+                ) : null}
+              </Box>
             </Stack>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: "100%", boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.25 }}>{t("monthly_summary", "Monthly Summary")}</Typography>
             <Typography variant="caption" color="text.secondary">
               {objMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
@@ -705,7 +723,7 @@ export default function EssAttendancePanel() {
                               : objDay ? (
                                 objDay.strStatus === "weekly_off"
                                   ? t("status_weekly_off", "Weekly Off")
-                                  : t(`status_${objDay.strStatus}`, objDay.strStatus.replaceAll("_", " "))
+                                  : t(`status_${objDay.strStatus}`, toTitleCase(objDay.strStatus))
                               ) : ""}
                           </Typography>
                         </Box>
