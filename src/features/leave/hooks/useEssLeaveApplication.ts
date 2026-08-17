@@ -84,6 +84,10 @@ export function useEssLeaveApplication() {
     return leaveService.withdrawMyLeaveApplication(intApplicationID, strReason);
   }, []);
 
+  const fnRequestWithdrawApproved = useCallback(async (intApplicationID: number, strReason: string) => {
+    return leaveService.requestWithdrawApprovedLeave(intApplicationID, strReason);
+  }, []);
+
   const fnDeleteAttachment = useCallback(async (intApplicationID: number, intAttachmentID: number) => {
     await leaveService.deleteMyLeaveAttachment(intApplicationID, intAttachmentID);
   }, []);
@@ -118,6 +122,7 @@ export function useEssLeaveApplication() {
     fnPersistDraft,
     fnSubmitDraft,
     fnWithdraw,
+    fnRequestWithdrawApproved,
     fnDeleteAttachment,
     fnPreviewAttachment,
     fnReplaceAttachment,

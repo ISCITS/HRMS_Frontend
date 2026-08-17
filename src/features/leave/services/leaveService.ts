@@ -357,6 +357,17 @@ export const leaveService = {
     return objResult.Data;
   },
 
+  // Approved future-dated leave: routes a withdrawal request back through the approval chain.
+  async requestWithdrawApprovedLeave(intApplicationID: number, strReason: string): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/request-withdrawal`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strReason },
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async uploadMyLeaveAttachment(intApplicationID: number, objFile: File, fnOnProgress?: FileUploadProgressHandler): Promise<LeaveApplicationAttachmentDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
