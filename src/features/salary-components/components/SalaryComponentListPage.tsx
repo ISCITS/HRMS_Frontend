@@ -481,8 +481,6 @@ export default function SalaryComponentListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="salary_components"
             showExportOptions={blnCanExport}
             showPaginationSummary

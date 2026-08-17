@@ -798,8 +798,6 @@ export default function DepartmentMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName={dicDepartmentLabels.exportFileName}
             showExportOptions={blnCanExport}
             testIdPrefix="department-master.list"

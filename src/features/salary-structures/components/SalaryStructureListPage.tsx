@@ -391,8 +391,6 @@ export default function SalaryStructureListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="salary_structures"
             showExportOptions={blnCanExport}
             showPaginationSummary

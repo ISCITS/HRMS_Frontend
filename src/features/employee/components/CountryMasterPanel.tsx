@@ -645,8 +645,6 @@ export default function CountryMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="country-master"
             showExportOptions={blnCanExport}

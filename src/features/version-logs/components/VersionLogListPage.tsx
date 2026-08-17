@@ -255,8 +255,6 @@ export default function VersionLogListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="version_logs"
           showExportOptions={blnCanExport}
           testIdPrefix="version-logs.list"

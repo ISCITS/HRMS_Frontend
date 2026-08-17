@@ -371,7 +371,6 @@ export default function DepartmentMasterInlinePanel() {
           rows={lstGridRows}
           rowIdField="id"
           withPaper={false}
-          defaultPageSize={10}
           toolbarLeft={
             <Button
               variant="contained"

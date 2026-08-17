@@ -280,8 +280,6 @@ export default function EmployeeSalaryListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="employee_salary"
             showExportOptions={blnCanExport}
             showPaginationSummary

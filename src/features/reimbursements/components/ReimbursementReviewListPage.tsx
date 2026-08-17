@@ -420,8 +420,6 @@ export default function ReimbursementReviewListPage() {
                 ) : null}
               </Stack>
             )}
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             minTableWidth={blnEmployeeReimbursementContext ? 1180 : 980}
             emptyMessage="No reimbursement claims found."
             testIdPrefix="reimbursements.review-list"
