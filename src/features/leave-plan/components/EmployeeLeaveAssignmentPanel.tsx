@@ -257,8 +257,6 @@ export default function EmployeeLeaveAssignmentPanel() {
             columns={lstColumns}
             rows={lstRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="employee_leave_plan_assignments"
             showExportOptions
             showPaginationSummary

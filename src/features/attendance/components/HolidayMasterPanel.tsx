@@ -325,7 +325,7 @@ export default function HolidayMasterPanel() {
 
       {blnLoading || blnRightsLoading ? <Box sx={{ display: "grid", placeItems: "center", py: 6 }}><CircularProgress /></Box> : (
         <Box className={styles.tableCard}>
-          <CommonTable columns={lstColumns} rows={lstRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName={`holidays_${objSearchApplied.intYear}`} showExportOptions showPaginationSummary minTableWidth={1370} emptyMessage={t("empty_message", "No holidays found.")} toolbarLeft={blnCanCreate ? <Button controlId="holiday-master.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : undefined} testIdPrefix="holiday-master.list" />
+          <CommonTable columns={lstColumns} rows={lstRows} rowIdField="id" exportFileName={`holidays_${objSearchApplied.intYear}`} showExportOptions showPaginationSummary minTableWidth={1370} emptyMessage={t("empty_message", "No holidays found.")} toolbarLeft={blnCanCreate ? <Button controlId="holiday-master.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : undefined} testIdPrefix="holiday-master.list" />
         </Box>
       )}
 

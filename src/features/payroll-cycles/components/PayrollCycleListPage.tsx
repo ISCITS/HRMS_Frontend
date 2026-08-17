@@ -227,8 +227,6 @@ export default function PayrollCycleListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="payroll_cycles"
           showExportOptions={blnCanExport}
           testIdPrefix="payroll-cycles.list"

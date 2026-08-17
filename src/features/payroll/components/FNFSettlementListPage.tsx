@@ -158,8 +158,6 @@ export default function FNFSettlementListPage() {
           rows={lstTableRows}
           toolbarLeft={blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")} controlId="payroll.fnf-settlements.new.button">New Settlement</Button> : null}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           emptyMessage="No FNF settlements found."
           testIdPrefix="payroll.fnf-settlements.list"
           showPaginationSummary

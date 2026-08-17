@@ -447,8 +447,6 @@ export default function LeaveTypesPanel() {
             columns={lstTypeColumns}
             rows={lstTypeRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="leave_types"
             showExportOptions={blnCanExport}
             showPaginationSummary

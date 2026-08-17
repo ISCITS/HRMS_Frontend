@@ -262,8 +262,6 @@ export default function PayrollRunListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="payroll-runs"
             showExportOptions={blnCanExport}
             showPaginationSummary

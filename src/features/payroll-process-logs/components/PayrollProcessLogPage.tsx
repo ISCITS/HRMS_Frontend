@@ -318,8 +318,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="payroll_process_logs"
           showExportOptions={blnCanExport}
           showPaginationSummary

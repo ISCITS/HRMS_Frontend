@@ -308,8 +308,6 @@ export default function EmployeePayrollInputListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="employee-payroll-inputs"
             showExportOptions={blnCanExport}
             showPaginationSummary

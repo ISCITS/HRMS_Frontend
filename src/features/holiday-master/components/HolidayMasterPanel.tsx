@@ -357,7 +357,7 @@ export default function HolidayMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading ? <Box className={styles.emptyState}><Typography>{t("access_denied", "Holiday access is not available for your user group.")}</Typography></Box> : <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="holiday" showExportOptions={blnCanExport} showPaginationSummary testIdPrefix="holiday-master.list" emptyMessage={t("empty", "No holidays found for the selected filters.")} toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
+        {!blnCanView && !blnRightsLoading ? <Box className={styles.emptyState}><Typography>{t("access_denied", "Holiday access is not available for your user group.")}</Typography></Box> : <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" exportFileName="holiday" showExportOptions={blnCanExport} showPaginationSummary testIdPrefix="holiday-master.list" emptyMessage={t("empty", "No holidays found for the selected filters.")} toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
       </Box>
 
       <CommonMasterDialog

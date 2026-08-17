@@ -1021,8 +1021,6 @@ export default function EssDeclarationCategoryMasterPanel({
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="ess-declaration-categories"
             showExportOptions={blnCanExport}
             showPaginationSummary

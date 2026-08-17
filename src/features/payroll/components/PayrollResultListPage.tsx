@@ -823,8 +823,6 @@ export default function PayrollResultListPage({
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName={blnPayslipScreen ? "payslips" : "payroll-results"}
           showExportOptions={canDoAny("export")}
           showPaginationSummary

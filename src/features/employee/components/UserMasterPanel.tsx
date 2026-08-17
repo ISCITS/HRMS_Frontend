@@ -762,8 +762,6 @@ export default function UserMasterPanel() {
               emptyMessage={dicModuleLabels.emptyMessage}
               exportFileName="user-master"
               showExportOptions={blnCanExport}
-              defaultPageSize={10}
-              pageSizeOptions={[10, 20, 50]}
               showPaginationSummary
               testIdPrefix="user-master.list"
               withPaper={false}

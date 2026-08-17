@@ -368,8 +368,6 @@ export default function ITDeclarationReviewListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="it_declaration_review"
           showExportOptions={blnCanExport}
           showPaginationSummary

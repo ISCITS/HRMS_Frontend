@@ -348,8 +348,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
             showPaginationSummary
             emptyMessage={t("empty_message", "No loans or advances found.")}

@@ -318,8 +318,6 @@ export default function LeavePlanListPanel() {
             columns={lstPlanColumns}
             rows={lstPlanRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="leave_plans"
             showPaginationSummary
             minTableWidth={1196}
