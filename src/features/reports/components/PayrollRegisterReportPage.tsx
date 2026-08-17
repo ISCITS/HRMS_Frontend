@@ -6,6 +6,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -34,6 +35,16 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+
+function normalizeQueryMonth(strValue: string | null) {
+  const strTrimmed = String(strValue ?? "").trim();
+  return /^\d{4}-\d{2}/.test(strTrimmed) ? strTrimmed.slice(0, 7) : "";
+}
+
+function buildInitialSearchFromQuery(objSearchParams: { get: (strKey: string) => string | null }): SearchForm {
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  return strPayrollMonth ? { ...dicEmptySearch, strPayrollMonth } : dicEmptySearch;
+}
 
 type PayrollRegisterLabels = {
   strEmployeeCode: string;
@@ -263,6 +274,8 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[], dicLabe
 }
 
 export default function PayrollRegisterReportPage() {
+  const objSearchParams = useSearchParams();
+  const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("reports");
   const dicLabels = useMemo(() => buildPayrollRegisterLabels(t), [t]);
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess([
@@ -277,7 +290,7 @@ export default function PayrollRegisterReportPage() {
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
   const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
-  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicInitialSearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
@@ -368,8 +381,8 @@ export default function PayrollRegisterReportPage() {
     if (!blnCanView) {
       return;
     }
-    loadRows(dicEmptySearch).catch(() => undefined);
-  }, [blnCanView]);
+    loadRows(dicInitialSearch).catch(() => undefined);
+  }, [blnCanView, dicInitialSearch]);
 
   const lstTableRows = useMemo(
     () =>

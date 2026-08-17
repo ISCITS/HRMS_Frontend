@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -9,9 +10,34 @@ import { useReportFilterOptions } from "../hooks/useReportFilterOptions";
 import { leaveAttendanceReportService, type LeaveRegisterRow } from "../services/leaveAttendanceReportService";
 import ReportGridPage, { type ReportDisplayRow, type ReportFilterField } from "./ReportGridPage";
 
+function normalizeQueryMonth(strValue: string | null) {
+  const strTrimmed = String(strValue ?? "").trim();
+  return /^\d{4}-\d{2}/.test(strTrimmed) ? strTrimmed.slice(0, 7) : "";
+}
+
+function buildLeaveDefaultFilters(objSearchParams: { get: (strKey: string) => string | null }) {
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  const strStatus = String(objSearchParams.get("status") ?? "").trim();
+  const dicFilters: Record<string, string> = {};
+  if (strStatus) {
+    dicFilters.status = strStatus;
+  }
+  if (strPayrollMonth) {
+    const [strYear, strMonth] = strPayrollMonth.split("-");
+    const intYear = Number(strYear);
+    const intMonth = Number(strMonth);
+    const intLastDay = new Date(intYear, intMonth, 0).getDate();
+    dicFilters.from_date = `${strPayrollMonth}-01`;
+    dicFilters.to_date = `${strPayrollMonth}-${String(intLastDay).padStart(2, "0")}`;
+  }
+  return dicFilters;
+}
+
 export default function LeaveRegisterReportPage() {
+  const objSearchParams = useSearchParams();
   const { t } = useModuleLabels("reports");
   const { lstEmployees, lstDepartments, lstLeaveTypes } = useReportFilterOptions();
+  const dicDefaultFilters = useMemo(() => buildLeaveDefaultFilters(objSearchParams), [objSearchParams]);
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
     { field: "strReference", headerName: t("reference", "Reference"), width: 130 },
@@ -74,6 +100,7 @@ export default function LeaveRegisterReportPage() {
       strRowIdField="intID"
       strCsvFileName="leave-register"
       lstRightsHints={["REPORTS_LEAVE_REGISTER", "REPORTS"]}
+      dicDefaultFilters={dicDefaultFilters}
       strEmptyMessage={t("leave_register_empty", "No leave applications found for the current filters.")}
       fnLoad={async (dicFilters) => {
         const objEnvelope = await leaveAttendanceReportService.getLeaveRegister(dicFilters);

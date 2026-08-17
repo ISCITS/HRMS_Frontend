@@ -20,7 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -68,6 +68,18 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
   strMonthScope: "Latest",
 };
+
+function normalizeQueryMonth(strValue: string | null) {
+  const strTrimmed = String(strValue ?? "").trim();
+  return /^\d{4}-\d{2}/.test(strTrimmed) ? strTrimmed.slice(0, 7) : "";
+}
+
+function buildInitialSearchFromQuery(objSearchParams: { get: (strKey: string) => string | null }): SearchForm {
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  return strPayrollMonth
+    ? { ...dicEmptySearch, strPayrollMonth, strMonthScope: "Custom" }
+    : dicEmptySearch;
+}
 
 // Keep these aliases aligned with tplPayrollResultFallbackModuleCodes in
 // HRMS_Backend/app/api/v1/PayrollRoutes.py so the UI warning matches API access.
@@ -232,6 +244,8 @@ export default function PayrollResultListPage({
   blnEssMode = false,
 }: PayrollResultListPageProps) {
   const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
+  const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("payslips");
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
@@ -246,9 +260,9 @@ export default function PayrollResultListPage({
   const [blnPageInitializing, setBlnPageInitializing] = useState(true);
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
   const [strError, setStrError] = useState("");
-  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicInitialSearch);
   const [dicSearchApplied, setDicSearchApplied] =
-    useState<SearchForm>(dicEmptySearch);
+    useState<SearchForm>(dicInitialSearch);
   const [objPreviewRecord, setObjPreviewRecord] =
     useState<PayrollResultDetailRecord | null>(null);
   const [intPayslipActionID, setIntPayslipActionID] = useState<number | null>(null);

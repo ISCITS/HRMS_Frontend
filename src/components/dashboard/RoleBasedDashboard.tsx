@@ -482,7 +482,7 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
     ensureWidget(dicWidgetMap.get("employees_in_payroll"), "employees_in_payroll", t("employees_in_payroll", "Employees in Payroll"), "kpi", { intValue: 0, strSubtitle: t("active_employees", "Active Employees") }),
     ensureWidget(dicWidgetMap.get("net_payroll_amount"), "net_payroll_amount", t("net_payroll_amount", "Net Payroll Amount"), "kpi", { decValue: 0, strSubtitle: t("current_cycle", "Current Cycle") }),
     ensureWidget(dicWidgetMap.get("pending_approvals"), "pending_approvals", t("pending_approvals", "Pending Approvals"), "kpi", { intValue: 0, strSubtitle: t("requires_action", "Requires Action") }),
-    ensureWidget(dicWidgetMap.get("payroll_validation_errors"), "payroll_validation_errors", t("validation_blockers", "Validation Blockers"), "kpi", { intBlockingCount: 0, strSubtitle: t("employees_blocked_from_processing", "Employees blocked from processing") }),
+    ensureWidget(dicWidgetMap.get("payroll_validation_errors"), "payroll_validation_errors", t("payroll_readiness", "Payroll Readiness"), "kpi", { intBlockingCount: 0, strSubtitle: t("attendance_and_warning_readiness", "Attendance and warning readiness") }),
     ensureWidget(dicWidgetMap.get("statutory_liability"), "statutory_liability", t("statutory_liability", "Statutory Liability"), "kpi", { decValue: 0, strSubtitle: t("pf_esi_tds", "PF + ESI + TDS") }),
     ensureWidget(dicWidgetMap.get("net_pay_movement"), "net_pay_movement", t("net_pay_movement", "Net Pay Movement"), "kpi", { decTrendValue: null, strSubtitle: t("vs_previous_month", "Vs previous month") }),
   ];
@@ -686,9 +686,7 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
   const lstOverviewKpis = [
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_payroll_amount"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "employees_in_payroll"),
-    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "pending_approvals"),
     objLeaveKpiWidget,
-    lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "payroll_validation_errors"),
     objMasterDataGapsKpiWidget,
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "statutory_liability"),
     lstKpiWidgets.find((objWidget) => objWidget.strWidgetCode === "net_pay_movement"),
@@ -906,13 +904,22 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
                 xs: "1fr",
                 sm: "repeat(2, minmax(0, 1fr))",
                 md: "repeat(3, minmax(0, 1fr))",
-                lg: "repeat(4, minmax(0, 1fr))",
+                lg: "repeat(12, minmax(0, 1fr))",
               },
               alignItems: "stretch",
             }}
           >
             {lstOverviewKpis.map((objWidget, intIndex) => (
-              <Box key={objWidget.strWidgetCode} sx={{ display: "flex", minWidth: 0 }}>
+              <Box
+                key={objWidget.strWidgetCode}
+                sx={{
+                  display: "flex",
+                  minWidth: 0,
+                  gridColumn: {
+                    lg: lstOverviewKpis.length === 6 ? "span 4" : lstOverviewKpis.length === 7 && intIndex >= 4 ? "span 4" : "span 3",
+                  },
+                }}
+              >
                 <PayrollKpiPanel
                   objWidget={objWidget}
                   objTone={lstPayrollCardPalette[intIndex % lstPayrollCardPalette.length]}
@@ -928,7 +935,7 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
             sx={{
               display: "grid",
               gap: objDashboardGridSpacing,
-              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 5fr) minmax(0, 3fr) minmax(0, 4fr)" },
+              gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 8fr) minmax(0, 4fr)" },
               alignItems: "stretch",
             }}
           >
@@ -937,9 +944,6 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
             </Box>
             <Box sx={{ display: "flex", minWidth: 0 }}>
               <QuickActionsPanel objWidget={objQuickActionsWidget} t={t} />
-            </Box>
-            <Box sx={{ display: "flex", minWidth: 0 }}>
-              <ExceptionWorkQueuePanel lstItems={lstExceptionItems} t={t} />
             </Box>
           </Box>
         </>
@@ -1041,11 +1045,12 @@ function PayrollKpiPanel({
   const intPayrollEmployeeCount = Number(objPayload.intPayrollEmployeeCount ?? objPayload.intRunEmployeeCount ?? objPayload.intValue ?? 0);
   const strRoutePath = getKpiRoutePath(objWidget.strWidgetCode, strSelectedMonth, strAllMonthsValue);
   const strActionLabel = getKpiActionLabel(objWidget.strWidgetCode, strSelectedMonth, strAllMonthsValue, t);
+  const blnValidationKpi = objWidget.strWidgetCode === "payroll_validation_errors";
 
   const strValue = objWidget.strWidgetCode === "net_pay_movement"
     ? (decTrendValue == null ? "—" : `${decTrendValue >= 0 ? "+" : ""}${decTrendValue}%`)
     : objWidget.strWidgetCode === "payroll_validation_errors"
-      ? formatInteger(Number(objPayload.intBlockingCount || 0))
+      ? formatInteger(Number(objPayload.intAttendanceBlockingCount || objPayload.intBlockingCount || 0))
       : objPayload.decValue != null
         ? formatCurrency(objPayload.decValue)
         : formatInteger(objPayload.intValue || 0);
@@ -1061,7 +1066,7 @@ function PayrollKpiPanel({
       : objWidget.strWidgetCode === "pending_approvals"
         ? buildPendingApprovalsBreakdown(objPayload, t)
         : objWidget.strWidgetCode === "payroll_validation_errors"
-          ? buildValidationBreakdown(objPayload, t)
+          ? buildPayrollReadinessBreakdown(objPayload, t)
         : objWidget.strWidgetCode === "statutory_liability"
           ? t("pf_esi_tds_payable", "PF + ESI + TDS payable")
         : objWidget.strWidgetCode === "net_pay_movement"
@@ -1085,7 +1090,7 @@ function PayrollKpiPanel({
         p: 1.2,
         width: "100%",
         minWidth: 0,
-        minHeight: 154,
+        minHeight: 160,
         height: "100%",
         display: "flex",
         alignItems: "flex-start",
@@ -1103,29 +1108,31 @@ function PayrollKpiPanel({
         } : undefined,
       }}
     >
-      <Stack spacing={0.7} sx={{ minWidth: 0, width: "100%", height: "100%" }}>
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            flexShrink: 0,
-            borderRadius: "10px",
-            display: "grid",
-            placeItems: "center",
-            backgroundColor: objTone.surface,
-            color: objTone.accent,
-          }}
-        >
-          {objIcon}
-        </Box>
-        <Box sx={{ minWidth: 0, width: "100%" }}>
-          <Typography sx={{ fontSize: "0.74rem", fontWeight: 700, color: DASHBOARD_COLORS.muted, lineHeight: 1.25 }}>
+      <Stack spacing={0.85} sx={{ minWidth: 0, width: "100%", height: "100%" }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              flexShrink: 0,
+              borderRadius: "10px",
+              display: "grid",
+              placeItems: "center",
+              backgroundColor: objTone.surface,
+              color: objTone.accent,
+            }}
+          >
+            {objIcon}
+          </Box>
+          <Typography sx={{ minWidth: 0, fontSize: "0.74rem", fontWeight: 800, color: DASHBOARD_COLORS.muted, lineHeight: 1.25 }}>
             {strTitle}
           </Typography>
-          <Typography sx={{ mt: 0.3, fontSize: "1.4rem", lineHeight: 1.08, fontWeight: 800, color: DASHBOARD_COLORS.text }}>
+        </Stack>
+        <Box sx={{ minWidth: 0, width: "100%", flex: 1 }}>
+          <Typography sx={{ fontSize: blnValidationKpi ? "1.55rem" : "1.4rem", lineHeight: 1.05, fontWeight: 850, color: DASHBOARD_COLORS.text }}>
             {strValue}
           </Typography>
-          <Typography sx={{ mt: 0.2, fontSize: "0.74rem", color: DASHBOARD_COLORS.muted, lineHeight: 1.35 }}>
+          <Typography sx={{ mt: 0.35, fontSize: "0.74rem", color: DASHBOARD_COLORS.muted, lineHeight: 1.35 }}>
             {strSubtitle}
           </Typography>
           <Typography sx={{ mt: 0.35, fontSize: "0.68rem", color: "#64748B", lineHeight: 1.35 }}>
@@ -1138,7 +1145,7 @@ function PayrollKpiPanel({
           ) : null}
         </Box>
         {strRoutePath ? (
-          <Stack direction="row" spacing={0.3} alignItems="center" sx={{ mt: "auto", pt: 0.25, color: objTone.accent }}>
+          <Stack direction="row" spacing={0.35} alignItems="center" sx={{ mt: "auto", pt: 0.35, color: objTone.accent }}>
             <Typography sx={{ fontSize: "0.7rem", lineHeight: 1.2, fontWeight: 800 }}>
               {strActionLabel}
             </Typography>
@@ -1167,13 +1174,13 @@ function buildPendingApprovalsBreakdown(objPayload: KpiPayload, t: RoleBasedDash
   return lstParts.map((objPart) => `${formatInteger(objPart.intCount)} ${objPart.strLabel}`).join(", ");
 }
 
-function buildValidationBreakdown(objPayload: KpiPayload, t: RoleBasedDashboardProps["t"]) {
+function buildPayrollReadinessBreakdown(objPayload: KpiPayload, t: RoleBasedDashboardProps["t"]) {
   const intWarnings = Number(objPayload.intWarningCount || 0);
   const intAttendanceBlockers = Number(objPayload.intAttendanceBlockingCount || 0);
   if (!Number(objPayload.intBlockingCount || 0) && !intWarnings && !intAttendanceBlockers) {
-    return t("no_validation_blockers_short", "No validation blockers");
+    return t("payroll_ready_short", "Ready for payroll review");
   }
-  return `${t("warnings", "Warnings")}: ${formatInteger(intWarnings)} | ${t("attendance", "Attendance")}: ${formatInteger(intAttendanceBlockers)}`;
+  return `${t("attendance_to_fix", "Attendance to fix")}: ${formatInteger(intAttendanceBlockers)} | ${t("warnings", "Warnings")}: ${formatInteger(intWarnings)}`;
 }
 
 function getKpiDisplayTitle(strWidgetCode: string, strSelectedMonth: string, strAllMonthsValue: string, t: RoleBasedDashboardProps["t"], strFallback: string) {
@@ -1182,7 +1189,7 @@ function getKpiDisplayTitle(strWidgetCode: string, strSelectedMonth: string, str
   if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? t("employee_master", "Employee Master") : t("employees_in_payroll", "Employees in Payroll");
   if (strWidgetCode === "pending_approvals") return t("pending_approvals", "Pending Approvals");
   if (strWidgetCode === "leave_overview") return t("leave_impact", "Leave Impact");
-  if (strWidgetCode === "payroll_validation_errors") return t("validation_blockers", "Validation Blockers");
+  if (strWidgetCode === "payroll_validation_errors") return t("payroll_readiness", "Payroll Readiness");
   if (strWidgetCode === "master_data_gaps") return t("master_data_gaps", "Master Data Gaps");
   if (strWidgetCode === "statutory_liability") return t("statutory_liability", "Statutory Liability");
   if (strWidgetCode === "net_pay_movement") return t("net_pay_movement", "Net Pay Movement");
@@ -1213,8 +1220,8 @@ function getKpiScopeText(strWidgetCode: string, strSelectedMonth: string, strAll
   }
   if (strWidgetCode === "payroll_validation_errors") {
     return blnAllMonths
-      ? t("validation_scope_latest", "Validation blockers from the latest payroll run set.")
-      : t("validation_scope_month", "Validation blockers in the selected payroll month.");
+      ? t("readiness_scope_latest", "Latest payroll readiness based on attendance and warnings.")
+      : t("readiness_scope_month", "Selected month readiness before payroll processing.");
   }
   if (strWidgetCode === "master_data_gaps") {
     return t("master_data_scope", "Current employee master-data readiness.");
@@ -1234,27 +1241,37 @@ function getKpiScopeText(strWidgetCode: string, strSelectedMonth: string, strAll
 
 function getKpiRoutePath(strWidgetCode: string, strSelectedMonth: string, strAllMonthsValue: string) {
   const blnAllMonths = strSelectedMonth === strAllMonthsValue;
-  if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? "/masters/employee" : "/payroll/results";
-  if (strWidgetCode === "net_payroll_amount") return "/payroll/results";
+  const strMonth = blnAllMonths ? undefined : strSelectedMonth;
+  if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? buildDashboardRoute("/masters/employee", { focus: "active-employees" }) : buildDashboardRoute("/payroll/results", { month: strMonth, focus: "included-employees" });
+  if (strWidgetCode === "net_payroll_amount") return buildDashboardRoute("/payroll/results", { month: strMonth, focus: "net-pay" });
   if (strWidgetCode === "pending_approvals") return "/payroll/runs";
-  if (strWidgetCode === "leave_overview") return "/reports/leave/applications";
-  if (strWidgetCode === "payroll_validation_errors") return "/payroll/runs";
-  if (strWidgetCode === "master_data_gaps") return "/masters/employee";
-  if (strWidgetCode === "statutory_liability") return "/reports/payroll-register";
-  if (strWidgetCode === "net_pay_movement") return "/reports/payroll-register";
+  if (strWidgetCode === "leave_overview") return buildDashboardRoute("/reports/leave/applications", { month: strMonth, focus: "payroll-impact", status: "approved" });
+  if (strWidgetCode === "payroll_validation_errors") return "/reports/attendance/exceptions";
+  if (strWidgetCode === "master_data_gaps") return buildDashboardRoute("/masters/employee", { focus: "master-data-gaps" });
+  if (strWidgetCode === "statutory_liability") return buildDashboardRoute("/reports/payroll-register", { month: strMonth, focus: "statutory-breakup" });
+  if (strWidgetCode === "net_pay_movement") return buildDashboardRoute("/reports/payroll-register", { month: strMonth, compare: "previous", focus: "net-pay-movement" });
   return "";
+}
+
+function buildDashboardRoute(strPath: string, dicParams: Record<string, string | undefined>) {
+  const objParams = new URLSearchParams();
+  Object.entries(dicParams).forEach(([strKey, strValue]) => {
+    if (strValue) objParams.set(strKey, strValue);
+  });
+  const strQuery = objParams.toString();
+  return strQuery ? `${strPath}?${strQuery}` : strPath;
 }
 
 function getKpiActionLabel(strWidgetCode: string, strSelectedMonth: string, strAllMonthsValue: string, t: RoleBasedDashboardProps["t"]) {
   const blnAllMonths = strSelectedMonth === strAllMonthsValue;
-  if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? t("open_employee_master", "Open employee master") : t("open_payroll_results", "Open payroll results");
-  if (strWidgetCode === "net_payroll_amount") return t("open_payroll_results", "Open payroll results");
+  if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? t("view_active_employees", "View active employees") : t("view_included_employees", "View included employees");
+  if (strWidgetCode === "net_payroll_amount") return t("view_selected_month_results", "View selected-month results");
   if (strWidgetCode === "pending_approvals") return t("review_approvals", "Review approvals");
-  if (strWidgetCode === "leave_overview") return t("open_leave_register", "Open leave register");
-  if (strWidgetCode === "payroll_validation_errors") return t("review_run_issues", "Review run issues");
-  if (strWidgetCode === "master_data_gaps") return t("fix_employee_master", "Fix employee master");
-  if (strWidgetCode === "statutory_liability") return t("open_payroll_register", "Open payroll register");
-  if (strWidgetCode === "net_pay_movement") return t("open_payroll_register", "Open payroll register");
+  if (strWidgetCode === "leave_overview") return t("view_payroll_impact_leave", "View payroll-impact leave");
+  if (strWidgetCode === "payroll_validation_errors") return t("open_attendance_exceptions", "Open attendance exceptions");
+  if (strWidgetCode === "master_data_gaps") return t("review_data_gaps", "Review data gaps");
+  if (strWidgetCode === "statutory_liability") return t("view_statutory_breakup", "View statutory breakup");
+  if (strWidgetCode === "net_pay_movement") return t("compare_previous_month", "Compare previous month");
   return t("open_details", "Open details");
 }
 
@@ -2844,6 +2861,7 @@ function MiniDonutChart({ lstPoints, t, blnCompact = false }: { lstPoints: Chart
 
 function quickActionColor(strActionCode: string) {
   const strCode = String(strActionCode || "").toUpperCase();
+  if (strCode.includes("ATTENDANCE") || strCode.includes("EXCEPTION")) return DASHBOARD_COLORS.redSoft;
   if (strCode.includes("PAYSLIP")) return DASHBOARD_COLORS.blueSoft;
   if (strCode.includes("DECLARATION")) return DASHBOARD_COLORS.amberSoft;
   if (strCode.includes("REIMBURSE")) return DASHBOARD_COLORS.greenSoft;
@@ -2855,6 +2873,7 @@ function quickActionColor(strActionCode: string) {
 
 function renderQuickActionIcon(strActionCode: string) {
   const strCode = String(strActionCode || "").toUpperCase();
+  if (strCode.includes("ATTENDANCE") || strCode.includes("EXCEPTION")) return <ErrorOutlineRoundedIcon sx={{ color: DASHBOARD_COLORS.red, fontSize: 18 }} />;
   if (strCode.includes("RUN")) return <PaymentsRoundedIcon sx={{ color: DASHBOARD_COLORS.red, fontSize: 18 }} />;
   if (strCode.includes("PAYSLIP")) return <ReceiptLongRoundedIcon sx={{ color: DASHBOARD_COLORS.blue, fontSize: 18 }} />;
   if (strCode.includes("DECLARATION")) return <DescriptionRoundedIcon sx={{ color: DASHBOARD_COLORS.amber, fontSize: 18 }} />;
@@ -2867,6 +2886,7 @@ function renderQuickActionIcon(strActionCode: string) {
 
 function quickActionSubtitle(strActionCode: string, t: RoleBasedDashboardProps["t"]) {
   const strCode = String(strActionCode || "").toUpperCase();
+  if (strCode.includes("ATTENDANCE") || strCode.includes("EXCEPTION")) return t("fix_attendance_issues", "Fix Attendance Issues");
   if (strCode.includes("RUN")) return t("process_monthly_payroll", "Process Monthly Payroll");
   if (strCode.includes("PAYSLIP")) return t("bulk_payslip_generation", "Bulk Payslip Generation");
   if (strCode.includes("DECLARATION")) return t("pending_declarations", "Pending Declarations");
@@ -2996,7 +3016,7 @@ function buildDemoQuickActions(lstActions: DashboardQuickAction[], t: RoleBasedD
   const dicByRoute = new Map(filterPayrollQuickActions(lstActions).filter((objAction) => objAction.strRoutePath).map((objAction) => [objAction.strRoutePath as string, objAction]));
   const lstDefaults: DashboardQuickAction[] = [
     { strActionCode: "create_payroll_run", strActionName: t("create_payroll_run", "Create Payroll Run"), strRoutePath: "/payroll/runs" },
-    { strActionCode: "view_payroll_results", strActionName: t("view_payroll_results", "View Payroll Results"), strRoutePath: "/payroll/results" },
+    { strActionCode: "attendance_exceptions", strActionName: t("attendance_exceptions", "Attendance Exceptions"), strRoutePath: "/attendance/exceptions" },
     { strActionCode: "generate_payslips", strActionName: t("generate_payslips", "Generate Payslips"), strRoutePath: "/payroll/payslips" },
     { strActionCode: "payroll_reports", strActionName: t("payroll_reports", "Payroll Reports"), strRoutePath: "/reports" },
   ] as DashboardQuickAction[];
@@ -3598,4 +3618,3 @@ function buildConicGradient(lstPoints: Array<ChartPoint & { intValue: number }>)
   });
   return `conic-gradient(${lstStops.join(", ")})`;
 }
-
