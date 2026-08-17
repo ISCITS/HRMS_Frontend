@@ -24,6 +24,10 @@ export type LeaveSettingsConfigDto = {
   strDefaultApproverSource: DefaultApproverSource;
   objPrimaryHrApprover: ApproverSnapshotDto | null;
   objAlternateHrApprover: ApproverSnapshotDto | null;
+  // Attendance Approval Defaults (mirrors the leave approver block).
+  strAttendanceDefaultApproverSource: DefaultApproverSource;
+  objAttendancePrimaryHrApprover: ApproverSnapshotDto | null;
+  objAttendanceAlternateHrApprover: ApproverSnapshotDto | null;
 };
 
 export type LeaveSettingsSaveRequest = {
@@ -32,4 +36,8 @@ export type LeaveSettingsSaveRequest = {
   strDefaultApproverSource: DefaultApproverSource;
   intPrimaryHrApproverEmployeeID: number | null;
   intAlternateHrApproverEmployeeID: number | null;
+  // Optional: when omitted, the saved attendance approval defaults are left unchanged.
+  strAttendanceDefaultApproverSource?: DefaultApproverSource;
+  intAttendancePrimaryHrApproverEmployeeID?: number | null;
+  intAttendanceAlternateHrApproverEmployeeID?: number | null;
 };

@@ -60,33 +60,74 @@ function prettify(strValue: string): string {
 
 // Maps a raw balance movement to a request-centric activity. The mechanical "hold released for approved
 // utilization" row is hidden because the paired Utilization row already represents the approval.
+const lstMonthAbbr = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2026-08-21" -> "21-Aug-2026" (falls back to the raw string when it is not an ISO date).
+function formatLedgerDate(strIso: string | null): string {
+  if (!strIso) return "-";
+  const arrParts = strIso.slice(0, 10).split("-");
+  if (arrParts.length !== 3) return strIso;
+  const [strYear, strMonth, strDay] = arrParts;
+  const intMonth = Number(strMonth);
+  if (!intMonth || intMonth < 1 || intMonth > 12) return strIso;
+  return `${strDay}-${lstMonthAbbr[intMonth - 1]}-${strYear}`;
+}
+
+// The applied leave date (or range) shown after the transaction label.
+function formatLeaveRange(strFrom: string | null, strTo: string | null): string | null {
+  if (!strFrom) return null;
+  if (!strTo || strTo === strFrom) return formatLedgerDate(strFrom);
+  return `${formatLedgerDate(strFrom)} to ${formatLedgerDate(strTo)}`;
+}
+
 function mapLedgerActivity(objRow: LeaveLedgerDto): LedgerActivity {
   const strType = (objRow.strTransactionType ?? "").toUpperCase();
   const strRemarks = (objRow.strTransactionRemarks ?? "").toLowerCase();
   switch (strType) {
     case "HOLD":
-      return { strLabel: "Request Pending", strColor: "warning", blnHidden: false };
+      return { strLabel: "Leave Applied", strColor: "default", blnHidden: false };
     case "UTILIZATION":
-      return { strLabel: "Request Approved", strColor: "success", blnHidden: false };
+      return { strLabel: "Leave Approved", strColor: "default", blnHidden: false };
     case "RELEASE_HOLD":
       if (strRemarks.includes("approved leave utilization")) return { strLabel: "", strColor: "default", blnHidden: true };
-      if (strRemarks.includes("withdraw")) return { strLabel: "Request Withdrawn", strColor: "info", blnHidden: false };
-      return { strLabel: "Request Rejected", strColor: "error", blnHidden: false };
+      if (strRemarks.includes("withdraw")) return { strLabel: "Leave Withdraw", strColor: "default", blnHidden: false };
+      if (strRemarks.includes("cancel")) return { strLabel: "Leave Canceled After Approval", strColor: "default", blnHidden: false };
+      return { strLabel: "Leave Rejected", strColor: "default", blnHidden: false };
     case "ADJUSTMENT_CREDIT":
-      if (strRemarks.includes("reversed") || strRemarks.includes("cancelled") || strRemarks.includes("withdraw"))
-        return { strLabel: "Request Withdrawn", strColor: "info", blnHidden: false };
-      return { strLabel: "Adjustment Credit", strColor: "success", blnHidden: false };
+      if (strRemarks.includes("cancel")) return { strLabel: "Leave Canceled After Approval", strColor: "default", blnHidden: false };
+      if (strRemarks.includes("reversed") || strRemarks.includes("withdraw"))
+        return { strLabel: "Leave Withdraw", strColor: "default", blnHidden: false };
+      return { strLabel: "Adjustment Credit", strColor: "default", blnHidden: false };
     case "ADJUSTMENT_DEBIT":
-      return { strLabel: "Adjustment Debit", strColor: "error", blnHidden: false };
+      return { strLabel: "Adjustment Debit", strColor: "default", blnHidden: false };
     case "ENTITLEMENT":
-      return { strLabel: "Entitlement", strColor: "success", blnHidden: false };
+      return { strLabel: "Entitlement", strColor: "default", blnHidden: false };
     case "OPENING_BALANCE":
       return { strLabel: "Opening Balance", strColor: "default", blnHidden: false };
     case "COMPOFF_CREDIT":
-      return { strLabel: "Comp-Off Credit", strColor: "success", blnHidden: false };
+      return { strLabel: "Comp-Off Credit", strColor: "default", blnHidden: false };
     default:
       return { strLabel: prettify(strType), strColor: "default", blnHidden: false };
   }
+}
+
+// Full transaction text: "Leave Applied : 21-Aug-2026" (range appended for leave movements).
+function buildTransactionText(objRow: LeaveLedgerDto): string {
+  const strLabel = mapLedgerActivity(objRow).strLabel;
+  const strRange = formatLeaveRange(objRow.dtLeaveFromDate, objRow.dtLeaveToDate);
+  return strRange ? `${strLabel} : ${strRange}` : strLabel;
+}
+
+// The date the movement actually happened. For leave-application rows the stored
+// transaction_date is the leave's start date, so we show the real action timestamp
+// (transaction_on) instead; other rows keep their business transaction_date.
+function ledgerDisplayDate(objRow: LeaveLedgerDto): string {
+  const strSource = (objRow.strSourceType ?? "").toLowerCase();
+  const strIso =
+    strSource === "leave_application"
+      ? objRow.dtTransactionOn ?? objRow.dtTransactionDate
+      : objRow.dtTransactionDate;
+  return formatLedgerDate(strIso);
 }
 
 function formatNumber(intValue: number): string {
@@ -382,20 +423,16 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
                                 <Typography variant="body2" sx={{ fontWeight: 800, color: "#0f172a" }}>
                                   {objGroup.strLabel}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: "#64748b", ml: 0.5 }}>
-                                  ({objGroup.lstRows.length})
-                                </Typography>
                               </Stack>
                             </TableCell>
                           </TableRow>
                           {!blnCollapsed
                             ? objGroup.lstRows.map((objRow) => {
-                                const objActivity = mapLedgerActivity(objRow);
                                 return (
                                   <TableRow key={objRow.intID} hover>
-                                    <TableCell sx={{ whiteSpace: "nowrap" }}>{objRow.dtTransactionDate ?? "-"}</TableCell>
-                                    <TableCell>
-                                      <Chip size="small" label={objActivity.strLabel} color={objActivity.strColor} variant="outlined" />
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>{ledgerDisplayDate(objRow)}</TableCell>
+                                    <TableCell sx={{ whiteSpace: "normal", wordBreak: "break-word", color: "text.secondary" }}>
+                                      {buildTransactionText(objRow)}
                                     </TableCell>
                                     <TableCell align="right" sx={{ color: objRow.decCreditDays ? "success.main" : "text.disabled" }}>
                                       {formatNumber(objRow.decCreditDays)}
@@ -408,7 +445,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
                                       {displayBalance(objRow)}
                                     </TableCell>
                                     <TableCell sx={{ maxWidth: 260, whiteSpace: "normal", wordBreak: "break-word", color: "text.secondary" }}>
-                                      {objRow.strTransactionRemarks ?? "-"}
+                                      {objRow.strUserRemarks ?? objRow.strTransactionRemarks ?? "-"}
                                     </TableCell>
                                   </TableRow>
                                 );

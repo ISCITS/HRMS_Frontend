@@ -310,8 +310,13 @@ export type LeaveLedgerDto = {
   decBalanceAfter: number;
   decHoldAfter: number;
   strSourceType: string;
+  intSourceReferenceID: number | null;
   strTransactionRemarks: string | null;
   dtTransactionOn: string | null;
+  // Enrichment for leave-application movements.
+  dtLeaveFromDate: string | null;
+  dtLeaveToDate: string | null;
+  strUserRemarks: string | null;
 };
 
 export type LedgerEmployeeDto = {

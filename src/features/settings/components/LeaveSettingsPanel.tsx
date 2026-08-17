@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Divider,
   MenuItem,
   Snackbar,
   Stack,
@@ -78,6 +77,13 @@ export default function LeaveSettingsPanel() {
   const [objPrimarySnapshot, setObjPrimarySnapshot] = useState<ApproverSnapshotDto | null>(null);
   const [objAlternateSnapshot, setObjAlternateSnapshot] = useState<ApproverSnapshotDto | null>(null);
 
+  // Attendance Approval Defaults
+  const [strAttSource, setStrAttSource] = useState<DefaultApproverSource>("REPORTING_MANAGER");
+  const [objAttPrimary, setObjAttPrimary] = useState<ApproverEmployeeDto | null>(null);
+  const [objAttAlternate, setObjAttAlternate] = useState<ApproverEmployeeDto | null>(null);
+  const [objAttPrimarySnapshot, setObjAttPrimarySnapshot] = useState<ApproverSnapshotDto | null>(null);
+  const [objAttAlternateSnapshot, setObjAttAlternateSnapshot] = useState<ApproverSnapshotDto | null>(null);
+
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<ApproverEmployeeDto[]>([]);
   const [blnSearching, setBlnSearching] = useState(false);
   const refSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +100,11 @@ export default function LeaveSettingsPanel() {
     setObjAlternateSnapshot(objConfig.objAlternateHrApprover);
     setObjPrimary(snapshotToOption(objConfig.objPrimaryHrApprover));
     setObjAlternate(snapshotToOption(objConfig.objAlternateHrApprover));
+    setStrAttSource(objConfig.strAttendanceDefaultApproverSource ?? "REPORTING_MANAGER");
+    setObjAttPrimarySnapshot(objConfig.objAttendancePrimaryHrApprover);
+    setObjAttAlternateSnapshot(objConfig.objAttendanceAlternateHrApprover);
+    setObjAttPrimary(snapshotToOption(objConfig.objAttendancePrimaryHrApprover));
+    setObjAttAlternate(snapshotToOption(objConfig.objAttendanceAlternateHrApprover));
   }
 
   async function loadConfig() {
@@ -139,6 +150,9 @@ export default function LeaveSettingsPanel() {
         strDefaultApproverSource: strSource,
         intPrimaryHrApproverEmployeeID: objPrimary?.intEmployeeID ?? null,
         intAlternateHrApproverEmployeeID: objAlternate?.intEmployeeID ?? null,
+        strAttendanceDefaultApproverSource: strAttSource,
+        intAttendancePrimaryHrApproverEmployeeID: objAttPrimary?.intEmployeeID ?? null,
+        intAttendanceAlternateHrApproverEmployeeID: objAttAlternate?.intEmployeeID ?? null,
       });
       applyConfig(objConfig);
       showToast("Settings saved successfully.", "success");
@@ -208,7 +222,7 @@ export default function LeaveSettingsPanel() {
           <Box>
             <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.05rem" }}>Leave</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-              Configure the leave calendar and default leave approvers for your company.
+              Configure the leave calendar and default leave &amp; attendance approvers for your company.
             </Typography>
           </Box>
           {blnReadOnly && !blnBusy ? (
@@ -221,9 +235,18 @@ export default function LeaveSettingsPanel() {
             <CircularProgress />
           </Box>
         ) : (
-          <Stack spacing={3} sx={{ maxWidth: 620 }}>
-            {/* ---- Leave Calendar ---- */}
-            <Box>
+          <Box sx={{ maxWidth: 1180 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                columnGap: 5,
+                rowGap: 3,
+                alignItems: "flex-start",
+              }}
+            >
+              {/* ---- Leave Calendar (col 1, row 1) ---- */}
+              <Box sx={{ gridColumn: { md: "1" }, gridRow: { md: "1" } }}>
               <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>Leave Calendar</Typography>
               <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 1.25 }}>Leave Year Starts On</Typography>
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
@@ -259,10 +282,8 @@ export default function LeaveSettingsPanel() {
               </Stack>
             </Box>
 
-            <Divider />
-
-            {/* ---- Approval Defaults ---- */}
-            <Box>
+              {/* ---- Approval Defaults (col 1, row 2) ---- */}
+              <Box sx={{ gridColumn: { md: "1" }, gridRow: { md: "2" } }}>
               <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.25 }}>Approval Defaults</Typography>
               <Stack spacing={2}>
                 <TextField
@@ -299,8 +320,47 @@ export default function LeaveSettingsPanel() {
               </Stack>
             </Box>
 
+              {/* ---- Attendance Approval Defaults (col 2, row 2) ---- */}
+              <Box sx={{ gridColumn: { md: "2" }, gridRow: { md: "2" } }}>
+              <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.25 }}>Attendance Approval Defaults</Typography>
+              <Stack spacing={2}>
+                <TextField
+                  select
+                  label="Default Attendance Approver"
+                  value={strAttSource}
+                  onChange={(objEvent) => setStrAttSource(objEvent.target.value as DefaultApproverSource)}
+                  disabled={blnReadOnly}
+                  helperText="Used when an Attendance Regularization request has no configured approval steps."
+                  controlId="settings.attendance.default-approver.select"
+                  fullWidth
+                >
+                  {lstApproverSourceOptions.map((objOption) => (
+                    <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
+                  ))}
+                </TextField>
+
+                {renderApproverField(
+                  "Primary HR Attendance Approver",
+                  "settings.attendance.primary-hr.autocomplete",
+                  objAttPrimary,
+                  setObjAttPrimary,
+                  objAttPrimarySnapshot,
+                  strAttSource === "HR",
+                )}
+                {renderApproverField(
+                  "Alternate HR Attendance Approver",
+                  "settings.attendance.alternate-hr.autocomplete",
+                  objAttAlternate,
+                  setObjAttAlternate,
+                  objAttAlternateSnapshot,
+                  false,
+                )}
+              </Stack>
+            </Box>
+            </Box>
+
             {!blnReadOnly ? (
-              <Box>
+              <Box sx={{ mt: 3 }}>
                 <Button
                   variant="contained"
                   className={styles.primaryButton}
@@ -313,7 +373,7 @@ export default function LeaveSettingsPanel() {
                 </Button>
               </Box>
             ) : null}
-          </Stack>
+          </Box>
         )}
       </Box>
 
