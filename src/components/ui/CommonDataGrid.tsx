@@ -35,7 +35,7 @@ export type DataGridColumn<T extends Record<string, ReactNode>> = {
   sortAccessor?: (row: T) => string | number;
   filterable?: boolean;
   exportable?: boolean;
-  /** When true, long cell content wraps onto multiple lines instead of overflowing past the column. */
+  /** @deprecated Text wrapping is now the default behavior for all columns. */
   blnWrapText?: boolean;
 };
 
@@ -380,10 +380,18 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       fontWeight: 600,
                       borderBottom: "1px solid",
                       borderColor: "divider",
-                      whiteSpace: "nowrap",
+                      whiteSpace: "normal",
+                      overflowWrap: "anywhere",
                       verticalAlign: "middle",
                       px: 1,
-                      py: 0.5
+                      py: 0.5,
+                      "& .MuiTableSortLabel-root": {
+                        maxWidth: "100%",
+                        whiteSpace: "normal"
+                      },
+                      "& .MuiTableSortLabel-icon": {
+                        flexShrink: 0
+                      }
                     }}
                   >
                     {column.sortable === false ? (
@@ -450,8 +458,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                         data-controlid={`${testIdPrefix}.row.${strField}.cell`}
                         data-row-key={strRowKey}
                         sx={{
-                          whiteSpace: column.blnWrapText ? "normal" : "nowrap",
-                          wordBreak: column.blnWrapText ? "break-word" : undefined,
+                          whiteSpace: "normal",
+                          overflowWrap: "anywhere",
                           px: 1,
                           py: 0.5
                         }}
