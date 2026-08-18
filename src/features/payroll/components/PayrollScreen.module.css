@@ -317,21 +317,18 @@
 .reportSearchPanelRow {
   align-items: end;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
 }
 
 .reportSearchField {
-  flex: 0 0 200px;
+  flex: 1 1 200px;
   min-width: 200px;
 }
 
 .reportSearchPanelRow .searchActions {
   flex: 0 0 auto;
-  margin-left: auto;
 }
 
 .employeePayrollInputSearchRow {

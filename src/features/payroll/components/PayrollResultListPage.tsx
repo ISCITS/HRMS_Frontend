@@ -469,6 +469,8 @@ export default function PayrollResultListPage({
               <>
                 {blnCanAccessResults ? (
                   <Button
+                    data-controlid="payroll-results.list.row.view.button"
+                    data-row-key={dicRow.intID}
                     className={`${styles.secondaryButton} ${styles.compactButton}`}
                     startIcon={<VisibilityRoundedIcon />}
                     onClick={() => {

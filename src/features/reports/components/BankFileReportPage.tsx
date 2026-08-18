@@ -4,9 +4,10 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -160,8 +161,6 @@ export default function BankFileReportPage() {
   const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
@@ -172,7 +171,6 @@ export default function BankFileReportPage() {
       setLstRows(await payrollReportService.getBankFileRows(objFilters));
       setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
-      setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load bank file rows.");
     } finally {
@@ -193,20 +191,16 @@ export default function BankFileReportPage() {
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
   }), [lstRows]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
   const lstExportRows = setSelectedRowIDs.size > 0
     ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID))
     : lstFilteredRows;
-  const blnAllVisibleSelected = lstVisibleRows.length > 0 && lstVisibleRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
-  const blnSomeVisibleSelected = lstVisibleRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnAllFilteredSelected = lstFilteredRows.length > 0 && lstFilteredRows.every((dicRow) => setSelectedRowIDs.has(dicRow.intID));
+  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredRows.some((dicRow) => setSelectedRowIDs.has(dicRow.intID));
 
-  function toggleVisibleRows(blnChecked: boolean) {
+  function toggleFilteredRows(blnChecked: boolean) {
     setSetSelectedRowIDs((setPrevious) => {
       const setNext = new Set(setPrevious);
-      lstVisibleRows.forEach((dicRow) => {
+      lstFilteredRows.forEach((dicRow) => {
         if (blnChecked) {
           setNext.add(dicRow.intID);
         } else {
@@ -247,6 +241,61 @@ export default function BankFileReportPage() {
     }
     loadRows(dicEmptySearch).catch(() => undefined);
   }, [blnCanView]);
+
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        intID: dicRow.intID,
+        select: (
+          <Checkbox
+            inputProps={{ "controlId": "reports.bank-file.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>}
+            size="small"
+            checked={setSelectedRowIDs.has(dicRow.intID)}
+            onChange={(objEvent) => toggleRow(dicRow.intID, objEvent.target.checked)}
+          />
+        ),
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeName: dicRow.strEmployeeName,
+        strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strBankName: displayValue(dicRow.strBankName),
+        strBankAccountMasked: displayValue(dicRow.strBankAccountMasked),
+        strIfscCode: displayValue(dicRow.strIfscCode),
+        decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        strPaymentStatus: dicRow.strStatus === "Paid" ? "Paid" : "Payment Required",
+      })),
+    [lstFilteredRows, setSelectedRowIDs]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            inputProps={{ "controlId": "reports.bank-file.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+            size="small"
+            checked={blnAllFilteredSelected}
+            indeterminate={blnSomeFilteredSelected}
+            onChange={(objEvent) => toggleFilteredRows(objEvent.target.checked)}
+            disabled={lstFilteredRows.length === 0}
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
+      { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140 },
+      { field: "strBankName", headerName: "Bank Name", width: 180 },
+      { field: "strBankAccountMasked", headerName: "Account Number", width: 180 },
+      { field: "strIfscCode", headerName: "IFSC/Routing Code", width: 160 },
+      { field: "decNetPayAmount", headerName: "Net Pay", width: 150, align: "right" },
+      { field: "strPaymentStatus", headerName: "Payment Status", width: 160 },
+    ],
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length]
+  );
 
   if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
     return <BlockingLoader blnOpen strLabel="Loading bank file..." />;
@@ -307,76 +356,35 @@ export default function BankFileReportPage() {
       <Box className={styles.tableCard}>
         {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Bank file view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        <Box className={styles.listUtilityBar}>
-          <Box className={styles.listUtilityActions}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("bank-file.csv", lstExportRows)} controlId="reports.bank-file.generate.button">Generate Bank File</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Bank File", lstExportRows)} controlId="reports.bank-file.download-pdf.button">Download PDF</Button> : null}
-            {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
-          </Box>
-          <Box className={styles.paginationBar} sx={{ p: 0 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography>Rows per page</Typography>
-              <TextField select size="small" value={intRowsPerPage} onChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(1); }} className={styles.rowsPerPageSelect} sx={{ width: 92 }}>
-                {lstRowsPerPageOptions.map((intOption) => <MenuItem key={intOption} value={intOption}>{intOption}</MenuItem>)}
-              </TextField>
-              <Typography className={styles.paginationRange}>{lstFilteredRows.length === 0 ? "0 of 0" : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} of ${lstFilteredRows.length}`}</Typography>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="intID"
+          defaultPageSize={lstRowsPerPageOptions[0]}
+          pageSizeOptions={lstRowsPerPageOptions}
+          emptyMessage="No eligible bank file rows found for the current filters."
+          showPaginationSummary
+          withPaper={false}
+          testIdPrefix="reports.bank-file"
+          toolbarLeft={(
+            <Box className={styles.listUtilityActions}>
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("bank-file.csv", lstExportRows)} data-controlid="reports.bank-file.generate.button">Generate Bank File</Button> : null}
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("Bank File", lstExportRows)} data-controlid="reports.bank-file.download-pdf.button">Download PDF</Button> : null}
+              {setSelectedRowIDs.size > 0 ? <Typography sx={{ color: "#64748b", alignSelf: "center" }}>{setSelectedRowIDs.size} selected</Typography> : null}
             </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
-          </Box>
-        </Box>
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>
-                  <Checkbox
-                    size="small"
-                    checked={blnAllVisibleSelected}
-                    indeterminate={!blnAllVisibleSelected && blnSomeVisibleSelected}
-                    onChange={(objEvent) => toggleVisibleRows(objEvent.target.checked)}
-                  />
-                </th>
-                <th>Employee Code</th>
-                <th>Employee Name</th>
-                <th>Payroll Period</th>
-                <th>Bank Name</th>
-                <th>Account Number</th>
-                <th>IFSC/Routing Code</th>
-                <th>Net Pay</th>
-                <th>Payment Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstVisibleRows.length === 0 ? <tr><td colSpan={9} className={styles.emptyState}>No eligible bank file rows found for the current filters.</td></tr> : null}
-              {lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td>
-                    <Checkbox
-                      size="small"
-                      checked={setSelectedRowIDs.has(dicRow.intID)}
-                      onChange={(objEvent) => toggleRow(dicRow.intID, objEvent.target.checked)}
-                    />
-                  </td>
-                  <td>{dicRow.strEmployeeCode}</td>
-                  <td>{dicRow.strEmployeeName}</td>
-                  <td>{formatMonth(dicRow.dtPayrollMonth)}</td>
-                  <td>{displayValue(dicRow.strBankName)}</td>
-                  <td>{displayValue(dicRow.strBankAccountMasked)}</td>
-                  <td>{displayValue(dicRow.strIfscCode)}</td>
-                  <td>{formatCurrency(dicRow.decNetPayAmount)}</td>
-                  <td>{dicRow.strStatus === "Paid" ? "Paid" : "Payment Required"}</td>
-                </tr>
-              ))}
-              {lstFilteredRows.length > 0 ? (
-                <tr>
-                  <td colSpan={7}><strong>Total</strong></td>
-                  <td><strong>{formatCurrency(decNetTotal)}</strong></td>
-                  <td />
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </Box>
+          )}
+          footerContent={lstFilteredRows.length > 0 ? (
+            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
+              <Box sx={{ minWidth: 1256, display: "grid", gridTemplateColumns: "56px 150px 220px 140px 180px 180px 160px 150px 160px", alignItems: "center" }}>
+                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 7" }}>Total</Typography>
+                <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(decNetTotal)}</Typography>
+                <Box />
+              </Box>
+            </Box>
+          ) : null}
+          getRowSx={(dicRow) => setSelectedRowIDs.has(dicRow.intID) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
 
       <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>

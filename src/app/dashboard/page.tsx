@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
   const [strError, setStrError] = useState("");
-  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null | undefined>(undefined);
+  const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
   const [intReloadKey, setIntReloadKey] = useState(0);
 
   useEffect(() => {

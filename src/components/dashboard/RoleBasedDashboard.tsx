@@ -81,6 +81,10 @@ type KpiPayload = {
   strPreviousMonth?: string;
   decTrendValue?: number | null;
   intRunPendingCount?: number;
+  intPayrollImpactCount?: number;
+  intApprovedLeaveCount?: number;
+  intPendingLeaveCount?: number;
+  intPendingApprovals?: number;
   intTaxPendingCount?: number;
   intReimbursementPendingCount?: number;
   intBlockingCount?: number;
@@ -524,7 +528,7 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
   const lstMonthOptions = lstAvailablePayrollMonths.length ? lstAvailablePayrollMonths : lstPayrollMonthsFromRuns;
   const objNormalizedMonthOptions = Array.from(new Set(lstMonthOptions.map((strMonth) => String(strMonth || "").trim()).filter(Boolean)));
   const strAllMonthsValue = "__all__";
-  const [strSelectedMonth, setStrSelectedMonth] = useState(strSelectedPayrollMonth || objNormalizedMonthOptions[0] || strAllMonthsValue);
+  const [strSelectedMonth, setStrSelectedMonth] = useState(strSelectedPayrollMonth || strAllMonthsValue);
 
   useEffect(() => {
     const strControlledMonth = strSelectedPayrollMonth || strAllMonthsValue;
@@ -539,7 +543,7 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
       return;
     }
     if (!lstSelectableMonths.includes(strSelectedMonth)) {
-      setStrSelectedMonth(objNormalizedMonthOptions[0] || strAllMonthsValue);
+      setStrSelectedMonth(strAllMonthsValue);
     }
   }, [objNormalizedMonthOptions, strAllMonthsValue, strSelectedMonth, strSelectedPayrollMonth]);
 
@@ -655,7 +659,8 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
   const lstMenuShortcuts = [...lstPrimaryShortcuts.slice(intVisibleHeaderShortcutCount), ...lstOverflowShortcuts];
   const blnAllMonthsSelected = strSelectedMonth === strAllMonthsValue;
   const strSelectedMonthLongLabel = blnAllMonthsSelected ? "" : formatLongMonth(strSelectedMonth, t);
-  const objLeaveOverviewPayload = ((objLeaveOverviewWidget?.objPayload as Record<string, unknown> | undefined) || {});
+  const objLeaveOverviewPayload = ((objLeaveOverviewWidget?.objPayload as KpiPayload | undefined) || {});
+  const intLeaveImpactCount = Number(objLeaveOverviewPayload.intPayrollImpactCount ?? objLeaveOverviewPayload.intPendingApprovals ?? 0);
   const objLeaveKpiWidget: DashboardWidget = {
     strWidgetCode: "leave_overview",
     strWidgetName: t("leave_impact", "Leave Impact"),
@@ -664,10 +669,11 @@ function PayrollDashboard({ objDashboard, strSelectedPayrollMonth, t, onPayrollM
     intDisplayOrder: 46,
     blnIsVisible: true,
     objPayload: {
-      intValue: Number(objLeaveOverviewPayload.intPendingApprovals || 0),
+      ...objLeaveOverviewPayload,
+      intValue: intLeaveImpactCount,
       strSubtitle: blnAllMonthsSelected
-        ? t("requests_affecting_payroll", "Requests affecting payroll")
-        : `${t("requests_affecting_payroll", "Requests affecting payroll")} (${strSelectedMonthLongLabel})`,
+        ? t("approved_pending_leave_all", "Approved/pending leave across payroll months")
+        : `${t("approved_pending_leave_overlap", "Approved/pending leave overlapping")} ${strSelectedMonthLongLabel}`,
     },
   };
   const objAlertsPayload = ((objAlertsWidget.objPayload as Record<string, unknown> | undefined) || {});
@@ -1057,7 +1063,7 @@ function PayrollKpiPanel({
 
   const strSubtitle = objWidget.strWidgetCode === "net_payroll_amount"
     ? blnAllMonths
-      ? t("generated_payslip_net_pay", "Generated payslip net pay")
+      ? t("final_payroll_result_net_pay", "Final payroll result net pay")
       : `${t("selected_month_payable", "Selected month payable")}: ${formatLongMonth(strSelectedMonth, t)}`
     : blnEmployeeKpi
       ? blnAllMonths
@@ -1205,7 +1211,7 @@ function getKpiScopeText(strWidgetCode: string, strSelectedMonth: string, strAll
   }
   if (strWidgetCode === "net_payroll_amount") {
     return blnAllMonths
-      ? t("net_pay_scope_all", "Generated payslip net pay across available payroll data.")
+      ? t("net_pay_scope_all", "Payroll result net pay across all available months.")
       : t("net_pay_scope_month", "Full selected payroll month net payable.");
   }
   if (strWidgetCode === "pending_approvals") {
@@ -1215,8 +1221,8 @@ function getKpiScopeText(strWidgetCode: string, strSelectedMonth: string, strAll
   }
   if (strWidgetCode === "leave_overview") {
     return blnAllMonths
-      ? t("leave_scope_all", "Pending leave requests that can affect payroll.")
-      : t("leave_scope_month", "Leave requests overlapping the selected payroll month.");
+      ? t("leave_scope_all", "Approved and pending leave requests across available payroll months.")
+      : t("leave_scope_month", "Approved and pending leave overlapping the selected payroll month.");
   }
   if (strWidgetCode === "payroll_validation_errors") {
     return blnAllMonths
@@ -1228,7 +1234,7 @@ function getKpiScopeText(strWidgetCode: string, strSelectedMonth: string, strAll
   }
   if (strWidgetCode === "statutory_liability") {
     return blnAllMonths
-      ? t("statutory_scope_latest", "PF, ESI, and TDS from available payroll results.")
+      ? t("statutory_scope_all", "PF, ESI, and TDS across all available payroll months.")
       : t("statutory_scope_month", "PF, ESI, and TDS for the selected payroll month.");
   }
   if (strWidgetCode === "net_pay_movement") {
@@ -1245,7 +1251,7 @@ function getKpiRoutePath(strWidgetCode: string, strSelectedMonth: string, strAll
   if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? buildDashboardRoute("/masters/employee", { focus: "active-employees" }) : buildDashboardRoute("/payroll/results", { month: strMonth, focus: "included-employees" });
   if (strWidgetCode === "net_payroll_amount") return buildDashboardRoute("/payroll/results", { month: strMonth, focus: "net-pay" });
   if (strWidgetCode === "pending_approvals") return "/payroll/runs";
-  if (strWidgetCode === "leave_overview") return buildDashboardRoute("/reports/leave/applications", { month: strMonth, focus: "payroll-impact", status: "approved" });
+  if (strWidgetCode === "leave_overview") return buildDashboardRoute("/reports/leave/applications", { month: strMonth, focus: "payroll-impact", status: "approved,pending" });
   if (strWidgetCode === "payroll_validation_errors") return "/reports/attendance/exceptions";
   if (strWidgetCode === "master_data_gaps") return buildDashboardRoute("/masters/employee", { focus: "master-data-gaps" });
   if (strWidgetCode === "statutory_liability") return buildDashboardRoute("/reports/payroll-register", { month: strMonth, focus: "statutory-breakup" });
@@ -1265,12 +1271,12 @@ function buildDashboardRoute(strPath: string, dicParams: Record<string, string |
 function getKpiActionLabel(strWidgetCode: string, strSelectedMonth: string, strAllMonthsValue: string, t: RoleBasedDashboardProps["t"]) {
   const blnAllMonths = strSelectedMonth === strAllMonthsValue;
   if (strWidgetCode === "employees_in_payroll") return blnAllMonths ? t("view_active_employees", "View active employees") : t("view_included_employees", "View included employees");
-  if (strWidgetCode === "net_payroll_amount") return t("view_selected_month_results", "View selected-month results");
+  if (strWidgetCode === "net_payroll_amount") return blnAllMonths ? t("view_all_payroll_results", "View all payroll results") : t("view_selected_month_results", "View selected-month results");
   if (strWidgetCode === "pending_approvals") return t("review_approvals", "Review approvals");
   if (strWidgetCode === "leave_overview") return t("view_payroll_impact_leave", "View payroll-impact leave");
   if (strWidgetCode === "payroll_validation_errors") return t("open_attendance_exceptions", "Open attendance exceptions");
   if (strWidgetCode === "master_data_gaps") return t("review_data_gaps", "Review data gaps");
-  if (strWidgetCode === "statutory_liability") return t("view_statutory_breakup", "View statutory breakup");
+  if (strWidgetCode === "statutory_liability") return blnAllMonths ? t("view_all_statutory_breakup", "View all statutory breakup") : t("view_statutory_breakup", "View statutory breakup");
   if (strWidgetCode === "net_pay_movement") return t("compare_previous_month", "Compare previous month");
   return t("open_details", "Open details");
 }
