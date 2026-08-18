@@ -9,10 +9,11 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
@@ -486,6 +487,57 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     [objEffectiveOptions.lstSalaryComponents]
   );
 
+  const lstItemTableRows = useMemo(
+    () =>
+      (objClaim?.lstItems ?? []).map((objItem) => {
+        const strComponent = objItem.intSalaryComponentID ? dicComponentNameByID.get(objItem.intSalaryComponentID) : null;
+        return {
+          id: objItem.intID,
+          reimbursementType: (
+            <Box>
+              <Typography sx={{ fontWeight: 800 }}>{strComponent ? translateKnownReimbursementText(strComponent, t) : objItem.strExpenseDescription ? translateKnownReimbursementText(objItem.strExpenseDescription, t) : `${t("item", "Item")} #${objItem.intID}`}</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "#64748b" }}>{objItem.strExpenseDescription ? translateKnownReimbursementText(objItem.strExpenseDescription, t) : objItem.strEmployeeRemarks || "-"}</Typography>
+              {objItem.strReviewerRemarks ? <Typography sx={{ fontSize: "0.75rem", color: "#b45309" }}>{objItem.strReviewerRemarks}</Typography> : null}
+            </Box>
+          ),
+          expenseDate: formatDateLabel(objItem.dtExpenseDate),
+          claimedAmount: formatCurrency(objItem.decClaimedAmount),
+          approvedAmount: formatCurrency(objItem.decApprovedAmount),
+          proof: (
+            <Typography sx={{ fontSize: "0.78rem", color: "#475569", fontWeight: 700 }}>
+              {objItem.lstProofs?.length
+                ? objItem.lstProofs.length === 1
+                  ? t("proof_uploaded_singular", "1 proof uploaded")
+                  : t("proof_uploaded_plural", `${objItem.lstProofs.length} proofs uploaded`).replace("{count}", String(objItem.lstProofs.length))
+                : objItem.blnProofRequired
+                  ? t("proof_required", "Proof required")
+                  : t("not_required", "Not required")}
+            </Typography>
+          ),
+          actions: (
+            <Stack direction="row" spacing={0.4} justifyContent="flex-end">
+              <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(true); setBlnItemDialogOpen(true); }} aria-label={t("view_item", "View Item")} controlId="reimbursements.claim-editor.item.view.button" data-row-key={objItem.intID}><VisibilityRoundedIcon fontSize="small" /></IconButton>
+              {!blnReadOnly ? <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(false); setBlnItemDialogOpen(true); }} aria-label={t("edit_item", "Edit Item")} controlId="reimbursements.claim-editor.item.edit.button" data-row-key={objItem.intID}><EditRoundedIcon fontSize="small" /></IconButton> : null}
+              {!blnReadOnly ? <IconButton size="small" onClick={() => setObjDeletingItem(objItem)} aria-label={t("delete_item", "Delete Item")} controlId="reimbursements.claim-editor.item.delete.icon-button" data-row-key={objItem.intID}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
+            </Stack>
+          ),
+        };
+      }),
+    [blnReadOnly, dicComponentNameByID, objClaim?.lstItems, t]
+  );
+
+  const lstItemTableColumns = useMemo<CommonTableColumn<(typeof lstItemTableRows)[number]>[]>(
+    () => [
+      { field: "reimbursementType", headerName: t("reimbursement_type", "Reimbursement Type"), width: 260, sortable: false },
+      { field: "expenseDate", headerName: t("expense_date", "Expense Date"), width: 140, sortable: false },
+      { field: "claimedAmount", headerName: t("claimed_amount", "Claimed Amount"), align: "right", width: 150, sortable: false },
+      { field: "approvedAmount", headerName: t("approved_amount", "Approved Amount"), align: "right", width: 150, sortable: false },
+      { field: "proof", headerName: t("proof", "Proof"), width: 200, sortable: false },
+      { field: "actions", headerName: t("actions", "Actions"), align: "right", width: 130, sortable: false, exportable: false },
+    ],
+    [t]
+  );
+
   return (
     <Stack spacing={1.4}>
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claim", "Loading reimbursement claim...")} />
@@ -549,58 +601,17 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
           ) : null}
         </Stack>
         {!blnExistingClaim ? <Alert severity="info" sx={{ mx: 1.1, mb: 1.1, borderRadius: "8px" }}>{t("claim_number_generated_after_first_item", "Claim number will be generated after the first item is added.")}</Alert> : null}
-        <TableContainer>
-          <Table size="small" sx={{ minWidth: 900 }}>
-            <TableHead sx={{ backgroundColor: "#f8fafc" }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 800 }}>{t("reimbursement_type", "Reimbursement Type")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("expense_date", "Expense Date")}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("claimed_amount", "Claimed Amount")}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("approved_amount", "Approved Amount")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("proof", "Proof")}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("actions", "Actions")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(objClaim?.lstItems ?? []).length === 0 ? (
-                <TableRow><TableCell colSpan={7}><Typography sx={{ py: 2.5, textAlign: "center", color: "#64748b" }}>{t("no_items_added", "No items added yet.")}</Typography></TableCell></TableRow>
-              ) : null}
-              {(objClaim?.lstItems ?? []).map((objItem) => {
-                const strComponent = objItem.intSalaryComponentID ? dicComponentNameByID.get(objItem.intSalaryComponentID) : null;
-                return (
-                  <TableRow key={objItem.intID} hover>
-                    <TableCell>
-                      <Typography sx={{ fontWeight: 800 }}>{strComponent ? translateKnownReimbursementText(strComponent, t) : objItem.strExpenseDescription ? translateKnownReimbursementText(objItem.strExpenseDescription, t) : `${t("item", "Item")} #${objItem.intID}`}</Typography>
-                      <Typography sx={{ fontSize: "0.75rem", color: "#64748b" }}>{objItem.strExpenseDescription ? translateKnownReimbursementText(objItem.strExpenseDescription, t) : objItem.strEmployeeRemarks || "-"}</Typography>
-                      {objItem.strReviewerRemarks ? <Typography sx={{ fontSize: "0.75rem", color: "#b45309" }}>{objItem.strReviewerRemarks}</Typography> : null}
-                    </TableCell>
-                    <TableCell>{formatDateLabel(objItem.dtExpenseDate)}</TableCell>
-                    <TableCell align="right">{formatCurrency(objItem.decClaimedAmount)}</TableCell>
-                    <TableCell align="right">{formatCurrency(objItem.decApprovedAmount)}</TableCell>
-                    <TableCell sx={{ minWidth: 260 }}>
-                      <Typography sx={{ fontSize: "0.78rem", color: "#475569", fontWeight: 700 }}>
-                        {objItem.lstProofs?.length
-                          ? objItem.lstProofs.length === 1
-                            ? t("proof_uploaded_singular", "1 proof uploaded")
-                            : t("proof_uploaded_plural", `${objItem.lstProofs.length} proofs uploaded`).replace("{count}", String(objItem.lstProofs.length))
-                          : objItem.blnProofRequired
-                            ? t("proof_required", "Proof required")
-                            : t("not_required", "Not required")}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.4} justifyContent="flex-end">
-                        <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(true); setBlnItemDialogOpen(true); }} aria-label={t("view_item", "View Item")} controlId="reimbursements.claim-editor.item.view.icon-button" data-row-key={objItem.intID}><VisibilityRoundedIcon fontSize="small" /></IconButton>
-                        {!blnReadOnly ? <IconButton size="small" onClick={() => { setObjEditingItem(objItem); setBlnViewingItem(false); setBlnItemDialogOpen(true); }} aria-label={t("edit_item", "Edit Item")} controlId="reimbursements.claim-editor.item.edit.icon-button" data-row-key={objItem.intID}><EditRoundedIcon fontSize="small" /></IconButton> : null}
-                        {!blnReadOnly ? <IconButton size="small" onClick={() => setObjDeletingItem(objItem)} aria-label={t("delete_item", "Delete Item")} controlId="reimbursements.claim-editor.item.delete.icon-button" data-row-key={objItem.intID}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <CommonTable
+          columns={lstItemTableColumns}
+          rows={lstItemTableRows}
+          rowIdField="id"
+          hideToolbar
+          defaultPageSize={500}
+          minTableWidth={900}
+          emptyMessage={t("no_items_added", "No items added yet.")}
+          testIdPrefix="reimbursements.claim-editor.items"
+          withPaper={false}
+        />
       </Paper>
 
       <ReimbursementClaimItemForm intClaimID={objClaim?.intID ?? null} intEmployeeID={intSelectedEmployeeID} objItem={objEditingItem} objOptions={objEffectiveOptions} blnOpen={blnItemDialogOpen} blnSaving={blnSaving} intUploadProgress={intProofUploadProgress} blnReadOnly={blnViewingItem} onClose={() => { setBlnItemDialogOpen(false); setObjEditingItem(null); setBlnViewingItem(false); }} onSave={saveItem} onDeleteProof={deleteProof} />

@@ -28,12 +28,6 @@ import {
   Snackbar,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -41,6 +35,7 @@ import {
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import {
   buildEmployeeSalaryFixedRows,
@@ -1537,6 +1532,263 @@ export default function FlexiPayDeclarationPage() {
     return <BlockingLoader blnOpen strLabel={t("loading_details", "Loading flexi declaration details...")} />;
   }
 
+  const lstFlexiComponentRows = lstDisplayedRows.map((objDisplayRow) => {
+    const objRow = objDisplayRow.objSelectedLine;
+    const objEligibilityChip = getTranslatedEligibilityChipConfig(objRow);
+    return {
+      id: objDisplayRow.intRowKey,
+      component: (
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
+            {translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "Component")}
+          </Typography>
+          {isLwpProratedFlexiOption(objRow) ? (
+            <Tooltip
+              title={t(
+                "lwp_prorated_in_payroll_help",
+                "This option keeps normal ESS entitlement here. Payroll applies LWP treatment during processing."
+              )}
+            >
+              <Chip
+                size="small"
+                variant="outlined"
+                color="info"
+                label={t("lwp_prorated_in_payroll", "LWP prorated in payroll")}
+                sx={{
+                  mt: 0.45,
+                  height: 20,
+                  maxWidth: "100%",
+                  "& .MuiChip-label": {
+                    px: 0.65,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize: "0.58rem",
+                  },
+                }}
+              />
+            </Tooltip>
+          ) : null}
+        </Box>
+      ),
+      eligibility: (
+        <Stack spacing={0.5}>
+          <Chip
+            size="small"
+            color={objEligibilityChip.strColor}
+            label={objEligibilityChip.strLabel}
+            sx={{
+              minWidth: getEligibilityState(objRow) === "not_eligible" ? 96 : 82,
+              height: 22,
+              maxWidth: "none",
+              "& .MuiChip-label": { px: 0.85, overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" },
+            }}
+          />
+          {objDisplayRow.decMultiplier > 1 ? (
+            <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
+              {t("multiplier", "Multiplier")} x {objDisplayRow.decMultiplier}
+            </Typography>
+          ) : null}
+        </Stack>
+      ),
+      regime: (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={getTranslatedRegimeLabel(getComponentRegimeDisplayLabel(objRow))}
+          color={getRegimeChipColor(objRow.strEligibilityApplicableRegime || objRow.strComponentApplicableRegime)}
+          sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
+        />
+      ),
+      annualCap: formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode),
+      declaredAnnual: (
+        <TextField
+          size="small"
+          type="number"
+          value={objDisplayRow.strDisplayedAmount}
+          disabled={
+            !blnCanEditDeclaration ||
+            !["eligible", "eligible_by_default"].includes(getEligibilityState(objRow)) ||
+            Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0) <= 0 ||
+            blnSaving
+          }
+          error={Boolean(objRow.strValidationMessage)}
+          helperText={objRow.strValidationMessage || ""}
+          onChange={(objEvent) =>
+            setDicDraftInputs((dicPrevious) => ({
+              ...dicPrevious,
+              [objRow.intSalaryComponentID]: String(normalizeAmount(objEvent.target.value)),
+            }))
+          }
+          inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
+          sx={{
+            width: intDeclaredAnnualFieldWidth,
+            "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 },
+            "& input": { textAlign: "right" },
+            "& .MuiFormHelperText-root": { mx: 0, mt: 0.25, fontSize: "0.6rem", lineHeight: 1.12, textAlign: "left" },
+          }}
+        />
+      ),
+      monthlyImpact: formatCurrency(objRow.decDisplayMonthly, strCurrencyCode),
+      proof: objRow.blnProofRequired ? (
+        <Stack spacing={0.45} sx={{ minWidth: 0 }}>
+          <Chip
+            size="small"
+            color={dicProofFiles[objRow.intSalaryComponentID] ? "success" : "warning"}
+            variant={dicProofFiles[objRow.intSalaryComponentID] ? "filled" : "outlined"}
+            label={dicProofFiles[objRow.intSalaryComponentID] ? t("proof_uploaded", "Proof Uploaded") : t("proof_required", "Proof Required")}
+            sx={{ alignSelf: "flex-start", maxWidth: "100%" }}
+          />
+          {dicProofFiles[objRow.intSalaryComponentID]?.strFileName ? (
+            <Typography sx={{ color: "#64748b", fontSize: "0.62rem", lineHeight: 1.15, wordBreak: "break-word" }}>
+              {dicProofFiles[objRow.intSalaryComponentID]?.strFileName}
+              {dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes
+                ? ` (${formatFileSize(dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes)})`
+                : ""}
+            </Typography>
+          ) : null}
+          {objRow.decInputAnnual > 0 && !dicProofFiles[objRow.intSalaryComponentID] ? (
+            <Typography sx={{ color: "#dc2626", fontSize: "0.62rem", lineHeight: 1.15 }}>
+              {t("proof_mandatory_before_save", "Upload proof before saving this declaration.")}
+            </Typography>
+          ) : null}
+          {blnCanEditDeclaration ? (
+            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+              {dicProofFiles[objRow.intSalaryComponentID] ? (
+                <Tooltip title={t("preview", "Preview")}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => previewFlexiProof(objRow.intSalaryComponentID)}
+                      controlId={`flexi-proof.preview.${objRow.intSalaryComponentID}.icon-button`}
+                      aria-label={`${t("preview", "Preview")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
+                      sx={{ p: 0.3 }}
+                    >
+                      <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              ) : null}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<UploadFileRoundedIcon />}
+                onClick={() => openProofPicker(objRow.intSalaryComponentID)}
+                controlId={`flexi-proof.upload.${objRow.intSalaryComponentID}.button`}
+                sx={{ minWidth: 0, px: 0.8, py: 0.15, fontSize: "0.62rem", textTransform: "none" }}
+              >
+                {dicProofFiles[objRow.intSalaryComponentID] ? t("replace", "Replace") : t("upload", "Upload")}
+              </Button>
+              {dicProofFiles[objRow.intSalaryComponentID] ? (
+                <Tooltip title={t("delete", "Delete")}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleClearProofFile(objRow.intSalaryComponentID)}
+                      controlId={`flexi-proof.clear.${objRow.intSalaryComponentID}.icon-button`}
+                      aria-label={`${t("delete", "Delete")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
+                      sx={{ p: 0.3 }}
+                    >
+                      <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              ) : null}
+              <input
+                ref={(objElement) => {
+                  dicProofInputRefs.current[objRow.intSalaryComponentID] = objElement;
+                }}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                style={{ display: "none" }}
+                data-controlid={`flexi-proof.file.${objRow.intSalaryComponentID}.input`}
+                onChange={(objEvent) => void handleProofFileSelected(objRow.intSalaryComponentID, objEvent.target.files?.[0] || null)}
+              />
+            </Stack>
+          ) : null}
+        </Stack>
+      ) : (
+        t("no", "No")
+      ),
+      status: (
+        <Chip
+          size="small"
+          label={objRow.strDeclarationItemStatus ? formatTranslatedStatus(objRow.strDeclarationItemStatus) : t("draft", "Draft")}
+          color={getStatusTone(objRow.strDeclarationItemStatus)}
+          sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.8, overflow: "hidden", textOverflow: "ellipsis" } }}
+        />
+      ),
+      reasonAction: (
+        <Stack direction="row" spacing={0.75} alignItems="center">
+          <Typography
+            sx={{
+              color: "#64748b",
+              fontSize: "0.6rem",
+              lineHeight: 1.15,
+              flex: 1,
+              minWidth: 0,
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: 2,
+              overflow: "hidden",
+            }}
+          >
+            {translateKnownFlexiText(getTranslatedLineReasonText(objRow))}
+          </Typography>
+          <IconButton
+            size="small"
+            disabled={!blnCanEditDeclaration || Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0) <= 0 || blnSaving}
+            onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
+            sx={{ color: "#dc2626", flex: "0 0 auto", p: 0.35 }}
+            aria-label={`${t("clear_component_amount", "Clear component amount")}: ${translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "component")}`}
+          >
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      ),
+    };
+  });
+
+  const lstFlexiComponentColumns: CommonTableColumn<(typeof lstFlexiComponentRows)[number]>[] = [
+    { field: "component", headerName: t("component", "Component"), width: 176, sortable: false },
+    { field: "eligibility", headerName: t("eligibility", "Eligibility"), width: 126, sortable: false },
+    { field: "regime", headerName: t("regime", "Regime"), width: 108, sortable: false },
+    { field: "annualCap", headerName: t("annual_cap", "Annual Cap"), align: "right", width: 94, sortable: false },
+    { field: "declaredAnnual", headerName: t("declared_annual", "Declared Annual"), align: "right", width: intDeclaredAnnualColumnWidth, sortable: false },
+    { field: "monthlyImpact", headerName: t("monthly_impact", "Monthly Impact"), align: "right", width: 92, sortable: false },
+    { field: "proof", headerName: t("proof", "Proof"), width: 196, sortable: false },
+    { field: "status", headerName: t("status", "Status"), width: 92, sortable: false },
+    { field: "reasonAction", headerName: t("reason_action", "Reason / Action"), width: 252, sortable: false },
+  ];
+
+  const lstFixedSalaryTableRows = lstFixedSalaryRows.map((objRow) => ({
+    id: objRow.strLabel,
+    component: translateKnownFlexiText(objRow.strLabel),
+    annual: formatCurrency(objRow.decAnnual, strCurrencyCode),
+    monthly: formatCurrency(objRow.decAnnual / 12, strCurrencyCode),
+  }));
+  const lstFixedSalaryTableColumns: CommonTableColumn<(typeof lstFixedSalaryTableRows)[number]>[] = [
+    { field: "component", headerName: t("component", "Component"), sortable: false },
+    { field: "annual", headerName: t("annual", "Annual"), align: "right", sortable: false },
+    { field: "monthly", headerName: t("monthly", "Monthly"), align: "right", sortable: false },
+  ];
+
+  const lstSalarySplitTableRows = [
+    { strLabel: t("declared_flexi", "Declared Flexi"), decAnnual: decDeclaredAnnual },
+    { strLabel: t("residual_taxable_balance", "Residual Taxable Balance"), decAnnual: decResidualAnnual },
+  ].map((objRow) => ({
+    id: objRow.strLabel,
+    bucket: objRow.strLabel,
+    annual: formatCurrency(objRow.decAnnual, strCurrencyCode),
+    monthly: formatCurrency(objRow.decAnnual / 12, strCurrencyCode),
+  }));
+  const lstSalarySplitTableColumns: CommonTableColumn<(typeof lstSalarySplitTableRows)[number]>[] = [
+    { field: "bucket", headerName: t("bucket", "Bucket"), sortable: false },
+    { field: "annual", headerName: t("annual", "Annual"), align: "right", sortable: false },
+    { field: "monthly", headerName: t("monthly", "Monthly"), align: "right", sortable: false },
+  ];
+
   return (
     <Box
       sx={{
@@ -1912,272 +2164,19 @@ export default function FlexiPayDeclarationPage() {
               </Stack>
             </Box>
 
-            <TableContainer sx={{ maxHeight: 300 }}>
-              <Table
-                size="small"
-                sx={{
-                  tableLayout: "fixed",
-                  minWidth: intFlexiComponentTableMinWidth,
-                  "& .MuiTableCell-root": { py: 0.55, px: 0.75, fontSize: "0.7rem", verticalAlign: "middle" },
-                  "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" },
-                }}
-              >
-                <colgroup>
-                  <col style={{ width: 176 }} />
-                  <col style={{ width: 126 }} />
-                  <col style={{ width: 108 }} />
-                  <col style={{ width: 94 }} />
-                  <col style={{ width: intDeclaredAnnualColumnWidth }} />
-                  <col style={{ width: 92 }} />
-                  <col style={{ width: 196 }} />
-                  <col style={{ width: 92 }} />
-                  <col style={{ width: 252 }} />
-                </colgroup>
-                <TableHead sx={{ position: "sticky", top: 0, zIndex: 2, backgroundColor: "#ffffff" }}>
-                  <TableRow>
-                    <TableCell>{t("component", "Component")}</TableCell>
-                    <TableCell>{t("eligibility", "Eligibility")}</TableCell>
-                    <TableCell>{t("regime", "Regime")}</TableCell>
-                    <TableCell align="right">{t("annual_cap", "Annual Cap")}</TableCell>
-                    <TableCell align="right">{t("declared_annual", "Declared Annual")}</TableCell>
-                    <TableCell align="right">{t("monthly_impact", "Monthly Impact")}</TableCell>
-                    <TableCell>{t("proof", "Proof")}</TableCell>
-                    <TableCell>{t("status", "Status")}</TableCell>
-                    <TableCell>{t("reason_action", "Reason / Action")}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {lstDisplayedRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} sx={{ py: 2, textAlign: "center", color: "#64748b" }}>
-                        {t("no_components_available", "No flexi components are available.")}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    lstDisplayedRows.map((objDisplayRow) => {
-                      const objRow = objDisplayRow.objSelectedLine;
-                      const objEligibilityChip = getTranslatedEligibilityChipConfig(objRow);
-                      return (
-                        <TableRow key={objDisplayRow.intRowKey}>
-                          <TableCell>
-                            <Typography sx={{ fontWeight: 700, fontSize: "0.73rem", lineHeight: 1.15 }}>
-                              {translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "Component")}
-                            </Typography>
-                            {isLwpProratedFlexiOption(objRow) ? (
-                              <Tooltip
-                                title={t(
-                                  "lwp_prorated_in_payroll_help",
-                                  "This option keeps normal ESS entitlement here. Payroll applies LWP treatment during processing."
-                                )}
-                              >
-                                <Chip
-                                  size="small"
-                                  variant="outlined"
-                                  color="info"
-                                  label={t("lwp_prorated_in_payroll", "LWP prorated in payroll")}
-                                  sx={{
-                                    mt: 0.45,
-                                    height: 20,
-                                    maxWidth: "100%",
-                                    "& .MuiChip-label": {
-                                      px: 0.65,
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                      fontSize: "0.58rem",
-                                    },
-                                  }}
-                                />
-                              </Tooltip>
-                            ) : null}
-                          </TableCell>
-                          <TableCell>
-                            <Stack spacing={0.5}>
-                              <Chip
-                                size="small"
-                                color={objEligibilityChip.strColor}
-                                label={objEligibilityChip.strLabel}
-                                sx={{
-                                  minWidth: getEligibilityState(objRow) === "not_eligible" ? 96 : 82,
-                                  height: 22,
-                                  maxWidth: "none",
-                                  "& .MuiChip-label": { px: 0.85, overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" },
-                                }}
-                              />
-                              {objDisplayRow.decMultiplier > 1 ? (
-                                <Typography sx={{ color: "#475569", fontSize: "0.68rem" }}>
-                                  {t("multiplier", "Multiplier")} x {objDisplayRow.decMultiplier}
-                                </Typography>
-                              ) : null}
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              size="small"
-                              variant="outlined"
-                              label={getTranslatedRegimeLabel(getComponentRegimeDisplayLabel(objRow))}
-                              color={getRegimeChipColor(objRow.strEligibilityApplicableRegime || objRow.strComponentApplicableRegime)}
-                              sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {formatCurrency(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit, strCurrencyCode)}
-                          </TableCell>
-                          <TableCell align="right">
-                              <TextField
-                                size="small"
-                                type="number"
-                                value={objDisplayRow.strDisplayedAmount}
-                                disabled={
-                                  !blnCanEditDeclaration ||
-                                  !["eligible", "eligible_by_default"].includes(getEligibilityState(objRow)) ||
-                                  Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0) <= 0 ||
-                                  blnSaving
-                                }
-                                error={Boolean(objRow.strValidationMessage)}
-                                helperText={objRow.strValidationMessage || ""}
-                                onChange={(objEvent) =>
-                                  setDicDraftInputs((dicPrevious) => ({
-                                    ...dicPrevious,
-                                    [objRow.intSalaryComponentID]: String(normalizeAmount(objEvent.target.value)),
-                                  }))
-                                }
-                                inputProps={{ min: 0, max: objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? undefined }}
-                              sx={{
-                                width: intDeclaredAnnualFieldWidth,
-                                "& .MuiInputBase-root": { fontSize: "0.7rem", height: 32 },
-                                "& input": { textAlign: "right" },
-                                "& .MuiFormHelperText-root": { mx: 0, mt: 0.25, fontSize: "0.6rem", lineHeight: 1.12, textAlign: "left" },
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">{formatCurrency(objRow.decDisplayMonthly, strCurrencyCode)}</TableCell>
-                          <TableCell>
-                            {objRow.blnProofRequired ? (
-                              <Stack spacing={0.45} sx={{ minWidth: 0 }}>
-                                <Chip
-                                  size="small"
-                                  color={dicProofFiles[objRow.intSalaryComponentID] ? "success" : "warning"}
-                                  variant={dicProofFiles[objRow.intSalaryComponentID] ? "filled" : "outlined"}
-                                  label={dicProofFiles[objRow.intSalaryComponentID] ? t("proof_uploaded", "Proof Uploaded") : t("proof_required", "Proof Required")}
-                                  sx={{ alignSelf: "flex-start", maxWidth: "100%" }}
-                                />
-                                {dicProofFiles[objRow.intSalaryComponentID]?.strFileName ? (
-                                  <Typography sx={{ color: "#64748b", fontSize: "0.62rem", lineHeight: 1.15, wordBreak: "break-word" }}>
-                                    {dicProofFiles[objRow.intSalaryComponentID]?.strFileName}
-                                    {dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes
-                                      ? ` (${formatFileSize(dicProofFiles[objRow.intSalaryComponentID]?.intFileSizeBytes)})`
-                                      : ""}
-                                  </Typography>
-                                ) : null}
-                                {objRow.decInputAnnual > 0 && !dicProofFiles[objRow.intSalaryComponentID] ? (
-                                  <Typography sx={{ color: "#dc2626", fontSize: "0.62rem", lineHeight: 1.15 }}>
-                                    {t("proof_mandatory_before_save", "Upload proof before saving this declaration.")}
-                                  </Typography>
-                                ) : null}
-                                {blnCanEditDeclaration ? (
-                                  <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
-                                    {dicProofFiles[objRow.intSalaryComponentID] ? (
-                                      <Tooltip title={t("preview", "Preview")}>
-                                        <span>
-                                          <IconButton
-                                            size="small"
-                                            onClick={() => previewFlexiProof(objRow.intSalaryComponentID)}
-                                            controlId={`flexi-proof.preview.${objRow.intSalaryComponentID}.icon-button`}
-                                            aria-label={`${t("preview", "Preview")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
-                                            sx={{ p: 0.3 }}
-                                          >
-                                            <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </span>
-                                      </Tooltip>
-                                    ) : null}
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      startIcon={<UploadFileRoundedIcon />}
-                                      onClick={() => openProofPicker(objRow.intSalaryComponentID)}
-                                      controlId={`flexi-proof.upload.${objRow.intSalaryComponentID}.button`}
-                                      sx={{ minWidth: 0, px: 0.8, py: 0.15, fontSize: "0.62rem", textTransform: "none" }}
-                                    >
-                                      {dicProofFiles[objRow.intSalaryComponentID] ? t("replace", "Replace") : t("upload", "Upload")}
-                                    </Button>
-                                    {dicProofFiles[objRow.intSalaryComponentID] ? (
-                                      <Tooltip title={t("delete", "Delete")}>
-                                        <span>
-                                          <IconButton
-                                            size="small"
-                                            color="error"
-                                            onClick={() => handleClearProofFile(objRow.intSalaryComponentID)}
-                                            controlId={`flexi-proof.clear.${objRow.intSalaryComponentID}.icon-button`}
-                                            aria-label={`${t("delete", "Delete")} ${dicProofFiles[objRow.intSalaryComponentID]?.strFileName ?? ""}`}
-                                            sx={{ p: 0.3 }}
-                                          >
-                                            <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </span>
-                                      </Tooltip>
-                                    ) : null}
-                                    <input
-                                      ref={(objElement) => {
-                                        dicProofInputRefs.current[objRow.intSalaryComponentID] = objElement;
-                                      }}
-                                      type="file"
-                                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                                      style={{ display: "none" }}
-                                      data-controlid={`flexi-proof.file.${objRow.intSalaryComponentID}.input`}
-                                      onChange={(objEvent) => void handleProofFileSelected(objRow.intSalaryComponentID, objEvent.target.files?.[0] || null)}
-                                    />
-                                  </Stack>
-                                ) : null}
-                              </Stack>
-                            ) : (
-                              t("no", "No")
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              size="small"
-                              label={objRow.strDeclarationItemStatus ? formatTranslatedStatus(objRow.strDeclarationItemStatus) : t("draft", "Draft")}
-                              color={getStatusTone(objRow.strDeclarationItemStatus)}
-                              sx={{ height: 22, maxWidth: "100%", "& .MuiChip-label": { px: 0.8, overflow: "hidden", textOverflow: "ellipsis" } }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Stack direction="row" spacing={0.75} alignItems="center">
-                              <Typography
-                                sx={{
-                                  color: "#64748b",
-                                  fontSize: "0.6rem",
-                                  lineHeight: 1.15,
-                                  flex: 1,
-                                  minWidth: 0,
-                                  display: "-webkit-box",
-                                  WebkitBoxOrient: "vertical",
-                                  WebkitLineClamp: 2,
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {translateKnownFlexiText(getTranslatedLineReasonText(objRow))}
-                              </Typography>
-                              <IconButton
-                                size="small"
-                                disabled={!blnCanEditDeclaration || Number(objRow.decEffectiveAnnualCap ?? objRow.decAnnualLimit ?? 0) <= 0 || blnSaving}
-                                onClick={() => handleClearFlexiComponent(objDisplayRow.intRowKey)}
-                                sx={{ color: "#dc2626", flex: "0 0 auto", p: 0.35 }}
-                                aria-label={`${t("clear_component_amount", "Clear component amount")}: ${translateKnownFlexiText(objRow.strComponentName || objRow.strComponentCode) || t("component", "component")}`}
-                              >
-                                <DeleteOutlineRoundedIcon fontSize="small" />
-                              </IconButton>
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box sx={{ maxHeight: 340, border: "1px solid #e2e8f0", borderTop: "none" }}>
+              <CommonTable
+                columns={lstFlexiComponentColumns}
+                rows={lstFlexiComponentRows}
+                rowIdField="id"
+                hideToolbar
+                defaultPageSize={500}
+                minTableWidth={intFlexiComponentTableMinWidth}
+                emptyMessage={t("no_components_available", "No flexi components are available.")}
+                testIdPrefix="flexi-pay-declaration.components"
+                withPaper={false}
+              />
+            </Box>
           </Paper>
 
           <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" } }}>
@@ -2185,55 +2184,28 @@ export default function FlexiPayDeclarationPage() {
               <Box sx={{ p: 1.12, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
                 <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>{t("fixed_salary_components", "Fixed Salary Components")}</Typography>
               </Box>
-              <TableContainer>
-                <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t("component", "Component")}</TableCell>
-                      <TableCell align="right">{t("annual", "Annual")}</TableCell>
-                      <TableCell align="right">{t("monthly", "Monthly")}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {lstFixedSalaryRows.map((objRow) => (
-                      <TableRow key={objRow.strLabel}>
-                        <TableCell>{translateKnownFlexiText(objRow.strLabel)}</TableCell>
-                        <TableCell align="right">{formatCurrency(objRow.decAnnual, strCurrencyCode)}</TableCell>
-                        <TableCell align="right">{formatCurrency(objRow.decAnnual / 12, strCurrencyCode)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <CommonTable
+                columns={lstFixedSalaryTableColumns}
+                rows={lstFixedSalaryTableRows}
+                rowIdField="id"
+                hideToolbar
+                defaultPageSize={500}
+                withPaper={false}
+              />
             </Paper>
 
             <Paper sx={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #dbe3ef" }}>
               <Box sx={{ p: 1.12, borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
                 <Typography sx={{ fontWeight: 800, fontSize: "0.9rem" }}>{t("estimated_salary_split", "Estimated Salary Split After Declaration")}</Typography>
               </Box>
-              <TableContainer>
-                <Table size="small" sx={{ tableLayout: "fixed", "& .MuiTableCell-root": { py: 0.45, px: 0.7, fontSize: "0.7rem", verticalAlign: "top" }, "& .MuiTableHead-root .MuiTableCell-root": { py: 0.65, fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem" } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t("bucket", "Bucket")}</TableCell>
-                      <TableCell align="right">{t("annual", "Annual")}</TableCell>
-                      <TableCell align="right">{t("monthly", "Monthly")}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {[
-                      { strLabel: t("declared_flexi", "Declared Flexi"), decAnnual: decDeclaredAnnual },
-                      { strLabel: t("residual_taxable_balance", "Residual Taxable Balance"), decAnnual: decResidualAnnual },
-                    ].map((objRow) => (
-                      <TableRow key={objRow.strLabel}>
-                        <TableCell>{objRow.strLabel}</TableCell>
-                        <TableCell align="right">{formatCurrency(objRow.decAnnual, strCurrencyCode)}</TableCell>
-                        <TableCell align="right">{formatCurrency(objRow.decAnnual / 12, strCurrencyCode)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <CommonTable
+                columns={lstSalarySplitTableColumns}
+                rows={lstSalarySplitTableRows}
+                rowIdField="id"
+                hideToolbar
+                defaultPageSize={500}
+                withPaper={false}
+              />
               <Box sx={{ p: 1, borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
                 <Typography sx={{ color: "#64748b", fontSize: "0.72rem" }}>
                   {t("salary_impact_tooltip", "This is an estimate. Final payroll impact will be based on approved declaration and payroll processing.")}

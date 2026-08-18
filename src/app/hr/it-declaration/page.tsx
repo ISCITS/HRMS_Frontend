@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogTitle,
   MenuItem,
-  Pagination,
   Paper,
   Stack,
   TextField,
@@ -23,6 +22,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
@@ -36,7 +36,6 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstRegimeOptions: ItDeclarationRegime[] = ["Old Regime", "New Regime"];
-const lstRowsPerPageOptions = [10, 20, 50];
 const strHrListFilterStorageKey = "hrms.hr-it-declaration.list-filters";
 
 function normalizeFinancialYearCode(strValue?: string | null) {
@@ -105,8 +104,6 @@ export default function HrItDeclarationListPage() {
   const [blnListLoading, setBlnListLoading] = useState(false);
   const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [strError, setStrError] = useState("");
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [blnFiltersHydrated, setBlnFiltersHydrated] = useState(false);
 
   const strQueryEmployeeId = (objSearchParams.get("employeeId") || "").trim();
@@ -116,15 +113,8 @@ export default function HrItDeclarationListPage() {
   const strQueryRegime = (objSearchParams.get("regime") || "").trim();
   const blnQueryAutoload = (objSearchParams.get("autoload") || "").trim() === "1";
 
-  const intPageCount = Math.max(1, Math.ceil(lstRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
   const blnCanView = canViewAny() || canDoAny("view");
   const blnCanAdd = canDoAny("add");
-  const lstVisibleRows = useMemo(
-    () => lstRows.slice(intStartIndex, intStartIndex + intRowsPerPage),
-    [intStartIndex, intRowsPerPage, lstRows],
-  );
 
   const lstFyOptions = useMemo(() => {
     return [
@@ -201,7 +191,6 @@ export default function HrItDeclarationListPage() {
         }));
       }
       setLstRows(objData.lstRows ?? []);
-      setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("IT_DECLARATION_UNABLE_LOAD_IT_DECLARATIONS", "Unable to load IT declarations."));
       setLstRows([]);
@@ -356,6 +345,51 @@ export default function HrItDeclarationListPage() {
     }
   }, [blnCanView, blnQueryAutoload, blnRightsLoading, lstFyOptions, strQueryEmployeeCode, strQueryEmployeeId, strQueryEmployeeName, strQueryFinancialYearCode, strQueryRegime]);
 
+  const lstTableRows = useMemo(
+    () =>
+      lstRows.map((objRow) => ({
+        id: objRow.intDeclarationID,
+        strDeclaration: objRow.strDeclarationCode,
+        strEmployee: [objRow.strEmployeeCode, objRow.strFullName].filter(Boolean).join(" - ") || "-",
+        strFinancialYearCode: objRow.strFinancialYearCode,
+        strTaxRegime: objRow.strTaxRegime === "New Regime" ? getRegimeLabel("New Regime") : objRow.strTaxRegime === "Old Regime" ? getRegimeLabel("Old Regime") : "-",
+        decDeclared: formatCurrency(objRow.decDeclaredTotalAmount),
+        decApproved: formatCurrency(objRow.decApprovedTotalAmount),
+        intProofPendingCount: objRow.intProofPendingCount,
+        strStatus: <ITDeclarationStatusBadge strStatus={objRow.strStatus || "draft"} strLabel={getStatusLabel(objRow.strStatus)} />,
+        strStatusSort: objRow.strStatus || "",
+        strLastUpdated: formatDateLabel(objRow.strLastUpdated),
+        strLastUpdatedSort: objRow.strLastUpdated || "",
+        action: (
+          <Button
+            size="small"
+            startIcon={<VisibilityRoundedIcon />}
+            disabled={!blnCanView}
+            onClick={() => openDeclaration(objRow)}
+            controlId="hr-it-declaration.list.row.view.button"
+            data-row-key={objRow.intDeclarationID}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+          >
+            {t("IT_DECLARATION_VIEW", "View")}
+          </Button>
+        ),
+      })),
+    [lstRows, blnCanView, t, getRegimeLabel, getStatusLabel, openDeclaration]
+  );
+
+  const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+    { field: "strDeclaration", headerName: t("IT_DECLARATION_DECLARATION", "Declaration"), width: 150 },
+    { field: "strEmployee", headerName: t("IT_DECLARATION_EMPLOYEE", "Employee"), width: 220 },
+    { field: "strFinancialYearCode", headerName: t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year"), width: 140 },
+    { field: "strTaxRegime", headerName: t("IT_DECLARATION_TAX_REGIME", "Tax Regime"), width: 140 },
+    { field: "decDeclared", headerName: t("IT_DECLARATION_DECLARED", "Declared"), align: "right", width: 150 },
+    { field: "decApproved", headerName: t("IT_DECLARATION_APPROVED", "Approved"), align: "right", width: 150 },
+    { field: "intProofPendingCount", headerName: t("IT_DECLARATION_PROOF_PENDING", "Proof Pending"), align: "right", width: 140 },
+    { field: "strStatus", headerName: t("IT_DECLARATION_STATUS", "Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+    { field: "strLastUpdated", headerName: t("IT_DECLARATION_LAST_UPDATED", "Last Updated"), width: 150, sortAccessor: (objRow) => String(objRow.strLastUpdatedSort) },
+    { field: "action", headerName: t("IT_DECLARATION_ACTION", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+  ];
+
   return (
     <Stack spacing={0.8} className={styles.page}>
       {(blnListLoading || blnRightsLoading) ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
@@ -489,82 +523,20 @@ export default function HrItDeclarationListPage() {
       </Paper>
 
       <Box className={styles.tableCard} sx={{ mt: 0 }}>
-        {lstRows.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, pb: 1, justifyContent: "flex-end" }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{t("rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstRows.length)} {t("IT_DECLARATION_OF", "of")} {lstRows.length}
-              </Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_objEvent, intValue) => setIntPage(intValue)} size="small" color="primary" showFirstButton showLastButton />
-          </Box>
-        ) : null}
-
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t("IT_DECLARATION_DECLARATION", "Declaration")}</th>
-                <th>{t("IT_DECLARATION_EMPLOYEE", "Employee")}</th>
-                <th>{t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year")}</th>
-                <th>{t("IT_DECLARATION_TAX_REGIME", "Tax Regime")}</th>
-                <th>{t("IT_DECLARATION_DECLARED", "Declared")}</th>
-                <th>{t("IT_DECLARATION_APPROVED", "Approved")}</th>
-                <th>{t("IT_DECLARATION_PROOF_PENDING", "Proof Pending")}</th>
-                <th>{t("IT_DECLARATION_STATUS", "Status")}</th>
-                <th>{t("IT_DECLARATION_LAST_UPDATED", "Last Updated")}</th>
-                <th>{t("IT_DECLARATION_ACTION", "Action")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstRows.length === 0 ? (
-                <tr>
-                  <td colSpan={10}>
-                    <Typography sx={{ py: 3, textAlign: "center", color: "#64748b", fontSize: "0.86rem" }}>
-                      {blnHasSearched || blnFiltersHydrated
-                        ? t("IT_DECLARATION_NO_RECORDS_SELECTED_FILTERS", "No IT declarations found for the selected filters.")
-                        : t("IT_DECLARATION_SELECT_FILTERS_AND_SEARCH", "Select filters and click Search.")}
-                    </Typography>
-                  </td>
-                </tr>
-              ) : (
-                lstVisibleRows.map((objRow) => (
-                  <tr key={objRow.intDeclarationID}>
-                    <td>{objRow.strDeclarationCode}</td>
-                    <td>{[objRow.strEmployeeCode, objRow.strFullName].filter(Boolean).join(" - ") || "-"}</td>
-                    <td>{objRow.strFinancialYearCode}</td>
-                    <td>{objRow.strTaxRegime === "New Regime" ? getRegimeLabel("New Regime") : objRow.strTaxRegime === "Old Regime" ? getRegimeLabel("Old Regime") : "-"}</td>
-                    <td>{formatCurrency(objRow.decDeclaredTotalAmount)}</td>
-                    <td>{formatCurrency(objRow.decApprovedTotalAmount)}</td>
-                    <td>{objRow.intProofPendingCount}</td>
-                    <td><ITDeclarationStatusBadge strStatus={objRow.strStatus || "draft"} strLabel={getStatusLabel(objRow.strStatus)} /></td>
-                    <td>{formatDateLabel(objRow.strLastUpdated)}</td>
-                    <td>
-                      <Button size="small" startIcon={<VisibilityRoundedIcon />} disabled={!blnCanView} onClick={() => openDeclaration(objRow)} sx={{ textTransform: "none", fontWeight: 800 }}>
-                        {t("IT_DECLARATION_VIEW", "View")}
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          showPaginationSummary
+          minTableWidth={1400}
+          emptyMessage={
+            blnHasSearched || blnFiltersHydrated
+              ? t("IT_DECLARATION_NO_RECORDS_SELECTED_FILTERS", "No IT declarations found for the selected filters.")
+              : t("IT_DECLARATION_SELECT_FILTERS_AND_SEARCH", "Select filters and click Search.")
+          }
+          testIdPrefix="hr-it-declaration.list"
+          withPaper={false}
+        />
       </Box>
 
       <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth>

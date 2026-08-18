@@ -4,10 +4,11 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import { Alert, Box, Button, IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Alert, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { formatCurrency, formatDateLabel, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
@@ -73,6 +74,72 @@ export default function MyReimbursementClaimsPage() {
     return { intClaims: lstClaims.length, decPending, decApproved };
   }, [lstClaims]);
 
+  const lstTableRows = useMemo(
+    () =>
+      lstClaims.map((objClaim) => {
+        const blnRowGoesToEdit = blnCanEdit && canEditReimbursementClaim(objClaim.strClaimStatus);
+        return {
+        id: objClaim.intID,
+        action: (
+          <IconButton
+            size="small"
+            onClick={() => objRouter.push(blnRowGoesToEdit ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
+            aria-label={t("open_claim", "Open claim")}
+            controlId={`reimbursements.my-claims.row.${blnRowGoesToEdit ? "edit" : "view"}.button`}
+            data-row-key={objClaim.intID}
+          >
+            <OpenInNewRoundedIcon fontSize="small" />
+          </IconButton>
+        ),
+        strClaimReference: <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim)}</Typography>,
+        strClaimReferenceSort: getClaimReferenceNumber(objClaim),
+        strClaimTitle: translateKnownReimbursementText(objClaim.strClaimTitle, t),
+        dtClaimDate: formatDateLabel(objClaim.dtClaimDate),
+        dtClaimDateSort: objClaim.dtClaimDate || "",
+        strStatus: <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} />,
+        strStatusSort: objClaim.strClaimStatus || "",
+        decClaimedAmount: formatCurrency(objClaim.decClaimedAmount),
+        decApprovedAmount: formatCurrency(objClaim.decApprovedAmount),
+        strPaymentStatus: isPayrollVisibleStatus(objClaim.strClaimStatus) ? t("in_payroll", "In payroll") : "-",
+        };
+      }),
+    [blnCanEdit, lstClaims, objRouter, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("action", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 90 },
+      { field: "strClaimReference", headerName: t("claim_ref_number", "Claim Ref #"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
+      { field: "strClaimTitle", headerName: t("claim_purpose", "Claim Purpose"), width: 220 },
+      { field: "dtClaimDate", headerName: t("claim_date", "Claim Date"), width: 140, sortAccessor: (objRow) => String(objRow.dtClaimDateSort) },
+      { field: "strStatus", headerName: t("status", "Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+      {
+        field: "decClaimedAmount",
+        headerName: (
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "inherit" }}>{t("claimed_amount", "Claimed Amount")}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
+          </Box>
+        ),
+        align: "right",
+        width: 170,
+      },
+      {
+        field: "decApprovedAmount",
+        headerName: (
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "inherit" }}>{t("approved_amount", "Approved Amount")}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
+          </Box>
+        ),
+        align: "right",
+        width: 180,
+      },
+      { field: "strPaymentStatus", headerName: t("payment_status", "Payment Status"), width: 160 },
+    ],
+    [t]
+  );
+
   return (
     <Stack spacing={1.4}>
       <Box className="pageBanner">
@@ -106,61 +173,21 @@ export default function MyReimbursementClaimsPage() {
         </Paper>
       ) : null}
 
-      {blnCanView ? <Paper sx={{ mt: "0 !important", borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
-        <TableContainer>
-          <Table size="small" sx={{ minWidth: 780 }}>
-            <TableHead sx={{ backgroundColor: "#f8fafc" }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 800 }}>{t("action", "Action")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("claim_ref_number", "Claim Ref #")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("claim_purpose", "Claim Purpose")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("claim_date", "Claim Date")}</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("status", "Status")}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("claimed_amount", "Claimed Amount")}
-                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800 }}>{t("approved_amount", "Approved Amount")}
-                  <Typography sx={{ color: "#64748b", fontSize: "12px" }}>{t("all_amount_in_rupees", "(All amount in INR)")}</Typography>
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>{t("payment_status", "Payment Status")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {lstClaims.length === 0 && !blnLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8}>
-                    <Typography sx={{ py: 3, textAlign: "center", color: "#64748b" }}>{t("no_claims_yet", "No reimbursement claims yet.")}</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {lstClaims.map((objClaim) => (
-                <TableRow key={objClaim.intID} hover>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => objRouter.push(blnCanEdit && canEditReimbursementClaim(objClaim.strClaimStatus) ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
-                      aria-label={t("open_claim", "Open claim")}
-                      controlId="reimbursements.my-claims.row.open.icon-button"
-                      data-row-key={objClaim.intID}
-                    >
-                      <OpenInNewRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim)}</Typography>
-                  </TableCell>
-                  <TableCell> {translateKnownReimbursementText(objClaim.strClaimTitle, t)} </TableCell>
-                  <TableCell>{formatDateLabel(objClaim.dtClaimDate)}</TableCell>
-                  <TableCell><ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} /></TableCell>
-                  <TableCell align="right">{formatCurrency(objClaim.decClaimedAmount)}</TableCell>
-                  <TableCell align="right">{formatCurrency(objClaim.decApprovedAmount)}</TableCell>
-                  <TableCell>{isPayrollVisibleStatus(objClaim.strClaimStatus) ? t("in_payroll", "In payroll") : "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper> : null}
+      {blnCanView ? (
+        <Paper sx={{ mt: "0 !important", borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            showPaginationSummary
+            minTableWidth={780}
+            emptyMessage={t("no_claims_yet", "No reimbursement claims yet.")}
+            testIdPrefix="reimbursements.my-claims"
+            withPaper={false}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        </Paper>
+      ) : null}
     </Stack>
   );
 }

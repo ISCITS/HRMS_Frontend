@@ -4,6 +4,7 @@ import { Alert, Box, Button, Chip, CircularProgress, MenuItem, Paper, Stack, Tex
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 import {
   hrFlexiDeclarationReviewService,
@@ -68,6 +69,46 @@ export default function FlexiDeclarationReviewListPage() {
     [lstRows],
   );
 
+  const lstTableRows = useMemo(
+    () =>
+      lstRows.map((objRow) => ({
+        id: objRow.intDeclarationID,
+        action: (
+          <Button
+            size="small"
+            onClick={() => objRouter.push(`/payroll/flexi-declaration-review/${objRow.intDeclarationID}`)}
+            controlId="flexi-declaration-review.row.view.button"
+            data-row-key={objRow.intDeclarationID}
+          >
+            View
+          </Button>
+        ),
+        strEmployeeCode: objRow.strEmployeeCode,
+        strEmployeeName: objRow.strEmployeeName,
+        strFinancialYearCode: objRow.strFinancialYearCode,
+        decDeclaredTotalAnnual: formatCurrency(objRow.decDeclaredTotalAnnual),
+        decApprovedTotalAnnual: formatCurrency(objRow.decApprovedTotalAnnual),
+        intItemCount: objRow.intItemCount,
+        strStatus: <Chip size="small" color={getStatusColor(objRow.strWorkflowStatus)} label={formatStatus(objRow.strWorkflowStatus)} />,
+        strStatusSort: objRow.strWorkflowStatus || "",
+      })),
+    [lstRows, objRouter]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: "Action", align: "center", sortable: false, filterable: false, exportable: false, width: 100 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
+      { field: "strEmployeeName", headerName: "Employee Name", width: 200 },
+      { field: "strFinancialYearCode", headerName: "Financial Year", width: 140 },
+      { field: "decDeclaredTotalAnnual", headerName: "Declared Total", align: "right", width: 160 },
+      { field: "decApprovedTotalAnnual", headerName: "Approved Total", align: "right", width: 160 },
+      { field: "intItemCount", headerName: "Items", align: "right", width: 100 },
+      { field: "strStatus", headerName: "Status", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+    ],
+    []
+  );
+
   if (blnLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
@@ -119,46 +160,16 @@ export default function FlexiDeclarationReviewListPage() {
       </Paper>
 
       <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Employee Code</th>
-                <th>Employee Name</th>
-                <th>Financial Year</th>
-                <th>Declared Total</th>
-                <th>Approved Total</th>
-                <th>Items</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstRows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className={styles.emptyState}>No declarations found.</td>
-                </tr>
-              ) : (
-                lstRows.map((objRow) => (
-                  <tr key={objRow.intDeclarationID}>
-                    <td>
-                      <Button size="small" onClick={() => objRouter.push(`/payroll/flexi-declaration-review/${objRow.intDeclarationID}`)}>View</Button>
-                    </td>
-                    <td>{objRow.strEmployeeCode}</td>
-                    <td>{objRow.strEmployeeName}</td>
-                    <td>{objRow.strFinancialYearCode}</td>
-                    <td>{formatCurrency(objRow.decDeclaredTotalAnnual)}</td>
-                    <td>{formatCurrency(objRow.decApprovedTotalAnnual)}</td>
-                    <td>{objRow.intItemCount}</td>
-                    <td>
-                      <Chip size="small" color={getStatusColor(objRow.strWorkflowStatus)} label={formatStatus(objRow.strWorkflowStatus)} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          showPaginationSummary
+          minTableWidth={1140}
+          emptyMessage="No declarations found."
+          testIdPrefix="flexi-declaration-review.list"
+          withPaper={false}
+        />
       </Paper>
     </Stack>
   );

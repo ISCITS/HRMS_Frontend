@@ -9,14 +9,12 @@ import {
   Alert,
   Box,
   CircularProgress,
-  MenuItem,
-  Pagination,
-  Select,
   Stack,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalaryComponentLine, EmployeeSalaryDetailRecord } from "@/features/employee-salary/types";
 import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
@@ -24,8 +22,6 @@ import { itDeclarationService, type ItDeclarationDashboardCardDto } from "@/feat
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authApiService } from "@/services/auth/AuthApiService";
-
-const lstRowsPerPageOptions = [10, 20, 50] as const;
 
 function formatCurrency(decValue: number | null | undefined, strCurrencyCode = "INR") {
   return new Intl.NumberFormat("en-IN", {
@@ -208,8 +204,6 @@ export default function MyCompensationPage() {
   const [objItDeclarationCard, setObjItDeclarationCard] = useState<ItDeclarationDashboardCardDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
-  const [intRowsPerPage, setIntRowsPerPage] = useState<number>(10);
-  const [intPage, setIntPage] = useState(1);
 
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("salary_view");
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
@@ -246,7 +240,6 @@ export default function MyCompensationPage() {
               ) ?? objItDashboard.lstDeclarations[0] ?? null
             : null;
           setObjItDeclarationCard(objCurrentItCard);
-          setIntPage(1);
         }
       } catch (objError) {
         if (!blnCancelled) {
@@ -281,20 +274,6 @@ export default function MyCompensationPage() {
     }),
     [lstVisibleComponentLines]
   );
-
-  const intTotalPages = Math.max(1, Math.ceil(lstSalaryStructureRows.length / intRowsPerPage));
-  const intSafePage = Math.min(intPage, intTotalPages);
-
-  useEffect(() => {
-    if (intPage !== intSafePage) {
-      setIntPage(intSafePage);
-    }
-  }, [intPage, intSafePage]);
-
-  const lstPagedComponentLines = useMemo(() => {
-    const intStartIndex = (intSafePage - 1) * intRowsPerPage;
-    return lstSalaryStructureRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  }, [intRowsPerPage, intSafePage, lstSalaryStructureRows]);
 
   if (blnRightsLoading || blnLoading) {
     return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
@@ -339,6 +318,20 @@ export default function MyCompensationPage() {
   const decApprovedFlexiTotal = decApprovedFlexiTotalRaw > 0
     ? decApprovedFlexiTotalRaw
     : (objFlexiAllocation?.decAllocatedFlexiAnnual ?? 0);
+
+  const lstComponentLineRows = lstSalaryStructureRows.map((dicLine) => ({
+    id: dicLine.intEmployeeSalaryComponentID,
+    component: dicLine.strComponentName || dicLine.strComponentCode || "-",
+    category: normalizeCategory(dicLine.strComponentCategory),
+    annual: dicLine.decAmountAnnual != null ? formatCurrency(dicLine.decAmountAnnual, strCurrencyCode) : "-",
+    monthly: dicLine.decAmountMonthly != null ? formatCurrency(dicLine.decAmountMonthly, strCurrencyCode) : "-",
+  }));
+  const lstComponentLineColumns: CommonTableColumn<(typeof lstComponentLineRows)[number]>[] = [
+    { field: "component", headerName: "Component", sortable: false },
+    { field: "category", headerName: "Category", sortable: false },
+    { field: "annual", headerName: "Annual", sortable: false },
+    { field: "monthly", headerName: "Monthly", sortable: false },
+  ];
 
   return (
     <Stack spacing={1}>
@@ -435,88 +428,21 @@ export default function MyCompensationPage() {
             <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
               {t("salary_structure", "Salary Structure")}
             </Typography>
-            <Box sx={{ alignItems: "center", color: "#61738b", display: "flex", flexWrap: "wrap", gap: 0.8, fontSize: "0.84rem" }}>
-              <Typography sx={{ fontSize: "0.84rem" }}>{t("rows_per_page", "Rows per page")}</Typography>
-              <Select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                sx={{ minWidth: 64, borderRadius: 0, "& .MuiSelect-select": { py: 0.45, fontSize: "0.84rem" } }}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </Select>
-              <Typography sx={{ fontSize: "0.84rem" }}>
-                {lstSalaryStructureRows.length ? `${(intSafePage - 1) * intRowsPerPage + 1}-${Math.min(intSafePage * intRowsPerPage, lstSalaryStructureRows.length)} of ${lstSalaryStructureRows.length}` : "0-0 of 0"}
-              </Typography>
-            </Box>
           </Box>
 
-          <Box sx={{ overflowX: "auto", px: 0.8, pb: 0.4 }}>
-            <table style={{ borderCollapse: "collapse", minWidth: 620, width: "100%" }}>
-              <thead>
-                <tr>
-                  {["Component", "Category", "Annual", "Monthly"].map((strHeader) => (
-                    <th
-                      key={strHeader}
-                      style={{
-                        borderBottom: "1px solid #d7e6f5",
-                        color: "#172b4d",
-                        fontSize: "0.84rem",
-                        fontWeight: 800,
-                        padding: "9px 10px",
-                        textAlign: "left",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {strHeader}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lstPagedComponentLines.map((dicLine) => (
-                  <tr key={dicLine.intEmployeeSalaryComponentID}>
-                    <td style={{ borderBottom: "1px solid #e7eef7", color: "#172b4d", fontSize: "0.84rem", fontWeight: 800, padding: "8px 10px" }}>
-                      {dicLine.strComponentName || dicLine.strComponentCode || "-"}
-                    </td>
-                    <td style={{ borderBottom: "1px solid #e7eef7", color: "#394b63", fontSize: "0.84rem", padding: "8px 10px" }}>
-                      {normalizeCategory(dicLine.strComponentCategory)}
-                    </td>
-                    <td style={{ borderBottom: "1px solid #e7eef7", color: "#394b63", fontSize: "0.84rem", padding: "8px 10px", whiteSpace: "nowrap" }}>
-                      {dicLine.decAmountAnnual != null ? formatCurrency(dicLine.decAmountAnnual, strCurrencyCode) : "-"}
-                    </td>
-                    <td style={{ borderBottom: "1px solid #e7eef7", color: "#394b63", fontSize: "0.84rem", padding: "8px 10px", whiteSpace: "nowrap" }}>
-                      {dicLine.decAmountMonthly != null ? formatCurrency(dicLine.decAmountMonthly, strCurrencyCode) : "-"}
-                    </td>
-                  </tr>
-                ))}
-                {!lstPagedComponentLines.length ? (
-                  <tr>
-                    <td colSpan={4} style={{ color: "#61738b", fontSize: "0.84rem", padding: "14px 10px", textAlign: "center" }}>
-                      {t("no_component_lines", "No component lines are available.")}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </Box>
-
-          {lstSalaryStructureRows.length > intRowsPerPage ? (
-            <Box sx={{ display: "flex", justifyContent: "flex-end", px: 1.5, py: 1 }}>
-              <Pagination
-                count={intTotalPages}
-                page={intSafePage}
-                onChange={(_objEvent, intNextPage) => setIntPage(intNextPage)}
-                color="primary"
-                shape="rounded"
-              />
-            </Box>
-          ) : null}
+          <CommonTable
+            columns={lstComponentLineColumns}
+            rows={lstComponentLineRows}
+            rowIdField="id"
+            hideToolbar
+            showPaginationSummary
+            defaultPageSize={10}
+            pageSizeOptions={[10, 20, 50]}
+            minTableWidth={620}
+            emptyMessage={t("no_component_lines", "No component lines are available.")}
+            testIdPrefix="my-compensation.salary-structure"
+            withPaper={false}
+          />
         </Box>
 
         <Box

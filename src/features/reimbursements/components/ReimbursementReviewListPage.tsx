@@ -237,14 +237,14 @@ export default function ReimbursementReviewListPage() {
                 size="small"
                 onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))}
                 aria-label="Open reimbursement claim"
-                controlId="reimbursements.review-list.row.view-ess.button"
+                controlId="reimbursements.review-list.row.ess.view.button"
                 data-row-key={objClaim.intID}
               >
                 <OpenInNewRoundedIcon fontSize="small" />
               </IconButton>
             ) : null}
             {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.edit-ess.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
+              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.ess.edit.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
             ) : null}
           </Stack>
         ) : (
@@ -253,7 +253,7 @@ export default function ReimbursementReviewListPage() {
               size="small"
               onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)}
               aria-label="Open reimbursement claim"
-              controlId="reimbursements.review-list.row.open.button"
+              controlId="reimbursements.review-list.row.view.button"
               data-row-key={objClaim.intID}
             >
               <OpenInNewRoundedIcon fontSize="small" />
