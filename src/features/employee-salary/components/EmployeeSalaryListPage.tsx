@@ -176,8 +176,11 @@ export default function EmployeeSalaryListPage() {
         ),
         strAssignedStructure: dicRow.strStructureName ?? t("employee_salary_not_assigned", "Not assigned"),
         dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
+        strEffectiveFromSort: dicRow.dtEffectiveFrom ?? "",
         decCtcAnnual: formatCurrency(dicRow.decCtcAnnual),
-        decGrossMonthly: formatCurrency(dicRow.decGrossMonthly)
+        decCtcAnnualSort: dicRow.decCtcAnnual ?? Number.NEGATIVE_INFINITY,
+        decGrossMonthly: formatCurrency(dicRow.decGrossMonthly),
+        decGrossMonthlySort: dicRow.decGrossMonthly ?? Number.NEGATIVE_INFINITY
       })),
     [blnCanMutate, blnCanView, lstFilteredRows, objRouter, t]
   );
@@ -189,9 +192,9 @@ export default function EmployeeSalaryListPage() {
       { field: "strEmployeeName", headerName: t("employee_salary_employee_name", "Employee Name") },
       { field: "strSalaryStatus", headerName: t("employee_salary_salary_status", "Salary Status"), sortable: false, filterable: false, width: 150 },
       { field: "strAssignedStructure", headerName: t("employee_salary_assigned_structure", "Assigned Structure") },
-      { field: "dtEffectiveFrom", headerName: t("employee_salary_effective_from", "Effective From") },
-      { field: "decCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), align: "right" },
-      { field: "decGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), align: "right" }
+      { field: "dtEffectiveFrom", headerName: t("employee_salary_effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
+      { field: "decCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), align: "right", sortAccessor: (dicRow) => dicRow.decCtcAnnualSort },
+      { field: "decGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), align: "right", sortAccessor: (dicRow) => dicRow.decGrossMonthlySort }
     ],
     [t]
   );

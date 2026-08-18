@@ -196,6 +196,8 @@ export default function SalaryStructureListPage() {
       strCurrencyCode: dicRow.strCurrencyCode,
       dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
       dtEffectiveTo: formatDate(dicRow.dtEffectiveTo),
+      strEffectiveFromSort: dicRow.dtEffectiveFrom,
+      strEffectiveToSort: dicRow.dtEffectiveTo ?? "",
       intComponentCount: dicRow.intComponentCount,
       strStatus: (
         <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
@@ -213,8 +215,8 @@ export default function SalaryStructureListPage() {
       { field: "strStructureName", headerName: t("structure_name", "Structure Name") },
       { field: "strScopeLabel", headerName: t("scope", "Scope") },
       { field: "strCurrencyCode", headerName: t("currency", "Currency") },
-      { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From") },
-      { field: "dtEffectiveTo", headerName: t("effective_to", "Effective To") },
+      { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
+      { field: "dtEffectiveTo", headerName: t("effective_to", "Effective To"), sortAccessor: (dicRow) => dicRow.strEffectiveToSort },
       { field: "intComponentCount", headerName: t("components", "Components"), align: "right" },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 }
     ],

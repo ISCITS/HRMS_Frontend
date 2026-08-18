@@ -883,6 +883,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
+  const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/\d+)$/.test(strLowerPathname);
+  const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/\d+)$/.test(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1281,6 +1283,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Box
           sx={{
             position: "relative",
+            display: "flex",
+            flexDirection: "column",
             flex: 1,
             minWidth: 0,
             minHeight: 0,
@@ -1297,6 +1301,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }}
             sx={{
               position: "relative",
+              flexShrink: 0,
               borderRadius: "24px",
               mb: 1.5,
               px: { xs: 0.25, sm: 0.75 },
@@ -1419,7 +1424,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute ? null : (
+              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
@@ -1542,8 +1547,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             onClickCapture={handleMainContentClick}
             sx={{
               position: "relative",
+              flex: 1,
               minHeight: 0,
-              height: `calc(100% - ${intTopBarHeight + 16}px)`,
               overflowY: "auto",
               overflowX: "hidden",
               pr: blnDashboardRoute ? 0 : 0.5

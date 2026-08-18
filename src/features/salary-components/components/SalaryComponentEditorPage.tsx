@@ -460,6 +460,11 @@ export default function SalaryComponentEditorPage({
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" && blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
   const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
+  const strPageHeading = strMode === "add"
+    ? t("add_salary_component", "Add Salary Component")
+    : strMode === "edit"
+      ? t("edit_salary_component", "Edit Salary Component")
+      : t("view_salary_component", "View Salary Component");
 
   useEffect(() => {
     function syncLanguage() {
@@ -1353,6 +1358,18 @@ export default function SalaryComponentEditorPage({
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
+              <Typography
+                component="h1"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.35rem", md: "1.65rem" },
+                  fontWeight: 800,
+                  letterSpacing: "-0.025em",
+                  lineHeight: 1.2
+                }}
+              >
+                {strPageHeading}
+              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t(
                   "editor_description",

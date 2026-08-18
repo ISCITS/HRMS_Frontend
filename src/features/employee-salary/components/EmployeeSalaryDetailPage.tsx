@@ -18,17 +18,17 @@ import {
   Button,
   CircularProgress,
   MenuItem,
-  Pagination,
   Paper,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import {
   hrFlexiDeclarationReviewService,
   type FlexiDeclarationContextRecord,
@@ -65,7 +65,6 @@ type ConfirmDialogState = {
   strConfirmLabel: string;
 };
 
-const lstRowsPerPageOptions = [10, 20, 50];
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 const lstFlexiDeclarationStatuses = ["submitted", "approved", "locked", "released", "returned", "rejected"];
 function normalizeSelectToken(strValue: string) {
@@ -159,6 +158,8 @@ type ComponentGridRow = {
   strLwpReducedAmountHandlingSnapshotCode?: string | null;
   strAnnual: string;
   strMonthly: string;
+  decAnnualSort: number;
+  decMonthlySort: number;
   blnIsOverride: boolean;
   strOverride: string;
   strRemarks: string;
@@ -174,9 +175,22 @@ type HistoryGridRow = {
   strEffectiveTo: string;
   strGrossMonthly: string;
   strCtcAnnual: string;
+  strEffectiveFromSort: string;
+  strEffectiveToSort: string;
+  decGrossMonthlySort: number;
+  decCtcAnnualSort: number;
   blnIsCurrent: boolean;
   strCurrent: string;
   strReason: string;
+};
+
+type ComponentDataGridRow = Omit<ComponentGridRow, "strComponentName" | "strOverride"> & {
+  strComponentName: ReactNode;
+  strOverride: ReactNode;
+};
+
+type HistoryDataGridRow = Omit<HistoryGridRow, "strCurrent"> & {
+  strCurrent: ReactNode;
 };
 
 type FlexiGridRow = {
@@ -189,8 +203,32 @@ type FlexiGridRow = {
   strProofRequired: string;
   strStatus: string;
   strReasonAction: string;
+  decAnnualCap: number;
+  decMonthlyImpact: number;
   decApprovedDeclaredAnnual: number;
   strStatusCode?: string | null;
+};
+
+type RevisionFlexiDataGridRow = {
+  intSalaryComponentID: number;
+  strComponentName: ReactNode;
+  strEligibility: ReactNode;
+  strAnnualCap: ReactNode;
+  strApprovedDeclaredAnnual: ReactNode;
+  strMonthlyImpact: ReactNode;
+  strProofRequired: ReactNode;
+  strStatus: ReactNode;
+  strReasonAction: ReactNode;
+};
+
+type RevisionFlexiCompactDataGridRow = {
+  intSalaryComponentID: number;
+  strComponentName: ReactNode;
+  strAnnualCap: ReactNode;
+  strMonthlyCap: ReactNode;
+  strApprovedDeclaredAnnual: ReactNode;
+  strMonthlyImpact: ReactNode;
+  strTaxTreatment: ReactNode;
 };
 
 type RevisionBreakdownComponentRow = {
@@ -1313,10 +1351,6 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const refRevisionPreviewRequest = useRef(0);
   const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
-  const [intComponentPage, setIntComponentPage] = useState(1);
-  const [intComponentRowsPerPage, setIntComponentRowsPerPage] = useState(10);
-  const [intHistoryPage, setIntHistoryPage] = useState(1);
-  const [intHistoryRowsPerPage, setIntHistoryRowsPerPage] = useState(10);
   function hasPermissionCode(strCode: string) {
     const strNormalizedCode = strCode.trim().toUpperCase();
     return Object.entries(objRights.dicAllowedActions || {}).some(([strModuleCode, lstActions]) =>
@@ -1471,6 +1505,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         strLwpReducedAmountHandlingSnapshotCode: dicLine.strLwpReducedAmountHandlingSnapshotCode,
         strAnnual: formatCurrency(decAnnualAmount, strCurrencyCode),
         strMonthly: formatCurrency(decMonthlyAmount, strCurrencyCode),
+        decAnnualSort: Number(decAnnualAmount ?? 0),
+        decMonthlySort: Number(decMonthlyAmount ?? 0),
         blnIsOverride: dicLine.blnIsOverride,
         strOverride: dicLine.blnIsOverride
           ? t("employee_salary_override", "HR Override")
@@ -1493,6 +1529,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         strEffectiveTo: formatDate(dicRow.dtEffectiveTo),
         strGrossMonthly: formatCurrency(dicDisplayAmounts.decGrossMonthly, strCurrencyCode),
         strCtcAnnual: formatCurrency(dicDisplayAmounts.decCtcAnnual, strCurrencyCode),
+        strEffectiveFromSort: dicRow.dtEffectiveFrom ?? "",
+        strEffectiveToSort: dicRow.dtEffectiveTo ?? "",
+        decGrossMonthlySort: Number(dicDisplayAmounts.decGrossMonthly ?? 0),
+        decCtcAnnualSort: Number(dicDisplayAmounts.decCtcAnnual ?? 0),
         blnIsCurrent: dicRow.blnIsCurrent,
         strCurrent: dicRow.blnIsCurrent
           ? t("employee_salary_current", "Current")
@@ -1726,6 +1766,8 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             : t("employee_salary_no", "No"),
           strStatus,
           strReasonAction,
+          decAnnualCap: Number(dicLine.decAnnualLimit ?? 0),
+          decMonthlyImpact: decPreviewAnnual / 12,
           decApprovedDeclaredAnnual: decPreviewAnnual,
           strStatusCode: strLineStatusCode
         };
@@ -1781,16 +1823,152 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     }),
     [lstComponentRows]
   );
-
-  const intComponentPageCount = Math.max(1, Math.ceil(lstFilteredComponentRows.length / intComponentRowsPerPage));
-  const intResolvedComponentPage = Math.min(intComponentPage, intComponentPageCount);
-  const intComponentStartIndex = (intResolvedComponentPage - 1) * intComponentRowsPerPage;
-  const lstVisibleComponentRows = lstFilteredComponentRows.slice(intComponentStartIndex, intComponentStartIndex + intComponentRowsPerPage);
-
-  const intHistoryPageCount = Math.max(1, Math.ceil(lstHistoryRows.length / intHistoryRowsPerPage));
-  const intResolvedHistoryPage = Math.min(intHistoryPage, intHistoryPageCount);
-  const intHistoryStartIndex = (intResolvedHistoryPage - 1) * intHistoryRowsPerPage;
-  const lstVisibleHistoryRows = lstHistoryRows.slice(intHistoryStartIndex, intHistoryStartIndex + intHistoryRowsPerPage);
+  const lstComponentDataGridRows = useMemo<ComponentDataGridRow[]>(
+    () => lstFilteredComponentRows.map((dicRow) => ({
+      ...dicRow,
+      strComponentName: (
+        <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>
+          {dicRow.strComponentName}
+        </Typography>
+      ),
+      strOverride: (
+        <span className={`${styles.statusPill} ${dicRow.blnIsOverride ? styles.statusInactive : styles.statusActive}`}>
+          {dicRow.strOverride}
+        </span>
+      )
+    })),
+    [lstFilteredComponentRows]
+  );
+  const lstComponentColumns = useMemo<DataGridColumn<ComponentDataGridRow>[]>(() => [
+    { field: "strComponentName", headerName: t("employee_salary_component", "Component"), width: 180, sortable: false },
+    { field: "strCategory", headerName: t("employee_salary_category", "Category"), width: 130 },
+    { field: "strValueType", headerName: t("employee_salary_value_type", "Value Type"), width: 130 },
+    { field: "strAnnual", headerName: t("employee_salary_annual", "Annual"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decAnnualSort },
+    { field: "strMonthly", headerName: t("employee_salary_monthly", "Monthly"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlySort },
+    { field: "strOverride", headerName: t("employee_salary_source", "Source"), width: 130, sortable: false },
+    { field: "strRemarks", headerName: t("employee_salary_remarks", "Remarks"), width: 180 }
+  ], [t]);
+  const lstFlexiColumns = useMemo<DataGridColumn<FlexiGridRow>[]>(() => [
+    { field: "strComponentName", headerName: t("employee_salary_flexi_component", "Component"), width: 170, sortable: false },
+    { field: "strEligibility", headerName: t("employee_salary_eligibility", "Eligibility"), width: 120 },
+    { field: "strAnnualCap", headerName: t("employee_salary_annual_limit", "Annual Cap"), width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decAnnualCap },
+    { field: "strApprovedDeclaredAnnual", headerName: t("employee_salary_approved_declared_annual", "Approved / Declared Annual"), width: 190, align: "right", sortAccessor: (dicRow) => dicRow.decApprovedDeclaredAnnual },
+    { field: "strMonthlyImpact", headerName: t("employee_salary_monthly_impact", "Monthly Impact"), width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlyImpact },
+    { field: "strProofRequired", headerName: t("employee_salary_proof_required", "Proof Required"), width: 140 },
+    { field: "strStatus", headerName: t("employee_salary_status", "Status"), width: 130 },
+    { field: "strReasonAction", headerName: t("employee_salary_reason_action", "Reason / Action"), width: 190 }
+  ], [t]);
+  const lstHistoryDataGridRows = useMemo<HistoryDataGridRow[]>(
+    () => lstHistoryRows.map((dicRow) => ({
+      ...dicRow,
+      strCurrent: (
+        <span className={`${styles.statusPill} ${dicRow.blnIsCurrent ? styles.statusActive : styles.statusInactive}`}>
+          {dicRow.strCurrent}
+        </span>
+      )
+    })),
+    [lstHistoryRows]
+  );
+  const lstHistoryColumns = useMemo<DataGridColumn<HistoryDataGridRow>[]>(() => [
+    { field: "strStructure", headerName: t("employee_salary_structure", "Structure"), width: 180 },
+    { field: "strEffectiveFrom", headerName: t("employee_salary_effective_from", "Effective From"), width: 145, sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
+    { field: "strEffectiveTo", headerName: t("employee_salary_effective_to", "Effective To"), width: 145, sortAccessor: (dicRow) => dicRow.strEffectiveToSort },
+    { field: "strGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrossMonthlySort },
+    { field: "strCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decCtcAnnualSort },
+    { field: "strCurrent", headerName: t("employee_salary_record_type", "Record Type"), width: 130, sortable: false },
+    { field: "strReason", headerName: t("employee_salary_revision_reason", "Revision Reason"), width: 210 }
+  ], [t]);
+  const lstRevisionFlexiDataGridRows = useMemo<RevisionFlexiDataGridRow[]>(
+    () => dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => ({
+      intSalaryComponentID: dicAllocation.intSalaryComponentID,
+      strComponentName: (
+        <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>
+          {dicAllocation.strComponentName}
+        </Typography>
+      ),
+      strEligibility: t("employee_salary_eligible", "Eligible"),
+      strAnnualCap: formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode),
+      strApprovedDeclaredAnnual: (
+        <TextField
+          data-controlid={`employee-salary.revision.flexi.${dicAllocation.intSalaryComponentID}.annual.input`}
+          value={dicAllocation.decAllocationAnnual}
+          placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
+          size="small"
+          sx={objOverrideValueFieldSx}
+          disabled
+        />
+      ),
+      strMonthlyImpact: (
+        <TextField
+          data-controlid={`employee-salary.revision.flexi.${dicAllocation.intSalaryComponentID}.monthly.input`}
+          value={dicAllocation.decAllocationMonthly}
+          placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
+          size="small"
+          sx={objOverrideValueFieldSx}
+          disabled
+        />
+      ),
+      strProofRequired: dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No"),
+      strStatus: dicAllocation.strStatus || t("employee_salary_not_declared", "Not Declared"),
+      strReasonAction: dicAllocation.strReasonAction || "-"
+    })),
+    [dicRevisionForm.lstFlexiAllocations, strCurrencyCode, t]
+  );
+  const lstRevisionFlexiColumns = useMemo<DataGridColumn<RevisionFlexiDataGridRow>[]>(() => [
+    { field: "strComponentName", headerName: t("employee_salary_flexi_component", "Component"), width: 170, sortable: false },
+    { field: "strEligibility", headerName: t("employee_salary_eligibility", "Eligibility"), width: 120 },
+    { field: "strAnnualCap", headerName: t("employee_salary_annual_limit", "Annual Cap"), width: 140, align: "right" },
+    { field: "strApprovedDeclaredAnnual", headerName: t("employee_salary_approved_declared_annual", "Approved / Declared Annual"), width: 200, sortable: false },
+    { field: "strMonthlyImpact", headerName: t("employee_salary_monthly_impact", "Monthly Impact"), width: 170, sortable: false },
+    { field: "strProofRequired", headerName: t("employee_salary_proof_required", "Proof Required"), width: 140 },
+    { field: "strStatus", headerName: t("employee_salary_status", "Status"), width: 130 },
+    { field: "strReasonAction", headerName: t("employee_salary_reason_action", "Reason / Action"), width: 190 }
+  ], [t]);
+  const lstRevisionFlexiCompactDataGridRows = useMemo<RevisionFlexiCompactDataGridRow[]>(
+    () => dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => ({
+      intSalaryComponentID: dicAllocation.intSalaryComponentID,
+      strComponentName: (
+        <Box>
+          <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.75rem" }}>
+            {`${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
+          </Typography>
+        </Box>
+      ),
+      strAnnualCap: formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode),
+      strMonthlyCap: formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode),
+      strApprovedDeclaredAnnual: (
+        <TextField
+          data-controlid={`employee-salary.revision.flexi-compact.${dicAllocation.intSalaryComponentID}.annual.input`}
+          value={dicAllocation.decAllocationAnnual}
+          placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
+          size="small"
+          sx={objOverrideValueFieldSx}
+          disabled
+        />
+      ),
+      strMonthlyImpact: (
+        <TextField
+          data-controlid={`employee-salary.revision.flexi-compact.${dicAllocation.intSalaryComponentID}.monthly.input`}
+          value={dicAllocation.decAllocationMonthly}
+          placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
+          size="small"
+          sx={objOverrideValueFieldSx}
+          disabled
+        />
+      ),
+      strTaxTreatment: <span style={{ textTransform: "capitalize" }}>{dicAllocation.strTaxTreatment || "-"}</span>
+    })),
+    [dicRevisionForm.lstFlexiAllocations, strCurrencyCode, t]
+  );
+  const lstRevisionFlexiCompactColumns = useMemo<DataGridColumn<RevisionFlexiCompactDataGridRow>[]>(() => [
+    { field: "strComponentName", headerName: t("employee_salary_flexi_component", "Flexi Component"), width: 210, sortable: false },
+    { field: "strAnnualCap", headerName: t("employee_salary_annual_limit", "Annual Cap"), width: 145, align: "right" },
+    { field: "strMonthlyCap", headerName: t("employee_salary_monthly_limit", "Monthly Cap"), width: 145, align: "right" },
+    { field: "strApprovedDeclaredAnnual", headerName: t("employee_salary_approved_declared_annual", "Approved / Declared Annual"), width: 200, sortable: false },
+    { field: "strMonthlyImpact", headerName: t("employee_salary_monthly_impact", "Monthly Impact"), width: 170, sortable: false },
+    { field: "strTaxTreatment", headerName: t("employee_salary_tax_treatment", "Tax Treatment"), width: 150, sortable: false }
+  ], [t]);
   const strMinRevisionEffectiveDate = getRevisionMinEffectiveDate(objDetail);
 
   async function handleSalaryStructureChange(strSalaryStructureID: string) {
@@ -2291,58 +2469,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
                 </Typography>
               </Stack>
-              <Box className={styles.tableWrap}>
-                <table className={`${styles.table} ${styles.flexiAmountTable}`}>
-                  <thead>
-                    <tr>
-                      <th>{t("employee_salary_flexi_component", "Component")}</th>
-                      <th>{t("employee_salary_eligibility", "Eligibility")}</th>
-                      <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
-                      <th>{t("employee_salary_approved_declared_annual", "Approved / Declared Annual")}</th>
-                      <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
-                      <th>{t("employee_salary_proof_required", "Proof Required")}</th>
-                      <th>{t("employee_salary_status", "Status")}</th>
-                      <th>{t("employee_salary_reason_action", "Reason / Action")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dicRevisionForm.lstFlexiAllocations.length === 0 ? (
-                      <tr>
-                        <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
-                      </tr>
-                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => (
-                      <tr key={dicAllocation.intSalaryComponentID}>
-                        <td>
-                          <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
-                        </td>
-                        <td>{t("employee_salary_eligible", "Eligible")}</td>
-                        <td>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</td>
-                        <td>
-                          <TextField
-                            value={dicAllocation.decAllocationAnnual}
-                            placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
-                            size="small"
-                            sx={objOverrideValueFieldSx}
-                            disabled
-                          />
-                        </td>
-                        <td>
-                          <TextField
-                            value={dicAllocation.decAllocationMonthly}
-                            placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
-                            size="small"
-                            sx={objOverrideValueFieldSx}
-                            disabled
-                          />
-                        </td>
-                        <td>{dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}</td>
-                        <td>{dicAllocation.strStatus || t("employee_salary_not_declared", "Not Declared")}</td>
-                        <td>{dicAllocation.strReasonAction || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Box>
+              <CommonDataGrid
+                columns={lstRevisionFlexiColumns}
+                rows={lstRevisionFlexiDataGridRows}
+                rowIdField="intSalaryComponentID"
+                showPaginationSummary
+                hideToolbar
+                minTableWidth={1260}
+                emptyMessage={t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}
+                testIdPrefix="employee-salary.revision.flexi-allocation-benefits"
+                withPaper={false}
+              />
             </Box>
           </Box>
         ) : null}
@@ -2803,57 +2940,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                   {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
                 </Typography>
               </Stack>
-              <Box className={styles.tableWrap}>
-                <table className={`${styles.table} ${styles.flexiCompactAmountTable}`}>
-                  <thead>
-                    <tr>
-                      <th>{t("employee_salary_flexi_component", "Flexi Component")}</th>
-                      <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
-                      <th>{t("employee_salary_monthly_limit", "Monthly Cap")}</th>
-                      <th>{t("employee_salary_approved_declared_annual", "Approved / Declared Annual")}</th>
-                      <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
-                      <th>{t("employee_salary_tax_treatment", "Tax Treatment")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dicRevisionForm.lstFlexiAllocations.length === 0 ? (
-                      <tr>
-                        <td className={styles.emptyState} colSpan={6}>{t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}</td>
-                      </tr>
-                    ) : dicRevisionForm.lstFlexiAllocations.map((dicAllocation) => (
-                      <tr key={dicAllocation.intSalaryComponentID}>
-                        <td>
-                          <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicAllocation.strComponentName}</Typography>
-                          <Typography sx={{ color: "#64748b", fontSize: "0.75rem" }}>
-                            {`${t("employee_salary_proof_required", "Proof Required")}: ${dicAllocation.blnProofRequired ? t("employee_salary_yes", "Yes") : t("employee_salary_no", "No")}`}
-                          </Typography>
-                        </td>
-                        <td>{formatOptionalCurrencyValue(dicAllocation.decAnnualLimit, strCurrencyCode)}</td>
-                        <td>{formatOptionalCurrencyValue(dicAllocation.decMonthlyLimit, strCurrencyCode)}</td>
-                        <td>
-                          <TextField
-                            value={dicAllocation.decAllocationAnnual}
-                            placeholder={dicAllocation.decAnnualLimit != null ? String(dicAllocation.decAnnualLimit) : ""}
-                            size="small"
-                            sx={objOverrideValueFieldSx}
-                            disabled
-                          />
-                        </td>
-                        <td>
-                          <TextField
-                            value={dicAllocation.decAllocationMonthly}
-                            placeholder={dicAllocation.decMonthlyLimit != null ? String(dicAllocation.decMonthlyLimit) : ""}
-                            size="small"
-                            sx={objOverrideValueFieldSx}
-                            disabled
-                          />
-                        </td>
-                        <td style={{ textTransform: "capitalize" }}>{dicAllocation.strTaxTreatment || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Box>
+              <CommonDataGrid
+                columns={lstRevisionFlexiCompactColumns}
+                rows={lstRevisionFlexiCompactDataGridRows}
+                rowIdField="intSalaryComponentID"
+                showPaginationSummary
+                hideToolbar
+                minTableWidth={1020}
+                emptyMessage={t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}
+                testIdPrefix="employee-salary.revision.flexi-allocation-benefits-compact"
+                withPaper={false}
+              />
             </Box>
           ) : null}
         </Stack>
@@ -2964,82 +3061,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_component_lines", "Component Lines")}
             </Typography>
-            {lstFilteredComponentRows.length > 0 ? (
-              <Box className={styles.paginationBar}>
-                <Box className={styles.paginationInfo}>
-                  <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
-                  <TextField
-                    data-controlid="employee-salary.detail.components.rows-per-page.select"
-                    inputProps={{ "data-controlid": "employee-salary.detail.components.rows-per-page.select" }}
-                    select
-                    size="small"
-                    value={String(intComponentRowsPerPage)}
-                    onChange={(objEvent) => {
-                      setIntComponentRowsPerPage(Number(objEvent.target.value));
-                      setIntComponentPage(1);
-                    }}
-                    className={styles.rowsPerPageSelect}
-                  >
-                    {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} data-controlid={`employee-salary.detail.components.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
-                    ))}
-                  </TextField>
-                  <Typography className={styles.paginationRange}>
-                    {intComponentStartIndex + 1}-{Math.min(intComponentStartIndex + intComponentRowsPerPage, lstFilteredComponentRows.length)} of {lstFilteredComponentRows.length}
-                  </Typography>
-                </Box>
-                <Pagination
-                  data-controlid="employee-salary.detail.components.pagination"
-                  count={intComponentPageCount}
-                  page={intResolvedComponentPage}
-                  onChange={(_, intNextPage) => setIntComponentPage(intNextPage)}
-                  size="small"
-                  color="primary"
-                  showFirstButton
-                  showLastButton
-                />
-              </Box>
-            ) : null}
           </Stack>
-
-          <Box className={styles.tableWrap}>
-            <table className={`${styles.table} ${styles.salaryStructureAmountTable}`}>
-              <thead>
-                <tr>
-                  <th>{t("employee_salary_component", "Component")}</th>
-                  <th>{t("employee_salary_category", "Category")}</th>
-                  <th>{t("employee_salary_value_type", "Value Type")}</th>
-                  <th>{t("employee_salary_annual", "Annual")}</th>
-                  <th>{t("employee_salary_monthly", "Monthly")}</th>
-                  <th>{t("employee_salary_source", "Source")}</th>
-                  <th>{t("employee_salary_remarks", "Remarks")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstFilteredComponentRows.length === 0 ? (
-                  <tr>
-                    <td className={styles.emptyState} colSpan={7}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
-                  </tr>
-                ) : lstVisibleComponentRows.map((dicRow) => (
-                  <tr key={dicRow.intEmployeeSalaryComponentID}>
-                    <td>
-                      <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicRow.strComponentName}</Typography>
-                    </td>
-                    <td>{dicRow.strCategory}</td>
-                    <td>{dicRow.strValueType}</td>
-                    <td>{dicRow.strAnnual}</td>
-                    <td>{dicRow.strMonthly}</td>
-                    <td>
-                      <span className={`${styles.statusPill} ${dicRow.blnIsOverride ? styles.statusInactive : styles.statusActive}`}>
-                        {dicRow.strOverride}
-                      </span>
-                    </td>
-                    <td>{dicRow.strRemarks}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
+          <CommonDataGrid
+            columns={lstComponentColumns}
+            rows={lstComponentDataGridRows}
+            rowIdField="intEmployeeSalaryComponentID"
+            showPaginationSummary
+            hideToolbar
+            minTableWidth={980}
+            emptyMessage={t("employee_salary_no_component_lines_found", "No salary component lines found.")}
+            testIdPrefix="employee-salary.detail.salary-structure"
+            withPaper={false}
+          />
         </Box>
 
         {(
@@ -3052,6 +3085,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </Typography>
               {blnHasFlexiBucket ? (
                 <Button
+                  data-controlid="employee-salary.detail.flexi-allocation-benefits.review.button"
                   size="small"
                   variant="contained"
                   className={styles.primaryButton}
@@ -3079,40 +3113,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               </Alert>
             ) : null}
             {blnHasFlexiBucket ? (
-            <Box className={styles.tableWrap}>
-              <table className={`${styles.table} ${styles.flexiAmountTable}`}>
-                <thead>
-                  <tr>
-                    <th>{t("employee_salary_flexi_component", "Component")}</th>
-                    <th>{t("employee_salary_eligibility", "Eligibility")}</th>
-                    <th>{t("employee_salary_annual_limit", "Annual Cap")}</th>
-                    <th>{t("employee_salary_approved_declared_annual", "Approved / Declared Annual")}</th>
-                    <th>{t("employee_salary_monthly_impact", "Monthly Impact")}</th>
-                    <th>{t("employee_salary_proof_required", "Proof Required")}</th>
-                    <th>{t("employee_salary_status", "Status")}</th>
-                    <th>{t("employee_salary_reason_action", "Reason / Action")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lstFlexiRows.length === 0 ? (
-                    <tr>
-                      <td className={styles.emptyState} colSpan={8}>{t("employee_salary_no_flexi_components_found", "No flexi components found.")}</td>
-                    </tr>
-                  ) : lstFlexiRows.map((dicRow) => (
-                    <tr key={dicRow.intSalaryComponentID}>
-                      <td>{dicRow.strComponentName ?? "-"}</td>
-                      <td>{dicRow.strEligibility}</td>
-                      <td>{dicRow.strAnnualCap}</td>
-                      <td>{dicRow.strApprovedDeclaredAnnual}</td>
-                      <td>{dicRow.strMonthlyImpact}</td>
-                      <td>{dicRow.strProofRequired}</td>
-                      <td>{dicRow.strStatus}</td>
-                      <td>{dicRow.strReasonAction}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
+            <CommonDataGrid
+              columns={lstFlexiColumns}
+              rows={lstFlexiRows}
+              rowIdField="intSalaryComponentID"
+              showPaginationSummary
+              hideToolbar
+              minTableWidth={1130}
+              emptyMessage={t("employee_salary_no_flexi_components_found", "No flexi components found.")}
+              testIdPrefix="employee-salary.detail.flexi-allocation-benefits"
+              withPaper={false}
+            />
             ) : null}
           </Box>
         )}
@@ -3235,82 +3246,18 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_revision_history", "Revision History")}
             </Typography>
-            {lstHistoryRows.length > 0 ? (
-              <Box className={styles.paginationBar}>
-                <Box className={styles.paginationInfo}>
-                  <Typography className={styles.paginationLabel}>{t("employee_salary_rows_per_page", "Rows per page")}</Typography>
-                  <TextField
-                    data-controlid="employee-salary.detail.history.rows-per-page.select"
-                    inputProps={{ "data-controlid": "employee-salary.detail.history.rows-per-page.select" }}
-                    select
-                    size="small"
-                    value={String(intHistoryRowsPerPage)}
-                    onChange={(objEvent) => {
-                      setIntHistoryRowsPerPage(Number(objEvent.target.value));
-                      setIntHistoryPage(1);
-                    }}
-                    className={styles.rowsPerPageSelect}
-                  >
-                    {lstRowsPerPageOptions.map((intOption) => (
-                      <MenuItem key={intOption} value={String(intOption)} data-controlid={`employee-salary.detail.history.rows-per-page.${intOption}.option`}>{intOption}</MenuItem>
-                    ))}
-                  </TextField>
-                  <Typography className={styles.paginationRange}>
-                    {intHistoryStartIndex + 1}-{Math.min(intHistoryStartIndex + intHistoryRowsPerPage, lstHistoryRows.length)} of {lstHistoryRows.length}
-                  </Typography>
-                </Box>
-                <Pagination
-                  data-controlid="employee-salary.detail.history.pagination"
-                  count={intHistoryPageCount}
-                  page={intResolvedHistoryPage}
-                  onChange={(_, intNextPage) => setIntHistoryPage(intNextPage)}
-                  size="small"
-                  color="primary"
-                  showFirstButton
-                  showLastButton
-                />
-              </Box>
-            ) : null}
           </Stack>
-
-          <Box className={styles.tableWrap}>
-            <table className={`${styles.table} ${styles.revisionHistoryAmountTable}`}>
-              <thead>
-                <tr>
-                  <th>{t("employee_salary_structure", "Structure")}</th>
-                  <th>{t("employee_salary_effective_from", "Effective From")}</th>
-                  <th>{t("employee_salary_effective_to", "Effective To")}</th>
-                  <th>{t("employee_salary_gross_monthly", "Gross Monthly")}</th>
-                  <th>{t("employee_salary_ctc_annual", "CTC Annual")}</th>
-                  <th>{t("employee_salary_record_type", "Record Type")}</th>
-                  <th>{t("employee_salary_revision_reason", "Revision Reason")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstHistoryRows.length === 0 ? (
-                  <tr>
-                    <td className={styles.emptyState} colSpan={7}>{t("employee_salary_no_revisions_found", "No salary revisions found.")}</td>
-                  </tr>
-                ) : lstVisibleHistoryRows.map((dicRow) => (
-                  <tr key={dicRow.intEmployeeSalaryStructureID}>
-                    <td>{dicRow.strStructure}</td>
-                    <td>{dicRow.strEffectiveFrom}</td>
-                    <td>{dicRow.strEffectiveTo}</td>
-                    <td>{dicRow.strGrossMonthly}</td>
-                    <td>{dicRow.strCtcAnnual}</td>
-                    <td>
-                      <span className={`${styles.statusPill} ${dicRow.blnIsCurrent ? styles.statusActive : styles.statusInactive}`}>
-                        {dicRow.blnIsCurrent
-                          ? t("employee_salary_current", "Current")
-                          : t("employee_salary_history", "History")}
-                      </span>
-                    </td>
-                    <td>{dicRow.strReason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
+          <CommonDataGrid
+            columns={lstHistoryColumns}
+            rows={lstHistoryDataGridRows}
+            rowIdField="intEmployeeSalaryStructureID"
+            showPaginationSummary
+            hideToolbar
+            minTableWidth={1110}
+            emptyMessage={t("employee_salary_no_revisions_found", "No salary revisions found.")}
+            testIdPrefix="employee-salary.detail.revision-history"
+            withPaper={false}
+          />
         </Box>
       </Box>
       ) : null}
