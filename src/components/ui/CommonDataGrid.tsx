@@ -26,6 +26,15 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 
 type CellAlign = "left" | "right" | "center";
 
+const strBulkActionSelector = ["bulk-activate", "bulk-deactivate", "bulk-delete"]
+  .flatMap((strAction) => [
+    `& [data-controlid*=".${strAction}.button"]`,
+    `& [data-control-id*=".${strAction}.button"]`,
+    `& [controlid*=".${strAction}.button"]`,
+    `& [data-testid*=".${strAction}.button"]`
+  ])
+  .join(", ");
+
 export type DataGridColumn<T extends Record<string, ReactNode>> = {
   field: keyof T;
   headerName: ReactNode;
@@ -118,7 +127,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
       return 2;
     };
 
-    return [...columns].sort((objLeft, objRight) => getColumnPriority(objLeft) - getColumnPriority(objRight));
+    return columns
+      .filter((column) => String(column.field) !== "select")
+      .sort((objLeft, objRight) => getColumnPriority(objLeft) - getColumnPriority(objRight));
   }, [columns]);
   const intMinimumTableWidth = useMemo(
     () => orderedColumns.reduce((intTotal, column) => intTotal + (column.width ?? 160), 0),
@@ -168,6 +179,35 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     }
     setSortBy(field);
     setSortDirection("asc");
+  };
+
+  const findAvailableRowAction = (objRow: HTMLTableRowElement, strAction: "edit" | "view") => {
+    const strSelector = [
+      `[data-controlid$=".${strAction}.button"]`,
+      `[data-control-id$=".${strAction}.button"]`,
+      `[controlid$=".${strAction}.button"]`
+    ].join(", ");
+
+    return Array.from(objRow.querySelectorAll<HTMLElement>(strSelector)).find((objAction) => {
+      const blnDisabled = objAction instanceof HTMLButtonElement && objAction.disabled;
+      return !blnDisabled && objAction.getAttribute("aria-disabled") !== "true";
+    });
+  };
+
+  const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+    const objTarget = objEvent.target as HTMLElement;
+    if (objTarget.closest("button, input, a, [role='button']")) {
+      return;
+    }
+
+    const objRow = objEvent.currentTarget;
+    const objPreferredAction = findAvailableRowAction(objRow, "edit") ?? findAvailableRowAction(objRow, "view");
+    if (objPreferredAction) {
+      objPreferredAction.click();
+      return;
+    }
+
+    onRowDoubleClick?.(row, objEvent);
   };
 
   useEffect(() => {
@@ -271,7 +311,14 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   };
 
   const table = (
-    <Stack spacing={2.5} sx={{ minHeight: 0, height: "100%" }}>
+    <Stack
+      spacing={2.5}
+      sx={{
+        minHeight: 0,
+        height: "100%",
+        [strBulkActionSelector]: { display: "none" }
+      }}
+    >
       {(!hideToolbar || showPaginationSummary) ? (
         <Stack
           direction={{ xs: "column", lg: "row" }}
@@ -430,13 +477,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   data-controlid={`${testIdPrefix}.row`}
                   data-row-key={strRowKey}
                   hover
-                  onDoubleClick={(objEvent) => {
-                    const objTarget = objEvent.target as HTMLElement;
-                    if (objTarget.closest("button, input, a, [role='button']")) {
-                      return;
-                    }
-                    onRowDoubleClick?.(row, objEvent);
-                  }}
+                  onDoubleClick={(objEvent) => handleRowDoubleClick(row, objEvent)}
                   sx={[
                     {
                       height: 50,

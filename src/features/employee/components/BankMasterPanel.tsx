@@ -3,13 +3,11 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -17,12 +15,11 @@ import {
   DialogTitle,
   InputAdornment,
   MenuItem,
-  Pagination,
   Snackbar,
   TextField,
   Typography
 } from "@mui/material";
-import type { InputHTMLAttributes } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,6 +29,7 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
@@ -57,6 +55,15 @@ type BankRecord = {
   status: BankStatus;
 };
 
+type BankTableRow = {
+  id: string;
+  action: ReactNode;
+  name: string;
+  code: string;
+  status: ReactNode;
+  statusSortValue: string;
+};
+
 type SearchForm = {
   code: string;
   name: string;
@@ -79,7 +86,6 @@ type ToastState = {
 const dicEmptyForm = createInitialBankForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultBanks: BankRecord[] = [];
-const lstRowsPerPageOptions = [10, 20, 50];
 const lstBankModuleCodes = ["BANK", "BANKS"];
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
@@ -90,73 +96,6 @@ function mapBankRecord(dicRecord: BankApiRecord): BankRecord {
     name: dicRecord.strBankName,
     status: dicRecord.blnIsActive ? "Active" : "Inactive"
   };
-}
-
-// Exports the current filtered grid as an Excel-friendly CSV file.
-function downloadCsv(strFileName: string, lstRows: BankRecord[]) {
-  const lstHeaders = ["Bank Name", "Bank Code", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [dicRow.name, dicRow.code, dicRow.status]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-// Opens a print-friendly browser window so the visible dataset can be printed or saved as PDF.
-function exportPdf(strTitle: string, lstRows: BankRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.name}</td>
-      <td>${dicRow.code}</td>
-      <td>${dicRow.status}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Bank Name</th>
-              <th>Bank Code</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
 }
 
 export default function BankMasterPanel() {
@@ -174,11 +113,8 @@ export default function BankMasterPanel() {
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(20);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
@@ -264,10 +200,9 @@ export default function BankMasterPanel() {
   };
 
   async function loadBanks() {
-    // Reload from the backend after every mutation so pagination, selection, and DB state stay in sync.
+    // Reload from the backend after every mutation so the grid and DB state stay in sync.
     if (!canViewAny()) {
       setLstBanks([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -275,8 +210,6 @@ export default function BankMasterPanel() {
     try {
       const objResult = await masterApiService.getBanks();
       setLstBanks(objResult.Data.map(mapBankRecord));
-      setLstSelectedIds([]);
-      setIntPage(1);
     } finally {
       setBlnLoading(false);
     }
@@ -288,7 +221,6 @@ export default function BankMasterPanel() {
     }
     if (!canViewAny()) {
       setLstBanks([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -301,7 +233,6 @@ export default function BankMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID() ??
@@ -462,12 +393,36 @@ export default function BankMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstBanks]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredBanks.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleBanks = lstFilteredBanks.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleBanks.length > 0 && lstVisibleBanks.every((dicBank) => lstSelectedIds.includes(dicBank.id));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleBanks.some((dicBank) => dicBank.id === strId));
+  const lstTableRows: BankTableRow[] = lstFilteredBanks.map((dicBank) => ({
+    id: dicBank.id,
+    action: (
+      <CommonRowActions
+        testIdPrefix="bank-master.list.row"
+        rowKey={dicBank.id}
+        blnCanView={blnCanView}
+        blnCanEdit={blnCanEdit}
+        blnCanDelete={blnCanDelete}
+        onView={() => openDialog("view", dicBank)}
+        onEdit={() => openDialog("edit", dicBank)}
+        onDelete={() => deleteBank(dicBank.id)}
+      />
+    ),
+    name: dicBank.name,
+    code: dicBank.code,
+    status: (
+      <span className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+        {dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+      </span>
+    ),
+    statusSortValue: dicBank.status
+  }));
+
+  const lstTableColumns: DataGridColumn<BankTableRow>[] = [
+    { field: "action", headerName: dicBankLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
+    { field: "name", headerName: dicBankLabels.tableName, width: 260 },
+    { field: "code", headerName: dicBankLabels.tableCode, width: 180 },
+    { field: "status", headerName: dicBankLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+  ];
 
   useEffect(() => {
     bankService.getBankFormOptions()
@@ -668,49 +623,6 @@ export default function BankMasterPanel() {
       .finally(() => setBlnSubmitting(false));
   }
 
-  function toggleSelection(strBankId: string) {
-    setLstSelectedIds((lstPrevious) => lstPrevious.includes(strBankId)
-      ? lstPrevious.filter((strId) => strId !== strBankId)
-      : [...lstPrevious, strBankId]);
-  }
-
-  function toggleSelectAll() {
-    // Selects only the visible page rows so bulk actions stay aligned with the current page.
-    if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleBanks.some((dicBank) => dicBank.id === strId)));
-      return;
-    }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleBanks.map((dicBank) => dicBank.id)])]);
-  }
-
-  function bulkUpdateStatus(strStatus: BankStatus) {
-    openConfirmDialog({
-      strTitle: strStatus === "Active" ? dicBankLabels.confirmBulkActivateTitle : dicBankLabels.confirmBulkDeactivateTitle,
-      strMessage: (strStatus === "Active" ? dicBankLabels.confirmBulkActivateMessage : dicBankLabels.confirmBulkDeactivateMessage)
-        .replace("{count}", String(lstSelectedIds.length))
-        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strStatus === "Active" ? dicBankLabels.bulkActivate : dicBankLabels.bulkDeactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkBankStatus(lstSelectedIds.map(Number), strStatus === "Active");
-        await loadBanks();
-        showToast(strStatus === "Active" ? dicBankLabels.bulkActivateSuccess : dicBankLabels.bulkDeactivateSuccess);
-      }
-    });
-  }
-
-  function bulkDelete() {
-    openConfirmDialog({
-      strTitle: dicBankLabels.confirmBulkDeleteTitle,
-      strMessage: dicBankLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
-      strConfirmLabel: dicBankLabels.bulkDelete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkBankDelete(lstSelectedIds.map(Number));
-        await loadBanks();
-        showToast(dicBankLabels.bulkDeleteSuccess);
-      }
-    });
-  }
-
   function deleteBank(strBankId: string) {
     openConfirmDialog({
       strTitle: dicBankLabels.confirmDeleteTitle,
@@ -747,99 +659,36 @@ export default function BankMasterPanel() {
             <MenuItem controlId="bank-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="bank-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
-
-        {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>{dicBankLabels.bulkApplyingChanges}</Typography>
-          </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
-          <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicBankLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button controlId="bank-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicBankLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button controlId="bank-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicBankLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button controlId="bank-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicBankLabels.bulkDelete}</Button> : null}
-          </Box>
-        ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button controlId="bank-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicBankLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button controlId="bank-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicBankLabels.exportFileName, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button controlId="bank-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicBankLabels.exportTitle, lstFilteredBanks)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
-          </Box>
-
-          {!blnLoading && lstFilteredBanks.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredBanks.length)} {dicCommonLabels.paginationSeparator} {lstFilteredBanks.length}
-              </Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-          </Box>
-        ) : null}
-        </Box>
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState} controlId="bank-master.no-access.message">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Bank access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need bank visibility.</Typography>
           </Box>
         ) : (
-        // The table wrapper is the only scrolling region so the master header stays stable on screen.
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th><Checkbox controlId="bank-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ controlId: "bank-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
-                <th>{dicBankLabels.tableActions}</th>
-                <th>{dicBankLabels.tableName}</th>
-                <th>{dicBankLabels.tableCode}</th>
-                <th>{dicBankLabels.tableStatus}</th>
-              </tr>
-            </thead>
-            <tbody controlId="bank-master.list.table.body">
-              {lstFilteredBanks.length === 0 ? (
-                <tr controlId="bank-master.list.table.empty-row">
-                  <td controlId="bank-master.list.empty-state" className={styles.emptyState} colSpan={5}>{dicBankLabels.emptyMessage}</td>
-                </tr>
-              ) : lstVisibleBanks.map((dicBank) => {
-                const blnSelected = lstSelectedIds.includes(dicBank.id);
-                return (
-                  <tr key={dicBank.id} controlId="bank-master.list.row" data-row-key={dicBank.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox controlId="bank-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicBank.id)} inputProps={{ controlId: "bank-master.list.row.select.checkbox", "data-row-key": dicBank.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                    <td><CommonRowActions rowKey={dicBank.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicBank)} onEdit={() => openDialog("edit", dicBank)} onDelete={() => deleteBank(dicBank.id)} /></td>
-                    <td controlId="bank-master.list.row.name.cell" data-row-key={dicBank.id}>{dicBank.name}</td>
-                    <td controlId="bank-master.list.row.code.cell" data-row-key={dicBank.id}>{dicBank.code}</td>
-                    <td controlId="bank-master.list.row.status.cell" data-row-key={dicBank.id}>
-                      <span controlId="bank-master.list.row.status.pill" data-row-key={dicBank.id} className={`${styles.statusPill} ${dicBank.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Box>
+          <CommonDataGrid
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={20}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName={dicBankLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={dicBankLabels.emptyMessage}
+            testIdPrefix="bank-master.list"
+            toolbarLeft={blnCanAdd ? (
+              <Button controlId="bank-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {dicBankLabels.addButton}
+              </Button>
+            ) : null}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
 

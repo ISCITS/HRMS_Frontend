@@ -3,23 +3,20 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   InputAdornment,
   MenuItem,
-  Pagination,
   Snackbar,
   Switch,
   TextField,
   Typography
 } from "@mui/material";
-import type { InputHTMLAttributes } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -29,6 +26,7 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
@@ -55,6 +53,15 @@ type DesignationRecord = {
   status: DesignationStatus;
 };
 
+type DesignationTableRow = {
+  id: string;
+  action: ReactNode;
+  name: string;
+  code: string;
+  status: ReactNode;
+  statusSortValue: string;
+};
+
 type SearchForm = {
   code: string;
   name: string;
@@ -77,7 +84,6 @@ type ToastState = {
 const dicEmptyForm = createInitialDesignationForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDesignations: DesignationRecord[] = [];
-const lstRowsPerPageOptions = [10, 20, 50];
 const lstDesignationModuleCodes = ["DESIGNATION", "DESIGNATIONS"];
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
@@ -88,73 +94,6 @@ function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecor
     name: dicRecord.strDesignationName,
     status: dicRecord.blnIsActive ? "Active" : "Inactive"
   };
-}
-
-// Exports the current filtered grid as an Excel-friendly CSV file.
-function downloadCsv(strFileName: string, lstRows: DesignationRecord[]) {
-  const lstHeaders = ["Designation Name", "Designation Code", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [dicRow.name, dicRow.code, dicRow.status]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-// Opens a print-friendly browser window so the visible dataset can be printed or saved as PDF.
-function exportPdf(strTitle: string, lstRows: DesignationRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.name}</td>
-      <td>${dicRow.code}</td>
-      <td>${dicRow.status}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Designation Name</th>
-              <th>Designation Code</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
 }
 
 // Designation master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
@@ -173,11 +112,8 @@ export default function DesignationMasterPanel() {
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(20);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
@@ -265,7 +201,6 @@ export default function DesignationMasterPanel() {
     // Reload from the backend after every mutation so pagination, selection, and DB state stay in sync.
     if (!canViewAny()) {
       setLstDesignations([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -273,8 +208,6 @@ export default function DesignationMasterPanel() {
     try {
       const objResult = await masterApiService.getDesignations();
       setLstDesignations(objResult.Data.map(mapDesignationRecord));
-      setLstSelectedIds([]);
-      setIntPage(1);
     } finally {
       setBlnLoading(false);
     }
@@ -286,7 +219,6 @@ export default function DesignationMasterPanel() {
     }
     if (!canViewAny()) {
       setLstDesignations([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -299,7 +231,6 @@ export default function DesignationMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID() ??
@@ -460,12 +391,21 @@ export default function DesignationMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstDesignations]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredDesignations.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleDesignations = lstFilteredDesignations.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleDesignations.length > 0 && lstVisibleDesignations.every((dicDesignation) => lstSelectedIds.includes(dicDesignation.id));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleDesignations.some((dicDesignation) => dicDesignation.id === strId));
+  const lstTableRows: DesignationTableRow[] = lstFilteredDesignations.map((dicDesignation) => ({
+    id: dicDesignation.id,
+    action: <CommonRowActions testIdPrefix="designation-master.list.row" rowKey={dicDesignation.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} />,
+    name: dicDesignation.name,
+    code: dicDesignation.code,
+    status: <span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+    statusSortValue: dicDesignation.status
+  }));
+
+  const lstTableColumns: DataGridColumn<DesignationTableRow>[] = [
+    { field: "action", headerName: dicDesignationLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
+    { field: "name", headerName: dicDesignationLabels.tableName, width: 260 },
+    { field: "code", headerName: dicDesignationLabels.tableCode, width: 180 },
+    { field: "status", headerName: dicDesignationLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+  ];
 
   useEffect(() => {
     designationService.getDesignationFormOptions()
@@ -671,50 +611,6 @@ export default function DesignationMasterPanel() {
       .finally(() => setBlnSubmitting(false));
   }
 
-  function toggleSelection(strDesignationId: string) {
-    // Adds or removes one row from the selected designation set.
-    setLstSelectedIds((lstPrevious) => lstPrevious.includes(strDesignationId)
-      ? lstPrevious.filter((strId) => strId !== strDesignationId)
-      : [...lstPrevious, strDesignationId]);
-  }
-
-  function toggleSelectAll() {
-    // Selects only the visible page rows so bulk actions stay aligned with the current page.
-    if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleDesignations.some((dicDesignation) => dicDesignation.id === strId)));
-      return;
-    }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleDesignations.map((dicDesignation) => dicDesignation.id)])]);
-  }
-
-  function bulkUpdateStatus(strStatus: DesignationStatus) {
-    // Confirms and applies a shared status to all selected designation rows.
-    openConfirmDialog({
-      strTitle: strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateTitle : dicDesignationLabels.confirmBulkDeactivateTitle,
-      strMessage: (strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateMessage : dicDesignationLabels.confirmBulkDeactivateMessage).replace("{count}", String(lstSelectedIds.length)),
-      strConfirmLabel: strStatus === "Active" ? dicDesignationLabels.confirmBulkActivateLabel : dicDesignationLabels.confirmBulkDeactivateLabel,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkDesignationStatus(lstSelectedIds.map(Number), strStatus === "Active");
-        await loadDesignations();
-        showToast(strStatus === "Active" ? dicDesignationLabels.bulkActivateSuccess : dicDesignationLabels.bulkDeactivateSuccess);
-      }
-    });
-  }
-
-  function bulkDelete() {
-    // Confirms and deletes the currently selected designation rows.
-    openConfirmDialog({
-      strTitle: dicDesignationLabels.confirmBulkDeleteTitle,
-      strMessage: dicDesignationLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
-      strConfirmLabel: dicDesignationLabels.confirmBulkDeleteLabel,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkDesignationDelete(lstSelectedIds.map(Number));
-        await loadDesignations();
-        showToast(dicDesignationLabels.bulkDeleteSuccess);
-      }
-    });
-  }
-
   function deleteDesignation(strDesignationId: string) {
     // Deletes a single row by reusing the same backend bulk-delete endpoint.
     openConfirmDialog({
@@ -752,95 +648,19 @@ export default function DesignationMasterPanel() {
             <MenuItem controlId="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
-
-        {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>{dicDesignationLabels.bulkApplyingChanges}</Typography>
-          </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
-          <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDesignationLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button controlId="designation-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicDesignationLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button controlId="designation-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicDesignationLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button controlId="designation-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicDesignationLabels.bulkDelete}</Button> : null}
-          </Box>
-        ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button controlId="designation-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicDesignationLabels.exportFileName, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button controlId="designation-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicDesignationLabels.exportTitle, lstFilteredDesignations)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
-          </Box>
-
-          {!blnLoading && lstFilteredDesignations.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredDesignations.length)} {dicCommonLabels.paginationSeparator} {lstFilteredDesignations.length}
-              </Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-          </Box>
-        ) : null}
-        </Box>
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Designation access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need designation visibility.</Typography>
           </Box>
         ) : (
-        // The table wrapper is the only scrolling region so the master header stays stable on screen.
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th><Checkbox controlId="designation-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "designation-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
-                <th>{dicDesignationLabels.tableActions}</th>
-                <th>{dicDesignationLabels.tableName}</th>
-                <th>{dicDesignationLabels.tableCode}</th>
-                <th>{dicDesignationLabels.tableStatus}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstFilteredDesignations.length === 0 ? (
-                <tr><td className={styles.emptyState} colSpan={5}>{dicDesignationLabels.emptyMessage}</td></tr>
-              ) : lstVisibleDesignations.map((dicDesignation) => {
-                const blnSelected = lstSelectedIds.includes(dicDesignation.id);
-                return (
-                  <tr key={dicDesignation.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox controlId="designation-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicDesignation.id)} inputProps={{ "controlId": "designation-master.list.row.select.checkbox", "data-row-key": dicDesignation.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                    <td><CommonRowActions testIdPrefix="designation-master.list.row" rowKey={dicDesignation.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} /></td>
-                    <td>{dicDesignation.name}</td>
-                    <td>{dicDesignation.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Box>
+          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicDesignationLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicDesignationLabels.emptyMessage} testIdPrefix="designation-master.list" toolbarLeft={blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
 

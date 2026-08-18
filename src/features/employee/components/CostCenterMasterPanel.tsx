@@ -3,23 +3,20 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   InputAdornment,
   MenuItem,
-  Pagination,
   Snackbar,
   Switch,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -28,6 +25,7 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
@@ -54,6 +52,15 @@ type CostCenterRecord = {
   status: CostCenterStatus;
 };
 
+type CostCenterTableRow = {
+  id: string;
+  action: ReactNode;
+  name: string;
+  code: string;
+  status: ReactNode;
+  statusSortValue: string;
+};
+
 type SearchForm = {
   code: string;
   name: string;
@@ -76,7 +83,6 @@ type ToastState = {
 const dicEmptyForm = createInitialCostCenterForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultCostCenters: CostCenterRecord[] = [];
-const lstRowsPerPageOptions = [10, 20, 50];
 const lstCostCenterModuleCodes = ["COST_CENTER", "COSTCENTER", "COST_CENTRE"];
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
@@ -87,73 +93,6 @@ function mapCostCenterRecord(dicRecord: CostCenterApiRecord): CostCenterRecord {
     name: dicRecord.strCostCenterName,
     status: dicRecord.blnIsActive ? "Active" : "Inactive"
   };
-}
-
-// Exports the current filtered grid as an Excel-friendly CSV file.
-function downloadCsv(strFileName: string, lstRows: CostCenterRecord[]) {
-  const lstHeaders = ["Cost Center Name", "Cost Center Code", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [dicRow.name, dicRow.code, dicRow.status]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    )
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-// Opens a print-friendly browser window so the visible dataset can be printed or saved as PDF.
-function exportPdf(strTitle: string, lstRows: CostCenterRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-
-  const strRows = lstRows.map((dicRow) => `
-    <tr>
-      <td>${dicRow.name}</td>
-      <td>${dicRow.code}</td>
-      <td>${dicRow.status}</td>
-    </tr>
-  `).join("");
-
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Cost Center Name</th>
-              <th>Cost Center Code</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
 }
 
 // Cost Center master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
@@ -172,11 +111,8 @@ export default function CostCenterMasterPanel() {
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-  const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(20);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
@@ -265,7 +201,6 @@ export default function CostCenterMasterPanel() {
     // Reload from the backend after every mutation so pagination, selection, and DB state stay in sync.
     if (!canViewAny()) {
       setLstCostCenters([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -273,8 +208,6 @@ export default function CostCenterMasterPanel() {
     try {
       const objResult = await masterApiService.getCostCenters();
       setLstCostCenters(objResult.Data.map(mapCostCenterRecord));
-      setLstSelectedIds([]);
-      setIntPage(1);
     } finally {
       setBlnLoading(false);
     }
@@ -286,7 +219,6 @@ export default function CostCenterMasterPanel() {
     }
     if (!canViewAny()) {
       setLstCostCenters([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -299,7 +231,6 @@ export default function CostCenterMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanChangeStatus = blnCanEdit;
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID =
     authHelpers.getSecondaryLanguageID() ??
@@ -460,12 +391,21 @@ export default function CostCenterMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstCostCenters]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredCostCenters.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleCostCenters = lstFilteredCostCenters.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const blnAllVisibleSelected = lstVisibleCostCenters.length > 0 && lstVisibleCostCenters.every((dicCostCenter) => lstSelectedIds.includes(dicCostCenter.id));
-  const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIds.some((strId) => lstVisibleCostCenters.some((dicCostCenter) => dicCostCenter.id === strId));
+  const lstTableRows: CostCenterTableRow[] = lstFilteredCostCenters.map((dicCostCenter) => ({
+    id: dicCostCenter.id,
+    action: <CommonRowActions testIdPrefix="cost-center-master.list.row" rowKey={dicCostCenter.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} />,
+    name: dicCostCenter.name,
+    code: dicCostCenter.code,
+    status: <span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+    statusSortValue: dicCostCenter.status
+  }));
+
+  const lstTableColumns: DataGridColumn<CostCenterTableRow>[] = [
+    { field: "action", headerName: dicModuleLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
+    { field: "name", headerName: dicModuleLabels.tableName, width: 260 },
+    { field: "code", headerName: dicModuleLabels.tableCode, width: 180 },
+    { field: "status", headerName: dicModuleLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+  ];
 
   useEffect(() => {
     costCenterService.getCostCenterFormOptions()
@@ -669,49 +609,6 @@ export default function CostCenterMasterPanel() {
       .finally(() => setBlnSubmitting(false));
   }
 
-  function toggleSelection(strCostCenterId: string) {
-    setLstSelectedIds((lstPrevious) => lstPrevious.includes(strCostCenterId)
-      ? lstPrevious.filter((strId) => strId !== strCostCenterId)
-      : [...lstPrevious, strCostCenterId]);
-  }
-
-  function toggleSelectAll() {
-    // Selects only the visible page rows so bulk actions stay aligned with the current page.
-    if (blnAllVisibleSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstVisibleCostCenters.some((dicCostCenter) => dicCostCenter.id === strId)));
-      return;
-    }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstVisibleCostCenters.map((dicCostCenter) => dicCostCenter.id)])]);
-  }
-
-  function bulkUpdateStatus(strStatus: CostCenterStatus) {
-    openConfirmDialog({
-      strTitle: strStatus === "Active" ? dicModuleLabels.confirmBulkActivateTitle : dicModuleLabels.confirmBulkDeactivateTitle,
-      strMessage: (strStatus === "Active" ? dicModuleLabels.confirmBulkActivateMessage : dicModuleLabels.confirmBulkDeactivateMessage)
-        .replace("{count}", String(lstSelectedIds.length))
-        .replace("{status}", strStatus === "Active" ? dicCommonLabels.statusActive.toLowerCase() : dicCommonLabels.statusInactive.toLowerCase()),
-      strConfirmLabel: strStatus === "Active" ? dicModuleLabels.bulkActivate : dicModuleLabels.bulkDeactivate,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkCostCenterStatus(lstSelectedIds.map(Number), strStatus === "Active");
-        await loadCostCenters();
-        showToast(strStatus === "Active" ? dicModuleLabels.bulkActivateSuccess : dicModuleLabels.bulkDeactivateSuccess);
-      }
-    });
-  }
-
-  function bulkDelete() {
-    openConfirmDialog({
-      strTitle: dicModuleLabels.confirmBulkDeleteTitle,
-      strMessage: dicModuleLabels.confirmBulkDeleteMessage.replace("{count}", String(lstSelectedIds.length)),
-      strConfirmLabel: dicModuleLabels.bulkDelete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkCostCenterDelete(lstSelectedIds.map(Number));
-        await loadCostCenters();
-        showToast(dicModuleLabels.bulkDeleteSuccess);
-      }
-    });
-  }
-
   function deleteCostCenter(strCostCenterId: string) {
     openConfirmDialog({
       strTitle: dicModuleLabels.confirmDeleteTitle,
@@ -748,95 +645,19 @@ export default function CostCenterMasterPanel() {
             <MenuItem controlId="cost-center-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="cost-center-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
-
-        {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>{dicModuleLabels.bulkApplyingChanges}</Typography>
-          </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
-          <Box className={styles.bulkBar}>
-            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicModuleLabels.bulkRowsSelected}`}</Typography>
-            {blnCanChangeStatus ? <Button controlId="cost-center-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanChangeStatus ? <Button controlId="cost-center-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button controlId="cost-center-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
-          </Box>
-        ) : null}
       </Box>
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null}
-            {blnCanExport ? <Button controlId="cost-center-master.list.export-excel.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(dicModuleLabels.exportFileName, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportExcel}</Button> : null}
-            {blnCanExport ? <Button controlId="cost-center-master.list.export-pdf.button" className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf(dicModuleLabels.exportTitle, lstFilteredCostCenters)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.exportPdf}</Button> : null}
-          </Box>
-
-          {!blnLoading && lstFilteredCostCenters.length > 0 ? (
-          <Box className={styles.paginationBar} sx={{ p: 0, justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-            <Box className={styles.paginationInfo}>
-              <Typography className={styles.paginationLabel}>{dicCommonLabels.rowsPerPage}</Typography>
-              <TextField
-                select
-                size="small"
-                value={String(intRowsPerPage)}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{intOption}</MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>
-                {intStartIndex + 1}-{Math.min(intStartIndex + intRowsPerPage, lstFilteredCostCenters.length)} {dicCommonLabels.paginationSeparator} {lstFilteredCostCenters.length}
-              </Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intNextPage) => setIntPage(intNextPage)} size="small" color="primary" showFirstButton showLastButton />
-          </Box>
-        ) : null}
-        </Box>
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Cost Center access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need cost center visibility.</Typography>
           </Box>
         ) : (
-        // The table wrapper is the only scrolling region so the master header stays stable on screen.
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th><Checkbox controlId="cost-center-master.list.select-all.checkbox" checked={blnAllVisibleSelected} indeterminate={blnSomeVisibleSelected} onChange={toggleSelectAll} inputProps={{ "controlId": "cost-center-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></th>
-                <th>{dicModuleLabels.tableActions}</th>
-                <th>{dicModuleLabels.tableName}</th>
-                <th>{dicModuleLabels.tableCode}</th>
-                <th>{dicModuleLabels.tableStatus}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstFilteredCostCenters.length === 0 ? (
-                <tr><td className={styles.emptyState} colSpan={5}>{dicModuleLabels.emptyMessage}</td></tr>
-              ) : lstVisibleCostCenters.map((dicCostCenter) => {
-                const blnSelected = lstSelectedIds.includes(dicCostCenter.id);
-                return (
-                  <tr key={dicCostCenter.id} className={blnSelected ? styles.selectedRow : undefined}>
-                    <td><Checkbox controlId="cost-center-master.list.row.select.checkbox" checked={blnSelected} onChange={() => toggleSelection(dicCostCenter.id)} inputProps={{ "controlId": "cost-center-master.list.row.select.checkbox", "data-row-key": dicCostCenter.id } as InputHTMLAttributes<HTMLInputElement>} /></td>
-                    <td><CommonRowActions testIdPrefix="cost-center-master.list.row" rowKey={dicCostCenter.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} /></td>
-                    <td>{dicCostCenter.name}</td>
-                    <td>{dicCostCenter.code}</td>
-                    <td><span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Box>
+          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="cost-center-master.list" toolbarLeft={blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
 
