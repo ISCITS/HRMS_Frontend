@@ -169,8 +169,11 @@ export default function EmployeePayrollInputListPage() {
         strEmployeeCode: dicRow.strEmployeeCode,
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatDate(dicRow.dtPayrollMonth),
+        dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         decLwpDays: formatNumber(dicRow.decLwpDays),
+        decLwpDaysSortValue: Number(dicRow.decLwpDays ?? 0),
         decLopDays: formatNumber(dicRow.decLopDays),
+        decLopDaysSortValue: Number(dicRow.decLopDays ?? 0),
         strStatus: (
           <span className={`${styles.statusPill} ${dicRow.strStatus === "Locked" ? styles.statusInactive : styles.statusActive}`}>
             {dicRow.strStatus}
@@ -186,9 +189,9 @@ export default function EmployeePayrollInputListPage() {
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run") },
-      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month") },
-      { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right" },
-      { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right" },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+      { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right", sortAccessor: (dicRow) => dicRow.decLwpDaysSortValue },
+      { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right", sortAccessor: (dicRow) => dicRow.decLopDaysSortValue },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]

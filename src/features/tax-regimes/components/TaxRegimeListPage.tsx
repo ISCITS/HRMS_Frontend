@@ -141,6 +141,7 @@ export default function TaxRegimeListPage() {
         strCountryCode: dicRow.strCountryCode,
         strTaxYearCode: dicRow.strTaxYearCode || "-",
         decStandardDeductionAmount: dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount.toLocaleString() : "-",
+        decStandardDeductionAmountSortValue: dicRow.blnStandardDeductionEnabled ? Number(dicRow.decStandardDeductionAmount ?? 0) : 0,
         blnIsDefaultRegime: (
           <span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
@@ -164,7 +165,7 @@ export default function TaxRegimeListPage() {
       { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 130 },
       { field: "strCountryCode", headerName: t("country", "Country"), width: 130 },
       { field: "strTaxYearCode", headerName: t("tax_year", "Tax Year") },
-      { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right" },
+      { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right", sortAccessor: (dicRow) => dicRow.decStandardDeductionAmountSortValue },
       { field: "blnIsDefaultRegime", headerName: t("default_regime", "Default Regime"), sortable: false, filterable: false, width: 150 },
       { field: "blnAllowEmployeeOptOut", headerName: t("employee_opt_out", "Employee Opt-Out") },
       { field: "intSlabProfiles", headerName: t("slab_profiles", "Slab Profiles / Slab Count") },

@@ -513,12 +513,19 @@ export default function PayrollResultListPage({
         strPayslipNumber: dicRow.strPayslipNumber || "-",
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
+        dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         decGrossEarningsAmount: formatCurrency(dicRow.decGrossEarningsAmount),
+        decGrossEarningsAmountSortValue: Number(dicRow.decGrossEarningsAmount ?? 0),
         decEmployeeDeductionTotal: formatCurrency(dicRow.decEmployeeDeductionTotal),
+        decEmployeeDeductionTotalSortValue: Number(dicRow.decEmployeeDeductionTotal ?? 0),
         decTaxTotal: formatCurrency(dicRow.decTaxTotal),
+        decTaxTotalSortValue: Number(dicRow.decTaxTotal ?? 0),
         decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        decNetPayAmountSortValue: Number(dicRow.decNetPayAmount ?? 0),
         decEmployerContributionTotal: formatCurrency(dicRow.decEmployerContributionTotal),
+        decEmployerContributionTotalSortValue: Number(dicRow.decEmployerContributionTotal ?? 0),
         decTotalEmployerCost: formatCurrency(dicRow.decTotalEmployerCost),
+        decTotalEmployerCostSortValue: Number(dicRow.decTotalEmployerCost ?? 0),
         strStatus: (
           <span
             className={styles.statusPill}
@@ -534,6 +541,7 @@ export default function PayrollResultListPage({
           </span>
         ),
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
+        dtPayslipGeneratedOnSortValue: dicRow.dtPayslipGeneratedOn ? new Date(dicRow.dtPayslipGeneratedOn).getTime() : 0,
       })),
     [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
   );
@@ -543,13 +551,13 @@ export default function PayrollResultListPage({
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220 },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
-      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140 },
-      { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160 },
-      { field: "decEmployeeDeductionTotal", headerName: t("employee_deductions", "Employee Deductions"), align: "right", width: 180 },
-      { field: "decTaxTotal", headerName: t("tax", "Tax"), align: "right", width: 140 },
-      { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150 },
-      { field: "decEmployerContributionTotal", headerName: t("employer_contribution", "Employer Contributions"), align: "right", width: 190 },
-      { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190 },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+      { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
+      { field: "decEmployeeDeductionTotal", headerName: t("employee_deductions", "Employee Deductions"), align: "right", width: 180, sortAccessor: (dicRow) => dicRow.decEmployeeDeductionTotalSortValue },
+      { field: "decTaxTotal", headerName: t("tax", "Tax"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
+      { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150, sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+      { field: "decEmployerContributionTotal", headerName: t("employer_contribution", "Employer Contributions"), align: "right", width: 190, sortAccessor: (dicRow) => dicRow.decEmployerContributionTotalSortValue },
+      { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190, sortAccessor: (dicRow) => dicRow.decTotalEmployerCostSortValue },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
@@ -574,6 +582,7 @@ export default function PayrollResultListPage({
         field: "dtPayslipGeneratedOn",
         headerName: t("generated_on", "Generated On"),
         width: 180,
+        sortAccessor: (dicRow) => dicRow.dtPayslipGeneratedOnSortValue,
       });
     }
 

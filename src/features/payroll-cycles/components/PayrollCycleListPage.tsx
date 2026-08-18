@@ -127,6 +127,7 @@ export default function PayrollCycleListPage() {
         ),
         strPeriodType: dicRow.strPeriodType,
         strCutoffDay: formatCutoffDay(dicRow.intCutoffDay),
+        strCutoffDaySortValue: Number(dicRow.intCutoffDay ?? 0),
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsActive ? t("active") : t("inactive")}
@@ -143,7 +144,7 @@ export default function PayrollCycleListPage() {
       { field: "strCycleName", headerName: t("cycle_name") },
       { field: "strPayrollGroup", headerName: t("payroll_group"), sortable: false, filterable: false, width: 220 },
       { field: "strPeriodType", headerName: t("period_type") },
-      { field: "strCutoffDay", headerName: t("cutoff_day") },
+      { field: "strCutoffDay", headerName: t("cutoff_day"), sortAccessor: (dicRow) => dicRow.strCutoffDaySortValue },
       { field: "blnIsActive", headerName: t("status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]

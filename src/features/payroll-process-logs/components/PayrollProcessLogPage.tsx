@@ -162,7 +162,8 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           {dicRow.strMessageText}
         </Box>
       ),
-      dtAddedOn: formatDateTime(dicRow.dtAddedOn)
+      dtAddedOn: formatDateTime(dicRow.dtAddedOn),
+      dtAddedOnSortValue: dicRow.dtAddedOn ? new Date(dicRow.dtAddedOn).getTime() : 0
     })),
     [lstLogs, objRouter]
   );
@@ -175,7 +176,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
       { field: "strProcessStatus", headerName: t("process_status", "Process Status"), sortable: false, filterable: false, width: 150 },
       { field: "entity", headerName: t("entity", "Entity"), sortable: false, filterable: false, width: 220 },
       { field: "message", headerName: t("message_text", "Message"), sortable: false, filterable: false, width: 420 },
-      { field: "dtAddedOn", headerName: t("logged_on", "Logged On") }
+      { field: "dtAddedOn", headerName: t("logged_on", "Logged On"), sortAccessor: (dicRow) => dicRow.dtAddedOnSortValue }
     ],
     [lstTableRows, t]
   );
