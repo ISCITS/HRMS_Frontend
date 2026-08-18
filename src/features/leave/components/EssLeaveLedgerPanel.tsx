@@ -26,6 +26,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { employeeService } from "@/features/employee/services/employeeService";
+import { strEssHeaderGradient, strHrHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveLedgerDto, LedgerEmployeeDto } from "@/features/leave/types";
 
@@ -287,7 +288,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         sx={{
           p: { xs: 1.5, md: 2 },
           borderRadius: "20px",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
+          background: blnHrMode ? strHrHeaderGradient : strEssHeaderGradient,
           color: "white",
           boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
         }}

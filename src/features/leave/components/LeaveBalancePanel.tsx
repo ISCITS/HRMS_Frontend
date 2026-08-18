@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { strEssHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveBalanceDto } from "@/features/leave/types";
 
@@ -56,7 +57,7 @@ export default function LeaveBalancePanel() {
         sx={{
           p: { xs: 1.5, md: 2 },
           borderRadius: "20px",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
+          background: strEssHeaderGradient,
           color: "white",
           boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
         }}
