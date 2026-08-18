@@ -154,7 +154,7 @@ export default function InvestmentOptionsManagerDialog({
     <>
       <Dialog open={blnOpen} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>
-          Investment Options — {strSectionName} ({strSectionCode})
+          Investment Options - {strSectionName} ({strSectionCode})
         </DialogTitle>
         <DialogContent dividers>
           <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 1.5 }}>

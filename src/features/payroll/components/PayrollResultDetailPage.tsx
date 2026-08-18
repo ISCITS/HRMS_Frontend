@@ -1019,7 +1019,7 @@ export default function PayrollResultDetailPage({
                 </Box>
               </Stack>
 
-            <Stack spacing={0.8} alignItems={{ xs: "flex-start", sm: "flex-end" }} sx={{ ml: { sm: "auto" } }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="flex-end" sx={{ ml: { sm: "auto" } }}>
               <Button
                 onClick={() => objRouter.push(strResolvedBackRoute)}
                 startIcon={<ArrowBackRoundedIcon />}

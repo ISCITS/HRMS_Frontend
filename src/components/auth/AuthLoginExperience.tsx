@@ -310,7 +310,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+        objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
  
@@ -333,7 +333,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+        objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
         return;
       }
  
@@ -354,7 +354,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         setBlnUseBackupCode(false);
         return;
       }
-      objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+      objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
     } catch (objError) {
       if (objError instanceof clsApiRequestError) {
         const intRemainingSeconds = extractRemainingSeconds(objError.objData);
@@ -384,7 +384,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
         strBackupCode: strBackupCode
       });
-      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
  
@@ -395,7 +395,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       });
       setLstBackupCodes(objResult.Data.lstBackupCodes);
       setObjGoogleMfaChallenge(null);
-      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
  
@@ -404,7 +404,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       strCode: strGoogleCode
     });
     setObjGoogleMfaChallenge(null);
-    objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+    objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
   }
  
   async function resendOtp() {

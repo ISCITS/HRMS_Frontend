@@ -12,6 +12,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import { strEssHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -451,7 +452,7 @@ export default function EssLeaveApplicationPanel() {
   const intPendingCount = lstApplications.filter((objApplication) => objApplication.strStatus === "pending").length;
 
   return <Stack spacing={2}>
-    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
+    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: strEssHeaderGradient, color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
         <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><EventAvailableRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "My Leave")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "View balances, apply for leave and track every request.")}</Typography></Box></Stack>
         {blnCanManage && !blnRightsLoading ? <Button data-controlid="ess.leave.apply.open" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => fnOpenNewForm()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("apply_leave", "Apply Leave")}</Button> : null}

@@ -1,6 +1,5 @@
 "use client";
 
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -16,22 +15,18 @@ import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeOptions } from "@/features/leave-plan/hooks/useEmployeeLeavePlan";
 import { leavePlanService } from "@/features/leave-plan/services/leavePlanService";
-import type { LeavePlan } from "@/features/leave-plan/types/LeavePlanTypes";
+import type { EmployeeCurrentPlan, LeavePlan } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
+type SearchForm = { code: string; name: string; planCode: string };
 type BulkAssignState = { blnOpen: boolean; intLeavePlanID: number; dtEffectiveFrom: string; intLeaveYear: number; strReason: string; blnReplace: boolean };
 
 const strToday = new Date().toISOString().slice(0, 10);
 const intCurrentYear = new Date().getFullYear();
 const objBulkDefaults: BulkAssignState = { blnOpen: false, intLeavePlanID: 0, dtEffectiveFrom: strToday, intLeaveYear: intCurrentYear, strReason: "", blnReplace: false };
-
-function formatDate(strValue: string | null | undefined): string {
-  if (!strValue) return "—";
-  const objDate = new Date(`${strValue.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(objDate.getTime()) ? strValue : new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short", year: "numeric" }).format(objDate);
-}
+const dicEmptySearch: SearchForm = { code: "", name: "", planCode: "" };
 
 function StatusPill({ strStatus }: { strStatus: string }) {
   const blnActive = (strStatus || "").trim().toLowerCase() === "active";
@@ -43,10 +38,11 @@ export default function EmployeeLeaveAssignmentPanel() {
   const { t } = useModuleLabels("employee_leave_plan");
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   const { lstEmployees, blnLoading, strError } = useEmployeeOptions();
-  const [strSearchDraft, setStrSearchDraft] = useState("");
-  const [strSearchApplied, setStrSearchApplied] = useState("");
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
   const [lstPlans, setLstPlans] = useState<LeavePlan[]>([]);
+  const [lstCurrentPlans, setLstCurrentPlans] = useState<EmployeeCurrentPlan[]>([]);
   const [objBulk, setObjBulk] = useState<BulkAssignState>(objBulkDefaults);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
@@ -62,16 +58,43 @@ export default function EmployeeLeaveAssignmentPanel() {
     return () => { blnMounted = false; };
   }, [blnCanManage]);
 
+  // Every employee's currently assigned plan, fetched once, so the list can show a Leave Plan Code
+  // column (and filter on it) without a per-employee request.
+  useEffect(() => {
+    if (!blnCanView) return;
+    let blnMounted = true;
+    leavePlanService.listCurrentPlans().then((lstResult) => { if (blnMounted) setLstCurrentPlans(lstResult); }).catch(() => { if (blnMounted) setLstCurrentPlans([]); });
+    return () => { blnMounted = false; };
+  }, [blnCanView]);
+
+  const dicPlanCodeByEmployee = useMemo(
+    () => new Map(lstCurrentPlans.map((objCurrent) => [objCurrent.intEmployeeID, objCurrent.strPlanCode])),
+    [lstCurrentPlans],
+  );
+
   const lstFiltered = useMemo(() => {
-    const strNeedle = strSearchApplied.trim().toLowerCase();
-    return lstEmployees.filter((objEmployee) => !strNeedle || `${objEmployee.strEmployeeCode} ${objEmployee.strFullName} ${objEmployee.strDepartmentName ?? ""}`.toLowerCase().includes(strNeedle));
-  }, [lstEmployees, strSearchApplied]);
+    const strCode = dicSearchApplied.code.trim().toLowerCase();
+    const strName = dicSearchApplied.name.trim().toLowerCase();
+    const strPlanCode = dicSearchApplied.planCode.trim().toLowerCase();
+    return lstEmployees.filter((objEmployee) => {
+      const blnCode = !strCode || objEmployee.strEmployeeCode.toLowerCase().includes(strCode);
+      const blnName = !strName || objEmployee.strFullName.toLowerCase().includes(strName);
+      const blnPlanCode = !strPlanCode || (dicPlanCodeByEmployee.get(objEmployee.intID) ?? "").toLowerCase().includes(strPlanCode);
+      return blnCode && blnName && blnPlanCode;
+    });
+  }, [lstEmployees, dicSearchApplied, dicPlanCodeByEmployee]);
 
   const blnAllSelected = lstFiltered.length > 0 && lstFiltered.every((objEmployee) => lstSelectedIds.includes(objEmployee.intID));
   const blnSomeSelected = !blnAllSelected && lstFiltered.some((objEmployee) => lstSelectedIds.includes(objEmployee.intID));
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
+  }
+
+  function applySearch(dicSearch: SearchForm) {
+    const dicNext = { code: dicSearch.code.trim(), name: dicSearch.name.trim(), planCode: dicSearch.planCode.trim() };
+    setDicSearchDraft(dicNext);
+    setDicSearchApplied(dicNext);
   }
 
   function toggleSelection(intID: number) {
@@ -170,11 +193,11 @@ export default function EmployeeLeaveAssignmentPanel() {
         strFullName: objEmployee.strFullName,
         strDepartmentName: objEmployee.strDepartmentName ?? "—",
         strDesignationName: objEmployee.strDesignationName ?? "—",
-        strJoiningDate: formatDate(objEmployee.dtDateOfJoining),
+        strPlanCode: dicPlanCodeByEmployee.get(objEmployee.intID) ?? "—",
         blnStatus: <StatusPill strStatus={objEmployee.strEmploymentStatus} />,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstFiltered, blnCanManage, lstSelectedIds],
+    [lstFiltered, blnCanManage, lstSelectedIds, dicPlanCodeByEmployee],
   );
 
   const lstColumns = useMemo<CommonTableColumn<(typeof lstRows)[number]>[]>(
@@ -200,7 +223,7 @@ export default function EmployeeLeaveAssignmentPanel() {
       { field: "strFullName", headerName: t("table_employee_name", "Employee Name"), width: 200 },
       { field: "strDepartmentName", headerName: t("table_department", "Department"), width: 180 },
       { field: "strDesignationName", headerName: t("table_designation", "Designation"), width: 170 },
-      { field: "strJoiningDate", headerName: t("table_joining_date", "Joining Date"), width: 140 },
+      { field: "strPlanCode", headerName: t("table_leave_plan_code", "Leave Plan Code"), width: 160 },
       { field: "blnStatus", headerName: t("table_employee_status", "Employee Status"), sortable: false, width: 140 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,22 +236,40 @@ export default function EmployeeLeaveAssignmentPanel() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pb: 2 }}>
       {/* Search / filter card */}
       <Box className={styles.controlsCard}>
-        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, alignItems: "center", mt: 1 }}>
+        {/* Employee Code, Employee Name and Leave Plan Code share one row with the action buttons. */}
+        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, minmax(0, 1fr)) auto" }, alignItems: "center", mt: 1 }}>
           <TextField
             size="small"
-            value={strSearchDraft}
-            onChange={(objEvent) => setStrSearchDraft(objEvent.target.value)}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && setStrSearchApplied(strSearchDraft)}
-            placeholder={t("employee_search", "Search employee by code, name, or department")}
-            inputProps={{ "data-control-id": "employee-leave-plan.list.search.input" }}
+            value={dicSearchDraft.code}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
+            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
+            placeholder={t("employee_code_search", "Search employee code")}
+            inputProps={{ "data-control-id": "employee-leave-plan.list.search-code.input" }}
             fullWidth
-            sx={{ gridColumn: { xs: "auto", sm: "1 / -1", lg: "span 2" } }}
           />
-          <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", sm: "1 / -1", lg: "auto" }, justifyContent: { sm: "flex-end" } }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setStrSearchApplied(strSearchDraft)} disabled={blnLoading} data-control-id="employee-leave-plan.list.search.button">
+          <TextField
+            size="small"
+            value={dicSearchDraft.name}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
+            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
+            placeholder={t("employee_name_search", "Search employee name")}
+            inputProps={{ "data-control-id": "employee-leave-plan.list.search-name.input" }}
+            fullWidth
+          />
+          <TextField
+            size="small"
+            value={dicSearchDraft.planCode}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, planCode: objEvent.target.value }))}
+            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
+            placeholder={t("leave_plan_code_search", "Search leave plan code")}
+            inputProps={{ "data-control-id": "employee-leave-plan.list.search-plan-code.input" }}
+            fullWidth
+          />
+          <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", sm: "1 / -1", lg: "auto" }, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="employee-leave-plan.list.search.button">
               {t("search", "Search")}
             </Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setStrSearchDraft(""); setStrSearchApplied(""); }} disabled={blnLoading} data-control-id="employee-leave-plan.list.clear.button">
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading} data-control-id="employee-leave-plan.list.clear.button">
               {t("clear", "Clear")}
             </Button>
           </Box>
@@ -263,13 +304,6 @@ export default function EmployeeLeaveAssignmentPanel() {
             minTableWidth={1116}
             getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
             emptyMessage={t("empty_message", "No employees found.")}
-            toolbarLeft={
-              blnCanManage ? (
-                <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setObjBulk({ ...objBulkDefaults, blnOpen: true })} data-control-id="employee-leave-plan.list.assign.button">
-                  {t("bulk_assign", "Assign Leave Plan")}
-                </Button>
-              ) : undefined
-            }
             testIdPrefix="employee-leave-plan.list"
             sx={objTransparentTableSx}
           />

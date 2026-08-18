@@ -3,6 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import EssTeamCalendarPage from "@/features/leave/components/EssTeamCalendarPage";
+import { strEssHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -228,7 +229,7 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
-    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
+    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: strEssHeaderGradient, color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
         <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><FactCheckRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Leave Approvals")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography></Box></Stack>
         <Stack direction="row" spacing={1}>

@@ -40,6 +40,11 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
+import {
+  isAuthenticatedAppRoute,
+  readAuthenticatedRouteHistory,
+  writeAuthenticatedRouteHistory
+} from "@/lib/routeAccess";
 import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
@@ -60,6 +65,11 @@ const strSidebarGradient = "linear-gradient(180deg, #FCFDFF 0%, #F5F9FE 45%, #EE
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
+}
+
+function getRouteWithSearch(strPathname: string, objSearchParams: ReturnType<typeof useSearchParams>) {
+  const strQuery = objSearchParams?.toString();
+  return strQuery ? `${strPathname}?${strQuery}` : strPathname;
 }
 
 function getPageTitle(strPathname: string) {
@@ -554,6 +564,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
   function redirectToSessionExpired() {
     authHelpers.redirectToSessionExpired();
   }
+
+  useEffect(() => {
+    if (!isAuthenticatedAppRoute(strPathname)) {
+      return;
+    }
+
+    const strCurrentRoute = getRouteWithSearch(strPathname, objSearchParams);
+    const lstStoredRoutes = readAuthenticatedRouteHistory();
+    const intExistingIndex = lstStoredRoutes.lastIndexOf(strCurrentRoute);
+    const lstNextRoutes =
+      intExistingIndex >= 0
+        ? lstStoredRoutes.slice(0, intExistingIndex + 1)
+        : [...lstStoredRoutes, strCurrentRoute];
+
+    writeAuthenticatedRouteHistory(lstNextRoutes);
+  }, [objSearchParams, strPathname]);
 
   useEffect(() => {
     function handleModuleLabelLoadStart(objEvent: Event) {

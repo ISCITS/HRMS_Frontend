@@ -237,7 +237,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
-                {t("back_to_list", "Back to list")}
+                {t("back_to_list", "Back")}
               </Button>
               {strMode !== "add" && intTaxRegimeID ? (
                 <>

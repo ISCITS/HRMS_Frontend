@@ -26,6 +26,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { employeeService } from "@/features/employee/services/employeeService";
+import { strEssHeaderGradient, strHrHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveLedgerDto, LedgerEmployeeDto } from "@/features/leave/types";
 
@@ -118,16 +119,11 @@ function buildTransactionText(objRow: LeaveLedgerDto): string {
   return strRange ? `${strLabel} : ${strRange}` : strLabel;
 }
 
-// The date the movement actually happened. For leave-application rows the stored
-// transaction_date is the leave's start date, so we show the real action timestamp
-// (transaction_on) instead; other rows keep their business transaction_date.
+// The date the movement actually happened. The stored transaction_date is a business date that can be
+// backdated (a leave's start date, or a plan's effective date for opening balance / entitlement rows),
+// so every row shows the real action timestamp (transaction_on) and falls back only if it is missing.
 function ledgerDisplayDate(objRow: LeaveLedgerDto): string {
-  const strSource = (objRow.strSourceType ?? "").toLowerCase();
-  const strIso =
-    strSource === "leave_application"
-      ? objRow.dtTransactionOn ?? objRow.dtTransactionDate
-      : objRow.dtTransactionDate;
-  return formatLedgerDate(strIso);
+  return formatLedgerDate(objRow.dtTransactionOn ?? objRow.dtTransactionDate);
 }
 
 function formatNumber(intValue: number): string {
@@ -292,7 +288,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         sx={{
           p: { xs: 1.5, md: 2 },
           borderRadius: "20px",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
+          background: blnHrMode ? strHrHeaderGradient : strEssHeaderGradient,
           color: "white",
           boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
         }}
@@ -318,7 +314,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
               }}
               sx={{
                 ...objHeaderSelectSx,
-                minWidth: { xs: "100%", sm: 250 },
+                minWidth: { xs: "100%", sm: 360 },
                 "& .MuiAutocomplete-clearIndicator": { display: "none" },
                 "& .MuiAutocomplete-popupIndicator": { color: "white" },
               }}
@@ -392,8 +388,8 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Transaction</TableCell>
+                    <TableCell>Transaction Date</TableCell>
+                    <TableCell>Description</TableCell>
                     <TableCell align="right">Credit</TableCell>
                     <TableCell align="right">Debit</TableCell>
                     <TableCell align="right">Hold</TableCell>

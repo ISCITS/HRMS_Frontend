@@ -3,6 +3,8 @@ import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHa
 import type {
   PayrollResultDetailRecord,
   PayrollResultListRecord,
+  StatutoryReportCode,
+  StatutoryReportRow,
   TaxCalculationDetailRecord,
 } from "@/features/payroll/types";
 
@@ -67,6 +69,46 @@ export const payrollResultService = {
       strPath: `/payroll/results/${intResultID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async getStatutoryReportRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strDepartment?: string;
+    strLocation?: string;
+    strPayrollMonth?: string;
+    strStatutoryCode?: StatutoryReportCode;
+  }): Promise<StatutoryReportRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strDepartment?.trim()) {
+      objParams.set("strDepartment", objFilters.strDepartment.trim());
+    }
+    if (objFilters?.strLocation?.trim()) {
+      objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    if (objFilters?.strStatutoryCode && objFilters.strStatutoryCode !== "ALL") {
+      objParams.set("strStatutoryCode", objFilters.strStatutoryCode);
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<StatutoryReportRow[]>({
+      strPath: `/payroll/results/statutory-report${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
     });
     return objResult.Data;
   },

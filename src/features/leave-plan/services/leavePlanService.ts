@@ -3,7 +3,7 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
-  BalanceMovementRequest, BalanceMutationResult, EmployeeLeaveBalance, EmployeeLeaveLedger,
+  BalanceMovementRequest, BalanceMutationResult, EmployeeCurrentPlan, EmployeeLeaveBalance, EmployeeLeaveLedger,
   EmployeeLeavePlanOverview, EmployeePlanAssignRequest, EmployeePlanAssignmentUpdateRequest, LeavePlan, LeavePlanFilters, LeavePlanLanguages,
   LeavePlanSaveRequest, LeavePolicyOption, LeaveTypeOption, OpeningBalanceRequest,
   ReplacementImpact, ReplacementPreviewRequest,
@@ -67,6 +67,10 @@ export const leavePlanService = {
   async getLanguages(): Promise<LeavePlanLanguages> {
     const objResult = await requestApi<LeavePlanLanguages>({ strPath: "/leave/plans/languages", strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
     return objResult.Data;
+  },
+  async listCurrentPlans(): Promise<EmployeeCurrentPlan[]> {
+    const objResult = await requestApi<EmployeeCurrentPlan[]>({ strPath: "/leave/plan-assignments/current-plans", strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
+    return objResult.Data ?? [];
   },
   async getEmployeeOverview(intEmployeeID: number, intLeaveYear: number): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}`, strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction, objQueryParams: { leave_year: intLeaveYear } });

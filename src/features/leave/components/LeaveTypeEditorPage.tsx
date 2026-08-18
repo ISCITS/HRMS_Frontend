@@ -913,12 +913,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Usage Information</Typography>
           <Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {/* Usage is summarised by policy count only; the other counters and the in-use
+                  delete-block hint were dropped as noise for the person editing the type. */}
               <Chip label={`Policies: ${objForm.objUsage.intPolicies}`} />
-              <Chip label={`Applications: ${objForm.objUsage.intApplications}`} />
-              <Chip label={`Balances: ${objForm.objUsage.intBalances}`} />
-              <Chip label={`Ledger: ${objForm.objUsage.intLedgerEntries}`} />
-              <Chip label={`Combination refs: ${objForm.objUsage.intCombinationRules}`} />
-              <Chip color={objForm.objUsage.blnInUse ? "warning" : "success"} label={objForm.objUsage.blnInUse ? "In use — delete blocked, deactivate instead" : "Not in use — deletable"} />
             </Stack>
           </Box>
         </Paper>

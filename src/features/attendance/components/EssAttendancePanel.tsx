@@ -388,7 +388,6 @@ export default function EssAttendancePanel() {
         <Box className="bannerDivider" />
         <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
           <Typography component="h1" className="bannerTitle">{t("page_title", "My Attendance")}</Typography>
-          <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Punch in or out and review your personal attendance record.")}</Typography>
         </Box>
         <Stack
           direction="row"

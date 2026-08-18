@@ -29,7 +29,6 @@ type ApplicableRegime = "old" | "new" | "both";
 
 type EssDeclarationCategoryRecord = {
   id: string;
-  code: string;
   name: string;
   description: string;
   declarationKind: string;
@@ -44,9 +43,9 @@ type EssDeclarationCategoryRecord = {
 };
 
 type EssDeclarationCategoryForm = {
-  code: string;
   name: string;
   description: string;
+  section: string;
   declarationKind: string;
   applicableRegime: ApplicableRegime;
   linkedSalaryComponentId: number | "";
@@ -57,7 +56,6 @@ type EssDeclarationCategoryForm = {
 };
 
 type SearchForm = {
-  code: string;
   name: string;
   section: string;
   declarationKind: string;
@@ -78,9 +76,9 @@ type ToastState = {
 };
 
 const dicEmptyForm: EssDeclarationCategoryForm = {
-  code: "",
   name: "",
   description: "",
+  section: "",
   declarationKind: "",
   applicableRegime: "both",
   linkedSalaryComponentId: "",
@@ -89,7 +87,7 @@ const dicEmptyForm: EssDeclarationCategoryForm = {
   proofRequired: false,
   status: "Active",
 };
-const dicEmptySearch: SearchForm = { code: "", name: "", section: "", declarationKind: "All", status: "All" };
+const dicEmptySearch: SearchForm = { name: "", section: "", declarationKind: "All", status: "All" };
 const lstModuleCodes = [
   "TAX_DECLARATION_COMPONENT",
   "MY_TAX_DECLARATIONS",
@@ -114,7 +112,6 @@ type EssDeclarationCategoryMasterPanelProps = {
 function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRecord): EssDeclarationCategoryRecord {
   const objRecord = dicRecord as unknown as Record<string, unknown>;
   const intID = objRecord.intID ?? objRecord.intId ?? objRecord.id;
-  const strCategoryCode = objRecord.strCategoryCode ?? objRecord.strCode ?? objRecord.category_code;
   const strCategoryName = objRecord.strCategoryName ?? objRecord.strName ?? objRecord.category_name;
   const strCategoryDescription = objRecord.strCategoryDescription ?? objRecord.strDescription ?? objRecord.category_description;
   const strDeclarationKind = objRecord.strDeclarationKind ?? objRecord.strKind ?? objRecord.declaration_kind;
@@ -141,7 +138,6 @@ function mapEssDeclarationCategoryRecord(dicRecord: EssDeclarationCategoryApiRec
 
   return {
     id: String(intID ?? ""),
-    code: String(strCategoryCode ?? ""),
     name: String(strCategoryName ?? ""),
     description: String(strCategoryDescription ?? ""),
     declarationKind: String(strDeclarationKind ?? ""),
@@ -298,7 +294,6 @@ export default function EssDeclarationCategoryMasterPanel({
     emptyMessage: t("empty_message", `No ${strEntityLabelPlural.toLowerCase()} found.`),
     exportFileName: t("export_file_name", "ess-declaration-categories.csv"),
     exportTitle: stripMasterTitle(t("export_title", strEntityLabelPlural)),
-    fieldCategoryCode: t("field_category_code", "Category Code"),
     fieldCategoryName: t("field_category_name", "Description"),
     fieldSection: t("field_section", "Section"),
     fieldDeclarationKind: t("field_declaration_kind", "Category"),
@@ -312,13 +307,11 @@ export default function EssDeclarationCategoryMasterPanel({
     requestFailed: t("request_failed", "Unable to complete the request."),
     saveSuccess: t("save_success", "ESS declaration category saved successfully."),
     activateSuccess: t("activate_success", "ESS declaration category activated successfully."),
-    searchCodePlaceholder: t("search_code_placeholder", "Search by category code"),
     searchNamePlaceholder: t("search_name_placeholder", "Search by description"),
     searchSectionPlaceholder: t("search_section_placeholder", "Search by section"),
     searchDeclarationKindPlaceholder: t("search_declaration_kind_placeholder", "Category"),
     searchStatusPlaceholder: t("search_status_placeholder", "Status"),
     tableActions: t("table_actions", "Actions"),
-    tableCategoryCode: t("table_category_code", "Category Code"),
     tableDescription: t("table_description", "Description"),
     tableSection: t("table_section", "Section"),
     tableCategory: t("table_category", "Category"),
@@ -329,9 +322,8 @@ export default function EssDeclarationCategoryMasterPanel({
     tableProofRequired: t("table_proof_required", "Proof Required"),
     tableStatus: t("table_status", "Status"),
     updateSuccess: t("update_success", "ESS declaration category updated successfully."),
-    validationCodeDuplicate: t("validation_code_duplicate", "Category code already exists."),
-    validationCodeFormat: t("validation_code_format", "Category code must be 2-50 characters and contain only letters, numbers, spaces, hyphen, underscore, slash, ampersand, or period."),
-    validationCodeRequired: t("validation_code_required", "Category code is required."),
+    validationSectionDuplicate: t("validation_section_duplicate", "Section already exists."),
+    validationSectionRequired: t("validation_section_required", "Section is required."),
     validationDeclarationKindRequired: t("validation_declaration_kind_required", "Declaration kind is required."),
     validationApplicableRegimeRequired: t("validation_applicable_regime_required", "Applicable regime is required."),
     validationMaxLimitAmount: t("validation_max_limit_amount", "Max limit amount must be a valid amount greater than zero."),
@@ -436,12 +428,11 @@ export default function EssDeclarationCategoryMasterPanel({
   const lstFilteredCategories = useMemo(
     () =>
       lstCategories.filter((dicCategory) => {
-        const blnCodeMatch = !dicSearchApplied.code || dicCategory.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
         const blnNameMatch = !dicSearchApplied.name || dicCategory.name.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
         const blnSectionMatch = !dicSearchApplied.section || dicCategory.section.toLowerCase().includes(dicSearchApplied.section.toLowerCase());
         const blnDeclarationKindMatch = dicSearchApplied.declarationKind === "All" || dicCategory.declarationKind === dicSearchApplied.declarationKind;
         const blnStatusMatch = dicSearchApplied.status === "All" || dicCategory.status === dicSearchApplied.status;
-        return blnCodeMatch && blnNameMatch && blnSectionMatch && blnDeclarationKindMatch && blnStatusMatch;
+        return blnNameMatch && blnSectionMatch && blnDeclarationKindMatch && blnStatusMatch;
       }),
     [dicSearchApplied, lstCategories],
   );
@@ -472,7 +463,7 @@ export default function EssDeclarationCategoryMasterPanel({
               onEdit={() => openDialog("edit", dicCategory)}
             />
             {blnCanEdit ? (
-              <Tooltip title={dicCategory.section ? "Manage investment options" : "No matching IT Declaration section — investment options aren't shown to employees for this component"}>
+              <Tooltip title={dicCategory.section ? "Manage investment options" : "No matching IT Declaration section - investment options aren't shown to employees for this component"}>
                 <span>
                   <IconButton
                     size="small"
@@ -487,7 +478,6 @@ export default function EssDeclarationCategoryMasterPanel({
           </Box>
         ),
         name: dicCategory.name,
-        code: dicCategory.code,
         section: dicCategory.section || "-",
         declarationKind: dicDeclarationKindNameByCode[dicCategory.declarationKind] || dicCategory.declarationKind,
         applicableRegime: formatApplicableRegime(dicCategory.applicableRegime),
@@ -524,14 +514,11 @@ export default function EssDeclarationCategoryMasterPanel({
         width: 56
       },
       { field: "action", headerName: dicLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 90 },
-      { field: "name", headerName: dicLabels.tableDescription, width: 190, blnWrapText: true },
-      { field: "code", headerName: dicLabels.tableCategoryCode, width: 140 },
       { field: "section", headerName: dicLabels.tableSection, width: 95 },
+      { field: "name", headerName: dicLabels.tableDescription, width: 190, blnWrapText: true },
       { field: "declarationKind", headerName: dicLabels.tableCategory, width: 110 },
       { field: "applicableRegime", headerName: dicLabels.tableApplicableRegime, width: 130 },
-      { field: "linkedSalaryComponentName", headerName: dicLabels.tableLinkedSalaryComponent, width: 160 },
       { field: "maxLimitAmount", headerName: dicLabels.tableMaxLimitAmount, align: "right", width: 100 },
-      { field: "maxLimitAppliedAt", headerName: dicLabels.tableMaxLimitAppliedAt, width: 120 },
       { field: "proofRequired", headerName: dicLabels.tableProofRequired, width: 85 },
       { field: "status", headerName: dicLabels.tableStatus, sortable: false, filterable: false, width: 95 }
     ],
@@ -543,9 +530,9 @@ export default function EssDeclarationCategoryMasterPanel({
     setStrEditingId(dicCategory?.id ?? "");
     setDicErrors({});
     setDicForm(dicCategory ? {
-      code: dicCategory.code,
       name: dicCategory.name,
       description: dicCategory.description,
+      section: dicCategory.section,
       declarationKind: dicCategory.declarationKind,
       applicableRegime: dicCategory.applicableRegime,
       linkedSalaryComponentId: dicCategory.linkedSalaryComponentId ?? "",
@@ -594,14 +581,12 @@ export default function EssDeclarationCategoryMasterPanel({
 
   function validateForm() {
     const dicNextErrors: Partial<Record<keyof EssDeclarationCategoryForm, string>> = {};
-    const strCode = dicForm.code.trim().toUpperCase();
+    const strSection = dicForm.section.trim().toUpperCase();
     const strName = dicForm.name.trim();
     const strDeclarationKind = dicForm.declarationKind.trim();
 
-    if (!strCode) {
-      dicNextErrors.code = dicLabels.validationCodeRequired;
-    } else if (!/^[A-Z0-9/& _.-]{2,50}$/.test(strCode)) {
-      dicNextErrors.code = dicLabels.validationCodeFormat;
+    if (!strSection) {
+      dicNextErrors.section = dicLabels.validationSectionRequired;
     }
 
     if (!strName) {
@@ -626,8 +611,8 @@ export default function EssDeclarationCategoryMasterPanel({
       }
     }
 
-    if (lstCategories.some((dicCategory) => dicCategory.code.toUpperCase() === strCode && dicCategory.id !== strEditingId)) {
-      dicNextErrors.code = dicLabels.validationCodeDuplicate;
+    if (lstCategories.some((dicCategory) => dicCategory.section.toUpperCase() === strSection && dicCategory.id !== strEditingId)) {
+      dicNextErrors.section = dicLabels.validationSectionDuplicate;
     }
 
     if (lstCategories.some((dicCategory) => dicCategory.name.trim().toLowerCase() === strName.toLowerCase() && dicCategory.id !== strEditingId)) {
@@ -645,11 +630,10 @@ export default function EssDeclarationCategoryMasterPanel({
 
     const dicLocalRecord: EssDeclarationCategoryRecord = {
       id: strEditingId,
-      code: dicForm.code.trim().toUpperCase(),
       name: dicForm.name.trim(),
       description: dicForm.description.trim(),
       declarationKind: dicForm.declarationKind.trim(),
-      section: "",
+      section: dicForm.section.trim().toUpperCase(),
       applicableRegime: dicForm.applicableRegime,
       linkedSalaryComponentId: dicForm.linkedSalaryComponentId === "" ? null : Number(dicForm.linkedSalaryComponentId),
       linkedSalaryComponentName: "",
@@ -660,9 +644,9 @@ export default function EssDeclarationCategoryMasterPanel({
     };
 
     const objBody = {
-      strCategoryCode: dicLocalRecord.code,
       strCategoryName: dicLocalRecord.name,
       strCategoryDescription: dicForm.description.trim() || null,
+      strSectionCode: dicLocalRecord.section,
       strDeclarationKind: dicLocalRecord.declarationKind,
       strApplicableRegime: dicLocalRecord.applicableRegime,
       intLinkedSalaryComponentID: dicLocalRecord.linkedSalaryComponentId,
@@ -758,17 +742,17 @@ export default function EssDeclarationCategoryMasterPanel({
             t("section_core_details_help", "Define the primary declaration identity used across payroll and IT declaration."),
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 1.25 }}>
               <TextField
-                label={dicLabels.fieldCategoryCode}
+                label={dicLabels.fieldSection}
                 required
-                value={dicForm.code}
+                value={dicForm.section}
                 onChange={(objEvent) => {
-                  setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }));
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, section: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value.toUpperCase() }));
                 }}
-                error={Boolean(dicErrors.code)}
-                helperText={dicErrors.code}
+                error={Boolean(dicErrors.section)}
+                helperText={dicErrors.section || t("field_section_help", "e.g. 80D. Shown as-is on the IT Declaration screen and Investment Options. Cannot be changed after saving.")}
                 fullWidth
-                disabled={blnDialogReadOnly}
+                disabled={blnDialogReadOnly || strMode === "edit"}
                 size="small"
               />
               <TextField
@@ -885,7 +869,6 @@ export default function EssDeclarationCategoryMasterPanel({
               <Box
                 className={styles.switchRow}
                 sx={{
-                  gridColumn: { xs: "auto", md: "1 / -1" },
                   px: 1,
                   py: 0.35,
                   minHeight: 44,
@@ -910,7 +893,6 @@ export default function EssDeclarationCategoryMasterPanel({
               <Box
                 className={styles.switchRow}
                 sx={{
-                  gridColumn: { xs: "auto", md: "1 / -1" },
                   px: 1,
                   py: 0.35,
                   minHeight: 44,
@@ -950,8 +932,7 @@ export default function EssDeclarationCategoryMasterPanel({
               {t("section_live_summary_help", "Review the current declaration setup at a glance before saving.")}
             </Typography>
             <Box sx={{ mt: 0.75 }}>
-              {renderInfoRow(t("summary_code", "Category Code"), dicForm.code.trim() || t("summary_empty", "Not set"))}
-              {renderInfoRow(t("summary_section", "Section"), (strMode !== "add" ? lstCategories.find((dicCategory) => dicCategory.id === strEditingId)?.section : "") || t("summary_auto_matched", "Auto-matched on save"))}
+              {renderInfoRow(t("summary_section", "Section"), dicForm.section.trim() || t("summary_auto_matched", "Auto-matched on save"))}
               {renderInfoRow(t("summary_kind", "Category"), dicDeclarationKindNameByCode[dicForm.declarationKind.trim()] || dicForm.declarationKind.trim() || t("summary_empty", "Not set"))}
               {renderInfoRow(t("summary_applicable_regime", "Applicable Regime"), formatApplicableRegime(dicForm.applicableRegime))}
               {renderInfoRow(t("summary_limit", "Max Limit"), dicForm.maxLimitAmount.trim() || t("summary_unlimited", "Not specified"))}
@@ -976,14 +957,13 @@ export default function EssDeclarationCategoryMasterPanel({
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: "repeat(5, minmax(120px, 1fr)) auto auto" },
+            gridTemplateColumns: { xs: "1fr", lg: "repeat(4, minmax(120px, 1fr)) auto auto" },
             gap: 1,
             mt: 1,
             alignItems: "stretch",
           }}
         >
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
-          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-section.input" }} value={dicSearchDraft.section} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value }))} placeholder={dicLabels.searchSectionPlaceholder} fullWidth />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-kind.select" }} select label={dicLabels.searchDeclarationKindPlaceholder} value={dicSearchDraft.declarationKind} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }))} fullWidth>
             <MenuItem value="All">{dicCommonLabels.all}</MenuItem>
