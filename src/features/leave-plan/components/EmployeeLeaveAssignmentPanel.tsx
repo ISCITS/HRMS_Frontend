@@ -43,6 +43,8 @@ export default function EmployeeLeaveAssignmentPanel() {
   const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
   const [lstPlans, setLstPlans] = useState<LeavePlan[]>([]);
   const [lstCurrentPlans, setLstCurrentPlans] = useState<EmployeeCurrentPlan[]>([]);
+  const [strPlanLookupError, setStrPlanLookupError] = useState("");
+  const [intPlanLookupToken, setIntPlanLookupToken] = useState(0);
   const [objBulk, setObjBulk] = useState<BulkAssignState>(objBulkDefaults);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
@@ -59,13 +61,30 @@ export default function EmployeeLeaveAssignmentPanel() {
   }, [blnCanManage]);
 
   // Every employee's currently assigned plan, fetched once, so the list can show a Leave Plan Code
-  // column (and filter on it) without a per-employee request.
+  // column (and filter on it) without a per-employee request. A failure must never be swallowed: an
+  // empty lookup would render every row as "no plan", so one transient failure is retried and a
+  // persistent one is surfaced with a Retry action instead of quietly blanking the column.
   useEffect(() => {
     if (!blnCanView) return;
     let blnMounted = true;
-    leavePlanService.listCurrentPlans().then((lstResult) => { if (blnMounted) setLstCurrentPlans(lstResult); }).catch(() => { if (blnMounted) setLstCurrentPlans([]); });
+    (async () => {
+      setStrPlanLookupError("");
+      for (let intAttempt = 0; intAttempt < 2; intAttempt += 1) {
+        try {
+          const lstResult = await leavePlanService.listCurrentPlans();
+          if (blnMounted) setLstCurrentPlans(lstResult);
+          return;
+        } catch (objError) {
+          if (intAttempt === 0) continue;
+          const objHandled = await createApiRequestError(objError);
+          if (!blnMounted) return;
+          setLstCurrentPlans([]);
+          setStrPlanLookupError(objHandled.message);
+        }
+      }
+    })();
     return () => { blnMounted = false; };
-  }, [blnCanView]);
+  }, [blnCanView, intPlanLookupToken]);
 
   const dicPlanCodeByEmployee = useMemo(
     () => new Map(lstCurrentPlans.map((objCurrent) => [objCurrent.intEmployeeID, objCurrent.strPlanCode])),
@@ -202,11 +221,13 @@ export default function EmployeeLeaveAssignmentPanel() {
         strFullName: objEmployee.strFullName,
         strDepartmentName: objEmployee.strDepartmentName ?? "—",
         strDesignationName: objEmployee.strDesignationName ?? "—",
-        strPlanCode: dicPlanCodeByEmployee.get(objEmployee.intID) ?? "—",
+        // "?" (not "—") while the lookup is unavailable, so an unassigned employee is never confused
+        // with one whose plan could not be loaded.
+        strPlanCode: dicPlanCodeByEmployee.get(objEmployee.intID) ?? (strPlanLookupError ? "?" : "—"),
         blnStatus: <StatusPill strStatus={objEmployee.strEmploymentStatus} />,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstFiltered, blnCanManage, lstSelectedIds, dicPlanCodeByEmployee],
+    [lstFiltered, blnCanManage, lstSelectedIds, dicPlanCodeByEmployee, strPlanLookupError],
   );
 
   const lstColumns = useMemo<CommonTableColumn<(typeof lstRows)[number]>[]>(
@@ -308,6 +329,15 @@ export default function EmployeeLeaveAssignmentPanel() {
       </Box>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+      {strPlanLookupError ? (
+        <Alert
+          severity="warning"
+          action={<Button color="inherit" size="small" onClick={() => setIntPlanLookupToken((intPrev) => intPrev + 1)} data-control-id="employee-leave-plan.list.plan-lookup.retry.button">{t("retry", "Retry")}</Button>}
+        >
+          {t("plan_lookup_failed", "Leave Plan Codes could not be loaded, so the column shows \"?\".")} {strPlanLookupError}
+        </Alert>
+      ) : null}
 
       {blnLoading || blnRightsLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
