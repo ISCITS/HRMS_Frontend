@@ -122,7 +122,7 @@ function resolveCategoryRows(objData: unknown) {
 
 function mapCategoryRule(objCategory: EssDeclarationCategoryApiRecord): CategoryRule {
   const objCategoryRecord = objCategory as unknown as Record<string, unknown>;
-  const strSection = String(objCategory.strCategoryCode ?? objCategoryRecord.strCode ?? objCategoryRecord.category_code ?? "").trim().toUpperCase();
+  const strSection = String(objCategory.strSection ?? objCategoryRecord.section ?? "").trim().toUpperCase();
   const decMaxLimitAmount = resolveMaxLimitAmount(objCategoryRecord);
   return {
     strSection,

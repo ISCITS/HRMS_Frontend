@@ -177,7 +177,6 @@ export type EssDeclarationCategoryApiRecord = {
   intID: number;
   intTenantID: number;
   intCompanyID: number | null;
-  strCategoryCode: string;
   strCategoryName: string;
   strCategoryDescription?: string | null;
   strDeclarationKind: string;
@@ -1767,9 +1766,9 @@ export const masterApiService = {
   },
 
   createEssDeclarationCategory(objBody: {
-    strCategoryCode: string;
     strCategoryName: string;
     strCategoryDescription: string | null;
+    strSectionCode: string;
     strDeclarationKind: string;
     strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;
@@ -1787,9 +1786,9 @@ export const masterApiService = {
   },
 
   updateEssDeclarationCategory(intID: number, objBody: {
-    strCategoryCode: string;
     strCategoryName: string;
     strCategoryDescription: string | null;
+    strSectionCode: string;
     strDeclarationKind: string;
     strApplicableRegime: "old" | "new" | "both" | string;
     intLinkedSalaryComponentID: number | null;

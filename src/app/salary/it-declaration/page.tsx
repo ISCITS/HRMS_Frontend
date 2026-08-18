@@ -956,7 +956,7 @@ export default function SalaryEssDeclarationsPage() {
     const strCategory = formatDeclarationKind(objCategory.strDeclarationKind ?? objCategoryRecord.strKind ?? objCategoryRecord.declaration_kind);
     return {
       intItemID: null,
-      strSection: objCategory.strSection || (objCategory.strCategoryCode || "").replace(/^SEC_/i, ""),
+      strSection: objCategory.strSection || "",
       strCategory,
       strDescription,
       strApplicableRegime: normalizeApplicableRegime(
@@ -1729,7 +1729,7 @@ export default function SalaryEssDeclarationsPage() {
                   <MenuItem value="All">{t("all_sections", "All Sections")}</MenuItem>
                   {lstSectionFilterOptions.map((objOption) => (
                     <MenuItem key={objOption.strSection} value={objOption.strSection}>
-                      {objOption.strSection} — {objOption.strDescription}
+                      {objOption.strSection} - {objOption.strDescription}
                     </MenuItem>
                   ))}
                 </TextField>

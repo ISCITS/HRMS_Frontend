@@ -410,6 +410,11 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             tableLayout: "fixed"
           }}
         >
+          <colgroup>
+            {orderedColumns.map((column) => (
+              <col key={`col-${String(column.field)}`} style={column.width ? { width: `${column.width}px` } : undefined} />
+            ))}
+          </colgroup>
           <TableHead data-controlid={`${testIdPrefix}.table.head`}>
             <TableRow data-controlid={`${testIdPrefix}.table.header-row`}>
               {orderedColumns.map((column) => {
