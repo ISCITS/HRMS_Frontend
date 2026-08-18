@@ -9,6 +9,7 @@ import {
   Chip,
   CircularProgress,
   MenuItem,
+  Paper,
   Snackbar,
   Stack,
   TextField,
@@ -77,12 +78,19 @@ export default function LeaveSettingsPanel() {
   const [objPrimarySnapshot, setObjPrimarySnapshot] = useState<ApproverSnapshotDto | null>(null);
   const [objAlternateSnapshot, setObjAlternateSnapshot] = useState<ApproverSnapshotDto | null>(null);
 
-  // Attendance Approval Defaults
+  // Attendance Regularization Approval Defaults
   const [strAttSource, setStrAttSource] = useState<DefaultApproverSource>("REPORTING_MANAGER");
   const [objAttPrimary, setObjAttPrimary] = useState<ApproverEmployeeDto | null>(null);
   const [objAttAlternate, setObjAttAlternate] = useState<ApproverEmployeeDto | null>(null);
   const [objAttPrimarySnapshot, setObjAttPrimarySnapshot] = useState<ApproverSnapshotDto | null>(null);
   const [objAttAlternateSnapshot, setObjAttAlternateSnapshot] = useState<ApproverSnapshotDto | null>(null);
+
+  // Work on Holiday Approval Defaults
+  const [strWorkHolidaySource, setStrWorkHolidaySource] = useState<DefaultApproverSource>("REPORTING_MANAGER");
+  const [objWorkHolidayPrimary, setObjWorkHolidayPrimary] = useState<ApproverEmployeeDto | null>(null);
+  const [objWorkHolidayAlternate, setObjWorkHolidayAlternate] = useState<ApproverEmployeeDto | null>(null);
+  const [objWorkHolidayPrimarySnapshot, setObjWorkHolidayPrimarySnapshot] = useState<ApproverSnapshotDto | null>(null);
+  const [objWorkHolidayAlternateSnapshot, setObjWorkHolidayAlternateSnapshot] = useState<ApproverSnapshotDto | null>(null);
 
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<ApproverEmployeeDto[]>([]);
   const [blnSearching, setBlnSearching] = useState(false);
@@ -105,6 +113,11 @@ export default function LeaveSettingsPanel() {
     setObjAttAlternateSnapshot(objConfig.objAttendanceAlternateHrApprover);
     setObjAttPrimary(snapshotToOption(objConfig.objAttendancePrimaryHrApprover));
     setObjAttAlternate(snapshotToOption(objConfig.objAttendanceAlternateHrApprover));
+    setStrWorkHolidaySource(objConfig.strWorkHolidayDefaultApproverSource ?? "REPORTING_MANAGER");
+    setObjWorkHolidayPrimarySnapshot(objConfig.objWorkHolidayPrimaryHrApprover);
+    setObjWorkHolidayAlternateSnapshot(objConfig.objWorkHolidayAlternateHrApprover);
+    setObjWorkHolidayPrimary(snapshotToOption(objConfig.objWorkHolidayPrimaryHrApprover));
+    setObjWorkHolidayAlternate(snapshotToOption(objConfig.objWorkHolidayAlternateHrApprover));
   }
 
   async function loadConfig() {
@@ -153,6 +166,9 @@ export default function LeaveSettingsPanel() {
         strAttendanceDefaultApproverSource: strAttSource,
         intAttendancePrimaryHrApproverEmployeeID: objAttPrimary?.intEmployeeID ?? null,
         intAttendanceAlternateHrApproverEmployeeID: objAttAlternate?.intEmployeeID ?? null,
+        strWorkHolidayDefaultApproverSource: strWorkHolidaySource,
+        intWorkHolidayPrimaryHrApproverEmployeeID: objWorkHolidayPrimary?.intEmployeeID ?? null,
+        intWorkHolidayAlternateHrApproverEmployeeID: objWorkHolidayAlternate?.intEmployeeID ?? null,
       });
       applyConfig(objConfig);
       showToast("Settings saved successfully.", "success");
@@ -215,167 +231,224 @@ export default function LeaveSettingsPanel() {
     );
   }
 
+  const nodeHeaderBar = (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: { xs: "flex-start", md: "center" },
+        gap: 1.25,
+        flexWrap: "wrap",
+        p: 2,
+        borderRadius: "14px",
+        background: "linear-gradient(135deg, #eaf2fc 0%, #eef6fb 100%)",
+        border: "1px solid #dce9f7",
+      }}
+    >
+      <Typography sx={{ color: "#345a80", fontSize: "0.92rem", fontWeight: 500 }}>
+        Enterprise leave &amp; attendance approval configuration.
+      </Typography>
+      <Stack direction="row" spacing={1.25} alignItems="center">
+        {blnReadOnly && !blnBusy ? (
+          <Chip size="small" color="info" variant="outlined" label="View only" />
+        ) : null}
+        {!blnReadOnly ? (
+          <Button
+            variant="contained"
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            onClick={() => void handleSave()}
+            disabled={blnSaving || blnBusy}
+            controlId="settings.leave.save.button"
+            sx={{ borderRadius: "10px", boxShadow: "none" }}
+          >
+            {blnSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        ) : null}
+      </Stack>
+    </Box>
+  );
+
+  const sxCard = {
+    p: 2.5,
+    borderRadius: "14px",
+    border: "1px solid #e6edf5",
+    boxShadow: "none",
+  } as const;
+  const sxFieldGrid = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 360px))",
+    gap: 2,
+    alignItems: "start",
+  } as const;
+  const sxCalendarGrid = {
+    display: "grid",
+    gridTemplateColumns: { xs: "1fr", sm: "160px 300px auto" },
+    gap: 2,
+    alignItems: "center",
+  } as const;
+  const sxSubHeading = { fontWeight: 700, color: "#0f172a", fontSize: "0.92rem" } as const;
+  const sxSubCaption = { color: "#64748b", fontSize: "0.78rem", mb: 1.5 } as const;
+
   return (
-    <Box className={styles.page}>
-      <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1.5 }}>
-          <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.05rem" }}>Leave</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-              Configure the leave calendar and default leave &amp; attendance approvers for your company.
-            </Typography>
-          </Box>
-          {blnReadOnly && !blnBusy ? (
-            <Chip size="small" color="info" variant="outlined" label="View only" />
-          ) : null}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, height: "calc(100vh - 124px)", overflowY: "auto", pb: 2, pr: 0.5 }}>
+      {nodeHeaderBar}
+
+      {blnBusy ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
         </Box>
+      ) : (
+        <>
+          {/* ---- Card 1: Leave ---- */}
+          <Paper variant="outlined" sx={sxCard}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", mb: 2 }}>Leave</Typography>
 
-        {blnBusy ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Box sx={{ maxWidth: 1180 }}>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                columnGap: 5,
-                rowGap: 3,
-                alignItems: "flex-start",
-              }}
-            >
-              {/* ---- Leave Calendar (col 1, row 1) ---- */}
-              <Box sx={{ gridColumn: { md: "1" }, gridRow: { md: "1" } }}>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>Leave Calendar</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 1.25 }}>Leave Year Starts On</Typography>
-              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                <TextField
-                  select
-                  label="Day"
-                  size="small"
-                  value={String(Math.min(intDay, intMaxDay))}
-                  onChange={(objEvent) => setIntDay(Number(objEvent.target.value))}
-                  disabled={blnReadOnly}
-                  sx={{ minWidth: 110 }}
-                  controlId="settings.leave.year-day.select"
-                >
-                  {lstDayOptions.map((intOption) => (
-                    <MenuItem key={intOption} value={String(intOption)}>{String(intOption).padStart(2, "0")}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Month"
-                  size="small"
-                  value={String(intMonth)}
-                  onChange={(objEvent) => setIntMonth(Number(objEvent.target.value))}
-                  disabled={blnReadOnly}
-                  sx={{ minWidth: 160 }}
-                  controlId="settings.leave.year-month.select"
-                >
-                  {lstMonths.map((strName, intIndex) => (
-                    <MenuItem key={strName} value={String(intIndex + 1)}>{strName}</MenuItem>
-                  ))}
-                </TextField>
+            <Typography sx={sxSubHeading}>Leave Calendar</Typography>
+            <Typography sx={sxSubCaption}>Leave Year Starts On.</Typography>
+            <Box sx={{ ...sxCalendarGrid, mb: 3 }}>
+              <TextField
+                select
+                label="Day"
+                size="small"
+                value={String(Math.min(intDay, intMaxDay))}
+                onChange={(objEvent) => setIntDay(Number(objEvent.target.value))}
+                disabled={blnReadOnly}
+                controlId="settings.leave.year-day.select"
+              >
+                {lstDayOptions.map((intOption) => (
+                  <MenuItem key={intOption} value={String(intOption)}>{String(intOption).padStart(2, "0")}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Month"
+                size="small"
+                value={String(intMonth)}
+                onChange={(objEvent) => setIntMonth(Number(objEvent.target.value))}
+                disabled={blnReadOnly}
+                controlId="settings.leave.year-month.select"
+              >
+                {lstMonths.map((strName, intIndex) => (
+                  <MenuItem key={strName} value={String(intIndex + 1)}>{strName}</MenuItem>
+                ))}
+              </TextField>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Chip label={`Starts on ${strYearStartPreview}`} color="primary" variant="outlined" />
-              </Stack>
-            </Box>
-
-              {/* ---- Approval Defaults (col 1, row 2) ---- */}
-              <Box sx={{ gridColumn: { md: "1" }, gridRow: { md: "2" } }}>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.25 }}>Approval Defaults</Typography>
-              <Stack spacing={2}>
-                <TextField
-                  select
-                  label="Default Leave Approver"
-                  value={strSource}
-                  onChange={(objEvent) => setStrSource(objEvent.target.value as DefaultApproverSource)}
-                  disabled={blnReadOnly}
-                  helperText="Used when a Leave Policy has no configured approval steps."
-                  controlId="settings.leave.default-approver.select"
-                  fullWidth
-                >
-                  {lstApproverSourceOptions.map((objOption) => (
-                    <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
-                  ))}
-                </TextField>
-
-                {renderApproverField(
-                  "Primary HR Leave Approver",
-                  "settings.leave.primary-hr.autocomplete",
-                  objPrimary,
-                  setObjPrimary,
-                  objPrimarySnapshot,
-                  strSource === "HR",
-                )}
-                {renderApproverField(
-                  "Alternate HR Leave Approver",
-                  "settings.leave.alternate-hr.autocomplete",
-                  objAlternate,
-                  setObjAlternate,
-                  objAlternateSnapshot,
-                  false,
-                )}
-              </Stack>
-            </Box>
-
-              {/* ---- Attendance Approval Defaults (col 2, row 2) ---- */}
-              <Box sx={{ gridColumn: { md: "2" }, gridRow: { md: "2" } }}>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1.25 }}>Attendance Approval Defaults</Typography>
-              <Stack spacing={2}>
-                <TextField
-                  select
-                  label="Default Attendance Approver"
-                  value={strAttSource}
-                  onChange={(objEvent) => setStrAttSource(objEvent.target.value as DefaultApproverSource)}
-                  disabled={blnReadOnly}
-                  helperText="Used when an Attendance Regularization request has no configured approval steps."
-                  controlId="settings.attendance.default-approver.select"
-                  fullWidth
-                >
-                  {lstApproverSourceOptions.map((objOption) => (
-                    <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
-                  ))}
-                </TextField>
-
-                {renderApproverField(
-                  "Primary HR Attendance Approver",
-                  "settings.attendance.primary-hr.autocomplete",
-                  objAttPrimary,
-                  setObjAttPrimary,
-                  objAttPrimarySnapshot,
-                  strAttSource === "HR",
-                )}
-                {renderApproverField(
-                  "Alternate HR Attendance Approver",
-                  "settings.attendance.alternate-hr.autocomplete",
-                  objAttAlternate,
-                  setObjAttAlternate,
-                  objAttAlternateSnapshot,
-                  false,
-                )}
-              </Stack>
-            </Box>
-            </Box>
-
-            {!blnReadOnly ? (
-              <Box sx={{ mt: 3 }}>
-                <Button
-                  variant="contained"
-                  className={styles.primaryButton}
-                  startIcon={<SaveRoundedIcon />}
-                  onClick={() => void handleSave()}
-                  disabled={blnSaving}
-                  controlId="settings.leave.save.button"
-                >
-                  {blnSaving ? "Saving..." : "Save Changes"}
-                </Button>
               </Box>
-            ) : null}
-          </Box>
-        )}
-      </Box>
+            </Box>
+
+            <Typography sx={sxSubHeading}>Approval Defaults</Typography>
+            <Typography sx={sxSubCaption}>Used when a Leave Policy has no configured approval steps.</Typography>
+            <Box sx={sxFieldGrid}>
+              <TextField
+                select
+                label="Default Leave Approver"
+                value={strSource}
+                onChange={(objEvent) => setStrSource(objEvent.target.value as DefaultApproverSource)}
+                disabled={blnReadOnly}
+                controlId="settings.leave.default-approver.select"
+              >
+                {lstApproverSourceOptions.map((objOption) => (
+                  <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
+                ))}
+              </TextField>
+
+              {renderApproverField(
+                "Primary HR Leave Approver",
+                "settings.leave.primary-hr.autocomplete",
+                objPrimary,
+                setObjPrimary,
+                objPrimarySnapshot,
+                strSource === "HR",
+              )}
+              {renderApproverField(
+                "Alternate HR Leave Approver",
+                "settings.leave.alternate-hr.autocomplete",
+                objAlternate,
+                setObjAlternate,
+                objAlternateSnapshot,
+                false,
+              )}
+            </Box>
+          </Paper>
+
+          {/* ---- Card 2: Attendance (Regularization + Work on Holiday approval flows) ---- */}
+          <Paper variant="outlined" sx={sxCard}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", mb: 2 }}>Attendance</Typography>
+
+            <Typography sx={sxSubHeading}>Regularization Approval Flow</Typography>
+            <Typography sx={sxSubCaption}>Used when an Attendance Regularization request has no configured approval steps.</Typography>
+            <Box sx={{ ...sxFieldGrid, mb: 3 }}>
+              <TextField
+                select
+                label="Default Attendance Approver"
+                value={strAttSource}
+                onChange={(objEvent) => setStrAttSource(objEvent.target.value as DefaultApproverSource)}
+                disabled={blnReadOnly}
+                controlId="settings.attendance.default-approver.select"
+              >
+                {lstApproverSourceOptions.map((objOption) => (
+                  <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
+                ))}
+              </TextField>
+
+              {renderApproverField(
+                "Primary HR Attendance Approver",
+                "settings.attendance.primary-hr.autocomplete",
+                objAttPrimary,
+                setObjAttPrimary,
+                objAttPrimarySnapshot,
+                strAttSource === "HR",
+              )}
+              {renderApproverField(
+                "Alternate HR Attendance Approver",
+                "settings.attendance.alternate-hr.autocomplete",
+                objAttAlternate,
+                setObjAttAlternate,
+                objAttAlternateSnapshot,
+                false,
+              )}
+            </Box>
+
+            <Box sx={{ borderTop: "1px solid #eef2f7", pt: 2.5 }}>
+              <Typography sx={sxSubHeading}>Work on Holiday Approval Flow</Typography>
+              <Typography sx={sxSubCaption}>Used when a Work on Holiday request has no configured approval steps.</Typography>
+              <Box sx={sxFieldGrid}>
+                <TextField
+                  select
+                  label="Default Work on Holiday Approver"
+                  value={strWorkHolidaySource}
+                  onChange={(objEvent) => setStrWorkHolidaySource(objEvent.target.value as DefaultApproverSource)}
+                  disabled={blnReadOnly}
+                  controlId="settings.work-holiday.default-approver.select"
+                >
+                  {lstApproverSourceOptions.map((objOption) => (
+                    <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
+                  ))}
+                </TextField>
+
+                {renderApproverField(
+                  "Primary HR Work on Holiday Approver",
+                  "settings.work-holiday.primary-hr.autocomplete",
+                  objWorkHolidayPrimary,
+                  setObjWorkHolidayPrimary,
+                  objWorkHolidayPrimarySnapshot,
+                  strWorkHolidaySource === "HR",
+                )}
+                {renderApproverField(
+                  "Alternate HR Work on Holiday Approver",
+                  "settings.work-holiday.alternate-hr.autocomplete",
+                  objWorkHolidayAlternate,
+                  setObjWorkHolidayAlternate,
+                  objWorkHolidayAlternateSnapshot,
+                  false,
+                )}
+              </Box>
+            </Box>
+          </Paper>
+        </>
+      )}
 
       <BlockingLoader blnOpen={blnSaving} strLabel="Processing..." intZIndex={1400} />
 

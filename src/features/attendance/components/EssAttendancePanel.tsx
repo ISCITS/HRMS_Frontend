@@ -11,7 +11,6 @@ import {
   Button,
   ButtonBase,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -31,6 +30,7 @@ import { alpha } from "@mui/material/styles";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import type { MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
@@ -372,7 +372,7 @@ export default function EssAttendancePanel() {
   }
 
   if (blnRightsLoading) {
-    return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
+    return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
   }
   if (!blnCanViewMyAttendance) {
     return <Alert severity="warning">{t("permission_denied", "My Attendance access is not available for your user group.")}</Alert>;
@@ -653,7 +653,7 @@ export default function EssAttendancePanel() {
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>{t("monthly_history", "Monthly Attendance")}</Typography>
 
         {blnLoading ? (
-          <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>
+          <Box sx={{ position: "relative", minHeight: 160 }}><BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading...")} /></Box>
         ) : blnMobile ? (
           <Stack spacing={0.75}>
             {lstMonthDays.map((strDate) => {

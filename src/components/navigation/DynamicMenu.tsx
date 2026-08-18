@@ -89,6 +89,14 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
   ) {
     return false;
   }
+  // My Work on Holiday and Work on Holiday Requests are sibling ESS screens for the same
+  // reason as attendance regularization above.
+  if (
+    strCandidatePath === "/ess/work-on-holiday" &&
+    strPathname.startsWith("/ess/work-on-holiday/approvals")
+  ) {
+    return false;
+  }
   return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 
@@ -795,6 +803,9 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
       ? buildSyntheticMenuLeaf("Regularization Requests", "ESS_ATTENDANCE_REGULARIZATION_APPROVALS", "/ess/attendance/regularization/approvals", findItem("/ess/attendance/regularization/approvals", "/attendance/regularization-requests"))
       : null,
     buildSyntheticMenuLeaf("Work on Holiday", "ESS_WORK_ON_HOLIDAY", "/ess/work-on-holiday", findItem("/ess/work-on-holiday", "/leave/work-on-holiday/requests")),
+    findItem("/ess/work-on-holiday/approvals", "/leave/work-on-holiday/requests")
+      ? buildSyntheticMenuLeaf("Work on Holiday Requests", "ESS_WORK_ON_HOLIDAY_APPROVALS", "/ess/work-on-holiday/approvals", findItem("/ess/work-on-holiday/approvals", "/leave/work-on-holiday/requests"))
+      : null,
   ]);
   const objLeaveGroup = buildSyntheticMenuGroup("ESS_LEAVE", "Leave", [
     buildSyntheticMenuLeaf("Apply Leave", "ESS_LEAVE", "/ess/leave", findItem("/ess/leave")),

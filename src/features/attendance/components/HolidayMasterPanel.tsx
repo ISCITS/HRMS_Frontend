@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   FormControlLabel,
   MenuItem,
   Snackbar,
@@ -26,6 +25,7 @@ import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import type { HolidayDto, HolidayFormOptions, HolidayRequest, HolidayTextDto } from "@/features/attendance/dto";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -298,6 +298,7 @@ export default function HolidayMasterPanel() {
 
   return (
     <Stack spacing={1.5} sx={{ pb: 2 }}>
+      <BlockingLoader blnOpen={blnSaving || blnTranslating} strLabel={blnTranslating ? t("translating", "Translating...") : t("saving", "Saving...")} />
       <Typography variant="h5" sx={{ fontWeight: 800 }}>{t("page_title", "Holiday Master")}</Typography>
       <Box className={styles.controlsCard} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }, gap: 1.25 }}>
         <TextField controlId="holiday-master.search.year.select" select size="small" label={t("field_year", "Year")} value={objSearchDraft.intYear} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, intYear: Number(objEvent.target.value) }))}>
@@ -323,7 +324,7 @@ export default function HolidayMasterPanel() {
         </Box>
       </Box>
 
-      {blnLoading || blnRightsLoading ? <Box sx={{ display: "grid", placeItems: "center", py: 6 }}><CircularProgress /></Box> : (
+      {blnLoading || blnRightsLoading ? <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} /> : (
         <Box className={styles.tableCard}>
           <CommonTable columns={lstColumns} rows={lstRows} rowIdField="id" exportFileName={`holidays_${objSearchApplied.intYear}`} showExportOptions showPaginationSummary minTableWidth={1370} emptyMessage={t("empty_message", "No holidays found.")} toolbarLeft={blnCanCreate ? <Button controlId="holiday-master.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : undefined} testIdPrefix="holiday-master.list" />
         </Box>

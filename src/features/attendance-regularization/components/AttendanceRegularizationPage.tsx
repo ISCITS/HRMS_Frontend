@@ -20,6 +20,7 @@ import * as yup from "yup";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
@@ -496,11 +497,12 @@ export default function AttendanceRegularizationPage() {
       : t("confirm_withdraw_message", `Withdraw the attendance correction request for ${formatDdMmmYyyy(objConfirm.objRequest.dtWorkDate)}? This will remove it from the approval queue.`)
     : "";
 
-  if (blnRightsLoading || blnLoading) return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
+  if (blnRightsLoading || blnLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Attendance Regularization access is not available.")}</Alert>;
 
   return (
     <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "scroll", pb: 2, pr: 0.5, scrollbarGutter: "stable", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 9 }, "&::-webkit-scrollbar-track": { backgroundColor: "#eef4f8", borderRadius: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8, border: "2px solid #eef4f8" }, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+      <BlockingLoader blnOpen={blnSaving} strLabel={t("working", "Please wait...")} />
       <Box className="pageBanner" data-control-id="attendance-regularization.header.banner" sx={{ minHeight: 96, py: { xs: 1.5, md: 2 }, px: { xs: 1.5, md: 2.5 }, alignItems: "center", flexWrap: "nowrap" }}>
         <Box className="bannerDots" />
         <Box className="bannerIcon" sx={{ flex: "0 0 54px" }}>

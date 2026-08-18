@@ -1,5 +1,6 @@
 "use client";
 
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -34,22 +35,25 @@ function calculateHours(strStart: string, strEnd: string) {
   return Math.max(0, Number((intMinutes / 60).toFixed(2)));
 }
 
-export default function WorkHolidayRequestsPage() {
+export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: { blnEssManagerMode?: boolean }) {
   const { t } = useModuleLabels("work_on_holiday");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDo } = useActionRights();
   const fnCan = (strAction: string) => lstModuleCodes.some((strModule) =>
     (dicActionAliases[strAction] ?? [strAction]).some((strAlias) => canDo(strModule, strAlias)),
   );
-  const blnCanApprove = fnCan("WORK_ON_HOLIDAY_APPROVE");
-  const blnCanReject = fnCan("WORK_ON_HOLIDAY_REJECT");
-  const blnCanSendBack = fnCan("WORK_ON_HOLIDAY_SEND_BACK");
-  const blnCanVerify = fnCan("WORK_ON_HOLIDAY_VERIFY");
-  const blnCanViewAll = fnCan("WORK_ON_HOLIDAY_VIEW_ALL") || fnCan("WORK_ON_HOLIDAY_MANAGE");
-  const blnCanView = fnCan("WORK_ON_HOLIDAY_VIEW") || blnCanViewAll;
-  const blnCanApprovalQueue = blnCanApprove || blnCanViewAll;
-  const blnCanOnBehalf = fnCan("WORK_ON_HOLIDAY_CREATE_ON_BEHALF");
-  const blnCanPost = fnCan("WORK_ON_HOLIDAY_POST");
-  const blnCanReverse = fnCan("WORK_ON_HOLIDAY_REVERSE") || fnCan("WORK_ON_HOLIDAY_OVERRIDE");
+  // An ESS manager reaches this screen only because the backend already verified they are
+  // the assigned line/reporting manager for the requests it returns, so approval actions and
+  // the queue itself do not additionally require the HR-only WORK_ON_HOLIDAY_* RBAC rights.
+  const blnCanApprove = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_APPROVE");
+  const blnCanReject = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_REJECT");
+  const blnCanSendBack = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_SEND_BACK");
+  const blnCanVerify = !blnEssManagerMode && fnCan("WORK_ON_HOLIDAY_VERIFY");
+  const blnCanViewAll = !blnEssManagerMode && (fnCan("WORK_ON_HOLIDAY_VIEW_ALL") || fnCan("WORK_ON_HOLIDAY_MANAGE"));
+  const blnCanView = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_VIEW") || blnCanViewAll;
+  const blnCanApprovalQueue = blnEssManagerMode || blnCanApprove || blnCanViewAll;
+  const blnCanOnBehalf = !blnEssManagerMode && fnCan("WORK_ON_HOLIDAY_CREATE_ON_BEHALF");
+  const blnCanPost = !blnEssManagerMode && fnCan("WORK_ON_HOLIDAY_POST");
+  const blnCanReverse = !blnEssManagerMode && (fnCan("WORK_ON_HOLIDAY_REVERSE") || fnCan("WORK_ON_HOLIDAY_OVERRIDE"));
   const blnCanAct = blnCanApprove || blnCanReject || blnCanSendBack || blnCanVerify || blnCanPost || blnCanReverse;
   const lstTabs = useMemo(() => [
     { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
@@ -74,8 +78,8 @@ export default function WorkHolidayRequestsPage() {
   const strSelectedTab = lstTabs[Math.min(intTab, Math.max(lstTabs.length - 1, 0))]?.strCode ?? "approval";
   const strApiStatus = strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
     : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
-  const strMode = strSelectedTab === "approval" ? "queue" : "all";
-  const blnListEnabled = strMode === "queue" ? blnCanApprovalQueue : blnCanViewAll;
+  const strMode = strSelectedTab === "approval" ? (blnEssManagerMode ? "approvals" : "queue") : "all";
+  const blnListEnabled = strMode === "all" ? blnCanViewAll : blnCanApprovalQueue;
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList(strMode, strApiStatus, 1, 100, blnListEnabled);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
 
@@ -214,7 +218,7 @@ export default function WorkHolidayRequestsPage() {
       {strError || strListError ? <Alert data-control-id="work-on-holiday.workbench.error.alert" severity="error" onClose={() => setStrError("")}>{strError || strListError}</Alert> : null}
       {blnCanOnBehalf ? (
         <Stack direction="row" justifyContent="flex-end">
-          <Button data-control-id="work-on-holiday.workbench.on-behalf.open.button" variant="contained" onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create On Behalf")}</Button>
+          <Button data-control-id="work-on-holiday.workbench.on-behalf.open.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button>
         </Stack>
       ) : null}
       <Paper><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>

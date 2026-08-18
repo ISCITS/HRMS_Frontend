@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -19,20 +18,18 @@ import {
   Paper,
   Snackbar,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
 import LookupChip, {
   lookupLabel,
 } from "@/features/attendance-regularization/components/LookupChip";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonRowActions from "@/components/master/CommonRowActions";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
@@ -273,7 +270,106 @@ export default function AttendanceExceptionsPage() {
     setSetSelected(new Set());
   }
 
-  if (blnRightsLoading) return <CircularProgress />;
+  const blnAllPageSelected =
+    Boolean(objList?.lstItems.length) &&
+    (objList?.lstItems.every((objItem) => setSelected.has(objItem.intID)) ?? false);
+
+  const lstTableRows = useMemo(
+    () =>
+      (objList?.lstItems ?? []).map((objItem) => ({
+        id: objItem.intID,
+        select: (
+          <Checkbox
+            data-control-id={`attendance-exceptions.${objItem.intID}.select.checkbox`}
+            checked={setSelected.has(objItem.intID)}
+            onChange={(objEvent) =>
+              setSetSelected((setValue) => {
+                const setNext = new Set(setValue);
+                if (objEvent.target.checked) setNext.add(objItem.intID);
+                else setNext.delete(objItem.intID);
+                return setNext;
+              })
+            }
+            inputProps={
+              {
+                "data-control-id": `attendance-exceptions.${objItem.intID}.select.checkbox`,
+              } as InputHTMLAttributes<HTMLInputElement>
+            }
+          />
+        ),
+        action: (
+          <CommonRowActions
+            testIdPrefix={`attendance-exceptions.${objItem.intID}`}
+            rowKey={objItem.intID}
+            blnCanView
+            onView={() => void openDetail(objItem)}
+          />
+        ),
+        employee: objItem.strEmployeeName ?? objItem.strEmployeeCode,
+        date: objItem.dtWorkDate,
+        type: lookupLabel(lstTypes, objItem.strExceptionTypeCode, t("unavailable", "Unavailable")),
+        severity: (
+          <LookupChip
+            lstOptions={lstSeverities}
+            strCode={objItem.strSeverityCode}
+            strFallback={t("unavailable", "Unavailable")}
+          />
+        ),
+        exceptionStatus: (
+          <LookupChip
+            lstOptions={lstStatuses}
+            strCode={objItem.strExceptionStatus}
+            strFallback={t("unavailable", "Unavailable")}
+          />
+        ),
+        punchRequest: objItem.intRequestID
+          ? `${t("request", "Request")} #${objItem.intRequestID}`
+          : objItem.strExceptionMessage,
+        age: `${objItem.intAgeingDays} ${t("days", "days")}`,
+      })),
+    [objList, setSelected, lstTypes, lstSeverities, lstStatuses, t], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      {
+        field: "select",
+        headerName: (
+          <Checkbox
+            data-control-id="attendance-exceptions.select-page.checkbox"
+            checked={blnAllPageSelected}
+            onChange={(objEvent) =>
+              setSetSelected(
+                objEvent.target.checked
+                  ? new Set(objList?.lstItems.map((objItem) => objItem.intID))
+                  : new Set(),
+              )
+            }
+            inputProps={
+              {
+                "data-control-id": "attendance-exceptions.select-page.checkbox",
+              } as InputHTMLAttributes<HTMLInputElement>
+            }
+          />
+        ),
+        sortable: false,
+        filterable: false,
+        exportable: false,
+        width: 56,
+      },
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
+      { field: "employee", headerName: t("employee", "Employee"), width: 170 },
+      { field: "date", headerName: t("date", "Date"), width: 120 },
+      { field: "type", headerName: t("type", "Type"), width: 160 },
+      { field: "severity", headerName: t("severity", "Severity"), sortable: false, width: 120 },
+      { field: "exceptionStatus", headerName: t("status", "Status"), sortable: false, width: 120 },
+      { field: "punchRequest", headerName: t("punch_request", "Punch / Request"), width: 240 },
+      { field: "age", headerName: t("age", "Age"), width: 110 },
+    ],
+    [blnAllPageSelected, objList, t],
+  );
+
+  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
   if (!canViewAny())
     return (
       <Alert severity="warning">
@@ -289,6 +385,7 @@ export default function AttendanceExceptionsPage() {
   };
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+      <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
       {/* Keep actions and severity summaries in one row so the queue begins below a single toolbar. */}
       <Paper className={styles.controlsCard}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="stretch">
@@ -598,110 +695,24 @@ export default function AttendanceExceptionsPage() {
           {objBulkResult.intFailureCount} {t("failed", "failed")}.
         </Alert>
       ) : null}
-      <Paper className={styles.tableCard}>
-        {blnLoading ? (
-          <Box sx={{ p: 5, textAlign: "center" }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Box className={styles.tableWrap}><Table className={styles.table} size="small" sx={{ minWidth: 1250 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    data-control-id="attendance-exceptions.select-page.checkbox"
-                    checked={
-                      Boolean(objList?.lstItems.length) &&
-                      objList?.lstItems.every((objItem) =>
-                        setSelected.has(objItem.intID),
-                      )
-                    }
-                    onChange={(objEvent) =>
-                      setSetSelected(
-                        objEvent.target.checked
-                          ? new Set(
-                              objList?.lstItems.map((objItem) => objItem.intID),
-                            )
-                          : new Set(),
-                      )
-                    }
-                  />
-                </TableCell>
-                <TableCell>{t("employee", "Employee")}</TableCell>
-                <TableCell>{t("date", "Date")}</TableCell>
-                <TableCell>{t("type", "Type")}</TableCell>
-                <TableCell>{t("severity", "Severity")}</TableCell>
-                <TableCell>{t("status", "Status")}</TableCell>
-                <TableCell>{t("punch_request", "Punch / Request")}</TableCell>
-                <TableCell>{t("age", "Age")}</TableCell>
-                <TableCell>{t("actions", "Actions")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {objList?.lstItems.map((objItem) => (
-                <TableRow key={objItem.intID} hover>
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      data-control-id={`attendance-exceptions.${objItem.intID}.select.checkbox`}
-                      checked={setSelected.has(objItem.intID)}
-                      onChange={(objEvent) =>
-                        setSetSelected((setValue) => {
-                          const setNext = new Set(setValue);
-                          if (objEvent.target.checked)
-                            setNext.add(objItem.intID);
-                          else setNext.delete(objItem.intID);
-                          return setNext;
-                        })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {objItem.strEmployeeName ?? objItem.strEmployeeCode}
-                  </TableCell>
-                  <TableCell>{objItem.dtWorkDate}</TableCell>
-                  <TableCell>
-                    {lookupLabel(
-                      lstTypes,
-                      objItem.strExceptionTypeCode,
-                      t("unavailable", "Unavailable"),
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <LookupChip
-                      lstOptions={lstSeverities}
-                      strCode={objItem.strSeverityCode}
-                      strFallback={t("unavailable", "Unavailable")}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <LookupChip
-                      lstOptions={lstStatuses}
-                      strCode={objItem.strExceptionStatus}
-                      strFallback={t("unavailable", "Unavailable")}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {objItem.intRequestID
-                      ? `${t("request", "Request")} #${objItem.intRequestID}`
-                      : objItem.strExceptionMessage}
-                  </TableCell>
-                  <TableCell>
-                    {objItem.intAgeingDays} {t("days", "days")}
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row">
-                      <Button
-                        data-control-id={`attendance-exceptions.${objItem.intID}.view.button`}
-                        onClick={() => void openDetail(objItem)}
-                      >
-                        {t("view", "View")}
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table></Box>
+      <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
+        <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
+        {blnLoading ? null : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={25}
+            pageSizeOptions={[25]}
+            hideToolbar
+            minTableWidth={1250}
+            emptyMessage={t("no_exceptions", "No exceptions found.")}
+            testIdPrefix="attendance-exceptions.list"
+            onRowDoubleClick={(objRow) => {
+              const objException = objList?.lstItems.find((objItem) => objItem.intID === objRow.id);
+              if (objException) void openDetail(objException);
+            }}
+          />
         )}
       </Paper>
       <Stack direction="row" justifyContent="flex-end">

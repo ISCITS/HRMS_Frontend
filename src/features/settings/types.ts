@@ -24,10 +24,14 @@ export type LeaveSettingsConfigDto = {
   strDefaultApproverSource: DefaultApproverSource;
   objPrimaryHrApprover: ApproverSnapshotDto | null;
   objAlternateHrApprover: ApproverSnapshotDto | null;
-  // Attendance Approval Defaults (mirrors the leave approver block).
+  // Attendance Regularization Approval Defaults (mirrors the leave approver block).
   strAttendanceDefaultApproverSource: DefaultApproverSource;
   objAttendancePrimaryHrApprover: ApproverSnapshotDto | null;
   objAttendanceAlternateHrApprover: ApproverSnapshotDto | null;
+  // Work on Holiday Approval Defaults (mirrors the same block).
+  strWorkHolidayDefaultApproverSource: DefaultApproverSource;
+  objWorkHolidayPrimaryHrApprover: ApproverSnapshotDto | null;
+  objWorkHolidayAlternateHrApprover: ApproverSnapshotDto | null;
 };
 
 export type LeaveSettingsSaveRequest = {
@@ -40,4 +44,8 @@ export type LeaveSettingsSaveRequest = {
   strAttendanceDefaultApproverSource?: DefaultApproverSource;
   intAttendancePrimaryHrApproverEmployeeID?: number | null;
   intAttendanceAlternateHrApproverEmployeeID?: number | null;
+  // Optional: when omitted, the saved work-on-holiday approval defaults are left unchanged.
+  strWorkHolidayDefaultApproverSource?: DefaultApproverSource;
+  intWorkHolidayPrimaryHrApproverEmployeeID?: number | null;
+  intWorkHolidayAlternateHrApproverEmployeeID?: number | null;
 };

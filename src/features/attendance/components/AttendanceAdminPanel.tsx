@@ -9,7 +9,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -21,17 +20,15 @@ import {
   Snackbar,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonRowActions from "@/components/master/CommonRowActions";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto, type ShiftDto, type ShiftRequest } from "@/features/attendance/dto";
 
@@ -52,6 +49,7 @@ export default function AttendanceAdminPanel() {
 
   const [blnShiftDialog, setBlnShiftDialog] = useState(false);
   const [objShiftForm, setObjShiftForm] = useState<ShiftRequest>(emptyShift());
+  const [objViewingShift, setObjViewingShift] = useState<ShiftDto | null>(null);
 
   const [blnRosterDialog, setBlnRosterDialog] = useState(false);
   const [objRosterForm, setObjRosterForm] = useState({ intEmployeeID: "", intShiftID: 0, dtEffectiveFrom: new Date().toISOString().slice(0, 10), lstOff: [false, false, false, false, false, true, true] as boolean[] });
@@ -153,8 +151,68 @@ export default function AttendanceAdminPanel() {
     }
   }
 
+  const lstShiftRows = lstShifts.map((objShift) => ({
+    id: objShift.intID,
+    action: (
+      <CommonRowActions
+        testIdPrefix={`attendance.shift.${objShift.intID}`}
+        rowKey={objShift.intID}
+        blnCanView
+        onView={() => setObjViewingShift(objShift)}
+      />
+    ),
+    code: objShift.strShiftCode,
+    name: objShift.strShiftName,
+    start: objShift.strStartTime,
+    end: objShift.strEndTime,
+    fullDayHours: objShift.decFullDayHours,
+    grace: `${objShift.intGraceInMinutes} min`,
+    status: (
+      <Chip size="small" label={objShift.blnIsActive ? "Active" : "Inactive"} sx={{ fontWeight: 700, bgcolor: objShift.blnIsActive ? "#dcfce7" : "#f1f5f9", color: objShift.blnIsActive ? "#166534" : "#475569" }} />
+    ),
+  }));
+  const lstShiftColumns: CommonTableColumn<(typeof lstShiftRows)[number]>[] = [
+    { field: "action", headerName: "Actions", sortable: false, filterable: false, exportable: false, width: 80 },
+    { field: "code", headerName: "Code", width: 110 },
+    { field: "name", headerName: "Name", width: 160 },
+    { field: "start", headerName: "Start", width: 100 },
+    { field: "end", headerName: "End", width: 100 },
+    { field: "fullDayHours", headerName: "Full-day h", width: 110 },
+    { field: "grace", headerName: "Grace", width: 100 },
+    { field: "status", headerName: "Status", sortable: false, width: 110 },
+  ];
+
+  const lstMusterRows = lstMuster.map((objDay) => {
+    const objColor = ATTENDANCE_STATUS_COLORS[objDay.strStatus] ?? { bg: "#f1f5f9", fg: "#475569" };
+    return {
+      id: objDay.intID,
+      employee: (
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{objDay.strEmployeeName ?? `#${objDay.intEmployeeID}`}</Typography>
+          <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>{objDay.strEmployeeCode ?? ""}</Typography>
+        </Box>
+      ),
+      status: <Chip size="small" label={objDay.strStatus.replace("_", " ")} sx={{ textTransform: "capitalize", fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} />,
+      firstIn: objDay.strFirstIn ?? "-",
+      lastOut: objDay.strLastOut ?? "-",
+      worked: `${objDay.decWorkedHours} h`,
+      late: objDay.intLateMinutes > 0 ? `${objDay.intLateMinutes} min` : "-",
+      ot: objDay.decOtHours > 0 ? `${objDay.decOtHours} h` : "-",
+    };
+  });
+  const lstMusterColumns: CommonTableColumn<(typeof lstMusterRows)[number]>[] = [
+    { field: "employee", headerName: "Employee", width: 200 },
+    { field: "status", headerName: "Status", sortable: false, width: 130 },
+    { field: "firstIn", headerName: "In", width: 90 },
+    { field: "lastOut", headerName: "Out", width: 90 },
+    { field: "worked", headerName: "Worked", width: 100 },
+    { field: "late", headerName: "Late", width: 90 },
+    { field: "ot", headerName: "OT", width: 90 },
+  ];
+
   return (
     <Stack spacing={1.5}>
+      <BlockingLoader blnOpen={blnSaving || blnReconciling} strLabel="Please wait..." />
       <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)" }}>
         <Stack direction="row" spacing={1.2} alignItems="center">
           <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}><ManageAccountsRoundedIcon /></Box>
@@ -166,7 +224,7 @@ export default function AttendanceAdminPanel() {
       </Paper>
 
       {blnLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}><CircularProgress /></Box>
+        <BlockingLoader blnOpen strLabel="Loading..." />
       ) : (
         <>
           <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
@@ -178,30 +236,19 @@ export default function AttendanceAdminPanel() {
                 <Button controlId="attendance.shift.add.button" variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => setBlnShiftDialog(true)}>Add Shift</Button>
               </Stack>
             </Stack>
-            <Box sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead><TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Code</TableCell><TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Start</TableCell><TableCell sx={{ fontWeight: 700 }}>End</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Full-day h</TableCell><TableCell sx={{ fontWeight: 700 }}>Grace</TableCell><TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                </TableRow></TableHead>
-                <TableBody>
-                  {lstShifts.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} sx={{ textAlign: "center", color: "#64748b", py: 3 }}>No shifts yet.</TableCell></TableRow>
-                  ) : lstShifts.map((objShift) => (
-                    <TableRow key={objShift.intID} hover>
-                      <TableCell sx={{ fontWeight: 700 }}>{objShift.strShiftCode}</TableCell>
-                      <TableCell>{objShift.strShiftName}</TableCell>
-                      <TableCell>{objShift.strStartTime}</TableCell>
-                      <TableCell>{objShift.strEndTime}</TableCell>
-                      <TableCell>{objShift.decFullDayHours}</TableCell>
-                      <TableCell>{objShift.intGraceInMinutes} min</TableCell>
-                      <TableCell><Chip size="small" label={objShift.blnIsActive ? "Active" : "Inactive"} sx={{ fontWeight: 700, bgcolor: objShift.blnIsActive ? "#dcfce7" : "#f1f5f9", color: objShift.blnIsActive ? "#166534" : "#475569" }} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
+            <CommonTable
+              columns={lstShiftColumns}
+              rows={lstShiftRows}
+              rowIdField="id"
+              hideToolbar
+              minTableWidth={860}
+              emptyMessage="No shifts yet."
+              testIdPrefix="attendance.shift.list"
+              onRowDoubleClick={(objRow) => {
+                const objShift = lstShifts.find((objItem) => objItem.intID === objRow.id);
+                if (objShift) setObjViewingShift(objShift);
+              }}
+            />
           </Paper>
 
           <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
@@ -210,33 +257,15 @@ export default function AttendanceAdminPanel() {
               <TextField controlId="attendance.muster.date.input" label="Date" type="date" size="small" InputLabelProps={{ shrink: true }} value={strMusterDate}
                 onChange={(objEvent) => { setStrMusterDate(objEvent.target.value); void loadMuster(objEvent.target.value); }} />
             </Stack>
-            <Box sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead><TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Employee</TableCell><TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>In</TableCell><TableCell sx={{ fontWeight: 700 }}>Out</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Worked</TableCell><TableCell sx={{ fontWeight: 700 }}>Late</TableCell><TableCell sx={{ fontWeight: 700 }}>OT</TableCell>
-                </TableRow></TableHead>
-                <TableBody>
-                  {lstMuster.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} sx={{ textAlign: "center", color: "#64748b", py: 3 }}>No attendance recorded for this date.</TableCell></TableRow>
-                  ) : lstMuster.map((objDay) => {
-                    const objColor = ATTENDANCE_STATUS_COLORS[objDay.strStatus] ?? { bg: "#f1f5f9", fg: "#475569" };
-                    return (
-                      <TableRow key={objDay.intID} hover>
-                        <TableCell><Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{objDay.strEmployeeName ?? `#${objDay.intEmployeeID}`}</Typography><Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>{objDay.strEmployeeCode ?? ""}</Typography></TableCell>
-                        <TableCell><Chip size="small" label={objDay.strStatus.replace("_", " ")} sx={{ textTransform: "capitalize", fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} /></TableCell>
-                        <TableCell>{objDay.strFirstIn ?? "-"}</TableCell>
-                        <TableCell>{objDay.strLastOut ?? "-"}</TableCell>
-                        <TableCell>{objDay.decWorkedHours} h</TableCell>
-                        <TableCell>{objDay.intLateMinutes > 0 ? `${objDay.intLateMinutes} min` : "-"}</TableCell>
-                        <TableCell>{objDay.decOtHours > 0 ? `${objDay.decOtHours} h` : "-"}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Box>
+            <CommonTable
+              columns={lstMusterColumns}
+              rows={lstMusterRows}
+              rowIdField="id"
+              hideToolbar
+              minTableWidth={790}
+              emptyMessage="No attendance recorded for this date."
+              testIdPrefix="attendance.muster.list"
+            />
           </Paper>
 
           <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
@@ -252,6 +281,25 @@ export default function AttendanceAdminPanel() {
           </Paper>
         </>
       )}
+
+      {/* Shift view dialog */}
+      <Dialog open={Boolean(objViewingShift)} onClose={() => setObjViewingShift(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>Shift Details</DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={1.5} sx={{ mt: 0 }}>
+            <Grid item xs={12} sm={4}><TextField label="Code" fullWidth size="small" value={objViewingShift?.strShiftCode ?? ""} disabled /></Grid>
+            <Grid item xs={12} sm={8}><TextField label="Name" fullWidth size="small" value={objViewingShift?.strShiftName ?? ""} disabled /></Grid>
+            <Grid item xs={6} sm={3}><TextField label="Start" fullWidth size="small" value={objViewingShift?.strStartTime ?? ""} disabled /></Grid>
+            <Grid item xs={6} sm={3}><TextField label="End" fullWidth size="small" value={objViewingShift?.strEndTime ?? ""} disabled /></Grid>
+            <Grid item xs={6} sm={3}><TextField label="Grace (min)" fullWidth size="small" value={objViewingShift?.intGraceInMinutes ?? ""} disabled /></Grid>
+            <Grid item xs={6} sm={3}><TextField label="Full-day h" fullWidth size="small" value={objViewingShift?.decFullDayHours ?? ""} disabled /></Grid>
+            <Grid item xs={12}><FormControlLabel control={<Switch checked={objViewingShift?.blnIsActive ?? false} disabled />} label="Active" /></Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button controlId="attendance.shift.view.close.button" onClick={() => setObjViewingShift(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Shift dialog */}
       <Dialog open={blnShiftDialog} onClose={() => setBlnShiftDialog(false)} maxWidth="sm" fullWidth>

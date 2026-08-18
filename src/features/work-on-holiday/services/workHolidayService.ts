@@ -57,6 +57,10 @@ export const workHolidayService = {
     requestWorkHoliday<WorkHolidayList>("/queue", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_APPROVE", undefined, {
       page: intPage, page_size: intPageSize,
     }),
+  listMyApprovals: (intPage = 1, intPageSize = 20) =>
+    requestWorkHoliday<WorkHolidayList>("/my-approvals", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_APPROVE", undefined, {
+      page: intPage, page_size: intPageSize,
+    }),
   listAll: (strStatus?: string, intPage = 1, intPageSize = 20) =>
     requestWorkHoliday<WorkHolidayList>("/all", ApiRequestMethod.Get, "WORK_ON_HOLIDAY_VIEW_ALL", undefined, {
       status: strStatus, page: intPage, page_size: intPageSize,

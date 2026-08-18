@@ -13,7 +13,7 @@ import type {
 const objEmptyList: WorkHolidayList = { lstItems: [], intTotal: 0, intPage: 1, intPageSize: 20 };
 
 export function useWorkHolidayList(
-  strMode: "my" | "queue" | "all",
+  strMode: "my" | "queue" | "approvals" | "all",
   strStatus?: string,
   intPage = 1,
   intPageSize = 20,
@@ -32,7 +32,9 @@ export function useWorkHolidayList(
         ? await workHolidayService.listMy(strStatus, intPage, intPageSize)
         : strMode === "queue"
           ? await workHolidayService.listQueue(intPage, intPageSize)
-          : await workHolidayService.listAll(strStatus, intPage, intPageSize);
+          : strMode === "approvals"
+            ? await workHolidayService.listMyApprovals(intPage, intPageSize)
+            : await workHolidayService.listAll(strStatus, intPage, intPageSize);
       setObjList(objResult);
     } catch (objError) {
       const objHandledError = await createApiRequestError(objError, "Unable to load Work on Holiday requests.");

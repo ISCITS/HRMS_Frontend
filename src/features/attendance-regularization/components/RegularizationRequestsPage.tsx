@@ -4,14 +4,17 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
-  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow,
+  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, Grid, MenuItem, Paper, Stack,
   TextField, Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonRowActions from "@/components/master/CommonRowActions";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
@@ -237,11 +240,38 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     setStrStatus("");
   }
 
-  if (blnRightsLoading) return <CircularProgress />;
+  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Regularization Requests access is not available.")}</Alert>;
   const blnCanCreateOnBehalf = !blnEssManagerMode && canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
+  const lstTableRows = lstRequests.map((objRequest) => ({
+    id: objRequest.intID,
+    action: (
+      <CommonRowActions
+        testIdPrefix={`regularization-requests.${objRequest.intID}`}
+        rowKey={objRequest.intID}
+        blnCanView
+        onView={() => void openDetail(objRequest.intID)}
+      />
+    ),
+    requestNumber: objRequest.strRequestNumber,
+    employee: objRequest.strEmployeeName ?? objRequest.strEmployeeCode,
+    workDate: objRequest.dtWorkDate,
+    type: lookupLabel(lstTypes, objRequest.strRequestTypeCode, t("unavailable", "Unavailable")),
+    requestStatus: (
+      <LookupChip lstOptions={lstStatuses} strCode={objRequest.strRequestStatus} strFallback={t("unavailable", "Unavailable")} />
+    ),
+  }));
+  const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+    { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
+    { field: "requestNumber", headerName: t("request_number", "Request"), width: 140 },
+    { field: "employee", headerName: t("employee", "Employee"), width: 180 },
+    { field: "workDate", headerName: t("work_date", "Work Date"), width: 130 },
+    { field: "type", headerName: t("type", "Type"), width: 170 },
+    { field: "requestStatus", headerName: t("status", "Status"), sortable: false, width: 150 },
+  ];
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+      <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
       {/* AppShell owns the title; retain only the contextual action when authorized. */}
       {blnCanCreateOnBehalf ? <Stack direction="row" justifyContent="flex-end"><Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button></Stack> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -258,12 +288,21 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
           </Grid>
         </Grid>
       </Paper>
-      <Paper className={styles.tableCard}>
-        {blnLoading ? <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box> : (
-          <Box className={styles.tableWrap}><Table className={styles.table} size="small" sx={{ minWidth: 850 }}><TableHead><TableRow><TableCell>{t("request_number", "Request")}</TableCell><TableCell>{t("employee", "Employee")}</TableCell><TableCell>{t("work_date", "Work Date")}</TableCell><TableCell>{t("type", "Type")}</TableCell><TableCell>{t("status", "Status")}</TableCell><TableCell>{t("actions", "Actions")}</TableCell></TableRow></TableHead><TableBody>
-            {lstRequests.map((objRequest) => <TableRow key={objRequest.intID} hover><TableCell>{objRequest.strRequestNumber}</TableCell><TableCell>{objRequest.strEmployeeName ?? objRequest.strEmployeeCode}</TableCell><TableCell>{objRequest.dtWorkDate}</TableCell><TableCell>{lookupLabel(lstTypes, objRequest.strRequestTypeCode, t("unavailable", "Unavailable"))}</TableCell><TableCell><LookupChip lstOptions={lstStatuses} strCode={objRequest.strRequestStatus} strFallback={t("unavailable", "Unavailable")} /></TableCell><TableCell><Button data-control-id={`regularization-requests.${objRequest.intID}.view.button`} onClick={() => void openDetail(objRequest.intID)}>{t("view", "View")}</Button></TableCell></TableRow>)}
-            {lstRequests.length === 0 ? <TableRow><TableCell colSpan={6} align="center">{t("empty", "No requests found.")}</TableCell></TableRow> : null}
-          </TableBody></Table></Box>
+      <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
+        <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
+        {blnLoading ? null : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={25}
+            pageSizeOptions={[25, 50, 100]}
+            showPaginationSummary
+            minTableWidth={850}
+            emptyMessage={t("empty", "No requests found.")}
+            testIdPrefix="regularization-requests.list"
+            onRowDoubleClick={(objRow) => void openDetail(Number(objRow.id))}
+          />
         )}
       </Paper>
       <Dialog data-control-id="regularization-requests.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="lg">
